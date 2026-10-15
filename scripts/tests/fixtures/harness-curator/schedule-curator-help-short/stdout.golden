@@ -1,0 +1,14 @@
+# schedule-curator.sh — Install (or remove) a recurring local schedule that
+# runs `curate.sh --apply --dedup --max-issues 5` on the maintainer's
+# machine. Auto mode never runs on CI by design: MemPalace state is local.
+#
+# Usage:
+#   bash schedule-curator.sh             # interactive install
+#   bash schedule-curator.sh --dry-run   # print the plist / cron line, no install
+#   bash schedule-curator.sh --uninstall # remove the managed schedule entry
+#
+# Idempotency: re-running install replaces the previous entry, never
+# duplicates. On macOS the plist lives at
+# `~/Library/LaunchAgents/io.crewrig.harness-curator.plist`. On Linux the
+# crontab entry is wrapped between a recognizable marker comment.
+

@@ -1,0 +1,13 @@
+====================================================
+  Harness Curator — schedule installer
+====================================================
+
+Target OS:  Linux
+Curator:    <SCRIPTS>/curate
+Logfile:    <HOME>/.local/state/crewrig/harness-curator.log
+
+# crewrig-harness-curator (managed by schedule-curator.sh)
+0 9 * * 1 /bin/bash -lc 'bash <SCRIPTS>/curate --apply --dedup --max-issues 5' >> <HOME>/.local/state/crewrig/harness-curator.log 2>&1
+
+Reactive trigger (run manually when a severity:high friction is filed):
+    bash <SCRIPTS>/curate --apply --dedup --max-issues 5

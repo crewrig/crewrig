@@ -1,0 +1,8 @@
+python <<SCRIPTS>/curate.py>
+  env FRICTION_WING=<harness-friction>
+  env THRESHOLD=<3>
+  env MAX_ISSUES=<4>
+  env TARGET_REPO_OVERRIDE=<https://github.com/o/r>
+  env FROM_STDIN_FILE=<>
+  env DEEP_MODE=<false>
+  env DEEP_WINDOW=<7>

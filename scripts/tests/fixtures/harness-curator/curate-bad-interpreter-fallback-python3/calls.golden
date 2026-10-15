@@ -1,0 +1,9 @@
+python <<SCRIPTS>/curate.py>
+  env FRICTION_WING=<harness-friction>
+  env THRESHOLD=<2>
+  env MAX_ISSUES=<0>
+  env TARGET_REPO_OVERRIDE=<>
+  env FROM_STDIN_FILE=<<TMP>/<RAND>>
+  env DEEP_MODE=<false>
+  env DEEP_WINDOW=<500>
+  stdin-file mode=-rw------- cksum=71434490 3 cr=0

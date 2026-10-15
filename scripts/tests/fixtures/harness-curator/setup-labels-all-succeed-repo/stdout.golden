@@ -1,0 +1,11 @@
+ok: harness-feedback
+ok: room:tool
+ok: room:prompt
+ok: room:format
+ok: room:behavior
+ok: room:process
+ok: severity:low
+ok: severity:med
+ok: severity:high
+
+OK: all 9 labels bootstrapped on o/r.

@@ -1,0 +1,31 @@
+====================================================
+  Harness Curator — schedule installer
+====================================================
+
+Target OS:  Linux
+Curator:    <SCRIPTS>/curate
+Logfile:    <HOME>/.local/state/crewrig/harness-curator.log
+
+# <HOME>/.config/systemd/user/io.crewrig.harness-curator.service
+[Unit]
+Description=CrewRig scheduled job io.crewrig.harness-curator
+
+[Service]
+Type=oneshot
+Environment="PATH=<SANDBOX>/bin"
+ExecStart=<NODE> <SCRIPTS>/curate --apply --dedup --max-issues 5
+StandardOutput=append:<HOME>/.local/state/crewrig/harness-curator.log
+StandardError=append:<HOME>/.local/state/crewrig/harness-curator.log
+# <HOME>/.config/systemd/user/io.crewrig.harness-curator.timer
+[Unit]
+Description=CrewRig schedule of io.crewrig.harness-curator (weekly)
+
+[Timer]
+OnCalendar=Mon *-*-* 09:00:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target
+
+Reactive trigger (run manually when a severity:high friction is filed):
+    node <SCRIPTS>/curate --apply --dedup --max-issues 5

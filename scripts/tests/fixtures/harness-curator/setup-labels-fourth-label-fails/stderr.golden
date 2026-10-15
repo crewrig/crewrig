@@ -1,0 +1,4 @@
+FAIL: room:format
+
+ERROR: 1 label(s) failed: room:format
+Re-run after resolving (check gh auth status and repo permissions).

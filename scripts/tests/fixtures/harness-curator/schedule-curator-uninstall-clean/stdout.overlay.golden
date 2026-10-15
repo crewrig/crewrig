@@ -1,0 +1,2 @@
+No managed systemd timer at <HOME>/.config/systemd/user/io.crewrig.harness-curator.timer — nothing to remove.
+Note: a crontab entry from an earlier version (marker "# crewrig-harness-curator") is not removed by this command; remove it manually with "crontab -e".

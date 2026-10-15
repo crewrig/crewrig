@@ -1,0 +1,31 @@
+ERROR: --repo requires a value
+# setup-labels.sh — Bootstrap the GitHub labels used by the Harness Curator.
+#
+# `gh issue create --label <name>` fails if the label does not exist on
+# the target repo, so every fork that may receive curator output must
+# pre-create the 9 labels listed below before the first `--apply` run.
+# This script is the one-shot, idempotent bootstrap maintainers run once
+# per target repo (or any time the label vocabulary changes — re-runs
+# are safe, see `gh label create --force` semantics).
+#
+# Usage:
+#   bash scripts/setup-labels.sh [--repo <owner/repo>] [--dry-run]
+#
+# Options:
+#   --repo <owner/repo>  Target repo. Omit to let `gh` resolve from the
+#                        current working directory's git remote.
+#   --dry-run            Print the plan (one line per label) without
+#                        contacting GitHub. Exit 0 unless the args are
+#                        malformed.
+#
+# Exit codes:
+#   0   All 9 labels created or updated successfully (or dry-run plan
+#       printed).
+#   1   Usage error.
+#   2   One or more `gh label create` calls failed. Every label is
+#       attempted before exit — partial failure does not short-circuit.
+#
+# Idempotence: `gh label create --force` creates the label if absent,
+# otherwise updates its color and description in place. Re-running the
+# script after a label vocabulary change is the supported upgrade path.
+

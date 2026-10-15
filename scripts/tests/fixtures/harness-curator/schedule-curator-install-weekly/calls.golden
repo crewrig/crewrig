@@ -1,0 +1,6 @@
+gh <auth> <status>
+crontab <-l>
+crontab <->
+  cron-input:
+# crewrig-harness-curator (managed by schedule-curator.sh)
+0 9 * * 1 /bin/bash -lc 'bash <SCRIPTS>/curate --apply --dedup --max-issues 5' >> <HOME>/.local/state/crewrig/harness-curator.log 2>&1

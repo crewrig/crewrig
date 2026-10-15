@@ -1,0 +1,15 @@
+====================================================
+  Harness Curator — schedule installer
+====================================================
+
+Target OS:  Linux
+Curator:    <SCRIPTS>/curate
+Logfile:    <HOME>/.local/state/crewrig/harness-curator.log
+
+Wrote: <HOME>/.config/systemd/user/io.crewrig.harness-curator.service
+Wrote: <HOME>/.config/systemd/user/io.crewrig.harness-curator.timer
+Enabled and scheduled: io.crewrig.harness-curator.timer
+Note: a crontab entry from an earlier version (marker "# crewrig-harness-curator") is not removed by this command; remove it manually with "crontab -e".
+
+Reactive trigger (run manually when a severity:high friction is filed):
+    node <SCRIPTS>/curate --apply --dedup --max-issues 5

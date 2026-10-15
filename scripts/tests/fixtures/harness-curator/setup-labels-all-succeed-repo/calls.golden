@@ -1,0 +1,9 @@
+gh <label> <create> <harness-feedback> <--color> <FBCA04> <--description> <Auto-curated friction report> <--force> <--repo> <o/r>
+gh <label> <create> <room:tool> <--color> <0E8A16> <--description> <Friction category: tool> <--force> <--repo> <o/r>
+gh <label> <create> <room:prompt> <--color> <0E8A16> <--description> <Friction category: prompt> <--force> <--repo> <o/r>
+gh <label> <create> <room:format> <--color> <0E8A16> <--description> <Friction category: format> <--force> <--repo> <o/r>
+gh <label> <create> <room:behavior> <--color> <0E8A16> <--description> <Friction category: behavior> <--force> <--repo> <o/r>
+gh <label> <create> <room:process> <--color> <0E8A16> <--description> <Friction category: process> <--force> <--repo> <o/r>
+gh <label> <create> <severity:low> <--color> <C2E0C6> <--description> <Friction severity: low> <--force> <--repo> <o/r>
+gh <label> <create> <severity:med> <--color> <FBCA04> <--description> <Friction severity: med> <--force> <--repo> <o/r>
+gh <label> <create> <severity:high> <--color> <D93F0B> <--description> <Friction severity: high> <--force> <--repo> <o/r>

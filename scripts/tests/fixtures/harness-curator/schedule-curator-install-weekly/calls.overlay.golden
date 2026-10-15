@@ -1,0 +1,4 @@
+gh <auth> <status>
+systemctl <--user> <show-environment>
+systemctl <--user> <daemon-reload>
+systemctl <--user> <enable> <--now> <io.crewrig.harness-curator.timer>

@@ -1,0 +1,9 @@
+pipx <environment> <--value> <PIPX_HOME>
+python <<SCRIPTS>/curate.py>
+  env FRICTION_WING=<harness-friction>
+  env THRESHOLD=<2>
+  env MAX_ISSUES=<0>
+  env TARGET_REPO_OVERRIDE=<>
+  env FROM_STDIN_FILE=<>
+  env DEEP_MODE=<false>
+  env DEEP_WINDOW=<500>

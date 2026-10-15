@@ -1,0 +1,5 @@
+FAIL: harness-feedback
+FAIL: severity:high
+
+ERROR: 2 label(s) failed: harness-feedback severity:high
+Re-run after resolving (check gh auth status and repo permissions).
