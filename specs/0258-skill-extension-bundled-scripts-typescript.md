@@ -87,7 +87,7 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
    (`extensions/core/hello-world/package.json` and the skeleton's). A skill script, a
    hook and the skeleton's hook SHALL therefore load built-ins with
    `process.getBuiltinModule("node:<module>")`, which exists under both module
-   systems, and SHALL reach every other file with a relative `await import()`. A test
+   systems, and SHALL import no other file (requirement 3). A test
    SHALL run each such entry from a copy placed under a package that declares
    `"type": "module"`, under a package that declares `"type": "commonjs"`, under a typeless one, and under a
    directory with no `package.json`, and SHALL require the same standard output,
@@ -100,14 +100,15 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
    tiers copy it again into a user directory where no repository and no `node_modules`
    is above it (`scripts/lib/build-components/resources.ts`,
    `scripts/lib/setup/tier-install.ts`; the same property is why
-   `lint-typescript.ts` imports built-ins only). A skill script SHALL therefore import
-   only `node:` built-ins and files under its own skill's `scripts/` directory, SHALL
-   NOT import anything from `scripts/lib/`, and SHALL NOT use
-   `scripts/lib/require-dependency.ts`, which needs a `.git` ancestor. A helper that
-   several scripts of one skill need SHALL live in that skill, at
-   `scripts/lib/<name>.ts` inside the skill's `scripts/` directory, loaded with a
-   relative `await import()`, and SHALL NOT be shared between two skills. Every file
-   SHALL stay under 300 lines (spec 0238). One entry is excepted: `schedule-curator.ts`
+   `lint-typescript.ts` imports built-ins only). A skill script SHALL therefore be one file that
+   imports nothing but `node:` built-ins, loaded with `process.getBuiltinModule`
+   (requirement 2), SHALL NOT import anything from `scripts/lib/` and SHALL NOT use
+   `scripts/lib/require-dependency.ts`, which needs a `.git` ancestor. It SHALL NOT
+   load a helper file either: a helper with `export` fails under a package that declares
+   `"type": "commonjs"`, and a `.mts` helper escapes the toolchain scope (`.ts` files
+   only, `scripts/lib/ts-scope.ts`). The few lines that scripts of one skill have in
+   common (the palette, the target resolution, the tool lookup) are therefore
+   repeated, and each file SHALL stay under 300 lines (spec 0238). One entry is excepted: `schedule-curator.ts`
    registers an operating-system job through `scripts/lib/service/` (requirement 15) and
    SHALL reach that layer by a lazy `import()` of a file found by walking up from its own
    directory to a CrewRig checkout: the walk starts from the real path of the script
@@ -244,9 +245,9 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     of the layer SHALL pass unchanged): a job kind of the layer's names with the label
     `io.crewrig.harness-curator` (so a plist written by the shell is replaced in place),
     a renderer for a calendar plist, a `.service` and `.timer` pair and a Task
-    Scheduler calendar trigger, and a backend selector in the new file
-    `scripts/lib/service/schedule-backend.ts`, an optional unit to enable (the `.timer`), and a
-    replace-on-reinstall path (uninstall, then install) so that a changed hour takes
+    Scheduler calendar trigger, a backend selector in the new file
+    `scripts/lib/service/schedule-backend.ts`, an optional unit to enable (the
+    `.timer`), and a replace-on-reinstall path (uninstall, then install) so that a changed hour takes
     effect. The scheduled command SHALL carry an absolute interpreter path and the
     installer's `PATH` (the shell relied on `bash -lc` for a login `PATH`), and where
     the manager is unavailable (no user systemd session, no `schtasks`) the entry SHALL
@@ -479,8 +480,8 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
     - (m) `lint-json` rejects what `JSON.parse` rejects, which is stricter than
       `jq empty`: an empty file, several top-level values and the non-standard literals
       `nan` and `NaN` that `jq` accepted are reported as `invalid JSON`.
-    - (n) `schedule-curator` needs a CrewRig checkout to register or remove a job
-      (requirement 3); the shell ran from any directory. `--help` does not.
+    - (n) `schedule-curator` needs a CrewRig checkout in every mode but `--help`, `--dry-run` included
+      (requirement 3); the shell ran from any directory.
 
 32. **Shims, deletion and callers.** A script with a Bash oracle or a CI or Taskfile
     caller that is not retargeted in the same pull request SHALL become a forwarding
@@ -560,7 +561,7 @@ passes the repository's type-check, Oxlint and Oxfmt steps unchanged.
 ### Decision record
 
 **Decision D1 — skill scripts are self-contained single-skill files.** *Adopted:*
-requirements 3 and 11: built-ins only, a per-skill `scripts/lib/`, `js-yaml` resolved
+requirements 3 and 11: one file per script, built-ins only, `js-yaml` resolved
 from the script's directory then the working directory, with a line fallback. The
 fallback reads the parent requirement 6 sentence that demands a non-zero exit and a
 re-run-setup instruction as governing a script that cannot do its work without the
@@ -569,8 +570,11 @@ reads requirement 6 literally can obtain a one-sentence clarifying delta of the
 parent. *Rejected:* (i) importing the shared
 modules of `scripts/lib/`, which a copied skill cannot reach and which needs a `.git`
 ancestor; (ii) a hand-written YAML reader, which parent requirement 23 forbids because
-one YAML library SHALL remain; (iii) declaring `lint-skill` checkout-only in its
-`SKILL.md`, which breaks it for the library tier; (iv) installing `js-yaml` next to
+one YAML library SHALL remain; (iii) a per-skill helper file loaded with a relative `import()`, which fails under a
+`"type": "commonjs"` package when it is a `.ts` file with `export` (measured by seat pass
+5) and leaves the toolchain scope when it is a `.mts` file, the price being a few
+repeated lines; (iv) declaring `lint-skill` checkout-only in its
+`SKILL.md`, which breaks it for the library tier; (v) installing `js-yaml` next to
 every skill at setup, which adds a dependency step to a copy operation that has none.
 
 **Decision D2 — wrapped tools are not POSIX-only utilities.** *Adopted:* requirement
