@@ -135,7 +135,7 @@ const LABELS: HcCase[] = [
     stubs: [
       stub(
         "gh",
-        `n=$(cat '{ROOT}/bin/.n' 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > '{ROOT}/bin/.n'\n[ "$n" = 1 ] && exit 1\n[ "$n" = 9 ] && exit 1\nexit 0\n`,
+        `n=$(cat '{ROOT}/bin/.n' 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > '{ROOT}/bin/.n'\nif [ "$n" = 1 ]; then exit 1; fi\nif [ "$n" = 9 ]; then exit 1; fi\nexit 0\n`,
       ),
     ],
   }),
