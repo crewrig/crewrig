@@ -84,7 +84,7 @@ Outside the usage root:
   (see [Personal-data note](usage-capture.md#personal-data-note)). Derived
   from recorded activity.
 - **The non-interactive wrapper's whole-output file.**
-  `usage_headless_run` in `scripts/lib/usage-headless.sh` stages the whole
+  The non-interactive wrapper in `scripts/lib/usage-headless.ts` stages the whole
   output of a run it wraps in a temporary file in the system temp directory.
   It deletes the file at the end of the call without a trap, so a killed run
   can leave it behind. **That file can hold conversation text**, the model's

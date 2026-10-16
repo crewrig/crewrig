@@ -1,9 +1,8 @@
 // Twin proof for scripts/lib/usage-headless.ts (spec 0261): the six R18 checks of group G15 of
-// test-usage-capture.sh section 10 are asserted on the TypeScript twin directly and on the shell
-// leg when bash is available, and the two legs are compared on stored records and file bytes.
+// test-usage-capture.sh section 10 are asserted on the TypeScript module directly (the shell
+// original is retired, spec 0261 requirement 17 and delta-01).
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -30,9 +29,6 @@ const CANARY = String((JSON.parse(fs.readFileSync(AGY_ENVELOPE, "utf8")) as Json
   ":",
 )[0];
 
-const bash = spawnSync("bash", ["-c", "command -v mktemp grep node"], { encoding: "utf8" });
-const BASH_SKIP = bash.status === 0 ? false : "bash (with mktemp, grep, node) is not available";
-const REAL_NODE = process.execPath;
 const roots: string[] = [];
 
 after(() => {
@@ -44,7 +40,6 @@ interface Scratch {
   readonly home: string;
   readonly usage: string;
   readonly tmp: string;
-  readonly bin: string;
   readonly scan: string;
 }
 
@@ -56,25 +51,10 @@ function scratch(): Scratch {
     home: path.join(work, "home"),
     usage: path.join(work, "usage"),
     tmp: path.join(work, "tmp"),
-    bin: path.join(work, "bin"),
     scan: path.join(work, "scan.log"),
   };
-  for (const d of [s.home, s.usage, s.tmp, s.bin]) fs.mkdirSync(d);
+  for (const d of [s.home, s.usage, s.tmp]) fs.mkdirSync(d);
   fs.writeFileSync(s.scan, "");
-  // The shell leg's two shims: mktemp pinned under TMPDIR, node followed by a scan of TMPDIR.
-  const realMktemp = spawnSync("bash", ["-c", "command -v mktemp"], {
-    encoding: "utf8",
-  }).stdout.trim();
-  fs.writeFileSync(
-    path.join(s.bin, "mktemp"),
-    `#!/bin/bash\nexec "${realMktemp}" "$@" "${s.tmp}/tmp.XXXXXXXXXX"\n`,
-    { mode: 0o755 },
-  );
-  fs.writeFileSync(
-    path.join(s.bin, "node"),
-    `#!/bin/bash\n"${REAL_NODE}" "$@"\nrc=$?\ngrep -rlF -- "${CANARY}" "${s.tmp}" >> "${s.scan}" 2>/dev/null\nexit $rc\n`,
-    { mode: 0o755 },
-  );
   return s;
 }
 
@@ -83,28 +63,14 @@ function envOf(s: Scratch): Record<string, string> {
     HOME: s.home,
     TMPDIR: s.tmp,
     CREWRIG_USAGE_ROOT: s.usage,
-    PATH: `${s.bin}:/usr/bin:/bin`,
+    PATH: "/usr/bin:/bin",
   };
 }
 
 type Fn = "agy" | "usage";
-type Leg = "ts" | "shell";
 
-/** Runs one function on one leg; the TS leg also spies on every file write for the reply canary. */
-function call(leg: Leg, fn: Fn, s: Scratch, file: string): void {
-  if (leg === "shell") {
-    const name =
-      fn === "agy"
-        ? "usage_headless_agy_rewrite_json_response"
-        : "usage_headless_capture_usage_file";
-    const args = fn === "agy" ? `"$1" "${LAUNCH}"` : `copilot-cli "$1" "${LAUNCH}"`;
-    spawnSync("bash", ["-c", `. scripts/lib/usage-headless.sh; ${name} ${args}`, "bash", file], {
-      cwd: REPO,
-      env: envOf(s),
-      encoding: "utf8",
-    });
-    return;
-  }
+/** Runs one function; spies on every file write for the reply canary. */
+function call(fn: Fn, s: Scratch, file: string, env: Record<string, string> = envOf(s)): void {
   const realWrite = fs.writeFileSync;
   const spy = ((
     target: fs.PathOrFileDescriptor,
@@ -122,8 +88,8 @@ function call(leg: Leg, fn: Fn, s: Scratch, file: string): void {
   }) as typeof fs.writeFileSync;
   fs.writeFileSync = spy;
   try {
-    if (fn === "agy") usageHeadlessAgyRewriteJsonResponse(file, LAUNCH, envOf(s), { cwd: REPO });
-    else usageHeadlessCaptureUsageFile("copilot-cli", file, LAUNCH, envOf(s), { cwd: REPO });
+    if (fn === "agy") usageHeadlessAgyRewriteJsonResponse(file, LAUNCH, env, { cwd: REPO });
+    else usageHeadlessCaptureUsageFile("copilot-cli", file, LAUNCH, env, { cwd: REPO });
   } finally {
     fs.writeFileSync = realWrite;
   }
@@ -149,103 +115,67 @@ function seed(s: Scratch, name: string, content: Buffer | string): string {
   return f;
 }
 
-const legs: { leg: Leg; skip: string | false }[] = [
-  { leg: "ts", skip: false },
-  { leg: "shell", skip: BASH_SKIP },
-];
+describe("G15 R18 in-place rewrite", () => {
+  const s = scratch();
+  const out = seed(s, "agy-out.txt", fs.readFileSync(AGY_ENVELOPE));
+  const want = String((JSON.parse(fs.readFileSync(AGY_ENVELOPE, "utf8")) as Json).response);
+  call("agy", s, out);
 
-for (const { leg, skip } of legs) {
-  describe(`G15 R18 in-place rewrite (${leg})`, { skip }, () => {
-    const s = scratch();
-    const out = seed(s, "agy-out.txt", fs.readFileSync(AGY_ENVELOPE));
-    const want = String((JSON.parse(fs.readFileSync(AGY_ENVELOPE, "utf8")) as Json).response);
-    call(leg, "agy", s, out);
-
-    it("writes the reply to the out file byte for byte", () => {
-      assert.equal(fs.readFileSync(out, "utf8"), want);
-    });
-    it("stores exactly one record and leaves the canary out of the usage root", () => {
-      assert.equal(records(s).length, 1);
-      assert.deepEqual(
-        walk(s.usage).filter((f) => fs.readFileSync(f, "utf8").includes(CANARY)),
-        [],
-      );
-    });
-    it("never lets a TMPDIR file hold the reply", () => {
-      assert.equal(fs.readFileSync(s.scan, "utf8"), "");
-    });
-    it("leaves TMPDIR empty", () => {
-      assert.deepEqual(fs.readdirSync(s.tmp), []);
-    });
-    for (const [name, content] of [
-      ["non-JSON", "agy: error: deadline exceeded"],
-      ["non-string response", '{"conversation_id":"c","status":"error","response":null}\n'],
-      ["empty", ""],
-    ] as const) {
-      it(`leaves a ${name} file byte-identical`, () => {
-        const f = seed(s, `${name.replace(/\W/g, "-")}.txt`, content);
-        call(leg, "agy", s, f);
-        assert.equal(fs.readFileSync(f, "utf8"), content);
-        assert.equal(records(s).length, 1);
-      });
-    }
+  it("writes the reply to the out file byte for byte", () => {
+    assert.equal(fs.readFileSync(out, "utf8"), want);
   });
-}
-
-describe("differential twin vs shell", { skip: BASH_SKIP }, () => {
-  function normalised(s: Scratch): string[] {
-    return records(s)
-      .map((f) => {
-        const r = JSON.parse(fs.readFileSync(f, "utf8")) as Json;
-        delete r.timing.captureInstant;
-        // Without a session id the key digests the capture instant, so it differs by design.
-        if (String(r.identity.sessionId).startsWith("run-total-unreported:")) {
-          delete r.idempotencyKey;
-          delete r.recordId;
-        }
-        return JSON.stringify(r);
-      })
-      .sort();
-  }
-
-  for (const [label, fn, content] of [
-    ["agy envelope", "agy", fs.readFileSync(AGY_ENVELOPE)],
-    ["agy non-JSON", "agy", "oops"],
-    ["agy non-string response", "agy", '{"response":3}'],
-    ["copilot usage file", "usage", fs.readFileSync(COPILOT_ENVELOPE)],
-    ["copilot unparseable usage file", "usage", "not json"],
-    ["copilot empty usage file", "usage", ""],
+  it("stores exactly one record and leaves the canary out of the usage root", () => {
+    assert.equal(records(s).length, 1);
+    assert.deepEqual(
+      walk(s.usage).filter((f) => fs.readFileSync(f, "utf8").includes(CANARY)),
+      [],
+    );
+  });
+  it("never lets a TMPDIR file hold the reply", () => {
+    assert.equal(fs.readFileSync(s.scan, "utf8"), "");
+  });
+  it("leaves TMPDIR empty", () => {
+    assert.deepEqual(fs.readdirSync(s.tmp), []);
+  });
+  for (const [name, content] of [
+    ["non-JSON", "agy: error: deadline exceeded"],
+    ["non-string response", '{"conversation_id":"c","status":"error","response":null}\n'],
+    ["empty", ""],
   ] as const) {
-    it(`${label}: same out file and same stored records`, () => {
-      const a = scratch();
-      const b = scratch();
-      const fa = seed(a, "o.txt", content);
-      const fb = seed(b, "o.txt", content);
-      call("ts", fn, a, fa);
-      call("shell", fn, b, fb);
-      assert.deepEqual(fs.readFileSync(fa), fs.readFileSync(fb));
-      assert.deepEqual(normalised(a), normalised(b));
+    it(`leaves a ${name} file byte-identical`, () => {
+      const f = seed(s, `${name.replace(/\W/g, "-")}.txt`, content);
+      call("agy", s, f);
+      assert.equal(fs.readFileSync(f, "utf8"), content);
+      assert.equal(records(s).length, 1);
     });
   }
+});
 
-  it("resolves CREWRIG_USAGE_ROOT at call time, defaulting to HOME/.crewrig/usage", () => {
-    for (const leg of ["ts", "shell"] as const) {
+describe("copilot usage file capture", () => {
+  it("stores one record for a valid usage file", () => {
+    const s = scratch();
+    call("usage", s, seed(s, "o.txt", fs.readFileSync(COPILOT_ENVELOPE)));
+    assert.equal(records(s).length, 1);
+  });
+  for (const [label, content] of [
+    ["unparseable", "not json"],
+    ["empty", ""],
+  ] as const) {
+    it(`leaves an ${label} usage file byte-identical and stores nothing`, () => {
       const s = scratch();
-      const f = seed(s, "o.txt", fs.readFileSync(AGY_ENVELOPE));
-      const env = { ...envOf(s), CREWRIG_USAGE_ROOT: "" };
-      if (leg === "ts") usageHeadlessAgyRewriteJsonResponse(f, LAUNCH, env, { cwd: REPO });
-      else
-        spawnSync(
-          "bash",
-          [
-            "-c",
-            `. scripts/lib/usage-headless.sh; usage_headless_agy_rewrite_json_response "$1" "${LAUNCH}"`,
-            "bash",
-            f,
-          ],
-          { cwd: REPO, env, encoding: "utf8" },
-        );
-      assert.equal(walk(path.join(s.home, ".crewrig", "usage", "journal")).length > 0, true, leg);
-    }
+      const f = seed(s, "o.txt", content);
+      call("usage", s, f);
+      assert.equal(fs.readFileSync(f, "utf8"), content);
+      assert.equal(records(s).length, 0);
+    });
+  }
+});
+
+describe("usage root resolution", () => {
+  it("resolves CREWRIG_USAGE_ROOT at call time, defaulting to HOME/.crewrig/usage", () => {
+    const s = scratch();
+    const f = seed(s, "o.txt", fs.readFileSync(AGY_ENVELOPE));
+    call("agy", s, f, { ...envOf(s), CREWRIG_USAGE_ROOT: "" });
+    assert.equal(walk(path.join(s.home, ".crewrig", "usage", "journal")).length > 0, true);
   });
 });

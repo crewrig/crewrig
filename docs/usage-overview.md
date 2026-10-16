@@ -93,7 +93,7 @@ version, and the section that governs it. An entry is listed only while
     [Architecture overview](usage-capture.md#architecture-overview).
 - **Adopt a further framework-owned non-interactive launch site.**
   - Touches: the launch site's script, which wraps its CLI call with one of
-    the call shapes of `scripts/lib/usage-headless.sh`, and the list of
+    the call shapes of `scripts/lib/usage-headless.ts`, and the list of
     adopted sites.
   - Schema version: no change.
   - Governed by:

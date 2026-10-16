@@ -77,7 +77,6 @@ scripts/lib/render-command.sh
 scripts/lib/tls-delegation.sh
 scripts/lib/tls-exec.sh
 scripts/lib/usage-capture-optin.sh
-scripts/lib/usage-headless.sh
 scripts/link-extensions.sh
 scripts/manage-antigravity-component.sh
 scripts/manage-claude-component.sh

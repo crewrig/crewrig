@@ -1,7 +1,7 @@
 ---
 id: "0261"
 slug: e2e-harness-probes-typescript
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1342

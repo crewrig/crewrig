@@ -16,7 +16,7 @@ import { findTool, linkTools } from "./hermetic-env.ts";
 
 const SCRIPTS = path.resolve(import.meta.dirname, "..", "..");
 
-/** Coreutils and tools the probes and `usage-headless.sh` reach for; vendor binaries are NOT here. */
+/** Coreutils and tools the probes and `usage-headless.ts` shells out to; vendor binaries are NOT here. */
 export const PROBE_TOOLS: readonly string[] =
   "bash env sh node strings readlink mktemp date head tail cat grep sed awk tr cut wc sort rm mkdir mv cp ln chmod dirname basename diff uname sleep".split(
     " ",
