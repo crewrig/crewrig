@@ -1,0 +1,38 @@
+"""Stand-in `packaging.version` — see scripts/tests/mempalace-pin-*.test.ts.
+
+NOT the real library, and not a substitute for it. It exists so that
+`mempalace_pin.check()` takes its `packaging` branch on an interpreter that has
+no `packaging` installed, and nothing more.
+"""
+import re
+
+_PLAIN_RELEASE = re.compile(r"\A[0-9]+(\.[0-9]+)*\Z")
+
+
+class InvalidVersion(ValueError):
+    """Same name and same base class as the real library's."""
+
+
+class Version:
+    def __init__(self, text):
+        if not isinstance(text, str) or _PLAIN_RELEASE.match(text) is None:
+            raise InvalidVersion(text)
+        # `int()` here raises a bare ValueError on a release segment longer than
+        # CPython's 4300-digit conversion limit — the real library does exactly
+        # the same, from its own `tuple(map(int, ...))`.
+        self._release = tuple(int(part) for part in text.split("."))
+
+    def _aligned(self, other):
+        width = max(len(self._release), len(other._release))
+        return (
+            self._release + (0,) * (width - len(self._release)),
+            other._release + (0,) * (width - len(other._release)),
+        )
+
+    def __le__(self, other):
+        mine, theirs = self._aligned(other)
+        return mine <= theirs
+
+    def __lt__(self, other):
+        mine, theirs = self._aligned(other)
+        return mine < theirs

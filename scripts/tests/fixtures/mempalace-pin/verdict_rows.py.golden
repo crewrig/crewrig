@@ -1,0 +1,128 @@
+"""Boundary-row verdict driver for mempalace-pin-*.test.ts — see the header of mempalace-pin-compare.test.ts.
+
+argv: <lib-dir> <min> <max> <expected-comparator>
+Prints one line per row plus `key=value` summary lines; exits non-zero when any
+row's verdict, any row's construction, or the comparator label is wrong.
+"""
+import sys
+
+LIB_DIR, MIN, MAX, WANT_COMPARATOR = (
+    sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+)
+sys.path.insert(0, LIB_DIR)
+import mempalace_pin  # noqa: E402
+
+
+def release_tuple(text):
+    return tuple(int(part) for part in text.split("."))
+
+
+def aligned(left, right):
+    width = max(len(left), len(right))
+    return left + (0,) * (width - len(left)), right + (0,) * (width - len(right))
+
+
+def in_range_by_tuple(text):
+    """`min <= text < max` by integer tuple comparison — the construction oracle.
+
+    Independent of BOTH comparators: no `packaging`, no `_fallback_in_range`, no
+    regex from the module under test. Every row below is a plain release, and a
+    plain release's PEP 440 ordering position IS its zero-padded release tuple,
+    so this is exact for the row set it is applied to.
+    """
+    candidate = release_tuple(text)
+    low, high = release_tuple(MIN), release_tuple(MAX)
+    c1, l1 = aligned(candidate, low)
+    c2, h2 = aligned(candidate, high)
+    return l1 <= c1 and c2 < h2
+
+
+def predecessor(text):
+    """The next plain release strictly below *text*.
+
+    Decrements the last non-zero component, turning each trailing zero it
+    borrows through into 9999 — so `3.6.0` yields `3.5.9999`, strictly below the
+    floor while staying adjacent to it, and `3.7` yields `3.6`, the highest
+    release the range still admits.
+    """
+    parts = list(release_tuple(text))
+    index = len(parts) - 1
+    while index >= 0 and parts[index] == 0:
+        parts[index] = 9999
+        index -= 1
+    if index < 0:
+        return None
+    parts[index] -= 1
+    return ".".join(str(part) for part in parts)
+
+
+def successor(text):
+    parts = list(release_tuple(text))
+    parts[-1] += 1
+    return ".".join(str(part) for part in parts)
+
+
+ROWS = [
+    ("far below the floor", "0", False),
+    ("immediately below the floor", predecessor(MIN), False),
+    ("the floor exactly (inclusive bound)", MIN, True),
+    ("immediately below the ceiling", predecessor(MAX), True),
+    ("the ceiling exactly (EXCLUSIVE bound)", MAX, False),
+    ("immediately above the ceiling", successor(MAX), False),
+]
+
+failures = 0
+for label, text, expected in ROWS:
+    if text is None:
+        print("CONSTRUCTION FAILURE: %s has no derivable row for pin %s..%s"
+              % (label, MIN, MAX))
+        failures += 1
+        continue
+    # (i) the construction is sound for THIS pin, judged by integer tuples.
+    if in_range_by_tuple(text) is not expected:
+        print("CONSTRUCTION FAILURE: %s -> %r is %s by tuple comparison but the "
+              "table expects %s; the row set needs revisiting for pin >=%s,<%s"
+              % (label, text, in_range_by_tuple(text), expected, MIN, MAX))
+        failures += 1
+        continue
+    # (ii) check()'s OWN verdict, and the branch that produced it.
+    verdict, comparator = mempalace_pin.check(text, MIN, MAX)
+    status = "ok"
+    if verdict is not expected:
+        status = "WRONG VERDICT"
+        failures += 1
+    elif comparator != WANT_COMPARATOR:
+        status = "WRONG COMPARATOR"
+        failures += 1
+    print("  %-38s %-14s -> verdict=%-5s comparator=%-16s %s"
+          % (label, text, verdict, comparator, status))
+
+# check() must be TOTAL: a release segment longer than CPython's int-conversion
+# limit raises from inside `int()` on BOTH branches (the real `packaging` maps
+# `int()` over the release segment exactly as the fallback does), and a traceback
+# on the launch path would kill the guard WITHOUT the R3 field set.
+overlong = MIN + "." + "1" * 4301
+try:
+    verdict, comparator = mempalace_pin.check(overlong, MIN, MAX)
+except Exception as exc:  # acknowledged-exception: broad except intentional — this assertion's whole purpose is that check() raises NOTHING; narrowing it would let an unexpected exception type pass as a success
+    print("TOTALITY FAILURE: check() raised %s on a %d-digit release segment"
+          % (type(exc).__name__, 4301))
+    failures += 1
+else:
+    limited = getattr(sys, "get_int_max_str_digits", lambda: 0)() in range(1, 4301)
+    if comparator != WANT_COMPARATOR:
+        print("TOTALITY FAILURE: overlong row decided by %s, expected %s"
+              % (comparator, WANT_COMPARATOR))
+        failures += 1
+    elif limited and verdict is not False:
+        print("TOTALITY FAILURE: an unorderable version was ACCEPTED (%r)" % verdict)
+        failures += 1
+    else:
+        print("  %-38s %-14s -> verdict=%-5s comparator=%-16s ok"
+              % ("overlong release segment (totality)", "<4301 digits>", verdict,
+                 comparator))
+
+print("rows=%d" % len(ROWS))
+print("comparator=%s" % WANT_COMPARATOR)
+print("failures=%d" % failures)
+sys.exit(1 if failures else 0)

@@ -1,0 +1,1 @@
+raise ImportError("shielded by the mempalace-pin tests")

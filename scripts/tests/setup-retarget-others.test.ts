@@ -7,7 +7,7 @@
 // Suites served: test-setup-validation-backend.sh (4), test-tls-delegation.sh (6),
 // test-setup-ensure-tier-built.sh (4), test-setup-org-mcp.sh (6), test-setup-gemini-settings-merge.sh
 // (13), test-setup-init-command-instructions.sh (1), test-system-context-store.sh (4),
-// test-mempalace-doctor.sh (9), test-antigravity-component-install.sh (13).
+// the retired test-mempalace-doctor (9), test-antigravity-component-install.sh (13).
 
 import assert from "node:assert/strict";
 import fs from "node:fs";

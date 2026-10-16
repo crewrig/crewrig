@@ -7,7 +7,7 @@
 # the four setup-*-interactive.sh flows, start-chroma-server.sh, and
 # prune-transcripts.sh. Keep this the ONLY executable declaration of the pin;
 # the literal-text copies (README, Taskfile, docs, skills) are kept in sync by
-# scripts/tests/test-mempalace-version-range.sh.
+# scripts/tests/mempalace-version-range.test.ts.
 #
 # The framework targets the MemPalace 3.6.x line. The cross-tool continuity
 # protocol relies on the `wing` parameter on diary tools, BM25 hybrid search,

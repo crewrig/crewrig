@@ -113,7 +113,7 @@ export const CONSUMERS: readonly Consumer[] = [
     keys: ["store-guidance", "rules.store", "home.rules"],
   },
   {
-    suite: "scripts/tests/test-mempalace-doctor.sh (r3 #13)",
+    suite: "scripts/tests/mempalace-doctor-report.test.ts (r3 #13)",
     keys: ["mcp.wrapper-script", "mcp.trust-wrapper", "mcp.wrapper-carrier"],
   },
   {
