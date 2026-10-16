@@ -211,6 +211,12 @@ Given the option `--tolerate abc`
 When the harness starts
 Then it exits 2 with a usage line
 
+**Scenario:** A tolerance at or above the run count is announced
+
+Given `--runs 5 --tolerate 5` and every run within three times the budget
+When the harness finishes
+Then it prints a one-line notice that only the ceiling and the exit status can fail the step, and exits 0
+
 **Scenario:** A stalled attempt does not fail a wall-clock test
 
 Given a measurement wrapped in `bestOf` with a bound of 950 ms and three attempts
