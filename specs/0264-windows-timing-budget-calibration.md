@@ -46,7 +46,8 @@ job time limit states what it guards against.
    Condition (c) is unchanged by this spec: the exit status stays strict on every run.
 2. **Tolerance option.** The harness SHALL accept a new optional `--tolerate <K>` option,
    a non-negative integer. Without it, K SHALL be 1 when N is at least 5 and 0 when N is
-   below 5. `--tolerate 0` SHALL restore the verdict that held before this spec: one run
+   below 5. A K at or above N leaves only the ceiling of requirement 3 and the exit status
+   to fail the step; the harness SHALL print a one-line notice saying so. `--tolerate 0` SHALL restore the verdict that held before this spec: one run
    over the budget fails the step. A malformed value SHALL be a usage error with exit
    code 2, like every other malformed option.
 3. **Ceiling.** The ceiling SHALL be three times the budget. A run over the ceiling is a
@@ -79,17 +80,28 @@ job time limit states what it guards against.
    tightest observed ratio of worst run to budget is 0.79 (mempalace case a, 237.9 ms
    against 300 ms, a budget at the 300 ms floor). The rule of requirement 6 applies from
    the next recalibration onward.
-8. **Amendment by reference.** From the merge of this spec, requirements 1 to 7 replace,
-   wherever a carrier states them, the sentence "a run that exceeds a budget SHALL fail
-   its job" (specs 0243 requirement 15, 0247 requirement 19 as reworded by delta-01,
-   0248 requirement 33, 0258 requirement 18, 0240 requirement 13) and the clause "the
-   rule may only lower them" (0243 requirement 15 and the carriers that copy it). The
-   initial values, the per-job budgets, the naming of script, case, budget and measured
-   time on failure, and every other clause of those carriers stay with them. Spec 0258
-   requirement 18's own formula (`max(5 x the largest observed run, 750 ms)`, never lowered
-   again) stays for the two `hello-world` hooks and the skeleton hook until a
-   recalibration under requirement 6, and its cap stays 2000 ms. Spec 0261 requirement
-   20's "generous bound" remains a hang guard and is not a budget of this spec.
+8. **Amendment by reference.** From the merge of this spec, the following clauses of the
+   carriers are replaced, and nothing else in them changes:
+   - spec 0243 requirement 15: "A run that exceeds a budget SHALL fail its job" is
+     replaced by requirements 1 to 4; "the rule that follows may only lower them" and the
+     recalibration sentence `max(3 x the largest observed run, 300 ms)` rounded up to the
+     next 50 ms "when that is lower than the initial value" are replaced by requirement 6;
+   - spec 0247 requirement 19 as reworded by delta-01: "A run that exceeds a budget SHALL
+     fail its job" is replaced by requirements 1 to 4; "which the rule below may only lower"
+     and the recalibration sentence "when that value is lower" are replaced by requirement 6;
+   - spec 0248 requirement 33: "a run that exceeds it fails its job" is replaced by
+     requirements 1 to 4; the recalibration sentence "when that is lower" is replaced by
+     requirement 6;
+   - spec 0258 requirement 18: "A run over its budget SHALL fail the job" is replaced by
+     requirements 1 to 4; "never lowered again by a later run" and the formula
+     `max(5 x the largest observed run, 750 ms)` are replaced by requirement 6, with the
+     2000 ms initial value as the cap;
+   - spec 0240 requirement 13: "fail the build ... when the measured time exceeds that
+     budget" is replaced by requirements 1 to 4.
+
+   The initial values, the per-job budgets and the naming of script, case, budget and
+   measured time on failure stay with the carriers. Spec 0261 requirement 20's "generous
+   bound" remains a hang guard and is not a budget of this spec.
 9. **Documentation.** The harness header comment, the usage line it prints and any
    document that states the budget rule SHALL describe the verdict of requirements 1 to
    4 and the recalibration of requirement 6. If a hook budget row of `docs/cli-matrix.md`
@@ -101,11 +113,14 @@ job time limit states what it guards against.
 
 10. **Shared helper.** A shared test helper `scripts/tests/lib/bounded-wall-clock.ts`
     SHALL export `bestOf(attempts, measure)`, default `attempts` 3, which passes when any
-    attempt meets the bound and otherwise fails with the message of every attempt. A
+    attempt meets the bound and otherwise fails with the message of every attempt. The
+    `measure` callback SHALL be free of side effects that a repeat would corrupt: it
+    builds its own state or cleans up after itself, so attempts are independent. A
     stall of the runner hits one attempt; a regression hits all of them.
 11. **Upper bounds only.** Only an upper bound on elapsed time SHALL go through
     `bestOf`. A lower bound (a timeout that must not fire early) SHALL stay strict and
-    single-shot, in the same assertion as before.
+    single-shot; where an existing assertion combines a lower and an upper bound, it
+    SHALL be split into two assertions, the lower one outside `bestOf`.
 12. **Targeted tests.** The following single-sample upper bounds SHALL go through
     `bestOf`, each keeping its present bound: `scripts/tests/service-probe.test.ts`
     `timeoutMs + 800` (line 105) and the slow-drip bound of 1100 ms (line 115);
@@ -124,13 +139,13 @@ job time limit states what it guards against.
 ### Job time limits
 
 15. **Rule.** A job `timeout-minutes` SHALL be a hang guard: at least 10 times the
-    green duration observed for the job, and never lower than 10 minutes. A job that
+    median green duration observed for the job, and never lower than 10 minutes. A job that
     declares none keeps GitHub's default, and this spec adds none.
 16. **Recorded durations.** The implementation PR SHALL record in its description the
     green duration of each `windows-latest` job that declares a limit, and the limit.
     As checked on `.github/workflows/build.yml`: `windows-chroma-trio` 30 minutes
     (green steps about 45 s in total), `windows-mcp-daemon` 30, `windows-doctor-repair`
-    30 and `windows-service-task` 45 (green about 3 to 5 minutes). A limit below the
+    30 and `windows-service-task` 45 (median green about 4 minutes, so 40 minutes are required and 45 are set). A limit below the
     10x margin SHALL be raised to meet it; no value is expected to change.
 
 ### Proof
