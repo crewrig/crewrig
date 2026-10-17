@@ -113,8 +113,8 @@ tool_install_lines() {
   case "$tool" in
     yq)
       echo 'apt-get update && apt-get install -y --no-install-recommends wget ca-certificates'
-      echo 'wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64'
-      echo 'echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -'
+      echo 'wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64'
+      echo 'echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -'
       echo 'chmod +x /usr/local/bin/yq'
       ;;
     jq)
