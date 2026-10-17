@@ -1,0 +1,116 @@
+// reference-read.ts — decodes ci/ci-capabilities.yml into CapRecord[] (the shell's REF_PROG).
+// Every accessor mirrors the yq expression at the same place; a shape whose yq failure text
+// the reader cannot reproduce throws ParityGap.
+
+import {
+  get,
+  isYqFalsy,
+  keys,
+  length,
+  render,
+  tag,
+  YqMap,
+  YqSeq,
+  type YqNode,
+} from "../yq-accessors/index.ts";
+import { ParityGap, type CapRecord, type TriggerRecord } from "./state.ts";
+
+const gap = (what: string): ParityGap =>
+  new ParityGap(`${what} is not supported by the TypeScript reader`);
+
+const isColl = (n: YqNode): boolean => n instanceof YqMap || n instanceof YqSeq;
+
+/** `yq -r EXPR` on one node: absent prints "", a collection is a reader gap. */
+function scalar(n: YqNode, what: string): string {
+  if (n === null) return "";
+  if (isColl(n)) throw gap(`a collection for ${what}`);
+  return render(n);
+}
+
+/** `EXPR // ""`. */
+function orEmpty(n: YqNode, what: string): string {
+  return isYqFalsy(n) ? "" : scalar(n, what);
+}
+
+/** `.[]` rendered, for a falsy-or-sequence node (`// []`). */
+function items(n: YqNode, what: string): string[] {
+  if (isYqFalsy(n)) return [];
+  if (!(n instanceof YqSeq)) throw gap(`iterating ${what}`);
+  return n.items.map((i) => scalar(i, what));
+}
+
+function at(n: YqNode, path: string[]): YqNode {
+  try {
+    return get(n, path);
+  } catch {
+    throw gap(`indexing a scalar at .${path.join(".")}`);
+  }
+}
+
+function readTriggers(c: YqNode): TriggerRecord[] {
+  const t = at(c, ["trigger"]);
+  if (!(t instanceof YqSeq)) return [];
+  return t.items.map((e) => {
+    if (!isColl(e)) throw gap("a scalar trigger entry");
+    return {
+      kind: orEmpty(at(e, ["on"]), "trigger.on"),
+      tag: tag(e),
+      keys: keys(e),
+    };
+  });
+}
+
+function runtimeOf(c: YqNode): string[] {
+  const rt = at(c, ["requires", "runtime"]);
+  if (rt === null) return [];
+  if (rt instanceof YqSeq) return rt.items.map((i) => scalar(i, "requires.runtime"));
+  return [scalar(rt, "requires.runtime")];
+}
+
+/** One capability record; `c` null reads like the shell's default (non-sequence) record. */
+export function readCapability(c: YqNode): CapRecord {
+  const port = orEmpty(at(c, ["portability"]), "portability");
+  const specific = port === "specific";
+  const portable = port === "portable";
+  const trigger = at(c, ["trigger"]);
+  const command = at(c, ["command"]);
+  const ncmd = isYqFalsy(command) ? 0 : length(command);
+  const withCmd = portable && ncmd !== 0;
+  const cache = at(c, ["cache"]);
+  const cacheMap = tag(cache) === "!!map";
+  const env = at(c, ["env"]);
+  const envKeys: string[] = [];
+  if (withCmd && !isYqFalsy(env) && isColl(env)) envKeys.push(...keys(env));
+  const cacheFiles = at(cache, ["files"]);
+  return {
+    id: orEmpty(at(c, ["id"]), "id"),
+    port,
+    ntrig: isYqFalsy(trigger) ? 0 : length(trigger),
+    triggers: readTriggers(c),
+    engine: specific ? orEmpty(at(c, ["exception", "engine"]), "exception.engine") : "",
+    evidence: specific ? orEmpty(at(c, ["exception", "evidence"]), "exception.evidence") : "",
+    ncmd: portable ? ncmd : 0,
+    cmds: portable ? items(command, "command") : [],
+    runtime: withCmd ? runtimeOf(c) : [],
+    tools: withCmd ? items(at(c, ["requires", "tools"]), "requires.tools") : [],
+    historyDepth: withCmd ? orEmpty(at(c, ["requires", "history-depth"]), "history-depth") : "",
+    envTag: tag(env),
+    envKeys,
+    cacheTag: tag(cache),
+    cacheFilesCount: cacheMap && !isYqFalsy(cacheFiles) ? length(cacheFiles) : 0,
+    cacheEnvTag: cacheMap ? tag(at(cache, ["env"])) : "",
+    cacheLen: isYqFalsy(cache) ? 0 : length(cache),
+    cacheFiles: cacheMap && cacheFiles instanceof YqSeq ? items(cacheFiles, "cache.files") : [],
+  };
+}
+
+/** The capability records of a parsed reference document, as the shell's loop sees them. */
+export function readCapabilities(doc: YqNode): CapRecord[] {
+  const caps = at(doc, ["capabilities"]);
+  const count = isYqFalsy(caps) ? 0 : length(caps);
+  const out: CapRecord[] = [];
+  for (let i = 0; i < count; i++) {
+    out.push(readCapability(caps instanceof YqSeq ? (caps.items[i] ?? null) : null));
+  }
+  return out;
+}
