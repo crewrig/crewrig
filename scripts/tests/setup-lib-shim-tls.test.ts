@@ -2,7 +2,7 @@
 // requirement 33): the Bash functions detect_custom_tls_context, offer_tls_delegation and _tls_candidate_ca
 // keep their names, return codes and standard output while the work is done by scripts/tls-delegation.ts.
 // POSIX-only (the shim is Bash). Each case sources the shim in a fresh `bash` under `set -u`, in a
-// throwaway HOME with no TLS variable of the host. The unchanged oracle is scripts/tests/test-tls-delegation.sh.
+// throwaway HOME with no TLS variable of the host. The unchanged oracle is scripts/tests/tls-delegation-contract.test.ts (its Bash suite is retired, spec 0263).
 //
 // Pinned: sourcing prints nothing and defines the functions; the return codes; the standard output of
 // `offer_tls_delegation` is the entry's byte for byte on the non-interactive path and the ORIGINAL's

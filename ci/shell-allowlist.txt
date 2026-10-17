@@ -110,7 +110,6 @@ scripts/sync-from-upstream.sh
 scripts/test-build-components.sh
 scripts/tests/fixtures/release/generate-github-golden.sh
 scripts/tests/test-agent-profile-migration.sh
-scripts/tests/test-antigravity-component-install.sh
 scripts/tests/test-artifact-build-install-scope.sh
 scripts/tests/test-assembly-verification.sh
 scripts/tests/test-build-ci.sh
@@ -140,13 +139,10 @@ scripts/tests/test-check-skill-versions.sh
 scripts/tests/test-check-spec-id-reserved.sh
 scripts/tests/test-check-test-strays.sh
 scripts/tests/test-check-test-wiring.sh
-scripts/tests/test-component-tier-resolution.sh
 scripts/tests/test-create-extension-combinations.sh
 scripts/tests/test-extension-render-conformance.sh
 scripts/tests/test-extract-frontmatter.sh
 scripts/tests/test-gemini-agent-frontmatter.sh
-scripts/tests/test-install-claude-plugin-marketplace.sh
-scripts/tests/test-install-extension-all.sh
 scripts/tests/test-mempalace-doctor.sh
 scripts/tests/test-mempalace-pin.sh
 scripts/tests/test-mempalace-runtime-guard.sh
@@ -159,10 +155,7 @@ scripts/tests/test-monorepo-release.sh
 scripts/tests/test-pr-logbook-label-scope.sh
 scripts/tests/test-release-package-extension.sh
 scripts/tests/test-reserve-spec-id.sh
-scripts/tests/test-setup-gemini-settings-merge.sh
 scripts/tests/test-spec-linter.sh
-scripts/tests/test-system-context-store.sh
-scripts/tests/test-tls-delegation.sh
 scripts/uninstall-mcp-daemon.sh
 scripts/unlink-component.sh
 scripts/unlink-extensions.sh

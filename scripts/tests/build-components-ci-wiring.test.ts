@@ -51,7 +51,7 @@ const BUILD_COMMAND = new RegExp(
     "test-model-resolution\\.sh",
     "test-agent-profile-migration\\.sh",
     "test-check-agent-profiles\\.sh",
-    "test-component-tier-resolution\\.sh",
+    "tier-resolution-[a-z-]+\\.test\\.ts",
     "test-extract-frontmatter\\.sh",
     "test-artifact-build-install-scope\\.sh",
     "test-build-components\\.sh",

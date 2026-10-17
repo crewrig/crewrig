@@ -1,5 +1,5 @@
 // setup-retarget-tier-resolution.test.ts — the pin of the R20 relational arm of
-// scripts/tests/test-component-tier-resolution.sh (ticket #1335, spec 0256 requirement 9, PR D1).
+// the retired Bash tier-resolution suite (spec 0263; ticket #1335, spec 0256 requirement 9, PR D1).
 // The suite compares each manage command's landing zone and staging root with its assisted setup's;
 // it used to parse the setup side out of the text of the setup-*-interactive.sh scripts and now
 // reads the setup's DECLARATION (print-setup-declarations.ts) beside the manage one

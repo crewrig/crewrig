@@ -1,6 +1,6 @@
 // antigravity-migrate.test.ts — tests of scripts/lib/antigravity-migrate.ts,
 // the twin of `migrate_antigravity_superseded_components` (spec 0255). Fixtures
-// mirror write_component/stage_skill of test-antigravity-component-install.sh.
+// mirror write_component/stage_skill of the retired Bash antigravity component-install suite (spec 0263).
 
 import assert from "node:assert/strict";
 import fs from "node:fs";

@@ -41,18 +41,17 @@ scripts/lib/extension-percli-keys.json
 # The TypeScript modules cite the shell script each one twins ("ported from ...") in their header.
 scripts/lib/install/
 
-# Bash tests not yet migrated: each deliberately drives the shims, which is what they test.
-scripts/tests/test-component-tier-resolution.sh
-scripts/tests/test-install-extension-all.sh
-scripts/tests/test-antigravity-component-install.sh
-
 # node:test suites that run the shell oracle leg through the shim or cite the script they twin.
+scripts/tests/antigravity-manage-sandbox.test.ts
 scripts/tests/install-antigravity-extension.test.ts
+scripts/tests/install-claude-plugin-marketplace.test.ts
 scripts/tests/install-copilot-plugin.test.ts
 scripts/tests/install-extension.test.ts
 scripts/tests/install-sandbox.test.ts
 scripts/tests/install-workspace.test.ts
 scripts/tests/link-extensions.test.ts
+scripts/tests/lib/tier-fixtures.ts
+scripts/tests/tier-resolution-install.test.ts
 scripts/tests/unlink-component.test.ts
 scripts/tests/unlink-extensions.test.ts
 

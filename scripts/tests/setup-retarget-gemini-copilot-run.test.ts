@@ -1,10 +1,10 @@
 // setup-retarget-gemini-copilot-run.test.ts — behaviour of the TypeScript Gemini and Copilot setup
 // entries, run end to end in a sandboxed HOME through the golden harness (spec 0256 requirement 9,
 // PR D2). It replaces two groups of static reads of the shell text:
-//   - test-setup-gemini-settings-merge.sh section 13: "the Gemini setup calls neither
+//   - the retired Bash Gemini settings-merge suite (spec 0263), section 13: "the Gemini setup calls neither
 //     usage_capture_footprint nor usage_capture_reinject", "no PREEXISTING_MCP= rebuild of
 //     settings.json" and the R15 message after each decline headline (read with grep -A1).
-//   - test-system-context-store.sh (c): "no setup script mentions trustedFolders or
+//   - the retired Bash system-context-store suite (spec 0263), group (c): "no setup script mentions trustedFolders or
 //     permissions-config.json in executable code" (Gemini and Copilot place the store).
 //
 // The run is the oracle's own cell, so the property stays pinned against the unchanged shell by the

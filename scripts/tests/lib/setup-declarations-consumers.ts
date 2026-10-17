@@ -111,7 +111,7 @@ export const CONSUMERS: readonly Consumer[] = [
     keys: ["step:rules-shared", "prompts.rules-shared", "prompt.validation.backend.options"],
   },
   {
-    suite: "scripts/tests/test-tls-delegation.sh (r3 #11, #20)",
+    suite: "scripts/tests/setup-retarget-others.test.ts (r3 #11, #20, tls-delegation)",
     keys: [
       "step:tls-offer",
       "step:deps-install",
@@ -120,7 +120,7 @@ export const CONSUMERS: readonly Consumer[] = [
     ],
   },
   {
-    suite: "scripts/tests/test-system-context-store.sh (r3 #12)",
+    suite: "scripts/tests/setup-retarget-others.test.ts (r3 #12, system-context-store)",
     keys: ["store-guidance", "rules.store", "home.rules"],
   },
   {
@@ -128,7 +128,7 @@ export const CONSUMERS: readonly Consumer[] = [
     keys: ["mcp.wrapper-script", "mcp.trust-wrapper", "mcp.wrapper-carrier"],
   },
   {
-    suite: "scripts/tests/test-antigravity-component-install.sh (r3 #14)",
+    suite: "scripts/tests/setup-retarget-others.test.ts (r3 #14, antigravity-component-install)",
     keys: [
       "home.cli",
       "home.skills",
@@ -156,7 +156,7 @@ export const CONSUMERS: readonly Consumer[] = [
     clis: ["antigravity"],
   },
   {
-    suite: "scripts/tests/test-setup-gemini-settings-merge.sh (r3 #16)",
+    suite: "scripts/tests/setup-retarget-others.test.ts (r3 #16, gemini-settings-merge)",
     keys: [
       "step:mcp",
       "substeps.mcp",
@@ -182,11 +182,11 @@ export const CONSUMERS: readonly Consumer[] = [
     clis: ["gemini"],
   },
   {
-    suite: "scripts/tests/test-component-tier-resolution.sh (r3 #19)",
+    suite: "scripts/tests/setup-retarget-tier-resolution.test.ts (r3 #19)",
     keys: ["home.skills", "tiers.staging"],
   },
   {
-    suite: "scripts/tests/test-component-tier-resolution.sh (r3 #19, agents)",
+    suite: "scripts/tests/setup-retarget-tier-resolution.test.ts (r3 #19, agents)",
     keys: ["home.agents"],
     clis: ["claude", "gemini", "antigravity"],
   },

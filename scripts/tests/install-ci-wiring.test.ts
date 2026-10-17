@@ -49,13 +49,14 @@ const LINK_OR_COPY = "scripts/lib/link-or-copy.ts";
 const MANAGE_LIB = "scripts/lib/manage/entry.ts";
 const INSTALL_LIB = "scripts/lib/install/extension.ts";
 
-// The Bash suites that drive the shims (the plan names these four), and the node:test suites that
-// do. A capability runs a shim when a command runs one of the shims or one of these suites.
+// The node:test suites that drive the shims (the four that replaced the retired Bash suites, spec
+// 0263, and the shim suite itself). A capability runs a shim when a command runs one of the
+// shims or one of these suites.
 const SHIM_SUITES: readonly string[] = [
-  "scripts/tests/test-install-extension-all.sh",
-  "scripts/tests/test-install-claude-plugin-marketplace.sh",
-  "scripts/tests/test-antigravity-component-install.sh",
-  "scripts/tests/test-component-tier-resolution.sh",
+  "scripts/tests/install-extension-all-real.test.ts",
+  "scripts/tests/install-claude-plugin-marketplace.test.ts",
+  "scripts/tests/antigravity-manage-sandbox.test.ts",
+  "scripts/tests/tier-resolution-install.test.ts",
   "scripts/tests/install-shim.test.ts",
 ];
 const SHIM_COMMAND = new RegExp(`\\b(${NAMES.join("|")})\\.sh\\b`);
