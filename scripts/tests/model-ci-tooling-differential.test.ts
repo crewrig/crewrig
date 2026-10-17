@@ -137,7 +137,11 @@ describe("shared repositories named by the suite are isolated per leg", posix, (
     const shared = path.join(d.root, "shared.git");
     try {
       git(d.root, ["init", "--quiet", "--bare", shared]);
-      git(d.a, ["push", "--quiet", shared, "HEAD:refs/heads/main"]);
+      // A parentless seed commit: the CI checkout is shallow, so pushing its HEAD is refused
+      // ("shallow update not allowed").
+      const tree = git(d.a, ["hash-object", "-w", "-t", "tree", "--stdin"]).trim();
+      const seed = git(d.a, ["commit-tree", tree, "-m", "seed"]).trim();
+      git(d.a, ["push", "--quiet", shared, `${seed}:refs/heads/main`]);
       const record = installWrapper(d, "fx");
       const res = spawnSync("bash", ["scripts/fx.sh"], {
         cwd: d.a,
