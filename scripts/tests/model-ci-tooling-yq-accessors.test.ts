@@ -1,4 +1,4 @@
-// yq-accessors.test.ts — scalar-style spike of the shared yq reader (spec 0262 PR 4):
+// model-ci-tooling-yq-accessors.test.ts — scalar-style spike of the shared yq reader (spec 0262 PR 4):
 // the TS reader versus goldens produced by real yq v4.44.3 in the oracle container
 // (scripts/tests/fixtures/yq-accessors/oracle.Dockerfile.golden, generator
 // scripts/tests/lib/yq-oracle-gen.ts). Each corpus file is one class. Classes whose

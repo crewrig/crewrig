@@ -1,4 +1,4 @@
-// check-agent-profiles-diff.test.ts — differential test of scripts/check-agent-profiles.ts
+// model-ci-tooling-agent-profiles.test.ts — differential test of scripts/check-agent-profiles.ts
 // against scripts/check-agent-profiles.sh (spec 0262 requirements 1-4, 7, 24): the same
 // input through both entries under LC_ALL=C must give equal stdout, stderr and status.
 // The shell leg needs bash and yq; it is skipped on Windows and where yq is absent.

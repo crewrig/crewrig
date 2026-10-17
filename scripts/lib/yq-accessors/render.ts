@@ -1,6 +1,6 @@
 // render.ts — `yq -r` rendering, `tag`, falsiness, `length` of a loaded node.
 // The plain-scalar rules start from YAML 1.2 core resolution and are corrected by the
-// fuzz corpus run against real yq v4.44.3 (scripts/tests/yq-accessors.test.ts).
+// fuzz corpus run against real yq v4.44.3 (scripts/tests/model-ci-tooling-yq-accessors.test.ts).
 
 import { PlainScalar, YqAlias, YqMap, YqSeq, type YqNode } from "./load.ts";
 
