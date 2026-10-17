@@ -1,0 +1,8 @@
+a: &x 0x1F
+b: *x
+c: &m {p: 1, q: two}
+d: *m
+e: &s [1, 2]
+f: *s
+g: &t "false"
+h: *t

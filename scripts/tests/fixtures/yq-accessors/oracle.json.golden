@@ -1,0 +1,2502 @@
+{
+ "anchors": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "0x1F\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "0x1F\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "b | get": {
+   "status": 0,
+   "stdout": "*x\n",
+   "stderr": ""
+  },
+  "b | default": {
+   "status": 0,
+   "stdout": "*x\n",
+   "stderr": ""
+  },
+  "b | tag": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "b | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "c | get": {
+   "status": 0,
+   "stdout": "&m {p: 1, q: two}\n",
+   "stderr": ""
+  },
+  "c | default": {
+   "status": 0,
+   "stdout": "&m {p: 1, q: two}\n",
+   "stderr": ""
+  },
+  "c | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "c | length": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "d | get": {
+   "status": 0,
+   "stdout": "*m\n",
+   "stderr": ""
+  },
+  "d | default": {
+   "status": 0,
+   "stdout": "*m\n",
+   "stderr": ""
+  },
+  "d | tag": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "d | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "e | get": {
+   "status": 0,
+   "stdout": "&s [1, 2]\n",
+   "stderr": ""
+  },
+  "e | default": {
+   "status": 0,
+   "stdout": "&s [1, 2]\n",
+   "stderr": ""
+  },
+  "e | tag": {
+   "status": 0,
+   "stdout": "!!seq\n",
+   "stderr": ""
+  },
+  "e | length": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "f | get": {
+   "status": 0,
+   "stdout": "*s\n",
+   "stderr": ""
+  },
+  "f | default": {
+   "status": 0,
+   "stdout": "*s\n",
+   "stderr": ""
+  },
+  "f | tag": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "f | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "g | get": {
+   "status": 0,
+   "stdout": "false\n",
+   "stderr": ""
+  },
+  "g | default": {
+   "status": 0,
+   "stdout": "false\n",
+   "stderr": ""
+  },
+  "g | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "g | length": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  },
+  "h | get": {
+   "status": 0,
+   "stdout": "*t\n",
+   "stderr": ""
+  },
+  "h | default": {
+   "status": 0,
+   "stdout": "*t\n",
+   "stderr": ""
+  },
+  "h | tag": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "h | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  }
+ },
+ "block-scalars": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\",\"b\",\"c\",\"d\",\"e\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "line1\nline2\n\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "line1\nline2\n\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "12\n",
+   "stderr": ""
+  },
+  "b | get": {
+   "status": 0,
+   "stdout": "folded text\n\n",
+   "stderr": ""
+  },
+  "b | default": {
+   "status": 0,
+   "stdout": "folded text\n\n",
+   "stderr": ""
+  },
+  "b | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "b | length": {
+   "status": 0,
+   "stdout": "12\n",
+   "stderr": ""
+  },
+  "c | get": {
+   "status": 0,
+   "stdout": "strip\n",
+   "stderr": ""
+  },
+  "c | default": {
+   "status": 0,
+   "stdout": "strip\n",
+   "stderr": ""
+  },
+  "c | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "c | length": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  },
+  "d | get": {
+   "status": 0,
+   "stdout": "keep\n\n\n",
+   "stderr": ""
+  },
+  "d | default": {
+   "status": 0,
+   "stdout": "keep\n\n\n",
+   "stderr": ""
+  },
+  "d | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "d | length": {
+   "status": 0,
+   "stdout": "6\n",
+   "stderr": ""
+  },
+  "e | get": {
+   "status": 0,
+   "stdout": "x\n",
+   "stderr": ""
+  },
+  "e | default": {
+   "status": 0,
+   "stdout": "x\n",
+   "stderr": ""
+  },
+  "e | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "e | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  }
+ },
+ "comments": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\",\"b\",\"c\",\"d\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "b | get": {
+   "status": 0,
+   "stdout": "x # y\n",
+   "stderr": ""
+  },
+  "b | default": {
+   "status": 0,
+   "stdout": "x # y\n",
+   "stderr": ""
+  },
+  "b | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "b | length": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  },
+  "c | get": {
+   "status": 0,
+   "stdout": "z#w\n",
+   "stderr": ""
+  },
+  "c | default": {
+   "status": 0,
+   "stdout": "z#w\n",
+   "stderr": ""
+  },
+  "c | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "c | length": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  },
+  "d | get": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "d | default": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "d | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "d | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  }
+ },
+ "dates": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\",\"b\",\"c\",\"d\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "2024-01-01\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "2024-01-01\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!timestamp\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "10\n",
+   "stderr": ""
+  },
+  "b | get": {
+   "status": 0,
+   "stdout": "2024-01-01T10:00:00Z\n",
+   "stderr": ""
+  },
+  "b | default": {
+   "status": 0,
+   "stdout": "2024-01-01T10:00:00Z\n",
+   "stderr": ""
+  },
+  "b | tag": {
+   "status": 0,
+   "stdout": "!!timestamp\n",
+   "stderr": ""
+  },
+  "b | length": {
+   "status": 0,
+   "stdout": "20\n",
+   "stderr": ""
+  },
+  "c | get": {
+   "status": 0,
+   "stdout": "2024-1-1\n",
+   "stderr": ""
+  },
+  "c | default": {
+   "status": 0,
+   "stdout": "2024-1-1\n",
+   "stderr": ""
+  },
+  "c | tag": {
+   "status": 0,
+   "stdout": "!!timestamp\n",
+   "stderr": ""
+  },
+  "c | length": {
+   "status": 0,
+   "stdout": "8\n",
+   "stderr": ""
+  },
+  "d | get": {
+   "status": 0,
+   "stdout": "10:30\n",
+   "stderr": ""
+  },
+  "d | default": {
+   "status": 0,
+   "stdout": "10:30\n",
+   "stderr": ""
+  },
+  "d | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "d | length": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  }
+ },
+ "duplicate-keys": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\",\"a\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  }
+ },
+ "empty-doc": {
+  "keys": {
+   "status": 1,
+   "stdout": "",
+   "stderr": "Error: <msg>"
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!null\n",
+   "stderr": ""
+  }
+ },
+ "empty-values": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!null\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "b | get": {
+   "status": 0,
+   "stdout": "~\n",
+   "stderr": ""
+  },
+  "b | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "b | tag": {
+   "status": 0,
+   "stdout": "!!null\n",
+   "stderr": ""
+  },
+  "b | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "c | get": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "c | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "c | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "c | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "d | get": {
+   "status": 0,
+   "stdout": "null\n",
+   "stderr": ""
+  },
+  "d | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "d | tag": {
+   "status": 0,
+   "stdout": "!!null\n",
+   "stderr": ""
+  },
+  "d | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "e | get": {
+   "status": 0,
+   "stdout": "[]\n",
+   "stderr": ""
+  },
+  "e | default": {
+   "status": 0,
+   "stdout": "[]\n",
+   "stderr": ""
+  },
+  "e | tag": {
+   "status": 0,
+   "stdout": "!!seq\n",
+   "stderr": ""
+  },
+  "e | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "f | get": {
+   "status": 0,
+   "stdout": "{}\n",
+   "stderr": ""
+  },
+  "f | default": {
+   "status": 0,
+   "stdout": "{}\n",
+   "stderr": ""
+  },
+  "f | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "f | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "g | get": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "g | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "g | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "g | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  }
+ },
+ "explicit-tag-custom": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!custom\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  }
+ },
+ "explicit-tags": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\",\"b\",\"c\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "b | get": {
+   "status": 0,
+   "stdout": "7\n",
+   "stderr": ""
+  },
+  "b | default": {
+   "status": 0,
+   "stdout": "7\n",
+   "stderr": ""
+  },
+  "b | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "b | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "c | get": {
+   "status": 0,
+   "stdout": "yes\n",
+   "stderr": ""
+  },
+  "c | default": {
+   "status": 0,
+   "stdout": "yes\n",
+   "stderr": ""
+  },
+  "c | tag": {
+   "status": 0,
+   "stdout": "!!bool\n",
+   "stderr": ""
+  },
+  "c | length": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  }
+ },
+ "flow-empty-value": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\",\"b\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "{x: '', y: 1}\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "{x: '', y: 1}\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "b | get": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "b | default": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "b | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "b | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  }
+ },
+ "key-order-int": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"z\",10,2,\"a\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "z | get": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "z | default": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "z | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "z | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "10 | get": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "10 | default": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "10 | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "10 | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "2 | get": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  },
+  "2 | default": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  },
+  "2 | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "2 | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  }
+ },
+ "key-order-mixed": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"b\",3,\"a\",1,-1,16,1.5]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "b | get": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "b | default": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "b | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "b | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "3 | get": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "3 | default": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "3 | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "3 | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "1 | get": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "1 | default": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "1 | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "1 | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "-1 | get": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  },
+  "-1 | default": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  },
+  "-1 | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "-1 | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "16 | get": {
+   "status": 0,
+   "stdout": "null\n",
+   "stderr": ""
+  },
+  "16 | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "16 | tag": {
+   "status": 0,
+   "stdout": "!!null\n",
+   "stderr": ""
+  },
+  "16 | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "1.5 | get": {
+   "status": 0,
+   "stdout": "7\n",
+   "stderr": ""
+  },
+  "1.5 | default": {
+   "status": 0,
+   "stdout": "7\n",
+   "stderr": ""
+  },
+  "1.5 | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "1.5 | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  }
+ },
+ "merge-keys": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"base\",\"child\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "base | get": {
+   "status": 0,
+   "stdout": "&b\nk1: v1\nk2: v2\n",
+   "stderr": ""
+  },
+  "base | default": {
+   "status": 0,
+   "stdout": "&b\nk1: v1\nk2: v2\n",
+   "stderr": ""
+  },
+  "base | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "base | length": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "child | get": {
+   "status": 0,
+   "stdout": "!!merge <<: *b\nk2: over\nk3: v3\n",
+   "stderr": ""
+  },
+  "child | default": {
+   "status": 0,
+   "stdout": "!!merge <<: *b\nk2: over\nk3: v3\n",
+   "stderr": ""
+  },
+  "child | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "child | length": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  }
+ },
+ "merge-root": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"base\",\"<<\",\"k2\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "base | get": {
+   "status": 0,
+   "stdout": "&b\nk1: v1\nk2: v2\n",
+   "stderr": ""
+  },
+  "base | default": {
+   "status": 0,
+   "stdout": "&b\nk1: v1\nk2: v2\n",
+   "stderr": ""
+  },
+  "base | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "base | length": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "<< | get": {
+   "status": 0,
+   "stdout": "*b\n",
+   "stderr": ""
+  },
+  "<< | default": {
+   "status": 0,
+   "stdout": "*b\n",
+   "stderr": ""
+  },
+  "<< | tag": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "<< | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "k2 | get": {
+   "status": 0,
+   "stdout": "over\n",
+   "stderr": ""
+  },
+  "k2 | default": {
+   "status": 0,
+   "stdout": "over\n",
+   "stderr": ""
+  },
+  "k2 | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "k2 | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  }
+ },
+ "multi-doc-lead": {
+  "keys": {
+   "status": 1,
+   "stdout": "[\"a\"]\n",
+   "stderr": "Error: <msg>"
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n!!null\n",
+   "stderr": ""
+  }
+ },
+ "multi-doc": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\"]\n[\"b\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "1\n---\nnull\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "1\n\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!int\n---\n!!null\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "1\n---\n0\n",
+   "stderr": ""
+  },
+  "b | get": {
+   "status": 0,
+   "stdout": "null\n---\n2\n",
+   "stderr": ""
+  },
+  "b | default": {
+   "status": 0,
+   "stdout": "\n---\n2\n",
+   "stderr": ""
+  },
+  "b | tag": {
+   "status": 0,
+   "stdout": "!!null\n---\n!!int\n",
+   "stderr": ""
+  },
+  "b | length": {
+   "status": 0,
+   "stdout": "0\n---\n1\n",
+   "stderr": ""
+  }
+ },
+ "multiline-plain": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\",\"b\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "first second\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "first second\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "12\n",
+   "stderr": ""
+  },
+  "b | get": {
+   "status": 0,
+   "stdout": "tail\n",
+   "stderr": ""
+  },
+  "b | default": {
+   "status": 0,
+   "stdout": "tail\n",
+   "stderr": ""
+  },
+  "b | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "b | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  }
+ },
+ "nested": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\",\"seq\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "b:\n  c: 0x1F\nd: [1, yes, ~]\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "b:\n  c: 0x1F\nd: [1, yes, ~]\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "seq | get": {
+   "status": 0,
+   "stdout": "- x\n- 1e3\n- ~\n",
+   "stderr": ""
+  },
+  "seq | default": {
+   "status": 0,
+   "stdout": "- x\n- 1e3\n- ~\n",
+   "stderr": ""
+  },
+  "seq | tag": {
+   "status": 0,
+   "stdout": "!!seq\n",
+   "stderr": ""
+  },
+  "seq | length": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  }
+ },
+ "numbers": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\"j\",\"k\",\"l\",\"m\",\"n\",\"o\",\"p\",\"q\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "0x1F\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "0x1F\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "b | get": {
+   "status": 0,
+   "stdout": "0o7\n",
+   "stderr": ""
+  },
+  "b | default": {
+   "status": 0,
+   "stdout": "0o7\n",
+   "stderr": ""
+  },
+  "b | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "b | length": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  },
+  "c | get": {
+   "status": 0,
+   "stdout": "0b1\n",
+   "stderr": ""
+  },
+  "c | default": {
+   "status": 0,
+   "stdout": "0b1\n",
+   "stderr": ""
+  },
+  "c | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "c | length": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  },
+  "d | get": {
+   "status": 0,
+   "stdout": "1e3\n",
+   "stderr": ""
+  },
+  "d | default": {
+   "status": 0,
+   "stdout": "1e3\n",
+   "stderr": ""
+  },
+  "d | tag": {
+   "status": 0,
+   "stdout": "!!float\n",
+   "stderr": ""
+  },
+  "d | length": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  },
+  "e | get": {
+   "status": 0,
+   "stdout": ".5\n",
+   "stderr": ""
+  },
+  "e | default": {
+   "status": 0,
+   "stdout": ".5\n",
+   "stderr": ""
+  },
+  "e | tag": {
+   "status": 0,
+   "stdout": "!!float\n",
+   "stderr": ""
+  },
+  "e | length": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "f | get": {
+   "status": 0,
+   "stdout": "1_000\n",
+   "stderr": ""
+  },
+  "f | default": {
+   "status": 0,
+   "stdout": "1_000\n",
+   "stderr": ""
+  },
+  "f | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "f | length": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  },
+  "g | get": {
+   "status": 0,
+   "stdout": "+1\n",
+   "stderr": ""
+  },
+  "g | default": {
+   "status": 0,
+   "stdout": "+1\n",
+   "stderr": ""
+  },
+  "g | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "g | length": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "h | get": {
+   "status": 0,
+   "stdout": "-0\n",
+   "stderr": ""
+  },
+  "h | default": {
+   "status": 0,
+   "stdout": "-0\n",
+   "stderr": ""
+  },
+  "h | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "h | length": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "i | get": {
+   "status": 0,
+   "stdout": ".inf\n",
+   "stderr": ""
+  },
+  "i | default": {
+   "status": 0,
+   "stdout": ".inf\n",
+   "stderr": ""
+  },
+  "i | tag": {
+   "status": 0,
+   "stdout": "!!float\n",
+   "stderr": ""
+  },
+  "i | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "j | get": {
+   "status": 0,
+   "stdout": ".nan\n",
+   "stderr": ""
+  },
+  "j | default": {
+   "status": 0,
+   "stdout": ".nan\n",
+   "stderr": ""
+  },
+  "j | tag": {
+   "status": 0,
+   "stdout": "!!float\n",
+   "stderr": ""
+  },
+  "j | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "k | get": {
+   "status": 0,
+   "stdout": "-.inf\n",
+   "stderr": ""
+  },
+  "k | default": {
+   "status": 0,
+   "stdout": "-.inf\n",
+   "stderr": ""
+  },
+  "k | tag": {
+   "status": 0,
+   "stdout": "!!float\n",
+   "stderr": ""
+  },
+  "k | length": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  },
+  "l | get": {
+   "status": 0,
+   "stdout": "1.\n",
+   "stderr": ""
+  },
+  "l | default": {
+   "status": 0,
+   "stdout": "1.\n",
+   "stderr": ""
+  },
+  "l | tag": {
+   "status": 0,
+   "stdout": "!!float\n",
+   "stderr": ""
+  },
+  "l | length": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "m | get": {
+   "status": 0,
+   "stdout": "007\n",
+   "stderr": ""
+  },
+  "m | default": {
+   "status": 0,
+   "stdout": "007\n",
+   "stderr": ""
+  },
+  "m | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "m | length": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  },
+  "n | get": {
+   "status": 0,
+   "stdout": "1.5e-3\n",
+   "stderr": ""
+  },
+  "n | default": {
+   "status": 0,
+   "stdout": "1.5e-3\n",
+   "stderr": ""
+  },
+  "n | tag": {
+   "status": 0,
+   "stdout": "!!float\n",
+   "stderr": ""
+  },
+  "n | length": {
+   "status": 0,
+   "stdout": "6\n",
+   "stderr": ""
+  },
+  "o | get": {
+   "status": 0,
+   "stdout": "0xZZ\n",
+   "stderr": ""
+  },
+  "o | default": {
+   "status": 0,
+   "stdout": "0xZZ\n",
+   "stderr": ""
+  },
+  "o | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "o | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "p | get": {
+   "status": 0,
+   "stdout": "12\n",
+   "stderr": ""
+  },
+  "p | default": {
+   "status": 0,
+   "stdout": "12\n",
+   "stderr": ""
+  },
+  "p | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "p | length": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "q | get": {
+   "status": 0,
+   "stdout": "1,000\n",
+   "stderr": ""
+  },
+  "q | default": {
+   "status": 0,
+   "stdout": "1,000\n",
+   "stderr": ""
+  },
+  "q | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "q | length": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  }
+ },
+ "quoted-lookalikes": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "false\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "false\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  },
+  "b | get": {
+   "status": 0,
+   "stdout": "~\n",
+   "stderr": ""
+  },
+  "b | default": {
+   "status": 0,
+   "stdout": "~\n",
+   "stderr": ""
+  },
+  "b | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "b | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "c | get": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "c | default": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "c | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "c | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "d | get": {
+   "status": 0,
+   "stdout": "null\n",
+   "stderr": ""
+  },
+  "d | default": {
+   "status": 0,
+   "stdout": "null\n",
+   "stderr": ""
+  },
+  "d | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "d | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "e | get": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "e | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "e | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "e | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "f | get": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "f | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "f | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "f | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "g | get": {
+   "status": 0,
+   "stdout": "0x1F\n",
+   "stderr": ""
+  },
+  "g | default": {
+   "status": 0,
+   "stdout": "0x1F\n",
+   "stderr": ""
+  },
+  "g | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "g | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "h | get": {
+   "status": 0,
+   "stdout": "true\n",
+   "stderr": ""
+  },
+  "h | default": {
+   "status": 0,
+   "stdout": "true\n",
+   "stderr": ""
+  },
+  "h | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "h | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  }
+ },
+ "scalar-root": {
+  "keys": {
+   "status": 1,
+   "stdout": "",
+   "stderr": "Error: <msg>"
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  }
+ },
+ "seq-root": {
+  "keys": {
+   "status": 0,
+   "stdout": "[0,1,2]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!seq\n",
+   "stderr": ""
+  },
+  "0 | get": {
+   "status": 0,
+   "stdout": "a\n",
+   "stderr": ""
+  },
+  "0 | default": {
+   "status": 0,
+   "stdout": "a\n",
+   "stderr": ""
+  },
+  "0 | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "0 | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "1 | get": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "1 | default": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "1 | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "1 | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "2 | get": {
+   "status": 0,
+   "stdout": "~\n",
+   "stderr": ""
+  },
+  "2 | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "2 | tag": {
+   "status": 0,
+   "stdout": "!!null\n",
+   "stderr": ""
+  },
+  "2 | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  }
+ },
+ "special-keys": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"quoted key\",\"single\",\"complex\",\"key with space\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "quoted key | get": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "quoted key | default": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "quoted key | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "quoted key | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "single | get": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "single | default": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "single | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "single | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "complex | get": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  },
+  "complex | default": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  },
+  "complex | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "complex | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "key with space | get": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "key with space | default": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "key with space | tag": {
+   "status": 0,
+   "stdout": "!!int\n",
+   "stderr": ""
+  },
+  "key with space | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  }
+ },
+ "strings-misc": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\",\"b\",\"c\",\"d\",\"e\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "hello world\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "hello world\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "11\n",
+   "stderr": ""
+  },
+  "b | get": {
+   "status": 0,
+   "stdout": "tab\there\n",
+   "stderr": ""
+  },
+  "b | default": {
+   "status": 0,
+   "stdout": "tab\there\n",
+   "stderr": ""
+  },
+  "b | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "b | length": {
+   "status": 0,
+   "stdout": "8\n",
+   "stderr": ""
+  },
+  "c | get": {
+   "status": 0,
+   "stdout": "it's\n",
+   "stderr": ""
+  },
+  "c | default": {
+   "status": 0,
+   "stdout": "it's\n",
+   "stderr": ""
+  },
+  "c | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "c | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "d | get": {
+   "status": 0,
+   "stdout": "ünïcode\n",
+   "stderr": ""
+  },
+  "d | default": {
+   "status": 0,
+   "stdout": "ünïcode\n",
+   "stderr": ""
+  },
+  "d | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "d | length": {
+   "status": 0,
+   "stdout": "9\n",
+   "stderr": ""
+  },
+  "e | get": {
+   "status": 0,
+   "stdout": "tail\n",
+   "stderr": ""
+  },
+  "e | default": {
+   "status": 0,
+   "stdout": "tail\n",
+   "stderr": ""
+  },
+  "e | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "e | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  }
+ },
+ "words-1-1": {
+  "keys": {
+   "status": 0,
+   "stdout": "[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\"j\",\"k\",\"l\",\"m\",\"n\",\"o\",\"p\"]\n",
+   "stderr": ""
+  },
+  "root | tag": {
+   "status": 0,
+   "stdout": "!!map\n",
+   "stderr": ""
+  },
+  "a | get": {
+   "status": 0,
+   "stdout": "yes\n",
+   "stderr": ""
+  },
+  "a | default": {
+   "status": 0,
+   "stdout": "yes\n",
+   "stderr": ""
+  },
+  "a | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "a | length": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  },
+  "b | get": {
+   "status": 0,
+   "stdout": "no\n",
+   "stderr": ""
+  },
+  "b | default": {
+   "status": 0,
+   "stdout": "no\n",
+   "stderr": ""
+  },
+  "b | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "b | length": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "c | get": {
+   "status": 0,
+   "stdout": "on\n",
+   "stderr": ""
+  },
+  "c | default": {
+   "status": 0,
+   "stdout": "on\n",
+   "stderr": ""
+  },
+  "c | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "c | length": {
+   "status": 0,
+   "stdout": "2\n",
+   "stderr": ""
+  },
+  "d | get": {
+   "status": 0,
+   "stdout": "off\n",
+   "stderr": ""
+  },
+  "d | default": {
+   "status": 0,
+   "stdout": "off\n",
+   "stderr": ""
+  },
+  "d | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "d | length": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  },
+  "e | get": {
+   "status": 0,
+   "stdout": "y\n",
+   "stderr": ""
+  },
+  "e | default": {
+   "status": 0,
+   "stdout": "y\n",
+   "stderr": ""
+  },
+  "e | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "e | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "f | get": {
+   "status": 0,
+   "stdout": "n\n",
+   "stderr": ""
+  },
+  "f | default": {
+   "status": 0,
+   "stdout": "n\n",
+   "stderr": ""
+  },
+  "f | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "f | length": {
+   "status": 0,
+   "stdout": "1\n",
+   "stderr": ""
+  },
+  "g | get": {
+   "status": 0,
+   "stdout": "~\n",
+   "stderr": ""
+  },
+  "g | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "g | tag": {
+   "status": 0,
+   "stdout": "!!null\n",
+   "stderr": ""
+  },
+  "g | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "h | get": {
+   "status": 0,
+   "stdout": "null\n",
+   "stderr": ""
+  },
+  "h | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "h | tag": {
+   "status": 0,
+   "stdout": "!!null\n",
+   "stderr": ""
+  },
+  "h | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "i | get": {
+   "status": 0,
+   "stdout": "Null\n",
+   "stderr": ""
+  },
+  "i | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "i | tag": {
+   "status": 0,
+   "stdout": "!!null\n",
+   "stderr": ""
+  },
+  "i | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "j | get": {
+   "status": 0,
+   "stdout": "NULL\n",
+   "stderr": ""
+  },
+  "j | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "j | tag": {
+   "status": 0,
+   "stdout": "!!null\n",
+   "stderr": ""
+  },
+  "j | length": {
+   "status": 0,
+   "stdout": "0\n",
+   "stderr": ""
+  },
+  "k | get": {
+   "status": 0,
+   "stdout": "true\n",
+   "stderr": ""
+  },
+  "k | default": {
+   "status": 0,
+   "stdout": "true\n",
+   "stderr": ""
+  },
+  "k | tag": {
+   "status": 0,
+   "stdout": "!!bool\n",
+   "stderr": ""
+  },
+  "k | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "l | get": {
+   "status": 0,
+   "stdout": "True\n",
+   "stderr": ""
+  },
+  "l | default": {
+   "status": 0,
+   "stdout": "True\n",
+   "stderr": ""
+  },
+  "l | tag": {
+   "status": 0,
+   "stdout": "!!bool\n",
+   "stderr": ""
+  },
+  "l | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "m | get": {
+   "status": 0,
+   "stdout": "false\n",
+   "stderr": ""
+  },
+  "m | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "m | tag": {
+   "status": 0,
+   "stdout": "!!bool\n",
+   "stderr": ""
+  },
+  "m | length": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  },
+  "n | get": {
+   "status": 0,
+   "stdout": "False\n",
+   "stderr": ""
+  },
+  "n | default": {
+   "status": 0,
+   "stdout": "\n",
+   "stderr": ""
+  },
+  "n | tag": {
+   "status": 0,
+   "stdout": "!!bool\n",
+   "stderr": ""
+  },
+  "n | length": {
+   "status": 0,
+   "stdout": "5\n",
+   "stderr": ""
+  },
+  "o | get": {
+   "status": 0,
+   "stdout": "TRUE\n",
+   "stderr": ""
+  },
+  "o | default": {
+   "status": 0,
+   "stdout": "TRUE\n",
+   "stderr": ""
+  },
+  "o | tag": {
+   "status": 0,
+   "stdout": "!!bool\n",
+   "stderr": ""
+  },
+  "o | length": {
+   "status": 0,
+   "stdout": "4\n",
+   "stderr": ""
+  },
+  "p | get": {
+   "status": 0,
+   "stdout": "Yes\n",
+   "stderr": ""
+  },
+  "p | default": {
+   "status": 0,
+   "stdout": "Yes\n",
+   "stderr": ""
+  },
+  "p | tag": {
+   "status": 0,
+   "stdout": "!!str\n",
+   "stderr": ""
+  },
+  "p | length": {
+   "status": 0,
+   "stdout": "3\n",
+   "stderr": ""
+  }
+ }
+}

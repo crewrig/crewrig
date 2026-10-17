@@ -1,0 +1,16 @@
+a: yes
+b: no
+c: on
+d: off
+e: y
+f: n
+g: ~
+h: null
+i: Null
+j: NULL
+k: true
+l: True
+m: false
+n: False
+o: TRUE
+p: Yes

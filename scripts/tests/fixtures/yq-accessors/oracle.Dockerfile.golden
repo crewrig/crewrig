@@ -1,0 +1,18 @@
+# Oracle image of the yq-accessor fuzz leg (spec 0262 PR 4): Ubuntu 24.04 with Go yq
+# v4.44.3 (sha256 verified against the release's checksums-bsd file) and Node 24.
+# Build: docker build -f oracle.Dockerfile.golden -t crewrig-i2-yq-oracle <empty dir>
+FROM ubuntu:24.04
+ARG YQ_VERSION=v4.44.3
+ARG NODE_VERSION=v24.13.1
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl xz-utils \
+    && rm -rf /var/lib/apt/lists/*
+RUN set -eu; \
+    case "$(dpkg --print-architecture)" in arm64) YA=arm64; NA=arm64;; amd64) YA=amd64; NA=x64;; esac; \
+    B="https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}"; \
+    curl -fsSL "$B/yq_linux_${YA}" -o /usr/local/bin/yq; \
+    curl -fsSL "$B/checksums-bsd" -o /tmp/checksums-bsd; \
+    want="$(sed -n "s/^SHA256 *(yq_linux_${YA}) = //p" /tmp/checksums-bsd)"; \
+    test -n "$want"; echo "$want  /usr/local/bin/yq" | sha256sum -c -; \
+    chmod +x /usr/local/bin/yq; \
+    curl -fsSL "https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-${NA}.tar.xz" | tar -xJ -C /usr/local --strip-components=1; \
+    yq --version; node --version

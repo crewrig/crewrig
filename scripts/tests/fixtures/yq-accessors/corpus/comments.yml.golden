@@ -1,0 +1,5 @@
+a: 1 # trailing
+b: "x # y"
+c: z#w
+# full
+d: 4

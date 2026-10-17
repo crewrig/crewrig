@@ -1,0 +1,7 @@
+base: &b
+  k1: v1
+  k2: v2
+child:
+  <<: *b
+  k2: over
+  k3: v3

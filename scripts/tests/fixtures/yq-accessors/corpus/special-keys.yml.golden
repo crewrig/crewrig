@@ -1,0 +1,5 @@
+"quoted key": 1
+'single': 2
+? complex
+: 3
+key with space: 4

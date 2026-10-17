@@ -1,0 +1,3 @@
+a: !!str 5
+b: !!int "7"
+c: !!bool yes
