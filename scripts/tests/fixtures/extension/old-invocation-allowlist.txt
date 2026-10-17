@@ -20,7 +20,6 @@ scripts/lib/governance/ext-manifest-version.ts
 
 # Bash tests that have not migrated: each deliberately drives the shim or the shell oracle.
 scripts/tests/test-build-extension.sh
-scripts/tests/test-check-extension-manifest-version.sh
 scripts/tests/test-create-extension-combinations.sh
 scripts/tests/test-extension-render-conformance.sh
 scripts/tests/test-migrate-extension.sh

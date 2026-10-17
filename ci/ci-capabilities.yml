@@ -1718,7 +1718,6 @@ capabilities:
           - "scripts/install-extension.sh"
           - "scripts/lib/extension-percli-keys.json"
           - "scripts/lib/extension-generated-class.json"
-          - "scripts/tests/test-check-extension-pivot.sh"
           - "scripts/tests/test-build-extension.sh"
           - "scripts/tests/test-extension-render-conformance.sh"
           - "Taskfile.yml"
@@ -1740,8 +1739,6 @@ capabilities:
           - "scripts/build-copilot-plugin.ts"
           - "scripts/build-antigravity-extension.sh"
           - "scripts/build-antigravity-extension.ts"
-          - "scripts/tests/test-check-extension-hook-tokens.sh"
-          - "scripts/tests/test-check-extension-hook-map.sh"
           - "scripts/lib/common.sh"
           - "scripts/install-antigravity-extension.sh"
           - "scripts/install-extension.ts"
@@ -1780,7 +1777,6 @@ capabilities:
           - "scripts/install-extension.sh"
           - "scripts/lib/extension-percli-keys.json"
           - "scripts/lib/extension-generated-class.json"
-          - "scripts/tests/test-check-extension-pivot.sh"
           - "scripts/tests/test-build-extension.sh"
           - "scripts/tests/test-extension-render-conformance.sh"
           - "Taskfile.yml"
@@ -1802,8 +1798,6 @@ capabilities:
           - "scripts/build-copilot-plugin.ts"
           - "scripts/build-antigravity-extension.sh"
           - "scripts/build-antigravity-extension.ts"
-          - "scripts/tests/test-check-extension-hook-tokens.sh"
-          - "scripts/tests/test-check-extension-hook-map.sh"
           - "scripts/lib/common.sh"
           - "scripts/install-antigravity-extension.sh"
           - "scripts/install-extension.ts"
@@ -1838,15 +1832,12 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-pivot.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-pivot.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-extension.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extension-render-conformance.sh
       - node scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-hook-tokens.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-hook-tokens.sh
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-hook-map.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-hook-map.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-migrate-extension.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-install-antigravity-tokens-sh.test.ts
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-create-extension-combinations.sh
@@ -1896,7 +1887,6 @@ capabilities:
           - "scripts/lib/base-ref-resolve.sh"
           - "scripts/lib/common.sh"
           - "scripts/lib/extension-hooks.sh"
-          - "scripts/tests/test-check-extension-manifest-version.sh"
           - "scripts/tests/governance-suite-extension-version-bump.test.ts"
           - "scripts/tests/governance-suite-extension-version-bump-base.test.ts"
           - "scripts/tests/lib/governance-*.ts"
@@ -1914,7 +1904,6 @@ capabilities:
           - "scripts/lib/base-ref-resolve.sh"
           - "scripts/lib/common.sh"
           - "scripts/lib/extension-hooks.sh"
-          - "scripts/tests/test-check-extension-manifest-version.sh"
           - "scripts/tests/governance-suite-extension-version-bump.test.ts"
           - "scripts/tests/governance-suite-extension-version-bump-base.test.ts"
           - "scripts/tests/lib/governance-*.ts"
@@ -1930,7 +1919,6 @@ capabilities:
       runtime: node@24
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-manifest-version.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-manifest-version.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-extension-version-bump.test.ts scripts/tests/governance-suite-extension-version-bump-base.test.ts
 
   - id: extension-install
@@ -2076,7 +2064,6 @@ capabilities:
           - "scripts/sync-from-upstream.sh"
           - "scripts/sync-from-upstream.ts"
           - "scripts/lib/sync-from-upstream/**"
-          - "scripts/tests/test-check-core-paths.sh"
           - "scripts/tests/sync-from-upstream-policies.test.ts"
           - "scripts/tests/sync-from-upstream-reconcile.test.ts"
           - "scripts/tests/sync-from-upstream-orphans.test.ts"
@@ -2099,7 +2086,6 @@ capabilities:
           - "scripts/sync-from-upstream.sh"
           - "scripts/sync-from-upstream.ts"
           - "scripts/lib/sync-from-upstream/**"
-          - "scripts/tests/test-check-core-paths.sh"
           - "scripts/tests/sync-from-upstream-policies.test.ts"
           - "scripts/tests/sync-from-upstream-reconcile.test.ts"
           - "scripts/tests/sync-from-upstream-orphans.test.ts"
@@ -2121,7 +2107,6 @@ capabilities:
       runtime: node@24
       tools: [yq]
     command:
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-core-paths.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-policies.test.ts scripts/tests/sync-from-upstream-reconcile.test.ts scripts/tests/sync-from-upstream-orphans.test.ts scripts/tests/sync-from-upstream-dirty-report.test.ts scripts/tests/sync-from-upstream-preserve.test.ts scripts/tests/sync-from-upstream-signing.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-self-update.test.ts
 
@@ -2983,7 +2968,6 @@ capabilities:
         paths:
           - "artifacts/**"
           - "scripts/check-component-metadata-keys.sh"
-          - "scripts/tests/test-check-component-metadata-keys.sh"
           - "scripts/check-component-metadata-keys.ts"
           - "scripts/lib/governance/**"
           - "scripts/lib/build-components/**"
@@ -2995,7 +2979,6 @@ capabilities:
         paths:
           - "artifacts/**"
           - "scripts/check-component-metadata-keys.sh"
-          - "scripts/tests/test-check-component-metadata-keys.sh"
           - "scripts/check-component-metadata-keys.ts"
           - "scripts/lib/governance/**"
           - "scripts/lib/build-components/**"
@@ -3006,12 +2989,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
-      tools: [yq]
     command:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-component-metadata-keys.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-component-metadata-keys.sh
 
   - id: check-claude-agent-layout
     name: "Check the compiled Claude Code agent tree is flat and run its mutation test suite"
@@ -3021,7 +3002,6 @@ capabilities:
         paths:
           - ".claude/agents/**"
           - "scripts/check-claude-agent-layout.sh"
-          - "scripts/tests/test-check-claude-agent-layout.sh"
           - "scripts/build-components.sh"
           - "scripts/build-components.ts"
           - "scripts/lib/build-components/**"
@@ -3032,7 +3012,6 @@ capabilities:
         paths:
           - ".claude/agents/**"
           - "scripts/check-claude-agent-layout.sh"
-          - "scripts/tests/test-check-claude-agent-layout.sh"
           - "scripts/build-components.sh"
           - "scripts/build-components.ts"
           - "scripts/lib/build-components/**"
@@ -3044,7 +3023,6 @@ capabilities:
       runtime: node@24
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-claude-agent-layout.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-claude-agent-layout.sh
 
   - id: check-taskfile-commands
     name: "Check Taskfile.yml names no POSIX-only command and run the tool-binary check suites"

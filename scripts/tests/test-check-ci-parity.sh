@@ -7,7 +7,7 @@
 # PORTABLE capability set, that the two engines agree, that no pipeline job is
 # untraceable, and that the reference is itself well-formed. This is the parity
 # sibling mandated by spec 0049 R10 and the repo convention "every check-*.sh
-# has a test-*.sh" (mirrors scripts/tests/test-check-core-paths.sh).
+# has a test-*.sh" (mirrors scripts/tests/governance-core-paths-forward.test.ts).
 #
 # Every fixture is a hermetic temp COPY of the real ci/, .github/, and
 # .gitlab-ci.yml tree; the real repo tree is never mutated. The harness composes

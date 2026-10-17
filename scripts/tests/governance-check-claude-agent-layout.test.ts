@@ -1,5 +1,5 @@
 // check-claude-agent-layout.test.ts — black-box edge cases of the TypeScript twin that the
-// Bash suite test-check-claude-agent-layout.sh does not cover (spec 0259).
+// Bash suite (now governance-agent-layout-cases.test.ts) did not cover (spec 0259).
 //
 // Each case builds a throwaway tree and runs scripts/check-claude-agent-layout.ts with
 // CREWRIG_REPO_DIR pointed at it. A symlink offender is POSIX-only and skipped on win32.

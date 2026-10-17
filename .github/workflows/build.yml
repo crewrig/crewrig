@@ -1070,7 +1070,6 @@ jobs:
               - 'scripts/install-extension.sh'
               - 'scripts/lib/extension-percli-keys.json'
               - 'scripts/lib/extension-generated-class.json'
-              - 'scripts/tests/test-check-extension-pivot.sh'
               - 'scripts/tests/test-build-extension.sh'
               - 'scripts/tests/test-extension-render-conformance.sh'
               - 'Taskfile.yml'
@@ -1089,8 +1088,6 @@ jobs:
               - 'scripts/build-copilot-plugin.ts'
               - 'scripts/build-antigravity-extension.sh'
               - 'scripts/build-antigravity-extension.ts'
-              - 'scripts/tests/test-check-extension-hook-tokens.sh'
-              - 'scripts/tests/test-check-extension-hook-map.sh'
               - 'scripts/lib/common.sh'
               - 'scripts/install-antigravity-extension.sh'
               - 'scripts/install-extension.ts'
@@ -1134,9 +1131,6 @@ jobs:
       - name: Check Extension Pivot
         if: steps.filter.outputs.extension-render == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-pivot.ts
-      - name: Test Check Extension Pivot
-        if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-pivot.sh
       - name: Test Build Extension
         if: steps.filter.outputs.extension-render == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-extension.sh
@@ -1152,15 +1146,9 @@ jobs:
       - name: Check Extension Hook Tokens
         if: steps.filter.outputs.extension-render == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-hook-tokens.ts
-      - name: Test Check Extension Hook Tokens
-        if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-hook-tokens.sh
       - name: Check Extension Hook Map
         if: steps.filter.outputs.extension-render == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-hook-map.ts
-      - name: Test Check Extension Hook Map
-        if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-hook-map.sh
       - name: Test Migrate Extension
         if: steps.filter.outputs.extension-render == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-migrate-extension.sh
@@ -1221,7 +1209,6 @@ jobs:
               - 'scripts/lib/base-ref-resolve.sh'
               - 'scripts/lib/common.sh'
               - 'scripts/lib/extension-hooks.sh'
-              - 'scripts/tests/test-check-extension-manifest-version.sh'
               - 'scripts/tests/governance-suite-extension-version-bump.test.ts'
               - 'scripts/tests/governance-suite-extension-version-bump-base.test.ts'
               - 'scripts/tests/lib/governance-*.ts'
@@ -1238,9 +1225,6 @@ jobs:
       - name: Check Extension Manifest Version
         if: steps.filter.outputs.extension-manifest == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-manifest-version.ts
-      - name: Test Check Extension Manifest Version
-        if: steps.filter.outputs.extension-manifest == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-manifest-version.sh
       - name: Test Check Extension Version Bump
         if: steps.filter.outputs.extension-manifest == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-extension-version-bump.test.ts scripts/tests/governance-suite-extension-version-bump-base.test.ts
@@ -1349,7 +1333,6 @@ jobs:
               - 'scripts/sync-from-upstream.sh'
               - 'scripts/sync-from-upstream.ts'
               - 'scripts/lib/sync-from-upstream/**'
-              - 'scripts/tests/test-check-core-paths.sh'
               - 'scripts/tests/sync-from-upstream-policies.test.ts'
               - 'scripts/tests/sync-from-upstream-reconcile.test.ts'
               - 'scripts/tests/sync-from-upstream-orphans.test.ts'
@@ -1375,9 +1358,6 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
           echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
           sudo chmod +x /usr/local/bin/yq
-      - name: Test Check Core Paths
-        if: steps.filter.outputs.core-paths == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-core-paths.sh
       - name: Test Sync From Upstream
         if: steps.filter.outputs.core-paths == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-policies.test.ts scripts/tests/sync-from-upstream-reconcile.test.ts scripts/tests/sync-from-upstream-orphans.test.ts scripts/tests/sync-from-upstream-dirty-report.test.ts scripts/tests/sync-from-upstream-preserve.test.ts scripts/tests/sync-from-upstream-signing.test.ts
@@ -1903,7 +1883,6 @@ jobs:
             check-metadata-keys:
               - 'artifacts/**'
               - 'scripts/check-component-metadata-keys.sh'
-              - 'scripts/tests/test-check-component-metadata-keys.sh'
               - 'scripts/check-component-metadata-keys.ts'
               - 'scripts/lib/governance/**'
               - 'scripts/lib/build-components/**'
@@ -1918,21 +1897,12 @@ jobs:
       - name: Install production dependencies
         if: steps.filter.outputs.check-metadata-keys == 'true'
         run: npm ci --omit=dev --workspaces=false
-      - name: Install yq
-        if: steps.filter.outputs.check-metadata-keys == 'true'
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
-          echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
-          sudo chmod +x /usr/local/bin/yq
       - name: Floor guard accepts Node.js 24
         if: steps.filter.outputs.check-metadata-keys == 'true'
         run: node scripts/lib/node-floor-guard.js
       - name: Check Component Metadata Keys
         if: steps.filter.outputs.check-metadata-keys == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-component-metadata-keys.ts
-      - name: Test Check Component Metadata Keys
-        if: steps.filter.outputs.check-metadata-keys == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-component-metadata-keys.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1947,7 +1917,6 @@ jobs:
             check-claude-agent-layout:
               - '.claude/agents/**'
               - 'scripts/check-claude-agent-layout.sh'
-              - 'scripts/tests/test-check-claude-agent-layout.sh'
               - 'scripts/build-components.sh'
               - 'scripts/build-components.ts'
               - 'scripts/lib/build-components/**'
@@ -1960,9 +1929,6 @@ jobs:
       - name: Check Claude Agent Layout
         if: steps.filter.outputs.check-claude-agent-layout == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-claude-agent-layout.ts
-      - name: Test Check Claude Agent Layout
-        if: steps.filter.outputs.check-claude-agent-layout == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-claude-agent-layout.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

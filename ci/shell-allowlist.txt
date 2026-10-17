@@ -90,13 +90,6 @@ scripts/tests/test-build-ci.sh
 scripts/tests/test-build-extension.sh
 scripts/tests/test-check-agent-profiles.sh
 scripts/tests/test-check-ci-parity.sh
-scripts/tests/test-check-claude-agent-layout.sh
-scripts/tests/test-check-component-metadata-keys.sh
-scripts/tests/test-check-core-paths.sh
-scripts/tests/test-check-extension-hook-map.sh
-scripts/tests/test-check-extension-hook-tokens.sh
-scripts/tests/test-check-extension-manifest-version.sh
-scripts/tests/test-check-extension-pivot.sh
 scripts/tests/test-check-model-mappings.sh
 scripts/tests/test-check-spec-id-reserved.sh
 scripts/tests/test-create-extension-combinations.sh

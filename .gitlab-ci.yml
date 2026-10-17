@@ -1257,15 +1257,12 @@ extension-render:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-pivot.ts"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-pivot.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-extension.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extension-render-conformance.sh"
     - "node scripts/lib/node-floor-guard.js"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-hook-tokens.ts"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-hook-tokens.sh"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-hook-map.ts"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-hook-map.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-migrate-extension.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-install-antigravity-tokens-sh.test.ts"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-create-extension-combinations.sh"
@@ -1281,7 +1278,6 @@ extension-render:
         - "scripts/install-extension.sh"
         - "scripts/lib/extension-percli-keys.json"
         - "scripts/lib/extension-generated-class.json"
-        - "scripts/tests/test-check-extension-pivot.sh"
         - "scripts/tests/test-build-extension.sh"
         - "scripts/tests/test-extension-render-conformance.sh"
         - "Taskfile.yml"
@@ -1303,8 +1299,6 @@ extension-render:
         - "scripts/build-copilot-plugin.ts"
         - "scripts/build-antigravity-extension.sh"
         - "scripts/build-antigravity-extension.ts"
-        - "scripts/tests/test-check-extension-hook-tokens.sh"
-        - "scripts/tests/test-check-extension-hook-map.sh"
         - "scripts/lib/common.sh"
         - "scripts/install-antigravity-extension.sh"
         - "scripts/install-extension.ts"
@@ -1342,7 +1336,6 @@ extension-render:
         - "scripts/install-extension.sh"
         - "scripts/lib/extension-percli-keys.json"
         - "scripts/lib/extension-generated-class.json"
-        - "scripts/tests/test-check-extension-pivot.sh"
         - "scripts/tests/test-build-extension.sh"
         - "scripts/tests/test-extension-render-conformance.sh"
         - "Taskfile.yml"
@@ -1364,8 +1357,6 @@ extension-render:
         - "scripts/build-copilot-plugin.ts"
         - "scripts/build-antigravity-extension.sh"
         - "scripts/build-antigravity-extension.ts"
-        - "scripts/tests/test-check-extension-hook-tokens.sh"
-        - "scripts/tests/test-check-extension-hook-map.sh"
         - "scripts/lib/common.sh"
         - "scripts/install-antigravity-extension.sh"
         - "scripts/install-extension.ts"
@@ -1425,7 +1416,6 @@ extension-manifest:
   image: node:24
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-manifest-version.ts"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-manifest-version.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-extension-version-bump.test.ts scripts/tests/governance-suite-extension-version-bump-base.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
@@ -1435,7 +1425,6 @@ extension-manifest:
         - "scripts/lib/base-ref-resolve.sh"
         - "scripts/lib/common.sh"
         - "scripts/lib/extension-hooks.sh"
-        - "scripts/tests/test-check-extension-manifest-version.sh"
         - "scripts/tests/governance-suite-extension-version-bump.test.ts"
         - "scripts/tests/governance-suite-extension-version-bump-base.test.ts"
         - "scripts/tests/lib/governance-*.ts"
@@ -1452,7 +1441,6 @@ extension-manifest:
         - "scripts/lib/base-ref-resolve.sh"
         - "scripts/lib/common.sh"
         - "scripts/lib/extension-hooks.sh"
-        - "scripts/tests/test-check-extension-manifest-version.sh"
         - "scripts/tests/governance-suite-extension-version-bump.test.ts"
         - "scripts/tests/governance-suite-extension-version-bump-base.test.ts"
         - "scripts/tests/lib/governance-*.ts"
@@ -1606,7 +1594,6 @@ core-paths:
     - echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-core-paths.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-policies.test.ts scripts/tests/sync-from-upstream-reconcile.test.ts scripts/tests/sync-from-upstream-orphans.test.ts scripts/tests/sync-from-upstream-dirty-report.test.ts scripts/tests/sync-from-upstream-preserve.test.ts scripts/tests/sync-from-upstream-signing.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-self-update.test.ts"
   rules:
@@ -1616,7 +1603,6 @@ core-paths:
         - "scripts/sync-from-upstream.sh"
         - "scripts/sync-from-upstream.ts"
         - "scripts/lib/sync-from-upstream/**"
-        - "scripts/tests/test-check-core-paths.sh"
         - "scripts/tests/sync-from-upstream-policies.test.ts"
         - "scripts/tests/sync-from-upstream-reconcile.test.ts"
         - "scripts/tests/sync-from-upstream-orphans.test.ts"
@@ -1638,7 +1624,6 @@ core-paths:
         - "scripts/sync-from-upstream.sh"
         - "scripts/sync-from-upstream.ts"
         - "scripts/lib/sync-from-upstream/**"
-        - "scripts/tests/test-check-core-paths.sh"
         - "scripts/tests/sync-from-upstream-policies.test.ts"
         - "scripts/tests/sync-from-upstream-reconcile.test.ts"
         - "scripts/tests/sync-from-upstream-orphans.test.ts"
@@ -2433,22 +2418,15 @@ check-agent-profiles:
 
 check-metadata-keys:
   image: node:24
-  before_script:
-    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
-    - echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
-    - chmod +x /usr/local/bin/yq
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-component-metadata-keys.ts"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-component-metadata-keys.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "artifacts/**"
         - "scripts/check-component-metadata-keys.sh"
-        - "scripts/tests/test-check-component-metadata-keys.sh"
         - "scripts/check-component-metadata-keys.ts"
         - "scripts/lib/governance/**"
         - "scripts/lib/build-components/**"
@@ -2459,7 +2437,6 @@ check-metadata-keys:
       changes:
         - "artifacts/**"
         - "scripts/check-component-metadata-keys.sh"
-        - "scripts/tests/test-check-component-metadata-keys.sh"
         - "scripts/check-component-metadata-keys.ts"
         - "scripts/lib/governance/**"
         - "scripts/lib/build-components/**"
@@ -2471,13 +2448,11 @@ check-claude-agent-layout:
   image: node:24
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-claude-agent-layout.ts"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-claude-agent-layout.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - ".claude/agents/**"
         - "scripts/check-claude-agent-layout.sh"
-        - "scripts/tests/test-check-claude-agent-layout.sh"
         - "scripts/build-components.sh"
         - "scripts/build-components.ts"
         - "scripts/lib/build-components/**"
@@ -2487,7 +2462,6 @@ check-claude-agent-layout:
       changes:
         - ".claude/agents/**"
         - "scripts/check-claude-agent-layout.sh"
-        - "scripts/tests/test-check-claude-agent-layout.sh"
         - "scripts/build-components.sh"
         - "scripts/build-components.ts"
         - "scripts/lib/build-components/**"
