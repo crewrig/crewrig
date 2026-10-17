@@ -33,20 +33,8 @@ const oracle = JSON.parse(fs.readFileSync(path.join(FIX, "oracle.json.golden"), 
   Record<string, Out>
 >;
 
-/** Classes where the TS reader cannot be made byte-equal to yq (filled from the spike). */
-const KNOWN_GAPS: string[] = [
-  "anchors",
-  "duplicate-keys",
-  "empty-doc",
-  "empty-values",
-  "explicit-tag-custom",
-  "explicit-tags",
-  "flow-empty-value",
-  "key-order-mixed",
-  "merge-root",
-  "multi-doc",
-  "scalar-root",
-];
+/** Classes excluded from byte comparison: explicit tags (req 24 c), multi-document (req 24 d). */
+const KNOWN_GAPS: string[] = ["explicit-tag-custom", "explicit-tags", "multi-doc"];
 
 function yqLine(o: Out | undefined): string {
   return o === undefined ? "<missing>" : o.status === 0 ? o.stdout.replace(/\n$/, "") : "<error>";
@@ -64,7 +52,14 @@ function compareClass(name: string): string[] {
     return ok ? [] : [`${name}: reader throws ${(e as Error).message}, yq accepts`];
   }
   const rootKeys = rec["keys"] as Out;
-  if (rootKeys.status !== 0) return [`${name}: yq rejects keys, reader accepts`];
+  if (rootKeys.status !== 0) {
+    try {
+      keys(doc);
+    } catch {
+      return [];
+    }
+    return [`${name}: yq rejects keys, reader accepts`];
+  }
   const expectKeys = rootKeys.stdout
     .split("\n")
     .filter((l) => l !== "")

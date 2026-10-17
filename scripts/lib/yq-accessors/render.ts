@@ -2,7 +2,7 @@
 // The plain-scalar rules start from YAML 1.2 core resolution and are corrected by the
 // fuzz corpus run against real yq v4.44.3 (scripts/tests/yq-accessors.test.ts).
 
-import { PlainScalar, YqMap, YqSeq, type YqNode } from "./load.ts";
+import { PlainScalar, YqAlias, YqMap, YqSeq, type YqNode } from "./load.ts";
 
 const NULL = /^(~|null|Null|NULL)?$/;
 const BOOL = /^(true|True|TRUE|false|False|FALSE)$/;
@@ -15,6 +15,7 @@ export function tagOf(node: YqNode): string {
   if (node === null) return "!!null";
   if (node instanceof YqMap) return "!!map";
   if (node instanceof YqSeq) return "!!seq";
+  if (node instanceof YqAlias) return "";
   if (!(node instanceof PlainScalar)) return "!!str";
   const t = node.toString();
   if (NULL.test(t)) return "!!null";
@@ -38,6 +39,7 @@ export function isYqFalsy(node: YqNode): boolean {
 /** The `yq -r` rendering of a scalar node: source text, `null` for a null node. */
 export function render(node: YqNode): string {
   if (node === null) return "null";
+  if (node instanceof YqAlias) return `*${node.name}`;
   if (node instanceof YqMap || node instanceof YqSeq) {
     throw new Error("render: collection nodes are not rendered by this reader");
   }
@@ -48,6 +50,7 @@ export function lengthOf(node: YqNode): number {
   if (node === null) return 0;
   if (node instanceof YqMap) return node.entries.length;
   if (node instanceof YqSeq) return node.items.length;
+  if (node instanceof YqAlias) return 0;
   if (tagOf(node) === "!!null") return 0;
   return Buffer.byteLength(node.toString());
 }

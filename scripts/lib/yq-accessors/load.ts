@@ -20,6 +20,14 @@
 // built by events; an alias closes with the SAME object identity as its anchor, so a
 // `WeakMap` from loaded object to node resolves it.
 //
+// Duplicate keys: yq keeps both entries (`keys` returns `a,a`, `.a` the last one), so
+// js-yaml runs with `json: true` (a duplicate overrides instead of throwing) and the
+// document comes from the listener tree only; alignment then compares key SETS.
+// A flow entry with no value event (`{x, y: 1}`) falls back to the loaded object for
+// that mapping (key order of that mapping then follows js-yaml). An empty value is a
+// `PlainScalar("")`, distinct from an absent key (null). An alias closes with kind
+// null and a non-null result; its name is read from the source before `position`.
+//
 // Multi-document input is rejected deliberately (req 24 d); duplicate keys and tags
 // js-yaml does not know surface as typed errors.
 
@@ -31,7 +39,11 @@ interface JsYaml {
   FAILSAFE_SCHEMA: { extend(x: { implicit: object[] }): object };
   load(
     text: string,
-    opts: { schema: object; listener: (phase: string, state: ListenerState) => void },
+    opts: {
+      schema: object;
+      json: boolean;
+      listener: (phase: string, state: ListenerState) => void;
+    },
   ): unknown;
 }
 const yaml = jsYaml as unknown as JsYaml;
@@ -52,7 +64,17 @@ export class YqSeq {
   }
 }
 
-export type YqNode = null | string | PlainScalar | YqMap | YqSeq;
+/** An alias (`*name`): yq does not resolve it for `-r`, `tag` or `length`; `get` follows it. */
+export class YqAlias {
+  readonly name: string;
+  readonly target: YqNode;
+  constructor(name: string, target: YqNode) {
+    this.name = name;
+    this.target = target;
+  }
+}
+
+export type YqNode = null | string | PlainScalar | YqMap | YqSeq | YqAlias;
 
 export class YqParseError extends Error {
   readonly kind: "duplicate-key" | "unknown-tag" | "multi-document" | "syntax" | "alignment";
@@ -76,6 +98,7 @@ interface Frame {
 }
 
 interface ListenerState {
+  position: number;
   kind: string | null;
   result: unknown;
 }
@@ -92,6 +115,10 @@ export function loadYq(text: string): YqNode {
   const stack: Frame[] = [];
   const byObject = new WeakMap<object, YqNode>();
   let last: YqNode = null;
+  const fromLoaded = (v: unknown): YqNode => {
+    if (v === null || v === undefined) return new PlainScalar("");
+    return (typeof v === "object" ? byObject.get(v) : undefined) ?? (v as YqNode);
+  };
   const listener = (phase: string, state: ListenerState): void => {
     if (phase === "open") {
       stack.push({ children: [] });
@@ -104,12 +131,22 @@ export function loadYq(text: string): YqNode {
       const obj = result as Record<string, unknown>;
       const keys = Object.keys(obj);
       const kids = frame.children;
-      if (kids.length !== 2 * keys.length) throw new YqParseError("alignment", "mapping children");
       const entries: [string, YqNode][] = [];
-      for (let i = 0; i < kids.length; i += 2) entries.push([String(kids[i]), kids[i + 1] ?? null]);
-      const seen = entries.map(([k]) => k).sort();
-      if (JSON.stringify(seen) !== JSON.stringify([...keys].sort())) {
-        throw new YqParseError("alignment", "mapping keys");
+      if (kids.length % 2 === 0) {
+        for (let i = 0; i < kids.length; i += 2)
+          entries.push([String(kids[i]), kids[i + 1] ?? null]);
+      }
+      const seen = [...new Set(entries.map(([k]) => k))].sort();
+      if (entries.length === 0 || JSON.stringify(seen) !== JSON.stringify([...keys].sort())) {
+        if (keys.length === 0) {
+          node = new YqMap([]);
+          stack[stack.length - 1]?.children.push(node);
+          byObject.set(obj, node);
+          last = node;
+          return;
+        }
+        entries.length = 0;
+        for (const k of keys) entries.push([k, fromLoaded(obj[k])]);
       }
       node = new YqMap(entries);
     } else if (state.kind === "sequence") {
@@ -117,17 +154,21 @@ export function loadYq(text: string): YqNode {
         throw new YqParseError("alignment", "sequence items");
       }
       node = new YqSeq(frame.children);
+    } else if (state.kind === null && result !== null && result !== undefined) {
+      const m = /\*([^\s,\]}]+)\s*$/.exec(text.slice(0, state.position));
+      node = new YqAlias(m?.[1] ?? "", fromLoaded(result));
+    } else if (result === null || result === undefined) {
+      node = new PlainScalar("");
     } else {
-      const known =
-        result !== null && typeof result === "object" ? byObject.get(result) : undefined;
-      node = known !== undefined ? known : (result as YqNode);
+      node = result as YqNode;
     }
-    if (result !== null && typeof result === "object") byObject.set(result, node);
+    if (state.kind !== null && result !== null && typeof result === "object")
+      byObject.set(result, node);
     stack[stack.length - 1]?.children.push(node);
     last = node;
   };
   try {
-    yaml.load(text, { schema: SCHEMA, listener });
+    yaml.load(text, { schema: SCHEMA, listener, json: true });
   } catch (e) {
     throw e instanceof YqParseError ? e : classify(e);
   }
