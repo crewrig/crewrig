@@ -3837,7 +3837,7 @@ capabilities:
           - "scripts/lib/usage-capture/**"
           - "scripts/usage-backfill.sh"
           - "scripts/usage-backfill.ts"
-          - "scripts/tests/usage-headless-agy.test.ts"
+          - "scripts/tests/e2e-usage-headless.test.ts"
           - "scripts/tests/fixtures/usage-capture/**"
           - "hooks/claude-usage-capture-hooks.json"
           - "hooks/gemini-usage-capture-hooks.json"
@@ -3894,7 +3894,7 @@ capabilities:
           - "scripts/lib/usage-capture/**"
           - "scripts/usage-backfill.sh"
           - "scripts/usage-backfill.ts"
-          - "scripts/tests/usage-headless-agy.test.ts"
+          - "scripts/tests/e2e-usage-headless.test.ts"
           - "scripts/tests/fixtures/usage-capture/**"
           - "hooks/claude-usage-capture-hooks.json"
           - "hooks/gemini-usage-capture-hooks.json"
@@ -3946,7 +3946,7 @@ capabilities:
       tools: [jq]
     command:
       - npm install
-      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-headless-agy.test.ts
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/e2e-usage-headless.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-statusline-shim.test.ts scripts/tests/hook-*.test.ts scripts/tests/usage-capture-*.test.ts
 
   # usage-storage validates the usage-record storage contract (spec 0207):

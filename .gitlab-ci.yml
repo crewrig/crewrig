@@ -2924,7 +2924,7 @@ usage-capture:
     - apt-get update && apt-get install -y --no-install-recommends jq
   script:
     - "npm install"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-headless-agy.test.ts"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/e2e-usage-headless.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-statusline-shim.test.ts scripts/tests/hook-*.test.ts scripts/tests/usage-capture-*.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
@@ -2937,7 +2937,7 @@ usage-capture:
         - "scripts/lib/usage-capture/**"
         - "scripts/usage-backfill.sh"
         - "scripts/usage-backfill.ts"
-        - "scripts/tests/usage-headless-agy.test.ts"
+        - "scripts/tests/e2e-usage-headless.test.ts"
         - "scripts/tests/fixtures/usage-capture/**"
         - "hooks/claude-usage-capture-hooks.json"
         - "hooks/gemini-usage-capture-hooks.json"
@@ -2993,7 +2993,7 @@ usage-capture:
         - "scripts/lib/usage-capture/**"
         - "scripts/usage-backfill.sh"
         - "scripts/usage-backfill.ts"
-        - "scripts/tests/usage-headless-agy.test.ts"
+        - "scripts/tests/e2e-usage-headless.test.ts"
         - "scripts/tests/fixtures/usage-capture/**"
         - "hooks/claude-usage-capture-hooks.json"
         - "hooks/gemini-usage-capture-hooks.json"
