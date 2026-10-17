@@ -1,4 +1,4 @@
-// usage-headless.ts: TypeScript twin of usage-headless.sh (spec 0206 step 15, spec 0261). It derives
+// usage-headless.ts: headless usage capture (spec 0206 step 15, spec 0261; the shell original is retired). It derives
 // one run-total record from a headless CLI envelope and submits it, calling the CommonJS adapters
 // in-process instead of through a generated node driver. Capture NEVER fails or blocks the wrapped
 // run: every error is swallowed. CREWRIG_USAGE_ROOT is resolved AT CALL TIME from the passed env.

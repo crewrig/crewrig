@@ -1,7 +1,7 @@
 // adapters/headless-envelope.js — the R19 derivation, shared by all four
 // CLIs (PLAN v3 step 9): one `run-total` record from the structured summary
 // a framework-launched non-interactive run's own `--output-format json` (or
-// equivalent) output already carries. Driven by scripts/lib/usage-headless.sh
+// equivalent) output already carries. Driven by scripts/lib/usage-headless.ts
 // (step 15), which resolves `envelope` by parsing that run's own stdout.
 //
 //   captureChannel   = "headless-envelope"
