@@ -123,7 +123,8 @@ model-resolution:
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   cache:
     key:
@@ -179,7 +180,8 @@ agent-profile-migration:
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   cache:
     key:
@@ -235,7 +237,8 @@ build-components-ts:
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "npm ci --omit=dev --workspaces=false"
@@ -346,9 +349,13 @@ build-components-ts-node-24-0:
 extension-builders-ts:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "npm install --include=dev"
@@ -444,9 +451,13 @@ extension-builders-ts-node-24-0:
 skill-scripts-ts:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "npm ci --omit=dev --workspaces=false"
@@ -469,7 +480,10 @@ skill-scripts-ts:
 install-ts:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
@@ -571,7 +585,10 @@ install-ts-node-24-0:
 setup-oracle:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
   script:
     - "node scripts/lib/node-floor-guard.js"
     - "npm ci --omit=dev --workspaces=false"
@@ -633,7 +650,10 @@ setup-oracle:
 setup-differential:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
   script:
     - "node scripts/lib/node-floor-guard.js"
     - "npm ci --omit=dev --workspaces=false"
@@ -1192,9 +1212,13 @@ model-ci-tooling-ts:
 extension-render:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "npm ci --omit=dev --workspaces=false"
@@ -1402,9 +1426,13 @@ extension-manifest:
 extension-install:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "npm ci --omit=dev --workspaces=false"
@@ -1541,7 +1569,8 @@ core-paths:
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-core-paths.sh"
@@ -1597,7 +1626,8 @@ ci-parity:
   image: debian:stable-slim
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   cache:
     key:
@@ -1718,9 +1748,13 @@ mempalace:
     - curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
     - apt-get install -y --no-install-recommends nodejs
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
-    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
   cache:
     key:
       files:
@@ -1894,7 +1928,8 @@ chroma-mcp:
     - curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
     - apt-get install -y --no-install-recommends nodejs
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   cache:
     key:
@@ -1982,9 +2017,13 @@ e2e:
     - curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
     - apt-get install -y --no-install-recommends nodejs
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
-    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
@@ -2018,9 +2057,13 @@ e2e:
 setup:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "npm ci --omit=dev --workspaces=false"
@@ -2158,9 +2201,13 @@ frontmatter:
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
-    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extract-frontmatter.sh"
@@ -2234,7 +2281,8 @@ check-model-mappings:
   image: debian:stable-slim
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "bash scripts/check-model-mappings.sh"
@@ -2259,7 +2307,8 @@ check-agent-profiles:
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "npm ci --omit=dev --workspaces=false"
@@ -2281,7 +2330,8 @@ check-metadata-keys:
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "npm ci --omit=dev --workspaces=false"
@@ -2373,7 +2423,8 @@ changeset-coverage:
     - curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
     - apt-get install -y --no-install-recommends nodejs
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "bash scripts/ci-changeset-coverage.sh"
@@ -2385,7 +2436,8 @@ changeset-coverage-test:
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-changeset-coverage.test.ts"
@@ -2499,7 +2551,10 @@ ticket-pickup:
 playwright-mcp:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/playwright-mcp.test.ts scripts/tests/jsonc.test.ts scripts/tests/hook-config.test.ts"
   rules:
@@ -2531,7 +2586,10 @@ playwright-mcp:
 mempalace-session-check:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-registration-agreement.test.ts scripts/tests/mempalace-registration.test.ts scripts/tests/mempalace-session-check.test.ts scripts/tests/session-check-throttle.test.ts scripts/tests/session-check-hooks.test.ts"
   rules:
@@ -2625,7 +2683,10 @@ usage-capture-node-24-0:
 worktree-guard:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-*.test.ts"
   rules:
@@ -2748,7 +2809,10 @@ lint-specs:
 test-harness-curate:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
   script:
     - "bash artifacts/library/skills/harness-curator/scripts/test.sh"
   rules:
@@ -2882,7 +2946,10 @@ usage-record-schema:
 release-notes:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
   script:
     - "npm ci"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-monorepo-release-notes.sh"
@@ -2923,7 +2990,10 @@ release-notes:
 usage-capture:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
   script:
     - "npm install"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-headless-agy.test.ts"
@@ -3370,7 +3440,8 @@ gitlab-ci-check:
   image: debian:stable-slim
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "bash scripts/build-ci.sh --check"
@@ -3382,7 +3453,8 @@ check-ci-parity:
   image: debian:stable-slim
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "bash scripts/check-ci-parity.sh"
@@ -3396,9 +3468,13 @@ release:
     GIT_DEPTH: "0"
     RELEASE_TOKEN: "$GITLAB_TOKEN"
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "npm install --include=dev"
@@ -3413,9 +3489,13 @@ release-rehearsal:
     GIT_DEPTH: "0"
     RELEASE_DRY_RUN: "true"
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "npm install --include=dev"
@@ -3427,9 +3507,13 @@ release-rehearsal:
 release-tests:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends jq
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
+    - chmod +x /usr/local/bin/jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+    - echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
   script:
     - "npm install --include=dev"

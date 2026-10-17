@@ -113,11 +113,17 @@ tool_install_lines() {
   case "$tool" in
     yq)
       echo 'apt-get update && apt-get install -y --no-install-recommends wget ca-certificates'
-      echo 'wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64'
+      echo 'wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64'
+      echo 'echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -'
       echo 'chmod +x /usr/local/bin/yq'
       ;;
     jq)
-      echo 'apt-get update && apt-get install -y --no-install-recommends jq'
+      # Pinned like yq (spec 0262 requirement 19): Debian's package is jq 1.6
+      # and the skill-scripts oracle goldens were made with jq 1.7.1.
+      echo 'apt-get update && apt-get install -y --no-install-recommends wget ca-certificates'
+      echo 'wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64'
+      echo 'echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -'
+      echo 'chmod +x /usr/local/bin/jq'
       ;;
     task)
       echo 'sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin'
