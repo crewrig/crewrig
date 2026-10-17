@@ -321,7 +321,7 @@ jobs:
       # Oxfmt on a scaffold and fails, rather than skips, when CI is set and one of them is absent.
       - name: Install dependencies with the TypeScript toolchain
         if: steps.filter.outputs.extension-builders-ts == 'true'
-        run: npm install --include=dev
+        run: npm ci --workspaces=false
       - name: Install yq
         if: steps.filter.outputs.extension-builders-ts == 'true'
         run: |

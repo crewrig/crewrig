@@ -487,7 +487,7 @@ capabilities:
       runtime: node@24
       tools: [jq, yq]
     command:
-      - npm install --include=dev
+      - npm ci --workspaces=false
       - node scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-extension-proof.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check

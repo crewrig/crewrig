@@ -47,7 +47,11 @@ const TRACED: readonly string[] = [
 
 // `npm install --include=dev` installs a superset of the production closure (the release jobs
 // need the dev dependencies of the release engine as well).
-const PROD_INSTALL = /^npm (ci --omit=dev --workspaces=false|install --include=dev)$/;
+const PROD_INSTALL =
+  /^npm (ci --omit=dev --workspaces=false|ci --workspaces=false|install --include=dev)$/;
+// The builders job freezes the lockfile and leaves the workspace packages out (spec 0258 R36): an
+// install that resolves (`npm install`) would drift from the lockfile and pull 620 packages, not 544.
+const FROZEN = /^npm ci --workspaces=false$/;
 const DIRECT = new RegExp(`scripts/(${SCRIPTS.join("|")})\\.(sh|ts)`);
 const REACHING = new RegExp(
   [
@@ -102,6 +106,15 @@ function wiringFaults(ref: Reference): string[] {
   return faults;
 }
 
+/** The builders job must install with the frozen form (spec 0258 R36). */
+function frozenFaults(ref: Reference): string[] {
+  const cap = ref.capabilities.find((c) => c.id === "extension-builders-ts");
+  if (cap === undefined) return ["extension-builders-ts: capability missing"];
+  return commandsOf(cap).some((c) => FROZEN.test(c))
+    ? []
+    : ["extension-builders-ts: install is not frozen (npm ci --workspaces=false)"];
+}
+
 /** Capabilities that run a builder directly but are not traced (a new one must be added by hand). */
 function untraced(ref: Reference): string[] {
   return ref.capabilities
@@ -128,6 +141,21 @@ describe("the extension builders in the CI reference", () => {
 
   test("every traced capability has Node.js 24 and the install before its first builder call", () => {
     assert.deepEqual(wiringFaults(ref), []);
+  });
+
+  test("extension-builders-ts installs from the frozen lockfile without the workspaces", () => {
+    assert.deepEqual(frozenFaults(ref), []);
+    const mutated: Reference = {
+      capabilities: ref.capabilities.map((c) =>
+        c.id === "extension-builders-ts"
+          ? {
+              ...c,
+              command: commandsOf(c).map((x) => (FROZEN.test(x) ? "npm install --include=dev" : x)),
+            }
+          : c,
+      ),
+    };
+    assert.match(frozenFaults(mutated).join("\n"), /extension-builders-ts: install is not frozen/);
   });
 
   test("no capability runs a builder directly without being traced", () => {
