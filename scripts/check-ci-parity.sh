@@ -140,6 +140,7 @@ install_recipe_tool() {
     *markdownlint-cli*)              RTOOL=markdownlint-cli ;;
     *tesseract*)                     RTOOL=tesseract ;;
     *python3*)                       RTOOL=python3 ;;
+    *jq-linux-amd64*|*jqlang/jq*)    RTOOL=jq ;;
     *apt-get*install*jq*|*install*-y*jq*) RTOOL=jq ;;
     *) RTOOL="" ;;
   esac
