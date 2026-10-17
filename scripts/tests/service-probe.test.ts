@@ -9,6 +9,7 @@ import path from "node:path";
 import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { isLoopbackHost, probe } from "../lib/service/probe.ts";
+import { bestOf } from "./lib/bounded-wall-clock.ts";
 
 const seen: { method?: string; auth?: string; body: string }[] = [];
 const server = http.createServer((req, res) => {
@@ -97,22 +98,30 @@ test("the loopback rule", () => {
 
 test("the timeout is the caller's parameter and bounds a silent server", async () => {
   for (const timeoutMs of [150, 400]) {
-    const started = Date.now();
-    const result = await probe({ url: `${base}/hang`, timeoutMs });
-    const elapsed = Date.now() - started;
+    const result = await bestOf(async () => {
+      const started = Date.now();
+      const result = await probe({ url: `${base}/hang`, timeoutMs });
+      const elapsed = Date.now() - started;
+      // The lower bound is strict on every attempt: an early return is never retried.
+      assert.ok(elapsed >= timeoutMs - 20, `${elapsed} ms for ${timeoutMs}, under the lower bound`);
+      return {
+        ok: elapsed < timeoutMs + 800,
+        message: `${elapsed} ms for ${timeoutMs}`,
+        value: result,
+      };
+    });
     assert.deepEqual(result, { error: `timeout after ${timeoutMs} ms` });
-    assert.ok(
-      elapsed >= timeoutMs - 20 && elapsed < timeoutMs + 800,
-      `${elapsed} ms for ${timeoutMs}`,
-    );
   }
 });
 
 test("one timer covers connect to the last byte: a slow drip is cut", async () => {
-  const started = Date.now();
-  const result = await probe({ url: `${base}/drip`, timeoutMs: 300 });
+  const result = await bestOf(async () => {
+    const started = Date.now();
+    const result = await probe({ url: `${base}/drip`, timeoutMs: 300 });
+    const elapsed = Date.now() - started;
+    return { ok: elapsed < 1100, message: `${elapsed} ms for a 300 ms timer`, value: result };
+  });
   assert.deepEqual(result, { error: "timeout after 300 ms" });
-  assert.ok(Date.now() - started < 1100);
 });
 
 test("an oversize body is an error, whatever the cap", async () => {

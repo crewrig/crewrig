@@ -15,7 +15,13 @@ import type { Interpreters, Run, Shell } from "./windows-proof-support.ts";
 
 export type Leg = "direct" | Shell;
 
-/** The per-entry time bound: generous, so only a hang or a pathological slowdown fails. */
+/**
+ * The per-entry time bound: generous, so only a hang or a pathological slowdown fails.
+ * Observed (spec 0264 R12): the job log prints no per-entry time, so no per-entry maximum
+ * is known; the whole three-leg suite took 17.7 s, 18.0 s and 18.4 s on three green
+ * windows-latest runs (2026-10-16: 38950701304, 38954471090, 38942071274), the job being
+ * absent from green release-branch runs. Value unchanged.
+ */
 export const BOUND_MS = 10_000;
 
 export interface Ctx {

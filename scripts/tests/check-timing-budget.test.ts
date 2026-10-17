@@ -20,6 +20,7 @@ import {
   type RunExtras,
   type Runner,
 } from "../check-timing-budget.ts";
+import { bestOf } from "./lib/bounded-wall-clock.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const HARNESS = path.join(REPO, "scripts", "check-timing-budget.ts");
@@ -473,5 +474,75 @@ describe("--case (spec 0247 R19, delta-01)", () => {
       res.stderr,
       /^timing-budget: \S*node-floor-guard\.js \[case d-closed-port\] exceeded 0 ms: measured [\d.]+ ms \(run 1\/1\)$/m,
     );
+  });
+});
+
+describe("bestOf: a best-of-N upper wall-clock bound (spec 0264 R10)", () => {
+  const sample = (ok: boolean, message: string) => ({ ok, message, value: message });
+
+  test("a stall on attempt 1 passes", () => {
+    const seen: number[] = [];
+    const v = bestOf((n) => (seen.push(n), sample(n > 0, `attempt ${n}`)));
+    assert.equal(v, "attempt 1");
+    assert.deepEqual(seen, [0, 1]);
+  });
+
+  test("a slowdown on every attempt fails with every message", () => {
+    assert.throws(
+      () => bestOf((n) => sample(false, `slow ${n}`)),
+      (e: Error) =>
+        /attempt 1: slow 0/.test(e.message) &&
+        /attempt 2: slow 1/.test(e.message) &&
+        /attempt 3: slow 2/.test(e.message),
+    );
+  });
+
+  test("the attempt count is configurable", () => {
+    let runs = 0;
+    assert.throws(() => bestOf(() => (runs++, sample(false, "x")), 5));
+    assert.equal(runs, 5);
+  });
+
+  test("the third attempt is not run once the second passed", () => {
+    let runs = 0;
+    bestOf(() => sample(++runs === 2, "x"));
+    assert.equal(runs, 2);
+  });
+
+  test("an asynchronous measurement works, passing and failing", async () => {
+    let runs = 0;
+    const v = await bestOf(async () => sample(++runs === 2, `run ${runs}`));
+    assert.equal(v, "run 2");
+    await assert.rejects(
+      bestOf(async (n) => sample(false, `async slow ${n}`)),
+      /attempt 3: async slow 2/,
+    );
+  });
+
+  test("a hang is still bounded by the caller's own abort", async () => {
+    const hang = async () => {
+      await new Promise((_, reject) => setTimeout(() => reject(new Error("aborted")), 20));
+      return sample(true, "unreachable");
+    };
+    let runs = 0;
+    await assert.rejects(
+      bestOf(() => (runs++, hang())),
+      /aborted/,
+    );
+    assert.equal(runs, 1, "a thrown abort is not retried");
+  });
+
+  test("a lower bound is not softened: a violation inside measure fails at once", () => {
+    let runs = 0;
+    assert.throws(
+      () =>
+        bestOf(() => {
+          runs++;
+          assert.ok(false, "under the lower bound");
+          return sample(true, "x");
+        }),
+      /under the lower bound/,
+    );
+    assert.equal(runs, 1);
   });
 });

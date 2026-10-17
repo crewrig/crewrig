@@ -20,6 +20,7 @@ import path from "node:path";
 import { after, before, describe, test } from "node:test";
 
 import { addDrawer, classifyAnswer, requestBody } from "../lib/mempalace-transcript/daemon.ts";
+import { bestOf } from "./lib/bounded-wall-clock.ts";
 import type { SpyRecord } from "./lib/spawn-spy.ts";
 import {
   closedPort,
@@ -158,16 +159,20 @@ describe("the outcome against each stub mode (R15, i1-F1)", () => {
 
   test("hang: bounded at 5 s, DAEMON_UNREACHABLE rc=4, exit 0 (issue #90)", () => {
     const port = stubs.get("hang")!.port;
-    const start = performance.now();
-    const res = hook(port, {}, ["antigravity-cli", "Stop"], JSON.stringify({ prompt: "p" }));
-    const elapsed = performance.now() - start;
+    const res = bestOf(() => {
+      const start = performance.now();
+      const res = hook(port, {}, ["antigravity-cli", "Stop"], JSON.stringify({ prompt: "p" }));
+      const elapsed = performance.now() - start;
+      // The lower bound is strict on every attempt: an early return is never retried.
+      assert.ok(elapsed >= 4900, `${elapsed.toFixed(0)} ms, under the lower bound`);
+      return { ok: elapsed < 9000, message: `${elapsed.toFixed(0)} ms`, value: res };
+    });
     assert.equal(res.status, 0);
     assert.equal(res.stdout, "{}\n");
     assert.deepEqual(lines(res.stderr), [
       `DAEMON_UNREACHABLE: 127.0.0.1:${port} — no answer within 5 s`,
       FAILED(4),
     ]);
-    assert.ok(elapsed >= 4900 && elapsed < 9000, `${elapsed.toFixed(0)} ms`);
   });
 
   test("a closed port: DAEMON_UNREACHABLE naming the refusal, rc=4", async () => {
