@@ -1,0 +1,28 @@
+{
+  "INTELLIGENCE_RUNGS": [
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "xxhigh",
+    "max"
+  ],
+  "REASONING_RUNGS": [
+    "none",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max"
+  ],
+  "ITEM_VOCAB_ORDER": [
+    "model",
+    "reasoning",
+    "temperature",
+    "top-p",
+    "top-k",
+    "max-output-tokens",
+    "max-turns"
+  ]
+}
