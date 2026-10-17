@@ -112,16 +112,28 @@ export class Capability {
 }
 
 /** The portable capabilities (`.portability == "portable"`), in document order. */
+/** The parser message minus its multi-line source snippet: one `Error:` line (delta-02 g). */
+function firstLine(message: string): string {
+  return message.split("\n")[0] ?? message;
+}
+
 export function portableCapabilities(source: string): Capability[] {
   let doc: YqNode;
   try {
     doc = parse(source);
   } catch (e) {
-    if (e instanceof YqParseError || e instanceof Error)
-      throw new BuildCiError(`Error: ${e.message}`);
+    if (e instanceof Error) throw new BuildCiError(`Error: ${firstLine(e.message)}`);
     throw e;
   }
-  const caps = get(doc, ["capabilities"]);
+  let caps: YqNode;
+  try {
+    caps = get(doc, ["capabilities"]);
+  } catch (e) {
+    // A bare scalar root: the shell exits 0 with a header-only file; delta-02 item (g) makes it
+    // one Error line and exit 1.
+    if (e instanceof Error) throw new BuildCiError(`Error: ${firstLine(e.message)}`);
+    throw e;
+  }
   // The shell lists ids through a process substitution, which swallows a yq failure: a
   // missing or non-sequence `capabilities` yields a header-only pipeline and exit 0.
   if (!(caps instanceof YqSeq)) return [];
