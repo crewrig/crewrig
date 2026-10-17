@@ -72,6 +72,8 @@ export interface Fixture {
   runs: number;
 }
 
+const CANARY = ".cr-canary";
+
 /** A sandbox under `root`: home, work, tmp, the tripwire, the stub gh, the python directory. */
 export function makeFixture(root: string, interpreters: Interpreters): Fixture {
   const dir = (name: string): string => {
@@ -85,6 +87,9 @@ export function makeFixture(root: string, interpreters: Interpreters): Fixture {
     string,
     string,
   ];
+  // A line-feed canary in every landing zone: the dry-run entries write nothing there, so without it
+  // the carriage-return scan would walk empty directories and pass whatever it does (spec 0258 R38).
+  for (const zone of [home, work, tmp]) fs.writeFileSync(path.join(zone, CANARY), "canary\n");
   const stub = path.join(ghDir, "gh-stub.cjs");
   fs.writeFileSync(stub, GH_STUB);
   if (WIN)
@@ -208,18 +213,27 @@ export function runCurator(o: Invocation): CuratorRun {
 /**
  * No file the entries could have written under the sandbox holds a carriage return. `AppData` is
  * skipped: PowerShell itself writes there (`StartupProfileData-NonInteractive`, with CRLF) whatever
- * the entries do, so it is not a landing zone of an entry.
+ * the entries do, so it is not a landing zone of an entry. A zone in which the scan reads no file at
+ * all fails (spec 0258 R38): a walk that finds nothing would otherwise pass for any reason.
  */
 export function assertNoCarriageReturn(fx: Fixture): void {
   const found: string[] = [];
+  let scanned = 0;
   const walk = (dir: string): void => {
     for (const name of fs.readdirSync(dir)) {
       if (name.toLowerCase() === "appdata") continue;
       const file = path.join(dir, name);
       if (fs.statSync(file).isDirectory()) walk(file);
-      else if (fs.readFileSync(file).includes(13)) found.push(file);
+      else {
+        scanned += 1;
+        if (fs.readFileSync(file).includes(13)) found.push(file);
+      }
     }
   };
-  for (const zone of [fx.home, fx.work, fx.tmp]) walk(zone);
+  for (const zone of [fx.home, fx.work, fx.tmp]) {
+    scanned = 0;
+    walk(zone);
+    if (scanned === 0) throw new Error(`carriage-return scan read no file under ${zone}`);
+  }
   if (found.length > 0) throw new Error(`carriage return in: ${found.join(", ")}`);
 }
