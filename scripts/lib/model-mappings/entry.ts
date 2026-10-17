@@ -5,6 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { firstLine } from "../first-line.ts";
 import { createResolveContext, mappingInForce } from "../model-resolve.ts";
 import { createYamlText, toYamlLib } from "../yaml-text.ts";
 import { checkFile } from "./check-file.ts";
@@ -72,7 +73,7 @@ export function runCheck(
     return { stdout: `OK: ${files.length} mapping file(s) conform.\n`, stderr, code: 0 };
   } catch (e) {
     if (e instanceof ModelMappingsError) {
-      return { stdout: "", stderr: `${stderr}Error: ${e.message}\n`, code: 1 };
+      return { stdout: "", stderr: `${stderr}Error: ${firstLine(e.message)}\n`, code: 1 };
     }
     throw e;
   } finally {

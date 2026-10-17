@@ -11,6 +11,7 @@ import path from "node:path";
 import { after, describe, test } from "node:test";
 
 import { PENDING_SECTIONS } from "../lib/ci-parity/entry.ts";
+import { applyNormalDiff } from "./lib/normal-diff-apply.ts";
 import { REPO } from "./lib/worktree-fixtures.ts";
 
 const SH = path.join(REPO, "scripts", "check-ci-parity.sh");
@@ -106,12 +107,34 @@ describe("check-ci-parity twin", { skip: SKIP }, () => {
       }),
     );
   });
-  test("a stale gitlab file fails arm 2 identically", () =>
-    same(
-      fixture(
-        sub(".gitlab-ci.yml", '    - "npm install"\n', '    - "npm install"\n    - "echo drift"\n'),
-      ),
-    ));
+  // Spec delta-02 (h): the layout of the `build-ci --check` diff is not a contract, so the
+  // comparison covers verdict, status and every line outside the body, and the printed hunks must
+  // turn the committed file into the generated one under either implementation.
+  test("a stale gitlab file fails arm 2 identically outside the diff body", () => {
+    const drifted = '    - "npm install"\n    - "echo drift"\n';
+    const root = fixture(sub(".gitlab-ci.yml", '    - "npm install"\n', drifted));
+    const committed = fs.readFileSync(path.join(root, ".gitlab-ci.yml"), "utf8");
+    const generated = fs.readFileSync(path.join(REPO, ".gitlab-ci.yml"), "utf8");
+    const split = (text: string): { frame: string; body: string } => {
+      const rows = text.split("\n");
+      const start = rows.findIndex((l) => /^ {4}DRIFT: .*differs from a fresh derivation/.test(l));
+      const open = rows.indexOf("    ", start);
+      const close = rows.indexOf("    ", open + 1);
+      assert.ok(start >= 0 && open > start && close > open, text);
+      const body = rows.slice(open + 1, close).map((l) => l.slice(4));
+      return {
+        frame: [...rows.slice(0, open + 1), "<DIFF>", ...rows.slice(close)].join("\n"),
+        body: body.join("\n") + "\n",
+      };
+    };
+    const ts = exec("ts", root);
+    const sh = exec("sh", root);
+    assert.equal(ts.code, sh.code);
+    assert.equal(ts.out, sh.out);
+    const [a, b] = [split(ts.err), split(sh.err)];
+    assert.equal(a.frame, b.frame);
+    for (const x of [a, b]) assert.equal(applyNormalDiff(committed, x.body), generated);
+  });
   test("no gitlab file checks only the present arms identically", () =>
     same(fixture((r) => fs.rmSync(path.join(r, ".gitlab-ci.yml")))));
   test("no workflows directory checks only the present arms identically", () =>
@@ -143,6 +166,8 @@ describe("check-ci-parity twin: inputs outside the byte comparison (delta-05 ite
     gap(write(".gitlab-ci.yml", "a: [1\nb: }\n"), ".gitlab-ci.yml"));
   test("an unparseable workflow", () =>
     gap(write(".github/workflows/zz.yml", "jobs: [1\nx: }\n"), ".github/workflows/zz.yml"));
+  test("an unparseable reference", () =>
+    gap(write("ci/ci-capabilities.yml", "capabilities: [1\nb: }\n"), "ci/ci-capabilities.yml"));
   test("an explicit key among the job keys of a workflow", () =>
     gap(write(".github/workflows/zz.yml", "jobs:\n  ? a\n  : x: 1\n"), ".github/workflows/zz.yml"));
   test("a scalar jobs value", () =>

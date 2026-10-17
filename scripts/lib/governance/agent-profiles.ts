@@ -23,6 +23,7 @@ import {
   YqSeq,
   type YqNode,
 } from "../yq-accessors/index.ts";
+import { firstLine } from "../first-line.ts";
 import { checkTuningKnobs } from "./agent-profiles-tuning.ts";
 import { AgentProfilesError, type Fail, valueOf } from "./agent-profiles-yq.ts";
 
@@ -235,7 +236,7 @@ export function runCheck(args: readonly string[], repoDir: string): Outcome {
     }
   } catch (e) {
     if (e instanceof AgentProfilesError) {
-      return { stdout: "", stderr: `${stderr}Error: ${e.message}\n`, code: 1 };
+      return { stdout: "", stderr: `${stderr}Error: ${firstLine(e.message)}\n`, code: 1 };
     }
     throw e;
   }

@@ -3,6 +3,7 @@
 
 import { parse, YqParseError } from "../yq-accessors/index.ts";
 import { inListPrefix, normalizeCmd, selfInstallsTool } from "./probe-tokens.ts";
+import { firstLine } from "../first-line.ts";
 import { readCapabilities } from "./reference-read.ts";
 import { ParityGap, type CapRecord, type ParityState } from "./state.ts";
 
@@ -99,7 +100,7 @@ function multiDocument(state: ParityState, source: string): boolean {
     }
   } catch (e) {
     if (e instanceof ParityGap || e instanceof YqParseError) {
-      state.stderr += `Error: ${state.reference}: ${e.message}\n`;
+      state.stderr += `Error: ${state.reference}: ${firstLine(e.message)}\n`;
       state.code = 1;
       return false;
     }
@@ -117,7 +118,7 @@ export function checkReference(state: ParityState, source: string): boolean {
     if (e instanceof YqParseError && e.kind === "multi-document")
       return multiDocument(state, source);
     if (e instanceof ParityGap || e instanceof YqParseError) {
-      state.stderr += `Error: ${state.reference}: ${e.message}\n`;
+      state.stderr += `Error: ${state.reference}: ${firstLine(e.message)}\n`;
       state.code = 1;
       return false;
     }
