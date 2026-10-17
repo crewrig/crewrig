@@ -1,6 +1,6 @@
 // model-ci-tooling-ci-parity.test.ts — differential test of scripts/check-ci-parity.ts against
-// scripts/check-ci-parity.sh (spec 0262 req 1-4, 9, 21, 24). Slice 1 compares the sections
-// already ported (validity, traceability, arm 3); PENDING lists those still to compare.
+// scripts/check-ci-parity.sh (spec 0262 req 1-4, 9, 21, 24). All sections are ported (PENDING_SECTIONS is empty): every case compares stdout, stderr and
+// status byte for byte, except the arm 2 diff body (delta-02 h).
 // Fixtures are copies in mkdtemp directories; the test deletes only those.
 
 import assert from "node:assert/strict";
@@ -99,13 +99,11 @@ describe("check-ci-parity twin", { skip: SKIP }, () => {
       ),
     ));
   test("a drifted workflow job fails arm 1 identically", () => {
-    const dir = ".github/workflows";
-    same(
-      fixture((r) => {
-        const f = fs.readdirSync(path.join(r, dir)).find((n) => n === "ci.yml") ?? "";
-        if (f !== "") sub(`${dir}/${f}`, "run:", "run: echo drift #")(r);
-      }),
-    );
+    const root = fixture(sub(".github/workflows/build.yml", "run:", "run: echo drift #"));
+    const ts = exec("ts", root);
+    // The edit must really create a drift: a clean run would make this test vacuous (review F15).
+    assert.notEqual(ts.code, 0, "the fixture drifts");
+    assert.deepEqual(ts, exec("sh", root));
   });
   // Spec delta-02 (h): the layout of the `build-ci --check` diff is not a contract, so the
   // comparison covers verdict, status and every line outside the body, and the printed hunks must
