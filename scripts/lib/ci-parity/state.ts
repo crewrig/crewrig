@@ -4,6 +4,10 @@ export interface TriggerRecord {
   kind: string;
   tag: string;
   keys: string[];
+  /** `paths` of a mapping trigger: its tag, the string entries, the shell's TLBAD flag. */
+  pathsTag: string;
+  paths: string[];
+  pathsBad: boolean;
 }
 
 /** What the reference pass decodes per capability (the shell's CAP_* arrays and c_* locals). */
@@ -16,6 +20,7 @@ export interface CapRecord {
   evidence: string;
   ncmd: number;
   cmds: string[];
+  cmdTag: string;
   runtime: string[];
   tools: string[];
   historyDepth: string;
@@ -79,3 +84,12 @@ export function newState(repoDir: string): ParityState {
 
 /** A shape the TypeScript reader cannot reproduce byte-for-byte (yq's own error text). */
 export class ParityGap extends Error {}
+
+/** The shell aborting under `set -e`: the output so far stands, the run ends with `code`. */
+export class ShellAbort extends Error {
+  readonly code: number;
+  constructor(code: number) {
+    super(`abort ${code}`);
+    this.code = code;
+  }
+}

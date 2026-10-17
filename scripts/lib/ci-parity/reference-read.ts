@@ -47,15 +47,28 @@ function at(n: YqNode, path: string[]): YqNode {
   }
 }
 
+/** A "path list": the entry tag, the string entries, and the shell's TLBAD (non-string, empty or multi-line entry). */
+export function plist(n: YqNode): { tag: string; list: string[]; bad: boolean } {
+  const t = tag(n);
+  if (!(n instanceof YqSeq)) return { tag: t, list: [], bad: false };
+  const list = n.items.filter((i) => tag(i) === "!!str").map((i) => scalar(i, "a path list"));
+  const bad = list.length !== n.items.length || list.some((e) => e === "" || e.includes("\n"));
+  return { tag: t, list, bad };
+}
+
 function readTriggers(c: YqNode): TriggerRecord[] {
   const t = at(c, ["trigger"]);
   if (!(t instanceof YqSeq)) return [];
   return t.items.map((e) => {
     if (!isColl(e)) throw gap("a scalar trigger entry");
+    const p = e instanceof YqMap ? plist(at(e, ["paths"])) : { tag: "", list: [], bad: false };
     return {
       kind: orEmpty(at(e, ["on"]), "trigger.on"),
       tag: tag(e),
       keys: keys(e),
+      pathsTag: p.tag,
+      paths: p.list,
+      pathsBad: p.bad,
     };
   });
 }
@@ -91,6 +104,7 @@ export function readCapability(c: YqNode): CapRecord {
     evidence: specific ? orEmpty(at(c, ["exception", "evidence"]), "exception.evidence") : "",
     ncmd: portable ? ncmd : 0,
     cmds: portable ? items(command, "command") : [],
+    cmdTag: tag(command),
     runtime: withCmd ? runtimeOf(c) : [],
     tools: withCmd ? items(at(c, ["requires", "tools"]), "requires.tools") : [],
     historyDepth: withCmd ? orEmpty(at(c, ["requires", "history-depth"]), "history-depth") : "",

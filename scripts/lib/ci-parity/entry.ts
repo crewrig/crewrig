@@ -1,14 +1,16 @@
 // entry.ts — one check-ci-parity run: the sections in the shell's order, then the verdict.
-// Sections not yet ported are listed in PENDING_SECTIONS (arm 1, arm 2, path filters).
+// PENDING_SECTIONS lists the sections not yet ported (none).
 
 import fs from "node:fs";
 
 import { arm3, traceability } from "./traceability.ts";
 import { reportValidity, verdict } from "./findings.ts";
 import { checkReference, collectIds } from "./reference.ts";
-import { newState } from "./state.ts";
+import { arm1 } from "./arm1.ts";
+import { arm2 } from "./gitlab-arm.ts";
+import { ParityGap, ShellAbort, newState } from "./state.ts";
 
-export const PENDING_SECTIONS = ["arm1-gha", "arm2-gitlab", "path-filters"] as const;
+export const PENDING_SECTIONS: readonly string[] = [];
 
 export interface Outcome {
   stdout: string;
@@ -28,8 +30,19 @@ export function run(_args: string[], repoDir: string): Outcome {
   if (!checkReference(state, fs.readFileSync(state.reference, "utf8"))) return done();
   if (reportValidity(state)) return done();
   collectIds(state);
-  traceability(state);
-  arm3(state);
-  verdict(state);
+  try {
+    traceability(state);
+    arm1(state);
+    arm2(state);
+    arm3(state);
+    verdict(state);
+  } catch (e) {
+    if (e instanceof ShellAbort) state.code = e.code;
+    else if (e instanceof ParityGap) {
+      // req 24 (c): where the shell aborts through yq, one `Error: <path>: <reason>` line, exit 1.
+      state.stderr += `Error: ${state.repoDir}: ${e.message}\n`;
+      state.code = 1;
+    } else throw e;
+  }
   return done();
 }

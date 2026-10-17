@@ -89,8 +89,8 @@ export function checkReference(state: ParityState, source: string): boolean {
     caps = readCapabilities(parse(source));
   } catch (e) {
     if (e instanceof ParityGap || e instanceof YqParseError) {
-      state.stderr += `Error: check-ci-parity: ${e.message}\n`;
-      state.code = e instanceof ParityGap ? 70 : 1;
+      state.stderr += `Error: ${state.reference}: ${e.message}\n`;
+      state.code = 1;
       return false;
     }
     throw e;

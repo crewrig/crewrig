@@ -1,0 +1,212 @@
+// path-filters.ts — concern 6 (spec 0049 delta-01 R12-R20): the reference `paths` of each
+// portable capability's pull-request and push triggers against the GitHub-side filter.
+
+import fs from "node:fs";
+import path from "node:path";
+
+import { get, isYqFalsy, parse, tag, YqMap, YqSeq, type YqNode } from "../yq-accessors/index.ts";
+import { decodeFilters } from "./filters-doc.ts";
+import { fail } from "./findings.ts";
+import { plist } from "./reference-read.ts";
+import type { CapRecord, ParityState } from "./state.ts";
+
+const EVENTS = [
+  ["pull_request", "pull-request"],
+  ["push", "push"],
+] as const;
+
+interface EventPaths {
+  present: boolean;
+  paths: { tag: string; list: string[]; bad: boolean };
+  ignore: { tag: string; list: string[]; bad: boolean };
+}
+
+interface WfDoc {
+  onTag: string;
+  onEntries: string[];
+  events: EventPaths[];
+  nFilters: number;
+  raw: string;
+}
+
+const bullets = (list: string[]): string => {
+  const b = list.filter((l) => l !== "").map((l) => `      - ${l}`);
+  return b.length > 0 ? b.join("\n") : "      (none)";
+};
+
+function readOn(on: YqNode): { onTag: string; onEntries: string[]; events: EventPaths[] } {
+  const onTag = tag(on);
+  const strs = (n: YqNode): string[] => (n !== null && tag(n) === "!!str" ? [String(n)] : []);
+  const onEntries = on instanceof YqSeq ? on.items.flatMap(strs) : strs(on);
+  const m = on instanceof YqMap ? on : null;
+  const events = EVENTS.map(([ev]) => {
+    const e = m === null ? null : (m.entries.findLast(([k]) => k === ev)?.[1] ?? null);
+    const sub = (k: string): ReturnType<typeof plist> =>
+      e instanceof YqMap ? plist(get(e, [k])) : { tag: "", list: [], bad: false };
+    return {
+      present: m !== null && m.entries.some(([k]) => k === ev),
+      paths: sub("paths"),
+      ignore: sub("paths-ignore"),
+    };
+  });
+  return { onTag, onEntries, events };
+}
+
+function jobFilters(jobs: YqNode, key: string): { n: number; raw: string } {
+  const job = jobs instanceof YqMap ? (jobs.entries.find(([k]) => k === key)?.[1] ?? null) : null;
+  const steps = job === null || job instanceof YqSeq ? null : get(job, ["steps"]);
+  if (!(steps instanceof YqSeq)) return { n: 0, raw: "" };
+  const hits = steps.items.filter((s) => {
+    if (s instanceof YqSeq || s === null) return false;
+    const u = get(s, ["uses"]);
+    return tag(u) === "!!str" && String(u).startsWith("dorny/paths-filter@");
+  });
+  const first = hits[0];
+  const f = first === undefined ? null : get(get(first, ["with"]), ["filters"]);
+  return { n: hits.length, raw: f !== null && tag(f) === "!!str" ? String(f) : "" };
+}
+
+function loadWf(file: string, jobKey: string): WfDoc {
+  const doc = parse(fs.readFileSync(file, "utf8"));
+  const jf = jobFilters(get(doc, ["jobs"]), jobKey);
+  const on = readOn(get(doc, ["on"]));
+  return { ...on, nFilters: jf.n, raw: jf.raw };
+}
+
+const undet = (s: ParityState, id: string, why: string): void =>
+  fail(
+    s,
+    `capability '${id}' (github-actions): GitHub-side path filter cannot be determined: ${why} (R17)`,
+  );
+
+function compare(
+  s: ParityState,
+  id: string,
+  scope: string,
+  rdesc: string,
+  r: string,
+  g: string,
+): void {
+  if (r === g) return;
+  const rs = [...new Set(r.split("\n").filter((x) => x !== ""))];
+  const gs = [...new Set(g.split("\n").filter((x) => x !== ""))];
+  const onlyR = rs.filter((x) => !gs.includes(x));
+  const onlyG = gs.filter((x) => !rs.includes(x));
+  if (onlyR.length + onlyG.length === 0) return;
+  fail(
+    s,
+    `capability '${id}' (github-actions): path filters diverge on ${scope}, ${rdesc} (R14)\n    only in the reference:\n${bullets(onlyR)}\n    only on the GitHub side:\n${bullets(onlyG)}`,
+  );
+}
+
+function split(list: string[]): { pos: string; neg: string[] } {
+  if (!list.some((l) => l.startsWith("!"))) return { pos: list.join("\n"), neg: [] };
+  return {
+    pos: list.filter((l) => l !== "" && !l.startsWith("!")).join("\n"),
+    neg: list.filter((l) => l.startsWith("!")),
+  };
+}
+
+const neg = (s: ParityState, id: string, what: string, n: string[]): void =>
+  fail(
+    s,
+    `capability '${id}' (github-actions): ${what} holds negated entries the reference cannot express (R16):\n${bullets(n)}`,
+  );
+
+function ignore(s: ParityState, id: string, ev: string, e: EventPaths): void {
+  if (e.ignore.tag === "" || e.ignore.tag === "!!null") return;
+  fail(
+    s,
+    `capability '${id}' (github-actions): event '${ev}' declares paths-ignore, an exclusion the reference cannot express (R16):\n${bullets(e.ignore.list)}`,
+  );
+}
+
+function dedicated(s: ParityState, c: CapRecord, d: WfDoc): void {
+  for (let e = 0; e < EVENTS.length; e++) {
+    const [ev, rk] = EVENTS[e] as (typeof EVENTS)[number];
+    const evt = d.events[e] as EventPaths;
+    let pos = "";
+    const declared =
+      d.onTag === "!!map"
+        ? evt.present
+        : ["!!seq", "!!str"].includes(d.onTag) && d.onEntries.includes(ev);
+    if (declared) {
+      if (!["", "!!null", "!!seq"].includes(evt.paths.tag))
+        return undet(s, c.id, `paths under '${ev}' is not a list`);
+      if (evt.paths.bad)
+        return undet(s, c.id, `paths under '${ev}' holds an entry that is not a string`);
+      ignore(s, c.id, ev, evt);
+      const sp = split(evt.paths.list);
+      if (sp.neg.length > 0) neg(s, c.id, `event '${ev}'`, sp.neg);
+      pos = sp.pos;
+    }
+    const mine = c.triggers.filter((t) => t.kind === rk);
+    for (const t of mine)
+      compare(s, c.id, `event '${ev}'`, `reference trigger '${rk}'`, t.paths.join("\n"), pos);
+    if (mine.length === 0)
+      compare(s, c.id, `event '${ev}'`, `no reference '${rk}' trigger`, "", pos);
+  }
+}
+
+function inJob(s: ParityState, c: CapRecord, d: WfDoc): void {
+  const id = c.id;
+  if (d.nFilters > 1) return undet(s, id, `the job carries ${d.nFilters} path-filter steps`);
+  const f = decodeFilters(d.raw);
+  if (typeof f === "string") return undet(s, id, f);
+  if (f.root !== "!!map") return undet(s, id, "its filters input is not a mapping of named lists");
+  if (f.count !== 1)
+    return undet(
+      s,
+      id,
+      `the path-filter step defines ${f.count} named filters (${f.names || "none"})`,
+    );
+  if (f.name !== id)
+    return undet(s, id, `the path-filter step defines only the filter '${f.name}', not '${id}'`);
+  if (f.vtag !== "!!seq" || f.bad)
+    return undet(s, id, `the list of filter '${id}' is not a list of strings`);
+  for (let i = 0; i < EVENTS.length; i++) {
+    const ev = (EVENTS[i] as (typeof EVENTS)[number])[0];
+    const e = d.events[i] as EventPaths;
+    if (!["", "!!null"].includes(e.paths.tag))
+      return undet(
+        s,
+        id,
+        `the job has an in-job filter and the workflow also declares paths under '${ev}'`,
+      );
+  }
+  EVENTS.forEach(([ev], e) => ignore(s, id, ev, d.events[e] as EventPaths));
+  const sp = split(f.items);
+  if (sp.neg.length > 0) neg(s, id, "the in-job filter", sp.neg);
+  const mine = c.triggers.filter((t) => t.kind === "pull-request" || t.kind === "push");
+  for (const t of mine)
+    compare(s, id, "in-job filter", `reference trigger '${t.kind}'`, t.paths.join("\n"), sp.pos);
+  if (mine.length === 0)
+    compare(s, id, "in-job filter", "no comparable reference trigger", "", sp.pos);
+}
+
+/** R12-R18 for one portable capability with an attributed GitHub job. */
+export function checkGhaPaths(
+  state: ParityState,
+  c: CapRecord,
+  workflow: string,
+  jobKey: string,
+): void {
+  for (const t of c.triggers) {
+    if (t.kind !== "pull-request" && t.kind !== "push") continue;
+    if (!["", "!!null", "!!seq"].includes(t.pathsTag))
+      return fail(
+        state,
+        `capability '${c.id}' (reference): trigger '${t.kind}' declares a paths value that is not a list (R17)`,
+      );
+    if (t.pathsBad)
+      return fail(
+        state,
+        `capability '${c.id}' (reference): trigger '${t.kind}' declares a paths entry that is not a string (R17)`,
+      );
+  }
+  const d = loadWf(workflow, jobKey);
+  if (d.nFilters === 0) dedicated(state, c, d);
+  else inJob(state, c, d);
+}
+
+export { isYqFalsy, path };

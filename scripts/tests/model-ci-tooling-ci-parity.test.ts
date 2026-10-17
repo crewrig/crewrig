@@ -54,17 +54,6 @@ function same(root: string): void {
   assert.deepEqual(exec("ts", root), exec("sh", root));
 }
 
-/** Arm 2 (pending) adds DRIFT lines to the shell: every TS line must appear in the shell's. */
-function sameUpToPending(root: string): void {
-  const ts = exec("ts", root);
-  const sh = exec("sh", root);
-  assert.equal(ts.code, sh.code);
-  const shLines = sh.err.split("\n");
-  for (const l of ts.err.split("\n")) {
-    if (!l.startsWith("FAILED:")) assert.ok(shLines.includes(l), l);
-  }
-}
-
 const sub =
   (file: string, from: string, to: string) =>
   (root: string): void => {
@@ -85,19 +74,42 @@ describe("check-ci-parity twin", { skip: SKIP }, () => {
       "  - id: build\n    portability: specific\n    trigger: [{on: push}]\n    exception: {engine: x, evidence: y}\n";
     same(fixture(sub("ci/ci-capabilities.yml", "  - id: ", rec + rec + "  - id: ")));
   });
-  test("an untraceable gitlab job is reported (arm 2 pending)", () =>
-    sameUpToPending(
+  test("an untraceable gitlab job is reported identically", () =>
+    same(
       fixture((r) =>
         fs.appendFileSync(path.join(r, ".gitlab-ci.yml"), "\nmystery-job:\n  script: [true]\n"),
       ),
     ));
-  test("an unknown annotation is reported (arm 2 pending)", () =>
-    sameUpToPending(
+  test("an unknown annotation is reported identically", () =>
+    same(
       fixture((r) =>
         fs.appendFileSync(
           path.join(r, ".gitlab-ci.yml"),
           "\nmystery-job: # ci-capability: nope\n  script: [true]\n",
         ),
+      ),
+    ));
+  test("a changed portable command fails arm 1 identically", () =>
+    same(fixture(sub("ci/ci-capabilities.yml", "command:", "command:\n      - echo extra"))));
+  test("a path filter divergence fails identically", () =>
+    same(
+      fixture(
+        sub("ci/ci-capabilities.yml", "        paths:\n", "        paths:\n          - zz/**\n"),
+      ),
+    ));
+  test("a drifted workflow job fails arm 1 identically", () => {
+    const dir = ".github/workflows";
+    same(
+      fixture((r) => {
+        const f = fs.readdirSync(path.join(r, dir)).find((n) => n === "ci.yml") ?? "";
+        if (f !== "") sub(`${dir}/${f}`, "run:", "run: echo drift #")(r);
+      }),
+    );
+  });
+  test("a stale gitlab file fails arm 2 identically", () =>
+    same(
+      fixture(
+        sub(".gitlab-ci.yml", '    - "npm install"\n', '    - "npm install"\n    - "echo drift"\n'),
       ),
     ));
   test("no gitlab file checks only the present arms identically", () =>
