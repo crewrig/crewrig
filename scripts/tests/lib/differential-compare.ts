@@ -1,0 +1,159 @@
+// differential-compare.ts — the comparison core of the shell-versus-TS differential: runs both
+// legs of one case on a two-sandbox layout and compares output and left-behind state.
+
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import {
+  cleanEnv,
+  diffMaps,
+  mirror,
+  normaliser,
+  treeMap,
+  type Side,
+} from "./differential-sandbox.ts";
+import {
+  assertRemotesUnderScratch,
+  FIXED_GIT_ENV,
+  refsOf,
+  type ScratchRemote,
+} from "./scratch-remote.ts";
+
+export interface SideCtx {
+  readonly side: Side;
+  readonly root: string;
+  readonly scratch: ScratchRemote;
+}
+
+export interface DiffCase {
+  /** Shell entry, repo-relative, e.g. `scripts/foo.sh`. */
+  script: string;
+  /** TS entry; default is `script` with `.sh` replaced by `.ts`. */
+  tsScript?: string;
+  /** Interpreter of the TS leg; default `["node"]`. */
+  tsCommand?: string[];
+  /** `{ROOT}` in args, env values and stdin is replaced by each side's root. */
+  args?: string[];
+  env?: Record<string, string>;
+  stdin?: string;
+  /** Working directory, relative to the sandbox root. */
+  cwd?: string;
+}
+
+export interface Leg {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+}
+
+export interface DiffResult {
+  equal: boolean;
+  diffs: string[];
+  shell: Leg;
+  ts: Leg;
+}
+
+export interface Layout {
+  a: string;
+  b: string;
+  scratch: Record<Side, ScratchRemote>;
+  shellFile: string;
+  tsFile: string;
+  tsCommand: string[];
+  exclude: string[];
+  record?: string;
+  stubGh?: boolean;
+}
+
+function runLeg(cmd: string[], cwd: string, env: NodeJS.ProcessEnv, stdin: string): Leg {
+  const res = spawnSync(cmd[0] ?? "", cmd.slice(1), {
+    cwd,
+    env,
+    input: Buffer.from(stdin, "latin1"),
+    maxBuffer: 1 << 28,
+    timeout: 120_000,
+  });
+  return {
+    status: res.status ?? (res.signal === null ? null : 128),
+    stdout: res.stdout.toString("latin1"),
+    stderr: res.stderr.toString("latin1"),
+  };
+}
+
+/** Run both legs of one case on the given layout and compare output and state. */
+export function compareLegs(l: Layout, c: DiffCase, mirrorFirst = false): DiffResult {
+  const roots: Record<Side, string> = { shell: l.a, ts: l.b };
+  if (mirrorFirst) mirror(l.a, l.b, [...l.exclude, l.tsFile]);
+  const forSide = (s: string, side: Side): string => {
+    const out = s.replaceAll("{ROOT}", roots[side]);
+    return side === "ts" ? out.replaceAll(l.a, l.b) : out;
+  };
+  const legs = {} as Record<Side, Leg>;
+  for (const side of ["shell", "ts"] as const) {
+    const sc = l.scratch[side];
+    const env = cleanEnv(sc.home, {
+      ...FIXED_GIT_ENV,
+      PATH: `${sc.bin}${path.delimiter}${process.env.PATH ?? ""}`,
+    });
+    for (const [k, v] of Object.entries(c.env ?? {})) env[k] = forSide(v, side);
+    const cmd = side === "shell" ? ["bash", l.shellFile] : [...l.tsCommand, l.tsFile];
+    const file = path.join(roots[side], cmd[cmd.length - 1] ?? "");
+    const full = [...cmd.slice(0, -1), file, ...(c.args ?? []).map((x) => forSide(x, side))];
+    legs[side] = runLeg(
+      full,
+      path.join(roots[side], c.cwd ?? "."),
+      env,
+      forSide(c.stdin ?? "", side),
+    );
+  }
+  const norm = {
+    shell: normaliser([
+      [l.a, "<ROOT>"],
+      [l.scratch.shell.root, "<SCRATCH>"],
+    ]),
+    ts: normaliser([
+      [l.b, "<ROOT>"],
+      [l.scratch.ts.root, "<SCRATCH>"],
+    ]),
+  };
+  const diffs: string[] = [];
+  const out = (side: Side): Leg => ({
+    status: legs[side].status,
+    stdout: norm[side](legs[side].stdout),
+    stderr: norm[side](legs[side].stderr),
+  });
+  const [s, t] = [out("shell"), out("ts")];
+  if (s.stdout !== t.stdout)
+    diffs.push(
+      `stdout differs:\n shell=${JSON.stringify(s.stdout)}\n ts=${JSON.stringify(t.stdout)}`,
+    );
+  if (s.stderr !== t.stderr)
+    diffs.push(
+      `stderr differs:\n shell=${JSON.stringify(s.stderr)}\n ts=${JSON.stringify(t.stderr)}`,
+    );
+  if (s.status !== t.status) diffs.push(`status differs: shell=${s.status} ts=${t.status}`);
+  const tree = (root: string, side: Side, ex: string[]) => treeMap(root, norm[side], ex);
+  const treeDiff = diffMaps(tree(l.a, "shell", l.exclude), tree(l.b, "ts", l.exclude));
+  if (treeDiff) diffs.push(`tree state differs:\n${treeDiff}`);
+  const homeDiff = diffMaps(
+    tree(l.scratch.shell.home, "shell", []),
+    tree(l.scratch.ts.home, "ts", []),
+  );
+  if (homeDiff) diffs.push(`HOME state differs:\n${homeDiff}`);
+  const refs = (side: Side): string[] => {
+    const root = roots[side];
+    const bare = l.scratch[side].bare;
+    assertRemotesUnderScratch(root, l.scratch[side].root);
+    return [refsOf(root), refsOf(bare)].map(norm[side]);
+  };
+  const [rs, rt] = [refs("shell"), refs("ts")];
+  if (rs[0] !== rt[0]) diffs.push(`sandbox refs differ:\n shell=${rs[0]}\n ts=${rt[0]}`);
+  if (rs[1] !== rt[1]) diffs.push(`scratch remote refs differ:\n shell=${rs[1]}\n ts=${rt[1]}`);
+  const result = { equal: diffs.length === 0, diffs, shell: s, ts: t };
+  if (l.record)
+    fs.appendFileSync(
+      l.record,
+      `${JSON.stringify({ script: c.script, args: c.args ?? [], ...result })}\n`,
+    );
+  return { ...result, shell: legs.shell, ts: legs.ts };
+}
