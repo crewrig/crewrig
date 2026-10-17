@@ -189,6 +189,8 @@ MemPalace or GitHub.
     `ratchet`, `lint-typescript` and the Windows jobs, and SHALL get an `APPROVE` verdict from a cold reviewer seat before a
     merge is asked. #1343 is closed by hand right after the last merge.
 
+24. **Plan checklist.** The PLAN SHALL list every `VERIFY AT PLAN TIME` marker of the *Suite sections* as a checklist item, assigned to the pull request that depends on it, and a pull request SHALL NOT open while an item assigned to it is unresolved.
+
 ### Suite sections
 
 For each suite: the replacement files, the mapping from each Bash case or group to the replacement test, the assertions
@@ -196,7 +198,7 @@ changed or dropped, the mutation set, the platform and the wiring. Case labels a
 `git log -p` of the suite at the base commit remains the reference. Items marked *VERIFY AT PLAN TIME* are resolved in the
 PLAN before the first pull request opens.
 
-#### Build-component suites (pull request A)
+#### Build-component suites (pull request P1)
 
 Common facts for the five suites below. None of them sources `scripts/lib/common.sh` or any shell library in-process (grep for `source`  and `.`  returned nothing), so the R13 sourced-library exception does NOT apply and no port is marked 'Retires with scripts/lib/common.sh (row J4)'. Every suite drives `scripts/build-components.sh`, which is a forwarding shim over `scripts/build-components.ts` (row G1a, spec 0250, shim header L1-L18), so the shim and the TypeScript entry are both mutation targets. Replacement tests run the TypeScript entry directly through `node scripts/build-components.ts`, with `REPO_DIR` pointing at a `mkdtemp` root (never the checkout), and keep ONE shim-path assertion per suite family (see `build-components-shim.test.ts`, already covering shim equivalence, so none is added here). Nested `node --test` is not needed except for the `test-artifact-build-install-scope.sh` groups (unset `NODE_TEST_CONTEXT` there is moot because the groups are imported, not spawned). Child env: delete `CI`, set `LC_ALL=C`. No fixture added by these suites is a `.sh` or `.js` file, so the ratchet is untouched; any fixture text that must look like a script takes the `.golden` suffix. None of the five stages `js-yaml argparse` (no `STAGED_NODE_PACKAGES` literal), because the build runs from the checkout's `scripts/` and `node_modules`, only `REPO_DIR` moves; therefore `build-components-fixture-closure.test.ts` LITERALS (L24-L75) gets NO entry for these suites. *VERIFY AT PLAN TIME*: that the TypeScript build resolves `js-yaml` from the script location and not from `REPO_DIR` (if it resolved from `REPO_DIR`, a REAL copy of `js-yaml` + `argparse` goes into the sandbox, never a symlink, and a LITERALS entry becomes necessary). Sandbox contents: `git ls-files`-derived copies only (no untracked `node_modules`, no `dist/`).
 
@@ -348,7 +350,7 @@ Shared helper (new, under 300 lines): `scripts/tests/lib/build-sandbox.ts` expor
 - *VERIFY AT PLAN TIME*: whether `scripts/tests/lib/build-fixture-tree.ts` already offers `mkBuildRoot`; whether the TypeScript build resolves `js-yaml` from the script location (decides the LITERALS entry); the exact `git grep` line sets for `.gitlab-ci.yml` and `.github/workflows/build.yml` (given above from one run, may drift).
 - Estimated total replacement size: ~1,160 lines across 9 new files plus one shared helper, every file under 300 lines.
 
-#### Build-script suites (pull requests A and C)
+#### Build-script suites (pull requests P1 and P3)
 
 Common to the six suites below: each runs a `.sh` that is a forwarding shim over a TypeScript entry (or the shipped build output), so the replacement drives the TypeScript entry directly (`node scripts/<entry>.ts`) and, where the Bash case proves the shim, one smoke through the `.sh` shim stays in the shim-contract tests of the owning row (not re-implemented here). Sandboxes copy only git-tracked files (`git ls-files`) plus a REAL (`cpSync`, `dereference: true`) copy of `js-yaml` and `argparse`; nested `node --test` children unset `NODE_TEST_CONTEXT`; the child env deletes `CI`; any shell-versus-TypeScript comparison runs under `LC_ALL=C`, stderr included; fixtures that are `.sh`/`.js` carry the `.golden` suffix so the ratchet does not count them.
 
@@ -510,7 +512,7 @@ Common to the six suites below: each runs a `.sh` that is a forwarding shim over
 - **Platform.** All platforms (reads three files; normalise CRLF before the line match).
 - **Static reads and wiring.** `.github/workflows/release-tests.yml` L19 and L51 (path filters `scripts/tests/test-monorepo-release*.sh`: the glob must also cover the new file, or a new filter line be added), L98 (`ci-cache-guard --stray-scan -- bash ...test-monorepo-release.sh`); `.gitlab-ci.yml` L3520; `ci/ci-capabilities.yml` L4891, L4923 (the glob `test-monorepo-release*.sh`), L4946; `ci/shell-allowlist.txt` L157; `scripts/tests/test-monorepo-release-engine.sh` L5 (comment); `scripts/tests/fixtures/release/generate-github-golden.sh` L20 (comment: says this suite compares the GitHub golden, now stale, the comparison lives in `monorepo-release-blackbox-*.test.ts`); `specs/0257-packaging-release-typescript.md` L260, L271 (historical). Script row: no script under test; the suite reads `docs/gitlab-release-publishing.md`, `release-monorepo.yml` and `build.yml`. The driver itself (`monorepo-release.sh`) is row I2 (spec 0257 R28), a shim over `monorepo-release.ts`, covered by the black-box files. No shell library sourced.
 
-#### Extension builder suites (pull request B)
+#### Extension builder suites (pull request P2)
 
 ##### `scripts/tests/test-build-extension.sh` (1093 lines)
 
@@ -756,7 +758,7 @@ None of the three suites sources `scripts/lib/common.sh` or another shell librar
 - The 64-mask suite on `windows-latest` and its 300 s budget (see Platform).
 - PR #1669 rewrites the same `--test` lists and `build-components-fixture-closure.test.ts`; order the J2 PRs after it lands.
 
-#### Release engine suites and golden generator (pull request C)
+#### Release engine suites and golden generator (pull request P3)
 
 Shared facts for the three items below. `scripts/monorepo-release.sh` is already a forwarding shim over `scripts/monorepo-release.ts` (spec 0257 R28; entry 39 lines, modules in `scripts/lib/monorepo-release/*.ts`, notes facade in `scripts/lib/release-notes/`), so both suites run the shim over the TypeScript entry. Neither suite sources `scripts/lib/common.sh` nor any shell library: case 11g, the only in-process sourcing of `scripts/lib/monorepo-release-lib.sh`, was retired by spec 0257 PR 7 (engine suite header L33-34, L907-913; replaced by `rb-11g-release-note` in `scripts/tests/monorepo-release-blackbox-flows2.test.ts` L167). The R13 sourced-library exception therefore does NOT apply: no replacement is marked "Retires with scripts/lib/common.sh (row J4)". The script rows own the code under test: row J1 of spec 0257 (`scripts/monorepo-release.ts`, `release-package-extension.ts`, `release-pr.ts`), already implemented; the three items here are the row J2 oracles that spec 0257 R21 and its out-of-scope list (L548-550) explicitly left to J2.
 
@@ -858,7 +860,7 @@ Overlap rule applied to both: the existing `scripts/tests/monorepo-release-*.tes
 - **Static reads and wiring.** `ci/shell-allowlist.txt` L110; `specs/0257-packaging-release-typescript.md` L251 and L552 (assign it to J2); `scripts/tests/fixtures/release/fixed-date.cjs` L1-15; `scripts/tests/test-monorepo-release.sh` (consumer, names the generator in a usage comment). Not referenced by any workflow, `.gitlab-ci.yml`, `ci/ci-capabilities.yml`, `Taskfile.yml` or `docs/`.
 - **Ratchet pitfalls.** `.sh`, `.js`, `.mjs` files count in the ratchet: the notes suite's runtime `driver.mjs` is written from a string inside the test; any stored script is suffixed `.golden` and guarded for a leading `#!`. Never run a real `gh` or publish; no release golden is generated against the real forge or on macOS.
 
-#### Governance check suites (pull requests D and E)
+#### Governance check suites (pull requests P4 and P5)
 
 Common to the seven suites. Each check is now a forwarding shim `scripts/check-<name>.sh` of a TypeScript entry `scripts/check-<name>.ts` (row I1, spec 0259), and I1 already shipped a black-box edge-case test per check, `scripts/tests/governance-check-<name>.test.ts`. Those files say in their header that they cover only what the Bash suite does NOT; so every Bash case below needs a NEW test, except where the mapping names an existing one (each name verified by grep of `test(`/`it(` titles). New files are `scripts/tests/governance-<name>-cases.test.ts`, each under 300 lines. They share one helper `scripts/tests/lib/governance-sandbox.ts` (~90 lines: `mkdtemp` registry with `after` cleanup, `runEntry(entry, {cwd, env, args})` spawning `process.execPath --disable-warning=MODULE_TYPELESS_PACKAGE_JSON <entry>` with `LC_ALL=C`, `CI` deleted from the child env, `NODE_TEST_CONTEXT` deleted, and returning `{status, stdout, stderr}` with stderr compared; `copyTracked(dest, paths)` copying only `git ls-files` entries; `stageNodeModules(dest)` doing a REAL `fs.cpSync(..., {dereference: true})` of `node_modules/js-yaml` and `node_modules/argparse` plus `.git/` and the root `package.json`). Every sandbox mutates temp copies only; the checkout is never written. Platform for all seven: the entries are cross-platform Node, so the new files run on all platforms except where a case needs a symlink or a POSIX mode (marked). Windows coverage of the same entries already exists in `windows-governance-*.test.ts` and is untouched.
 
@@ -1263,7 +1265,7 @@ Common facts for the seven suites below (stated once, applied to each):
 - Ratchet (`scripts/check-ratchet.ts`): any `.sh` or `.js` fixture added under `scripts/tests/` counts toward the ratchet; this fragment adds none (all fixtures are generated at runtime into `mkdtemp` directories); golden files, if any, carry the `.golden` suffix.
 - Count sentinel: each table-driven file asserts its own case count (`assert.equal(cases.length, N)`; N = 8 provenance, 5+3 bump, 6 feedback-routing, 8 no-machine-paths groups, 3 markdown-links, 4+3 skill-versions) so that a deleted row cannot pass silently.
 
-#### Governance guards and spec linter (pull request F)
+#### Governance guards and spec linter (pull request P6)
 
 Common to the three suites below. The three checks each ship as a Bash forwarding shim of a TypeScript entry
 (row I1, spec 0259): `scripts/check-gemini-overlay-enrollment.sh` -> `.ts` -> `scripts/lib/governance/gemini-overlay.ts`
@@ -1472,7 +1474,7 @@ removal in an `after` hook).
 - **Platform.** POSIX-only (`skip` on win32: symlinks, `npx` shim, `git` fixture repositories and `symbolic-ref`, `PATH` of `/usr/bin:/bin`). All six test files run on Linux and macOS; the Linux job (`ci/ci-capabilities.yml`) is the authoritative one, macOS is run locally. `core-paths` tab separators in manifests are written with literal `\t`.
 - **Static reads and wiring.** `.github/workflows/build.yml` L3328 (`bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-spec-linter.sh`: replace by the `node --test` invocation of the six `scripts/tests/spec-linter-*.test.ts` files, keeping `--stray-scan` and adding the key-file glob `scripts/lib/spec-linter.js,scripts/tests/spec-linter-*.test.ts,scripts/tests/lib/spec-linter-fixtures.ts`); `.gitlab-ci.yml` L2805 (same); `ci/ci-capabilities.yml` L3555 (same; the job needs `git`, `node`, and a prior `npm ci` so `markdownlint-cli`, `js-yaml`, `semver` resolve); `ci/shell-allowlist.txt` L162 (delete the entry in the same PR that deletes the suite); `ci/js-baseline.txt` L8 (UNCHANGED: the linter stays JavaScript); `Taskfile.yml` L577 (`spec:lint`, unchanged, not a reference to the suite); `docs/spec-format.md` L231 and L450 (describe the linter, not the suite, left as is); `scripts/lib/base-ref-resolve.sh` L5 and L39 (lockstep comment with the linter, unchanged), `scripts/reserve-spec-id.sh` L51 and L339, `scripts/check-spec-id-reserved.sh` L494 and `scripts/tests/test-reserve-spec-id.sh` L40 (comments naming `spec-linter.js`, unchanged); historical `specs/0009`, `0071`, `0098`, `0109` (+delta-03), `0135`, `0140`, `0168`, `0170` (delta-01), `0225` mention the suite and are left as is; `specs/0263-setup-service-tests-typescript.md` L95 table row names `test-spec-linter.sh` for rows I2/J2 (this row). No `artifacts/` hit. The linter's own reads: `.crewrig/core-paths.txt` (L72), `.markdownlintrc`, `git` and `npx` (the replacement suite does not alter them).
 
-#### Harness curator (pull request G)
+#### Harness curator (pull request P7)
 
 ##### `artifacts/library/skills/harness-curator/scripts/test.sh` (1335 lines)
 
@@ -1539,7 +1541,7 @@ removal in an `after` hook).
 
 - **Static reads and wiring.** `Taskfile.yml` L620-622 (`test-harness-curate`, `cmd: bash {{.REPO_DIR}}/artifacts/library/skills/harness-curator/scripts/test.sh`; re-point to `node --test` over the six files, or to a `task` that runs the glob `scripts/tests/harness-curator-*.test.ts` (this also runs the existing differential, callers and Windows files, wanted); `desc` text "Smoke-test the Harness Curator against the bundled fixture" stays); `.github/workflows/build.yml` L3361 (job `test-harness-curate`, steps checkout and setup-node 24, `run: bash artifacts/library/skills/harness-curator/scripts/test.sh`; no `ci-cache-guard --stray-scan` wrapper on this one, see `scripts/check-stray-scan-wiring.ts` L36 which names this script as one that does not live in the wired set, VERIFY AT PLAN TIME whether the new files join that map); `.gitlab-ci.yml` L2819 (same command); `ci/ci-capabilities.yml` L3570 (`command:` list item, with `requires: runtime: node@24`, `tools: [jq]`, `portability: portable`; the job key sits above L3560, VERIFY AT PLAN TIME) and `docs/ci-reference-format.md` L635 (lists `test-harness-curate`, a job name, unchanged); `ci/shell-allowlist.txt` L9 (the script path, delete at J4 with the script; the three `curate.sh`, `schedule-curator.sh`, `setup-labels.sh` shims stay allow-listed until their own row); `scripts/check-stray-scan-wiring.ts` L36 (comment naming the script, update); `artifacts/library/skills/harness-curator/scripts/test.sh` L2-L23 header comment is the case inventory moved into the new files' headers; specs naming it: `specs/0060-curator-malformed-rate-warning.md` L50, `specs/0258-skill-extension-bundled-scripts-typescript.md` L414 and L722 (historical, left as is; L722 declares the migration out of scope of 0258, which this spec takes up). The skill body `artifacts/library/skills/harness-curator/SKILL.md` has no reference to `test.sh` (grep), but its `compatibility:` line (L16) and `metadata.provenance.version: "1.9.0"` (L19) matter: `test.sh` is a file under the skill directory, so deleting it at J4 modifies a shipped source and `docs/version-bump-convention.md` requires a bump of `metadata.provenance.version` in that diff (PATCH, 1.9.0 to 1.9.1, VERIFY AT PLAN TIME whether `scripts/check-skill-versions.sh` counts a deletion under `scripts/`); adding tests under `scripts/tests/` outside the skill needs no bump. Built bundles: `.claude/`, `.gemini/`, `.github/` and `.agents/` carry no `harness-curator` directory in this checkout (`ls` found none), so the build output is checked in only through the generated manifests; VERIFY AT PLAN TIME by running `node scripts/lib/node-floor-guard.js` then `node scripts/build-components.ts` in the DEV worktree and staging whatever it regenerates (`.claude/skills/harness-curator/` etc. would hold a copy of `scripts/test.sh` if the build copies bundled scripts; if so the deletion at J4 regenerates them in the same commit, per the Built components rule). `docs/cli-matrix.md` must be consulted in the same diff (the PR touches `artifacts/**` at J4).
 
-#### Model and CI tooling suites (pull requests H and I; gated by requirement 22)
+#### Model and CI tooling suites (pull requests P8 and P9; gated by requirement 22)
 
 Oracle rule: these three suites are the Bash oracles of the row-I2 scripts. They migrate only AFTER the switch pull request of #1339, when `scripts/check-model-mappings.sh`, `scripts/check-agent-profiles.sh` and `scripts/build-ci.sh` are forwarding shims over `scripts/check-model-mappings.ts`, `scripts/check-agent-profiles.ts` and `scripts/build-ci.ts` (spec 0262 requirements 1, 16, 26). Until then the unchanged Bash suites run through the differential wrapper (`scripts/tests/lib/bash-suite-differential.ts` `installWrapper`, proven by `scripts/tests/model-ci-tooling-differential.test.ts`, 146 lines). That file holds only the wrapper's positive controls and the scratch-remote guards, NOT the per-script comparisons, so no assertion of the three suites below is "already covered" by a differential test: the wrapper compares the shell and the twin on every fixture the Bash suite builds, which is a byte-level superset of the suites' exit-plus-substring assertions, but it disappears with the Bash suites. The replacement suites therefore assert the TypeScript entries directly (shell leg gone: oracle rule). Names of the yq-accessor shared module and of the per-pass modules under `scripts/lib/` are fixed by the I2 PLAN: *VERIFY AT PLAN TIME* (they matter only for the mutation set). The shell-side mutants are dropped once the shims are the only shell code left; the shim itself is mutated only for the case that the shim contract test of spec 0259 does not already cover.
 
@@ -2202,29 +2204,29 @@ Each test file stays under 300 lines; the fixture helper is the only file under 
 
 #### Pull request grouping
 
-Nine pull requests, so that each stays reviewable (about 1.3 to 3.2 thousand removed Bash lines) and so that the
+Nine pull requests, named P1 to P9 so that they are not confused with the parent rows A to J, and so that each stays reviewable (about 1.3 to 3.2 thousand removed Bash lines) and so that the
 long CI jobs overlap. They open from the same release tip in parallel worktrees, are independent of one another
 except for the shared helpers named in the sections (a helper is created by the first pull request that needs it and
 imported by later ones only after it has merged), and merge one at a time at the coordinator's request. Because
 `ci/ci-capabilities.yml` and the generated files are shared by every row of the wave, each pull request regenerates
-them from the current release tip just before its merge request. Pull requests A to G do not depend on I2 and open
-first; H and I (requirement 22) open only after the I2 switch pull request is merged and #1339 is closed, and only
+them from the current release tip just before its merge request. Pull requests P1 to P7 do not depend on I2 and open
+first; P8 and P9 (requirement 22) open only after the I2 switch pull request is merged and #1339 is closed, and only
 after the coordinator agrees.
 
 | PR | Branch | Suites | Bash lines removed |
 |---|---|---|---:|
-| A | `test/1343-build-core` | `test-agent-profile-migration`, `test-artifact-build-install-scope`, `test-assembly-verification`, `test-pr-logbook-label-scope`, `scripts/test-build-components.sh`, `test-build-claude-plugin-agents-glob`, `test-extract-frontmatter`, `test-gemini-agent-frontmatter` | about 1.4 k |
-| B | `test/1343-extension-builders` | `test-build-extension`, `test-migrate-extension`, `test-create-extension-combinations`, `test-extension-render-conformance` | about 2.0 k |
-| C | `test/1343-release-packaging` | `test-build-docs-index`, `test-release-package-extension`, `test-monorepo-release`, `-engine`, `-notes`, `generate-github-golden.sh` | about 1.9 k |
-| D | `test/1343-governance-checks-a` | seven `test-check-*` of the first governance fragment (claude-agent-layout, component-metadata-keys, core-paths, extension-hook-map, -hook-tokens, -manifest-version, -pivot) | about 1.9 k |
-| E | `test/1343-governance-checks-b` | seven `test-check-*` of the second fragment (extension-provenance, -version-bump, feedback-routing, figure-labels, markdown-links, no-machine-paths, skill-versions) | about 1.9 k |
-| F | `test/1343-governance-guards-spec-linter` | `test-check-gemini-overlay-enrollment`, `-test-strays`, `-test-wiring`, `test-spec-linter` | about 2.9 k |
-| G | `test/1343-harness-curator` | `artifacts/library/skills/harness-curator/scripts/test.sh` | about 1.3 k |
-| H | `test/1343-model-ci-checks` | `test-build-ci`, `test-check-agent-profiles`, `test-check-model-mappings`, `test-model-resolution` (gated by requirement 22) | about 2.9 k |
-| I | `chore/1343-ci-parity-spec-id` | `test-check-ci-parity`, `test-check-spec-id-reserved`, `test-reserve-spec-id` (gated by requirement 22); flips this spec and its deltas to `implemented`; documentation sweep | about 2.8 k |
+| P1 | `test/1343-build-core` | `test-agent-profile-migration`, `test-artifact-build-install-scope`, `test-assembly-verification`, `test-pr-logbook-label-scope`, `scripts/test-build-components.sh`, `test-build-claude-plugin-agents-glob`, `test-extract-frontmatter`, `test-gemini-agent-frontmatter` | about 1.4 k |
+| P2 | `test/1343-extension-builders` | `test-build-extension`, `test-migrate-extension`, `test-create-extension-combinations`, `test-extension-render-conformance` | about 2.0 k |
+| P3 | `test/1343-release-packaging` | `test-build-docs-index`, `test-release-package-extension`, `test-monorepo-release`, `-engine`, `-notes`, `generate-github-golden.sh` | about 1.9 k |
+| P4 | `test/1343-governance-checks-a` | seven `test-check-*` of the first governance fragment (claude-agent-layout, component-metadata-keys, core-paths, extension-hook-map, -hook-tokens, -manifest-version, -pivot) | about 1.9 k |
+| P5 | `test/1343-governance-checks-b` | seven `test-check-*` of the second fragment (extension-provenance, -version-bump, feedback-routing, figure-labels, markdown-links, no-machine-paths, skill-versions) | about 1.9 k |
+| P6 | `test/1343-governance-guards-spec-linter` | `test-check-gemini-overlay-enrollment`, `-test-strays`, `-test-wiring`, `test-spec-linter` | about 2.9 k |
+| P7 | `test/1343-harness-curator` | `artifacts/library/skills/harness-curator/scripts/test.sh` | about 1.3 k |
+| P8 | `test/1343-model-ci-checks` | `test-build-ci`, `test-check-agent-profiles`, `test-check-model-mappings`, `test-model-resolution` (gated by requirement 22) | about 2.9 k |
+| P9 | `chore/1343-ci-parity-spec-id` | `test-check-ci-parity`, `test-check-spec-id-reserved`, `test-reserve-spec-id` (gated by requirement 22); flips this spec and its deltas to `implemented`; documentation sweep | about 2.8 k |
 
-`test-spec-linter.sh` has no migration row and a script that stays JavaScript, so it is not gated; it rides with F
-because both are guard-like and F is the smallest pull request that can carry it.
+`test-spec-linter.sh` has no migration row and a script that stays JavaScript, so it is not gated; it rides with P6
+because both are guard-like and P6 is the smallest pull request that can carry it.
 
 #### Rejected alternatives
 
@@ -2277,7 +2279,7 @@ Then it names either an existing black-box test of the TypeScript twin or a bash
 
 Given the I2 switch pull request is not merged
 When this row's pull requests are planned
-Then no suite of requirement 22 has started, and the coordinator is asked before each of H and I opens.
+Then no suite of requirement 22 has started, and the coordinator is asked before each of P8 and P9 opens.
 
 **Scenario:** A deleted suite leaves the repository consistent
 
@@ -2303,7 +2305,9 @@ and the script is unchanged.
 
 ## Open questions
 
-- **Sourced-library reading (requirement 6)** follows spec 0263 requirement 6, confirmed there with the coordinator.
-- **`test-monorepo-release-notes.sh`** is taken by this row (decision record); the coordinator is told in the spec-PR.
-- **Spec 0145 line 24** names a governance suite and needs a delta or an accepted-drift note (see the fragment of the second governance group).
-- **Per-suite VERIFY items** carried in the *Suite sections* are resolved in the PLAN before any pull request opens.
+None. The questions raised at authoring time are closed on the logbook issue #1343 (closure comment before approval) and recorded here:
+
+- The sourced-library reading follows spec 0263 requirement 6, already confirmed with the coordinator there.
+- `test-monorepo-release-notes.sh` migrates in this row (see the decision record); spec 0257 requirement 21 froze it only until J2.
+- Spec 0145 names `test-check-markdown-links.sh` in its requirement 6. The normative text of a merged spec is immutable and the behaviour of the suite is carried by its replacement, so the reference is accepted drift: the pull request that deletes the suite records it in its body, and no delta-spec of 0145 is opened.
+- The per-suite `VERIFY AT PLAN TIME` items are not open questions of this spec: requirement 24 makes the PLAN carry each one as a checklist item that gates the pull request it belongs to.
