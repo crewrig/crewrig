@@ -117,7 +117,7 @@ describe("G1-G3 curate.sh --from-stdin --dry-run on the fixture", { skip }, () =
         `${id} must not be skipped`,
       );
     assert.deepEqual([...new Set(s.map((x) => x.reason))].sort(), ["malformed"]);
-    assert.match(s.find((x) => x.drawer_id === "drw-005").snippet, /Not a friction/);
+    assert.match(s.find((x) => x.drawer_id === "drw-005")?.snippet ?? "", /Not a friction/);
   });
 
   test("G2 routing failures", () => {
@@ -137,7 +137,7 @@ describe("G1-G3 curate.sh --from-stdin --dry-run on the fixture", { skip }, () =
     assert.equal(c.target_repo, url);
     assert.deepEqual([...new Set(c.frictions.map((f) => f._room))], ["prompt"]);
     const drw2 = c.frictions.find((f) => /empty file/.test(f.title));
-    assert.equal(drw2.evidence.length, 1);
+    assert.equal(drw2?.evidence.length, 1);
     assert.ok(c.body.includes("artifacts/core/skills/architect/SKILL.md:42"));
     assert.ok(c.body.includes("2026-05-08 → 2026-05-10"));
     assert.deepEqual(c.labels, ["harness-feedback", "room:prompt", "severity:med"]);
