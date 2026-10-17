@@ -56,9 +56,9 @@ const REACHING = new RegExp(
     "test-migrate-extension\\.sh",
     "test-create-extension",
     "test-release-package",
-    "test-install-claude-plugin-marketplace\\.sh",
+    "install-claude-plugin-marketplace\\.test\\.ts",
     "test-build-claude-plugin-agents-glob\\.sh",
-    "test-install-extension-all\\.sh",
+    "install-extension-all-real\\.test\\.ts",
     "test-check-extension-provenance\\.sh",
     // The governance checks (spec 0259) run as `node ... scripts/check-<name>.ts`; their `.sh`
     // forms are forwarding shims that stay valid.

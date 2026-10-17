@@ -4,10 +4,10 @@
 // declaration alone: its steps, prompts, sub-step order and literal facts. The cases are named by the
 // phrase the retargeted Bash suites cite in their comments.
 //
-// Suites served: test-setup-validation-backend (4), test-tls-delegation.sh (6),
-// test-setup-ensure-tier-built (4), test-setup-org-mcp (6), test-setup-gemini-settings-merge.sh
-// (13), test-setup-init-command-instructions (1), test-system-context-store.sh (4),
-// test-mempalace-doctor.sh (9), test-antigravity-component-install.sh (13).
+// Suites served: test-setup-validation-backend (4), the retired Bash TLS-delegation suite (6),
+// test-setup-ensure-tier-built (4), test-setup-org-mcp (6), the retired Bash Gemini settings-merge suite
+// (13), test-setup-init-command-instructions (1), the retired Bash system-context-store suite (4),
+// test-mempalace-doctor.sh (9), the retired Bash antigravity component-install suite (13).
 
 import assert from "node:assert/strict";
 import fs from "node:fs";

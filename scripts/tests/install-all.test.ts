@@ -1,5 +1,5 @@
 // install-all.test.ts — black-box contract of scripts/install-extension-all.ts (spec 0255 R11,
-// R22(a)): the TypeScript leg only (the shell's own oracle is test-install-extension-all.sh).
+// R22(a)): the TypeScript leg only (the shell's own oracle was the Bash suite retired by spec 0263, now install-extension-all-real.test.ts).
 // The four child installers are replaced in the sandbox by stubs that record their arguments and
 // fail when their name is listed in FAIL; CLI presence is decided by stub binaries on the sandbox
 // PATH, which holds no `jq`.

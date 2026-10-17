@@ -2673,7 +2673,7 @@ _antigravity_frontmatter_name() {
 # closes at line 18, the real entry is line 11, and lines 73, 76, 146 and 206
 # are body. A whole-file reader would call every one of them provenance, which
 # would let the migration delete a user's own directory. The regression fixture
-# in scripts/tests/test-antigravity-component-install.sh puts an INDENTED
+# in scripts/tests/antigravity-common-sh-migrate.test.ts puts an INDENTED
 # `canonical:` in a fixture's body precisely so that only this boundary
 # separates it from a real one.
 _antigravity_has_provenance() {

@@ -10,7 +10,7 @@ import path from "node:path";
 
 export const ENTRY = "install-workspace";
 export const GUARD_CMD = "node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js";
-export const R19 = "r19: all twelve";
+export const R19 = "install-workspace drives install-workspace";
 
 export interface TaskfileMutant {
   readonly id: string;
@@ -30,7 +30,7 @@ export const TASKFILE_MUTANTS: readonly TaskfileMutant[] = [
   {
     id: "T2 first command fails",
     commands: (own) => ['node -e "process.exit(3)"', own],
-    detail: "exited 3",
+    detail: "actual: 3",
   },
   {
     id: "T3 script named in neither spelling",

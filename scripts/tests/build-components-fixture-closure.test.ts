@@ -23,10 +23,6 @@ after(() => {
 /** Where each suite writes its literal, and how to read the package list out of its text. */
 const LITERALS: readonly { file: string; pattern: RegExp; tsFile?: string }[] = [
   {
-    file: "scripts/tests/test-component-tier-resolution.sh",
-    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
-  },
-  {
     file: "scripts/tests/test-check-extension-hook-tokens.sh",
     pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
   },
@@ -44,10 +40,6 @@ const LITERALS: readonly { file: string; pattern: RegExp; tsFile?: string }[] = 
   },
   {
     file: "scripts/tests/test-create-extension-combinations.sh",
-    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
-  },
-  {
-    file: "scripts/tests/test-antigravity-component-install.sh",
     pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
   },
   {
