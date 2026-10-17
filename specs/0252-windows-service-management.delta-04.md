@@ -34,9 +34,16 @@ dropped. Its status follows the table of `docs/spec-format.md`: `draft` on its s
 registers any of them, as the shell does. When the backup of any one of them cannot be
 created, the entry SHALL stop at that point, before the registration of the first assistant:
 it SHALL print on standard output, in the form of the other refusals of the all-or-nothing
-floor (spec 0113 requirement 12, two-space indent), exactly three lines: `  ERROR: could not
-back up <file name>.`, `         No assistant has been changed. (R12)` and `         Free the
-directory of the file, then re-run.`, and exit 1. No assistant's configuration
+floor (spec 0113 requirement 12, two-space indent), exactly these three lines (the second
+and third are aligned under the text of the first), and exit 1:
+
+```text
+  ERROR: could not back up <file name>.
+         No assistant has been changed. (R12)
+         Free the directory of the file, then re-run.
+```
+
+No assistant's configuration
 is modified, so no rollback runs. A backup already taken for an assistant earlier in the same
 pass is a regular backup (mode 0600, same name rule) and is left in place. The message names
 the configuration file and tells the user the switch can be re-run once the file's directory
