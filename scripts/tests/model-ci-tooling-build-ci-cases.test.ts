@@ -1,16 +1,14 @@
 // model-ci-tooling-build-ci-cases.test.ts — differential cases of scripts/build-ci.ts
 // against scripts/build-ci.sh on synthetic references (spec 0262 requirements 1-4, 8, 20,
 // 21, 24): runtimes, cache, cache-guard, env, branch globs, tag-pattern, paths, manual
-// and unknown triggers, and drifted-file `--check` diffs (the TS LCS diff against the
-// system `diff`). The shell leg needs bash and yq and is skipped otherwise.
+// and unknown triggers, and drifted-file `--check` runs (verdict, status and stderr outside the diff body; the
+// printed hunks are applied to the committed file, never compared by layout: delta-02 h). The shell leg needs bash and yq and is skipped otherwise.
 
 import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
-import assert from "node:assert/strict";
-
-import { REAL_REF, run, same, SKIP } from "./lib/build-ci-diff.ts";
+import { REAL_REF, same, sameDrift, SKIP } from "./lib/build-ci-diff.ts";
 import { REPO } from "./lib/worktree-fixtures.ts";
 
 /** One portable capability; `extra` is raw YAML under the capability. */
@@ -66,7 +64,7 @@ describe("build-ci twin: synthetic capabilities", { skip: SKIP }, () => {
   }
 });
 
-describe("build-ci twin: --check diff against system diff", { skip: SKIP }, () => {
+describe("build-ci twin: --check drifted files", { skip: SKIP }, () => {
   const lines = fs.readFileSync(path.join(REPO, ".gitlab-ci.yml"), "utf8").split("\n");
   const drifts: Record<string, (l: string[]) => string[]> = {
     "single changed line": (l) => l.map((x, i) => (i === 30 ? `${x} # drift` : x)),
@@ -77,32 +75,11 @@ describe("build-ci twin: --check diff against system diff", { skip: SKIP }, () =
     "duplicated lines": (l) => [...l.slice(0, 60), l[60]!, l[61]!, ...l.slice(60)],
     "truncated tail": (l) => l.slice(0, 700),
     "appended tail": (l) => [...l, "extra", "extra"],
-  };
-  for (const [name, mutate] of Object.entries(drifts)) {
-    test(name, () => same(["--check"], REAL_REF, mutate(lines).join("\n")));
-  }
-});
-
-// Where several minimal edit scripts exist (a swap, a rewrite among repeated lines) the
-// BSD `diff` of macOS and the GNU `diff` of CI already choose differently, so the hunk
-// layout is not a contract: only the verdict, stdout and status are compared, and the
-// TS body must still be a valid normal-format diff of the same size class.
-describe("build-ci twin: ambiguous drifts", { skip: SKIP }, () => {
-  const drifts: Record<string, (l: string[]) => string[]> = {
     "swapped neighbours": (l) => [...l.slice(0, 50), l[51]!, l[50]!, ...l.slice(52)],
     "repeated-line region rewritten": (l) =>
       l.map((x, i) => (i % 7 === 0 && i > 100 && i < 300 ? "" : x)),
   };
-  const lines = fs.readFileSync(path.join(REPO, ".gitlab-ci.yml"), "utf8").split("\n");
   for (const [name, mutate] of Object.entries(drifts)) {
-    test(name, () => {
-      const committed = mutate(lines).join("\n");
-      const sh = run("sh", ["--check"], REAL_REF, committed);
-      const ts = run("ts", ["--check"], REAL_REF, committed);
-      assert.equal(ts.status, sh.status);
-      assert.equal(ts.stdout, sh.stdout);
-      assert.equal(ts.stderr.split("\n")[0], sh.stderr.split("\n")[0]);
-      assert.match(ts.stderr, /\nFAILED: run 'bash scripts\/build-ci\.sh' to regenerate/);
-    });
+    test(name, () => sameDrift(REAL_REF, mutate(lines).join("\n")));
   }
 });

@@ -11,7 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, test } from "node:test";
 
-import { REAL_REF, roots, run, same, SH, SKIP, TS } from "./lib/build-ci-diff.ts";
+import { REAL_REF, roots, run, same, sameDrift, SH, SKIP, TS } from "./lib/build-ci-diff.ts";
 import { REPO } from "./lib/worktree-fixtures.ts";
 
 describe("build-ci twin: generation", { skip: SKIP }, () => {
@@ -56,7 +56,7 @@ describe("build-ci twin: mutated references", { skip: SKIP }, () => {
     const committed = fs
       .readFileSync(path.join(REPO, ".gitlab-ci.yml"), "utf8")
       .replace("image: node:22", "image: node:99");
-    same(["--check"], REAL_REF, committed);
+    sameDrift(REAL_REF, committed);
   });
   test("a changed command regenerates identically", () =>
     same([], mutate("npm run build --workspaces --if-present", 'echo "a\\b" # c')));
