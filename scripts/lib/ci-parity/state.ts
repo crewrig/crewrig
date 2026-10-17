@@ -83,7 +83,23 @@ export function newState(repoDir: string): ParityState {
 }
 
 /** A shape the TypeScript reader cannot reproduce byte-for-byte (yq's own error text). */
-export class ParityGap extends Error {}
+export class ParityGap extends Error {
+  readonly file: string | undefined;
+  constructor(message: string, file?: string) {
+    super(message);
+    this.file = file;
+  }
+}
+
+/**
+ * Spec 0262 delta-05 item (j): an input whose shell behaviour the twin does not reproduce
+ * (multi-document workflow or `.gitlab-ci.yml`, unparseable `.gitlab-ci.yml`, scalar `.jobs`,
+ * explicit `? key` or multi-line key in the comment scanner) ends the run with exactly one
+ * `Error: <path>: <reason>` line on stderr and exit 1 (entry.ts prints it).
+ */
+export function inputGap(file: string, reason: string): never {
+  throw new ParityGap(reason, file);
+}
 
 /** The shell aborting under `set -e`: the output so far stands, the run ends with `code`. */
 export class ShellAbort extends Error {

@@ -83,11 +83,39 @@ function checkCapability(c: CapRecord, i: number, seen: string[], verr: (m: stri
  * Decode the reference, record the capabilities and run the validity rules. Returns false when
  * the reference cannot be decoded (the message is already on stderr, status 1 as yq's abort).
  */
+/**
+ * The shell's per-call path for a multi-document reference. When no document declares a
+ * capability the loop never runs and the only violation is the stable one; any other shape
+ * makes yq join per-document results into bash diagnostics, outside the byte comparison.
+ */
+function multiDocument(state: ParityState, source: string): boolean {
+  const blank = (c: string): boolean => c.split("\n").every((l) => /^\s*(#.*)?$/.test(l));
+  const chunks = source.split(/^---(?:[ \t].*)?\r?$/m).filter((c) => !blank(c));
+  try {
+    for (const c of chunks) {
+      const n = readCapabilities(parse(c)).length;
+      if (n !== 0)
+        throw new ParityGap("capabilities in a multi-document reference are not supported");
+    }
+  } catch (e) {
+    if (e instanceof ParityGap || e instanceof YqParseError) {
+      state.stderr += `Error: ${state.reference}: ${e.message}\n`;
+      state.code = 1;
+      return false;
+    }
+    throw e;
+  }
+  state.validityErrors.push("reference holds more than one YAML document");
+  return true;
+}
+
 export function checkReference(state: ParityState, source: string): boolean {
   let caps: CapRecord[];
   try {
     caps = readCapabilities(parse(source));
   } catch (e) {
+    if (e instanceof YqParseError && e.kind === "multi-document")
+      return multiDocument(state, source);
     if (e instanceof ParityGap || e instanceof YqParseError) {
       state.stderr += `Error: ${state.reference}: ${e.message}\n`;
       state.code = 1;

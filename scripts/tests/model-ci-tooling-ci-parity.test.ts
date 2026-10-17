@@ -117,3 +117,38 @@ describe("check-ci-parity twin", { skip: SKIP }, () => {
   test("no workflows directory checks only the present arms identically", () =>
     same(fixture((r) => fs.rmSync(path.join(r, ".github"), { recursive: true }))));
 });
+
+describe("check-ci-parity twin: inputs outside the byte comparison (delta-05 item (j))", () => {
+  const gap = (edit: (r: string) => void, file: string): void => {
+    const root = fixture(edit);
+    const r = exec("ts", root);
+    assert.equal(r.code, 1);
+    assert.equal(r.out, "");
+    const lines = r.err.split("\n").filter((l) => l !== "");
+    assert.equal(lines.length, 1, r.err);
+    assert.match(lines[0] as string, new RegExp(`^Error: <ROOT>/${file}: .+`));
+  };
+  const write =
+    (file: string, text: string) =>
+    (root: string): void =>
+      fs.writeFileSync(path.join(root, file), text);
+  test("a multi-document workflow", () =>
+    gap(
+      write(".github/workflows/zz.yml", "jobs:\n  a:\n    x: 1\n---\njobs:\n  b:\n    x: 1\n"),
+      ".github/workflows/zz.yml",
+    ));
+  test("a multi-document .gitlab-ci.yml", () =>
+    gap(write(".gitlab-ci.yml", "a:\n  x: 1\n---\nb:\n  x: 1\n"), ".gitlab-ci.yml"));
+  test("an unparseable .gitlab-ci.yml", () =>
+    gap(write(".gitlab-ci.yml", "a: [1\nb: }\n"), ".gitlab-ci.yml"));
+  test("an unparseable workflow", () =>
+    gap(write(".github/workflows/zz.yml", "jobs: [1\nx: }\n"), ".github/workflows/zz.yml"));
+  test("an explicit key among the job keys of a workflow", () =>
+    gap(write(".github/workflows/zz.yml", "jobs:\n  ? a\n  : x: 1\n"), ".github/workflows/zz.yml"));
+  test("a scalar jobs value", () =>
+    gap(write(".github/workflows/zz.yml", "jobs: nope\n"), ".github/workflows/zz.yml"));
+  test("an explicit key in the scanned mapping", () =>
+    gap(write(".gitlab-ci.yml", "? a\n: x: 1\n"), ".gitlab-ci.yml"));
+  test("a multi-document reference with no capability keeps the stable line", () =>
+    same(fixture(write("ci/ci-capabilities.yml", "capabilities: []\n---\ncapabilities: []\n"))));
+});

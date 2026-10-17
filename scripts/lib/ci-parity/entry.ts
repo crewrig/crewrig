@@ -40,7 +40,7 @@ export function run(_args: string[], repoDir: string): Outcome {
     if (e instanceof ShellAbort) state.code = e.code;
     else if (e instanceof ParityGap) {
       // req 24 (c): where the shell aborts through yq, one `Error: <path>: <reason>` line, exit 1.
-      state.stderr += `Error: ${state.repoDir}: ${e.message}\n`;
+      state.stderr += `Error: ${e.file ?? state.repoDir}: ${e.message}\n`;
       state.code = 1;
     } else throw e;
   }

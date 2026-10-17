@@ -6,9 +6,10 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { isYqFalsy, parse, tag, YqMap, YqSeq, type YqNode } from "../yq-accessors/index.ts";
-import { keyComments } from "../yq-accessors/comments.ts";
 import { fail } from "./findings.ts";
-import { ParityGap, type ParityState } from "./state.ts";
+import { CommentScanGap, keyComments } from "../yq-accessors/comments.ts";
+import { YqParseError } from "../yq-accessors/index.ts";
+import { inputGap, type ParityState } from "./state.ts";
 
 const RESERVED =
   "stages workflow default include variables image before_script after_script cache services pages".split(
@@ -43,14 +44,24 @@ function attribute(state: ParityState, key: string, comment: string): string {
 }
 
 /** `[key, key-comment]` pairs of a mapping node (sequence jobs read as indices, no comment). */
-function pairs(node: YqNode, text: string, parent: string | null): [string, string][] {
+function pairs(
+  node: YqNode,
+  text: string,
+  parent: string | null,
+  file: string,
+): [string, string][] {
   if (node instanceof YqSeq) return node.items.map((_, i) => [String(i), ""]);
   if (!(node instanceof YqMap)) return [];
-  const found = keyComments(text, parent);
+  let found: ReturnType<typeof keyComments>;
+  try {
+    found = keyComments(text, parent);
+  } catch (e) {
+    if (e instanceof CommentScanGap)
+      inputGap(file, `${e.message} is not supported by the key-comment scanner`);
+    throw e;
+  }
   if (found.length !== node.entries.length)
-    throw new ParityGap(
-      "a key scan misaligned with the loaded mapping is not supported by the TypeScript reader",
-    );
+    inputGap(file, "the key-comment scan does not align with the loaded mapping");
   return node.entries.map(([k], i) => [k, found[i]?.comment ?? ""]);
 }
 
@@ -63,12 +74,16 @@ function harvestGha(state: ParityState): void {
       const doc = parse(text);
       jobs =
         doc instanceof YqMap ? (doc.entries.findLast(([k]) => k === "jobs")?.[1] ?? null) : null;
-    } catch {
-      continue; // unparseable: skipped silently, as `yq … 2>/dev/null || continue`
+    } catch (e) {
+      if (e instanceof YqParseError && e.kind === "multi-document")
+        inputGap(wf, "more than one YAML document is not supported");
+      // delta-05 item (j): the shell skips an unparseable workflow silently; the twin stops.
+      return inputGap(wf, "not valid YAML");
     }
     if (isYqFalsy(jobs)) continue;
-    if (tag(jobs) !== "!!map" && tag(jobs) !== "!!seq") continue;
-    for (const [jk, lc] of pairs(jobs, text, "jobs")) {
+    if (tag(jobs) !== "!!map" && tag(jobs) !== "!!seq")
+      inputGap(wf, "`jobs` is a scalar, not a mapping");
+    for (const [jk, lc] of pairs(jobs, text, "jobs", wf)) {
       if (jk === "") continue;
       const id = attribute(state, jk, lc);
       if (id === "") {
@@ -112,11 +127,15 @@ function harvestGitlab(state: ParityState): void {
     text = fs.readFileSync(state.gitlabCi, "utf8");
     doc = parse(text);
   } catch (e) {
-    // The shell prints yq's own message here and carries on with no keys.
-    state.stderr += `Error: ${(e as Error).message}\n`;
-    return;
+    const multi = e instanceof YqParseError && e.kind === "multi-document";
+    return inputGap(
+      state.gitlabCi,
+      multi ? "more than one YAML document is not supported" : "not valid YAML",
+    );
   }
-  for (const [jk, lc] of pairs(doc, text, null)) {
+  if (tag(doc) !== "!!map" && tag(doc) !== "!!seq" && !isYqFalsy(doc))
+    inputGap(state.gitlabCi, "the top level is a scalar, not a mapping");
+  for (const [jk, lc] of pairs(doc, text, null, state.gitlabCi)) {
     if (jk !== "") noteGitlab(state, jk, lc);
   }
 }
