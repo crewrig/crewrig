@@ -146,6 +146,18 @@ if (import.meta.main) {
   const cwd = process.cwd();
   const inside = cwd === cfg.a || cwd.startsWith(cfg.a + path.sep);
   const stdin = process.stdin.isTTY ? "" : fs.readFileSync(0).toString("latin1");
+  // Calls are serialised: shared-repository isolation rewinds state, so two overlapping calls
+  // (a suite's "concurrent sessions" cases) would corrupt each other. They run one after the other.
+  const lock = `${cfg.record}.lock`;
+  for (;;) {
+    try {
+      fs.mkdirSync(lock);
+      break;
+    } catch {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+    }
+  }
+  process.on("exit", () => fs.rmSync(lock, { recursive: true, force: true }));
   const res = compareLegs(
     {
       a: cfg.a,

@@ -23,16 +23,11 @@ const SUITES = [
     name: "reserve-spec-id",
     suite: "scripts/tests/test-reserve-spec-id.sh",
     tools: [],
-    // The suite's fixtures push to ONE bare remote shared by both legs: the shell leg secures the
-    // id, then the TS leg reports "already secured" (14/40 calls differ on stderr only). Needs a
-    // per-leg remote snapshot in the helper; the in-process twin tests cover the tool meanwhile.
-    pending: "helper limitation: both legs share the suite's bare remote",
   },
   {
     name: "check-spec-id-reserved",
     suite: "scripts/tests/test-check-spec-id-reserved.sh",
     tools: [],
-    pending: undefined,
   },
 ] as const;
 
@@ -55,8 +50,8 @@ function readRecord(file: string): Entry[] {
 }
 
 describe("spec-id Bash suites through the differential wrapper", () => {
-  for (const { name, suite, tools, pending } of SUITES) {
-    const skip = pending ?? skipReason(tools);
+  for (const { name, suite, tools } of SUITES) {
+    const skip = skipReason(tools);
     test(`${suite} passes with zero shell/TS differences`, { ...(skip ? { skip } : {}) }, () => {
       const d = createDifferential({ script: `scripts/${name}.sh` });
       try {

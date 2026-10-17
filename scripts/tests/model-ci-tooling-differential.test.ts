@@ -19,6 +19,7 @@ import {
   createScratchRemote,
   git,
   listRealHome,
+  refsOf,
 } from "./lib/scratch-remote.ts";
 
 const posix = process.platform === "win32" ? { skip: "shell legs need bash" } : {};
@@ -118,6 +119,50 @@ describe("bash-suite-differential positive controls", posix, () => {
     } finally {
       d.cleanup();
     }
+  });
+});
+
+describe("shared repositories named by the suite are isolated per leg", posix, () => {
+  const PUSH = 'git -C "$SHARED" update-ref refs/heads/x refs/heads/main\n';
+  const run = (shellPush: boolean, tsPush: boolean): { diffs: string[]; refs: string } => {
+    const d = createDifferential(
+      { script: "scripts/fx.sh", tsCommand: ["bash"] },
+      {
+        setup: (ctx) => {
+          put(ctx, "scripts/fx.sh", shellPush ? PUSH : "true\n");
+          put(ctx, "scripts/fx.ts", tsPush ? PUSH : "true\n");
+        },
+      },
+    );
+    const shared = path.join(d.root, "shared.git");
+    try {
+      git(d.root, ["init", "--quiet", "--bare", shared]);
+      git(d.a, ["push", "--quiet", shared, "HEAD:refs/heads/main"]);
+      const record = installWrapper(d, "fx");
+      const res = spawnSync("bash", ["scripts/fx.sh"], {
+        cwd: d.a,
+        encoding: "utf8",
+        env: { ...process.env, SHARED: shared },
+      });
+      assert.equal(res.status, 0, res.stderr);
+      const entry = JSON.parse(fs.readFileSync(record, "utf8").trim()) as { diffs: string[] };
+      return { diffs: entry.diffs, refs: refsOf(shared) };
+    } finally {
+      d.cleanup();
+    }
+  };
+
+  test("the same push on both legs shows no difference", () => {
+    const r = run(true, true);
+    assert.deepEqual(r.diffs, []);
+    assert.match(r.refs, /refs\/heads\/x/, "the suite continues from the shell's state");
+  });
+
+  test("a push by only one leg is a difference", () => {
+    assert.match(run(false, true).diffs.join("\n"), /shared repository refs differ/);
+    const shellOnly = run(true, false);
+    assert.match(shellOnly.diffs.join("\n"), /shared repository refs differ/);
+    assert.match(shellOnly.refs, /refs\/heads\/x/);
   });
 });
 

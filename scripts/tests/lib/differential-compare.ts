@@ -12,6 +12,7 @@ import {
   treeMap,
   type Side,
 } from "./differential-sandbox.ts";
+import { findShared, rewind, settle, takePre } from "./differential-shared.ts";
 import {
   assertRemotesUnderScratch,
   FIXED_GIT_ENV,
@@ -90,8 +91,20 @@ export function compareLegs(l: Layout, c: DiffCase, mirrorFirst = false): DiffRe
     const out = s.replaceAll("{ROOT}", roots[side]);
     return side === "ts" ? out.replaceAll(l.a, l.b) : out;
   };
+  let diffsShared: string[] = [];
   const legs = {} as Record<Side, Leg>;
+  // Wrapper mode: repositories the suite names (argv, env) are shared by both legs; isolate them.
+  const shared = mirrorFirst
+    ? findShared(
+        [...(c.args ?? []), ...Object.values(process.env).filter((v): v is string => !!v)],
+        [l.a, l.b, l.scratch.shell.root, l.scratch.ts.root].map((p) => fs.realpathSync(p)),
+      )
+    : [];
+  const snapDir = shared.length ? fs.mkdtempSync(path.join(path.dirname(l.a), "shared-snap-")) : "";
+  let shellRefs: string[] = [];
+  if (shared.length) takePre(shared, snapDir);
   for (const side of ["shell", "ts"] as const) {
+    if (side === "ts" && shared.length) shellRefs = rewind(shared, snapDir);
     const sc = l.scratch[side];
     const env = cleanEnv(sc.home, {
       ...FIXED_GIT_ENV,
@@ -112,6 +125,8 @@ export function compareLegs(l: Layout, c: DiffCase, mirrorFirst = false): DiffRe
       forSide(c.stdin ?? "", side),
     );
   }
+  if (shared.length) diffsShared = settle(shared, shellRefs);
+  if (snapDir) fs.rmSync(snapDir, { recursive: true, force: true });
   const norm = {
     shell: normaliser([
       [l.a, "<ROOT>"],
@@ -122,7 +137,7 @@ export function compareLegs(l: Layout, c: DiffCase, mirrorFirst = false): DiffRe
       [l.scratch.ts.root, "<SCRATCH>"],
     ]),
   };
-  const diffs: string[] = [];
+  const diffs: string[] = [...diffsShared];
   const out = (side: Side): Leg => ({
     status: legs[side].status,
     stdout: norm[side](legs[side].stdout),
