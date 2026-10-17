@@ -1476,6 +1476,7 @@ jobs:
             figure-labels:
               - 'scripts/check-figure-labels.sh'
               - 'scripts/tests/windows-governance-figure-labels.test.ts'
+              - 'scripts/tests/governance-suite-figure-labels.test.ts'
               - 'docs/assets/**/*.png'
               - 'docs/assets/**/*.prompt.md'
               - 'scripts/check-figure-labels.ts'
@@ -1493,7 +1494,7 @@ jobs:
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-figure-labels.ts
       - name: Test Check Figure Labels
         if: steps.filter.outputs.figure-labels == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/windows-governance-figure-labels.test.ts
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/windows-governance-figure-labels.test.ts scripts/tests/governance-suite-figure-labels.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

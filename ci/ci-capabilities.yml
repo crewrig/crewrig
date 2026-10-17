@@ -2219,6 +2219,7 @@ capabilities:
         paths:
           - "scripts/check-figure-labels.sh"
           - "scripts/tests/windows-governance-figure-labels.test.ts"
+          - "scripts/tests/governance-suite-figure-labels.test.ts"
           - "docs/assets/**/*.png"
           - "docs/assets/**/*.prompt.md"
           - "scripts/check-figure-labels.ts"
@@ -2229,6 +2230,7 @@ capabilities:
         paths:
           - "scripts/check-figure-labels.sh"
           - "scripts/tests/windows-governance-figure-labels.test.ts"
+          - "scripts/tests/governance-suite-figure-labels.test.ts"
           - "docs/assets/**/*.png"
           - "docs/assets/**/*.prompt.md"
           - "scripts/check-figure-labels.ts"
@@ -2241,7 +2243,7 @@ capabilities:
       tools: [tesseract]
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-figure-labels.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/windows-governance-figure-labels.test.ts
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/windows-governance-figure-labels.test.ts scripts/tests/governance-suite-figure-labels.test.ts
 
   - id: mempalace
     name: "Test mempalace transcript, pin, and runtime guards"

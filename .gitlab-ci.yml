@@ -1748,12 +1748,13 @@ figure-labels:
     - apt-get update && apt-get install -y --no-install-recommends tesseract-ocr
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-figure-labels.ts"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/windows-governance-figure-labels.test.ts"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/windows-governance-figure-labels.test.ts scripts/tests/governance-suite-figure-labels.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/check-figure-labels.sh"
         - "scripts/tests/windows-governance-figure-labels.test.ts"
+        - "scripts/tests/governance-suite-figure-labels.test.ts"
         - "docs/assets/**/*.png"
         - "docs/assets/**/*.prompt.md"
         - "scripts/check-figure-labels.ts"
@@ -1763,6 +1764,7 @@ figure-labels:
       changes:
         - "scripts/check-figure-labels.sh"
         - "scripts/tests/windows-governance-figure-labels.test.ts"
+        - "scripts/tests/governance-suite-figure-labels.test.ts"
         - "docs/assets/**/*.png"
         - "docs/assets/**/*.prompt.md"
         - "scripts/check-figure-labels.ts"
