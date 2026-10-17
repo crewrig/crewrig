@@ -2,15 +2,22 @@
 //
 // Usage:
 //   node scripts/check-timing-budget.ts --runs <N> --budget-ms <M> [--expect-exit <code>]
-//        [--stdin-file <path>] [--cwd <path>] [--env-tmpdir <NAME>] [--case <label>]
-//        -- <node argv…>
+//        [--tolerate <K>] [--stdin-file <path>] [--cwd <path>] [--env-tmpdir <NAME>]
+//        [--case <label>] -- <node argv…>
 //
 // Runs `node <node argv…>` N times with the current Node.js binary, timing each
 // run from spawn to exit with `performance.now()`, so Node.js start-up is
-// included. Every run slower than the budget prints
+// included. Every run slower than the budget is printed:
 //   timing-budget: <script> exceeded <M> ms: measured <t> ms (run <i>/<N>)
-// and the harness exits 1. A run whose exit code differs from --expect-exit
-// (default 0) also fails the check. On success it prints min / median / max.
+// The check fails (exit 1) when more than K runs exceed the budget, when any run
+// exceeds 3 x the budget (the ceiling, whatever K is), or when any run's exit
+// code differs from --expect-exit (default 0). A run over the budget that the
+// verdict tolerates carries the trailing label `tolerated` (spec 0264 R1-R4).
+// --tolerate <K> (non-negative integer) sets K; default 1 when N >= 5, else 0, so
+// one slow spawn among many does not fail a job while a real slowdown, which
+// shifts every run, still does. `--tolerate 0` is the strict verdict. A K at or
+// above N prints a one-line notice: only the ceiling and the exit code can fail.
+// On success it prints min / median / max / second-worst.
 //
 // --stdin-file <path> feeds that file's bytes to every run's standard input
 // (default: no stdin), read once before the first run so file I/O is never timed.
@@ -42,6 +49,8 @@ export interface Options {
   runs: number;
   budgetMs: number;
   expectExit: number;
+  /** Runs allowed over the budget; resolved from the run count when absent. */
+  tolerate?: number;
   argv: string[];
   stdinFile?: string;
   cwd?: string;
@@ -65,6 +74,9 @@ export interface RunResult {
 export type Runner = (argv: readonly string[], extras?: RunExtras) => number | null;
 /** Returns a monotonic timestamp in milliseconds; injectable for tests. */
 export type Clock = () => number;
+
+/** A run longer than this many budgets is a hang or a regression, never a slow start. */
+export const CEILING_FACTOR = 3;
 
 export class UsageError extends Error {}
 
@@ -91,6 +103,7 @@ export function parseArgs(args: readonly string[]): Options {
   let runs: number | undefined;
   let budgetMs: number | undefined;
   let expectExit = 0;
+  let tolerate: number | undefined;
   let stdinFile: string | undefined;
   let cwd: string | undefined;
   let envTmpdir: string | undefined;
@@ -101,6 +114,7 @@ export function parseArgs(args: readonly string[]): Options {
     if (flag === "--runs") runs = positiveInt(flag, value);
     else if (flag === "--budget-ms") budgetMs = positiveInt(flag, value);
     else if (flag === "--expect-exit") expectExit = positiveInt(flag, value);
+    else if (flag === "--tolerate") tolerate = positiveInt(flag, value);
     else if (flag === "--stdin-file") stdinFile = nonEmpty(flag, value);
     else if (flag === "--cwd") cwd = nonEmpty(flag, value);
     else if (flag === "--case") caseLabel = nonEmpty(flag, value);
@@ -117,6 +131,7 @@ export function parseArgs(args: readonly string[]): Options {
     runs,
     budgetMs,
     expectExit,
+    ...(tolerate === undefined ? {} : { tolerate }),
     argv: args.slice(sep + 1),
     ...(stdinFile === undefined ? {} : { stdinFile }),
     ...(cwd === undefined ? {} : { cwd }),
@@ -181,25 +196,40 @@ export function evaluate(
   const name = opts.argv.find((a) => !a.startsWith("-")) ?? opts.argv.join(" ");
   const script = opts.caseLabel === undefined ? name : `${name} [case ${opts.caseLabel}]`;
   const lines: string[] = [];
+  const total = results.length;
+  const tolerate = opts.tolerate ?? (total >= 5 ? 1 : 0);
+  const ceiling = opts.budgetMs * CEILING_FACTOR;
+  const over = results.filter((r) => r.ms > opts.budgetMs).length;
+  const tooMany = over > tolerate;
+  let failed = false;
+  if (opts.tolerate !== undefined && tolerate >= total) {
+    lines.push(
+      `timing-budget: ${script} --tolerate ${tolerate} covers all ${total} runs: only the ${ceiling} ms ceiling and the exit status can fail the step`,
+    );
+  }
   results.forEach((r, i) => {
-    const tag = `(run ${i + 1}/${results.length})`;
+    const tag = `(run ${i + 1}/${total})`;
     if (r.status !== opts.expectExit) {
+      failed = true;
       lines.push(
         `timing-budget: ${script} exited ${String(r.status)}, expected ${opts.expectExit} ${tag}`,
       );
     }
     if (r.ms > opts.budgetMs) {
-      lines.push(
-        `timing-budget: ${script} exceeded ${opts.budgetMs} ms: measured ${r.ms.toFixed(1)} ms ${tag}`,
-      );
+      const line = `timing-budget: ${script} exceeded ${opts.budgetMs} ms: measured ${r.ms.toFixed(1)} ms ${tag}`;
+      if (tooMany || r.ms > ceiling) {
+        failed = true;
+        lines.push(line);
+      } else lines.push(`${line} tolerated`);
     }
   });
-  if (lines.length > 0) return { ok: false, lines };
+  if (failed) return { ok: false, lines };
   const sorted = results.map((r) => r.ms).sort((a, b) => a - b);
   const fmt = (n: number): string => n.toFixed(1);
   lines.push(
-    `timing-budget: ${script} within ${opts.budgetMs} ms over ${results.length} runs: ` +
-      `min ${fmt(sorted[0] ?? 0)} ms, median ${fmt(median(sorted))} ms, max ${fmt(sorted.at(-1) ?? 0)} ms`,
+    `timing-budget: ${script} within ${opts.budgetMs} ms over ${total} runs: ` +
+      `min ${fmt(sorted[0] ?? 0)} ms, median ${fmt(median(sorted))} ms, max ${fmt(sorted.at(-1) ?? 0)} ms, ` +
+      `second-worst ${fmt(sorted.at(-2) ?? sorted[0] ?? 0)} ms`,
   );
   return { ok: true, lines };
 }
@@ -212,7 +242,7 @@ export function main(args: readonly string[], run?: Runner, clock?: Clock): numb
   } catch (error) {
     if (!(error instanceof UsageError)) throw error;
     process.stderr.write(
-      `timing-budget: ${error.message}\nusage: check-timing-budget.ts --runs <N> --budget-ms <M> [--expect-exit <code>] [--stdin-file <path>] [--cwd <path>] [--env-tmpdir <NAME>] -- <node argv…>\n`,
+      `timing-budget: ${error.message}\nusage: check-timing-budget.ts --runs <N> --budget-ms <M> [--expect-exit <code>] [--tolerate <K>] [--stdin-file <path>] [--cwd <path>] [--env-tmpdir <NAME>] -- <node argv…>\n`,
     );
     return 2;
   }

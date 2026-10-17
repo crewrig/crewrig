@@ -286,7 +286,13 @@ and `require-dependency.ts`.
 
 **Checks.** `task test-runtime-foundations` runs the CI suites.
 `task timing-budget -- --runs <N> --budget-ms <M> -- <script>` times a
-script the way the `windows-node-floor-guard` job does.
+script the way the `windows-node-floor-guard` job does. The step fails when
+more than `--tolerate <K>` runs exceed the budget (default 1 from 5 runs up, 0
+below; `--tolerate 0` is strict), when any run exceeds 3 x the budget, or when an
+exit status differs from `--expect-exit`; tolerated runs print with the label
+`tolerated`. Recalibrate a budget from at least 5 green `windows-latest` runs as
+`max(3 x S, 300 ms)` rounded up to the next 50 ms, where S is the largest
+second-worst run, never above the carrier spec's cap (spec 0264).
 
 ## Branching Strategy
 

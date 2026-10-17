@@ -280,6 +280,106 @@ describe("evaluate", () => {
   });
 });
 
+describe("tolerance (spec 0264 R1-R5)", () => {
+  const TEN = ["--runs", "10", "--budget-ms", "550", "--", "s.js"];
+  const near = (...over: number[]): number[] => [
+    ...Array<number>(10 - over.length).fill(150),
+    ...over,
+  ];
+  const verdictOf = (args: string[], durations: number[], status = 0) => {
+    const opts = parseArgs(args);
+    return evaluate(opts, measure(opts, exitWith(status), fakeClock(durations)));
+  };
+
+  test("one slow run among ten passes, is labelled tolerated and the second-worst is shown", () => {
+    const v = verdictOf(TEN, near(681));
+    assert.equal(v.ok, true);
+    assert.deepEqual(v.lines.slice(0, 1), [
+      "timing-budget: s.js exceeded 550 ms: measured 681.0 ms (run 10/10) tolerated",
+    ]);
+    assert.match(v.lines.at(-1) ?? "", /max 681\.0 ms, second-worst 150\.0 ms$/);
+  });
+
+  test("two runs over budget fail and both are printed as before", () => {
+    const v = verdictOf(TEN, near(600, 700));
+    assert.equal(v.ok, false);
+    assert.deepEqual(v.lines, [
+      "timing-budget: s.js exceeded 550 ms: measured 600.0 ms (run 9/10)",
+      "timing-budget: s.js exceeded 550 ms: measured 700.0 ms (run 10/10)",
+    ]);
+  });
+
+  test("the case label reaches every failing line", () => {
+    const v = verdictOf(["--case", "c", ...TEN], near(600, 700));
+    assert.equal(v.lines.length, 2);
+    for (const line of v.lines)
+      assert.match(line, /^timing-budget: s\.js \[case c\] exceeded 550 ms/);
+  });
+
+  test("a run over three times the budget fails, whatever the tolerance", () => {
+    const v = verdictOf(TEN, near(1700));
+    assert.equal(v.ok, false);
+    assert.deepEqual(v.lines, [
+      "timing-budget: s.js exceeded 550 ms: measured 1700.0 ms (run 10/10)",
+    ]);
+    assert.equal(verdictOf(["--tolerate", "5", ...TEN], near(1700)).ok, false);
+  });
+
+  test("a wrong exit status in one run fails and names the run", () => {
+    const opts = parseArgs(["--expect-exit", "1", ...TEN]);
+    const statuses = [1, 1, 1, 0, 1, 1, 1, 1, 1, 1];
+    let i = 0;
+    const v = evaluate(
+      opts,
+      measure(opts, () => statuses[i++] ?? 1, fakeClock(near())),
+    );
+    assert.equal(v.ok, false);
+    assert.deepEqual(v.lines, ["timing-budget: s.js exited 0, expected 1 (run 4/10)"]);
+  });
+
+  test("--tolerate 0 is strict", () => {
+    assert.equal(verdictOf(["--tolerate", "0", ...TEN], near(681)).ok, false);
+  });
+
+  test("fewer than five runs are strict by default", () => {
+    const four = ["--runs", "4", "--budget-ms", "550", "--", "s.js"];
+    assert.equal(verdictOf(four, [150, 150, 150, 681]).ok, false);
+    assert.equal(verdictOf(["--tolerate", "1", ...four], [150, 150, 150, 681]).ok, true);
+  });
+
+  test("every run at 1.5 times the budget fails", () => {
+    const v = verdictOf(TEN, Array<number>(10).fill(825));
+    assert.equal(v.ok, false);
+    assert.equal(v.lines.length, 10);
+  });
+
+  test("a malformed --tolerate is a usage error with exit 2", () => {
+    assert.throws(
+      () => parseArgs(["--tolerate", "abc", ...TEN]),
+      /--tolerate needs a non-negative integer/,
+    );
+    assert.throws(() => parseArgs(["--tolerate", "-1", ...TEN]), /--tolerate/);
+    assert.equal(main(["--tolerate", "abc", ...TEN]), 2);
+  });
+
+  test("a tolerance at or above the run count prints one notice and exits 0", () => {
+    const five = ["--runs", "5", "--tolerate", "5", "--budget-ms", "550", "--", "s.js"];
+    const v = verdictOf(five, [150, 600, 700, 800, 900]);
+    assert.equal(v.ok, true);
+    assert.equal(v.lines.filter((l) => /ceiling/.test(l)).length, 1);
+    assert.match(
+      v.lines[0] ?? "",
+      /only the 1650 ms ceiling and the exit status can fail the step/,
+    );
+    assert.equal(main(five, exitWith(0), fakeClock([1, 1, 1, 1, 1])), 0);
+  });
+
+  test("the success line carries the second-worst run", () => {
+    const v = verdictOf(BASE, [40, 90, 60]);
+    assert.match(v.lines[0] ?? "", /max 90\.0 ms, second-worst 60\.0 ms/);
+  });
+});
+
 describe("main", () => {
   test("returns 2 on a usage error", () => {
     assert.equal(main(["--runs", "1"]), 2);
