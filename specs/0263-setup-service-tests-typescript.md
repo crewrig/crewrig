@@ -1,7 +1,7 @@
 ---
 id: "0263"
 slug: setup-service-tests-typescript
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1341
