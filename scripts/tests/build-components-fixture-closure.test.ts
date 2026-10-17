@@ -10,10 +10,15 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { after, describe, test } from "node:test";
+import { after, describe, mock, test } from "node:test";
 import { pathToFileURL } from "node:url";
 
-import { createFixtureTree, productionClosure, REPO } from "./lib/build-fixture-tree.ts";
+import {
+  createFixtureTree,
+  productionClosure,
+  REMOVE_OPTIONS,
+  REPO,
+} from "./lib/build-fixture-tree.ts";
 
 const temps: string[] = [];
 after(() => {
@@ -216,5 +221,19 @@ describe("createFixtureTree", () => {
     assert.equal(tree.read("crewrig.config.toml"), 'a = "b"\n');
     tree.remove("artifacts");
     assert.ok(!tree.exists("artifacts"));
+  });
+
+  test("dispose retries the removal on transient locks (EPERM, EBUSY), spec 0258 R40", (t) => {
+    const scratch = createFixtureTree({ deps: "none" });
+    const calls: unknown[] = [];
+    const real = fs.rmSync;
+    t.mock.method(fs, "rmSync", (target: fs.PathLike, options?: fs.RmOptions) => {
+      calls.push(options);
+      real(target, options);
+    });
+    scratch.dispose();
+    mock.restoreAll();
+    assert.deepEqual(calls, [REMOVE_OPTIONS]);
+    assert.ok(REMOVE_OPTIONS.maxRetries >= 1 && REMOVE_OPTIONS.retryDelay > 0);
   });
 });

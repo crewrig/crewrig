@@ -198,3 +198,55 @@ describe("windows curator proof helpers", () => {
     assert.ok(python === undefined || path.isAbsolute(python), String(python));
   });
 });
+
+describe("assertNoCarriageReturn", () => {
+  const zones = (): Fixture => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "cr-scan-"));
+    const [home, work, tmp] = ["home", "work", "tmp"].map((n) => {
+      const dir = path.join(root, n);
+      fs.mkdirSync(dir);
+      return dir;
+    });
+    return { root, home, work, tmp } as Fixture;
+  };
+  const seed = (fx: Fixture): void => {
+    for (const zone of [fx.home, fx.work, fx.tmp]) fs.writeFileSync(path.join(zone, "k"), "k\n");
+  };
+  const cleanup = (fx: Fixture): void => fs.rmSync(fx.root, { recursive: true, force: true });
+
+  it("fails when the scan reads no file in a zone", () => {
+    const fx = zones();
+    try {
+      assert.throws(() => assertNoCarriageReturn(fx), /read no file/);
+      fs.writeFileSync(path.join(fx.home, "k"), "k\n");
+      fs.writeFileSync(path.join(fx.work, "k"), "k\n");
+      assert.throws(() => assertNoCarriageReturn(fx), /read no file under .*tmp/);
+    } finally {
+      cleanup(fx);
+    }
+  });
+
+  it("passes on a clean file and fails on a carriage return", () => {
+    const fx = zones();
+    try {
+      seed(fx);
+      assertNoCarriageReturn(fx);
+      fs.writeFileSync(path.join(fx.tmp, "b.txt"), "one\r\n");
+      assert.throws(() => assertNoCarriageReturn(fx), /carriage return in: .*b\.txt/);
+    } finally {
+      cleanup(fx);
+    }
+  });
+
+  it("skips AppData, whose CRLF files are PowerShell's own", () => {
+    const fx = zones();
+    try {
+      fs.mkdirSync(path.join(fx.home, "AppData"));
+      fs.writeFileSync(path.join(fx.home, "AppData", "p.txt"), "x\r\n");
+      seed(fx);
+      assertNoCarriageReturn(fx);
+    } finally {
+      cleanup(fx);
+    }
+  });
+});
