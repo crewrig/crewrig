@@ -1,7 +1,7 @@
 ---
 id: "0258"
 slug: skill-extension-bundled-scripts-typescript
-status: approved
+status: implemented
 complexity: small
 interaction-mode: MINIMAL
 related-issue: 1611
@@ -14,8 +14,9 @@ version: 1.2.0
 ledger of row H, issue #1611 (the deferred, non-blocking findings of the pull
 requests #1603 to #1610). It runs under the release-branch regime of
 `specs/0215-shell-to-typescript-migration.delta-04.md`: its spec-PR targets
-`release/1231-ts-migration`. No behaviour of any script changes. The delta adds five
-test and CI hardening requirements (36 to 40) and records two decisions on the behaviour
+`release/1231-ts-migration`. No behaviour of any script changes. The delta adds four
+test hardening requirements (37 to 40), records the decision not to freeze the install of
+the extension-builder job (36) and records two decisions on the behaviour
 differences the ledger listed, neither of which adds a deviation letter. The version is a
 MINOR bump. This delta opens no question.*
 
@@ -23,16 +24,18 @@ MINOR bump. This delta opens no question.*
 
 <!-- markdownlint-disable MD029 -->
 
-36. **Frozen install of the extension-builder job.** The CI job `extension-builders-ts`
-    SHALL install its dependencies with `npm ci --workspaces=false` (the lockfile frozen, the
-    workspace packages not installed), not `npm install --include=dev`. The production closure
-    the builders need is unchanged by the switch: the dev dependencies of the root package
-    are installed, the workspace packages are not. The three carriers of the job
-    (`.github/workflows/build.yml`, `ci/ci-capabilities.yml` and the regenerated
-    `.gitlab-ci.yml`) and the install-line pattern of
-    `scripts/tests/extension-ci-wiring.test.ts` SHALL change together, and the pattern SHALL
-    reject, for this capability only, an install that resolves instead of freezing (the other
-    traced capabilities keep `npm install --include=dev`, which the release jobs need).
+36. **Install of the extension-builder job stays as is.** The CI job
+    `extension-builders-ts` SHALL keep `npm install --include=dev`. The ledger asked for
+    `npm ci --workspaces=false` (a frozen lockfile, 544 packages instead of 620), and the
+    first CI run of that change (pull request #1667, closed unmerged) showed why it cannot
+    be taken: the scaffold toolchain tests (`create-extension-skeleton-toolchain.test.ts`)
+    need the root's `@modelcontextprotocol/sdk`, which npm hoists only from the
+    `extensions/core/hello-world` workspace, so `--workspaces=false` leaves it out and three
+    tests fail. A scoped frozen install (`npm ci --include-workspace-root -w
+    extensions/core/hello-world`) would work around it but ties a CI line to one
+    extension's name for a gain of a frozen lockfile that the release jobs do not have
+    either; rejected. The dry run the ledger relied on (exit 0) proves the resolution, not
+    the test closure.
 
 37. **Unit tests of the scaffolder prompt.** `parseAnswer` and `promptComponents` of
     `scripts/lib/create-extension/prompt.ts` SHALL each have a unit test that does not go
@@ -65,13 +68,6 @@ MINOR bump. This delta opens no question.*
     `Build & Validate` run through its `cancel-on-failure` step.
 
 <!-- markdownlint-enable MD029 -->
-
-**Scenario:** The extension-builder job freezes its lockfile
-
-Given the reference `ci/ci-capabilities.yml` and the workflow `build.yml`
-When the install step of `extension-builders-ts` is read
-Then it is `npm ci --workspaces=false`, and the wiring test fails on
-`npm install --include=dev` for that capability.
 
 **Scenario:** A scan that walks nothing fails
 

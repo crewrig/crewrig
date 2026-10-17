@@ -130,9 +130,16 @@ export interface FixtureTreeOptions {
   readonly deps?: "full" | "no-packages" | "none";
 }
 
+/**
+ * Teardown options (spec 0258 R40): Node retries `rmSync` on `EPERM`, `EBUSY`, `ENOTEMPTY`, `EMFILE`
+ * and `ENFILE`, so a directory still held for a moment by the previous step (the "rename with a held
+ * handle" test of the Windows install proof) does not fail the job; 10 tries 100 ms apart.
+ */
+export const REMOVE_OPTIONS = { recursive: true, force: true, maxRetries: 10, retryDelay: 100 };
+
 const live = new Set<string>();
 after(() => {
-  for (const dir of live) fs.rmSync(dir, { recursive: true, force: true });
+  for (const dir of live) fs.rmSync(dir, REMOVE_OPTIONS);
   live.clear();
 });
 
@@ -179,7 +186,7 @@ export function createFixtureTree(options: FixtureTreeOptions = {}): FixtureTree
     write,
     read: (rel) => fs.readFileSync(resolve(rel), "utf8"),
     exists: (rel) => fs.existsSync(resolve(rel)),
-    remove: (rel) => fs.rmSync(resolve(rel), { recursive: true, force: true }),
+    remove: (rel) => fs.rmSync(resolve(rel), REMOVE_OPTIONS),
     artifact: (rel, content, mode) => write(`artifacts/${rel}`, content, mode),
     mapping: (rel, content) => write(`model-mappings/${rel}`, content),
     config: (toml) => write("crewrig.config.toml", toml),
@@ -195,7 +202,7 @@ export function createFixtureTree(options: FixtureTreeOptions = {}): FixtureTree
       return { status: res.status, stdout: res.stdout, stderr: res.stderr };
     },
     dispose() {
-      fs.rmSync(root, { recursive: true, force: true });
+      fs.rmSync(root, REMOVE_OPTIONS);
       live.delete(root);
     },
   };
