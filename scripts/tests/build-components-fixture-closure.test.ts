@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { after, describe, mock, test } from "node:test";
+import { after, describe, test } from "node:test";
 import { pathToFileURL } from "node:url";
 
 import {
@@ -224,7 +224,6 @@ describe("createFixtureTree", () => {
       real(target, options);
     });
     scratch.dispose();
-    mock.restoreAll();
     assert.deepEqual(calls, [REMOVE_OPTIONS]);
     assert.ok(REMOVE_OPTIONS.maxRetries >= 1 && REMOVE_OPTIONS.retryDelay > 0);
   });
