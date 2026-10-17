@@ -59,7 +59,7 @@ const REACHING = new RegExp(
     "install-claude-plugin-marketplace\\.test\\.ts",
     "test-build-claude-plugin-agents-glob\\.sh",
     "install-extension-all-real\\.test\\.ts",
-    "test-check-extension-provenance\\.sh",
+    "governance-suite-extension-provenance-r4\\.test\\.ts",
     // The governance checks (spec 0259) run as `node ... scripts/check-<name>.ts`; their `.sh`
     // forms are forwarding shims that stay valid.
     "scripts/check-extension-(provenance|pivot|manifest-version|version-bump|hook-map|hook-tokens)\\.(sh|ts)",

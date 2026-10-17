@@ -1384,12 +1384,14 @@ extension-provenance:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-provenance.ts"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-provenance.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-extension-provenance.test.ts scripts/tests/governance-suite-extension-provenance-r4.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/check-extension-provenance.sh"
-        - "scripts/tests/test-check-extension-provenance.sh"
+        - "scripts/tests/governance-suite-extension-provenance.test.ts"
+        - "scripts/tests/governance-suite-extension-provenance-r4.test.ts"
+        - "scripts/tests/lib/governance-*.ts"
         - "extensions/**"
         - "artifacts/**"
         - "scripts/check-extension-provenance.ts"
@@ -1397,7 +1399,9 @@ extension-provenance:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-extension-provenance.sh"
-        - "scripts/tests/test-check-extension-provenance.sh"
+        - "scripts/tests/governance-suite-extension-provenance.test.ts"
+        - "scripts/tests/governance-suite-extension-provenance-r4.test.ts"
+        - "scripts/tests/lib/governance-*.ts"
         - "extensions/**"
         - "artifacts/**"
         - "scripts/check-extension-provenance.ts"
@@ -1408,7 +1412,7 @@ extension-manifest:
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-manifest-version.ts"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-manifest-version.sh"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-version-bump.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-extension-version-bump.test.ts scripts/tests/governance-suite-extension-version-bump-base.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -1418,7 +1422,9 @@ extension-manifest:
         - "scripts/lib/common.sh"
         - "scripts/lib/extension-hooks.sh"
         - "scripts/tests/test-check-extension-manifest-version.sh"
-        - "scripts/tests/test-check-extension-version-bump.sh"
+        - "scripts/tests/governance-suite-extension-version-bump.test.ts"
+        - "scripts/tests/governance-suite-extension-version-bump-base.test.ts"
+        - "scripts/tests/lib/governance-*.ts"
         - "extensions/**"
         - "artifacts/**"
         - "scripts/check-extension-version-bump.ts"
@@ -1433,7 +1439,9 @@ extension-manifest:
         - "scripts/lib/common.sh"
         - "scripts/lib/extension-hooks.sh"
         - "scripts/tests/test-check-extension-manifest-version.sh"
-        - "scripts/tests/test-check-extension-version-bump.sh"
+        - "scripts/tests/governance-suite-extension-version-bump.test.ts"
+        - "scripts/tests/governance-suite-extension-version-bump-base.test.ts"
+        - "scripts/tests/lib/governance-*.ts"
         - "extensions/**"
         - "artifacts/**"
         - "scripts/check-extension-version-bump.ts"
@@ -1740,12 +1748,12 @@ figure-labels:
     - apt-get update && apt-get install -y --no-install-recommends tesseract-ocr
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-figure-labels.ts"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-figure-labels.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/windows-governance-figure-labels.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/check-figure-labels.sh"
-        - "scripts/tests/test-check-figure-labels.sh"
+        - "scripts/tests/windows-governance-figure-labels.test.ts"
         - "docs/assets/**/*.png"
         - "docs/assets/**/*.prompt.md"
         - "scripts/check-figure-labels.ts"
@@ -1754,7 +1762,7 @@ figure-labels:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-figure-labels.sh"
-        - "scripts/tests/test-check-figure-labels.sh"
+        - "scripts/tests/windows-governance-figure-labels.test.ts"
         - "docs/assets/**/*.png"
         - "docs/assets/**/*.prompt.md"
         - "scripts/check-figure-labels.ts"
@@ -2209,7 +2217,7 @@ misc:
   image: node:24
   script:
     - "npm ci --omit=dev --workspaces=false"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-no-machine-paths.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-no-machine-paths.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-gemini-overlay-enrollment.ts"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-gemini-overlay-enrollment.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-bash32-portability.sh"
@@ -2220,7 +2228,8 @@ misc:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/check-no-machine-paths.sh"
-        - "scripts/tests/test-check-no-machine-paths.sh"
+        - "scripts/tests/governance-suite-no-machine-paths.test.ts"
+        - "scripts/tests/lib/governance-*.ts"
         - "scripts/check-gemini-overlay-enrollment.sh"
         - "scripts/tests/test-check-gemini-overlay-enrollment.sh"
         - "scripts/tests/test-check-bash32-portability.sh"
@@ -2244,7 +2253,8 @@ misc:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-no-machine-paths.sh"
-        - "scripts/tests/test-check-no-machine-paths.sh"
+        - "scripts/tests/governance-suite-no-machine-paths.test.ts"
+        - "scripts/tests/lib/governance-*.ts"
         - "scripts/check-gemini-overlay-enrollment.sh"
         - "scripts/tests/test-check-gemini-overlay-enrollment.sh"
         - "scripts/tests/test-check-bash32-portability.sh"
@@ -2290,8 +2300,8 @@ frontmatter:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extract-frontmatter.sh"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-skill-versions.sh"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-feedback-routing.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-skill-versions.test.ts scripts/tests/governance-suite-skill-versions-base.test.ts"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-feedback-routing.test.ts"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-assembly-verification.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-artifact-build-install-scope.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tier-resolution-collision.test.ts scripts/tests/tier-resolution-declarations.test.ts scripts/tests/tier-resolution-install.test.ts scripts/tests/tier-resolution-landing.test.ts scripts/tests/tier-resolution-taskfile.test.ts scripts/tests/tier-resolution-three-tiers.test.ts"
@@ -2301,8 +2311,10 @@ frontmatter:
       changes:
         - "scripts/tests/test-extract-frontmatter.sh"
         - "scripts/check-skill-versions.sh"
-        - "scripts/tests/test-check-skill-versions.sh"
-        - "scripts/tests/test-check-feedback-routing.sh"
+        - "scripts/tests/governance-suite-skill-versions.test.ts"
+        - "scripts/tests/governance-suite-skill-versions-base.test.ts"
+        - "scripts/tests/lib/governance-*.ts"
+        - "scripts/tests/governance-suite-feedback-routing.test.ts"
         - "scripts/tests/test-assembly-verification.sh"
         - "scripts/tests/test-artifact-build-install-scope.sh"
         - "scripts/tests/tier-resolution-*.test.ts"
@@ -2333,8 +2345,10 @@ frontmatter:
       changes:
         - "scripts/tests/test-extract-frontmatter.sh"
         - "scripts/check-skill-versions.sh"
-        - "scripts/tests/test-check-skill-versions.sh"
-        - "scripts/tests/test-check-feedback-routing.sh"
+        - "scripts/tests/governance-suite-skill-versions.test.ts"
+        - "scripts/tests/governance-suite-skill-versions-base.test.ts"
+        - "scripts/tests/lib/governance-*.ts"
+        - "scripts/tests/governance-suite-feedback-routing.test.ts"
         - "scripts/tests/test-assembly-verification.sh"
         - "scripts/tests/test-artifact-build-install-scope.sh"
         - "scripts/tests/tier-resolution-*.test.ts"
@@ -2477,12 +2491,13 @@ check-claude-agent-layout:
 markdown-links:
   image: node:24
   script:
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-markdown-links.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-markdown-links.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/check-markdown-links.sh"
-        - "scripts/tests/test-check-markdown-links.sh"
+        - "scripts/tests/governance-suite-markdown-links.test.ts"
+        - "scripts/tests/lib/governance-*.ts"
         - "docs/**"
         - "README.md"
         - "AGENTS.md"
@@ -2492,7 +2507,8 @@ markdown-links:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-markdown-links.sh"
-        - "scripts/tests/test-check-markdown-links.sh"
+        - "scripts/tests/governance-suite-markdown-links.test.ts"
+        - "scripts/tests/lib/governance-*.ts"
         - "docs/**"
         - "README.md"
         - "AGENTS.md"

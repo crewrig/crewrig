@@ -1840,7 +1840,9 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-extension-provenance.sh"
-          - "scripts/tests/test-check-extension-provenance.sh"
+          - "scripts/tests/governance-suite-extension-provenance.test.ts"
+          - "scripts/tests/governance-suite-extension-provenance-r4.test.ts"
+          - "scripts/tests/lib/governance-*.ts"
           - "extensions/**"
           - "artifacts/**"
           - "scripts/check-extension-provenance.ts"
@@ -1849,7 +1851,9 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-extension-provenance.sh"
-          - "scripts/tests/test-check-extension-provenance.sh"
+          - "scripts/tests/governance-suite-extension-provenance.test.ts"
+          - "scripts/tests/governance-suite-extension-provenance-r4.test.ts"
+          - "scripts/tests/lib/governance-*.ts"
           - "extensions/**"
           - "artifacts/**"
           - "scripts/check-extension-provenance.ts"
@@ -1861,7 +1865,7 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-provenance.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-provenance.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-extension-provenance.test.ts scripts/tests/governance-suite-extension-provenance-r4.test.ts
 
   - id: extension-manifest
     name: "Enforce extension manifest single-version and version-bump"
@@ -1875,7 +1879,9 @@ capabilities:
           - "scripts/lib/common.sh"
           - "scripts/lib/extension-hooks.sh"
           - "scripts/tests/test-check-extension-manifest-version.sh"
-          - "scripts/tests/test-check-extension-version-bump.sh"
+          - "scripts/tests/governance-suite-extension-version-bump.test.ts"
+          - "scripts/tests/governance-suite-extension-version-bump-base.test.ts"
+          - "scripts/tests/lib/governance-*.ts"
           - "extensions/**"
           - "artifacts/**"
           - "scripts/check-extension-version-bump.ts"
@@ -1891,7 +1897,9 @@ capabilities:
           - "scripts/lib/common.sh"
           - "scripts/lib/extension-hooks.sh"
           - "scripts/tests/test-check-extension-manifest-version.sh"
-          - "scripts/tests/test-check-extension-version-bump.sh"
+          - "scripts/tests/governance-suite-extension-version-bump.test.ts"
+          - "scripts/tests/governance-suite-extension-version-bump-base.test.ts"
+          - "scripts/tests/lib/governance-*.ts"
           - "extensions/**"
           - "artifacts/**"
           - "scripts/check-extension-version-bump.ts"
@@ -1905,7 +1913,7 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-manifest-version.ts
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-manifest-version.sh
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-version-bump.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-extension-version-bump.test.ts scripts/tests/governance-suite-extension-version-bump-base.test.ts
 
   - id: extension-install
     name: "Test extension install and agent frontmatter contracts"
@@ -2210,7 +2218,7 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-figure-labels.sh"
-          - "scripts/tests/test-check-figure-labels.sh"
+          - "scripts/tests/windows-governance-figure-labels.test.ts"
           - "docs/assets/**/*.png"
           - "docs/assets/**/*.prompt.md"
           - "scripts/check-figure-labels.ts"
@@ -2220,7 +2228,7 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-figure-labels.sh"
-          - "scripts/tests/test-check-figure-labels.sh"
+          - "scripts/tests/windows-governance-figure-labels.test.ts"
           - "docs/assets/**/*.png"
           - "docs/assets/**/*.prompt.md"
           - "scripts/check-figure-labels.ts"
@@ -2233,7 +2241,7 @@ capabilities:
       tools: [tesseract]
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-figure-labels.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-figure-labels.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/windows-governance-figure-labels.test.ts
 
   - id: mempalace
     name: "Test mempalace transcript, pin, and runtime guards"
@@ -2708,7 +2716,8 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-no-machine-paths.sh"
-          - "scripts/tests/test-check-no-machine-paths.sh"
+          - "scripts/tests/governance-suite-no-machine-paths.test.ts"
+          - "scripts/tests/lib/governance-*.ts"
           - "scripts/check-gemini-overlay-enrollment.sh"
           - "scripts/tests/test-check-gemini-overlay-enrollment.sh"
           - "scripts/tests/test-check-bash32-portability.sh"
@@ -2733,7 +2742,8 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-no-machine-paths.sh"
-          - "scripts/tests/test-check-no-machine-paths.sh"
+          - "scripts/tests/governance-suite-no-machine-paths.test.ts"
+          - "scripts/tests/lib/governance-*.ts"
           - "scripts/check-gemini-overlay-enrollment.sh"
           - "scripts/tests/test-check-gemini-overlay-enrollment.sh"
           - "scripts/tests/test-check-bash32-portability.sh"
@@ -2770,7 +2780,7 @@ capabilities:
       runtime: node@24
     command:
       - npm ci --omit=dev --workspaces=false
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-no-machine-paths.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-no-machine-paths.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-gemini-overlay-enrollment.ts
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-gemini-overlay-enrollment.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-bash32-portability.sh
@@ -2821,8 +2831,10 @@ capabilities:
         paths:
           - "scripts/tests/test-extract-frontmatter.sh"
           - "scripts/check-skill-versions.sh"
-          - "scripts/tests/test-check-skill-versions.sh"
-          - "scripts/tests/test-check-feedback-routing.sh"
+          - "scripts/tests/governance-suite-skill-versions.test.ts"
+          - "scripts/tests/governance-suite-skill-versions-base.test.ts"
+          - "scripts/tests/lib/governance-*.ts"
+          - "scripts/tests/governance-suite-feedback-routing.test.ts"
           - "scripts/tests/test-assembly-verification.sh"
           - "scripts/tests/test-artifact-build-install-scope.sh"
           - "scripts/tests/tier-resolution-*.test.ts"
@@ -2854,8 +2866,10 @@ capabilities:
         paths:
           - "scripts/tests/test-extract-frontmatter.sh"
           - "scripts/check-skill-versions.sh"
-          - "scripts/tests/test-check-skill-versions.sh"
-          - "scripts/tests/test-check-feedback-routing.sh"
+          - "scripts/tests/governance-suite-skill-versions.test.ts"
+          - "scripts/tests/governance-suite-skill-versions-base.test.ts"
+          - "scripts/tests/lib/governance-*.ts"
+          - "scripts/tests/governance-suite-feedback-routing.test.ts"
           - "scripts/tests/test-assembly-verification.sh"
           - "scripts/tests/test-artifact-build-install-scope.sh"
           - "scripts/tests/tier-resolution-*.test.ts"
@@ -2890,8 +2904,8 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extract-frontmatter.sh
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-skill-versions.sh
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-feedback-routing.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-skill-versions.test.ts scripts/tests/governance-suite-skill-versions-base.test.ts
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-feedback-routing.test.ts
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-assembly-verification.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-artifact-build-install-scope.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tier-resolution-collision.test.ts scripts/tests/tier-resolution-declarations.test.ts scripts/tests/tier-resolution-install.test.ts scripts/tests/tier-resolution-landing.test.ts scripts/tests/tier-resolution-taskfile.test.ts scripts/tests/tier-resolution-three-tiers.test.ts
@@ -3027,7 +3041,8 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-markdown-links.sh"
-          - "scripts/tests/test-check-markdown-links.sh"
+          - "scripts/tests/governance-suite-markdown-links.test.ts"
+          - "scripts/tests/lib/governance-*.ts"
           - "docs/**"
           - "README.md"
           - "AGENTS.md"
@@ -3038,7 +3053,8 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-markdown-links.sh"
-          - "scripts/tests/test-check-markdown-links.sh"
+          - "scripts/tests/governance-suite-markdown-links.test.ts"
+          - "scripts/tests/lib/governance-*.ts"
           - "docs/**"
           - "README.md"
           - "AGENTS.md"
@@ -3050,7 +3066,7 @@ capabilities:
     requires:
       runtime: node@24
     command:
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-markdown-links.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-markdown-links.test.ts
 
   # changeset-coverage is the exhaustive run (spec 0147 delta-01 R21): it has
   # no pull-request and no push trigger. It runs `scheduled` (daily, on the

@@ -113,16 +113,9 @@ scripts/tests/test-check-extension-hook-map.sh
 scripts/tests/test-check-extension-hook-tokens.sh
 scripts/tests/test-check-extension-manifest-version.sh
 scripts/tests/test-check-extension-pivot.sh
-scripts/tests/test-check-extension-provenance.sh
-scripts/tests/test-check-extension-version-bump.sh
-scripts/tests/test-check-feedback-routing.sh
-scripts/tests/test-check-figure-labels.sh
 scripts/tests/test-check-gemini-overlay-enrollment.sh
-scripts/tests/test-check-markdown-links.sh
 scripts/tests/test-check-model-mappings.sh
-scripts/tests/test-check-no-machine-paths.sh
 scripts/tests/test-check-pipefail-grep.sh
-scripts/tests/test-check-skill-versions.sh
 scripts/tests/test-check-spec-id-reserved.sh
 scripts/tests/test-check-test-strays.sh
 scripts/tests/test-check-test-wiring.sh

@@ -518,7 +518,8 @@ scripts/
 ├── lib/
 │   └── common.sh                     # Shared Bash helpers (sourced by scripts)
 └── tests/
-    ├── test-check-skill-versions.sh  # Tests for check-skill-versions.sh
+    ├── governance-suite-skill-versions.test.ts       # Tests for check-skill-versions (cases 4-7)
+    ├── governance-suite-skill-versions-base.test.ts  # Tests for check-skill-versions (base-ref cases)
     └── test-extract-frontmatter.sh   # Tests for frontmatter extraction
 
 Taskfile.yml                          # Task runner configuration

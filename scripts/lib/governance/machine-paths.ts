@@ -31,7 +31,6 @@ const TOKEN = /([A-Za-z]:)?\/(Users|home)\/[A-Za-z0-9._-]+(\/|$)/g;
 /** Self-exclusions: the two shell files, their TypeScript twins and this ticket's scan tests. */
 export const EXCLUDES: readonly string[] = [
   "scripts/check-no-machine-paths.sh",
-  "scripts/tests/test-check-no-machine-paths.sh",
   "scripts/check-no-machine-paths.ts",
   "scripts/tests/governance-check-no-machine-paths.test.ts",
   "scripts/tests/governance-repo-scans-differential.test.ts",

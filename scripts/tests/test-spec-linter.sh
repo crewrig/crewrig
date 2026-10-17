@@ -512,7 +512,7 @@ fi
 # Cases 28-33 (spec 0109) — the base-branch `status: draft` check. Unlike every
 # case above, these need a real repository with a real base branch, so they
 # build a throwaway one (mirroring new_repo() in
-# scripts/tests/test-check-skill-versions.sh:54-66) instead of reusing the flat
+# scripts/tests/lib/governance-git-fixture.ts) instead of reusing the flat
 # non-git fixtures in $TMP_ROOT. The branch name is pinned with
 # `git symbolic-ref` rather than `git init -b`, so the fixture does not depend
 # on the host's `init.defaultBranch`.

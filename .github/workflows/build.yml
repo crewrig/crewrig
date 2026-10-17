@@ -1175,7 +1175,9 @@ jobs:
           filters: |
             extension-provenance:
               - 'scripts/check-extension-provenance.sh'
-              - 'scripts/tests/test-check-extension-provenance.sh'
+              - 'scripts/tests/governance-suite-extension-provenance.test.ts'
+              - 'scripts/tests/governance-suite-extension-provenance-r4.test.ts'
+              - 'scripts/tests/lib/governance-*.ts'
               - 'extensions/**'
               - 'artifacts/**'
               - 'scripts/check-extension-provenance.ts'
@@ -1193,7 +1195,7 @@ jobs:
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-provenance.ts
       - name: Test Check Extension Provenance
         if: steps.filter.outputs.extension-provenance == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-provenance.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-extension-provenance.test.ts scripts/tests/governance-suite-extension-provenance-r4.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1212,7 +1214,9 @@ jobs:
               - 'scripts/lib/common.sh'
               - 'scripts/lib/extension-hooks.sh'
               - 'scripts/tests/test-check-extension-manifest-version.sh'
-              - 'scripts/tests/test-check-extension-version-bump.sh'
+              - 'scripts/tests/governance-suite-extension-version-bump.test.ts'
+              - 'scripts/tests/governance-suite-extension-version-bump-base.test.ts'
+              - 'scripts/tests/lib/governance-*.ts'
               - 'extensions/**'
               - 'artifacts/**'
               - 'scripts/check-extension-version-bump.ts'
@@ -1231,7 +1235,7 @@ jobs:
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-manifest-version.sh
       - name: Test Check Extension Version Bump
         if: steps.filter.outputs.extension-manifest == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-version-bump.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-extension-version-bump.test.ts scripts/tests/governance-suite-extension-version-bump-base.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1471,7 +1475,7 @@ jobs:
           filters: |
             figure-labels:
               - 'scripts/check-figure-labels.sh'
-              - 'scripts/tests/test-check-figure-labels.sh'
+              - 'scripts/tests/windows-governance-figure-labels.test.ts'
               - 'docs/assets/**/*.png'
               - 'docs/assets/**/*.prompt.md'
               - 'scripts/check-figure-labels.ts'
@@ -1489,7 +1493,7 @@ jobs:
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-figure-labels.ts
       - name: Test Check Figure Labels
         if: steps.filter.outputs.figure-labels == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-figure-labels.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/windows-governance-figure-labels.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1950,7 +1954,8 @@ jobs:
           filters: |
             misc:
               - 'scripts/check-no-machine-paths.sh'
-              - 'scripts/tests/test-check-no-machine-paths.sh'
+              - 'scripts/tests/governance-suite-no-machine-paths.test.ts'
+              - 'scripts/tests/lib/governance-*.ts'
               - 'scripts/check-gemini-overlay-enrollment.sh'
               - 'scripts/tests/test-check-gemini-overlay-enrollment.sh'
               - 'scripts/tests/test-check-bash32-portability.sh'
@@ -1980,7 +1985,7 @@ jobs:
         run: npm ci --omit=dev --workspaces=false
       - name: Test Check No Machine Paths
         if: steps.filter.outputs.misc == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-no-machine-paths.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-no-machine-paths.test.ts
       - name: Check Gemini Overlay Enrollment
         if: steps.filter.outputs.misc == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-gemini-overlay-enrollment.ts
@@ -2032,8 +2037,10 @@ jobs:
             frontmatter:
               - 'scripts/tests/test-extract-frontmatter.sh'
               - 'scripts/check-skill-versions.sh'
-              - 'scripts/tests/test-check-skill-versions.sh'
-              - 'scripts/tests/test-check-feedback-routing.sh'
+              - 'scripts/tests/governance-suite-skill-versions.test.ts'
+              - 'scripts/tests/governance-suite-skill-versions-base.test.ts'
+              - 'scripts/tests/lib/governance-*.ts'
+              - 'scripts/tests/governance-suite-feedback-routing.test.ts'
               - 'scripts/tests/test-assembly-verification.sh'
               - 'scripts/tests/test-artifact-build-install-scope.sh'
               - 'scripts/tests/tier-resolution-*.test.ts'
@@ -2078,10 +2085,10 @@ jobs:
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extract-frontmatter.sh
       - name: Test Check Skill Versions
         if: steps.filter.outputs.frontmatter == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-skill-versions.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-skill-versions.test.ts scripts/tests/governance-suite-skill-versions-base.test.ts
       - name: Test Check Feedback Routing
         if: steps.filter.outputs.frontmatter == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-feedback-routing.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-feedback-routing.test.ts
       - name: Test Assembly Verification
         if: steps.filter.outputs.frontmatter == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-assembly-verification.sh
@@ -2107,7 +2114,8 @@ jobs:
           filters: |
             markdown-links:
               - 'scripts/check-markdown-links.sh'
-              - 'scripts/tests/test-check-markdown-links.sh'
+              - 'scripts/tests/governance-suite-markdown-links.test.ts'
+              - 'scripts/tests/lib/governance-*.ts'
               - 'docs/**'
               - 'README.md'
               - 'AGENTS.md'
@@ -2120,7 +2128,7 @@ jobs:
           node-version: 24
       - name: Test Check Markdown Links
         if: steps.filter.outputs.markdown-links == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-markdown-links.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-markdown-links.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
