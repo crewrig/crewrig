@@ -1558,6 +1558,65 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0259 R26-R28).
 
+  # Spec 0262 R21-R23 (ticket #1339): the model-CI-tooling suites and their shell-versus-TypeScript
+  # differential legs. Linux only; `jq` and `yq` are installed so the differential suites find the
+  # pinned tools. Glob discovery: later PRs add scripts/tests/model-ci-tooling-*.test.ts files and
+  # never edit this capability. The floor guard runs after the production dependency step.
+  - id: model-ci-tooling-ts
+    name: "Run the TypeScript model-CI-tooling suites and their shell differential legs"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/model-ci-tooling-*"
+          - "scripts/tests/lib/bash-suite-differential.ts"
+          - "scripts/tests/lib/differential-*.ts"
+          - "scripts/tests/lib/scratch-remote.ts"
+          - "scripts/merge-spec-pr.*"
+          - "scripts/lib/governance/merge-spec-pr.ts"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/model-ci-tooling-*"
+          - "scripts/tests/lib/bash-suite-differential.ts"
+          - "scripts/tests/lib/differential-*.ts"
+          - "scripts/tests/lib/scratch-remote.ts"
+          - "scripts/merge-spec-pr.*"
+          - "scripts/lib/governance/merge-spec-pr.ts"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq, yq]
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/model-ci-tooling-*.test.ts'
+
+  # Spec 0262 R21-R23 (ticket #1339): merge-spec-pr.ts from PowerShell. The production
+  # dependencies are installed first, the floor guard runs, then every
+  # scripts/tests/windows-model-ci-tooling-*.test.ts file runs (glob discovery, so later PRs never edit this
+  # capability). No timing budget and no `paths:` filter, like the Windows jobs above.
+  - id: windows-model-ci-tooling
+    name: "Windows model-CI-tooling checks: production install, floor guard and the PowerShell proof"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/build.yml, job `windows-model-ci-tooling`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.sh lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0262 R21-R23).
+
   # Spec 0256 R40 (ticket #1335), PR B1, plan finding v1-F3: the Windows exercise of layer 1. The
   # production dependencies are installed first, the floor guard runs as its own step, then the
   # same unit suites as `setup-modules-ts` run under pwsh; the POSIX-only ones skip themselves on

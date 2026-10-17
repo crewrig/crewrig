@@ -63,12 +63,12 @@ export function resolveInterpreters(input: ResolveInput): Interpreters {
 }
 
 /** The child's hermetic PATH: the stubs, the system directory, node on Windows. */
-export function sandboxPath(bin: string): string {
+export function sandboxPath(bin: string, extra: readonly string[] = []): string {
   const root = envGet(process.env, "SystemRoot") ?? envGet(process.env, "windir") ?? "C:\\Windows";
   const sys = WIN
     ? [path.dirname(process.execPath), win.join(root, "System32")]
     : ["/usr/bin", "/bin"];
-  return [bin, ...sys].join(path.delimiter);
+  return [bin, ...sys, ...extra].join(path.delimiter);
 }
 
 /** Set `key` on `env`, dropping case-variants first: Windows env names are case-insensitive ("Path"). */
@@ -96,6 +96,10 @@ export interface EntrySpawn {
   readonly home: string;
   readonly bin: string;
   readonly interpreters: Interpreters;
+  /** Working directory of the child; default: the parent's. */
+  readonly cwd?: string;
+  /** Directories appended to the narrowed child PATH (e.g. the one holding `git`). */
+  readonly extraPath?: readonly string[];
 }
 
 /** Run an entry (POSIX: node directly; Windows: through the absolute interpreter) and record it. */
@@ -104,12 +108,17 @@ export function spawnEntry(o: EntrySpawn): Run {
   for (const key of ["REPO_DIR", "CLAUDE_CONFIG_DIR"]) delete full[key];
   for (const [key, value] of Object.entries({ HOME: o.home, USERPROFILE: o.home, ...o.env }))
     setEnv(full, key, value);
-  setEnv(full, "PATH", sandboxPath(o.bin)); // hermetic: no real claude, copilot or agy
+  setEnv(full, "PATH", sandboxPath(o.bin, o.extraPath)); // hermetic: no real claude, copilot or agy
   const started = process.hrtime.bigint();
   const argv = [process.execPath, o.script, ...o.args];
   const ps = `& ${argv.map((a) => `'${a.replaceAll("'", "''")}'`).join(" ")}; exit $LASTEXITCODE`;
   const cmd = `"${argv.map((a) => `"${a}"`).join(" ")}"`;
-  const base = { encoding: "utf8", env: full, windowsHide: true } as const;
+  const base = {
+    encoding: "utf8",
+    env: full,
+    windowsHide: true,
+    ...(o.cwd === undefined ? {} : { cwd: o.cwd }),
+  } as const;
   const spawned: [string, string[], SpawnSyncOptionsWithStringEncoding] = !WIN
     ? [process.execPath, argv.slice(1), base]
     : o.shell === "cmd"

@@ -19,6 +19,8 @@ import {
   type ScratchRemote,
 } from "./scratch-remote.ts";
 
+const TYPELESS_FLAG = "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON";
+
 export interface SideCtx {
   readonly side: Side;
   readonly root: string;
@@ -97,6 +99,8 @@ export function compareLegs(l: Layout, c: DiffCase, mirrorFirst = false): DiffRe
     });
     for (const [k, v] of Object.entries(c.env ?? {})) env[k] = forSide(v, side);
     const cmd = side === "shell" ? ["bash", l.shellFile] : [...l.tsCommand, l.tsFile];
+    // The TS leg must not carry the MODULE_TYPELESS_PACKAGE_JSON warning on stderr.
+    if (side === "ts" && cmd[0] === "node") cmd.splice(1, 0, TYPELESS_FLAG);
     const file = path.join(roots[side], cmd[cmd.length - 1] ?? "");
     const full = [...cmd.slice(0, -1), file, ...(c.args ?? []).map((x) => forSide(x, side))];
     legs[side] = runLeg(

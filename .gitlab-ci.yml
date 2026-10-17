@@ -1160,6 +1160,35 @@ governance-checks-ts:
         - "scripts/check-*.sh"
         - "scripts/tests/test-check-*.sh"
 
+model-ci-tooling-ts:
+  image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends jq
+    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
+    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+    - chmod +x /usr/local/bin/yq
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node scripts/lib/node-floor-guard.js"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/model-ci-tooling-*.test.ts'"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/model-ci-tooling-*"
+        - "scripts/tests/lib/bash-suite-differential.ts"
+        - "scripts/tests/lib/differential-*.ts"
+        - "scripts/tests/lib/scratch-remote.ts"
+        - "scripts/merge-spec-pr.*"
+        - "scripts/lib/governance/merge-spec-pr.ts"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/model-ci-tooling-*"
+        - "scripts/tests/lib/bash-suite-differential.ts"
+        - "scripts/tests/lib/differential-*.ts"
+        - "scripts/tests/lib/scratch-remote.ts"
+        - "scripts/merge-spec-pr.*"
+        - "scripts/lib/governance/merge-spec-pr.ts"
+
 extension-render:
   image: node:24
   before_script:
