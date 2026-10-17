@@ -14,12 +14,7 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { defaultIsFile } from "../lib/worktree-claim/launch-windows.ts";
-import {
-  expectStatus,
-  resolveInterpreters,
-  spawnEntry,
-  why,
-} from "./lib/windows-proof-support.ts";
+import { expectStatus, resolveInterpreters, spawnEntry, why } from "./lib/windows-proof-support.ts";
 import type { Run } from "./lib/windows-proof-support.ts";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");

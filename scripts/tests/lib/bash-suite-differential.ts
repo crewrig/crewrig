@@ -115,9 +115,14 @@ export function runDifferential(
  * Install the wrapper at `<d.a>/scripts/<name>.sh`, keeping the original bytes at
  * `scripts/<name>.sh.shell`. An unchanged Bash suite that runs the script from `d.a` then drives
  * the shell in `d.a` and the TS twin in `d.b` (mirrored before each call). Returns the diff
- * record file: one JSON line per call.
+ * record file: one JSON line per call. `compareState: false` = pure-checker mode (no per-call
+ * mirror nor tree digests; see DiffCase.compareState).
  */
-export function installWrapper(d: Differential, name: string): string {
+export function installWrapper(
+  d: Differential,
+  name: string,
+  opts: { compareState?: boolean } = {},
+): string {
   const shellRel = `scripts/${name}.sh`;
   const original = path.join(d.a, shellRel);
   assertInside(d.root, original);
@@ -135,6 +140,7 @@ export function installWrapper(d: Differential, name: string): string {
     name,
     tsCommand: d.layout.tsCommand,
     scratch: d.layout.scratch,
+    compareState: opts.compareState !== false,
   };
   fs.writeFileSync(path.join(cfgDir, `${name}.json`), JSON.stringify(cfg));
   const wrapper = `#!/usr/bin/env bash\nexec node "${HERE}" "$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)/../${RECORD_DIR}/${name}.json" "$@"\n`;
@@ -185,6 +191,7 @@ if (import.meta.main) {
     name: string;
     tsCommand: string[];
     scratch: Record<Side, ScratchRemote>;
+    compareState?: boolean;
   };
   assertRoot(cfg.root);
   assertInside(cfg.root, cfg.a);
@@ -210,6 +217,7 @@ if (import.meta.main) {
       tsCommand: cfg.tsCommand,
       exclude: [shellRel, `${shellRel}.shell`],
       record: cfg.record,
+      compareState: cfg.compareState !== false,
     },
     {
       script: shellRel,

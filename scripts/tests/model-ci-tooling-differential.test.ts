@@ -170,6 +170,37 @@ describe("shared repositories named by the suite are isolated per leg", posix, (
   });
 });
 
+describe("pure-checker mode (compareState: false)", posix, () => {
+  test("output mutation is still a DIFF; a marker file is NOT a state diff", () => {
+    const base = { script: "scripts/fx.sh", compareState: false };
+    const clean = runDifferential({
+      ...base,
+      setup: (ctx) => {
+        put(ctx, "scripts/fx.sh", "echo ok\ntouch .marker\n");
+        put(ctx, "scripts/fx.ts", 'console.log("ok");\n');
+      },
+    });
+    assert.deepEqual(clean.diffs, [], "marker written by one side only is not compared");
+    const full = runDifferential({
+      script: "scripts/fx.sh",
+      setup: (ctx) => {
+        put(ctx, "scripts/fx.sh", "echo ok\ntouch .marker\n");
+        put(ctx, "scripts/fx.ts", 'console.log("ok");\n');
+      },
+    });
+    assert.match(full.diffs.join("\n"), /tree state differs/, "default still compares state");
+    const mutated = runDifferential({
+      ...base,
+      setup: (ctx) => {
+        put(ctx, "scripts/fx.sh", "echo ok\n");
+        put(ctx, "scripts/fx.ts", `console.log("${ctx.side === "ts" ? "ok!" : "ok"}");\n`);
+      },
+    });
+    assert.equal(mutated.equal, false);
+    assert.match(mutated.diffs.join("\n"), /stdout differs/);
+  });
+});
+
 describe("scratch-remote guards", posix, () => {
   test("a remote URL outside the scratch directory throws (req 22)", () => {
     const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "scratch-guard-")));

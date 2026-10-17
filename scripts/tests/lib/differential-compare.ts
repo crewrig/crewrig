@@ -42,6 +42,12 @@ export interface DiffCase {
   stdin?: string;
   /** Working directory, relative to the sandbox root. */
   cwd?: string;
+  /**
+   * Default true. False = pure-checker mode: the script writes nothing under the sandbox, so
+   * the per-call mirror and the tree/HOME digests are skipped; only stdout, stderr, status and
+   * refs are compared.
+   */
+  compareState?: boolean;
 }
 
 export interface Leg {
@@ -69,6 +75,7 @@ export interface Layout {
   exclude: string[];
   record?: string;
   stubGh?: boolean;
+  compareState?: boolean;
 }
 
 function runLeg(cmd: string[], cwd: string, env: NodeJS.ProcessEnv, stdin: string): Leg {
@@ -92,7 +99,8 @@ export function compareLegs(l: Layout, c: DiffCase, mirrorFirst = false): DiffRe
   assertInside(l.root, l.a);
   assertInside(l.root, l.b);
   const roots: Record<Side, string> = { shell: l.a, ts: l.b };
-  if (mirrorFirst) mirror(l.a, l.b, [...l.exclude, l.tsFile]);
+  const state = (c.compareState ?? l.compareState) !== false;
+  if (mirrorFirst && state) mirror(l.a, l.b, [...l.exclude, l.tsFile]);
   const forSide = (s: string, side: Side): string => {
     const out = s.replaceAll("{ROOT}", roots[side]);
     return side === "ts" ? out.replaceAll(l.a, l.b) : out;
@@ -163,13 +171,15 @@ export function compareLegs(l: Layout, c: DiffCase, mirrorFirst = false): DiffRe
     );
   if (s.status !== t.status) diffs.push(`status differs: shell=${s.status} ts=${t.status}`);
   const tree = (root: string, side: Side, ex: string[]) => treeMap(root, norm[side], ex);
-  const treeDiff = diffMaps(tree(l.a, "shell", l.exclude), tree(l.b, "ts", l.exclude));
-  if (treeDiff) diffs.push(`tree state differs:\n${treeDiff}`);
-  const homeDiff = diffMaps(
-    tree(l.scratch.shell.home, "shell", []),
-    tree(l.scratch.ts.home, "ts", []),
-  );
-  if (homeDiff) diffs.push(`HOME state differs:\n${homeDiff}`);
+  if (state) {
+    const treeDiff = diffMaps(tree(l.a, "shell", l.exclude), tree(l.b, "ts", l.exclude));
+    if (treeDiff) diffs.push(`tree state differs:\n${treeDiff}`);
+    const homeDiff = diffMaps(
+      tree(l.scratch.shell.home, "shell", []),
+      tree(l.scratch.ts.home, "ts", []),
+    );
+    if (homeDiff) diffs.push(`HOME state differs:\n${homeDiff}`);
+  }
   const refs = (side: Side): string[] => {
     const root = roots[side];
     const bare = l.scratch[side].bare;
