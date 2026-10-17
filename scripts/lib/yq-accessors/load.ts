@@ -126,6 +126,21 @@ export function loadYq(text: string): YqNode {
     }
     const frame = stack.pop() ?? { children: [] };
     const result = state.result;
+    // A flow collection nested in a block sequence fires its open/close pair twice, the
+    // outer pair wrapping the inner one with the SAME loaded object: pass the inner node on.
+    const only = frame.children[0];
+    if (
+      (state.kind === "sequence" || state.kind === "mapping") &&
+      frame.children.length === 1 &&
+      only !== undefined &&
+      typeof result === "object" &&
+      result !== null &&
+      byObject.get(result) === only
+    ) {
+      stack[stack.length - 1]?.children.push(only);
+      last = only;
+      return;
+    }
     let node: YqNode;
     if (state.kind === "mapping") {
       const obj = result as Record<string, unknown>;

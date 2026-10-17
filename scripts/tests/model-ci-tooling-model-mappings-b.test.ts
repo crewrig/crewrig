@@ -4,7 +4,7 @@
 // (target gemini, so A13 stays quiet) and compares the rejection lines.
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -36,12 +36,15 @@ function repoWith(edit: (t: string) => string, file: string): string {
   return root;
 }
 
-function rejections(cmd: string, args: string[], repo: string): string[] {
-  const r = spawnSync(cmd, args, {
-    encoding: "utf8",
-    env: { ...process.env, LC_ALL: "C", CREWRIG_REPO_DIR: repo },
+function rejections(cmd: string, args: string[], repo: string): Promise<string[]> {
+  return new Promise((resolve) => {
+    const child = spawn(cmd, args, {
+      env: { ...process.env, LC_ALL: "C", CREWRIG_REPO_DIR: repo },
+    });
+    let stderr = "";
+    child.stderr.on("data", (d: Buffer) => (stderr += d.toString()));
+    child.on("close", () => resolve(stderr.split("\n").filter((l) => PORTED.test(l))));
   });
-  return r.stderr.split("\n").filter((l) => PORTED.test(l));
 }
 
 const flags = ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON"];
@@ -144,17 +147,23 @@ const CASES: Array<[string, string, (t: string) => string, string?]> = [
   ],
 ];
 
-describe("surfaces, grounds and offerings passes vs the shell", { skip: SKIP }, () => {
-  for (const [name, id, edit, file = "gemini.yml"] of CASES) {
-    test(name, () => {
-      const repo = repoWith(edit, file);
-      const sh = rejections("bash", [SH], repo);
-      const ts = rejections(process.execPath, [...flags, TS], repo);
-      assert.deepEqual(ts, sh);
-      assert.ok(
-        ts.some((l) => l.includes(`: ${id} `)),
-        `expected ${id} in ${JSON.stringify(ts)}`,
-      );
-    });
-  }
-});
+describe(
+  "surfaces, grounds and offerings passes vs the shell",
+  { skip: SKIP, concurrency: 6 },
+  () => {
+    for (const [name, id, edit, file = "gemini.yml"] of CASES) {
+      test(name, async () => {
+        const repo = repoWith(edit, file);
+        const [sh, ts] = await Promise.all([
+          rejections("bash", [SH], repo),
+          rejections(process.execPath, [...flags, TS], repo),
+        ]);
+        assert.deepEqual(ts, sh);
+        assert.ok(
+          ts.some((l) => l.includes(`: ${id} `)),
+          `expected ${id} in ${JSON.stringify(ts)}`,
+        );
+      });
+    }
+  },
+);

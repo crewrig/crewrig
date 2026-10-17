@@ -1,8 +1,8 @@
 // pass-shape.ts — the target, top-level shape and duplicate-id assertions
 // (check-model-mappings.sh:354-378, 525-589): A1, A2, A3, A6, A7, A15.
 
-import { fieldValues, hasKey, keyList, textOrEmpty } from "./nodes.ts";
-import { get, type YqNode } from "../yq-accessors/index.ts";
+import { fieldValues, hasKey, keyList, strictGet, textOrEmpty } from "./nodes.ts";
+import { type YqNode } from "../yq-accessors/index.ts";
 import type { Fail, PassScope } from "./types.ts";
 import { inList, TARGET_VOCAB } from "./vocab.ts";
 
@@ -23,14 +23,13 @@ export function checkRequiredKeys(node: YqNode, required: string, label: string,
 
 /** A1, A2: the declared target is in the vocabulary and agrees with the filename stem. */
 export function checkTarget(scope: PassScope, wantTarget: string, file: string): void {
-  const target = textOrEmpty(get(scope.doc, ["target"]));
+  const target = textOrEmpty(strictGet(file, scope.doc, ["target"]));
   if (!inList(TARGET_VOCAB, target)) {
     scope.fail("A1", `target '${target}' is not one of {${TARGET_VOCAB}}`);
   }
   if (target !== wantTarget) {
     scope.fail("A2", `target '${target}' disagrees with filename stem '${wantTarget}'`);
   }
-  void file;
 }
 
 /** A15, A3 on the document root; an org file's required set reduces to `target`. */

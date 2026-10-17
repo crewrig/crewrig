@@ -31,10 +31,21 @@ export function quiet<T>(fn: () => T, fallback: T): T {
   }
 }
 
-/** A read the shell did not silence: a yq failure is a (c) runtime failure. */
+/**
+ * A read the shell did not silence: a yq failure is a (c) runtime failure. yq also fails
+ * when a key is read through a sequence, which the shared reader answers with null.
+ */
 export function strictGet(file: string, doc: YqNode, path: readonly string[]): YqNode {
   try {
-    return get(doc, path);
+    let cur = doc;
+    for (const seg of path) {
+      const at = unalias(cur);
+      if (at instanceof YqSeq && !/^[0-9]+$/.test(seg)) {
+        throw new Error(`cannot index array with '${seg}'`);
+      }
+      cur = get(cur, [seg]);
+    }
+    return cur;
   } catch (e) {
     throw new ModelMappingsError(`${file}: ${e instanceof Error ? e.message : String(e)}`);
   }
