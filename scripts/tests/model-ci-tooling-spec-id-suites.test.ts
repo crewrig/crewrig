@@ -12,6 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 import { createDifferential, installWrapper } from "./lib/bash-suite-differential.ts";
+import { tmpEnv } from "./lib/differential-guard.ts";
 import { cleanEnv } from "./lib/differential-sandbox.ts";
 
 interface Entry {
@@ -59,7 +60,7 @@ describe("spec-id Bash suites through the differential wrapper", () => {
         const run = spawnSync("bash", [path.join(d.a, suite)], {
           cwd: d.a,
           encoding: "utf8",
-          env: cleanEnv(d.ctx.shell.scratch.home),
+          env: cleanEnv(d.ctx.shell.scratch.home, tmpEnv(d.root)),
           maxBuffer: 64 * 1024 * 1024,
           timeout: 540_000,
         });

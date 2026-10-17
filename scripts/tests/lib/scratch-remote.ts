@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { assertInside } from "./differential-guard.ts";
 
 /** Fixed identity and dates, so parentless commits hash identically on both sides. */
 export const FIXED_GIT_ENV: Readonly<Record<string, string>> = {
@@ -56,6 +57,7 @@ export function createScratchRemote(parent: string, name = "scratch"): ScratchRe
   git(seed, ["add", "README"]);
   git(seed, ["commit", "--quiet", "-m", "seed"]);
   git(seed, ["push", "--quiet", bare, "main"]);
+  assertInside(root, seed);
   fs.rmSync(seed, { recursive: true, force: true });
   return { root, bare, home, bin };
 }

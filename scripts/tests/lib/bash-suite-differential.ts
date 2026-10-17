@@ -11,7 +11,6 @@
 // Windows: the shell legs need bash; callers skip on win32.
 
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -21,6 +20,7 @@ import {
   type Layout,
   type SideCtx,
 } from "./differential-compare.ts";
+import { assertInside, assertRoot, createRoot } from "./differential-guard.ts";
 import { makeSandbox, RECORD_DIR, type Side } from "./differential-sandbox.ts";
 import { createScratchRemote, type ScratchRemote, writeStubGh } from "./scratch-remote.ts";
 
@@ -31,6 +31,8 @@ const HERE = fileURLToPath(import.meta.url);
 
 export interface Differential {
   readonly root: string;
+  /** The root's own temp directory: give it to a suite as TMPDIR (see `tmpEnv`). */
+  readonly tmp: string;
   readonly a: string;
   readonly b: string;
   readonly ctx: Record<Side, SideCtx>;
@@ -44,14 +46,15 @@ export function createDifferential(
   c: DiffCase,
   opts: { setup?: (ctx: SideCtx) => void; stubGh?: boolean; record?: string } = {},
 ): Differential {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "differential-")));
-  const a = makeSandbox(path.join(root, "shell"));
-  const b = makeSandbox(path.join(root, "ts"));
+  const root = createRoot();
+  const a = makeSandbox(root, path.join(root, "shell"));
+  const b = makeSandbox(root, path.join(root, "ts"));
   const scratch = {
     shell: createScratchRemote(root, "shell-scratch"),
     ts: createScratchRemote(root, "ts-scratch"),
   };
   const layout: Layout = {
+    root,
     a,
     b,
     scratch,
@@ -71,6 +74,7 @@ export function createDifferential(
   }
   return {
     root,
+    tmp: path.join(root, "tmp"),
     a,
     b,
     ctx,
@@ -85,7 +89,10 @@ export function createDifferential(
         },
         next,
       ),
-    cleanup: () => fs.rmSync(root, { recursive: true, force: true }),
+    cleanup: () => {
+      assertRoot(root);
+      fs.rmSync(root, { recursive: true, force: true });
+    },
   };
 }
 
@@ -113,12 +120,15 @@ export function runDifferential(
 export function installWrapper(d: Differential, name: string): string {
   const shellRel = `scripts/${name}.sh`;
   const original = path.join(d.a, shellRel);
+  assertInside(d.root, original);
   fs.renameSync(original, `${original}.shell`);
   const record = path.join(d.root, "diff-record.jsonl");
+  assertInside(d.root, record);
   fs.writeFileSync(record, "");
   const cfgDir = path.join(d.a, RECORD_DIR);
   fs.mkdirSync(cfgDir, { recursive: true });
   const cfg = {
+    root: d.root,
     a: d.a,
     b: d.b,
     record,
@@ -135,6 +145,7 @@ export function installWrapper(d: Differential, name: string): string {
 // Wrapper entry: node bash-suite-differential.ts <config.json> [args...]
 if (import.meta.main) {
   const cfg = JSON.parse(fs.readFileSync(process.argv[2] ?? "", "utf8")) as {
+    root: string;
     a: string;
     b: string;
     record: string;
@@ -142,6 +153,10 @@ if (import.meta.main) {
     tsCommand: string[];
     scratch: Record<Side, ScratchRemote>;
   };
+  assertRoot(cfg.root);
+  assertInside(cfg.root, cfg.a);
+  assertInside(cfg.root, cfg.b);
+  assertInside(cfg.root, cfg.record);
   const shellRel = `scripts/${cfg.name}.sh`;
   const cwd = process.cwd();
   const inside = cwd === cfg.a || cwd.startsWith(cfg.a + path.sep);
@@ -157,9 +172,11 @@ if (import.meta.main) {
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
     }
   }
+  assertInside(cfg.root, lock);
   process.on("exit", () => fs.rmSync(lock, { recursive: true, force: true }));
   const res = compareLegs(
     {
+      root: cfg.root,
       a: cfg.a,
       b: cfg.b,
       scratch: cfg.scratch,

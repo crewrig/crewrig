@@ -9,6 +9,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertInside } from "./differential-guard.ts";
 import { git } from "./scratch-remote.ts";
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -21,8 +22,12 @@ let template: string | undefined;
 /** One per-process snapshot of the tracked files (never untracked node_modules or dist). */
 function snapshot(): string {
   if (template !== undefined) return template;
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "differential-tpl-")));
-  process.on("exit", () => fs.rmSync(dir, { recursive: true, force: true }));
+  const tmp = fs.realpathSync(os.tmpdir());
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(tmp, "differential-tpl-")));
+  process.on("exit", () => {
+    assertInside(tmp, dir);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
   for (const rel of git(REPO, ["ls-files", "-z"]).split("\0").filter(Boolean)) {
     const src = path.join(REPO, rel);
     const dest = path.join(dir, rel);
@@ -43,7 +48,8 @@ function snapshot(): string {
 }
 
 /** Copy a tree with copy-on-write where the platform has it (macOS `cp -c`, Linux reflink). */
-function copyTree(from: string, to: string): void {
+function copyTree(root: string, from: string, to: string): void {
+  assertInside(root, to);
   const flags = process.platform === "darwin" ? ["-cR"] : ["-R", "--reflink=auto"];
   const res = spawnSync("cp", [...flags, from, to], { stdio: "ignore" });
   if (res.status !== 0) {
@@ -73,11 +79,13 @@ function stamps(root: string): Map<string, string> {
 }
 
 /** Build one sandbox at `dest`: tracked copy, `.git` clone with its remotes removed. */
-export function makeSandbox(dest: string): string {
-  copyTree(snapshot(), dest);
+export function makeSandbox(root: string, dest: string): string {
+  assertInside(root, dest);
+  copyTree(root, snapshot(), dest);
   baselines.set(dest, stamps(dest));
   const clone = `${dest}.clone`;
-  git(os.tmpdir(), ["clone", "--quiet", "--no-checkout", "--local", REPO, clone]);
+  assertInside(root, clone);
+  git(root, ["clone", "--quiet", "--no-checkout", "--local", REPO, clone]);
   fs.renameSync(path.join(clone, ".git"), path.join(dest, ".git"));
   fs.rmSync(clone, { recursive: true, force: true });
   git(dest, ["remote", "remove", "origin"]);
@@ -160,9 +168,15 @@ export function mirror(a: string, b: string, exclude: readonly string[]): void {
   for (const [rel, sig] of from) {
     if (to.get(rel) === sig) continue;
     const dest = path.join(b, rel);
+    assertInside(b, dest);
+    assertInside(a, path.join(a, rel));
     fs.rmSync(dest, { force: true });
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.cpSync(path.join(a, rel), dest, { verbatimSymlinks: true });
   }
-  for (const rel of to.keys()) if (!from.has(rel)) fs.rmSync(path.join(b, rel), { force: true });
+  for (const rel of to.keys()) {
+    if (from.has(rel)) continue;
+    assertInside(b, path.join(b, rel));
+    fs.rmSync(path.join(b, rel), { force: true });
+  }
 }

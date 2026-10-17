@@ -7,11 +7,12 @@
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
+import { assertInside, assertRoot, isInside } from "./differential-guard.ts";
 import { refsOf } from "./scratch-remote.ts";
 
 export interface Shared {
+  readonly root: string;
   readonly dir: string;
   pre?: string;
   post?: string;
@@ -21,25 +22,32 @@ const isRepo = (dir: string): boolean =>
   fs.existsSync(path.join(dir, ".git")) ||
   (fs.existsSync(path.join(dir, "HEAD")) && fs.existsSync(path.join(dir, "objects")));
 
-const inside = (p: string, root: string): boolean => p === root || p.startsWith(root + path.sep);
-
-/** Existing local repositories named by `values`, outside every path in `excluded`. */
-export function findShared(values: readonly string[], excluded: readonly string[]): Shared[] {
+/**
+ * Existing local repositories named by `values` (argv, env, remote URLs) that resolve strictly
+ * inside the differential `root` and outside every path in `excluded`. A value that names anything
+ * else (HOMEBREW_PREFIX, HOME, GIT_DIR, the checkout...) is ignored and never touched.
+ */
+export function findShared(
+  values: readonly string[],
+  root: string,
+  excluded: readonly string[],
+): Shared[] {
+  assertRoot(root);
   const found = new Map<string, Shared>();
   const queue = [...values];
   for (let v = queue.shift(); v !== undefined; v = queue.shift()) {
-    if (!path.isAbsolute(v)) continue;
+    if (v.startsWith("file://")) v = v.slice(7);
+    if (!path.isAbsolute(v) || !isInside(root, v)) continue;
     let real: string;
     try {
       real = fs.realpathSync(v);
     } catch {
       continue;
     }
-    // Only the suite's own temp directories: never the checkout, HOME or any other repository.
-    if (!inside(real, fs.realpathSync(os.tmpdir())) || excluded.some((e) => inside(real, e)))
-      continue;
+    // Re-checked on the realpath: a symlink inside the root must not lead out of it.
+    if (!isInside(root, real) || excluded.some((e) => real === e || isInside(e, real))) continue;
     if (found.has(real) || !fs.statSync(real).isDirectory() || !isRepo(real)) continue;
-    found.set(real, { dir: real });
+    found.set(real, { root, dir: real });
     // A work clone's local remotes are shared state too.
     const urls = spawnSync("git", ["-C", real, "remote", "-v"], { encoding: "utf8" }).stdout ?? "";
     for (const line of urls.split("\n")) queue.push(line.split(/\s+/)[1] ?? "");
@@ -52,11 +60,16 @@ function snapshot(s: Shared, into: string, tag: string): string {
     into,
     `${path.basename(s.dir)}.${tag}.${Math.random().toString(36).slice(2)}`,
   );
+  assertInside(s.root, s.dir);
+  assertInside(s.root, dest);
   fs.cpSync(s.dir, dest, { recursive: true, verbatimSymlinks: true });
   return dest;
 }
 
 function restore(s: Shared, from: string): void {
+  assertInside(s.root, s.dir);
+  assertInside(s.root, from);
+  if (!isRepo(s.dir)) throw new Error(`refusing to restore over a non-repository: ${s.dir}`);
   fs.rmSync(s.dir, { recursive: true, force: true });
   fs.cpSync(from, s.dir, { recursive: true, verbatimSymlinks: true });
 }
