@@ -208,28 +208,72 @@ test("the final status run decides the exit status", async () => {
   }
 });
 
-test("a configuration that cannot be backed up is warned about, as the shell does, and the switch goes on", async () => {
+const CONFIGS = [
+  ".claude.json",
+  ".gemini/settings.json",
+  ".copilot/mcp-config.json",
+  ".gemini/config/mcp_config.json",
+];
+const snapshot = (home: string): string[] =>
+  CONFIGS.map((f) => readFileSync(path.join(home, f), "utf8"));
+
+async function runWithFailingSecondBackup(rotate: boolean) {
   const fx = fixture();
+  const before = snapshot(fx.home);
+  const registered: string[] = [];
+  const backedUp: string[] = [];
+  let calls = 0;
+  const code = await runSwitch(
+    options(fx, {
+      rotate,
+      backup: (file) => (++calls === 2 ? null : (backedUp.push(file), "/dev/null.bak")),
+      register: (cli) => void registered.push(cli),
+      backend,
+      installDaemon: async () => ({ ok: true, lines: [] }),
+      replaceProcess: async () => true,
+      runStatus: () => 0,
+    }),
+  );
+  return { fx, before, registered, backedUp, code };
+}
+
+test("a configuration that cannot be backed up aborts the switch before any change (spec 0252 R34)", async () => {
+  const { fx, before, registered, backedUp, code } = await runWithFailingSecondBackup(false);
   try {
-    let calls = 0;
-    const code = await runSwitch(
+    assert.equal(code, 1);
+    assert.ok(fx.out.some((l) => l.startsWith("  ERROR: could not back up ")));
+    assert.ok(fx.out.some((l) => l === "         No assistant has been changed. (R12)"));
+    assert.ok(fx.out.some((l) => l.includes("then re-run.")));
+    assert.equal(fx.err.length, 0, "the refusal goes to standard output");
+    assert.deepEqual(registered, [], "no assistant was registered");
+    assert.equal(backedUp.length, 1, "the backup taken before the failure is left in place");
+    assert.ok(!fx.out.some((l) => l.includes("switched to the shared daemon")));
+    assert.ok(!fx.out.some((l) => l.startsWith("Done.")));
+    assert.deepEqual(snapshot(fx.home), before, "every configuration is byte-identical");
+  } finally {
+    rmSync(fx.home, { recursive: true, force: true });
+  }
+});
+
+test("a backup failure during --rotate aborts the same way and a re-run converges", async () => {
+  const { fx, before, registered, code } = await runWithFailingSecondBackup(true);
+  try {
+    assert.equal(code, 1);
+    assert.deepEqual(registered, []);
+    assert.deepEqual(snapshot(fx.home), before);
+    assert.ok(existsSync(tokenFilePath()), "the new token file exists for the re-run");
+    fx.out.length = 0;
+    const again = await runSwitch(
       options(fx, {
-        backup: () => (++calls === 2 ? null : "/dev/null.bak"),
         backend,
         installDaemon: async () => ({ ok: true, lines: [] }),
         replaceProcess: async () => true,
         runStatus: () => 0,
       }),
     );
-    assert.equal(code, 0);
-    assert.ok(fx.err.some((l) => l.includes("WARNING: Failed to back up")));
-    assert.equal(fx.err.filter((l) => l.includes("Failed to back up")).length, 1);
+    assert.equal(again, 0);
     for (const f of [".claude.json", ".gemini/settings.json", ".copilot/mcp-config.json"]) {
-      assert.equal(
-        (entryOf(path.join(fx.home, f)) as { type: string }).type,
-        "http",
-        `${f} switched`,
-      );
+      assert.equal((entryOf(path.join(fx.home, f)) as { type: string }).type, "http", f);
     }
   } finally {
     rmSync(fx.home, { recursive: true, force: true });

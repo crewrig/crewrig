@@ -138,11 +138,14 @@ export function switchAssistants(token: string, o: SwitchOptions): number {
     const cfg = assistantConfigPath(cli, o.home);
     const bak = (o.backup ?? backupConfig)(cfg);
     if (bak === null) {
-      // As the shell's `backup_file`: warn and go on. The rollback restores from the
-      // registration captured in memory above, not from this file; only
-      // `repair-mempalace-http --restore-backup` would find no backup to use.
-      o.io.err(`  WARNING: Failed to back up ${path.basename(cfg)} (could not create a backup)`);
-      continue;
+      // Deviation m of spec 0252 (delta-04, requirement 34): the shell's `backup_file`
+      // warned and went on, which left `repair-mempalace-http --restore-backup` with
+      // nothing to restore. Nothing is registered yet, so nothing needs rolling back;
+      // backups already taken for earlier assistants stay.
+      say(`  ERROR: could not back up ${path.basename(cfg)}.`);
+      say("         No assistant has been changed. (R12)");
+      say("         Free the directory of the file, then re-run.");
+      return 1;
     }
     say(`  Backed up: ${path.basename(cfg)} -> ${path.basename(bak)}`);
   }
