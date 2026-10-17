@@ -1,7 +1,7 @@
 ---
 id: "0252"
 slug: windows-service-management
-status: draft
+status: approved
 complexity: small
 interaction-mode: MINIMAL
 related-issue: 1545
