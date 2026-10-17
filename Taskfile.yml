@@ -619,7 +619,7 @@ tasks:
 
   test-harness-curate:
     desc: "Smoke-test the Harness Curator against the bundled fixture"
-    cmd: bash {{.REPO_DIR}}/artifacts/library/skills/harness-curator/scripts/test.sh
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/harness-curator-curate-fixture.test.ts scripts/tests/harness-curator-curate-units.test.ts scripts/tests/harness-curator-apply-dry-run.test.ts scripts/tests/harness-curator-apply-units.test.ts scripts/tests/harness-curator-setup-schedule.test.ts scripts/tests/harness-curator-real-palace.test.ts
 
   check-skill-versions:
     desc: "Enforce provenance.version bump on changed skill/agent sources (local mirror of the CI guard)"

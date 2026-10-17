@@ -3387,7 +3387,7 @@ jobs:
           node-version: 24
 
       - name: Smoke-test harness curator
-        run: bash artifacts/library/skills/harness-curator/scripts/test.sh
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/harness-curator-curate-fixture.test.ts scripts/tests/harness-curator-curate-units.test.ts scripts/tests/harness-curator-apply-dry-run.test.ts scripts/tests/harness-curator-apply-units.test.ts scripts/tests/harness-curator-setup-schedule.test.ts scripts/tests/harness-curator-real-palace.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

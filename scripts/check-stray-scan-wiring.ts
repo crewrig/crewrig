@@ -32,9 +32,7 @@
 //   - Only the form `[VAR=value ...] bash [./]scripts/tests/test-*.sh` is a suite command. A
 //     suite started as `./scripts/tests/test-x.sh`, `sh scripts/tests/...` or through a
 //     variable is not recognised.
-//   - Suites outside the registered population are not covered: scripts/test-*.sh (top-level)
-//     and artifacts/library/skills/harness-curator/scripts/test.sh do not live in
-//     scripts/tests/test-*.sh.
+//   - Suites outside the registered population (scripts/tests/test-*.sh) are not covered.
 //   - Only `.github/workflows/*.yml|yaml` jobs are read; the GitLab pipeline is derived from the
 //     reference by scripts/build-ci.sh and verified by scripts/check-ci-parity.sh, not here.
 //   - A trigger entry written once for the pull request is judged by its own `paths:` only;

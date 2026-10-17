@@ -2915,13 +2915,8 @@ lint-specs:
 
 test-harness-curate:
   image: node:24
-  before_script:
-    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
-    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
-    - chmod +x /usr/local/bin/jq
   script:
-    - "bash artifacts/library/skills/harness-curator/scripts/test.sh"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/harness-curator-curate-fixture.test.ts scripts/tests/harness-curator-curate-units.test.ts scripts/tests/harness-curator-apply-dry-run.test.ts scripts/tests/harness-curator-apply-units.test.ts scripts/tests/harness-curator-setup-schedule.test.ts scripts/tests/harness-curator-real-palace.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'

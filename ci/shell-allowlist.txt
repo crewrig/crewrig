@@ -5,7 +5,6 @@
 artifacts/library/skills/harness-curator/scripts/curate.sh
 artifacts/library/skills/harness-curator/scripts/schedule-curator.sh
 artifacts/library/skills/harness-curator/scripts/setup-labels.sh
-artifacts/library/skills/harness-curator/scripts/test.sh
 hooks/mempalace-transcript.sh
 hooks/usage-capture.sh
 hooks/worktree-git-guard.sh
