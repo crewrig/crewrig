@@ -111,7 +111,7 @@ function walk(base: string, segs: readonly string[], root: string, out: Set<stri
       if (name.startsWith(".")) continue;
       const p = join(base, name);
       if (rest.length === 0) out.add(p);
-      if (fs.lstatSync(at(p)).isDirectory()) walk(p, segs, root, out);
+      if (fs.lstatSync(at(p), { throwIfNoEntry: false })?.isDirectory()) walk(p, segs, root, out);
     }
     return;
   }
