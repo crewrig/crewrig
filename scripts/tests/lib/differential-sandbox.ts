@@ -6,10 +6,9 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { assertInside } from "./differential-guard.ts";
+import { assertInside, assertRoot, createRoot } from "./differential-guard.ts";
 import { git } from "./scratch-remote.ts";
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -22,11 +21,14 @@ let template: string | undefined;
 /** One per-process snapshot of the tracked files (never untracked node_modules or dist). */
 function snapshot(): string {
   if (template !== undefined) return template;
-  const tmp = fs.realpathSync(os.tmpdir());
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(tmp, "differential-tpl-")));
+  // The template lives in its own marked root (createRoot); the tracked copy sits below it.
+  const tplRoot = createRoot("differential-tpl-");
+  const dir = path.join(tplRoot, "tree");
+  fs.mkdirSync(dir);
   process.on("exit", () => {
-    assertInside(tmp, dir);
-    fs.rmSync(dir, { recursive: true, force: true });
+    assertRoot(tplRoot);
+    assertInside(tplRoot, dir);
+    fs.rmSync(tplRoot, { recursive: true, force: true });
   });
   for (const rel of git(REPO, ["ls-files", "-z"]).split("\0").filter(Boolean)) {
     const src = path.join(REPO, rel);

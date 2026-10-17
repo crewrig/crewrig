@@ -142,6 +142,39 @@ export function installWrapper(d: Differential, name: string): string {
   return record;
 }
 
+export const LOCK_TIMEOUT_MS = 120_000;
+
+/**
+ * Take the call lock (a directory) inside `root`, waiting at most `timeoutMs`. A lock already
+ * older than the timeout when first met is stale and is removed (only ever inside `root`); a
+ * fresh one that outlasts the wait fails with an error naming the lock path.
+ */
+export function acquireLock(root: string, lock: string, timeoutMs = LOCK_TIMEOUT_MS): void {
+  assertRoot(root);
+  assertInside(root, lock);
+  const deadline = Date.now() + timeoutMs;
+  let checkedStale = false;
+  for (;;) {
+    try {
+      fs.mkdirSync(lock);
+      return;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
+    }
+    if (!checkedStale) {
+      checkedStale = true;
+      const st = fs.statSync(lock, { throwIfNoEntry: false });
+      if (st !== undefined && Date.now() - st.mtimeMs > timeoutMs) {
+        fs.rmSync(lock, { recursive: true, force: true });
+        continue;
+      }
+    }
+    if (Date.now() >= deadline)
+      throw new Error(`timed out after ${timeoutMs} ms waiting for the lock ${lock}`);
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+  }
+}
+
 // Wrapper entry: node bash-suite-differential.ts <config.json> [args...]
 if (import.meta.main) {
   const cfg = JSON.parse(fs.readFileSync(process.argv[2] ?? "", "utf8")) as {
@@ -164,15 +197,7 @@ if (import.meta.main) {
   // Calls are serialised: shared-repository isolation rewinds state, so two overlapping calls
   // (a suite's "concurrent sessions" cases) would corrupt each other. They run one after the other.
   const lock = `${cfg.record}.lock`;
-  for (;;) {
-    try {
-      fs.mkdirSync(lock);
-      break;
-    } catch {
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
-    }
-  }
-  assertInside(cfg.root, lock);
+  acquireLock(cfg.root, lock);
   process.on("exit", () => fs.rmSync(lock, { recursive: true, force: true }));
   const res = compareLegs(
     {

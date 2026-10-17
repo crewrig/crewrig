@@ -70,8 +70,27 @@ function restore(s: Shared, from: string): void {
   assertInside(s.root, s.dir);
   assertInside(s.root, from);
   if (!isRepo(s.dir)) throw new Error(`refusing to restore over a non-repository: ${s.dir}`);
-  fs.rmSync(s.dir, { recursive: true, force: true });
-  fs.cpSync(from, s.dir, { recursive: true, verbatimSymlinks: true });
+  // Copy first to a sibling inside the root; the old target goes away only once the copy worked.
+  const rand = Math.random().toString(36).slice(2);
+  const fresh = `${s.dir}.restore.${rand}`;
+  const old = `${s.dir}.old.${rand}`;
+  assertInside(s.root, fresh);
+  assertInside(s.root, old);
+  try {
+    fs.cpSync(from, fresh, { recursive: true, verbatimSymlinks: true });
+  } catch (err) {
+    fs.rmSync(fresh, { recursive: true, force: true });
+    throw err;
+  }
+  fs.renameSync(s.dir, old);
+  try {
+    fs.renameSync(fresh, s.dir);
+  } catch (err) {
+    fs.renameSync(old, s.dir);
+    fs.rmSync(fresh, { recursive: true, force: true });
+    throw err;
+  }
+  fs.rmSync(old, { recursive: true, force: true });
 }
 
 export const takePre = (all: Shared[], into: string): void =>
