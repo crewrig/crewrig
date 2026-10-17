@@ -32,10 +32,19 @@ export function loadOfferings(file: string, doc: YqNode): Offering[] {
   return out;
 }
 
-/** The shell's `[ a -lt b ]`; a non-integer operand reads false. */
+/**
+ * The shell's `[ a -lt b ]`. A non-integer operand made `[` print a diagnostic with the
+ * script path and line number and read false, then carry on. That diagnostic is not a
+ * contract: the twin stops with one `Error: <path>: <reason>` line and exit 1 (spec 0262
+ * req 24 (c)); the caller adds the path.
+ */
+export class RankError extends Error {}
 function lessThan(a: string, b: string): boolean {
   const [x, y] = [bashInteger(a), bashInteger(b)];
-  return x !== null && y !== null && x < y;
+  if (x === null || y === null) {
+    throw new RankError(`offering rank '${x === null ? a : b}' is not an integer`);
+  }
+  return x < y;
 }
 
 function lowestRank(offerings: Offering[], eligible: (idx: number) => boolean): string | null {

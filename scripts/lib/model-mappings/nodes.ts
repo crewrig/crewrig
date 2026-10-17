@@ -96,3 +96,21 @@ export function fieldValues(root: YqNode, path: readonly string[], field: string
   }
   return out;
 }
+
+/**
+ * `<path>[] // ""` (stderr discarded): the truthy elements' texts, or one empty text
+ * when none is truthy; a read yq cannot make yields nothing.
+ */
+export function truthyTexts(node: YqNode): string[] {
+  let els: YqNode[];
+  try {
+    els = elements(node);
+  } catch {
+    return [];
+  }
+  const live = els.filter((e) => !isYqFalsy(unalias(e)));
+  return live.length === 0 ? [""] : live.map((e) => scalarText(e));
+}
+
+/** `tr -d '[:space:]'` leaves nothing. */
+export const isBlank = (text: string): boolean => text.replace(/[ \t\n\v\f\r]/g, "") === "";

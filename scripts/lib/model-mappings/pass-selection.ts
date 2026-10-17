@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { ModelMappingsError, type TargetEntry } from "./types.ts";
-import { loadOfferings, intelNameAt, selectForRung } from "./select.ts";
+import { loadOfferings, intelNameAt, RankError, selectForRung } from "./select.ts";
 import { loadYq, YqParseError, type YqNode } from "../yq-accessors/index.ts";
 
 /** Read and parse a mapping; a failure is the shell's aborted `yq` (req 24 (c), (d), (f)). */
@@ -25,8 +25,13 @@ export function loadFile(file: string): YqNode {
 function linesFor(label: string, file: string): string {
   const offerings = loadOfferings(file, loadFile(file));
   let out = "";
-  for (let rung = 1; rung <= 7; rung++) {
-    out += `${label}\t${intelNameAt(rung)}\t${selectForRung(offerings, rung)}\n`;
+  try {
+    for (let rung = 1; rung <= 7; rung++) {
+      out += `${label}\t${intelNameAt(rung)}\t${selectForRung(offerings, rung)}\n`;
+    }
+  } catch (e) {
+    if (e instanceof RankError) throw new ModelMappingsError(`${file}: ${e.message}`);
+    throw e;
   }
   return out;
 }

@@ -18,6 +18,8 @@ export interface PassScope {
   readonly doc: import("../yq-accessors/index.ts").YqNode;
   readonly isOrg: boolean;
   readonly fail: Fail;
+  /** The file yq reads, for the (c) `Error: <path>: <reason>` lines. */
+  readonly file: string;
 }
 
 /** One target of the work list; paths are empty when that file is absent. */

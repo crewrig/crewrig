@@ -1,17 +1,17 @@
 // check-file.ts — `check_file` (check-model-mappings.sh:1033-1050): one file, one pass.
-// SLICE 1: A0 and the shape pass are ported; the remaining passes are listed in
+// Ported: A0, the shape pass, surfaces, grounds and offerings; the remaining passes are listed in
 // `PENDING_PASSES` and still owed by later slices.
 
 import fs from "node:fs";
 
+import { checkOfferings } from "./pass-offerings.ts";
+import { checkSurfaces } from "./pass-surfaces.ts";
 import { checkDuplicateIdsAndRanks, checkTarget, checkToplevelShape } from "./pass-shape.ts";
 import { ModelMappingsError, type Fail } from "./types.ts";
 import { loadYq, YqParseError, type YqNode } from "../yq-accessors/index.ts";
 
-/** Still to port: surfaces, offerings, reasoning projection, guard, totality, zero/observed, org overrides. */
+/** Still to port: reasoning projection, guard, totality, zero/observed, org overrides. */
 export const PENDING_PASSES = [
-  "check_surfaces",
-  "check_offerings",
   "check_frontmatter_reasoning_projection",
   "check_guard",
   "check_selection_totality",
@@ -36,11 +36,13 @@ function parse(file: string, fail: Fail): YqNode | undefined {
 export function checkFile(file: string, target: string, isOrg: boolean, fail: Fail): void {
   const doc = parse(file, fail);
   if (doc === undefined) return;
-  const scope = { doc, isOrg, fail };
+  const scope = { doc, isOrg, fail, file };
   try {
     checkTarget(scope, target, file);
     checkToplevelShape(scope);
     checkDuplicateIdsAndRanks(scope);
+    checkSurfaces(scope);
+    checkOfferings(scope);
   } catch (e) {
     if (e instanceof ModelMappingsError) throw e;
     throw new ModelMappingsError(`${file}: ${e instanceof Error ? e.message : String(e)}`);
