@@ -97,6 +97,8 @@ export function compareLegs(l: Layout, c: DiffCase, mirrorFirst = false): DiffRe
       ...FIXED_GIT_ENV,
       PATH: `${sc.bin}${path.delimiter}${process.env.PATH ?? ""}`,
     });
+    // Wrapper mode: the suite's own CI marker is part of the case (cleanEnv drops the ambient one).
+    if (mirrorFirst && process.env.CI) env.CI = process.env.CI;
     for (const [k, v] of Object.entries(c.env ?? {})) env[k] = forSide(v, side);
     const cmd = side === "shell" ? ["bash", l.shellFile] : [...l.tsCommand, l.tsFile];
     // The TS leg must not carry the MODULE_TYPELESS_PACKAGE_JSON warning on stderr.
