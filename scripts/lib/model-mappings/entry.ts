@@ -23,6 +23,7 @@ export function runCheck(
   if (!Array.isArray(files)) return files as Outcome;
   const entries = classify(files);
 
+  let stderr = "";
   const mergeDir = fs.mkdtempSync(
     path.join(process.env["TMPDIR"] || os.tmpdir(), "crewrig-check-merge."),
   );
@@ -31,10 +32,9 @@ export function runCheck(
     yaml: createYamlText(toYamlLib(yamlNamespace)),
     extractFrontmatter: () => "",
     env: { ...process.env, MAPPING_MERGE_DIR: mergeDir },
-    stderr: () => undefined,
+    stderr: (line) => void (stderr += `${line}\n`),
   });
   const inForce = (target: string): string => mappingInForce(ctx, target);
-  let stderr = "";
   try {
     if (args.printSelection) {
       const stdout = printSelection(entries, files, args.named.length > 0, inForce);

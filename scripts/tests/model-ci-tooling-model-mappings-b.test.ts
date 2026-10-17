@@ -1,9 +1,7 @@
 // model-ci-tooling-model-mappings-b.test.ts — differential test of the surfaces, grounds
 // and offerings passes of scripts/check-model-mappings.ts against the shell (spec 0262
 // requirements 1-4, 6, 24). Each case mutates a scratch copy of model-mappings/gemini.yml
-// (target gemini, so A13 stays quiet) and compares the rejection lines of the ported
-// ids; passes still owed (A11-A14, A22, A23, A26 co-fires, A28-A32) are filtered out
-// of both sides until a later slice ports them.
+// (target gemini, so A13 stays quiet) and compares the rejection lines.
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -18,7 +16,7 @@ const SH = path.join(REPO, "scripts", "check-model-mappings.sh");
 const TS = path.join(REPO, "scripts", "check-model-mappings.ts");
 const HAS_YQ = !WINDOWS && spawnSync("yq", ["--version"], { stdio: "ignore" }).status === 0;
 const SKIP = HAS_YQ ? false : "SKIP: shell leg needs bash and yq (not on win32)";
-const PORTED = /: (A[0-9]|A1[05-9]|A2[0457]|A20[ab]|A8|A9|A10|A18|A19|A21|A24|A25) /;
+const PORTED = /: A[0-9]/;
 const roots: string[] = [];
 after(() => {
   for (const root of roots) fs.rmSync(root, { recursive: true, force: true });

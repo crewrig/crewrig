@@ -8,6 +8,7 @@ import {
   isYqFalsy,
   keys,
   render,
+  tag,
   YqAlias,
   YqMap,
   YqSeq,
@@ -64,9 +65,23 @@ export function hasKey(node: YqNode, key: string): boolean {
   return n instanceof YqMap && n.entries.some(([k]) => k === key);
 }
 
-/** `<path> | keys | .[]` (stderr discarded); empty when yq fails. */
+/**
+ * `<path> | keys | .[]` as `check_closed_keys` runs it: yq fails on a null or scalar
+ * node and the shell's `keys=$(...)` aborts under `set -e` with no message. The twin
+ * raises a plain Error; `checkFile` adds the path (spec 0262 req 24 (c)).
+ */
 export function keyList(node: YqNode): string[] {
-  return quiet(() => keys(unalias(node)), []);
+  const n = unalias(node);
+  try {
+    return keys(n);
+  } catch {
+    throw new Error(`cannot get keys of ${tag(n) || "an alias"}`);
+  }
+}
+
+/** `<path> // {} | keys | .[]`: a falsy node reads as an empty mapping. */
+export function keyListOrEmpty(node: YqNode): string[] {
+  return isYqFalsy(unalias(node)) ? [] : keyList(node);
 }
 
 /** The elements of `.[]`: sequence items or mapping values; throws like yq on a scalar. */

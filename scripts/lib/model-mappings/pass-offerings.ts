@@ -5,7 +5,7 @@
 import { get, isYqFalsy, lengthOf, type YqNode } from "../yq-accessors/index.ts";
 import {
   hasKey,
-  keyList,
+  keyListOrEmpty,
   scalarText,
   strictGet,
   textOrEmpty,
@@ -102,7 +102,7 @@ function checkEncodes(scope: PassScope, node: YqNode, label: string): void {
   const { fail, file } = scope;
   const encodes = strictGet(file, node, ["encodes"]);
   const provides = strictGet(file, node, ["provides"]);
-  for (const c of keyList(isYqFalsy(unalias(encodes)) ? null : encodes)) {
+  for (const c of keyListOrEmpty(encodes)) {
     if (c === "") continue;
     const token = scalarText(strictGet(file, node, ["encodes", c]));
     if (!hasKey(provides, c)) {
@@ -155,7 +155,7 @@ export function checkOfferings(scope: PassScope): void {
       fail("A26", `${label} declares no provides.intelligence — unselectable at any rung`);
     }
     checkClosedKeys(provides, CHARS, `${label}.provides`, fail);
-    for (const pk of keyList(isYqFalsy(unalias(provides)) ? null : provides)) {
+    for (const pk of keyListOrEmpty(provides)) {
       if (pk !== "") checkProvidesValue(scope, node, label, pk);
     }
     if (hasKey(node, "encodes")) {

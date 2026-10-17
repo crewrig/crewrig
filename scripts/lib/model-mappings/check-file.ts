@@ -1,23 +1,21 @@
 // check-file.ts — `check_file` (check-model-mappings.sh:1033-1050): one file, one pass.
-// Ported: A0, the shape pass, surfaces, grounds and offerings; the remaining passes are listed in
-// `PENDING_PASSES` and still owed by later slices.
+// Every pass of the shell, in its order: A0, shape, surfaces, offerings, projection, guard,
+// totality, zero/observed, then the org overrides for an org file.
 
 import fs from "node:fs";
 
+import { checkGuard } from "./pass-guard.ts";
 import { checkOfferings } from "./pass-offerings.ts";
+import { checkOrgOverrides } from "./pass-org.ts";
+import { checkReasoningProjection } from "./pass-projection.ts";
+import { checkSelectionTotality, checkZeroOfferingsAndObserved } from "./pass-totality.ts";
 import { checkSurfaces } from "./pass-surfaces.ts";
 import { checkDuplicateIdsAndRanks, checkTarget, checkToplevelShape } from "./pass-shape.ts";
 import { ModelMappingsError, type Fail } from "./types.ts";
 import { loadYq, YqParseError, type YqNode } from "../yq-accessors/index.ts";
 
-/** Still to port: reasoning projection, guard, totality, zero/observed, org overrides. */
-export const PENDING_PASSES = [
-  "check_frontmatter_reasoning_projection",
-  "check_guard",
-  "check_selection_totality",
-  "check_zero_offerings_and_observed",
-  "check_org_overrides",
-] as const;
+/** Every pass of the shell is ported; kept so a future pass has one place to be listed. */
+export const PENDING_PASSES: readonly string[] = [];
 
 /** `yq e '.' file` failing is A0; multi-document and unknown tags are deliberate Error lines. */
 function parse(file: string, fail: Fail): YqNode | undefined {
@@ -43,6 +41,11 @@ export function checkFile(file: string, target: string, isOrg: boolean, fail: Fa
     checkDuplicateIdsAndRanks(scope);
     checkSurfaces(scope);
     checkOfferings(scope);
+    checkReasoningProjection(scope);
+    checkGuard(scope);
+    checkSelectionTotality(scope);
+    checkZeroOfferingsAndObserved(scope);
+    if (isOrg) checkOrgOverrides(scope);
   } catch (e) {
     if (e instanceof ModelMappingsError) throw e;
     throw new ModelMappingsError(`${file}: ${e instanceof Error ? e.message : String(e)}`);
