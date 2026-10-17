@@ -122,8 +122,9 @@ export function portableCapabilities(source: string): Capability[] {
     throw e;
   }
   const caps = get(doc, ["capabilities"]);
-  if (!(caps instanceof YqSeq))
-    throw new BuildCiError("Error: Cannot iterate over a non-sequence .capabilities");
+  // The shell lists ids through a process substitution, which swallows a yq failure: a
+  // missing or non-sequence `capabilities` yields a header-only pipeline and exit 0.
+  if (!(caps instanceof YqSeq)) return [];
   const out: Capability[] = [];
   for (const c of caps.items) {
     const p = c instanceof YqMap ? get(c, ["portability"]) : null;

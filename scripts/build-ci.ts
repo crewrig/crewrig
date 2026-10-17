@@ -2,6 +2,8 @@
 // scripts/build-ci.sh (spec 0262, dark until the shell is retired).
 //
 // Usage: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts [--check]
+// The shell exits 2 with "yq is required" when yq is absent; this twin reads the reference
+// itself and needs no yq, so that exit has no TypeScript equivalent (spec 0262).
 // REPO_DIR overrides the repository root. Exit: 0 ok, 1 drift or generation failure,
 // 2 missing reference.
 

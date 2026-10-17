@@ -27,10 +27,16 @@ const APT = "apt-get update && apt-get install -y --no-install-recommends";
 const TOOLS: Readonly<Record<string, readonly string[]>> = {
   yq: [
     `${APT} wget ca-certificates`,
-    "wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64",
+    "wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64",
+    'echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -',
     "chmod +x /usr/local/bin/yq",
   ],
-  jq: [`${APT} jq`],
+  jq: [
+    `${APT} wget ca-certificates`,
+    "wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64",
+    'echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -',
+    "chmod +x /usr/local/bin/jq",
+  ],
   task: ['sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin'],
   "markdownlint-cli": ["npm install -g markdownlint-cli"],
   tesseract: [`${APT} tesseract-ocr`],
