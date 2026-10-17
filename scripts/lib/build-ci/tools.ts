@@ -27,8 +27,8 @@ const APT = "apt-get update && apt-get install -y --no-install-recommends";
 const TOOLS: Readonly<Record<string, readonly string[]>> = {
   yq: [
     `${APT} wget ca-certificates`,
-    "wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64",
-    'echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -',
+    "wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64",
+    'echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -',
     "chmod +x /usr/local/bin/yq",
   ],
   jq: [
