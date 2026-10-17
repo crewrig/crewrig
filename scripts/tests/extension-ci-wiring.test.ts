@@ -57,7 +57,7 @@ const REACHING = new RegExp(
     "test-create-extension",
     "test-release-package",
     "install-claude-plugin-marketplace\\.test\\.ts",
-    "test-build-claude-plugin-agents-glob\\.sh",
+    "extension-plugin-claude\\.test\\.ts",
     "install-extension-all-real\\.test\\.ts",
     "governance-suite-extension-provenance-r4\\.test\\.ts",
     // The governance checks (spec 0259) run as `node ... scripts/check-<name>.ts`; their `.sh`

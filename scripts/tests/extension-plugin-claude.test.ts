@@ -99,10 +99,28 @@ describe("buildClaudePlugin", () => {
   });
 
   test("agents are flattened and sibling files never travel", () => {
-    const { out } = build(cleanContext());
+    const { status, out } = build(cleanContext());
+    assert.equal(status, 0);
     assert.equal(fs.readFileSync(path.join(out, "agents", "nested.md"), "utf8"), "nested agent\n");
     assert.ok(!fs.existsSync(path.join(out, "agents", "PROMPT.md")));
+    assert.ok(!fs.existsSync(path.join(out, "agents", "nested-PROMPT.md")));
     assert.ok(!fs.existsSync(path.join(out, "agents", "nested")));
+  });
+
+  test("agents-glob case 2: an AGENT.md with no sibling is still flattened", () => {
+    const { status, out } = build({
+      "extension.json": JSON.stringify({
+        name: "demo-agents-glob",
+        version: "0.1.0",
+        description: "x",
+        agents: { location: "agents/" },
+        claude: { settings: {}, lsp: null },
+      }),
+      "agents/demo-agent/AGENT.md": "---\nname: demo-agent\n---\n\nSystem prompt.\n",
+    });
+    assert.equal(status, 0);
+    assert.ok(fs.statSync(path.join(out, "agents", "demo-agent.md")).isFile());
+    assert.ok(!fs.existsSync(path.join(out, "agents", "demo-agent")));
   });
 
   test("settings and lsp are written as jq prints them", () => {

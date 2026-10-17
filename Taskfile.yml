@@ -449,11 +449,11 @@ tasks:
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node {{.REPO_DIR}}/scripts/build-components.ts --target all --check
-      - bash {{.REPO_DIR}}/scripts/tests/test-assembly-verification.sh
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-assembly-routing.test.ts
 
   test-components:
     desc: Test the build-components canonical_repo validator
-    cmd: bash {{.REPO_DIR}}/scripts/test-build-components.sh
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-canonical-repo.test.ts
 
   # --- Linting ---
 

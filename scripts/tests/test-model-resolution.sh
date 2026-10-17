@@ -106,7 +106,7 @@ fi
 # --- C2(b) — pinned extract_frontmatter block of three committed outputs ---
 # Pins the frontmatter of the 'architect' agent on three targets (Claude,
 # Gemini, Antigravity — the fourth, GitHub Copilot CLI, is pinned in the
-# emission suite once its case exists — scripts/tests/test-agent-profile-migration.sh
+# emission suite once its case exists — scripts/tests/agent-profile-committed.test.ts
 # case T2). A byte-for-byte literal *modulo one interpolation*, not a regex:
 # any drift in these three outputs must turn this red. The expected
 # provenance version is read from the source itself

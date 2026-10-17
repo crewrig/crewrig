@@ -60,9 +60,10 @@ capabilities:
           - "scripts/build-components.ts"
           - "package.json"
           - "package-lock.json"
-          - "scripts/test-build-components.sh"
+          - "scripts/tests/build-components-canonical-repo.test.ts"
           - "scripts/tests/test-model-resolution.sh"
-          - "scripts/tests/test-agent-profile-migration.sh"
+          - "scripts/tests/agent-profile-*.test.ts"
+          - "scripts/tests/lib/build-sandbox.ts"
           - "scripts/lib/**"
           - "artifacts/**"
           - "extensions/**"
@@ -87,9 +88,10 @@ capabilities:
           - "scripts/build-components.ts"
           - "package.json"
           - "package-lock.json"
-          - "scripts/test-build-components.sh"
+          - "scripts/tests/build-components-canonical-repo.test.ts"
           - "scripts/tests/test-model-resolution.sh"
-          - "scripts/tests/test-agent-profile-migration.sh"
+          - "scripts/tests/agent-profile-*.test.ts"
+          - "scripts/tests/lib/build-sandbox.ts"
           - "scripts/lib/**"
           - "artifacts/**"
           - "extensions/**"
@@ -117,9 +119,10 @@ capabilities:
         - "scripts/build-components.ts"
         - "package.json"
         - "package-lock.json"
-        - "scripts/test-build-components.sh"
+        - "scripts/tests/build-components-canonical-repo.test.ts"
         - "scripts/tests/test-model-resolution.sh"
-        - "scripts/tests/test-agent-profile-migration.sh"
+        - "scripts/tests/agent-profile-*.test.ts"
+        - "scripts/tests/lib/build-sandbox.ts"
         - "scripts/lib/**"
         - "artifacts/**"
         - "extensions/**"
@@ -141,8 +144,8 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
       - node scripts/build-components.ts --target all --check
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-assembly-verification.sh
-      - bash scripts/test-build-components.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-assembly-routing.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-canonical-repo.test.ts
 
   - id: model-resolution
     name: "Run the model-resolution regression suite"
@@ -152,9 +155,10 @@ capabilities:
         paths:
           - "scripts/build-components.sh"
           - "scripts/build-components.ts"
-          - "scripts/test-build-components.sh"
+          - "scripts/tests/build-components-canonical-repo.test.ts"
           - "scripts/tests/test-model-resolution.sh"
-          - "scripts/tests/test-agent-profile-migration.sh"
+          - "scripts/tests/agent-profile-*.test.ts"
+          - "scripts/tests/lib/build-sandbox.ts"
           - "scripts/lib/**"
           - "artifacts/**"
           - "extensions/**"
@@ -167,9 +171,10 @@ capabilities:
         paths:
           - "scripts/build-components.sh"
           - "scripts/build-components.ts"
-          - "scripts/test-build-components.sh"
+          - "scripts/tests/build-components-canonical-repo.test.ts"
           - "scripts/tests/test-model-resolution.sh"
-          - "scripts/tests/test-agent-profile-migration.sh"
+          - "scripts/tests/agent-profile-*.test.ts"
+          - "scripts/tests/lib/build-sandbox.ts"
           - "scripts/lib/**"
           - "artifacts/**"
           - "extensions/**"
@@ -186,9 +191,10 @@ capabilities:
       files:
         - "scripts/build-components.sh"
         - "scripts/build-components.ts"
-        - "scripts/test-build-components.sh"
+        - "scripts/tests/build-components-canonical-repo.test.ts"
         - "scripts/tests/test-model-resolution.sh"
-        - "scripts/tests/test-agent-profile-migration.sh"
+        - "scripts/tests/agent-profile-*.test.ts"
+        - "scripts/tests/lib/build-sandbox.ts"
         - "scripts/lib/**"
         - "artifacts/**"
         - "extensions/**"
@@ -209,9 +215,10 @@ capabilities:
         paths:
           - "scripts/build-components.sh"
           - "scripts/build-components.ts"
-          - "scripts/test-build-components.sh"
+          - "scripts/tests/build-components-canonical-repo.test.ts"
           - "scripts/tests/test-model-resolution.sh"
-          - "scripts/tests/test-agent-profile-migration.sh"
+          - "scripts/tests/agent-profile-*.test.ts"
+          - "scripts/tests/lib/build-sandbox.ts"
           - "scripts/lib/**"
           - "artifacts/**"
           - "extensions/**"
@@ -224,9 +231,10 @@ capabilities:
         paths:
           - "scripts/build-components.sh"
           - "scripts/build-components.ts"
-          - "scripts/test-build-components.sh"
+          - "scripts/tests/build-components-canonical-repo.test.ts"
           - "scripts/tests/test-model-resolution.sh"
-          - "scripts/tests/test-agent-profile-migration.sh"
+          - "scripts/tests/agent-profile-*.test.ts"
+          - "scripts/tests/lib/build-sandbox.ts"
           - "scripts/lib/**"
           - "artifacts/**"
           - "extensions/**"
@@ -238,14 +246,14 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
-      tools: [yq]
     cache:
       files:
         - "scripts/build-components.sh"
         - "scripts/build-components.ts"
-        - "scripts/test-build-components.sh"
+        - "scripts/tests/build-components-canonical-repo.test.ts"
         - "scripts/tests/test-model-resolution.sh"
-        - "scripts/tests/test-agent-profile-migration.sh"
+        - "scripts/tests/agent-profile-*.test.ts"
+        - "scripts/tests/lib/build-sandbox.ts"
         - "scripts/lib/**"
         - "artifacts/**"
         - "extensions/**"
@@ -256,7 +264,7 @@ capabilities:
       env: []
     command:
       - npm ci --omit=dev --workspaces=false
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-agent-profile-migration.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/agent-profile-baseline-doc.test.ts scripts/tests/agent-profile-build.test.ts scripts/tests/agent-profile-committed.test.ts
 
   # Spec 0250 R27, R28 (issue #1332): the TypeScript component-build core, its
   # shared library twins and their node --test suites. `paths:` lists every
@@ -294,6 +302,9 @@ capabilities:
           - "scripts/lib/model-resolve.sh"
           - "scripts/lib/model-resolve/**"
           - "scripts/tests/build-components-*.test.ts"
+          - "scripts/tests/build-sandbox.test.ts"
+          - "scripts/tests/repo-agent-frontmatter.test.ts"
+          - "scripts/tests/lib/build-sandbox.ts"
           - "scripts/tests/yaml-text.test.ts"
           - "scripts/tests/render-command.test.ts"
           - "scripts/tests/component-resolve.test.ts"
@@ -340,6 +351,9 @@ capabilities:
           - "scripts/lib/model-resolve.sh"
           - "scripts/lib/model-resolve/**"
           - "scripts/tests/build-components-*.test.ts"
+          - "scripts/tests/build-sandbox.test.ts"
+          - "scripts/tests/repo-agent-frontmatter.test.ts"
+          - "scripts/tests/lib/build-sandbox.ts"
           - "scripts/tests/yaml-text.test.ts"
           - "scripts/tests/render-command.test.ts"
           - "scripts/tests/component-resolve.test.ts"
@@ -374,7 +388,7 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-build-proof.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cleanup.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-conformance.test.ts scripts/tests/build-components-conformance-mutation.test.ts scripts/tests/build-components-conformance-org.test.ts scripts/tests/build-components-conformance-render.test.ts scripts/tests/build-components-conformance-root.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-names-e2e.test.ts scripts/tests/build-components-hardening-printed.test.ts scripts/tests/build-components-hardening-printed-values.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-hardening-yaml-e2e.test.ts scripts/tests/build-components-names.test.ts scripts/tests/build-components-output.test.ts scripts/tests/build-components-output-agents.test.ts scripts/tests/build-components-output-resources.test.ts scripts/tests/build-components-output-skills.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/build-components-shim.test.ts scripts/tests/build-components-ci-wiring.test.ts scripts/tests/build-components-references.test.ts scripts/tests/build-components-yaml-corpus.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cleanup.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-conformance.test.ts scripts/tests/build-components-conformance-mutation.test.ts scripts/tests/build-components-conformance-org.test.ts scripts/tests/build-components-conformance-render.test.ts scripts/tests/build-components-conformance-root.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-names-e2e.test.ts scripts/tests/build-components-hardening-printed.test.ts scripts/tests/build-components-hardening-printed-values.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-hardening-yaml-e2e.test.ts scripts/tests/build-components-names.test.ts scripts/tests/build-components-output.test.ts scripts/tests/build-components-output-agents.test.ts scripts/tests/build-components-output-resources.test.ts scripts/tests/build-components-output-skills.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/build-components-shim.test.ts scripts/tests/build-components-ci-wiring.test.ts scripts/tests/build-components-references.test.ts scripts/tests/build-components-yaml-corpus.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts scripts/tests/build-sandbox.test.ts scripts/tests/repo-agent-frontmatter.test.ts
 
   # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
   # release, where type stripping still emits an ExperimentalWarning. No
@@ -1922,8 +1936,6 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/tests/install-claude-plugin-marketplace.test.ts"
-          - "scripts/tests/test-build-claude-plugin-agents-glob.sh"
-          - "scripts/tests/test-gemini-agent-frontmatter.sh"
           - "scripts/tests/install-extension-all-real.test.ts"
           - "scripts/tests/lib/yaml-lib.ts"
           - "scripts/build-claude-plugin.sh"
@@ -1985,8 +1997,6 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/tests/install-claude-plugin-marketplace.test.ts"
-          - "scripts/tests/test-build-claude-plugin-agents-glob.sh"
-          - "scripts/tests/test-gemini-agent-frontmatter.sh"
           - "scripts/tests/install-extension-all-real.test.ts"
           - "scripts/tests/lib/yaml-lib.ts"
           - "scripts/build-claude-plugin.sh"
@@ -2051,8 +2061,6 @@ capabilities:
       tools: [jq, yq]
     command:
       - npm ci --omit=dev --workspaces=false
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-claude-plugin-agents-glob.sh
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-gemini-agent-frontmatter.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/install-claude-plugin-marketplace.test.ts scripts/tests/install-extension-all-real.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/install-sandbox.test.ts scripts/tests/install-workspace.test.ts scripts/tests/unlink-component.test.ts scripts/tests/unlink-extensions.test.ts scripts/tests/install-extension.test.ts scripts/tests/link-extensions.test.ts scripts/tests/install-copilot-plugin.test.ts scripts/tests/install-antigravity-extension.test.ts
 
@@ -2831,19 +2839,19 @@ capabilities:
       - on: pull-request
         branches: [main, "release/**"]
         paths:
-          - "scripts/tests/test-extract-frontmatter.sh"
+          - "scripts/tests/build-components-frontmatter-fence.test.ts"
           - "scripts/check-skill-versions.sh"
           - "scripts/tests/governance-suite-skill-versions.test.ts"
           - "scripts/tests/governance-suite-skill-versions-base.test.ts"
           - "scripts/tests/lib/governance-*.ts"
           - "scripts/tests/governance-suite-feedback-routing.test.ts"
-          - "scripts/tests/test-assembly-verification.sh"
-          - "scripts/tests/test-artifact-build-install-scope.sh"
+          - "scripts/tests/build-assembly-routing.test.ts"
+          - "scripts/tests/build-install-scope-*.test.ts"
           - "scripts/tests/tier-resolution-*.test.ts"
           - "scripts/tests/lib/tier-fixtures.ts"
           - "scripts/tests/lib/tier-landing.ts"
           - "scripts/tests/lib/tier-taskfile.ts"
-          - "scripts/tests/test-pr-logbook-label-scope.sh"
+          - "scripts/tests/pr-logbook-label-scope.test.ts"
           - "scripts/lib/**"
           - "scripts/tests/lib/print-manage-declarations.ts"
           - "artifacts/**"
@@ -2866,19 +2874,19 @@ capabilities:
       - on: push
         branches: [main, "release/**"]
         paths:
-          - "scripts/tests/test-extract-frontmatter.sh"
+          - "scripts/tests/build-components-frontmatter-fence.test.ts"
           - "scripts/check-skill-versions.sh"
           - "scripts/tests/governance-suite-skill-versions.test.ts"
           - "scripts/tests/governance-suite-skill-versions-base.test.ts"
           - "scripts/tests/lib/governance-*.ts"
           - "scripts/tests/governance-suite-feedback-routing.test.ts"
-          - "scripts/tests/test-assembly-verification.sh"
-          - "scripts/tests/test-artifact-build-install-scope.sh"
+          - "scripts/tests/build-assembly-routing.test.ts"
+          - "scripts/tests/build-install-scope-*.test.ts"
           - "scripts/tests/tier-resolution-*.test.ts"
           - "scripts/tests/lib/tier-fixtures.ts"
           - "scripts/tests/lib/tier-landing.ts"
           - "scripts/tests/lib/tier-taskfile.ts"
-          - "scripts/tests/test-pr-logbook-label-scope.sh"
+          - "scripts/tests/pr-logbook-label-scope.test.ts"
           - "scripts/lib/**"
           - "scripts/tests/lib/print-manage-declarations.ts"
           - "artifacts/**"
@@ -2905,13 +2913,13 @@ capabilities:
       tools: [yq, jq]
     command:
       - npm ci --omit=dev --workspaces=false
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extract-frontmatter.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-frontmatter-fence.test.ts
       - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-skill-versions.test.ts scripts/tests/governance-suite-skill-versions-base.test.ts
       - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-feedback-routing.test.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-assembly-verification.sh
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-artifact-build-install-scope.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-assembly-routing.test.ts
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-install-scope-build.test.ts scripts/tests/build-install-scope-gate.test.ts
       - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tier-resolution-collision.test.ts scripts/tests/tier-resolution-declarations.test.ts scripts/tests/tier-resolution-install.test.ts scripts/tests/tier-resolution-landing.test.ts scripts/tests/tier-resolution-taskfile.test.ts scripts/tests/tier-resolution-three-tiers.test.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-pr-logbook-label-scope.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/pr-logbook-label-scope.test.ts
 
   - id: check-model-mappings
     name: "Check model-mapping conformance and run its mutation test suite"

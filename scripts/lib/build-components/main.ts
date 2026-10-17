@@ -17,7 +17,7 @@
 // removed on every path out, failures included (staging.ts).
 //
 // Differences from the shell, both listed in spec 0250 R33: `--check` does not run
-// `tests/test-assembly-verification.sh` (R25, (c)), so the verdict is the last act; the
+// `scripts/tests/build-assembly-routing.test.ts` (R25, (c)), so the verdict is the last act; the
 // drift hint names the TypeScript invocation ((a)).
 //
 // `main` returns the exit status and never exits the process; the entry sets

@@ -9,7 +9,7 @@ Proposed — 2026-05-22. Scoped to issue #76 (child of epic #75).
 ## Context
 
 CrewRig currently validates itself through unit and build-drift tests
-(`scripts/tests/`, `scripts/test-build-components.sh`). Epic #75
+(`scripts/tests/`, `scripts/tests/build-components-canonical-repo.test.ts`). Epic #75
 introduces an end-to-end framework that runs **real CLI agents**
 (claude-code, gemini-cli, github-copilot-cli) inside containers against
 scripted scenarios. Issue #76 is the foundation layer: a shared base

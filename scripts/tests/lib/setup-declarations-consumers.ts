@@ -79,7 +79,7 @@ export const CONSUMERS: readonly Consumer[] = [
     clis: ["antigravity"],
   },
   {
-    suite: "scripts/tests/test-artifact-build-install-scope.sh (r3 #5)",
+    suite: "scripts/tests/build-install-scope-gate.test.ts (r3 #5)",
     keys: [
       "step:tiers",
       "tiers.automatic",

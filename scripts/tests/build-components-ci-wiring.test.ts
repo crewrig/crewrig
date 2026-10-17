@@ -31,7 +31,7 @@ interface Capability {
 const ENTRY = "scripts/build-components.ts";
 const SHIM = "scripts/build-components.sh";
 const MAIN = "scripts/lib/build-components/main.ts";
-const ASSEMBLY = "test-assembly-verification.sh";
+const ASSEMBLY = "build-assembly-routing.test.ts";
 const PROD_INSTALL = /^npm ci( --omit=dev --workspaces=false)?$/;
 const FLOOR_GUARD = "node scripts/lib/node-floor-guard.js";
 const SUITE_COMMAND = /--test /;
@@ -47,14 +47,14 @@ const BUILD_COMMAND = new RegExp(
     "scripts/build-components\\.(ts|sh)",
     "task build-components",
     "task check-components",
-    "test-assembly-verification\\.sh",
+    "build-assembly-routing\\.test\\.ts",
     "test-model-resolution\\.sh",
-    "test-agent-profile-migration\\.sh",
+    "agent-profile-(committed|baseline-doc|build)\\.test\\.ts",
     "test-check-agent-profiles\\.sh",
     "tier-resolution-[a-z-]+\\.test\\.ts",
-    "test-extract-frontmatter\\.sh",
-    "test-artifact-build-install-scope\\.sh",
-    "test-build-components\\.sh",
+    "build-components-frontmatter-fence\\.test\\.ts",
+    "build-install-scope-(build|gate)\\.test\\.ts",
+    "build-components-canonical-repo\\.test\\.ts",
     "check-core-paths\\.(sh|ts)",
   ].join("|"),
 );

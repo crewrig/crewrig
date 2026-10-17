@@ -512,7 +512,6 @@ scripts/
 ├── prune-transcripts.sh              # Remove old transcript archives
 ├── setup-claude-interactive.sh       # Shim: forwards to setup-claude-interactive.ts (Claude Code setup, interactive)
 ├── setup-gemini-interactive.sh       # Shim: forwards to setup-gemini-interactive.ts (Gemini CLI setup, interactive)
-├── test-build-components.sh          # Self-test for build-components.sh
 ├── unlink-component.sh               # Shim: forwards to unlink-component.ts (remove a component symlink)
 ├── unlink-extensions.sh              # Shim: forwards to unlink-extensions.ts (remove all extension symlinks)
 ├── lib/
@@ -520,7 +519,7 @@ scripts/
 └── tests/
     ├── governance-suite-skill-versions.test.ts       # Tests for check-skill-versions (cases 4-7)
     ├── governance-suite-skill-versions-base.test.ts  # Tests for check-skill-versions (base-ref cases)
-    └── test-extract-frontmatter.sh   # Tests for frontmatter extraction
+    └── (frontmatter-fence tests are node --test files: build-components-frontmatter-fence.test.ts)
 
 Taskfile.yml                          # Task runner configuration
 AGENTS.md                             # Agent working rules

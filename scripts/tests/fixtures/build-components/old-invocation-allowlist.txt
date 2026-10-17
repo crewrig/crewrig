@@ -36,7 +36,6 @@ scripts/tests/fixtures/e2e-oracle/scenarios/03-skill-build/
 
 # The shim header names the Bash tests that have not migrated: each deliberately drives the shim.
 scripts/tests/test-model-resolution.sh
-scripts/tests/test-pr-logbook-label-scope.sh
 tests/e2e/lib/scenario-03-skill-build.ts
 
 # Spec text and delta-specs record the invocation as it was specified; merged specs are history.

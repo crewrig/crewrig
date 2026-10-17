@@ -10,6 +10,6 @@ metadata:
 
 # Assembly Test Agent
 
-This agent is a minimal fixture used by `scripts/tests/test-assembly-verification.sh`.
+This agent is a minimal fixture used by `scripts/tests/build-assembly-routing.test.ts`.
 It exists to verify that overlay agents are assembled into every supported CLI's
 output directory during `node scripts/build-components.ts`.

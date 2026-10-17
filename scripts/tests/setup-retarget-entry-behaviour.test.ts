@@ -5,7 +5,7 @@
 // the stdout and the file tree it produced. The Bash suites call this file with `node --test` and
 // report each test by name:
 //   * the retired test-setup-gemini-md-cleanup (spec 0263) -> "legacy GEMINI.md cleanup"
-//   * scripts/tests/test-artifact-build-install-scope.sh   -> "overlay tiers"
+//   * scripts/tests/build-install-scope-build.test.ts -> "overlay tiers"
 //   * the retired Bash antigravity component-install suite (spec 0263)  -> "antigravity tier install failure"
 // Pinned against the unchanged shell by the setup-golden cells named at each describe (the golden
 // suites run the shell leg and the ts leg against the same fixtures). Behavioural, so it runs on

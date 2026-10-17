@@ -10,6 +10,6 @@ metadata:
 
 # Assembly Test Skill
 
-This skill is a minimal fixture used by `scripts/tests/test-assembly-verification.sh`.
+This skill is a minimal fixture used by `scripts/tests/build-assembly-routing.test.ts`.
 It exists to verify that overlay components are assembled into every supported CLI's
 output directory during `node scripts/build-components.ts`.

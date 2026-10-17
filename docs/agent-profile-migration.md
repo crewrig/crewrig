@@ -128,7 +128,7 @@ contradicting the conclusion above:
   `opus`; the new `test-check-component-metadata-keys.sh` declares
   `metadata.claude.model: sonnet` in four fixtures to exercise the legacy-key
   rejection. The migration test suite this change set also adds
-  (`scripts/tests/test-agent-profile-migration.sh`) asserts the compiled
+  (`scripts/tests/agent-profile-committed.test.ts`, `agent-profile-build.test.ts`) asserts the compiled
   guidance prose of real migrated sources and will add further such
   mentions for the same reason. None of these is a document presenting an
   alias as the way to choose a model — every one is a test asserting what
@@ -194,7 +194,7 @@ Measured on the migrated tree with all four targets built (run `node scripts/lib
 | `node scripts/build-components.ts --target all --check` | **48** | the same 44, plus **4** `model-note developer <target> no-mapping …` — one per target, for the single agent of the assembly test's synthetic root |
 
 **Mechanism.** `--check` ends by running a second, smaller build under a
-fresh `mktemp -d` root (`scripts/tests/test-assembly-verification.sh`) that
+fresh `mktemp -d` root (`scripts/tests/build-assembly-routing.test.ts`) that
 holds no `model-mappings/` and only the `developer` skill and agent of
 `core` plus the fixture overlay, so the resolution finds no mapping in
 force and emits a `no-mapping` note for that one profiled agent on each of
@@ -205,7 +205,7 @@ requirement 21 binds — so requirement 21 is satisfied exactly by the
 44-line stream a plain build emits, and the 4 additional lines are a real,
 new-since-this-change-set observable on every CI run of the
 `component-drift` capability (which invokes `--check`): exit status stays
-0, and `test-assembly-verification.sh` still passes, since it verifies
+0, and `build-assembly-routing.test.ts` still passes, since it verifies
 assembly structure rather than model emissions. No requirement of spec
 0200 binds that suite's synthetic root, and giving it one would change the
 root every assembly assertion runs against — a blast radius wider than
