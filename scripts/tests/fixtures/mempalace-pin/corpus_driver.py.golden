@@ -1,0 +1,148 @@
+"""Corpus driver for mempalace-pin-*.test.ts — see the header of mempalace-pin-corpus.test.ts.
+
+argv: <lib-dir> <arm: a|b> <min> <max>
+Prints `key=value` summary lines plus one line per violation; exits non-zero
+when any violation was found.
+"""
+import re
+import sys
+
+LIB_DIR, ARM, MIN, MAX = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+sys.path.insert(0, LIB_DIR)
+import mempalace_pin  # noqa: E402
+
+RELEASES = [
+    "3", "3.6", "3.6.0", "3.6.1", "3.6.12", "3.6.0.0", "3.6.0.1", "3.5.9",
+    "3.7", "3.7.0", "3.7.1", "4.0.0", "2.9.9", "10.0.0", "0.1.0",
+]
+SUFFIXES = [
+    "", ".post0", ".post1", ".post", "post1", "+local", "+local.1", "+1",
+    "+local_1", "+LOCAL", "+", "rc", "rc1", "rc1.dev0", "a1", "b1", "c1",
+    ".dev", ".dev0", ".POST1", "-git", "-nightly", "-1", "-", "_1", "~1",
+    ":1", ".unknown", ".rev1", ".r1", "..1", ".0.post1", " ",
+]
+ADVERSARIAL = [
+    "", " ", "abc", "v3.6.0", "3.6.0.post1+local", "3.6.0+local.post1",
+    "3.6.0rc1+local", "3.6.0-git+x", "3.6.0.post1.post2", "1!3.6.0",
+    "0!3.6.0", "1!3.6.0.post1", "3.6.0+", "3.6.0++local", "3.6.0.",
+    ".3.6.0", "3..6.0", "3.6.0\t", "\t3.6.0", " 3.6.0 ", "03.06.00",
+]
+
+corpus = []
+seen = set()
+for release in RELEASES:
+    for suffix in SUFFIXES:
+        candidate = release + suffix
+        if candidate not in seen:
+            seen.add(candidate)
+            corpus.append(candidate)
+for candidate in ADVERSARIAL:
+    if candidate not in seen:
+        seen.add(candidate)
+        corpus.append(candidate)
+
+# Independently authored expression of the grammar the fallback is supposed to
+# admit. Deliberately NOT mempalace_pin's own regex: a module whose regex is
+# wrong must not be allowed to certify itself.
+GRAMMAR = re.compile(
+    r"\A[0-9]+(\.[0-9]+)*(\.post[0-9]+)?(\+[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*)?\Z"
+)
+PLAIN_RELEASE = re.compile(r"\A[0-9]+(\.[0-9]+)*\Z")
+POST_TAIL = re.compile(r"\.post[0-9]+\Z")
+LOCAL_LABEL = re.compile(r"\A[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*\Z")
+
+
+def ordering_position_is_release(text):
+    """True iff *text* carries no epoch, pre-release or dev-release.
+
+    Such a string's ordering position under PEP 440 is its release tuple,
+    possibly nudged upward by a post or local segment, never downward — the
+    property step (ii) of the invariant's proof relies on.
+    """
+    if "!" in text:
+        return False
+    parts = text.split("+", 1)
+    public = parts[0]
+    if len(parts) == 2 and LOCAL_LABEL.match(parts[1]) is None:
+        return False
+    public = POST_TAIL.sub("", public)
+    return PLAIN_RELEASE.match(public) is not None
+
+
+violations = 0
+print("corpus_size=%d" % len(corpus))
+
+if ARM == "a":
+    accepted = 0
+    grammar_violations = 0
+    ordering_violations = 0
+    # The OBSERVED label, never the constant: the caller asserts on this line to
+    # prove the shield worked, and printing COMPARATOR_FALLBACK here would make
+    # that assertion pass whether or not `packaging` was actually shielded out.
+    observed = "none-observed"
+    for candidate in corpus:
+        verdict, comparator = mempalace_pin.check(candidate, MIN, MAX)
+        observed = comparator
+        if comparator != mempalace_pin.COMPARATOR_FALLBACK:
+            print("SHIELD FAILURE: comparator=%s for %r" % (comparator, candidate))
+            violations += 1
+            break
+        if not verdict:
+            continue
+        accepted += 1
+        stripped = candidate.strip()
+        if GRAMMAR.match(stripped) is None:
+            print("GRAMMAR VIOLATION: %r accepted but not release[.postN][+local]"
+                  % candidate)
+            grammar_violations += 1
+        if not ordering_position_is_release(stripped):
+            print("ORDERING VIOLATION: %r accepted but carries an epoch, "
+                  "pre-release or dev-release marker" % candidate)
+            ordering_violations += 1
+    print("comparator=%s" % observed)
+    print("fallback_accepted=%d" % accepted)
+    print("grammar_violations=%d" % grammar_violations)
+    print("ordering_violations=%d" % ordering_violations)
+    violations += grammar_violations + ordering_violations
+else:
+    from packaging.version import InvalidVersion, Version
+
+    def packaging_accepts(text):
+        try:
+            return Version(MIN) <= Version(text) < Version(MAX)
+        except InvalidVersion:
+            return False
+
+    breaches = 0
+    both = 0
+    packaging_only = 0
+    for candidate in corpus:
+        fallback = mempalace_pin._fallback_in_range(candidate, MIN, MAX)
+        primary = packaging_accepts(candidate)
+        if fallback and not primary:
+            print("INVARIANT BREACH: fallback accepts %r, packaging refuses it"
+                  % candidate)
+            breaches += 1
+        elif primary and fallback:
+            both += 1
+        elif primary and not fallback:
+            packaging_only += 1
+    # The verdict is asserted, not discarded. Reading only the label off a
+    # `check()` result is what let a hardcoded floor inside `check()` survive a
+    # green differential; section 4 carries the boundary rows, and even this
+    # incidental call states what it expects.
+    floor_verdict, comparator = mempalace_pin.check(MIN, MIN, MAX)
+    if floor_verdict is not True:
+        print("ARM B FAILURE: check() refuses the floor itself (%r)" % floor_verdict)
+        violations += 1
+    print("comparator=%s" % comparator)
+    print("accepted_by_both=%d" % both)
+    print("packaging_only=%d" % packaging_only)
+    print("fallback_accept_packaging_refuse=%d" % breaches)
+    violations += breaches
+    if comparator != mempalace_pin.COMPARATOR_PACKAGING:
+        print("ARM B FAILURE: packaging was importable but comparator=%s"
+              % comparator)
+        violations += 1
+
+sys.exit(1 if violations else 0)

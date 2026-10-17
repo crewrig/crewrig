@@ -2167,7 +2167,17 @@ capabilities:
       - on: pull-request
         branches: [main, "release/**"]
         paths:
-          - "scripts/tests/test-mempalace-*.sh"
+          - "scripts/tests/mempalace-doctor-*.test.ts"
+          - "scripts/tests/mempalace-runtime-guard-*.test.ts"
+          - "scripts/tests/mempalace-pin-*.test.ts"
+          - "scripts/tests/mempalace-version-range.test.ts"
+          - "scripts/tests/mempalace-common-sh-twins.test.ts"
+          - "scripts/tests/lib/doctor-machine.ts"
+          - "scripts/tests/lib/doctor-wrappers.ts"
+          - "scripts/tests/lib/mempalace-guard-fixture.ts"
+          - "scripts/tests/lib/mempalace-pin-rig.ts"
+          - "scripts/tests/lib/mempalace-range-scan.ts"
+          - "scripts/tests/fixtures/mempalace-pin/**"
           - "scripts/tests/mempalace-http-client-reuse.test.ts"
           - "scripts/tests/test-system-context-store.sh"
           - "scripts/tests/test-setup-antigravity-transcript.sh"
@@ -2200,7 +2210,17 @@ capabilities:
       - on: push
         branches: [main, "release/**"]
         paths:
-          - "scripts/tests/test-mempalace-*.sh"
+          - "scripts/tests/mempalace-doctor-*.test.ts"
+          - "scripts/tests/mempalace-runtime-guard-*.test.ts"
+          - "scripts/tests/mempalace-pin-*.test.ts"
+          - "scripts/tests/mempalace-version-range.test.ts"
+          - "scripts/tests/mempalace-common-sh-twins.test.ts"
+          - "scripts/tests/lib/doctor-machine.ts"
+          - "scripts/tests/lib/doctor-wrappers.ts"
+          - "scripts/tests/lib/mempalace-guard-fixture.ts"
+          - "scripts/tests/lib/mempalace-pin-rig.ts"
+          - "scripts/tests/lib/mempalace-range-scan.ts"
+          - "scripts/tests/fixtures/mempalace-pin/**"
           - "scripts/tests/mempalace-http-client-reuse.test.ts"
           - "scripts/tests/test-system-context-store.sh"
           - "scripts/tests/test-setup-antigravity-transcript.sh"
@@ -2241,7 +2261,17 @@ capabilities:
       tools: [yq, jq]
     cache:
       files:
-        - "scripts/tests/test-mempalace-*.sh"
+        - "scripts/tests/mempalace-doctor-*.test.ts"
+        - "scripts/tests/mempalace-runtime-guard-*.test.ts"
+        - "scripts/tests/mempalace-pin-*.test.ts"
+        - "scripts/tests/mempalace-version-range.test.ts"
+        - "scripts/tests/mempalace-common-sh-twins.test.ts"
+        - "scripts/tests/lib/doctor-machine.ts"
+        - "scripts/tests/lib/doctor-wrappers.ts"
+        - "scripts/tests/lib/mempalace-guard-fixture.ts"
+        - "scripts/tests/lib/mempalace-pin-rig.ts"
+        - "scripts/tests/lib/mempalace-range-scan.ts"
+        - "scripts/tests/fixtures/mempalace-pin/**"
         - "scripts/tests/mempalace-http-client-reuse.test.ts"
         - "scripts/tests/test-system-context-store.sh"
         - "scripts/tests/test-setup-antigravity-transcript.sh"
@@ -2283,18 +2313,15 @@ capabilities:
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-setup-gemini-transcript.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-antigravity-component-install.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-antigravity-discovery-probe.sh
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-version-range.sh
       # `packaging` is the spec-0108 launch guard's PRIMARY comparator and is the
       # branch in force on every serving interpreter that carries it, so CI must
       # exercise it against the real library rather than only against the degraded
-      # fallback. test-mempalace-pin.sh fails loudly when no interpreter here can
+      # fallback. the mempalace-pin-*.test.ts files fail loudly when no interpreter here can
       # import it — deliberately, so that a green pipeline means the primary
       # comparator was actually tested. Not a runtime dependency of the guard: the
       # wrapper still runs, and is still tested, where `packaging` is absent.
       - python3 -m pip install --quiet packaging
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-pin.sh
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-runtime-guard.sh
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-mempalace-doctor.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-pin-read.test.ts scripts/tests/mempalace-pin-compare.test.ts scripts/tests/mempalace-pin-corpus.test.ts scripts/tests/mempalace-runtime-guard-refusal.test.ts scripts/tests/mempalace-runtime-guard-paths.test.ts scripts/tests/mempalace-doctor-divergence.test.ts scripts/tests/mempalace-doctor-report.test.ts scripts/tests/mempalace-doctor-launch.test.ts scripts/tests/mempalace-doctor-shell-wrappers.test.ts scripts/tests/mempalace-common-sh-twins.test.ts scripts/tests/mempalace-version-range.test.ts
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-system-context-store.sh
 
   - id: test-wiring

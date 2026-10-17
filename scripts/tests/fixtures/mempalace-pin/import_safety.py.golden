@@ -1,0 +1,38 @@
+"""Report print()/sys.argv occurrences outside the `__main__` guard."""
+import ast
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    tree = ast.parse(handle.read())
+
+guard = None
+for node in tree.body:
+    if isinstance(node, ast.If) and "__main__" in ast.dump(node.test):
+        guard = node
+if guard is None:
+    print("NO_GUARD")
+    sys.exit(1)
+print("guard_line=%d" % guard.lineno)
+
+strays = []
+for node in ast.walk(tree):
+    label = None
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "print"
+    ):
+        label = "print()"
+    elif (
+        isinstance(node, ast.Attribute)
+        and node.attr == "argv"
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "sys"
+    ):
+        label = "sys.argv"
+    if label is not None and node.lineno < guard.lineno:
+        strays.append("STRAY %s at line %d" % (label, node.lineno))
+for stray in strays:
+    print(stray)
+print("strays=%d" % len(strays))
+sys.exit(1 if strays else 0)

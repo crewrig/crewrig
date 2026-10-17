@@ -15,7 +15,7 @@
 // `mcp_server.main()` does the case's own assertions instead of serving MCP
 // traffic. PYTHONPATH wins over any real install, mirroring the fixture
 // pattern already proven against this exact wrapper in
-// scripts/tests/test-mempalace-runtime-guard.sh. No network connection is
+// scripts/tests/mempalace-runtime-guard-refusal.test.ts. No network connection is
 // opened to the live, shared MemPalace daemon (127.0.0.1:41893) or its
 // ChromaDB backend (127.0.0.1:8001): the fake `HttpClient` never touches a
 // socket regardless of the host/port values it is constructed with.
