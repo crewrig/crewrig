@@ -54,10 +54,13 @@ export const retired = (text: string): string[] => [
 ];
 
 /** `<file>: <spelling>` for every retired spelling found in `files` (read from the repository). */
-export function sweep(files: readonly string[]): string[] {
+export function sweep(
+  files: readonly string[],
+  read: (file: string) => string = (file) => fs.readFileSync(path.join(REPO, file), "utf8"),
+): string[] {
   const found: string[] = [];
   for (const file of files) {
-    const text = fs.readFileSync(path.join(REPO, file), "utf8");
+    const text = read(file);
     for (const spelling of new Set(retired(text))) found.push(`${file}: ${spelling}`);
   }
   return found;
