@@ -15,6 +15,10 @@ import { applyMap, buildDetector, buildSubstitutions } from "../lib/en-us-sweep/
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
 const HAVE_PY = process.platform !== "win32" && spawnSync("python3", ["--version"]).status === 0;
+if (!HAVE_PY && process.platform !== "win32" && process.env.CI) {
+  // A missing oracle must not read as green on a Linux runner (review/1339-F6).
+  throw new Error("python3 is required for the shell+Python oracle leg on CI");
+}
 const skip = HAVE_PY ? false : "python3 absent or win32";
 const ENV = { ...process.env, LC_ALL: "C", NO_COLOR: "1" };
 
