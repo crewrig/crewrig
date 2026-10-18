@@ -1,4 +1,6 @@
-#### Waiting on a pending check
+# Step 1: waiting on a pending check
+
+## Waiting on a pending check
 
 A `run_in_background` task or the `Monitor` tool's completion signal is
 a hint, never proof. Both watch a process from outside the check
@@ -48,4 +50,3 @@ because it must cite an actual named check and its status; if that
 final query itself comes back as a bare connection error rather than
 a named check/status, treat it as a cue to retry the query, not as
 grounds to report the check failed or pending.
-

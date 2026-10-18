@@ -1,4 +1,6 @@
-### 3. Fetch the PR diff and metadata
+# Step 3: fetch the diff and metadata
+
+## 3. Fetch the PR diff and metadata
 
 ```bash
 gh pr diff <number>
@@ -25,4 +27,3 @@ Identify linked issues by parsing the body (`Fixes #N`, `Closes #N`,
 skill's checklist** for the surfaces in scope: a file inside the bound is
 reviewed to the same standard as on a first pass. On a first pass, and on
 a vacant seat, nothing is bounded — read the whole artifact.
-

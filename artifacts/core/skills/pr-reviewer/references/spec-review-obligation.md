@@ -1,3 +1,5 @@
+# Spec-review obligation
+
 ## Spec-review obligation — tier challenge
 
 When acting as a spec-reviewer (cold-spawned to review a spec-PR), the

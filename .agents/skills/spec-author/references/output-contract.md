@@ -1,3 +1,5 @@
+# Output contract
+
 ## Output contract
 
 The skill writes exactly one new file:
@@ -176,4 +178,3 @@ each drafted requirement, verify that the requirement explicitly answers
 the null/degenerate case and names a permitted path, rather than solely
 stating what is forbidden or describing only the happy path. If a
 requirement fails this check, revise it before finalizing the draft.
-

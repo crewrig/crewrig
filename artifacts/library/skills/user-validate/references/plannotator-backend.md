@@ -1,3 +1,5 @@
+# Plannotator backend
+
 ## Backend: `plannotator` (opt-in, rich review)
 
 1. **Presence check (spec 0080 R4).** Run `plannotator --version`. If it fails
@@ -249,4 +251,3 @@ inline base64 data URIs (`data:image/png;base64,...` or
 (`file://`). Modern web browser security sandboxes block loading `file://` URIs
 from rendered pages, causing local images to fail to display unless inlined as
 data URIs.
-

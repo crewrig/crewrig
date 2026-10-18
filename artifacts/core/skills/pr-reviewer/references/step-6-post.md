@@ -1,4 +1,6 @@
-### 6. Post the review
+# Step 6: post the review
+
+## 6. Post the review
 
 Forge access is CLI-only (`AGENTS.md` → *Forge Access*): the framework
 ships no forge MCP server. Post the verdict through `gh`, following the
@@ -51,4 +53,3 @@ The three events map as follows:
   merge.
 - `COMMENT` — observations without a verdict (e.g. when the diff is
   outside the reviewer's domain).
-

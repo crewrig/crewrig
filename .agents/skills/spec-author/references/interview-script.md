@@ -1,3 +1,5 @@
+# Interview script
+
 ## Interview script
 
 Each mode shares the same output contract (see *Output contract*) and
@@ -121,4 +123,3 @@ batch without a preface, with an opaque option `description`, with
 an undefined acronym, or with a non-English-language calque from the
 R17 catalog, is a `class: tech` finding in the retroactive review
 loop.
-

@@ -1,4 +1,6 @@
-### 2. Read the project conventions
+# Step 2: project conventions
+
+## 2. Read the project conventions
 
 Open `AGENTS.md` at the repo root (or the project's equivalent) and
 note:
@@ -10,4 +12,3 @@ note:
 - Branch-naming and merge-method rules.
 
 Different projects have different rules. Do not assume.
-

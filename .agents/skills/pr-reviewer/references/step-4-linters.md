@@ -1,4 +1,6 @@
-### 4. Run the bundled linter scripts
+# Step 4: bundled linters
+
+## 4. Run the bundled linter scripts
 
 Select scripts based on file extensions in the changed-files list, then
 invoke each with the matching subset of paths. Capture stdout and exit
@@ -14,4 +16,3 @@ Node version below 24 — as "tool unavailable, skipped", never as a
 finding. The real Node floor guard is owned by sub-spec A2 (#1324).
 
 See *Scripts* below for the full table.
-

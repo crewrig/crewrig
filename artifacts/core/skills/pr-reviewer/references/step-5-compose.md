@@ -1,4 +1,6 @@
-### 5. Compose the structured review
+# Step 5: compose the review
+
+## 5. Compose the structured review
 
 The verdict opens with the seat line:
 `seat: <surface>/<ticket>[#<generation>]`. Its exact placement depends on
@@ -31,4 +33,3 @@ Every technical claim must cite a verifiable source (a file path with
 optional line number, or a specific assertion from the diff). If you
 cannot cite, write "see diff" or omit the claim. See *Grounding
 discipline* below.
-

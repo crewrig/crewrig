@@ -1,3 +1,5 @@
+# Pre-write grounding
+
 ## Pre-write grounding
 
 Before writing the `## Requirements` section of a spec that qualifies
@@ -162,4 +164,3 @@ Worked example:
   Back-fill responsibility: the implementation PR for this spec SHALL
   add `type:` to every existing skill source in the same diff.
 ```
-

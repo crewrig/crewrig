@@ -1,4 +1,6 @@
-### 1. Preflight — check CI status
+# Step 1: preflight
+
+## 1. Preflight — check CI status
 
 Before reading the diff, query the CI state for the PR:
 
@@ -56,4 +58,3 @@ gh pr view <number> --repo <owner/repo> --json labels --jq '.labels[].name' | gr
 - This check runs on **every** pass against a given PR, not only a
   seat's first pass — the bound in step 3 narrows re-examination of
   file content, never this label check.
-

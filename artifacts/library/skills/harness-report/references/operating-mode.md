@@ -1,4 +1,6 @@
-### 4. Tag
+# Operating mode: tag, resume, reactive trigger
+
+## 4. Tag
 
 One MCP call. Fire and forget — do not wait for an acknowledgment,
 do not block, return to your task:
@@ -101,12 +103,12 @@ EOF
   `harness-feedback` label is mandatory — it is exactly what routes the
   friction into the curator's triage lane.
 
-### 5. Resume
+## 5. Resume
 
 Return to the task that was interrupted by the signal. The friction
 is now in the wing; the Curator will pick it up on its next run.
 
-### Reactive trigger for `severity: high`
+## Reactive trigger for `severity: high`
 
 When you file a `FRICTION:` payload with `severity: high`, you SHOULD
 surface it immediately rather than wait for the next scheduled curator
@@ -120,4 +122,3 @@ Dedup is on, so re-running is safe — already-open clusters are skipped.
 The curator's high-severity bypass (`cluster_qualifies` in `curate.py`)
 promotes the singleton even before a second report arrives. Skip this
 step for `low` / `med`: those wait for the weekly sweep.
-

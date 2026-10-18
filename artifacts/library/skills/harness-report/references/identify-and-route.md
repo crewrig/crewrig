@@ -1,4 +1,6 @@
-### 1. Pause and identify the offender
+# Identify the offender and pick the room
+
+## 1. Pause and identify the offender
 
 The trickiest part of friction reporting is **getting the attribution
 right**. You are likely operating under some skill X when the friction
@@ -20,7 +22,7 @@ If you genuinely cannot pinpoint the offender, leave `canonical:`
 empty and let `evidence:` carry the trail. A routing failure (caught
 by the Curator at consumption time) is better than a wrong-target MR.
 
-### 2. Pick the room
+## 2. Pick the room
 
 One of the 5 fixed categories per `config/TOOLS.md`:
 
@@ -34,4 +36,3 @@ One of the 5 fixed categories per `config/TOOLS.md`:
 When in doubt between `prompt` and `behavior`: ask whether the prompt
 *told* you to do the wrong thing (→ `prompt`) or whether you went off
 the prompt's rails on your own (→ `behavior`).
-

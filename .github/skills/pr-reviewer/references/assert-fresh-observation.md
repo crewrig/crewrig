@@ -1,3 +1,5 @@
+# Assert only a fresh observation
+
 ## Cross-cutting: assert only a fresh observation
 
 Your verdict asserts what a pull request currently contains. Observe the

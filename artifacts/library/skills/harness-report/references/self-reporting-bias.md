@@ -1,3 +1,5 @@
+# Self-reporting bias
+
 ## Self-reporting bias
 
 A known weakness: the agent who produced the contested action is the
@@ -11,4 +13,3 @@ self-correction. To counteract this:
   privately think "the user just changed their mind". The Curator
   will downgrade if the cluster proves to be preference rather than
   defect.
-
