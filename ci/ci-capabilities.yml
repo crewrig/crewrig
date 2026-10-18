@@ -3001,6 +3001,29 @@ capabilities:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-ratchet.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ratchet.ts
 
+  # Spec 0267 R12, R13, R16-R19: the test-harness host-safety check. No
+  # `paths:` filter: any scripts/** change can add a destructive call. Its
+  # growth arm diffs ci/host-safety-allowlist.txt against the merge-base with
+  # BASE_REF, hence `history-depth: full`. Unlike `ratchet` it imports
+  # `typescript` (the TS 7 programmatic API), so it needs `npm ci`.
+  - id: host-safety
+    name: "Test-harness host-safety check"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      history-depth: full
+    env:
+      BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    command:
+      - npm ci
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-host-safety.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-host-safety.ts
+
   # Spec 0238 R4-R8, R12, R13: type-check, erasable syntax, Oxlint type-aware
   # strict typing (max-lines as a non-blocking warning) and Oxfmt check mode
   # on every tracked *.ts outside the built-copy trees (Oxfmt also checks the

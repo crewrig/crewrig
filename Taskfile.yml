@@ -480,6 +480,13 @@ tasks:
     desc: "Run the shell / JavaScript / Python footprint ratchet, as CI does (spec 0238 R1-R3)"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ratchet.ts
 
+  # Spec 0267 R12: local entry point running exactly the CI check of the
+  # `host-safety` job (ci/ci-capabilities.yml). The check imports `typescript`,
+  # so a fresh checkout needs `npm ci` first (unlike `ratchet`).
+  host-safety:
+    desc: "Run the test-harness host-safety check, as CI does (spec 0267)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-host-safety.ts
+
   # Spec 0240 R13-R14: local entry points for the runtime-foundations suites
   # (the exact CI command of the `runtime-foundations` capability) and a
   # passthrough to the timing-budget harness, e.g.

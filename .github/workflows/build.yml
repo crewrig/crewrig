@@ -2130,6 +2130,38 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  # Spec 0267 R12, R13, R16-R19: test-harness host-safety check. No path
+  # filter: any scripts/** change can add a destructive call. Full history for
+  # the allowlist growth arm. Needs `npm ci`: the check imports `typescript`.
+  host-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install the TypeScript toolchain
+        run: npm ci
+
+      - name: Test the host-safety check
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-host-safety.test.ts
+
+      - name: Run the host-safety check
+        env:
+          # The allowlist growth arm diffs against the PR's target branch. On
+          # a push the empty value hands the check back to its own default
+          # derivation (first `crewrig|origin` remote + /main).
+          BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || '' }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-host-safety.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   # Spec 0238 R4-R8: TypeScript type-check, erasable syntax, Oxlint
   # type-aware strict typing and Oxfmt check mode. No path filter.
   lint-typescript:

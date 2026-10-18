@@ -160,6 +160,12 @@ This is a distinct, actionable check from the "treat the main directory as read-
 
 This complements — does not replace — the cwd-verification check above: the check covers the session's first mutating call, the rule covers the whole session, including a Bash-tool cwd reset that occurs after the check has passed.
 
+**Host-safety (every spawned role and the orchestrating session).** A harness or test never mutates a path it did not create itself. This binds every specialist — `developer`, `tester`, `doc-writer`, `architect`, or any other spawned role — and the orchestrating session alike. Embed the following instruction verbatim in every spawned `Agent` prompt whose task runs, writes or changes test or harness code:
+
+> Never delete, restore, move or overwrite a path outside the scratch directory you created yourself; derive nothing destructive from environment variables, arguments, `HOME` or `PATH`.
+
+A destructive path found at run time in a harness (taken from the environment, from arguments, from `HOME` or from a `PATH` entry) is reported to the orchestrator, never worked around, and the orchestrator surfaces it to the user. A REVIEW pass that finds such a brief without this instruction emits a `class: tech` finding citing this clause. The check that enforces the matching static rule, and its limits, are documented in [`docs/host-safety-check.md`](host-safety-check.md).
+
 **Stray-file discovery — no unilateral action.** Discovering a file on the main repository checkout that appears misplaced from a worktree-scoped ticket — whether the discoverer is the orchestrator or a sibling sub-agent — does NOT trigger deletion of that file, on sight or by any other means. A file's location does not establish its provenance: a sibling agent's own in-flight write may be transiting through that same path at the moment of discovery, and location alone cannot distinguish an abandoned stray from a write still in progress. Instead:
 
 1. **Flag, don't act.** The discoverer flags the file to the orchestrator (or `team-lead`) for adjudication.

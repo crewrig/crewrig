@@ -1,0 +1,11 @@
+# host-safety-allowlist.txt — shrink-only list of un-guarded destructive call sites (spec 0267).
+# Format: <path>::<enclosing-function>::<callee>#<ordinal><TAB><justification>, sorted, unique.
+# An entry silences one finding of scripts/check-host-safety.ts, goes stale when that call site is
+# no longer flagged, and may never be added relative to the merge base: guard new calls instead.
+# Every entry below was read at its call site (issue #1673); see docs/host-safety-check.md.
+scripts/lib/service/launchd.ts::uninstall::rmSync#1	Product code, not a harness: removes the plist this backend wrote at <home>/Library/LaunchAgents/<label>.plist after existsSync; home is the injectable createBackend(home = homedir()) parameter and tests pass a mkdtemp home.
+scripts/lib/service/schedule-launchd.ts::install::rmSync#1	Product code, not a harness: rolls back the plist this install just staged at <home>/Library/LaunchAgents/<label>.plist when launchctl load fails; home is the injectable backend parameter.
+scripts/lib/service/schedule-launchd.ts::uninstall::rmSync#1	Product code, not a harness: removes the plist this backend wrote at <home>/Library/LaunchAgents/<label>.plist after existsSync; home is the injectable backend parameter.
+scripts/lib/service/systemd.ts::uninstall::rmSync#1	Product code, not a harness: removes the unit file this backend wrote under <home>/.config/systemd/user after existsSync; home is the injectable backend parameter.
+scripts/tests/fixtures/mempalace-transcript/stub-daemon.ts::<anonymous-4>::renameSync#1	Stub daemon renames its own staging file onto the --port-file argument; both of its spawners (with-stub-daemon.ts, transcript-runtime.ts) pass a port file inside a directory they made with mkdtemp.
+scripts/tests/lib/bash-suite-differential.ts::<anonymous-1>::fs.rmSync#1	Exit hook removes the call lock <cfg.record>.lock; cfg.record is asserted inside cfg.root (assertRoot-verified differential root) earlier in the same function and acquireLock re-asserts the lock inside the root; the guard is on cfg.record, not on the derived lock expression.
