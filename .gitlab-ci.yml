@@ -1079,7 +1079,7 @@ packaging-modules-ts:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tar-writer.test.ts scripts/tests/docs-index.test.ts scripts/tests/packaging-file-size.test.ts scripts/tests/packaging-release-package.test.ts scripts/tests/packaging-release-package-cli.test.ts scripts/tests/packaging-spawn-tiers.test.ts scripts/tests/packaging-entries.test.ts scripts/tests/release-sync-manifests.test.ts scripts/tests/packaging-release-differential.test.ts scripts/tests/packaging-release-golden-portable.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tar-writer.test.ts scripts/tests/docs-index.test.ts scripts/tests/build-docs-index-entry.test.ts scripts/tests/packaging-file-size.test.ts scripts/tests/packaging-release-package.test.ts scripts/tests/packaging-release-package-cli.test.ts scripts/tests/packaging-spawn-tiers.test.ts scripts/tests/packaging-entries.test.ts scripts/tests/release-sync-manifests.test.ts scripts/tests/packaging-release-differential.test.ts scripts/tests/packaging-release-golden-portable.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -1092,6 +1092,8 @@ packaging-modules-ts:
         - "scripts/lib/node-floor-guard.js"
         - "scripts/tests/tar-writer.test.ts"
         - "scripts/tests/docs-index.test.ts"
+        - "scripts/tests/build-docs-index-entry.test.ts"
+        - "scripts/tests/lib/docs-index-entry-tree.ts"
         - "scripts/tests/packaging-file-size.test.ts"
         - "scripts/tests/lib/tar-reader.ts"
         - "scripts/tests/lib/docs-index-trees.ts"
@@ -1140,6 +1142,8 @@ packaging-modules-ts:
         - "scripts/lib/node-floor-guard.js"
         - "scripts/tests/tar-writer.test.ts"
         - "scripts/tests/docs-index.test.ts"
+        - "scripts/tests/build-docs-index-entry.test.ts"
+        - "scripts/tests/lib/docs-index-entry-tree.ts"
         - "scripts/tests/packaging-file-size.test.ts"
         - "scripts/tests/lib/tar-reader.ts"
         - "scripts/tests/lib/docs-index-trees.ts"
@@ -1263,7 +1267,7 @@ extension-render:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-hook-map.ts"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-hook-map.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-migrate-extension.sh"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-release-package-extension.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-install-antigravity-tokens-sh.test.ts"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-create-extension-combinations.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
@@ -1321,7 +1325,7 @@ extension-render:
         - "scripts/release-package-extension.ts"
         - "scripts/lib/packaging/**"
         - "scripts/lib/extension-install.sh"
-        - "scripts/tests/test-release-package-extension.sh"
+        - "scripts/tests/extension-install-antigravity-tokens-sh.test.ts"
         - "scripts/tests/test-create-extension-combinations.sh"
         - "scripts/check-extension-pivot.ts"
         - "scripts/lib/governance/**"
@@ -1382,7 +1386,7 @@ extension-render:
         - "scripts/release-package-extension.ts"
         - "scripts/lib/packaging/**"
         - "scripts/lib/extension-install.sh"
-        - "scripts/tests/test-release-package-extension.sh"
+        - "scripts/tests/extension-install-antigravity-tokens-sh.test.ts"
         - "scripts/tests/test-create-extension-combinations.sh"
         - "scripts/check-extension-pivot.ts"
         - "scripts/lib/governance/**"
@@ -1713,7 +1717,8 @@ docs-index:
         - "scripts/lib/paths.ts"
         - "scripts/lib/line-endings.ts"
         - "scripts/lib/node-floor-guard.js"
-        - "scripts/tests/test-build-docs-index.sh"
+        - "scripts/tests/build-docs-index-entry.test.ts"
+        - "scripts/tests/lib/docs-index-entry-tree.ts"
         - "docs/**"
         - "scripts/ci-cache-guard.sh"
     paths:
@@ -1721,7 +1726,7 @@ docs-index:
   script:
     - "node scripts/lib/node-floor-guard.js"
     - "node scripts/build-docs-index.ts --check"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-docs-index.sh,scripts/build-docs-index.ts,scripts/lib/docs-index/**,scripts/lib/paths.ts,scripts/lib/line-endings.ts,scripts/lib/node-floor-guard.js,scripts/tests/test-build-docs-index.sh,docs/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-docs-index.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-docs-index.sh,scripts/build-docs-index.ts,scripts/lib/docs-index/**,scripts/lib/paths.ts,scripts/lib/line-endings.ts,scripts/lib/node-floor-guard.js,scripts/tests/build-docs-index-entry.test.ts,scripts/tests/lib/docs-index-entry-tree.ts,docs/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-docs-index-entry.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -1731,7 +1736,8 @@ docs-index:
         - "scripts/lib/paths.ts"
         - "scripts/lib/line-endings.ts"
         - "scripts/lib/node-floor-guard.js"
-        - "scripts/tests/test-build-docs-index.sh"
+        - "scripts/tests/build-docs-index-entry.test.ts"
+        - "scripts/tests/lib/docs-index-entry-tree.ts"
         - "docs/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
@@ -1741,7 +1747,8 @@ docs-index:
         - "scripts/lib/paths.ts"
         - "scripts/lib/line-endings.ts"
         - "scripts/lib/node-floor-guard.js"
-        - "scripts/tests/test-build-docs-index.sh"
+        - "scripts/tests/build-docs-index-entry.test.ts"
+        - "scripts/tests/lib/docs-index-entry-tree.ts"
         - "docs/**"
 
 figure-labels:
@@ -3061,14 +3068,9 @@ usage-record-schema:
 
 release-notes:
   image: node:24
-  before_script:
-    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
-    - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
-    - chmod +x /usr/local/bin/jq
   script:
     - "npm ci"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-monorepo-release-notes.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-notes-real-engine.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -3079,7 +3081,9 @@ release-notes:
         - "scripts/lib/monorepo-release/**"
         - "scripts/lib/packaging/**"
         - "scripts/lib/release-notes/**"
-        - "scripts/tests/test-monorepo-release-notes.sh"
+        - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
+        - "scripts/tests/lib/release-*.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
         - "scripts/lib/release-rehearse.mjs"
         - "scripts/lib/release-pr.ts"
         - "scripts/release-pr.ts"
@@ -3095,7 +3099,9 @@ release-notes:
         - "scripts/lib/monorepo-release/**"
         - "scripts/lib/packaging/**"
         - "scripts/lib/release-notes/**"
-        - "scripts/tests/test-monorepo-release-notes.sh"
+        - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
+        - "scripts/tests/lib/release-*.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
         - "scripts/lib/release-rehearse.mjs"
         - "scripts/lib/release-pr.ts"
         - "scripts/release-pr.ts"
@@ -3618,6 +3624,8 @@ release-rehearsal:
 
 release-tests:
   image: node:24
+  variables:
+    GIT_DEPTH: "0"
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
     - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
@@ -3629,8 +3637,8 @@ release-tests:
     - chmod +x /usr/local/bin/yq
   script:
     - "npm install --include=dev"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-monorepo-release.sh"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-monorepo-release-engine.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-docs-and-workflows.test.ts scripts/tests/release-golden-generator.test.ts"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-engine-rehearsal.test.ts scripts/tests/monorepo-release-engine-gitlab-publish.test.ts scripts/tests/monorepo-release-engine-github-pr.test.ts scripts/tests/monorepo-release-engine-templates.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-changelog.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-pr.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-driver-sandbox.test.ts"
@@ -3653,7 +3661,10 @@ release-tests:
         - "scripts/tests/release-pr.test.ts"
         - ".github/workflows/release-monorepo.yml"
         - "scripts/lib/release-notes/**"
-        - "scripts/tests/test-monorepo-release*.sh"
+        - "scripts/tests/monorepo-release-engine-*.test.ts"
+        - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
+        - "scripts/tests/release-docs-and-workflows.test.ts"
+        - "scripts/tests/release-golden-generator.test.ts"
         - "scripts/tests/release-changelog.test.ts"
         - "scripts/tests/release-driver-sandbox.test.ts"
         - "scripts/tests/monorepo-release-blackbox-*.test.ts"
@@ -3684,7 +3695,10 @@ release-tests:
         - "scripts/tests/release-pr.test.ts"
         - ".github/workflows/release-monorepo.yml"
         - "scripts/lib/release-notes/**"
-        - "scripts/tests/test-monorepo-release*.sh"
+        - "scripts/tests/monorepo-release-engine-*.test.ts"
+        - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
+        - "scripts/tests/release-docs-and-workflows.test.ts"
+        - "scripts/tests/release-golden-generator.test.ts"
         - "scripts/tests/release-changelog.test.ts"
         - "scripts/tests/release-driver-sandbox.test.ts"
         - "scripts/tests/monorepo-release-blackbox-*.test.ts"

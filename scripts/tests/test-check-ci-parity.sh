@@ -585,8 +585,8 @@ SCAN_PREFIX="bash scripts/ci-cache-guard.sh --stray-scan -- "
   f="$(make_fixture)"
   want_bare="$(yq -r '.capabilities[] | select(.id == "release-notes") | .command[-1]' "$f/ci/ci-capabilities.yml")"
   want_layered="$(yq -r '.capabilities[] | select(.id == "docs-index") | .command[-1]' "$f/ci/ci-capabilities.yml")"
-  got_bare="$(yq -r '.jobs."release-notes".steps[] | select((.run // "") | test("test-monorepo-release-notes")) | .run' "$f/.github/workflows/release-notes.yml")"
-  got_layered="$(yq -r '.jobs."docs-index".steps[] | select((.run // "") | test("test-build-docs-index")) | .run' "$f/.github/workflows/build.yml")"
+  got_bare="$(yq -r '.jobs."release-notes".steps[] | select((.run // "") | test("monorepo-release-notes-real-engine")) | .run' "$f/.github/workflows/release-notes.yml")"
+  got_layered="$(yq -r '.jobs."docs-index".steps[] | select((.run // "") | test("build-docs-index-entry")) | .run' "$f/.github/workflows/build.yml")"
 
   # Preconditions: the reference declares the scanned form, and the two
   # fixture steps are its bare and its layered exhibition.
@@ -609,13 +609,13 @@ SCAN_PREFIX="bash scripts/ci-cache-guard.sh --stray-scan -- "
 }
 {
   f="$(make_fixture)"
-  yq -i '(.jobs."release-notes".steps[] | select((.run // "") | test("stray-scan")) | .run) = "bash scripts/tests/test-monorepo-release-notes.sh"' \
+  yq -i '(.jobs."release-notes".steps[] | select((.run // "") | test("stray-scan")) | .run) = "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-notes-real-engine.test.ts"' \
     "$f/.github/workflows/release-notes.yml"
 
   run_check "$f"
   expect_exit 1 "SC2: a bare step missing the scan fails closed"
   expect_in err "capability 'release-notes' (github-actions)" "SC2: names capability + platform"
-  expect_in err "unexpected step: 'bash scripts/tests/test-monorepo-release-notes.sh'" "SC2: names the unscanned step"
+  expect_in err "unexpected step: 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-notes-real-engine.test.ts'" "SC2: names the unscanned step"
 }
 {
   f="$(make_fixture)"
@@ -625,7 +625,7 @@ SCAN_PREFIX="bash scripts/ci-cache-guard.sh --stray-scan -- "
   run_check "$f"
   expect_exit 1 "SC3: a layered step missing the scan fails closed"
   expect_in err "capability 'docs-index' (github-actions)" "SC3: names capability + platform"
-  expect_in err "unexpected step: 'bash scripts/tests/test-build-docs-index.sh'" "SC3: names the unscanned step"
+  expect_in err "unexpected step: 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-docs-index-entry.test.ts'" "SC3: names the unscanned step"
 }
 
 # ===========================================================================

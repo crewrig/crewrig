@@ -48,12 +48,10 @@ const LITERALS: readonly { file: string; pattern: RegExp; tsFile?: string }[] = 
     pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
   },
   {
-    file: "scripts/tests/test-release-package-extension.sh",
-    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
-  },
-  {
-    file: "scripts/tests/test-monorepo-release-engine.sh",
-    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
+    // Row J2: the engine suites stage the closure through one TypeScript helper.
+    file: "scripts/tests/lib/release-engine-fixture.ts",
+    pattern: /^const STAGED_NODE_PACKAGES = \[([^\]]*)\];$/m,
+    tsFile: "scripts/tests/lib/release-engine-fixture.ts",
   },
   {
     file: "tests/e2e/scenarios/03-skill-build/run.sh",

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // forge-stub.mjs — A hermetic stand-in for the GitLab API, used ONLY by
-// scripts/tests/test-monorepo-release-engine.sh (spec 0213 + delta-01, PLAN
+// the scripts/tests/monorepo-release-engine-*.test.ts suites (spec 0213 + delta-01, PLAN
 // v2 step 11). It implements exactly what @semantic-release/gitlab@13.3.3
 // calls for a run whose config carries no `successComment`/`failComment`
 // overrides (verified against node_modules/@semantic-release/gitlab/lib/

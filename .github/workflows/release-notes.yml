@@ -11,7 +11,9 @@ on:
       - "scripts/lib/monorepo-release/**"
       - "scripts/lib/packaging/**"
       - "scripts/lib/release-notes/**"
-      - "scripts/tests/test-monorepo-release-notes.sh"
+      - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
+      - "scripts/tests/lib/release-*.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
       - "scripts/lib/release-rehearse.mjs"
       - "scripts/lib/release-pr.ts"
       - "scripts/release-pr.ts"
@@ -28,7 +30,9 @@ on:
       - "scripts/lib/monorepo-release/**"
       - "scripts/lib/packaging/**"
       - "scripts/lib/release-notes/**"
-      - "scripts/tests/test-monorepo-release-notes.sh"
+      - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
+      - "scripts/tests/lib/release-*.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
       - "scripts/lib/release-rehearse.mjs"
       - "scripts/lib/release-pr.ts"
       - "scripts/release-pr.ts"
@@ -59,7 +63,7 @@ jobs:
         run: npm ci
 
       - name: Render extension release notes through the monorepo release config
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-monorepo-release-notes.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-notes-real-engine.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

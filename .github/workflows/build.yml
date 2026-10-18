@@ -958,6 +958,8 @@ jobs:
               - 'scripts/lib/node-floor-guard.js'
               - 'scripts/tests/tar-writer.test.ts'
               - 'scripts/tests/docs-index.test.ts'
+              - 'scripts/tests/build-docs-index-entry.test.ts'
+              - 'scripts/tests/lib/docs-index-entry-tree.ts'
               - 'scripts/tests/packaging-file-size.test.ts'
               - 'scripts/tests/lib/tar-reader.ts'
               - 'scripts/tests/lib/docs-index-trees.ts'
@@ -1008,7 +1010,7 @@ jobs:
         run: node scripts/lib/node-floor-guard.js
       - name: Test the TypeScript archive writer, documentation index and release packaging modules
         if: steps.filter.outputs.packaging-modules-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tar-writer.test.ts scripts/tests/docs-index.test.ts scripts/tests/packaging-file-size.test.ts scripts/tests/packaging-release-package.test.ts scripts/tests/packaging-release-package-cli.test.ts scripts/tests/packaging-spawn-tiers.test.ts scripts/tests/packaging-entries.test.ts scripts/tests/release-sync-manifests.test.ts scripts/tests/packaging-release-differential.test.ts scripts/tests/packaging-release-golden-portable.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tar-writer.test.ts scripts/tests/docs-index.test.ts scripts/tests/build-docs-index-entry.test.ts scripts/tests/packaging-file-size.test.ts scripts/tests/packaging-release-package.test.ts scripts/tests/packaging-release-package-cli.test.ts scripts/tests/packaging-spawn-tiers.test.ts scripts/tests/packaging-entries.test.ts scripts/tests/release-sync-manifests.test.ts scripts/tests/packaging-release-differential.test.ts scripts/tests/packaging-release-golden-portable.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1109,7 +1111,7 @@ jobs:
               - 'scripts/release-package-extension.ts'
               - 'scripts/lib/packaging/**'
               - 'scripts/lib/extension-install.sh'
-              - 'scripts/tests/test-release-package-extension.sh'
+              - 'scripts/tests/extension-install-antigravity-tokens-sh.test.ts'
               - 'scripts/tests/test-create-extension-combinations.sh'
               - 'scripts/check-extension-pivot.ts'
               - 'scripts/lib/governance/**'
@@ -1164,7 +1166,7 @@ jobs:
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-migrate-extension.sh
       - name: Test Release Package Extension
         if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-release-package-extension.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-install-antigravity-tokens-sh.test.ts
       - name: Test Create Extension Combinations
         if: steps.filter.outputs.extension-render == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-create-extension-combinations.sh
@@ -1439,7 +1441,8 @@ jobs:
               - 'scripts/lib/paths.ts'
               - 'scripts/lib/line-endings.ts'
               - 'scripts/lib/node-floor-guard.js'
-              - 'scripts/tests/test-build-docs-index.sh'
+              - 'scripts/tests/build-docs-index-entry.test.ts'
+              - 'scripts/tests/lib/docs-index-entry-tree.ts'
               - 'docs/**'
       - uses: actions/setup-node@v4
         if: steps.filter.outputs.docs-index == 'true'
@@ -1455,10 +1458,10 @@ jobs:
         if: steps.filter.outputs.docs-index == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/build-docs-index.sh', 'scripts/build-docs-index.ts', 'scripts/lib/docs-index/**', 'scripts/lib/paths.ts', 'scripts/lib/line-endings.ts', 'scripts/lib/node-floor-guard.js', 'scripts/tests/test-build-docs-index.sh', 'docs/**', 'scripts/ci-cache-guard.sh') }}
+          key: ${{ hashFiles('scripts/build-docs-index.sh', 'scripts/build-docs-index.ts', 'scripts/lib/docs-index/**', 'scripts/lib/paths.ts', 'scripts/lib/line-endings.ts', 'scripts/lib/node-floor-guard.js', 'scripts/tests/build-docs-index-entry.test.ts', 'scripts/tests/lib/docs-index-entry-tree.ts', 'docs/**', 'scripts/ci-cache-guard.sh') }}
       - name: Test Build Docs Index
         if: steps.filter.outputs.docs-index == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-docs-index.sh,scripts/build-docs-index.ts,scripts/lib/docs-index/**,scripts/lib/paths.ts,scripts/lib/line-endings.ts,scripts/lib/node-floor-guard.js,scripts/tests/test-build-docs-index.sh,docs/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-docs-index.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/build-docs-index.sh,scripts/build-docs-index.ts,scripts/lib/docs-index/**,scripts/lib/paths.ts,scripts/lib/line-endings.ts,scripts/lib/node-floor-guard.js,scripts/tests/build-docs-index-entry.test.ts,scripts/tests/lib/docs-index-entry-tree.ts,docs/**,scripts/ci-cache-guard.sh" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-docs-index-entry.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

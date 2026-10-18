@@ -1,6 +1,6 @@
 // packaging-release-package.test.ts — the five assertions of the release packager and the archive
 // it writes (spec 0257 R9, R10), run through the sandbox's own copy of the entry module so the
-// real builder renders. Twin of the cases of test-release-package-extension.sh; the gemini
+// real builder renders. Twin of the cases of the retired Bash suite test-release-package-extension.sh; the gemini
 // validation, the argument parsing and the differential run against the shell are in
 // packaging-release-package-cli.test.ts.
 

@@ -1213,6 +1213,8 @@ capabilities:
           - "scripts/lib/node-floor-guard.js"
           - "scripts/tests/tar-writer.test.ts"
           - "scripts/tests/docs-index.test.ts"
+          - "scripts/tests/build-docs-index-entry.test.ts"
+          - "scripts/tests/lib/docs-index-entry-tree.ts"
           - "scripts/tests/packaging-file-size.test.ts"
           - "scripts/tests/lib/tar-reader.ts"
           - "scripts/tests/lib/docs-index-trees.ts"
@@ -1262,6 +1264,8 @@ capabilities:
           - "scripts/lib/node-floor-guard.js"
           - "scripts/tests/tar-writer.test.ts"
           - "scripts/tests/docs-index.test.ts"
+          - "scripts/tests/build-docs-index-entry.test.ts"
+          - "scripts/tests/lib/docs-index-entry-tree.ts"
           - "scripts/tests/packaging-file-size.test.ts"
           - "scripts/tests/lib/tar-reader.ts"
           - "scripts/tests/lib/docs-index-trees.ts"
@@ -1305,7 +1309,7 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tar-writer.test.ts scripts/tests/docs-index.test.ts scripts/tests/packaging-file-size.test.ts scripts/tests/packaging-release-package.test.ts scripts/tests/packaging-release-package-cli.test.ts scripts/tests/packaging-spawn-tiers.test.ts scripts/tests/packaging-entries.test.ts scripts/tests/release-sync-manifests.test.ts scripts/tests/packaging-release-differential.test.ts scripts/tests/packaging-release-golden-portable.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tar-writer.test.ts scripts/tests/docs-index.test.ts scripts/tests/build-docs-index-entry.test.ts scripts/tests/packaging-file-size.test.ts scripts/tests/packaging-release-package.test.ts scripts/tests/packaging-release-package-cli.test.ts scripts/tests/packaging-spawn-tiers.test.ts scripts/tests/packaging-entries.test.ts scripts/tests/release-sync-manifests.test.ts scripts/tests/packaging-release-differential.test.ts scripts/tests/packaging-release-golden-portable.test.ts
 
   # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components).
   # The production dependencies are installed first, the floor guard runs, then
@@ -1758,7 +1762,7 @@ capabilities:
           - "scripts/release-package-extension.ts"
           - "scripts/lib/packaging/**"
           - "scripts/lib/extension-install.sh"
-          - "scripts/tests/test-release-package-extension.sh"
+          - "scripts/tests/extension-install-antigravity-tokens-sh.test.ts"
           - "scripts/tests/test-create-extension-combinations.sh"
           - "scripts/check-extension-pivot.ts"
           - "scripts/lib/governance/**"
@@ -1820,7 +1824,7 @@ capabilities:
           - "scripts/release-package-extension.ts"
           - "scripts/lib/packaging/**"
           - "scripts/lib/extension-install.sh"
-          - "scripts/tests/test-release-package-extension.sh"
+          - "scripts/tests/extension-install-antigravity-tokens-sh.test.ts"
           - "scripts/tests/test-create-extension-combinations.sh"
           - "scripts/check-extension-pivot.ts"
           - "scripts/lib/governance/**"
@@ -1844,7 +1848,7 @@ capabilities:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-hook-map.ts
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-extension-hook-map.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-migrate-extension.sh
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-release-package-extension.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-install-antigravity-tokens-sh.test.ts
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-create-extension-combinations.sh
 
   - id: extension-provenance
@@ -2183,7 +2187,8 @@ capabilities:
           - "scripts/lib/paths.ts"
           - "scripts/lib/line-endings.ts"
           - "scripts/lib/node-floor-guard.js"
-          - "scripts/tests/test-build-docs-index.sh"
+          - "scripts/tests/build-docs-index-entry.test.ts"
+          - "scripts/tests/lib/docs-index-entry-tree.ts"
           - "docs/**"
       - on: push
         branches: [main, "release/**"]
@@ -2194,7 +2199,8 @@ capabilities:
           - "scripts/lib/paths.ts"
           - "scripts/lib/line-endings.ts"
           - "scripts/lib/node-floor-guard.js"
-          - "scripts/tests/test-build-docs-index.sh"
+          - "scripts/tests/build-docs-index-entry.test.ts"
+          - "scripts/tests/lib/docs-index-entry-tree.ts"
           - "docs/**"
     portability: portable
     changeset-gated: true
@@ -2208,14 +2214,15 @@ capabilities:
         - "scripts/lib/paths.ts"
         - "scripts/lib/line-endings.ts"
         - "scripts/lib/node-floor-guard.js"
-        - "scripts/tests/test-build-docs-index.sh"
+        - "scripts/tests/build-docs-index-entry.test.ts"
+        - "scripts/tests/lib/docs-index-entry-tree.ts"
         - "docs/**"
         - "scripts/ci-cache-guard.sh"
       env: []
     command:
       - node scripts/lib/node-floor-guard.js
       - node scripts/build-docs-index.ts --check
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-docs-index.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-docs-index-entry.test.ts
 
   - id: figure-labels
     name: "Check figure labels with OCR"
@@ -3915,7 +3922,9 @@ capabilities:
           - "scripts/lib/monorepo-release/**"
           - "scripts/lib/packaging/**"
           - "scripts/lib/release-notes/**"
-          - "scripts/tests/test-monorepo-release-notes.sh"
+          - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
+          - "scripts/tests/lib/release-*.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
           - "scripts/lib/release-rehearse.mjs"
           - "scripts/lib/release-pr.ts"
           - "scripts/release-pr.ts"
@@ -3932,7 +3941,9 @@ capabilities:
           - "scripts/lib/monorepo-release/**"
           - "scripts/lib/packaging/**"
           - "scripts/lib/release-notes/**"
-          - "scripts/tests/test-monorepo-release-notes.sh"
+          - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
+          - "scripts/tests/lib/release-*.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
           - "scripts/lib/release-rehearse.mjs"
           - "scripts/lib/release-pr.ts"
           - "scripts/release-pr.ts"
@@ -3942,10 +3953,9 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
-      tools: [jq]
     command:
       - npm ci
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-monorepo-release-notes.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-notes-real-engine.test.ts
 
   # usage-capture validates the spec 0206 capture-adapter module tree and the
   # spec 0211 per-CLI usage-capture opt-in (scripts/lib/usage-capture-optin.sh).
@@ -5015,7 +5025,10 @@ capabilities:
           - "scripts/tests/release-pr.test.ts"
           - ".github/workflows/release-monorepo.yml"
           - "scripts/lib/release-notes/**"
-          - "scripts/tests/test-monorepo-release*.sh"
+          - "scripts/tests/monorepo-release-engine-*.test.ts"
+          - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
+          - "scripts/tests/release-docs-and-workflows.test.ts"
+          - "scripts/tests/release-golden-generator.test.ts"
           - "scripts/tests/release-changelog.test.ts"
           - "scripts/tests/release-driver-sandbox.test.ts"
           - "scripts/tests/monorepo-release-blackbox-*.test.ts"
@@ -5047,7 +5060,10 @@ capabilities:
           - "scripts/tests/release-pr.test.ts"
           - ".github/workflows/release-monorepo.yml"
           - "scripts/lib/release-notes/**"
-          - "scripts/tests/test-monorepo-release*.sh"
+          - "scripts/tests/monorepo-release-engine-*.test.ts"
+          - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
+          - "scripts/tests/release-docs-and-workflows.test.ts"
+          - "scripts/tests/release-golden-generator.test.ts"
           - "scripts/tests/release-changelog.test.ts"
           - "scripts/tests/release-driver-sandbox.test.ts"
           - "scripts/tests/monorepo-release-blackbox-*.test.ts"
@@ -5068,10 +5084,11 @@ capabilities:
     requires:
       runtime: node@24
       tools: [jq, yq]
+      history-depth: full
     command:
       - npm install --include=dev
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-monorepo-release.sh
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-monorepo-release-engine.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-docs-and-workflows.test.ts scripts/tests/release-golden-generator.test.ts
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-engine-rehearsal.test.ts scripts/tests/monorepo-release-engine-gitlab-publish.test.ts scripts/tests/monorepo-release-engine-github-pr.test.ts scripts/tests/monorepo-release-engine-templates.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-changelog.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-pr.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-driver-sandbox.test.ts
