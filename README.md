@@ -449,7 +449,7 @@ artifacts/
 │   ├── skills/
 │   │   ├── harness-report/    # Skill: tag frictions during real work
 │   │   └── harness-curator/   # Skill: cluster frictions and open GitHub issues
-│   │       └── scripts/       # schedule-curator.ts, curate.ts, test.sh, ...
+│   │       └── scripts/       # schedule-curator.ts, curate.ts, ...
 │   └── agents/
 │       └── harness-curator/   # Agent: curator specialist
 ├── community/             # Adopting organisation sandbox
