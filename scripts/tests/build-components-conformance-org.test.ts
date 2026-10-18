@@ -26,7 +26,7 @@ import {
   differing,
   diffOutcomes,
   limited,
-  replayGate,
+  parityGate,
   runShellResolve,
   runTwinResolve,
   type Documented,
@@ -35,7 +35,8 @@ import {
 } from "./lib/shell-resolve-harness.ts";
 import { yamlText } from "./lib/yaml-lib.ts";
 
-const skip = replayGate();
+// the documents are loaded with the real `yq` (not the shell library), so the suite needs it
+const skip = parityGate();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "conformance-org-"));
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 

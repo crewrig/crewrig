@@ -1,0 +1,3513 @@
+{
+ "agent-profiles fixtures": {
+  "outcomes": {
+   "fixture canonical-medium-reasoning.md/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [
+     "effort: medium"
+    ],
+    "prose": "Run this agent on the haiku model. Give its work medium reasoning effort.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "fixture canonical-medium-reasoning.md/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.reasoning\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "fixture canonical-medium-reasoning.md/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.reasoning\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "fixture canonical-medium-reasoning.md/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder (g)(5): g5_claude": {
+  "outcomes": {
+   "(g)(5)/g5_claude#0/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance",
+     "model-drop\tprobe\tclaude\tmetadata.model.reasoning\tnone\tout-of-range-for-target"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder (g)(6): g6_gemini": {
+  "outcomes": {
+   "(g)(6)/g6_gemini#0/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.tuning.temperature\t5.0\tout-of-range-for-target"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder C10: C10_mut": {
+  "outcomes": {
+   "C10/C10_mut#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [
+     "effort: medium"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tclaude\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder C12: C12_canonical": {
+  "outcomes": {
+   "C12/C12_canonical#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [
+     "effort: medium"
+    ],
+    "prose": "Run this agent on the haiku model. Give its work medium reasoning effort.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C12/C12_canonical#0/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.reasoning\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C12/C12_canonical#0/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.reasoning\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C12/C12_canonical#0/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder C13(i): C13i_claude": {
+  "outcomes": {
+   "C13(i)/C13i_claude#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder C13(ii): C13ii_gemini": {
+  "outcomes": {
+   "C13(ii)/C13ii_gemini#0/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder C13(iii): C13iii_claude": {
+  "outcomes": {
+   "C13(iii)/C13iii_claude#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder C1: C1_claude": {
+  "outcomes": {
+   "C1/C1_claude#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [
+     "effort: medium"
+    ],
+    "prose": "Run this agent on the haiku model. Give its work medium reasoning effort.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder C3: C3_rungs": {
+  "outcomes": {
+   "C3/C3_rungs#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#0/gemini": {
+    "offeringId": "gemini-3.1-flash-lite",
+    "nativeValue": "gemini-3.1-flash-lite",
+    "fmLines": [
+     "model: gemini-3.1-flash-lite"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#0/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tminimal\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#0/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#1/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#1/gemini": {
+    "offeringId": "gemini-3.1-flash-lite",
+    "nativeValue": "gemini-3.1-flash-lite",
+    "fmLines": [
+     "model: gemini-3.1-flash-lite"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#1/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tlow\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#1/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#2/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#2/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#2/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#2/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#3/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#3/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#3/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#3/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#4/claude": {
+    "offeringId": "opus",
+    "nativeValue": "opus",
+    "fmLines": [],
+    "prose": "Run this agent on the opus model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#4/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#4/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\txhigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#4/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#5/claude": {
+    "offeringId": "fable",
+    "nativeValue": "fable",
+    "fmLines": [],
+    "prose": "Run this agent on the fable model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#5/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#5/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\txxhigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#5/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#6/claude": {
+    "offeringId": "fable",
+    "nativeValue": "fable",
+    "fmLines": [],
+    "prose": "Run this agent on the fable model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#6/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#6/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmax\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "C3/C3_rungs#6/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder C4: C4_antigravity": {
+  "outcomes": {
+   "C4/C4_antigravity#0/antigravity": {
+    "offeringId": "gemini-3.8-flash-high",
+    "nativeValue": "gemini-3.8-flash-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder C5: C5_copilot": {
+  "outcomes": {
+   "C5/C5_copilot#0/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\txhigh\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.reasoning\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder C6: C6_nomapping": {
+  "outcomes": {
+   "C6/C6_nomapping#0/no-such-target-at-all": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-note\tprobe\tno-such-target-at-all\tno-mapping\tno mapping file is present for target no-such-target-at-all"
+    ],
+    "handle": "",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder C7: C7_mut": {
+  "outcomes": {
+   "C7/C7_mut#0/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "not-a-domain-member",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-note\tprobe\tgemini\tunreadable-cell\toffering=gemini-3.5-flash native-value=not-a-domain-member outside the frontmatter model key's declared domain"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder C9: C9_mut": {
+  "outcomes": {
+   "C9/C9_mut#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku-drifted",
+    "fmLines": [
+     "effort: medium"
+    ],
+    "prose": "Run this agent on the haiku-drifted model. Give its work medium reasoning effort.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder D12/D17's second disjunct: D12_mut": {
+  "outcomes": {
+   "D12/D17's second disjunct/D12_mut#0/claude": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance",
+     "model-drop\tprobe\tclaude\tmetadata.model.reasoning\tmedium\tunsupported-on-model"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder M1: M1_mut": {
+  "outcomes": {
+   "M1/M1_mut#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku-mutated-M1",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku-mutated-M1 model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder M2: M2_mut": {
+  "outcomes": {
+   "M2/M2_mut#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance",
+     "model-drop\tprobe\tclaude\tmetadata.model.reasoning\tmedium\tunsupported-on-model"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "M2/M2_mut#1/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder M3: M3_mut": {
+  "outcomes": {
+   "M3/M3_mut#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [
+     "model: haiku"
+    ],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder M4: M4_mut": {
+  "outcomes": {
+   "M4/M4_mut#0/claude": {
+    "offeringId": "m4-cheap",
+    "nativeValue": "m4-cheap",
+    "fmLines": [],
+    "prose": "Run this agent on the m4-cheap model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder M5: M5_mut": {
+  "outcomes": {
+   "M5/M5_mut#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [
+     "effort: medium"
+    ],
+    "prose": "Give its work medium effort.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder M6: M6_mut": {
+  "outcomes": {
+   "M6/M6_mut#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder M7: M7_claude": {
+  "outcomes": {
+   "M7/M7_claude#0/claude": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tclaude\tmetadata.model.reasoning\tmedium\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder M7: M7_directed": {
+  "outcomes": {
+   "M7/M7_directed#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [
+     "model: haiku",
+     "effort: medium"
+    ],
+    "prose": "Run this agent on the haiku model. Give its work medium reasoning effort.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder R21 accept branch: R21_gemini": {
+  "outcomes": {
+   "R21 accept branch/R21_gemini#0/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview",
+     "temperature: 0.7",
+     "max_turns: 12"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder R24/D16: R24_D16": {
+  "outcomes": {
+   "R24/D16/R24_D16#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance",
+     "model-drop\tprobe\tclaude\tmetadata.model.tuning.temperature\t0.5\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "R24/D16/R24_D16#0/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [
+     "model-drop\tprobe\tantigravity\tmetadata.model.tuning.temperature\t0.5\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder R7's tail clause: R7_gemini": {
+  "outcomes": {
+   "R7's tail clause/R7_gemini#0/gemini": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [
+     "temperature: 0.5",
+     "max_turns: 7"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.reasoning\tmedium\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder Rule (b) exhaustiveness: ruleb_claude": {
+  "outcomes": {
+   "Rule (b) exhaustiveness/ruleb_claude#0/claude": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tclaude\tmetadata.model.reasoning\tmedium\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder extra: x_axes": {
+  "outcomes": {
+   "extra/x_axes#0/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.speed\tfast\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_axes#1/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_axes#2/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.modalities\t[text,image]\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_axes#3/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.specialization\tcoding\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_axes#4/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder extra: x_context": {
+  "outcomes": {
+   "extra/x_context#0/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_context#1/claude": {
+    "offeringId": "opus",
+    "nativeValue": "opus",
+    "fmLines": [],
+    "prose": "Run this agent on the opus model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_context#2/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-drop\tprobe\tclaude\tmetadata.model.context\t99999999999999999999\tunserved-value",
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [
+     "<REPO>/scripts/lib/model-resolve.sh: line 931: [: 99999999999999999999: integer expression expected",
+     "<REPO>/scripts/lib/model-resolve.sh: line 931: [: 99999999999999999999: integer expression expected",
+     "<REPO>/scripts/lib/model-resolve.sh: line 931: [: 99999999999999999999: integer expression expected"
+    ],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_context#3/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-drop\tprobe\tclaude\tmetadata.model.context\tabc\tunserved-value",
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder extra: x_encoded": {
+  "outcomes": {
+   "extra/x_encoded#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_encoded#1/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_encoded#2/claude": {
+    "offeringId": "opus",
+    "nativeValue": "opus",
+    "fmLines": [],
+    "prose": "Run this agent on the opus model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder extra: x_matrix_axes": {
+  "outcomes": {
+   "extra/x_matrix_axes#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-drop\tprobe\tclaude\tmetadata.model.specialization\tcoding\tunserved-value",
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#0/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.specialization\tcoding\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#0/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#0/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [
+     "model-drop\tprobe\tantigravity\tmetadata.model.specialization\tcoding\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#1/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-drop\tprobe\tclaude\tmetadata.model.specialization\tbogus\tunserved-value",
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#1/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.specialization\tbogus\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#1/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#1/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [
+     "model-drop\tprobe\tantigravity\tmetadata.model.specialization\tbogus\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#2/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-drop\tprobe\tclaude\tmetadata.model.context\t200000\tunserved-value",
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#2/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.context\t200000\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#2/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#2/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [
+     "model-drop\tprobe\tantigravity\tmetadata.model.context\t200000\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#3/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-drop\tprobe\tclaude\tmetadata.model.speed\tfast\tunserved-value",
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#3/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.speed\tfast\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#3/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#3/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [
+     "model-drop\tprobe\tantigravity\tmetadata.model.speed\tfast\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#4/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-drop\tprobe\tclaude\tmetadata.model.locality\tlocal\tunserved-value",
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#4/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.locality\tlocal\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#4/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#4/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [
+     "model-drop\tprobe\tantigravity\tmetadata.model.locality\tlocal\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#5/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-drop\tprobe\tclaude\tmetadata.model.modalities\t[audio]\tunserved-value",
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#5/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.modalities\t[audio]\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#5/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#5/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [
+     "model-drop\tprobe\tantigravity\tmetadata.model.modalities\t[audio]\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#6/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-drop\tprobe\tclaude\tmetadata.model.modalities\t[text,image]\tunserved-value",
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#6/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.modalities\t[text,image]\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#6/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_axes#6/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [
+     "model-drop\tprobe\tantigravity\tmetadata.model.modalities\t[text,image]\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder extra: x_matrix_reasoning": {
+  "outcomes": {
+   "extra/x_matrix_reasoning#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance",
+     "model-drop\tprobe\tclaude\tmetadata.model.reasoning\tnone\tout-of-range-for-target"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#0/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.reasoning\tnone\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#0/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.reasoning\tnone\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#0/antigravity": {
+    "offeringId": "gemini-3.8-flash-low",
+    "nativeValue": "gemini-3.8-flash-low",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-low model.",
+    "diagLines": [
+     "model-note\tprobe\tantigravity\treasoning-rung-substituted\tdeclared=none encoded=low"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#1/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [
+     "effort: low"
+    ],
+    "prose": "Run this agent on the haiku model. Give its work low reasoning effort.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#1/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.reasoning\tlow\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#1/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.reasoning\tlow\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#1/antigravity": {
+    "offeringId": "gemini-3.8-flash-low",
+    "nativeValue": "gemini-3.8-flash-low",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-low model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#2/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [
+     "effort: medium"
+    ],
+    "prose": "Run this agent on the haiku model. Give its work medium reasoning effort.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#2/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.reasoning\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#2/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.reasoning\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#2/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#3/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [
+     "effort: high"
+    ],
+    "prose": "Run this agent on the haiku model. Give its work high reasoning effort.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#3/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.reasoning\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#3/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.reasoning\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#3/antigravity": {
+    "offeringId": "gemini-3.8-flash-high",
+    "nativeValue": "gemini-3.8-flash-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#4/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [
+     "effort: max"
+    ],
+    "prose": "Run this agent on the haiku model. Give its work max reasoning effort.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#4/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.reasoning\tmax\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#4/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.reasoning\tmax\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#4/antigravity": {
+    "offeringId": "gemini-3.8-flash-high",
+    "nativeValue": "gemini-3.8-flash-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-high model.",
+    "diagLines": [
+     "model-note\tprobe\tantigravity\treasoning-rung-substituted\tdeclared=max encoded=high"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#5/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [
+     "effort: "
+    ],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#5/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.reasoning\tbogus\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#5/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.reasoning\tbogus\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#5/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [
+     "model-drop\tprobe\tantigravity\tmetadata.model.reasoning\tbogus\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#6/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [
+     "effort: high"
+    ],
+    "prose": "Run this agent on the sonnet model. Give its work high reasoning effort.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#6/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.reasoning\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#6/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.reasoning\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#6/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#7/claude": {
+    "offeringId": "fable",
+    "nativeValue": "fable",
+    "fmLines": [
+     "effort: max"
+    ],
+    "prose": "Run this agent on the fable model. Give its work max reasoning effort.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#7/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.reasoning\tmax\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#7/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmax\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.reasoning\tmax\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#7/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [
+     "model-note\tprobe\tantigravity\treasoning-rung-substituted\tdeclared=max encoded=high"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#8/claude": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance",
+     "model-drop\tprobe\tclaude\tmetadata.model.reasoning\tlow\tunsupported-on-model"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#8/gemini": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-note\tprobe\tgemini\tunreadable-cell\toffering= native-value= outside the frontmatter model key's declared domain",
+     "model-drop\tprobe\tgemini\tmetadata.model.reasoning\tlow\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#8/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tbogus\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.reasoning\tlow\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#8/antigravity": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tantigravity\tmetadata.model.reasoning\tlow\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#9/claude": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tclaude\tmetadata.model.reasoning\thigh\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#9/gemini": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.reasoning\thigh\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#9/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.reasoning\thigh\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_reasoning#9/antigravity": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tantigravity\tmetadata.model.reasoning\thigh\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder extra: x_matrix_tuning": {
+  "outcomes": {
+   "extra/x_matrix_tuning#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance",
+     "model-drop\tprobe\tclaude\tmetadata.model.tuning.temperature\t1.5\tunsupported-on-cli",
+     "model-drop\tprobe\tclaude\tmetadata.model.tuning.top-p\t0.9\tunsupported-on-cli",
+     "model-drop\tprobe\tclaude\tmetadata.model.tuning.top-k\t40\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_tuning#0/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash",
+     "temperature: 1.5"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.tuning.top-p\t0.9\tunsupported-on-cli",
+     "model-drop\tprobe\tgemini\tmetadata.model.tuning.top-k\t40\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_tuning#0/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.tuning.temperature\t1.5\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.tuning.top-p\t0.9\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.tuning.top-k\t40\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_tuning#0/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [
+     "model-drop\tprobe\tantigravity\tmetadata.model.tuning.temperature\t1.5\tunsupported-on-cli",
+     "model-drop\tprobe\tantigravity\tmetadata.model.tuning.top-p\t0.9\tunsupported-on-cli",
+     "model-drop\tprobe\tantigravity\tmetadata.model.tuning.top-k\t40\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_tuning#1/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance",
+     "model-drop\tprobe\tclaude\tmetadata.model.tuning.temperature\t3.0\tunsupported-on-cli",
+     "model-drop\tprobe\tclaude\tmetadata.model.tuning.max-turns\t0\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_tuning#1/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.tuning.temperature\t3.0\tout-of-range-for-target",
+     "model-drop\tprobe\tgemini\tmetadata.model.tuning.max-turns\t0\tout-of-range-for-target"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_tuning#1/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.tuning.temperature\t3.0\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.tuning.max-turns\t0\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_tuning#1/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [
+     "model-drop\tprobe\tantigravity\tmetadata.model.tuning.temperature\t3.0\tunsupported-on-cli",
+     "model-drop\tprobe\tantigravity\tmetadata.model.tuning.max-turns\t0\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_tuning#2/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance",
+     "model-drop\tprobe\tclaude\tmetadata.model.tuning.max-output-tokens\t4096\tunsupported-on-cli",
+     "model-drop\tprobe\tclaude\tmetadata.model.tuning.max-turns\tx\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_tuning#2/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.tuning.max-turns\tx\tout-of-range-for-target",
+     "model-drop\tprobe\tgemini\tmetadata.model.tuning.max-output-tokens\t4096\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_tuning#2/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.tuning.max-output-tokens\t4096\tunsupported-on-cli",
+     "model-drop\tprobe\tcopilot\tmetadata.model.tuning.max-turns\tx\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "extra/x_matrix_tuning#2/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [
+     "model-drop\tprobe\tantigravity\tmetadata.model.tuning.max-output-tokens\t4096\tunsupported-on-cli",
+     "model-drop\tprobe\tantigravity\tmetadata.model.tuning.max-turns\tx\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder extra: x_rank_nonnumeric": {
+  "outcomes": {
+   "extra/x_rank_nonnumeric#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [
+     "<REPO>/scripts/lib/model-resolve.sh: line 1396: [: x: integer expression expected",
+     "<REPO>/scripts/lib/model-resolve.sh: line 1396: [: x: integer expression expected",
+     "<REPO>/scripts/lib/model-resolve.sh: line 1396: [: x: integer expression expected"
+    ],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder extra: x_template": {
+  "outcomes": {
+   "extra/x_template#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [
+     "effort: medium"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance",
+     "model-note\tprobe\tclaude\tunrenderable-fragment\trendered guidance fragment would alter the compiled description's YAML structure"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder rule (d): ruled_claude": {
+  "outcomes": {
+   "rule (d)/ruled_claude#0/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-drop\tprobe\tclaude\tmetadata.model.context\t1000000\tunserved-value",
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder rule (d): ruled_gemini": {
+  "outcomes": {
+   "rule (d)/ruled_gemini#0/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tprobe\tgemini\tmetadata.model.specialization\timage-generation\tunserved-value"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "builder rule (e): rulee_antigravity": {
+  "outcomes": {
+   "rule (e)/rulee_antigravity#0/antigravity": {
+    "offeringId": "gemini-3.1-pro-low",
+    "nativeValue": "gemini-3.1-pro-low",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-low model.",
+    "diagLines": [
+     "model-note\tprobe\tantigravity\treasoning-rung-substituted\tdeclared=medium encoded=low"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "core agents on antigravity": {
+  "outcomes": {
+   "core agent accessibility-auditor/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent accessibility-tester/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent architect/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent astro-developer/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent ci-configurator/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent ci-debugger/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent ci-parity/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent copywriter/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent designer/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent developer/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent doc-writer/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent frontend-developer/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent pr-logbook/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent pr-reviewer/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent regression-sentinel/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent scenario-author/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent security/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent seo-specialist/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent spec-author/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent tester/antigravity": {
+    "offeringId": "gemini-3.1-pro-high",
+    "nativeValue": "gemini-3.1-pro-high",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.1-pro-high model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent visual-regression-tester/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent web-conformity-checker/antigravity": {
+    "offeringId": "gemini-3.8-flash-medium",
+    "nativeValue": "gemini-3.8-flash-medium",
+    "fmLines": [],
+    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "core agents on claude": {
+  "outcomes": {
+   "core agent accessibility-auditor/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\taccessibility-auditor\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent accessibility-tester/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\taccessibility-tester\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent architect/claude": {
+    "offeringId": "opus",
+    "nativeValue": "opus",
+    "fmLines": [],
+    "prose": "Run this agent on the opus model.",
+    "diagLines": [
+     "model-note\tarchitect\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent astro-developer/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\tastro-developer\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent ci-configurator/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\tci-configurator\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent ci-debugger/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\tci-debugger\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent ci-parity/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\tci-parity\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent copywriter/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tcopywriter\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent designer/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\tdesigner\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent developer/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\tdeveloper\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent doc-writer/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tdoc-writer\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent frontend-developer/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\tfrontend-developer\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent pr-logbook/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tpr-logbook\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent pr-reviewer/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\tpr-reviewer\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent regression-sentinel/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tregression-sentinel\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent scenario-author/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tscenario-author\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent security/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\tsecurity\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent seo-specialist/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tseo-specialist\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent spec-author/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\tspec-author\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent tester/claude": {
+    "offeringId": "sonnet",
+    "nativeValue": "sonnet",
+    "fmLines": [],
+    "prose": "Run this agent on the sonnet model.",
+    "diagLines": [
+     "model-note\ttester\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent visual-regression-tester/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tvisual-regression-tester\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent web-conformity-checker/claude": {
+    "offeringId": "haiku",
+    "nativeValue": "haiku",
+    "fmLines": [],
+    "prose": "Run this agent on the haiku model.",
+    "diagLines": [
+     "model-note\tweb-conformity-checker\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "core agents on copilot": {
+  "outcomes": {
+   "core agent accessibility-auditor/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\taccessibility-auditor\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent accessibility-tester/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\taccessibility-tester\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent architect/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tarchitect\tcopilot\tmetadata.model.intelligence\txhigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent astro-developer/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tastro-developer\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent ci-configurator/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tci-configurator\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent ci-debugger/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tci-debugger\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent ci-parity/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tci-parity\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent copywriter/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tcopywriter\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent designer/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tdesigner\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent developer/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tdeveloper\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent doc-writer/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tdoc-writer\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent frontend-developer/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tfrontend-developer\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent pr-logbook/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tpr-logbook\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent pr-reviewer/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tpr-reviewer\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent regression-sentinel/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tregression-sentinel\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent scenario-author/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tscenario-author\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent security/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tsecurity\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent seo-specialist/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tseo-specialist\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent spec-author/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tspec-author\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent tester/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\ttester\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent visual-regression-tester/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tvisual-regression-tester\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent web-conformity-checker/copilot": {
+    "offeringId": "",
+    "nativeValue": "",
+    "fmLines": [],
+    "prose": "",
+    "diagLines": [
+     "model-drop\tweb-conformity-checker\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "core agents on gemini": {
+  "outcomes": {
+   "core agent accessibility-auditor/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent accessibility-tester/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent architect/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent astro-developer/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent ci-configurator/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent ci-debugger/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent ci-parity/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent copywriter/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent designer/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent developer/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent doc-writer/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent frontend-developer/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent pr-logbook/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent pr-reviewer/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent regression-sentinel/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent scenario-author/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent security/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent seo-specialist/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent spec-author/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent tester/gemini": {
+    "offeringId": "gemini-3.1-pro-preview",
+    "nativeValue": "gemini-3.1-pro-preview",
+    "fmLines": [
+     "model: gemini-3.1-pro-preview"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent visual-regression-tester/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   },
+   "core agent web-conformity-checker/gemini": {
+    "offeringId": "gemini-3.5-flash",
+    "nativeValue": "gemini-3.5-flash",
+    "fmLines": [
+     "model: gemini-3.5-flash"
+    ],
+    "prose": "",
+    "diagLines": [],
+    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
+    "stderr": [],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ }
+}

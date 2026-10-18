@@ -1,0 +1,66 @@
+{
+ "derived": {
+  "outcomes": {
+   "O2/O2_replace#0/claude": {
+    "offeringId": "opus",
+    "nativeValue": "opus-org-o2",
+    "fmLines": [],
+    "prose": "Run this agent on the opus-org-o2 model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<TMP>/crewrig-mapping-PID/ec193094cdc15e2e2440700b99aaf31992598d311a2cb448c62a2d60a522971f/claude.yml",
+    "stderr": [
+     "mapping-merge\tclaude\tofferings/opus\treplaced"
+    ],
+    "derivedBefore": 1,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "foreign": {
+  "outcomes": {
+   "O2/O2_replace#0/claude": {
+    "offeringId": "opus",
+    "nativeValue": "opus",
+    "fmLines": [],
+    "prose": "Run this agent on the opus model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<REPO_DIR>/model-mappings/claude.yml",
+    "stderr": [
+     "mapping-merge-note\tclaude\tmerge-unavailable\troot=<MERGE>",
+     "mapping-merge-note\tclaude\tmerge-unavailable\troot=<MERGE>"
+    ],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {}
+ },
+ "kept": {
+  "outcomes": {
+   "O2/O2_replace#0/claude": {
+    "offeringId": "opus",
+    "nativeValue": "opus-org-o2",
+    "fmLines": [],
+    "prose": "Run this agent on the opus-org-o2 model.",
+    "diagLines": [
+     "model-note\tprobe\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
+    ],
+    "handle": "<MERGE>/ec193094cdc15e2e2440700b99aaf31992598d311a2cb448c62a2d60a522971f/claude.yml",
+    "stderr": [
+     "mapping-merge\tclaude\tofferings/opus\treplaced"
+    ],
+    "derivedBefore": 0,
+    "derivedAfter": 0
+   }
+  },
+  "files": {
+   ".merges": "claude\n",
+   "ec193094cdc15e2e2440700b99aaf31992598d311a2cb448c62a2d60a522971f/claude.yml": "target: claude\nsurfaces:\n  - id: frontmatter\n    kind: frontmatter\n    items:\n      - item: model\n        key: model\n        domain:\n          values: [haiku, sonnet, opus, fable]\n        grounds:\n          - declares: key\n            citation: >-\n              RR -> Claude Code -> Per-agent frontmatter surface, citing artifacts/FORMAT.md's \"Claude Code Overrides\" table (line 103), which documents the native `model` key (\"Model override\") for a `context: fork` component.\n          - declares: domain\n            citation: >-\n              RR -> Claude Code -> Declaration surface: `claude --help` illustrates its --model domain with the family aliases, which spec 0197 Decision 5 makes this mapping's declared domain in preference to concrete identifiers — the one thing the probe found inconsistent on disk.\n      - item: reasoning\n        key: effort\n        domain:\n          values: [low, medium, high, xhigh, max]\n        projection:\n          none: unmapped\n          low: low\n          medium: medium\n          high: high\n          xhigh: xhigh\n          max: max\n        grounds:\n          - declares: key\n            citation: >-\n              RR -> Claude Code -> Per-agent frontmatter surface, citing artifacts/FORMAT.md's \"Claude Code Overrides\" table (line 103), which documents the native `effort` key (\"Effort level override\").\n          - declares: domain\n            citation: >-\n              RR -> Claude Code -> Declaration surface: `claude --help` gives --effort the domain low|medium|high|xhigh|max, with no `none`.\n          - declares: projection.none\n            citation: >-\n              The same observation: the domain admits no off state, so the `none` rung has no image and is declared unmapped rather than resolved to `low` (R24, spec 0195 R11).\n  - id: guidance\n    kind: guidance\n    carries: [model, reasoning]\n    template: |\n      Run this agent on the {{model}} model.\n      Give its work {{reasoning}} reasoning effort.\n    items:\n      - item: model\n        grounds:\n          - declares: item\n            assumption: >-\n              An orchestrating Claude Code session asked in prose to run an agent on a named model does so. The whole of the evidence is the maintainer's live experience, recorded at the content gate of issue #1111; no probe covers it, and RR tested no orchestrator behaviour (R35, spec 0197 Decision 6).\n      - item: reasoning\n        grounds:\n          - declares: item\n            assumption: >-\n              Same ground as the model item above. Additionally unverified: whether prose naming a model inside a .claude/agents/ output disturbs a GitHub Copilot CLI reader — probe A set a `model:` field on every leg, so its verdict says nothing about prose. Tracked as probe C from content gate v2 of issue #1111.\nofferings:\n  - id: haiku\n    rank: 1\n    native-value: haiku\n    provides:\n      intelligence: medium\n      specialization: general\n    encodes:\n      intelligence: haiku\n    supports-reasoning-surface: true\n    grounds:\n      - declares: native-value\n        citation: >-\n          RR -> Claude Code -> Declaration surface: `haiku` is a known alias of the --model domain (not itself printed in the help example, which lists fable/opus/sonnet).\n      - declares: provides.intelligence\n        citation: >-\n          Spec 0195 R7's normative anchor table calibrates rung 3 `medium` on Claude Code `haiku` (spec 0197 R36).\n      - declares: supports-reasoning-surface\n        citation: >-\n          Live empirical verification on Claude Code 2.1.263: the `haiku` alias resolves to `claude-haiku-4-5-20251001`, which natively supports extended thinking. An agent defined with `model: haiku` and `effort: medium` cleanly executes and emits thinking tokens without error (spec 0197 delta-02 R36).\n      - declares: supports-reasoning-surface.behavior\n        citation: >-\n          Spec 0197 delta-02 R36: with `supports-reasoning-surface: true`, Claude Code directs a declared reasoning rung to `effort:` in frontmatter and to the guidance surface prose without dropping.\n  - id: sonnet\n    rank: 2\n    native-value: sonnet\n    provides:\n      intelligence: high\n      specialization: general\n    encodes:\n      intelligence: sonnet\n    supports-reasoning-surface: true\n    grounds:\n      - declares: native-value\n        citation: >-\n          RR -> Claude Code -> Declaration surface: `sonnet` appears in `claude --help`'s own --model example.\n      - declares: provides.intelligence\n        citation: >-\n          Spec 0195 R7's normative anchor table calibrates rung 4 `high` on Claude Code `sonnet` (spec 0197 R36).\n  - id: opus\n    rank: 3\n    native-value: opus-org-o2\n    provides:\n      intelligence: xhigh\n      specialization: general\n    encodes:\n      intelligence: opus\n    supports-reasoning-surface: false\n    grounds:\n      - declares: native-value\n        assumption: fixture\n      - declares: provides.intelligence\n        assumption: fixture\n      - declares: supports-reasoning-surface\n        assumption: fixture\n  - id: fable\n    rank: 4\n    native-value: fable\n    provides:\n      intelligence: xxhigh\n      specialization: general\n    encodes:\n      intelligence: fable\n    supports-reasoning-surface: true\n    grounds:\n      - declares: native-value\n        citation: >-\n          RR -> Claude Code -> Declaration surface: `fable` appears in `claude --help`'s own --model example.\n      - declares: provides.intelligence\n        citation: >-\n          Spec 0195 R7's normative anchor table calibrates rung 6 `xxhigh` on Claude Code `fable` (spec 0197 R36). Under R17's ceiling clause this offering also serves a declared `max` rung, satisfying spec 0195 R9.\nguard:\n  id: copilot-shared-read\n  spec: specs/0143-copilot-subagent-model-fallback.delta-01.md R8\n  state: withheld\n  terms:\n    - id: defect-not-established-fixed\n      statement: >-\n        The upstream defect github/copilot-cli#4437 is not established fixed.\n      holds: true\n      evidence: >-\n        Probe run 20260902T153919Z-0aa9 of issue #1103 returned the verdict BUG-PRESENT against github/copilot-cli#4437 on GitHub Copilot CLI 1.0.82 (spec 0197 R37).\n      grounds:\n        - declares: holds\n          citation: >-\n            Probe run 20260902T153919Z-0aa9 of issue #1103, verdict BUG-PRESENT (spec 0197 R37).\n    - id: copilot-reader-consumes-claude-surface\n      statement: >-\n        A GitHub Copilot CLI reader may consume the .claude/agents/ surface.\n      holds: true\n      evidence: >-\n        The control leg of the same probe run 20260902T153919Z-0aa9 is direct live evidence that GitHub Copilot CLI consumes the .claude/agents/ surface; RR -> GitHub Copilot CLI -> Shared-read hazard records probe B on Copilot CLI 1.0.82 finding all three cells CONSUMED, nested and flat under .claude/agents/ and at ~/.copilot/agents/ (spec 0197 R37).\n      grounds:\n        - declares: holds\n          citation: >-\n            Probe run 20260902T153919Z-0aa9 control leg, and probe B's three-cell CONSUMED outcome on Copilot CLI 1.0.82 (spec 0197 R37).\n"
+  }
+ }
+}

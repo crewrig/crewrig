@@ -85,6 +85,7 @@ const scrub =
     if (c.tmpDir !== undefined) out = out.replaceAll(c.tmpDir, "<TMP>");
     out = out.replaceAll(c.source, "<SOURCE>").replaceAll(c.repoDir, "<REPO_DIR>");
     out = out.replaceAll(REPO, "<REPO>");
+    out = out.replace(/\.compose\.[A-Za-z0-9]{6}/g, ".compose.XXXXXX");
     return out.replace(/\/crewrig-mapping-\d+/g, "/crewrig-mapping-PID");
   };
 const derived = (tmp: string | undefined): number =>

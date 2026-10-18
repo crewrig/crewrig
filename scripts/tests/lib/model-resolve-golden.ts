@@ -50,8 +50,13 @@ function snapshot(dir: string, rel = ""): Record<string, string> {
   return out;
 }
 
-const mergeDirOf = (cases: readonly ResolveCase[]): string | undefined =>
-  cases.find((c) => c.mergeDir !== undefined)?.mergeDir;
+/** The first case's merge directory, only when it exists under the OS temporary directory. */
+function mergeDirOf(cases: readonly ResolveCase[]): string | undefined {
+  const dir = cases.find((c) => c.mergeDir !== undefined)?.mergeDir;
+  if (dir === undefined || !fs.existsSync(dir)) return undefined;
+  const tmp = fs.realpathSync(os.tmpdir());
+  return fs.realpathSync(dir).startsWith(`${tmp}${path.sep}`) ? dir : undefined;
+}
 
 /** Store the shell's outcomes and merge directory for a group (the regen container only). */
 export function record(
@@ -76,12 +81,7 @@ export function replay(cases: readonly ResolveCase[], id: string): Outcome[] {
   const group = load(id)[groupOf(id)];
   if (group === undefined) throw new Error(`no golden for ${id}; record it with the regen script`);
   const dir = mergeDirOf(cases);
-  const tmp = fs.realpathSync(os.tmpdir());
-  if (
-    dir !== undefined &&
-    fs.existsSync(dir) &&
-    fs.realpathSync(dir).startsWith(`${tmp}${path.sep}`)
-  )
+  if (dir !== undefined)
     for (const [rel, text] of Object.entries(group.files)) {
       const file = path.join(dir, ...rel.split("/"));
       if (fs.existsSync(file)) continue;
