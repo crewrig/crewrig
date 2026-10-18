@@ -55,7 +55,11 @@ below. Failing to tag loses the signal forever.
 
 ## Operating mode
 
-Steps 1-2 (identify the offender, pick the room): `references/identify-and-route.md`.
+### 1. Pause and identify the offender
+
+### 2. Pick the room
+
+Read `references/identify-and-route.md` for steps 1-2.
 
 ### 3. Fill the payload
 
@@ -94,7 +98,11 @@ The full schema, including the inline `evidence: <single-value>`
 short form, lives in `config/TOOLS.md` → *Payload schema*. Do not
 re-derive it here; refer to it.
 
-Steps 4-5 and the reactive trigger: `references/operating-mode.md`.
+### 4. Tag
+
+### 5. Resume
+
+Read `references/operating-mode.md` for steps 4-5 and the reactive trigger for `severity: high`.
 
 ## Output expectations
 
@@ -105,7 +113,9 @@ Steps 4-5 and the reactive trigger: `references/operating-mode.md`.
 - If the user explicitly asked you to tag a friction, briefly confirm
   it landed (one sentence). Otherwise stay silent.
 
-Self-reporting bias: `references/self-reporting-bias.md`.
+## Self-reporting bias
+
+Read `references/self-reporting-bias.md` at the Resume step.
 
 ## Friction reporting (recursive)
 
