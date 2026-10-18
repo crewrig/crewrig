@@ -50,7 +50,11 @@ function forgeStubDir(home: string): string {
   return dir;
 }
 
-/** A complete child environment; an `undefined` value in `extra` removes the variable. */
+/**
+ * A complete child environment; an `undefined` value in `extra` removes the variable. The caller
+ * MUST pass a `home` it created with mkdtemp: the refusing `gh`/`glab` stubs and every scratch file
+ * live under it, and cleanup removes only paths the caller created.
+ */
 export function cleanEnv(
   home: string,
   gitconfig?: string,
