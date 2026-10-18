@@ -84,6 +84,9 @@ export function replay(cases: readonly ResolveCase[], id: string): Outcome[] {
   if (dir !== undefined)
     for (const [rel, text] of Object.entries(group.files)) {
       const file = path.join(dir, ...rel.split("/"));
+      // A golden key never leaves the merge directory (host-safety rule, issue #1673; review N1).
+      if (path.relative(dir, file).split(path.sep)[0] === ".." || path.isAbsolute(rel))
+        throw new Error(`golden key escapes the merge directory: ${rel}`);
       if (fs.existsSync(file)) continue;
       fs.mkdirSync(path.dirname(file), { recursive: true });
       fs.writeFileSync(file, text);
