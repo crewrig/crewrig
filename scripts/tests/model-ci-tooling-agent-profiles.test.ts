@@ -87,6 +87,33 @@ describe("check-agent-profiles.ts on the real repository and exit 2 paths", () =
     assert.equal(r.status, 0, r.stderr);
   });
 
+  test("no yq prerequisite: the entry reports on the real sources with a PATH that holds no yq", () => {
+    const files = spawnSync("git", ["ls-files", "artifacts/*/agents/*/AGENT.md"], {
+      cwd: REPO,
+      encoding: "utf8",
+    })
+      .stdout.split("\n")
+      .filter((f) => f !== "");
+    assert.ok(files.length > 0);
+    const copy = tree(
+      Object.fromEntries(files.map((f) => [f, fs.readFileSync(path.join(REPO, f), "utf8")])),
+    );
+    const r = spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", TS], {
+      encoding: "utf8",
+      env: { PATH: path.dirname(process.execPath), LC_ALL: "C", CREWRIG_REPO_DIR: copy },
+    });
+    assert.equal(r.status, 0, r.stderr);
+    assert.doesNotMatch(r.stderr, /yq/);
+    const bad = tree({
+      "artifacts/core/agents/probe/AGENT.md": mutate("speed: fast", "speed: bogus"),
+    });
+    const rb = spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", TS], {
+      encoding: "utf8",
+      env: { PATH: path.dirname(process.execPath), LC_ALL: "C", CREWRIG_REPO_DIR: bad },
+    });
+    assert.equal(rb.status, 1, rb.stderr);
+  });
+
   test("exit 2 paths", () => {
     assert.equal(runTs([], tree({ "x.txt": "" })).status, 2);
     assert.equal(runTs([], tree({ "artifacts/core/agents/x/readme.md": "" })).status, 2);
