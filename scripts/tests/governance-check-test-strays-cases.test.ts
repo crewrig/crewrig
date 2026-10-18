@@ -253,7 +253,9 @@ describe("check-test-strays cases", { skip }, () => {
     const m = /^OK: ([0-9]+) test suites pass the static syntax check; none executed\.$/.exec(
       r.stdout.trimEnd(),
     );
-    assert.ok(m !== null && Number(m[1]) >= 1, r.stdout);
+    // Zero is a valid count since row J2's last pull request retired the final `test-*.sh` suite:
+    // what matters is that the line is the OK form with a number, not the count.
+    assert.ok(m !== null, r.stdout);
     assert.ok(elapsed < 5000, `the real tree took ${Math.round(elapsed)} ms (bound 5000 ms)`);
   });
 
