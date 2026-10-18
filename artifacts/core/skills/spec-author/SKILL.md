@@ -63,11 +63,17 @@ The skill SHALL pick the interaction mode in this order: (a) explicit
 invocation flag, (b) the parent ticket's declared mode if one already
 exists, (c) the framework default **INTERMEDIATE**.
 
-Interview script: `references/interview-script.md`.
+## Interview script
 
-Pre-write grounding: `references/pre-write-grounding.md`.
+Read `references/interview-script.md` when qualifying the intent, before asking anything.
 
-Output contract: `references/output-contract.md`.
+## Pre-write grounding
+
+Read `references/pre-write-grounding.md` before drafting the spec.
+
+## Output contract
+
+Read `references/output-contract.md` before writing the file (ticket pickup, ID allocation, frontmatter, body, delta mode, self-validation).
 
 ## Open-questions discipline
 

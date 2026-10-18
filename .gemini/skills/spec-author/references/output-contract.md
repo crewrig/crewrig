@@ -164,11 +164,11 @@ mandatory sections with the three delta sections defined in
 
 ### Self-validation (best-effort)
 
-Before writing, the skill SHALL re-read `docs/spec-format.md` and verify
-locally that: (a) all five headings are present in order, (b)
-frontmatter parses as YAML, (c) every required field has a value of the
-right type. Enforcement of the format is the spec linter's job; this
-self-check is a courtesy, not a substitute.
+Before writing, the skill SHALL run the spec linter on the drafted file
+(`task spec:lint -- specs/<NNNN>-<slug>.md`, i.e.
+`scripts/lib/spec-linter.js`) and fix what it reports. It reads
+`docs/spec-format.md` only when the linter output requires it. The linter
+is the enforcement; this run replaces a manual re-read of the format.
 
 In addition, per R18 of spec 0002, the skill SHALL enforce a mandatory
 null-case and permitted-path self-check during the authoring phase. For

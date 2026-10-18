@@ -4,7 +4,7 @@ Before writing the `## Requirements` section of a spec that qualifies
 a **verification, audit, or sanity-check tool** whose acceptance is
 file-level, run a short grounding pass against the codebase. The pass
 realizes R16 of
-[`specs/0002-spec-author-skill.md`](../../../../specs/0002-spec-author-skill.md)
+[`specs/0002-spec-author-skill.md`](../../../../../specs/0002-spec-author-skill.md)
 (introduced by delta-03) and exists because the friction reported in
 issue #194 — spec 0007 mandated a `type` field that no built artifact
 ever exhibited, discovered only at DEV time — proves that a WHAT
