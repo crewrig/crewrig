@@ -38,17 +38,31 @@ Six ordered steps. Do not skip ahead.
 
 ### 1. Preflight — check CI status
 
+Read `references/step-1-preflight.md`; when a required check is pending, also `references/step-1-pending-check.md`.
+
 ### 2. Read the project conventions
+
+Read `references/step-2-conventions.md`.
 
 ### 3. Fetch the PR diff and metadata
 
+Read `references/step-3-fetch.md`.
+
 ### 4. Run the bundled linter scripts
+
+Read `references/step-4-linters.md`.
 
 ### 5. Compose the structured review
 
+Read `references/step-5-compose.md`.
+
 ### 6. Post the review
 
-Detailed sub-steps: `references/step-N-*.md`, one file per step, each read at its step.
+Read `references/step-6-post.md`.
+
+## Cross-cutting: assert only a fresh observation
+
+Read `references/assert-fresh-observation.md` before posting the verdict (step 6).
 
 ## Scripts
 
@@ -100,6 +114,10 @@ state which condition of the step-3 bound returned that surface to scope.
 A finding on an unchanged surface with no such statement is treated as
 non-blocking and routed to the deferred-findings ledger — the iteration is
 not routed on its account.
+
+## Spec-review obligation — tier challenge
+
+When acting as a spec-reviewer, read `references/spec-review-obligation.md`.
 
 ## Grounding discipline
 
