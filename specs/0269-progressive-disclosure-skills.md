@@ -1,7 +1,7 @@
 ---
 id: "0269"
 slug: progressive-disclosure-skills
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1726
