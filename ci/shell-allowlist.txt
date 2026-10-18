@@ -48,14 +48,11 @@ scripts/install-copilot-plugin.sh
 scripts/install-extension-all.sh
 scripts/install-extension.sh
 scripts/install-workspace.sh
-scripts/lib/base-ref-resolve.sh
 scripts/lib/common.sh
-scripts/lib/component-resolve.sh
 scripts/lib/extension-hooks.sh
 scripts/lib/extension-install.sh
 scripts/lib/gemini-settings.sh
 scripts/lib/mcp-daemon-launcher.sh
-scripts/lib/model-resolve.sh
 scripts/lib/render-command.sh
 scripts/lib/tls-delegation.sh
 scripts/lib/tls-exec.sh
@@ -102,7 +99,6 @@ scripts/tests/test-check-spec-id-reserved.sh
 scripts/tests/test-create-extension-combinations.sh
 scripts/tests/test-extension-render-conformance.sh
 scripts/tests/test-migrate-extension.sh
-scripts/tests/test-model-resolution.sh
 scripts/tests/test-reserve-spec-id.sh
 scripts/uninstall-mcp-daemon.sh
 scripts/unlink-component.sh

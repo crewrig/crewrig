@@ -184,72 +184,10 @@ describe("resolution: the shell library and its twin agree", describeSkip, () =>
   });
 });
 
-/** `# --- <label>` of a Bash section: the text before the em dash, trailing rule removed. */
-const labelOf = (heading: string): string =>
-  (heading.split(" — ")[0] ?? heading).replace(/\s*-{3,}\s*$/, "").trim();
-const FIXTURE_CALL =
-  /^(?!\s*#).*\b(?:write_fixture|mutated_root|org_root|setup_emission_root)\s+["$a-z]|^\s*cat > .*<</;
-
-/** Sections of the Bash suite that define an inline fixture, counted per label. */
-function fixtureSections(bash: string): Map<string, number> {
-  const counts = new Map<string, number>();
-  let [label, defines] = [null as string | null, false];
-  const flush = (): void => {
-    if (label !== null && defines) counts.set(label, (counts.get(label) ?? 0) + 1);
-  };
-  for (const line of bash.split("\n")) {
-    const heading = /^# --- (.+)$/.exec(line);
-    if (heading === null) defines ||= FIXTURE_CALL.test(line);
-    else [label, defines] = (flush(), [labelOf(heading[1] ?? ""), false]);
-  }
-  flush();
-  return counts;
-}
-/** Labels that define a fixture without a builder (counted) or an exemption. */
-function unbuilt(bash: string, builders: readonly { label: string }[], exempt: object): string[] {
-  const built = new Map<string, number>();
-  for (const b of builders) built.set(b.label, (built.get(b.label) ?? 0) + 1);
-  const missing = [...fixtureSections(bash)].filter(
-    ([l, n]) => (built.get(l) ?? 0) < n && !(l in exempt),
-  );
-  return missing.map(([l, n]) => `${l} (${n} section(s), ${built.get(l) ?? 0} builder(s))`);
-}
-
-describe("every Bash fixture has a builder", () => {
-  const bash = fs.readFileSync(
-    path.join(REPO, "scripts", "tests", "test-model-resolution.sh"),
-    "utf8",
-  );
-  test("each fixture-defining `# --- <label>` of test-model-resolution.sh has a builder or an exemption", () => {
-    assert.deepEqual(unbuilt(bash, BUILDERS, EXEMPT_LABELS), []);
-    assert.ok(
-      [...fixtureSections(bash).values()].reduce((a, b) => a + b, 0) >= 40,
-      "the guard found the sections",
-    );
-  });
-  test("a stale tag fails: every builder and exemption names a section that defines a fixture", () => {
-    const sections = fixtureSections(bash);
-    const stale = [
-      ...BUILDERS.map((b) => b.label).filter((l) => l !== "extra"),
-      ...Object.keys(EXEMPT_LABELS),
-    ];
-    assert.deepEqual(
-      stale.filter((l) => !sections.has(l)),
-      [],
-    );
-    assert.equal(
-      new Set(BUILDERS.map((b) => b.name)).size,
-      BUILDERS.length,
-      "builder names are unique",
-    );
-  });
-  test("a new Bash fixture without a builder is caught (the guard can fail)", () => {
-    const added = `${bash}\n# --- Z9 — a new case ---\nwrite_fixture "$FIXTURE" "intelligence: low"\n`;
-    assert.deepEqual(unbuilt(added, BUILDERS, EXEMPT_LABELS), ["Z9 (1 section(s), 0 builder(s))"]);
-    assert.deepEqual(
-      unbuilt(`${bash}\n# --- C1 — again ---\nmutated_root x 'y'\n`, BUILDERS, EXEMPT_LABELS)
-        .length,
-      1,
-    );
+// The guard that tied every fixture of the Bash suite test-model-resolution.sh to a builder retired
+// with that suite (spec 0262 requirement 17, row I2); the builders stay, keyed by unique name.
+describe("fixture builders", () => {
+  test("builder names are unique", () => {
+    assert.equal(new Set(BUILDERS.map((b) => b.name)).size, BUILDERS.length);
   });
 });

@@ -41,11 +41,6 @@ function scratch(edits: Record<string, (text: string) => string> = {}): string {
   roots.push(root);
   const dir = path.join(root, "model-mappings");
   fs.mkdirSync(dir);
-  fs.mkdirSync(path.join(root, "scripts", "lib"), { recursive: true });
-  fs.copyFileSync(
-    path.join(REPO, "scripts", "lib", "model-resolve.sh"),
-    path.join(root, "scripts", "lib", "model-resolve.sh"),
-  );
   for (const name of fs.readdirSync(path.join(REPO, "model-mappings"))) {
     const text = fs.readFileSync(path.join(REPO, "model-mappings", name), "utf8");
     fs.writeFileSync(path.join(dir, name), (edits[name] ?? ((t) => t))(text));

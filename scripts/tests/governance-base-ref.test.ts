@@ -1,12 +1,11 @@
 // governance-base-ref.test.ts — substitute for the in-process Bash group `r`
-// of the retired Bash suite test-check-test-strays.sh (resolve_remote_ref unit cases), which retires
-// with scripts/lib/base-ref-resolve.sh (spec 0262 requirement 17).
+// of the retired Bash suite test-check-test-strays.sh (resolve_remote_ref unit cases); the shell
+// library scripts/lib/base-ref-resolve.sh retired in row I2 (spec 0262 requirement 17).
 //
 // One test per former `rr` row, on scratch git repos in the CI topology of
 // issue #1401 (detached HEAD, no local trunk, remote-tracking refs only). A
 // mutation case copies the module, inverts the remote-preference rule and
-// asserts the key case then fails, so the suite can fail. A differential leg
-// compares the retiring shell function while it still exists (non-Windows).
+// asserts the key case then fails, so the suite can fail.
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -20,7 +19,6 @@ import { resolveRemoteRef } from "../lib/governance/base-ref.ts";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const LIB = path.resolve(HERE, "..", "lib");
-const SHELL_LIB = path.join(LIB, "base-ref-resolve.sh");
 
 const GIT_ENV: NodeJS.ProcessEnv = {
   ...process.env,
@@ -173,31 +171,4 @@ describe("resolveRemoteRef (substitute for case r of the retired Bash suite for 
     };
     assert.notEqual(mutant.resolveRemoteRef("shared", "origin", elsewhere, repo), "shared");
   });
-
-  test(
-    "differential: matches the retiring shell resolve_remote_ref",
-    { skip: process.platform === "win32" || !fs.existsSync(SHELL_LIB) },
-    () => {
-      const names = [
-        "localonly",
-        "shared",
-        "main",
-        "release/x",
-        "nope",
-        "origin/main",
-        "",
-        headSha,
-        "treetag",
-      ];
-      for (const name of names) {
-        const sh = spawnSync(
-          "bash",
-          ["-c", `source "${SHELL_LIB}"; resolve_remote_ref "$1" origin "$2"`, "_", name, repo],
-          { cwd: elsewhere, env: GIT_ENV, encoding: "utf8" },
-        );
-        const expected = sh.status === 0 ? sh.stdout : null;
-        assert.equal(rr(name, "origin"), expected, `name '${name}'`);
-      }
-    },
-  );
 });

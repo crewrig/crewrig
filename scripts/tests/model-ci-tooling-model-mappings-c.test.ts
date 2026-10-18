@@ -44,11 +44,6 @@ function repoWith(
 ): string {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "crewrig-cmmc-")));
   roots.push(root);
-  fs.mkdirSync(path.join(root, "scripts", "lib"), { recursive: true });
-  fs.copyFileSync(
-    path.join(REPO, "scripts", "lib", "model-resolve.sh"),
-    path.join(root, "scripts", "lib", "model-resolve.sh"),
-  );
   const dir = path.join(root, "model-mappings");
   fs.mkdirSync(dir);
   for (const name of fs.readdirSync(path.join(REPO, "model-mappings"))) {

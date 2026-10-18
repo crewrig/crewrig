@@ -61,7 +61,6 @@ capabilities:
           - "package.json"
           - "package-lock.json"
           - "scripts/tests/build-components-canonical-repo.test.ts"
-          - "scripts/tests/test-model-resolution.sh"
           - "scripts/tests/agent-profile-*.test.ts"
           - "scripts/tests/lib/build-sandbox.ts"
           - "scripts/lib/**"
@@ -89,7 +88,6 @@ capabilities:
           - "package.json"
           - "package-lock.json"
           - "scripts/tests/build-components-canonical-repo.test.ts"
-          - "scripts/tests/test-model-resolution.sh"
           - "scripts/tests/agent-profile-*.test.ts"
           - "scripts/tests/lib/build-sandbox.ts"
           - "scripts/lib/**"
@@ -120,7 +118,6 @@ capabilities:
         - "package.json"
         - "package-lock.json"
         - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/agent-profile-*.test.ts"
         - "scripts/tests/lib/build-sandbox.ts"
         - "scripts/lib/**"
@@ -147,66 +144,6 @@ capabilities:
       - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-assembly-routing.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-canonical-repo.test.ts
 
-  - id: model-resolution
-    name: "Run the model-resolution regression suite"
-    trigger:
-      - on: pull-request
-        branches: [main, "release/**"]
-        paths:
-          - "scripts/build-components.sh"
-          - "scripts/build-components.ts"
-          - "scripts/tests/build-components-canonical-repo.test.ts"
-          - "scripts/tests/test-model-resolution.sh"
-          - "scripts/tests/agent-profile-*.test.ts"
-          - "scripts/tests/lib/build-sandbox.ts"
-          - "scripts/lib/**"
-          - "artifacts/**"
-          - "extensions/**"
-          - ".crewrig/core-paths.txt"
-          - "docs/layers.md"
-          - "docs/agent-profile-migration.md"
-          - "model-mappings/**"
-      - on: push
-        branches: [main, "release/**"]
-        paths:
-          - "scripts/build-components.sh"
-          - "scripts/build-components.ts"
-          - "scripts/tests/build-components-canonical-repo.test.ts"
-          - "scripts/tests/test-model-resolution.sh"
-          - "scripts/tests/agent-profile-*.test.ts"
-          - "scripts/tests/lib/build-sandbox.ts"
-          - "scripts/lib/**"
-          - "artifacts/**"
-          - "extensions/**"
-          - ".crewrig/core-paths.txt"
-          - "docs/layers.md"
-          - "docs/agent-profile-migration.md"
-          - "model-mappings/**"
-    portability: portable
-    changeset-gated: true
-    requires:
-      runtime: node@24
-      tools: [yq]
-    cache:
-      files:
-        - "scripts/build-components.sh"
-        - "scripts/build-components.ts"
-        - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/test-model-resolution.sh"
-        - "scripts/tests/agent-profile-*.test.ts"
-        - "scripts/tests/lib/build-sandbox.ts"
-        - "scripts/lib/**"
-        - "artifacts/**"
-        - "extensions/**"
-        - ".crewrig/core-paths.txt"
-        - "docs/agent-profile-migration.md"
-        - "model-mappings/**"
-        - "scripts/ci-cache-guard.sh"
-      env: []
-    command:
-      - npm ci --omit=dev --workspaces=false
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-model-resolution.sh
-
   - id: agent-profile-migration
     name: "Run the agent-profile migration regression suite"
     trigger:
@@ -216,7 +153,6 @@ capabilities:
           - "scripts/build-components.sh"
           - "scripts/build-components.ts"
           - "scripts/tests/build-components-canonical-repo.test.ts"
-          - "scripts/tests/test-model-resolution.sh"
           - "scripts/tests/agent-profile-*.test.ts"
           - "scripts/tests/lib/build-sandbox.ts"
           - "scripts/lib/**"
@@ -232,7 +168,6 @@ capabilities:
           - "scripts/build-components.sh"
           - "scripts/build-components.ts"
           - "scripts/tests/build-components-canonical-repo.test.ts"
-          - "scripts/tests/test-model-resolution.sh"
           - "scripts/tests/agent-profile-*.test.ts"
           - "scripts/tests/lib/build-sandbox.ts"
           - "scripts/lib/**"
@@ -251,7 +186,6 @@ capabilities:
         - "scripts/build-components.sh"
         - "scripts/build-components.ts"
         - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/agent-profile-*.test.ts"
         - "scripts/tests/lib/build-sandbox.ts"
         - "scripts/lib/**"
@@ -298,8 +232,6 @@ capabilities:
           - "scripts/lib/require-dependency.ts"
           - "scripts/lib/node-floor-guard.js"
           - "scripts/lib/render-command.sh"
-          - "scripts/lib/component-resolve.sh"
-          - "scripts/lib/model-resolve.sh"
           - "scripts/lib/model-resolve/**"
           - "scripts/tests/build-components-*.test.ts"
           - "scripts/tests/build-sandbox.test.ts"
@@ -347,8 +279,6 @@ capabilities:
           - "scripts/lib/require-dependency.ts"
           - "scripts/lib/node-floor-guard.js"
           - "scripts/lib/render-command.sh"
-          - "scripts/lib/component-resolve.sh"
-          - "scripts/lib/model-resolve.sh"
           - "scripts/lib/model-resolve/**"
           - "scripts/tests/build-components-*.test.ts"
           - "scripts/tests/build-sandbox.test.ts"
@@ -572,7 +502,7 @@ capabilities:
 
   # Spec 0255 (row F2 of epic #1231), PR B: the dark link-or-copy module, the component twins and
   # the manage modules, with their node:test suites. `bash` is spawned on purpose by the two twin
-  # conformance suites (they drive scripts/lib/common.sh and component-resolve.sh next to the
+  # conformance suites (they drive scripts/lib/common.sh next to the
   # twins) and `jq` by the shell functions they call; both retire with the shell libraries
   # (row J4). Those suites skip on Windows, so this job runs on Linux only.
   - id: install-ts
@@ -586,7 +516,6 @@ capabilities:
           - "scripts/lib/component-overlay.ts"
           - "scripts/lib/component-install.ts"
           - "scripts/lib/component-resolve.ts"
-          - "scripts/lib/component-resolve.sh"
           - "scripts/lib/antigravity-migrate.ts"
           - "scripts/lib/manage/**"
           - "scripts/lib/extension/**"
@@ -1893,7 +1822,6 @@ capabilities:
         paths:
           - "scripts/check-extension-manifest-version.sh"
           - "scripts/check-extension-version-bump.sh"
-          - "scripts/lib/base-ref-resolve.sh"
           - "scripts/lib/common.sh"
           - "scripts/lib/extension-hooks.sh"
           - "scripts/tests/test-check-extension-manifest-version.sh"
@@ -1911,7 +1839,6 @@ capabilities:
         paths:
           - "scripts/check-extension-manifest-version.sh"
           - "scripts/check-extension-version-bump.sh"
-          - "scripts/lib/base-ref-resolve.sh"
           - "scripts/lib/common.sh"
           - "scripts/lib/extension-hooks.sh"
           - "scripts/tests/test-check-extension-manifest-version.sh"
@@ -1992,7 +1919,6 @@ capabilities:
           - "scripts/lib/component-overlay.ts"
           - "scripts/lib/component-install.ts"
           - "scripts/lib/antigravity-migrate.ts"
-          - "scripts/lib/component-resolve.sh"
           - "scripts/lib/extension-install.sh"
           - "extensions/**"
           - "artifacts/**"
@@ -2052,7 +1978,6 @@ capabilities:
           - "scripts/lib/component-overlay.ts"
           - "scripts/lib/component-install.ts"
           - "scripts/lib/antigravity-migrate.ts"
-          - "scripts/lib/component-resolve.sh"
           - "scripts/lib/extension-install.sh"
           - "extensions/**"
           - "artifacts/**"
@@ -2458,7 +2383,6 @@ capabilities:
           - "scripts/check-test-wiring.ts"
           # Not sourced by this capability any more; its unit case lives in
           # governance-base-ref.test.ts (case r), so a change to it still reruns the guards.
-          - "scripts/lib/base-ref-resolve.sh"
           - "scripts/tests/**"
           - "hooks/worktree-git-guard.sh"
           - "hooks/worktree-git-guard.ts"
@@ -2482,7 +2406,6 @@ capabilities:
           - "scripts/check-test-wiring.ts"
           # Not sourced by this capability any more; its unit case lives in
           # governance-base-ref.test.ts (case r), so a change to it still reruns the guards.
-          - "scripts/lib/base-ref-resolve.sh"
           - "scripts/tests/**"
           - "hooks/worktree-git-guard.sh"
           - "hooks/worktree-git-guard.ts"
@@ -2740,7 +2663,6 @@ capabilities:
           - "scripts/tests/test-check-spec-id-reserved.sh"
           - "scripts/reserve-spec-id.sh"
           - "scripts/check-spec-id-reserved.sh"
-          - "scripts/lib/base-ref-resolve.sh"
           - "model-mappings/**"
           - "scripts/setup-gemini-interactive.sh"
           - "scripts/setup-gemini-interactive.ts"
@@ -2764,7 +2686,6 @@ capabilities:
           - "scripts/tests/test-check-spec-id-reserved.sh"
           - "scripts/reserve-spec-id.sh"
           - "scripts/check-spec-id-reserved.sh"
-          - "scripts/lib/base-ref-resolve.sh"
           - "model-mappings/**"
           - "scripts/setup-gemini-interactive.sh"
           - "scripts/setup-gemini-interactive.ts"
@@ -2929,7 +2850,6 @@ capabilities:
           - "model-mappings/**"
           - "docs/model-mapping-format.md"
           - "scripts/check-model-mappings.sh"
-          - "scripts/lib/model-resolve.sh"
           - "scripts/tests/test-check-model-mappings.sh"
       - on: push
         branches: [main, "release/**"]
@@ -2937,7 +2857,6 @@ capabilities:
           - "model-mappings/**"
           - "docs/model-mapping-format.md"
           - "scripts/check-model-mappings.sh"
-          - "scripts/lib/model-resolve.sh"
           - "scripts/tests/test-check-model-mappings.sh"
     portability: portable
     changeset-gated: true

@@ -11,7 +11,6 @@ scripts/build-components.sh
 
 # Spec 0250 R23: the unmigrated shell scripts that still reach the entry through the shim.
 scripts/lib/common.sh
-scripts/lib/component-resolve.sh
 
 # Spec 0262 R17: the golden record of the component-resolve shell leg holds the shell's own
 # diagnostics, which name the invocation; it outlives the library it was recorded from.
@@ -38,8 +37,7 @@ scripts/tests/fixtures/setup-golden/
 # invocation as the scenario printed it; goldens are history, not an instruction.
 scripts/tests/fixtures/e2e-oracle/scenarios/03-skill-build/
 
-# The shim header names the Bash tests that have not migrated: each deliberately drives the shim.
-scripts/tests/test-model-resolution.sh
+# The scenario-03 builder drives the shim on purpose: the e2e oracle replays that invocation.
 tests/e2e/lib/scenario-03-skill-build.ts
 
 # Spec text and delta-specs record the invocation as it was specified; merged specs are history.

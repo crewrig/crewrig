@@ -115,7 +115,7 @@ const FIXTURES: Record<string, string> = {
   "config/x.template": "# organise\nvalue = organise\n",
   "docs/other.txt": "organise\n",
 };
-const LIBS = ["en-gb-us-map.txt", "en-gb-detect.txt", "en_us_sweep.py"];
+const LIBS = ["en-gb-us-map.txt", "en-gb-detect.txt"];
 
 let work: string;
 let seq = 0;
@@ -162,7 +162,6 @@ function tree(dir: string): Record<string, string> {
         e.name === ".git" ||
         e.name === "en-us-sweep" ||
         e.name.startsWith("sweep-en-us") ||
-        e.name === "en_us_sweep.py" ||
         e.name === "__pycache__"
       )
         continue;

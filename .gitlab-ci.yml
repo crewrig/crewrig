@@ -39,7 +39,6 @@ component-drift:
         - "package.json"
         - "package-lock.json"
         - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/agent-profile-*.test.ts"
         - "scripts/tests/lib/build-sandbox.ts"
         - "scripts/lib/**"
@@ -64,7 +63,7 @@ component-drift:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
     - "node scripts/build-components.ts --target all --check"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/build-components.ts,package.json,package-lock.json,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/test-model-resolution.sh,scripts/tests/agent-profile-*.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,.agents/agents/**,.claude/agents/**,.gemini/agents/**,.github/agents/**,crewrig.config.toml\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-assembly-routing.test.ts"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/build-components.ts,package.json,package-lock.json,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/agent-profile-*.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,.agents/agents/**,.claude/agents/**,.gemini/agents/**,.github/agents/**,crewrig.config.toml\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-assembly-routing.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-canonical-repo.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
@@ -74,7 +73,6 @@ component-drift:
         - "package.json"
         - "package-lock.json"
         - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/agent-profile-*.test.ts"
         - "scripts/tests/lib/build-sandbox.ts"
         - "scripts/lib/**"
@@ -101,7 +99,6 @@ component-drift:
         - "package.json"
         - "package-lock.json"
         - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/agent-profile-*.test.ts"
         - "scripts/tests/lib/build-sandbox.ts"
         - "scripts/lib/**"
@@ -122,66 +119,6 @@ component-drift:
         - ".github/agents/**"
         - "crewrig.config.toml"
 
-model-resolution:
-  image: node:24
-  before_script:
-    - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
-    - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
-    - echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
-    - chmod +x /usr/local/bin/yq
-  cache:
-    key:
-      files:
-        - "scripts/build-components.sh"
-        - "scripts/build-components.ts"
-        - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/test-model-resolution.sh"
-        - "scripts/tests/agent-profile-*.test.ts"
-        - "scripts/tests/lib/build-sandbox.ts"
-        - "scripts/lib/**"
-        - "artifacts/**"
-        - "extensions/**"
-        - ".crewrig/core-paths.txt"
-        - "docs/agent-profile-migration.md"
-        - "model-mappings/**"
-        - "scripts/ci-cache-guard.sh"
-    paths:
-      - .ci-cache/
-  script:
-    - "npm ci --omit=dev --workspaces=false"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/build-components.ts,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/test-model-resolution.sh,scripts/tests/agent-profile-*.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-model-resolution.sh"
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
-        - "scripts/build-components.sh"
-        - "scripts/build-components.ts"
-        - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/test-model-resolution.sh"
-        - "scripts/tests/agent-profile-*.test.ts"
-        - "scripts/tests/lib/build-sandbox.ts"
-        - "scripts/lib/**"
-        - "artifacts/**"
-        - "extensions/**"
-        - ".crewrig/core-paths.txt"
-        - "docs/layers.md"
-        - "docs/agent-profile-migration.md"
-        - "model-mappings/**"
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/build-components.sh"
-        - "scripts/build-components.ts"
-        - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/test-model-resolution.sh"
-        - "scripts/tests/agent-profile-*.test.ts"
-        - "scripts/tests/lib/build-sandbox.ts"
-        - "scripts/lib/**"
-        - "artifacts/**"
-        - "extensions/**"
-        - ".crewrig/core-paths.txt"
-        - "docs/layers.md"
-        - "docs/agent-profile-migration.md"
-        - "model-mappings/**"
-
 agent-profile-migration:
   image: node:24
   cache:
@@ -190,7 +127,6 @@ agent-profile-migration:
         - "scripts/build-components.sh"
         - "scripts/build-components.ts"
         - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/agent-profile-*.test.ts"
         - "scripts/tests/lib/build-sandbox.ts"
         - "scripts/lib/**"
@@ -204,14 +140,13 @@ agent-profile-migration:
       - .ci-cache/
   script:
     - "npm ci --omit=dev --workspaces=false"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/build-components.ts,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/test-model-resolution.sh,scripts/tests/agent-profile-*.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/agent-profile-baseline-doc.test.ts scripts/tests/agent-profile-build.test.ts scripts/tests/agent-profile-committed.test.ts"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/build-components.sh,scripts/build-components.ts,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/agent-profile-*.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.sh\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/agent-profile-baseline-doc.test.ts scripts/tests/agent-profile-build.test.ts scripts/tests/agent-profile-committed.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/build-components.sh"
         - "scripts/build-components.ts"
         - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/agent-profile-*.test.ts"
         - "scripts/tests/lib/build-sandbox.ts"
         - "scripts/lib/**"
@@ -226,7 +161,6 @@ agent-profile-migration:
         - "scripts/build-components.sh"
         - "scripts/build-components.ts"
         - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/test-model-resolution.sh"
         - "scripts/tests/agent-profile-*.test.ts"
         - "scripts/tests/lib/build-sandbox.ts"
         - "scripts/lib/**"
@@ -265,8 +199,6 @@ build-components-ts:
         - "scripts/lib/require-dependency.ts"
         - "scripts/lib/node-floor-guard.js"
         - "scripts/lib/render-command.sh"
-        - "scripts/lib/component-resolve.sh"
-        - "scripts/lib/model-resolve.sh"
         - "scripts/lib/model-resolve/**"
         - "scripts/tests/build-components-*.test.ts"
         - "scripts/tests/build-sandbox.test.ts"
@@ -313,8 +245,6 @@ build-components-ts:
         - "scripts/lib/require-dependency.ts"
         - "scripts/lib/node-floor-guard.js"
         - "scripts/lib/render-command.sh"
-        - "scripts/lib/component-resolve.sh"
-        - "scripts/lib/model-resolve.sh"
         - "scripts/lib/model-resolve/**"
         - "scripts/tests/build-components-*.test.ts"
         - "scripts/tests/build-sandbox.test.ts"
@@ -516,7 +446,6 @@ install-ts:
         - "scripts/lib/component-overlay.ts"
         - "scripts/lib/component-install.ts"
         - "scripts/lib/component-resolve.ts"
-        - "scripts/lib/component-resolve.sh"
         - "scripts/lib/antigravity-migrate.ts"
         - "scripts/lib/manage/**"
         - "scripts/lib/extension/**"
@@ -1432,7 +1361,6 @@ extension-manifest:
       changes:
         - "scripts/check-extension-manifest-version.sh"
         - "scripts/check-extension-version-bump.sh"
-        - "scripts/lib/base-ref-resolve.sh"
         - "scripts/lib/common.sh"
         - "scripts/lib/extension-hooks.sh"
         - "scripts/tests/test-check-extension-manifest-version.sh"
@@ -1449,7 +1377,6 @@ extension-manifest:
       changes:
         - "scripts/check-extension-manifest-version.sh"
         - "scripts/check-extension-version-bump.sh"
-        - "scripts/lib/base-ref-resolve.sh"
         - "scripts/lib/common.sh"
         - "scripts/lib/extension-hooks.sh"
         - "scripts/tests/test-check-extension-manifest-version.sh"
@@ -1534,7 +1461,6 @@ extension-install:
         - "scripts/lib/component-overlay.ts"
         - "scripts/lib/component-install.ts"
         - "scripts/lib/antigravity-migrate.ts"
-        - "scripts/lib/component-resolve.sh"
         - "scripts/lib/extension-install.sh"
         - "extensions/**"
         - "artifacts/**"
@@ -1593,7 +1519,6 @@ extension-install:
         - "scripts/lib/component-overlay.ts"
         - "scripts/lib/component-install.ts"
         - "scripts/lib/antigravity-migrate.ts"
-        - "scripts/lib/component-resolve.sh"
         - "scripts/lib/extension-install.sh"
         - "extensions/**"
         - "artifacts/**"
@@ -1974,7 +1899,6 @@ test-wiring:
         - "scripts/check-test-strays.ts"
         - "scripts/lib/governance/**"
         - "scripts/check-test-wiring.ts"
-        - "scripts/lib/base-ref-resolve.sh"
         - "scripts/tests/**"
         - "hooks/worktree-git-guard.sh"
         - "hooks/worktree-git-guard.ts"
@@ -1995,7 +1919,6 @@ test-wiring:
         - "scripts/check-test-strays.ts"
         - "scripts/lib/governance/**"
         - "scripts/check-test-wiring.ts"
-        - "scripts/lib/base-ref-resolve.sh"
         - "scripts/tests/**"
         - "hooks/worktree-git-guard.sh"
         - "hooks/worktree-git-guard.ts"
@@ -2245,7 +2168,6 @@ misc:
         - "scripts/tests/test-check-spec-id-reserved.sh"
         - "scripts/reserve-spec-id.sh"
         - "scripts/check-spec-id-reserved.sh"
-        - "scripts/lib/base-ref-resolve.sh"
         - "model-mappings/**"
         - "scripts/setup-gemini-interactive.sh"
         - "scripts/setup-gemini-interactive.ts"
@@ -2268,7 +2190,6 @@ misc:
         - "scripts/tests/test-check-spec-id-reserved.sh"
         - "scripts/reserve-spec-id.sh"
         - "scripts/check-spec-id-reserved.sh"
-        - "scripts/lib/base-ref-resolve.sh"
         - "model-mappings/**"
         - "scripts/setup-gemini-interactive.sh"
         - "scripts/setup-gemini-interactive.ts"
@@ -2398,14 +2319,12 @@ check-model-mappings:
         - "model-mappings/**"
         - "docs/model-mapping-format.md"
         - "scripts/check-model-mappings.sh"
-        - "scripts/lib/model-resolve.sh"
         - "scripts/tests/test-check-model-mappings.sh"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "model-mappings/**"
         - "docs/model-mapping-format.md"
         - "scripts/check-model-mappings.sh"
-        - "scripts/lib/model-resolve.sh"
         - "scripts/tests/test-check-model-mappings.sh"
 
 check-agent-profiles:
