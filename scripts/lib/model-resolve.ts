@@ -3,7 +3,7 @@
 // TypeScript twin of the closure of `resolve_agent` in scripts/lib/model-resolve.sh
 // (spec 0250 R19, R20).
 //
-// Twins of model-resolve.sh `resolve_agent` (:1306), `mapping_in_force` (:77) and
+// Twins of the retired model-resolve.sh `resolve_agent` (:1306), `mapping_in_force` (:77) and
 // `mapping_merge_cleanup` (:506); the other 47 functions are twinned in
 // scripts/lib/model-resolve/ (ladders, merge-root, merge-tree, merge-ops,
 // merge-mapping, mapping-access, profile, narrowing, diagnostics, resolve-item,

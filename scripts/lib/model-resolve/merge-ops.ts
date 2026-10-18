@@ -1,6 +1,6 @@
 // merge-ops.ts — the node-level operations of the organisation override merge.
 //
-// Twins of model-resolve.sh `_list_index_by_id` (:149), `_emit_substituting_disposition`
+// Twins of the retired model-resolve.sh `_list_index_by_id` (:149), `_emit_substituting_disposition`
 // (:167), `_merge_offerings` (:178), `_merge_surfaces` (:201), `_merge_guard` (:240)
 // and `_apply_removes` (:289). Spec 0199 R10-R12, R14, R19, R34, Decision 2; spec
 // 0250 R20. R2 (spec 0250): this slice moved only because the step (b) build

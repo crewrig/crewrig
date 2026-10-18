@@ -1,9 +1,9 @@
 // shell-resolve-harness.ts — drives the shell libraries and their TypeScript twins over the
 // same cases, for the conformance suites (spec 0250 R21). Linux-only by design: it spawns
-// `bash` and `yq`, and retires with the shell libraries (row I2).
+// `bash` and `yq`, and the shell libraries retired in row I2: only the recording paths still source them, and they refuse when one is absent.
 //
 // One `bash` per case group. Each group sources `render-command.sh` first (it defines the
-// `extract_frontmatter` that `profile_read` needs, model-resolve.sh:749), then the library
+// `extract_frontmatter` that `profile_read` needs, as the retired model-resolve.sh did), then the library
 // under test, so no shell text is copied here. Records come back NUL-framed (a prose or a
 // stderr line may hold anything but NUL) and are parsed into the `Outcome` the twin produces;
 // the shell runs under `LC_ALL=C`, as R17 pins its sort.
@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import * as modelResolve from "../../lib/model-resolve.ts";
 import { extractFrontmatter } from "../../lib/render-command.ts";
 import { scrubPath } from "./path-scrub.ts";
+import { requireShellLibrary } from "./component-resolve-golden.ts";
 import { record, recording, replay } from "./model-resolve-golden.ts";
 import { yamlText } from "./yaml-lib.ts";
 
@@ -170,6 +171,7 @@ export async function runShellResolve(
 
 /** `resolve_agent` then `mapping_in_force` per case, in one `bash` that sources the library. */
 async function runShellLive(cases: readonly ResolveCase[]): Promise<Outcome[]> {
+  requireShellLibrary(REPO, "scripts/lib/model-resolve.sh");
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "conformance-shell-"));
   try {
     const row = (c: ResolveCase): string[] => [

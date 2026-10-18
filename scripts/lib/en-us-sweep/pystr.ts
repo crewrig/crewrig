@@ -1,5 +1,5 @@
 // pystr.ts — Python `str` semantics the sweep engine relies on, rebuilt for
-// JavaScript so the TypeScript twin of scripts/lib/en_us_sweep.py is byte-identical.
+// JavaScript so the TypeScript port of the retired scripts/lib/en_us_sweep.py is byte-identical.
 //
 // Python and JavaScript disagree on what whitespace is (`\s`, `str.strip`,
 // `str.isspace`) and on which characters end a line (`str.splitlines`).

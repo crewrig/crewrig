@@ -1,5 +1,6 @@
 // component-resolve-golden.ts — the frozen shell leg of the component-resolve suites (spec 0262
-// R17). scripts/lib/component-resolve.sh is deleted in the switch PR; what the shell printed for
+// R17). scripts/lib/component-resolve.sh was deleted in row I2 (recorded from
+// `git show 15edd56a:scripts/lib/component-resolve.sh` in the golden container); what the shell printed for
 // each (function, input) pair is stored under scripts/tests/fixtures/component-resolve-oracle/ and
 // REPLAYED by the tests. Only the Linux golden container records it, with
 // COMPONENT_RESOLVE_GOLDEN_REGEN=1 (see model-resolve-golden-regen.ts for the container recipe;
@@ -23,6 +24,19 @@ export const recording = (): boolean =>
   process.env["COMPONENT_RESOLVE_GOLDEN_REGEN"] === "1" && process.platform === "linux";
 
 /** `<placeholder>` to the real path it stands for in this process, longest path first. */
+/**
+ * The recording paths source a shell library that no longer exists in the checkout: refuse with
+ * the recipe instead of failing inside `bash`. Restore it from history first (see the header of
+ * model-resolve-golden-regen.ts) and run in the golden container.
+ */
+export function requireShellLibrary(repo: string, rel: string): void {
+  if (!fs.existsSync(path.join(repo, rel)))
+    throw new Error(
+      `${rel} is retired (row I2): the goldens can no longer be recorded here; restore it with ` +
+        `\`git show 15edd56a:${rel}\` into the golden container (see model-resolve-golden-regen.ts)`,
+    );
+}
+
 export type Roots = Readonly<Record<string, string>>;
 const swap = (text: string, roots: Roots, back: boolean): string => {
   const pairs = Object.entries(roots).sort(([, a], [, b]) => b.length - a.length);

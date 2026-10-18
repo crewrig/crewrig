@@ -3,7 +3,7 @@
 # scripts/build-components.ts; this file remains so every caller that still runs
 # `bash scripts/build-components.sh` (the setup, manage and install scripts and the
 # Bash tests that have not migrated, the Taskfile before it was rewritten, and
-# scripts/lib/common.sh and scripts/lib/component-resolve.sh) reaches the TypeScript
+# scripts/lib/common.sh) reaches the TypeScript
 # build until their own row migrates them.
 #
 # It runs the Node.js floor guard (scripts/lib/node-floor-guard.js), then the

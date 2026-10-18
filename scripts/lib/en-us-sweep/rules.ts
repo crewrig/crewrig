@@ -1,5 +1,5 @@
 // rules.ts — the shared sweep/detect pipeline of the en-GB -> en-US orthographic
-// sweep (spec 0023, twin of scripts/lib/en_us_sweep.py): dispatch by file type,
+// sweep (spec 0023, port of the retired scripts/lib/en_us_sweep.py): dispatch by file type,
 // the X out-of-reach allowlist, the substitution and detector regexes, and the
 // loaders for the two data files. Regex translations: see the header of mask.ts.
 

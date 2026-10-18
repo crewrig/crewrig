@@ -2,7 +2,7 @@
 // scripts/lib/component-resolve.sh (spec 0255, row F2 of spec 0215):
 // `component_install_named` and `component_install_all`.
 //
-// Twin of those functions: change both, and keep them equal. The shell passes the name
+// Twin of those functions (retired in row I2; this module is now the only implementation, checked against frozen goldens). The shell passes the name
 // of a per-component installer function; here it is a callback taking the resolved path
 // and returning its status. A report goes to `io.stderr` (default standard error).
 

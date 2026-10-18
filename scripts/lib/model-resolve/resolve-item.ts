@@ -1,6 +1,6 @@
 // resolve-item.ts — rule (g): the per-item eligibility gate and its sub-rules.
 //
-// Twins of model-resolve.sh `_value_in_domain` (:897) and `_resolve_item` (:1108).
+// Twins of the retired model-resolve.sh `_value_in_domain` (:897) and `_resolve_item` (:1108).
 // Spec 0198 R13-R16, R20, R23, R24, R31 (D2, D3, D12, D16). R2 (spec 0250): this
 // slice moved only because the step (b) build depends on it, not as precedent.
 //

@@ -2,7 +2,7 @@
 // scripts/lib/component-resolve.sh (spec 0255, row F2 of spec 0215): empty the compiled
 // staging root of each served overlay tier for one CLI, then rebuild those tiers.
 //
-// Twin of that function: change both, and keep them equal. Differences of form, none of
+// Twin of that function (retired in row I2; this module is now the only implementation, checked against frozen goldens). Differences of form, none of
 // behaviour:
 //   - the repository directory is a field of `io`, not the `REPO_DIR` variable, and an
 //     empty one (or an empty tier) throws, as the shell's `${...:?}` guards abort;

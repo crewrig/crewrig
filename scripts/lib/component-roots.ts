@@ -4,7 +4,7 @@
 // `component_set_artifact_roots`, `component_read_lines`, `resolve_component_in_roots`,
 // `enumerate_components_in_roots` and `report_unresolved`.
 //
-// Twin of that slice of the shell library: change both, and keep them equal. The
+// Twin of that slice of the shell library (retired in row I2; this module is now the only implementation, checked against frozen goldens). The
 // conformance test `scripts/tests/component-twins-conformance.test.ts` compares the two.
 //
 // Differences of form, none of behaviour:

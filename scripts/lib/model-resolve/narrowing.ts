@@ -1,7 +1,7 @@
 // narrowing.ts — selection-axis narrowing (rule (d)) and encoded-reasoning
 // narrowing (rule (e)).
 //
-// Twins of model-resolve.sh `_pred_context` (:926), `_pred_locality` (:934),
+// Twins of the retired model-resolve.sh `_pred_context` (:926), `_pred_locality` (:934),
 // `_pred_specialization` (:940), `_pred_speed` (:946), `_pred_modalities` (:952),
 // `_narrow_axis` (:1008) and `_narrow_encoded_reasoning` (:1029). Spec 0198 R9-R11,
 // R22. The shell mutated the dynamically scoped `CANDIDATES` of `resolve_agent`;

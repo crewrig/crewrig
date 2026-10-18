@@ -1,6 +1,6 @@
 // diagnostics.ts — the two diagnostic record formats (spec 0198 R32-R35).
 //
-// Twins of model-resolve.sh `_diag_drop` (:974) and `_diag_note` (:980). One record
+// Twins of the retired model-resolve.sh `_diag_drop` (:974) and `_diag_note` (:980). One record
 // per line, fields in a fixed order separated by a single tab, the opening token
 // distinguishing a drop record from a note. The shell built each line in a command
 // substitution, which removed trailing line feeds; so does this. R2 (spec 0250):

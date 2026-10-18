@@ -1,6 +1,6 @@
 // profile.ts — the capability-profile reader and the declaration predicates.
 //
-// Twins of model-resolve.sh `profile_read` (:737), `profile_declares_item` (:809),
+// Twins of the retired model-resolve.sh `profile_read` (:737), `profile_declares_item` (:809),
 // `profile_declares_axis` (:834), `_axis_declared_value` (:847), `_dotted_path`
 // (:859) and `_declared_value_of` (:868). Spec 0198 R1 (declaration half).
 // R2 (spec 0250): this slice moved only because the step (b) build depends on it,

@@ -1,6 +1,6 @@
 // merge-root.ts — the merge root, its ownership guard, the content digest and cleanup.
 //
-// Twins of model-resolve.sh `_mapping_merge_root` (:115), `_mapping_sha256` (:134)
+// Twins of the retired model-resolve.sh `_mapping_merge_root` (:115), `_mapping_sha256` (:134)
 // and `mapping_merge_cleanup` (:506), plus the filesystem tests of `_merge_mapping`
 // (:402, :409, :410: `-e`, `-O`, `mkdir -p -m 700`). Spec 0199 R26-R28, D11; spec
 // 0250 R20. R2 (spec 0250): this slice moved only because the step (b) build

@@ -4,7 +4,7 @@
 
 import { spawnSync } from "node:child_process";
 
-import { frozen } from "./component-resolve-golden.ts";
+import { frozen, requireShellLibrary } from "./component-resolve-golden.ts";
 
 export interface Shell {
   out: string;
@@ -16,6 +16,7 @@ export const makeSh =
   (tmp: string, repo: string) =>
   (id: string, body: string, ...args: string[]): Shell =>
     frozen("component-resolve", id, { "<TMP>": tmp, "<REPO>": repo }, () => {
+      requireShellLibrary(repo, "scripts/lib/component-resolve.sh");
       const script = `. "${repo}/scripts/lib/component-resolve.sh"; ${body}`;
       const env = { ...process.env, LC_ALL: "C" };
       const r = spawnSync("bash", ["-c", script, "x", ...args], { encoding: "utf8", env });

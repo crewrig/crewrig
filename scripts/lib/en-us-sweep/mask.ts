@@ -1,5 +1,5 @@
 // mask.ts — masking regexes and the Markdown mask of the en-GB -> en-US sweep
-// (spec 0262, twin of scripts/lib/en_us_sweep.py; the shared pipeline of spec 0023).
+// (spec 0262, port of the retired scripts/lib/en_us_sweep.py; the shared pipeline of spec 0023).
 //
 // Python `re` -> JavaScript translation table. Every pattern below is compiled
 // WITHOUT the `m` and `s` flags and WITH `u` (and `i` only where Python used

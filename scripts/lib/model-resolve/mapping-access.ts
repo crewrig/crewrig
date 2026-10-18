@@ -1,6 +1,6 @@
 // mapping-access.ts — the addressing-grammar accessors over a loaded mapping.
 //
-// Twins of model-resolve.sh `_addr_surface_id` (:516), `mapping_surface_of_kind`
+// Twins of the retired model-resolve.sh `_addr_surface_id` (:516), `mapping_surface_of_kind`
 // (:522), `mapping_expresses_item` (:546), `mapping_item_key` (:566),
 // `mapping_item_domain_values` (:576), `mapping_item_domain_range` (:586),
 // `mapping_reasoning_projection` (:600), `mapping_guidance_template` (:611),

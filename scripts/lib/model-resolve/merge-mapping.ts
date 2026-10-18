@@ -1,6 +1,6 @@
 // merge-mapping.ts — `mappingInForce` and the organisation override merge.
 //
-// Twins of model-resolve.sh `mapping_in_force` (:77), `_org_channel_declares_nothing`
+// Twins of the retired model-resolve.sh `mapping_in_force` (:77), `_org_channel_declares_nothing`
 // (:96), `_reorder_merged` (:354), `_emit_duplicate_rank_notes` (:376) and
 // `_merge_mapping` (:397). Spec 0199 R8-R9, R15-R17, R20-R28; spec 0250 R20, R33(h).
 // R2 (spec 0250): this slice moved only because the step (b) build depends on it,

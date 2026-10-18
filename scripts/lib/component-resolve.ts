@@ -1,7 +1,7 @@
-// component-resolve.ts — TypeScript twin of one slice of scripts/lib/component-resolve.sh:
+// component-resolve.ts — TypeScript port of one slice of the retired scripts/lib/component-resolve.sh:
 // the build's installed-name collision pre-pass (spec 0119 R13; spec 0250 R17).
 //
-// Twin of that slice of the shell library: change both, and keep them equal. The
+// Twin of that slice of the shell library (retired in row I2; this module is now the only implementation, checked against frozen goldens). The
 // conformance test `scripts/tests/build-components-conformance.test.ts` compares
 // the two.
 //

@@ -1,6 +1,6 @@
 // guidance.ts — step 8: render the guidance template (R27-R31).
 //
-// Twin of model-resolve.sh `_render_guidance` (:1241). Substitutes, for each
+// Twin of the retired model-resolve.sh `_render_guidance` (:1241). Substitutes, for each
 // placeholder of the guidance template, the directed value of the item that
 // placeholder names; a line whose placeholder names an undirected (dropped, unmapped
 // or profile-absent) or unrecognised item is omitted; survivors join on a single

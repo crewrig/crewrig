@@ -175,8 +175,7 @@ The per-CLI mapping that turns a declared profile into a target's native
 fields or prose lives in `model-mappings/<target>.yml`, normatively
 described in [`docs/model-mapping-format.md`](../docs/model-mapping-format.md);
 the resolution that reads a mapping and a profile together is
-`scripts/lib/model-resolve.ts` (twinned by `scripts/lib/model-resolve.sh` for the
-consumers that have not migrated), consumed by `scripts/build-components.ts`.
+`scripts/lib/model-resolve.ts` (its Bash predecessor was retired in row I2), consumed by `scripts/build-components.ts`.
 How an adopting organization changes what a mapping resolves to for its own
 fork is documented in
 [`docs/org-model-mapping-override.md`](../docs/org-model-mapping-override.md);

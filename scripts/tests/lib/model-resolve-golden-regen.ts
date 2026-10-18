@@ -1,5 +1,7 @@
 // model-resolve-golden-regen.ts — regenerate scripts/tests/fixtures/model-resolve-oracle/ from the
-// SHELL leg (spec 0262 R17). scripts/lib/model-resolve.sh is deleted in the switch PR; after that
+// SHELL leg (spec 0262 R17). scripts/lib/model-resolve.sh was deleted in row I2; its last version is
+// `git show 15edd56a:scripts/lib/model-resolve.sh`, and the goldens were recorded from that text in
+// the container recipe below. After that
 // the stored goldens stand for the shell's output, and regeneration needs the library back from
 // git history (`git show <last-commit-with-it>:scripts/lib/model-resolve.sh`, written to the same
 // place in the container copy). It refuses to run while the library is missing, and on a host.
@@ -57,7 +59,7 @@ function main(): number {
   }
   if (!fs.existsSync(path.join(REPO, "scripts/lib/model-resolve.sh"))) {
     process.stderr.write(
-      "Error: scripts/lib/model-resolve.sh is retired; restore it (see header).\n",
+      "Error: scripts/lib/model-resolve.sh is retired (row I2): restore it from `git show 15edd56a:scripts/lib/model-resolve.sh` inside the golden container first (see header).\n",
     );
     return 1;
   }

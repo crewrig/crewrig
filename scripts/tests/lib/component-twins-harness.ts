@@ -14,7 +14,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { frozen } from "./component-resolve-golden.ts";
+import { frozen, requireShellLibrary } from "./component-resolve-golden.ts";
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -81,6 +81,7 @@ export function runShell(layout: Layout, body: string, env: Record<string, strin
 
 /** `body` runs after both libraries are sourced, `$SB` is the sandbox. */
 function runShellLive(layout: Layout, body: string, env: Record<string, string>): Side {
+  requireShellLibrary(REPO, "scripts/lib/component-resolve.sh");
   const sb = sandbox(layout);
   const script = [
     "set +e",

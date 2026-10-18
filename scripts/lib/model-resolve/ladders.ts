@@ -1,6 +1,6 @@
 // ladders.ts — the rung ladders, the item vocabulary and the small index helpers.
 //
-// Twins of model-resolve.sh `_rung_index` (:34), `_rung_name` (:48), `_int_or_zero`
+// Twins of the retired model-resolve.sh `_rung_index` (:34), `_rung_name` (:48), `_int_or_zero`
 // (:61), `_item_idx` (:884) and the three constants (:27, :28, :32). Spec 0198
 // (spec 0195 R6, R10). R2 (spec 0250): this slice moved only because the step (b)
 // build depends on it, not as precedent for the other consumers of the library.

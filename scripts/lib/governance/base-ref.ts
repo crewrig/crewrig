@@ -1,4 +1,4 @@
-// base-ref.ts — TypeScript twin of scripts/lib/base-ref-resolve.sh plus the
+// base-ref.ts — TypeScript port of the retired scripts/lib/base-ref-resolve.sh plus the
 // remote probe, fetch fallback and unresolvable-base diagnostic shared by the
 // version-bump checks (spec 0259; reused by row I2).
 //
