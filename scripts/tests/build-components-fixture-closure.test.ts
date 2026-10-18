@@ -28,22 +28,6 @@ after(() => {
 /** Where each suite writes its literal, and how to read the package list out of its text. */
 const LITERALS: readonly { file: string; pattern: RegExp; tsFile?: string }[] = [
   {
-    file: "scripts/tests/test-build-extension.sh",
-    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
-  },
-  {
-    file: "scripts/tests/test-extension-render-conformance.sh",
-    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
-  },
-  {
-    file: "scripts/tests/test-migrate-extension.sh",
-    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
-  },
-  {
-    file: "scripts/tests/test-create-extension-combinations.sh",
-    pattern: /^STAGED_NODE_PACKAGES="([^"]*)"$/m,
-  },
-  {
     // Row J2: the engine suites stage the closure through one TypeScript helper.
     file: "scripts/tests/lib/release-engine-fixture.ts",
     pattern: /^const STAGED_NODE_PACKAGES = \[([^\]]*)\];$/m,

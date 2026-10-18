@@ -1019,8 +1019,19 @@ jobs:
               - 'scripts/install-extension.sh'
               - 'scripts/lib/extension-percli-keys.json'
               - 'scripts/lib/extension-generated-class.json'
-              - 'scripts/tests/test-build-extension.sh'
-              - 'scripts/tests/test-extension-render-conformance.sh'
+              - 'scripts/tests/build-extension-suite-render.test.ts'
+              - 'scripts/tests/build-extension-suite-check.test.ts'
+              - 'scripts/tests/build-extension-suite-hooks.test.ts'
+              - 'scripts/tests/build-extension-suite-context.test.ts'
+              - 'scripts/tests/build-extension-suite-scaffold.test.ts'
+              - 'scripts/tests/migrate-extension-entry.test.ts'
+              - 'scripts/tests/create-extension-combinations.test.ts'
+              - 'scripts/tests/create-extension-gap-derivation.test.ts'
+              - 'scripts/tests/extension-render-conformance.test.ts'
+              - 'scripts/tests/extension-render-conformance-checks.test.ts'
+              - 'scripts/tests/extension-sandbox.test.ts'
+              - 'scripts/tests/lib/extension-sandbox.ts'
+              - 'scripts/tests/lib/extension-render-conformance.ts'
               - 'Taskfile.yml'
               - 'extensions/**'
               - 'artifacts/**'
@@ -1052,13 +1063,11 @@ jobs:
               - 'scripts/lib/extension-legacy-shape.json'
               - 'scripts/migrate-extension.sh'
               - 'scripts/migrate-extension.ts'
-              - 'scripts/tests/test-migrate-extension.sh'
               - 'scripts/release-package-extension.sh'
               - 'scripts/release-package-extension.ts'
               - 'scripts/lib/packaging/**'
               - 'scripts/lib/extension-install.sh'
               - 'scripts/tests/extension-install-antigravity-tokens-sh.test.ts'
-              - 'scripts/tests/test-create-extension-combinations.sh'
               - 'scripts/check-extension-pivot.ts'
               - 'scripts/lib/governance/**'
               - 'scripts/check-extension-hook-map.ts'
@@ -1082,10 +1091,7 @@ jobs:
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-pivot.ts
       - name: Test Build Extension
         if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-extension.sh
-      - name: Test Extension Render Conformance
-        if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-extension-render-conformance.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-extension-suite-render.test.ts scripts/tests/build-extension-suite-check.test.ts scripts/tests/build-extension-suite-hooks.test.ts scripts/tests/build-extension-suite-context.test.ts scripts/tests/build-extension-suite-scaffold.test.ts scripts/tests/migrate-extension-entry.test.ts scripts/tests/create-extension-combinations.test.ts scripts/tests/create-extension-gap-derivation.test.ts scripts/tests/extension-render-conformance.test.ts scripts/tests/extension-render-conformance-checks.test.ts scripts/tests/extension-sandbox.test.ts
       - name: Floor guard accepts Node.js 24
         if: steps.filter.outputs.extension-render == 'true'
         run: node scripts/lib/node-floor-guard.js
@@ -1098,15 +1104,9 @@ jobs:
       - name: Check Extension Hook Map
         if: steps.filter.outputs.extension-render == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-hook-map.ts
-      - name: Test Migrate Extension
-        if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-migrate-extension.sh
       - name: Test Release Package Extension
         if: steps.filter.outputs.extension-render == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-install-antigravity-tokens-sh.test.ts
-      - name: Test Create Extension Combinations
-        if: steps.filter.outputs.extension-render == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-create-extension-combinations.sh
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

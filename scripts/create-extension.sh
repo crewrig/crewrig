@@ -1,9 +1,8 @@
 #!/bin/bash
 # create-extension.sh — forwarding shim (spec 0258 requirement 32). The scaffolder is
 # scripts/create-extension.ts; this file remains so every caller that still runs
-# `bash scripts/create-extension.sh` (the two Bash suites scripts/tests/test-create-extension-combinations.sh
-# and scripts/tests/test-build-extension.sh, until their own row migrates them) reaches the
-# TypeScript scaffolder.
+# `bash scripts/create-extension.sh` (a Bash caller outside the TypeScript test suites) reaches the TypeScript
+# scaffolder.
 #
 # It runs the Node.js floor guard (scripts/lib/node-floor-guard.js), then the scaffolder with
 # every argument and its standard input, and returns the scaffolder's exit status, standard

@@ -52,8 +52,10 @@ const DIRECT = new RegExp(`scripts/(${SCRIPTS.join("|")})\\.(sh|ts)`);
 const REACHING = new RegExp(
   [
     DIRECT.source,
-    "test-build-extension\\.sh",
-    "test-migrate-extension\\.sh",
+    "build-extension-suite-",
+    "migrate-extension-entry",
+    "create-extension-(combinations|gap-derivation)",
+    "extension-render-conformance",
     "test-create-extension",
     "test-release-package",
     "install-claude-plugin-marketplace\\.test\\.ts",

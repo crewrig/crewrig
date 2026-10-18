@@ -3,7 +3,7 @@
 // Linux only, spawning `bash` and `yq`; it retires with the shell libraries (rows F2, G1b).
 //
 // Renderer: for every command source of `artifacts/`, `extensions/core/hello-world/` and the
-// synthetic commands `test-build-extension.sh` renders (one carrying provenance, one plain),
+// synthetic commands `build-extension-suite-render.test.ts` renders (one carrying provenance, one plain),
 // the three extraction helpers, two field reads, the TOML provenance comment and the Gemini
 // and Claude forms are compared with the shell's. The shell's `render_command_toml_provenance_comment`
 // prints a trailing line feed that every shell caller strips with `$(...)`, so it is compared
