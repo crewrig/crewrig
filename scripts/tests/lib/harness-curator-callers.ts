@@ -31,9 +31,19 @@ export const CALLERS: readonly Caller[] = [
       `node ${SKILL}/scripts/curate.ts --apply --dedup --max-issues 5`,
     ],
   },
+  { file: "artifacts/library/skills/harness-report/SKILL.md", required: [] },
+  // The text moved to references/ (spec 0269); the guard follows it.
   {
-    file: "artifacts/library/skills/harness-report/SKILL.md",
+    file: "artifacts/library/skills/harness-report/references/operating-mode.md",
     required: [`node ${SKILL}/scripts/curate.ts --apply`],
+  },
+  {
+    file: "artifacts/library/skills/harness-report/references/identify-and-route.md",
+    required: [],
+  },
+  {
+    file: "artifacts/library/skills/harness-report/references/self-reporting-bias.md",
+    required: [],
   },
   { file: "artifacts/FORMAT.md", required: ["scripts/curate.ts"] },
   { file: "README.md", required: [`${SKILL}/scripts/schedule-curator.ts`] },
