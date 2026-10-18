@@ -1,7 +1,7 @@
 ---
 id: "0262"
 slug: model-ci-tooling-typescript
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: MINIMAL
 related-issue: 1339
