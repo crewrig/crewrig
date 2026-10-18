@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { atLine, shellName } from "../ci-cache-guard/shell.ts";
+import { atLine, bashPath, NO_BASH, shellName } from "../ci-cache-guard/shell.ts";
 import { fatal, ok } from "../governance/report.ts";
 import { gatedPlan, runList } from "./reference.ts";
 
@@ -57,6 +57,11 @@ export function runCoverage(entry: string, env: NodeJS.ProcessEnv): number {
     fatal(`Error: ${reference}: ${msg.split("\n")[0]}`);
     return 1;
   }
+  const bash = list.length > 0 ? bashPath(env) : "bash";
+  if (bash === null) {
+    fatal(NO_BASH);
+    return 1;
+  }
   let failures = 0;
   for (const { id, command } of list) {
     ok(`ci-changeset-coverage: running [${id}] ${command}`);
@@ -67,7 +72,7 @@ export function runCoverage(entry: string, env: NodeJS.ProcessEnv): number {
     } else {
       // `set -uo pipefail` only: the shell runs the eval inside `if !`, where errexit is off.
       const body = atLine(EVAL_LINE - 1, 'set -uo pipefail\neval "$1"');
-      const r = spawnSync("bash", ["-c", body, self, command], {
+      const r = spawnSync(bash, ["-c", body, self, command], {
         cwd: repoDir,
         stdio: ["ignore", "inherit", "inherit"],
       });

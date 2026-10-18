@@ -9,14 +9,14 @@
 import { spawn, spawnSync } from "node:child_process";
 
 import { fatal } from "../governance/report.ts";
-import { atLine } from "./shell.ts";
+import { atLine, bashPath, NO_BASH } from "./shell.ts";
 
 const PHRASE = "command not found";
 /** The shell runs the command on this line of ci-cache-guard.sh (the diagnostic names it). */
 const RUN_LINE = 143;
 
-function probeText(): string {
-  const r = spawnSync("bash", ["-c", "crewrig_stray_scan_probe_nonexistent_command"], {
+function probeText(bash: string): string {
+  const r = spawnSync(bash, ["-c", "crewrig_stray_scan_probe_nonexistent_command"], {
     encoding: "utf8",
   });
   return `${r.stdout ?? ""}${r.stderr ?? ""}`.replace(/\n+$/, "");
@@ -29,7 +29,12 @@ function matchLines(text: string): string[] {
 }
 
 export async function strayScan(args: readonly string[], self: string): Promise<number> {
-  const probe = probeText();
+  const bash = bashPath();
+  if (bash === null) {
+    fatal(NO_BASH);
+    return 1;
+  }
+  const probe = probeText(bash);
   if (!probe.includes(PHRASE)) {
     fatal(
       `ci-cache-guard: stray-scan: detector inactive: the shell did not print '${PHRASE}' for a missing command (got: ${probe === "" ? "<nothing>" : probe}). Retry with LC_ALL=C.`,
@@ -39,7 +44,7 @@ export async function strayScan(args: readonly string[], self: string): Promise<
   // Status travels on fd 3; a command that never reaches the echo (an `exit` builtin) leaves it
   // empty and reads as 1, as the shell's missing status file does.
   const body = atLine(RUN_LINE, '"$@" 3>&- && echo 0 >&3 || echo $? >&3');
-  const child = spawn("bash", ["-c", body, self, ...args], {
+  const child = spawn(bash, ["-c", body, self, ...args], {
     stdio: ["inherit", "pipe", "pipe", "pipe"],
   });
   const out: Buffer[] = [];

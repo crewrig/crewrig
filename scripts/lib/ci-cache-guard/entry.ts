@@ -12,7 +12,7 @@ import path from "node:path";
 
 import { fatal, ok } from "../governance/report.ts";
 import { markerPath } from "./key.ts";
-import { atLine, shellName, statusOf } from "./shell.ts";
+import { atLine, bashPath, NO_BASH, shellName, statusOf } from "./shell.ts";
 import { strayScan } from "./stray.ts";
 
 /**
@@ -73,8 +73,13 @@ export async function runGuard(argv: readonly string[], entry: string): Promise<
     ok(`ci-cache-guard: cache hit for: ${cmd}`);
     return 0;
   }
+  const bash = bashPath();
+  if (bash === null) {
+    fatal(NO_BASH);
+    return 1;
+  }
   ok(`ci-cache-guard: cache miss, running: ${cmd}`);
-  const r = spawnSync("bash", ["-c", atLine(RUN_LINE, '"$@"'), self, ...args], {
+  const r = spawnSync(bash, ["-c", atLine(RUN_LINE, '"$@"'), self, ...args], {
     stdio: "inherit",
   });
   if (r.error !== undefined) {

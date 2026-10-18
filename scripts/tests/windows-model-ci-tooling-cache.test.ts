@@ -13,6 +13,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { bashPath } from "../lib/ci-cache-guard/shell.ts";
 import { defaultIsFile } from "../lib/worktree-claim/launch-windows.ts";
 import {
   expectStatus,
@@ -39,11 +40,18 @@ function withBox<T>(body: (root: string, bin: string) => T): T {
   }
 }
 
-/** Directory of `bash`, resolved from the parent PATH (the child PATH is narrowed). */
+/**
+ * Directory of the `bash` the twin will use, resolved from the parent environment by the twin's own
+ * resolver (never the System32 WSL launcher); empty when none exists, so the cache cases skip.
+ */
 function bashDir(): string[] {
-  const r = spawnSync(WIN ? "where" : "which", ["bash"], { encoding: "utf8" });
-  const first = r.status === 0 ? r.stdout.split(/\r?\n/)[0] : undefined;
-  return first ? [path.dirname(first)] : [];
+  if (!WIN) {
+    const r = spawnSync("which", ["bash"], { encoding: "utf8" });
+    const first = r.status === 0 ? r.stdout.split(/\r?\n/)[0] : undefined;
+    return first ? [path.dirname(first)] : [];
+  }
+  const found = bashPath(process.env);
+  return found === null ? [] : [path.dirname(found)];
 }
 
 function run(entry: string, args: string[], root: string, bin: string): Run {
