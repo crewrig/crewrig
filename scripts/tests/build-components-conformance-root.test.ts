@@ -17,14 +17,14 @@ import { after, describe, test } from "node:test";
 import { BUILDERS, casesOf, type Builder } from "./lib/mapping-fixtures.ts";
 import {
   checkCase,
-  parityGate,
+  replayGate,
   runShellResolve,
   runTwinResolve,
   type Outcome,
   type ResolveCase,
 } from "./lib/shell-resolve-harness.ts";
 
-const skip = parityGate();
+const skip = replayGate();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "conformance-root-"));
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
@@ -32,13 +32,13 @@ const builder = BUILDERS.find((b) => b.name === "O2_replace") as Builder;
 const mk = (name: string): string => (fs.mkdirSync(path.join(tmp, name)), path.join(tmp, name));
 
 /** The first case of the O2 builder (an organisation file that merges), run by both sides. */
-async function bothSides(extra: (side: "sh" | "ts") => Partial<ResolveCase>) {
+async function bothSides(id: string, extra: (side: "sh" | "ts") => Partial<ResolveCase>) {
   const base = casesOf(builder, tmp, builder.build(tmp))[0] as ResolveCase;
   const [shellCase, twinCase] = [
     { ...base, ...extra("sh") },
     { ...base, ...extra("ts") },
   ];
-  const [shell] = await runShellResolve([shellCase]);
+  const [shell] = await runShellResolve([shellCase], `root/${id}`);
   const [twin] = runTwinResolve([twinCase]);
   return { shell: shell as Outcome, twin: twin as Outcome, shellCase, twinCase };
 }
@@ -48,7 +48,10 @@ describe(
   skip === undefined ? {} : { skip },
   () => {
     test("a derived root is removed by the cleanup", async () => {
-      const run = await bothSides((side) => ({ tmpDir: mk(`derived-${side}`), cleanup: true }));
+      const run = await bothSides("derived", (side) => ({
+        tmpDir: mk(`derived-${side}`),
+        cleanup: true,
+      }));
       assert.deepEqual(checkCase(run.shellCase, run.shell, run.twin, []), []);
       for (const o of [run.shell, run.twin]) {
         assert.deepEqual([o.derivedBefore, o.derivedAfter], [1, 0], "created, then removed");
@@ -57,7 +60,10 @@ describe(
     });
 
     test("a caller's MAPPING_MERGE_DIR survives the cleanup", async () => {
-      const run = await bothSides((side) => ({ mergeDir: mk(`kept-${side}`), cleanup: true }));
+      const run = await bothSides("kept", (side) => ({
+        mergeDir: mk(`kept-${side}`),
+        cleanup: true,
+      }));
       assert.deepEqual(checkCase(run.shellCase, run.shell, run.twin, []), []);
       for (const side of ["sh", "ts"]) {
         assert.ok(fs.existsSync(path.join(tmp, `kept-${side}`, ".merges")), `${side} root removed`);
@@ -73,7 +79,7 @@ describe(
       "a root the current user does not own is not used",
       { skip: foreign ? false : "needs a foreign-owned directory and a non-root user" },
       async () => {
-        const run = await bothSides(() => ({ mergeDir: "/usr" }));
+        const run = await bothSides("foreign", () => ({ mergeDir: "/usr" }));
         assert.deepEqual(checkCase(run.shellCase, run.shell, run.twin, []), []);
         const note = "mapping-merge-note\tclaude\tmerge-unavailable\troot=<MERGE>";
         for (const o of [run.shell, run.twin]) {

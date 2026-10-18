@@ -21,7 +21,7 @@ import { BUILDERS, casesOf, ORG_EDGES } from "./lib/mapping-fixtures.ts";
 import {
   checkCase,
   limited,
-  parityGate,
+  replayGate,
   realTwin,
   REPO,
   runShellResolve,
@@ -69,7 +69,7 @@ const MUTATIONS: Mutation[] = TABLE.split("\n")
     return { area, id, file, from, to };
   });
 
-const skip = parityGate();
+const skip = replayGate();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "conformance-mutation-"));
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
@@ -132,7 +132,11 @@ if (skip === undefined) {
     builders.map((b) => async () => {
       const ms = fs.mkdtempSync(path.join(tmp, "shell-"));
       const cases = casesOf(b, tmp, b.build(tmp), { mergeDir: ms });
-      reference.set(b.name, { cases, shell: await runShellResolve(cases), ms });
+      reference.set(b.name, {
+        cases,
+        shell: await runShellResolve(cases, `mutation/${b.name}`),
+        ms,
+      });
     }),
   );
 }

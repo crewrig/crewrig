@@ -18,6 +18,13 @@
 //
 // Argument: the golden directory, which must resolve inside this repository checkout. This script
 // writes only there; it creates no other path.
+//
+// It records two things. `ladders.json.golden` comes from sourcing the library. The
+// `resolve-<suite>.json.golden` files (outcomes and merge directories of every case group) are
+// recorded by running the four conformance suites with MODEL_RESOLVE_GOLDEN_REGEN=1 inherited:
+// model-resolve-golden.ts then executes the shell leg instead of replaying it. The container
+// needs the mikefarah `yq` besides bash; the argument must be the default fixtures directory.
+// The suites' own assertions may fail while recording; the exit status reports only the recording.
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -58,6 +65,11 @@ function main(): number {
   }
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "ladders.json.golden"), laddersFromShell());
+  if (dir !== path.join(REPO, "scripts/tests/fixtures/model-resolve-oracle")) return 0;
+  for (const name of ["", "-org", "-mutation", "-root"]) {
+    const file = `scripts/tests/build-components-conformance${name}.test.ts`;
+    spawnSync("node", ["--test", file], { cwd: REPO, stdio: "ignore", env: process.env });
+  }
   return 0;
 }
 

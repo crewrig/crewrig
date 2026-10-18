@@ -26,7 +26,7 @@ import {
   checkCase,
   diffOutcomes,
   limited,
-  parityGate,
+  replayGate,
   REPO,
   runShellResolve,
   runTwinResolve,
@@ -36,7 +36,7 @@ import {
 } from "./lib/shell-resolve-harness.ts";
 import { BUILDERS, casesOf, EXEMPT_LABELS, type Builder } from "./lib/mapping-fixtures.ts";
 
-const skip = parityGate();
+const skip = replayGate();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "conformance-"));
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
@@ -65,7 +65,10 @@ const leaks: string[] = [];
 /** One `bash` per case group (the shell runs concurrently, the twin in-process), each in its own merge directories. */
 async function compare(group: string, cases: ResolveCase[]): Promise<void> {
   const [ms, mt] = ["shell", "twin"].map((side) => fs.mkdtempSync(path.join(tmp, `${side}-`)));
-  const shell = await runShellResolve(cases.map((c) => ({ ...c, mergeDir: ms })));
+  const shell = await runShellResolve(
+    cases.map((c) => ({ ...c, mergeDir: ms })),
+    `conformance/${group}`,
+  );
   const twin = runTwinResolve(cases.map((c) => ({ ...c, mergeDir: mt })));
   results.set(
     group,

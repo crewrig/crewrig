@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 
 import * as modelResolve from "../../lib/model-resolve.ts";
 import { extractFrontmatter } from "../../lib/render-command.ts";
+import { record, recording, replay } from "./model-resolve-golden.ts";
 import { yamlText } from "./yaml-lib.ts";
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -24,6 +25,9 @@ const probe = (cmd: string): string => {
   const r = spawnSync(cmd, ["--version"], { encoding: "utf8" });
   return `${r.stdout}${r.stderr}`;
 };
+/** The gate of a suite that replays the goldens: it runs everywhere, and needs the shell only to record. */
+export const replayGate = (): string | undefined => (recording() ? parityGate() : undefined);
+
 /** The gate of the shell-parity suites: Linux, or macOS with the opt-in; `bash` and `yq` present. */
 export function parityGate(): string | undefined {
   const optIn =
@@ -79,6 +83,8 @@ const scrub =
     let out = text;
     if (c.mergeDir !== undefined) out = out.replaceAll(c.mergeDir, "<MERGE>");
     if (c.tmpDir !== undefined) out = out.replaceAll(c.tmpDir, "<TMP>");
+    out = out.replaceAll(c.source, "<SOURCE>").replaceAll(c.repoDir, "<REPO_DIR>");
+    out = out.replaceAll(REPO, "<REPO>");
     return out.replace(/\/crewrig-mapping-\d+/g, "/crewrig-mapping-PID");
   };
 const derived = (tmp: string | undefined): number =>
@@ -146,8 +152,22 @@ while IFS= read -r -d '' repo && IFS= read -r -d '' mmd && IFS= read -r -d '' tm
 done < "$CASES"
 `;
 
-/** The shell side of a case group: one `bash`, `resolve_agent` then `mapping_in_force` per case. */
-export async function runShellResolve(cases: readonly ResolveCase[]): Promise<Outcome[]> {
+/**
+ * The shell side of a case group, REPLAYED from the goldens (spec 0262 R17); only the regen
+ * container (`MODEL_RESOLVE_GOLDEN_REGEN=1`) runs the shell and records it. `id` is `<file>/<group>`.
+ */
+export async function runShellResolve(
+  cases: readonly ResolveCase[],
+  id: string,
+): Promise<Outcome[]> {
+  if (!recording()) return replay(cases, id);
+  const outcomes = await runShellLive(cases);
+  record(cases, id, outcomes);
+  return outcomes;
+}
+
+/** `resolve_agent` then `mapping_in_force` per case, in one `bash` that sources the library. */
+async function runShellLive(cases: readonly ResolveCase[]): Promise<Outcome[]> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "conformance-shell-"));
   try {
     const row = (c: ResolveCase): string[] => [
@@ -239,57 +259,10 @@ export function runTwinResolve(cases: readonly ResolveCase[], twin: Twin = realT
   });
 }
 
-/** Differences between two outcomes, one `field: shell=... twin=...` line each; empty when equal. */
-export function diffOutcomes(shell: Outcome, twin: Outcome): string[] {
-  const keys = Object.keys(shell) as (keyof Outcome)[];
-  const rows = keys.map((k) => [k, JSON.stringify(shell[k]), JSON.stringify(twin[k])] as const);
-  return rows.filter(([, a, b]) => a !== b).map(([k, a, b]) => `${k}: shell=${a} twin=${b}`);
-}
-
-/** A listed, deliberate difference between a twin and the shell (R33 or a plan finding). */
-export interface Documented {
-  readonly id: string;
-  /** The clause that allows it: stated in the suite, asserted nowhere else. */
-  readonly clause: string;
-  /** Case keys, `<builder name>#<profile index>`: every case of the builder if no `#`. */
-  readonly keys: readonly string[];
-  /** Null when the difference is exactly the documented one, else what is wrong. */
-  readonly verify: (shell: Outcome, twin: Outcome) => string | null;
-}
-
-/** The differing fields of a case, for a `verify`. */
-export const differing = (shell: Outcome, twin: Outcome): string[] =>
-  diffOutcomes(shell, twin).map((line) => line.split(":")[0] ?? "");
-
-const BASH_INTEGER = /^\S*model-resolve\.sh: line \d+: \[: \S*: integer(?: expression)? expected$/;
-/** Plan finding S3: bash's own `[` diagnostic is not reproduced; nothing else differs. */
-export function bashIntegerOnly(shell: Outcome, twin: Outcome): string | null {
-  if (differing(shell, twin).join() !== "stderr")
-    return `differs in ${differing(shell, twin)}, not stderr only`;
-  const ours = shell.stderr.filter((l) => !BASH_INTEGER.test(l));
-  if (shell.stderr.length === ours.length)
-    return "the shell printed no bash diagnostic: the difference vanished";
-  return JSON.stringify(ours) === JSON.stringify(twin.stderr)
-    ? null
-    : `the remaining lines differ: ${ours}`;
-}
-
-/** One case's problems against a table of documented differences; an unlisted difference is one. */
-export function checkCase(
-  c: ResolveCase,
-  shell: Outcome,
-  twin: Outcome,
-  table: readonly Documented[],
-): string[] {
-  const row = table.find((r) =>
-    r.keys.some((k) => `${c.label}/`.includes(k.includes("#") ? `/${k}/` : `/${k}#`)),
-  );
-  if (row === undefined) {
-    const lines = diffOutcomes(shell, twin);
-    return lines.length === 0 ? [] : [`${c.label}\n    ${lines.join("\n    ")}`];
-  }
-  const problem = row.verify(shell, twin);
-  return problem === null
-    ? []
-    : [`${c.label}: documented difference "${row.id}" is not as listed: ${problem}`];
-}
+export {
+  bashIntegerOnly,
+  checkCase,
+  differing,
+  diffOutcomes,
+  type Documented,
+} from "./shell-resolve-compare.ts";
