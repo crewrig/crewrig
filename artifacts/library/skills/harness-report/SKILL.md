@@ -10,7 +10,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.5.0"
+    version: "1.5.1"
 claude:
   allowed-tools:
     - Read
@@ -51,7 +51,7 @@ If a signal fires, **tag the friction before resuming work**. Not
 seconds and costs nothing — the one exception is when the MemPalace
 write path is unavailable (a peer holds the write lock, or the server
 is disconnected), a documented failure mode with a fallback in step 4
-below. Failing to tag loses the signal forever.
+(`references/operating-mode.md`). Failing to tag loses the signal forever.
 
 ## Operating mode
 
@@ -88,7 +88,8 @@ Strongly encouraged:
   `evidence:` instead.
 - `severity` — `low` / `med` / `high`. Default `med`. Reserve `high`
   for blockers; it bypasses the cluster threshold and forces an MR.
-  See *Reactive trigger for `severity: high`* below — high-severity
+  See *Reactive trigger for `severity: high`* in
+  `references/operating-mode.md` — high-severity
   reports SHOULD be surfaced immediately, not deferred to the weekly
   sweep.
 - `suggestion` — what you think would fix it. The Curator weighs
