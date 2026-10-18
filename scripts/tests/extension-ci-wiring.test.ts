@@ -63,7 +63,11 @@ const REACHING = new RegExp(
     // The governance checks (spec 0259) run as `node ... scripts/check-<name>.ts`; their `.sh`
     // forms are forwarding shims that stay valid.
     "scripts/check-extension-(provenance|pivot|manifest-version|version-bump|hook-map|hook-tokens)\\.(sh|ts)",
-    "test-monorepo-release",
+    "monorepo-release-engine-(rehearsal|gitlab-publish|github-pr|templates)\\.test\\.ts",
+    "monorepo-release-notes-real-engine\\.test\\.ts",
+    "release-docs-and-workflows\\.test\\.ts",
+    "release-golden-generator\\.test\\.ts",
+    "extension-install-antigravity-tokens-sh\\.test\\.ts",
     "monorepo-release\\.sh",
     // The TypeScript entries (spec 0257), run directly once the shell scripts are forwarding shims.
     "scripts/(monorepo-release|release-package-extension|build-docs-index|package-extensions?)\\.ts",
