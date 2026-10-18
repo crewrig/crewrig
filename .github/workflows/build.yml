@@ -1603,9 +1603,9 @@ jobs:
           filters: |
             test-wiring:
               - 'scripts/check-test-wiring.sh'
-              - 'scripts/tests/test-check-test-wiring.sh'
+              - 'scripts/tests/governance-check-test-wiring-cases.test.ts'
               - 'scripts/check-test-strays.sh'
-              - 'scripts/tests/test-check-test-strays.sh'
+              - 'scripts/tests/governance-check-test-strays-cases.test.ts'
               - 'scripts/lib/base-ref-resolve.sh'
               - 'scripts/tests/**'
               - 'hooks/worktree-git-guard.sh'
@@ -1630,13 +1630,13 @@ jobs:
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-wiring.ts
       - name: Test Check Test Wiring
         if: steps.filter.outputs.test-wiring == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-test-wiring.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-wiring-cases.test.ts
       - name: Check Test Strays
         if: steps.filter.outputs.test-wiring == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-strays.ts
       - name: Test Check Test Strays
         if: steps.filter.outputs.test-wiring == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-test-strays.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-strays-cases.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1956,7 +1956,9 @@ jobs:
               - 'scripts/tests/governance-suite-no-machine-paths.test.ts'
               - 'scripts/tests/lib/governance-*.ts'
               - 'scripts/check-gemini-overlay-enrollment.sh'
-              - 'scripts/tests/test-check-gemini-overlay-enrollment.sh'
+              - 'scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts'
+              - 'scripts/tests/lib/governance-*.ts'
+              - 'scripts/tests/lib/build-fixture-tree.ts'
               - 'scripts/tests/test-check-bash32-portability.sh'
               - 'scripts/check-pipefail-grep.sh'
               - 'scripts/tests/test-check-pipefail-grep.sh'
@@ -1990,7 +1992,7 @@ jobs:
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-gemini-overlay-enrollment.ts
       - name: Test Check Gemini Overlay Enrollment
         if: steps.filter.outputs.misc == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-gemini-overlay-enrollment.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts
       - name: Test Check Bash32 Portability
         if: steps.filter.outputs.misc == 'true'
         run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-bash32-portability.sh
@@ -3340,7 +3342,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -3354,7 +3356,7 @@ jobs:
       # the suite belongs: it provisions the npm-installed node_modules the
       # suite needs, which the hermetic check-components job does not.
       - name: Test spec linter regression
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-spec-linter.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-linter-*.test.ts
 
       - name: Lint specs
         env:

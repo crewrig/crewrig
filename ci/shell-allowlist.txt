@@ -107,12 +107,9 @@ scripts/tests/test-check-extension-hook-map.sh
 scripts/tests/test-check-extension-hook-tokens.sh
 scripts/tests/test-check-extension-manifest-version.sh
 scripts/tests/test-check-extension-pivot.sh
-scripts/tests/test-check-gemini-overlay-enrollment.sh
 scripts/tests/test-check-model-mappings.sh
 scripts/tests/test-check-pipefail-grep.sh
 scripts/tests/test-check-spec-id-reserved.sh
-scripts/tests/test-check-test-strays.sh
-scripts/tests/test-check-test-wiring.sh
 scripts/tests/test-create-extension-combinations.sh
 scripts/tests/test-extension-render-conformance.sh
 scripts/tests/test-migrate-extension.sh
@@ -122,7 +119,6 @@ scripts/tests/test-monorepo-release-notes.sh
 scripts/tests/test-monorepo-release.sh
 scripts/tests/test-release-package-extension.sh
 scripts/tests/test-reserve-spec-id.sh
-scripts/tests/test-spec-linter.sh
 scripts/uninstall-mcp-daemon.sh
 scripts/unlink-component.sh
 scripts/unlink-extensions.sh

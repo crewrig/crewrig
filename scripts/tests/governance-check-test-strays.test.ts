@@ -1,4 +1,4 @@
-// check-test-strays.test.ts — edge cases the Bash suite does not cover (spec 0259):
+// check-test-strays.test.ts — edge cases the retired Bash suite did not cover (spec 0259):
 // the win32 skip branch (injected platform), a missing bash, and the options.
 
 import assert from "node:assert/strict";

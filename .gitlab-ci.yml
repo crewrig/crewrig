@@ -1954,16 +1954,16 @@ test-wiring:
   image: node:24
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-wiring.ts"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-test-wiring.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-wiring-cases.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-strays.ts"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-test-strays.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-strays-cases.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/check-test-wiring.sh"
-        - "scripts/tests/test-check-test-wiring.sh"
+        - "scripts/tests/governance-check-test-wiring-cases.test.ts"
         - "scripts/check-test-strays.sh"
-        - "scripts/tests/test-check-test-strays.sh"
+        - "scripts/tests/governance-check-test-strays-cases.test.ts"
         - "scripts/check-test-strays.ts"
         - "scripts/lib/governance/**"
         - "scripts/check-test-wiring.ts"
@@ -1982,9 +1982,9 @@ test-wiring:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-test-wiring.sh"
-        - "scripts/tests/test-check-test-wiring.sh"
+        - "scripts/tests/governance-check-test-wiring-cases.test.ts"
         - "scripts/check-test-strays.sh"
-        - "scripts/tests/test-check-test-strays.sh"
+        - "scripts/tests/governance-check-test-strays-cases.test.ts"
         - "scripts/check-test-strays.ts"
         - "scripts/lib/governance/**"
         - "scripts/check-test-wiring.ts"
@@ -2225,7 +2225,7 @@ misc:
     - "npm ci --omit=dev --workspaces=false"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-no-machine-paths.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-gemini-overlay-enrollment.ts"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-gemini-overlay-enrollment.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-bash32-portability.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-pipefail-grep.sh"
     - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-reserve-spec-id.sh"
@@ -2237,7 +2237,9 @@ misc:
         - "scripts/tests/governance-suite-no-machine-paths.test.ts"
         - "scripts/tests/lib/governance-*.ts"
         - "scripts/check-gemini-overlay-enrollment.sh"
-        - "scripts/tests/test-check-gemini-overlay-enrollment.sh"
+        - "scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts"
+        - "scripts/tests/lib/governance-*.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
         - "scripts/tests/test-check-bash32-portability.sh"
         - "scripts/check-pipefail-grep.sh"
         - "scripts/tests/test-check-pipefail-grep.sh"
@@ -2262,7 +2264,9 @@ misc:
         - "scripts/tests/governance-suite-no-machine-paths.test.ts"
         - "scripts/tests/lib/governance-*.ts"
         - "scripts/check-gemini-overlay-enrollment.sh"
-        - "scripts/tests/test-check-gemini-overlay-enrollment.sh"
+        - "scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts"
+        - "scripts/tests/lib/governance-*.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
         - "scripts/tests/test-check-bash32-portability.sh"
         - "scripts/check-pipefail-grep.sh"
         - "scripts/tests/test-check-pipefail-grep.sh"
@@ -2899,7 +2903,7 @@ mempalace-transcript-node-24-0:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 lint-specs:
-  image: node:22
+  image: node:24
   variables:
     GIT_DEPTH: "0"
     BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
@@ -2907,7 +2911,7 @@ lint-specs:
     - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
   script:
     - "npm install"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-spec-linter.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-linter-*.test.ts"
     - "task spec:lint"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'

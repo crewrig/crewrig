@@ -1,5 +1,5 @@
 // governance-base-ref.test.ts — substitute for the in-process Bash group `r`
-// of test-check-test-strays.sh (resolve_remote_ref unit cases), which retires
+// of the retired Bash suite test-check-test-strays.sh (resolve_remote_ref unit cases), which retires
 // with scripts/lib/base-ref-resolve.sh (spec 0262 requirement 17).
 //
 // One test per former `rr` row, on scratch git repos in the CI topology of
@@ -78,7 +78,7 @@ function mkCiRepo(root: string, name: string, remote: string): string {
   return repo;
 }
 
-describe("resolveRemoteRef (substitute for case-r of test-check-test-strays.sh)", () => {
+describe("resolveRemoteRef (substitute for case r of the retired Bash suite for check-test-strays)", () => {
   let root = "";
   let repo = "";
   let elsewhere = "";
@@ -141,6 +141,20 @@ describe("resolveRemoteRef (substitute for case-r of test-check-test-strays.sh)"
   });
   test("<remote> defaults to origin and <repo-dir> to the working directory", () => {
     assert.equal(resolveRemoteRef("main", undefined, repo), "origin/main");
+  });
+  test("with no <repo-dir> the working directory of the process is used", () => {
+    const mod = path.join(LIB, "governance", "base-ref.ts");
+    const res = spawnSync(
+      process.execPath,
+      [
+        "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+        "-e",
+        `import(${JSON.stringify(pathToFileURL(mod).href)}).then((m) => process.stdout.write(String(m.resolveRemoteRef("main"))))`,
+      ],
+      { cwd: repo, env: GIT_ENV, encoding: "utf8" },
+    );
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(res.stdout, "origin/main");
   });
 
   test("mutation: with the remote-preference rule inverted, the key case fails", async () => {

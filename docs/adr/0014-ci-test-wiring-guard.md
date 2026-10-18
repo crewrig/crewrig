@@ -35,6 +35,9 @@ guard matches the full path (never the bare basename) and ignores `#`-commented
 lines, so a filename mentioned only in prose or a disabled `run: |` line never
 reads as a false "wired".
 
+(Retired in spec 0265, P6: the twin is now
+`scripts/tests/governance-check-test-wiring-cases.test.ts`.)
+
 ## Alternatives considered
 
 - **Auto-discovering glob runner** — a job that discovers and runs every

@@ -2442,14 +2442,14 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-test-wiring.sh"
-          - "scripts/tests/test-check-test-wiring.sh"
+          - "scripts/tests/governance-check-test-wiring-cases.test.ts"
           - "scripts/check-test-strays.sh"
-          - "scripts/tests/test-check-test-strays.sh"
+          - "scripts/tests/governance-check-test-strays-cases.test.ts"
           - "scripts/check-test-strays.ts"
           - "scripts/lib/governance/**"
           - "scripts/check-test-wiring.ts"
           # Not sourced by this capability any more; its unit case lives in
-          # test-check-test-strays.sh (case r), so a change to it still reruns that suite.
+          # governance-base-ref.test.ts (case r), so a change to it still reruns the guards.
           - "scripts/lib/base-ref-resolve.sh"
           - "scripts/tests/**"
           - "hooks/worktree-git-guard.sh"
@@ -2466,14 +2466,14 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "scripts/check-test-wiring.sh"
-          - "scripts/tests/test-check-test-wiring.sh"
+          - "scripts/tests/governance-check-test-wiring-cases.test.ts"
           - "scripts/check-test-strays.sh"
-          - "scripts/tests/test-check-test-strays.sh"
+          - "scripts/tests/governance-check-test-strays-cases.test.ts"
           - "scripts/check-test-strays.ts"
           - "scripts/lib/governance/**"
           - "scripts/check-test-wiring.ts"
           # Not sourced by this capability any more; its unit case lives in
-          # test-check-test-strays.sh (case r), so a change to it still reruns that suite.
+          # governance-base-ref.test.ts (case r), so a change to it still reruns the guards.
           - "scripts/lib/base-ref-resolve.sh"
           - "scripts/tests/**"
           - "hooks/worktree-git-guard.sh"
@@ -2495,9 +2495,9 @@ capabilities:
       runtime: node@24
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-wiring.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-test-wiring.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-wiring-cases.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-strays.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-test-strays.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-strays-cases.test.ts
 
   - id: chroma-mcp
     name: "Test chroma server, MCP daemon, and worktree claim"
@@ -2729,7 +2729,9 @@ capabilities:
           - "scripts/tests/governance-suite-no-machine-paths.test.ts"
           - "scripts/tests/lib/governance-*.ts"
           - "scripts/check-gemini-overlay-enrollment.sh"
-          - "scripts/tests/test-check-gemini-overlay-enrollment.sh"
+          - "scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts"
+          - "scripts/tests/lib/governance-*.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
           - "scripts/tests/test-check-bash32-portability.sh"
           - "scripts/check-pipefail-grep.sh"
           - "scripts/tests/test-check-pipefail-grep.sh"
@@ -2755,7 +2757,9 @@ capabilities:
           - "scripts/tests/governance-suite-no-machine-paths.test.ts"
           - "scripts/tests/lib/governance-*.ts"
           - "scripts/check-gemini-overlay-enrollment.sh"
-          - "scripts/tests/test-check-gemini-overlay-enrollment.sh"
+          - "scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts"
+          - "scripts/tests/lib/governance-*.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
           - "scripts/tests/test-check-bash32-portability.sh"
           - "scripts/check-pipefail-grep.sh"
           - "scripts/tests/test-check-pipefail-grep.sh"
@@ -2792,7 +2796,7 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-no-machine-paths.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-gemini-overlay-enrollment.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-gemini-overlay-enrollment.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-bash32-portability.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-pipefail-grep.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-reserve-spec-id.sh
@@ -3654,14 +3658,14 @@ capabilities:
         branches: [main, "release/**"]
     portability: portable
     requires:
-      runtime: node@22
+      runtime: node@24
       tools: [task]
       history-depth: full
     env:
       BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
     command:
       - npm install
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-spec-linter.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-linter-*.test.ts
       - task spec:lint
 
   - id: test-harness-curate

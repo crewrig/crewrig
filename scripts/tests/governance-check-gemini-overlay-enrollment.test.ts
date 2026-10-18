@@ -1,5 +1,5 @@
 // check-gemini-overlay-enrollment.test.ts — black-box edge cases of the TypeScript twin that
-// the Bash suite test-check-gemini-overlay-enrollment.sh does not cover (spec 0259).
+// the retired Bash suite for the overlay-enrollment guard did not cover (spec 0259).
 //
 // Each case writes a stand-in declaration printer and a settings.json under a throwaway
 // repository and runs scripts/check-gemini-overlay-enrollment.ts with CREWRIG_REPO_DIR.
