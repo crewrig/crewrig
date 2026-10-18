@@ -185,7 +185,10 @@ describe("the CI reference wires the TypeScript component build", () => {
   });
 
   test("every capability that builds declares node@24 and installs production dependencies first", () => {
-    assert.ok(buildingCapabilities(REF).length >= 6, "the build-running set was derived");
+    // Floor 6 -> 5: I2's retirement (679dbb22) removed the model-resolution capability, which left five
+    // capabilities that run the component build: component-drift, agent-profile-migration,
+    // repository-scan, frontmatter and check-agent-profiles.
+    assert.ok(buildingCapabilities(REF).length >= 5, "the build-running set was derived");
     assert.deepEqual(buildWiringFaults(REF), []);
   });
 
