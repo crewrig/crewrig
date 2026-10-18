@@ -377,6 +377,32 @@ describe("stray-scan: exclusive with the cache options (exit 2)", () => {
 
 // --- Hygiene (R12) -----------------------------------------------------------------
 
+/**
+ * The forwarding shim finds the floor guard, the TypeScript entry and its modules next to itself:
+ * copy the git-tracked ones beside a copied shim (the shim is the copy; nothing else is touched).
+ */
+function copyShimSupport(dir: string): void {
+  const tracked = spawnSync(
+    "git",
+    [
+      "ls-files",
+      "--",
+      "scripts/ci-cache-guard.ts",
+      "scripts/lib/node-floor-guard.js",
+      "scripts/lib/ci-cache-guard",
+      "scripts/lib/governance",
+    ],
+    { cwd: REPO, encoding: "utf8" },
+  )
+    .stdout.split("\n")
+    .filter((x) => x !== "");
+  for (const rel of tracked) {
+    const to = path.join(dir, rel.replace(/^scripts\//, ""));
+    fs.mkdirSync(path.dirname(to), { recursive: true });
+    fs.copyFileSync(path.join(REPO, rel), to);
+  }
+}
+
 describe("stray-scan: leaves nothing behind", () => {
   const cases: ReadonlyArray<readonly [string, string, number]> = [
     ["a clean run", "echo ok", 0],
@@ -469,6 +495,7 @@ describe("stray-scan: nested under the cache guard", () => {
     const f = fx();
     const copy = path.join(f.suites, "guard-copy.sh");
     fs.copyFileSync(GUARD, copy);
+    copyShimSupport(f.suites);
     const count = path.join(f.suites, "count");
     const s = suite(f, "clean.sh", `echo run >> ${count}`);
     const inner = [BASH, copy, "--stray-scan", "--", "bash", s];

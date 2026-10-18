@@ -7,6 +7,8 @@
 //   ci-cache-guard: stray-scan: STRAY in: <command>   then up to 20 matched lines, indented.
 
 import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
 import { fatal } from "../governance/report.ts";
 import { atLine, bashPath, NO_BASH } from "./shell.ts";
@@ -28,6 +30,37 @@ function matchLines(text: string): string[] {
   return lines.filter((l) => l.includes(PHRASE));
 }
 
+/**
+ * The shell's `mktemp -d "${TMPDIR:-/tmp}/stray-scan.XXXXXX"` and its EXIT trap: a scratch
+ * directory under TMPDIR exists while the command runs and is removed at exit. The removal only
+ * touches the directory this call created, and only after checking it still sits directly under
+ * the TMPDIR it was created in.
+ */
+function withScratch(): { remove: () => void } {
+  const parent = path.resolve(process.env["TMPDIR"] || "/tmp");
+  const dir = fs.mkdtempSync(path.join(parent, "stray-scan."));
+  let done = false;
+  const remove = (): void => {
+    if (done) return;
+    done = true;
+    const real = path.resolve(dir);
+    if (path.dirname(real) === parent && path.basename(real).startsWith("stray-scan.")) {
+      fs.rmSync(real, { recursive: true, force: true });
+    }
+  };
+  for (const [sig, code] of [
+    ["SIGINT", 130],
+    ["SIGTERM", 143],
+    ["SIGHUP", 129],
+  ] as const) {
+    process.once(sig, () => {
+      remove();
+      process.exit(code);
+    });
+  }
+  return { remove };
+}
+
 export async function strayScan(args: readonly string[], self: string): Promise<number> {
   const bash = bashPath();
   if (bash === null) {
@@ -41,6 +74,15 @@ export async function strayScan(args: readonly string[], self: string): Promise<
     );
     return 71;
   }
+  const scratch = withScratch();
+  try {
+    return await runScan(bash, args, self);
+  } finally {
+    scratch.remove();
+  }
+}
+
+async function runScan(bash: string, args: readonly string[], self: string): Promise<number> {
   // Status travels on fd 3; a command that never reaches the echo (an `exit` builtin) leaves it
   // empty and reads as 1, as the shell's missing status file does.
   const body = atLine(RUN_LINE, '"$@" 3>&- && echo 0 >&3 || echo $? >&3');
