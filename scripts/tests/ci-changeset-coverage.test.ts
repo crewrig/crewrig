@@ -200,10 +200,18 @@ function run(dir: string, vars: Record<string, string> = {}): Run {
   return { status: res.status, out: res.stdout, err: res.stderr, ran: readLog(dir) };
 }
 
-/** Run with no `yq` reachable: a PATH holding nothing, and an absolute bash. */
+/**
+ * Run with no `yq` reachable: a PATH holding only what the forwarding shim needs (`node`, `dirname`;
+ * both symlinks inside this test's own temp dir), and an absolute bash.
+ */
 function runWithoutYq(dir: string): Run {
   const empty = fs.mkdtempSync(path.join(os.tmpdir(), "ci-changeset-coverage-path-"));
   temps.push(empty);
+  const dirnameBin = spawnSync("sh", ["-c", "command -v dirname"], {
+    encoding: "utf8",
+  }).stdout.trim();
+  fs.symlinkSync(process.execPath, path.join(empty, "node"));
+  fs.symlinkSync(dirnameBin, path.join(empty, "dirname"));
   const res = spawnSync("/bin/bash", [SCRIPT], {
     cwd: os.tmpdir(),
     encoding: "utf8",

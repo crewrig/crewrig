@@ -2153,6 +2153,7 @@ capabilities:
     portability: portable
     changeset-gated: true
     requires:
+      runtime: node@24
       tools: [yq]
     cache:
       files:
@@ -2168,6 +2169,8 @@ capabilities:
         - "docs/ci-reference-format.md"
       env: []
     command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-ci-parity.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-ci.sh
 
@@ -2932,8 +2935,11 @@ capabilities:
     portability: portable
     changeset-gated: true
     requires:
+      runtime: node@24
       tools: [yq]
     command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
       - bash scripts/check-model-mappings.sh
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-model-mappings.sh
 
@@ -3123,6 +3129,8 @@ capabilities:
       tools: [yq]
       history-depth: full
     command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
       - bash scripts/ci-changeset-coverage.sh
 
   # changeset-coverage-test keeps the exhaustive script's regression test on the
@@ -3767,6 +3775,7 @@ capabilities:
         branches: [main, "release/**"]
     portability: portable
     requires:
+      runtime: node@24
       history-depth: full
     env:
       BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
@@ -4489,8 +4498,11 @@ capabilities:
         branches: [main, "release/**"]
     portability: portable
     requires:
+      runtime: node@24
       tools: [yq]
     command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
       - bash scripts/build-ci.sh --check
 
   # check-ci-parity is the 3-way CI drift harness (spec 0049). It checks the
@@ -4509,8 +4521,11 @@ capabilities:
         branches: [main, "release/**"]
     portability: portable
     requires:
+      runtime: node@24
       tools: [yq]
     command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
       - bash scripts/check-ci-parity.sh
 
   # --- Engine-specific: bot-mention assistants ----------------------------

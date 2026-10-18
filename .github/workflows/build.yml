@@ -1410,6 +1410,17 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
           echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
           sudo chmod +x /usr/local/bin/yq
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.ci-parity == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install production dependencies
+        if: steps.filter.outputs.ci-parity == 'true'
+        run: npm ci --omit=dev --workspaces=false
+      - name: Floor guard accepts Node.js 24
+        if: steps.filter.outputs.ci-parity == 'true'
+        run: node scripts/lib/node-floor-guard.js
       - uses: actions/cache@v4
         if: steps.filter.outputs.ci-parity == 'true'
         with:
@@ -1824,6 +1835,17 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
           echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
           sudo chmod +x /usr/local/bin/yq
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.check-model-mappings == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install production dependencies
+        if: steps.filter.outputs.check-model-mappings == 'true'
+        run: npm ci --omit=dev --workspaces=false
+      - name: Floor guard accepts Node.js 24
+        if: steps.filter.outputs.check-model-mappings == 'true'
+        run: node scripts/lib/node-floor-guard.js
       - name: Check Model Mappings
         if: steps.filter.outputs.check-model-mappings == 'true'
         run: bash scripts/check-model-mappings.sh
@@ -3461,6 +3483,10 @@ jobs:
         with:
           fetch-depth: 0  # full history so the base ref resolves (spec 0112)
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
       # `command -v git` is true on ubuntu-latest, so this step is a no-op here.
       # It exists because the capability declares no `requires.tools`, and the
       # GitLab job generated from that declaration runs on debian:stable-slim,
@@ -3539,6 +3565,14 @@ jobs:
           echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
           sudo chmod +x /usr/local/bin/yq
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
       - name: Verify the generated GitLab pipeline matches the contract (spec 0048)
         run: bash scripts/build-ci.sh --check
       - name: Cancel workflow on job failure
@@ -3556,6 +3590,14 @@ jobs:
           echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
           sudo chmod +x /usr/local/bin/yq
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
       - name: Verify the reference, GitHub Actions, and GitLab pipelines agree (spec 0049)
         run: bash scripts/check-ci-parity.sh
       - name: Cancel workflow on job failure

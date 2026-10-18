@@ -35,5 +35,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
       - name: Exhaustive run of every changeset-gated check (spec 0147 delta-01 R21)
         run: bash scripts/ci-changeset-coverage.sh
