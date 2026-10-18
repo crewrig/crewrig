@@ -7,7 +7,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.10.0"
+    version: "1.11.0"
 ---
 
 
@@ -43,23 +43,7 @@ Six ordered steps. Do not skip ahead.
 
 ### 6. Post the review
 
-Read `references/protocol.md` before step 1: it holds the detailed sub-steps of all six.
-
-## Cross-cutting: assert only a fresh observation
-
-Your verdict asserts what a pull request currently contains. Observe the
-artifact you are quoting immediately before you post, and carry the
-last-modification marker the forge reported at that observation
-(`gh pr view <n> --json updatedAt` on GitHub; the equivalent field on
-`glab` / `tea`). Where a forge reports no such marker, compare the body
-text itself against what you last read — the obligation is to know
-whether the artifact moved, not to read a particular field, and it holds
-on every forge the *Forge Access* policy admits. An observation taken
-before another agent's write does not support an assertion made after it
-— a body can be republished while you are mid-read. Your verdict comment
-is a new artifact and yours to write; the pull-request body belongs to
-the role that opened it. Full rule: `docs/agent-team-protocol.md` →
-*Team Communication* → Rule 6.
+Detailed sub-steps: `references/step-N-*.md`, one file per step, each read at its step.
 
 ## Scripts
 
@@ -111,23 +95,6 @@ state which condition of the step-3 bound returned that surface to scope.
 A finding on an unchanged surface with no such statement is treated as
 non-blocking and routed to the deferred-findings ledger — the iteration is
 not routed on its account.
-
-## Spec-review obligation — tier challenge
-
-When acting as a spec-reviewer (cold-spawned to review a spec-PR), the
-role MUST challenge a complexity tier that appears under-stated
-relative to the spec's declared blast radius. Emit a `class: spec`
-finding citing `AGENTS.md → Team sizing by complexity`. Under-statement
-is detected when the spec's `## Requirements` or `## Out of scope`
-enumerate a surface broader than the declared tier admits (per the
-tier table). Over-statement is a non-blocking observation, not a
-blocking finding.
-
-A spec review runs on the `specs/<ticket>` seat, so its findings carry
-`s<N>-F<M>` identifiers. A fresh delta-spec PR is a **replaced artifact**,
-not a revision: examine it in full — the step-3 bound attaches to an
-artifact, never to a seat — while still auditing every prior finding the
-seat's dossier carries (`docs/reviewer-seat.md` → *A replaced artifact*).
 
 ## Grounding discipline
 
