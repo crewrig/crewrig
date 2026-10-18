@@ -69,15 +69,18 @@ Done.
   Tier 'library' not built (no <REPO>/dist/library/.gemini) — run 'node scripts/build-components.ts' first.
 
 
+  Backed up: settings.json -> settings.json.bak.<STAMP>
+  Usage capture re-pointed /srv/co/crewrig/hooks/usage-capture.ts -> <REPO>/hooks/usage-capture.ts
+  Usage capture kept in <HOME>/.gemini/settings.json (one entry per event)
+  Usage capture: left <REPO>/hooks/usage-capture.ts on AfterModel (already the direct form)
+  Usage capture: 1 command(s) left as they are in <HOME>/.gemini/settings.json; nothing written.
 
   Session recording disabled (can enable later by re-running this script).
   Any session-recording hooks an earlier run registered in settings.json are left in place; installed guard and transcript commands were rewritten above where their consent was established.
 
 Usage capture is registered in <HOME>/.gemini/settings.json, at:
-  /srv/co/crewrig/hooks/usage-capture.ts
-  Backed up: settings.json -> settings.json.bak.<STAMP>
-  Usage capture re-pointed /srv/co/crewrig/hooks/usage-capture.ts -> <REPO>/hooks/usage-capture.ts
-  Usage capture kept in <HOME>/.gemini/settings.json (one entry per event)
+  <REPO>/hooks/usage-capture.ts
+  Usage capture kept unchanged in <HOME>/.gemini/settings.json
   Usage capture: left <REPO>/hooks/usage-capture.ts on AfterModel (already the direct form)
   Usage capture: 1 command(s) left as they are in <HOME>/.gemini/settings.json; nothing written.
   MemPalace session check registered in ~/.gemini/settings.json

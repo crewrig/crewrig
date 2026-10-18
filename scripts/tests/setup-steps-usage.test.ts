@@ -33,32 +33,39 @@ useRig();
 
 const STEPS = ["mcp", "usage-capture"] as const;
 const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
+/** Setup migrates a stale registration before the questions (spec 0268): the step meets the direct form. */
+const direct = (args: string): string =>
+  `node "${rig.repo.replaceAll("\\", "/")}/hooks/usage-capture.ts" ${args}`;
 const CAPTURE = {
-  claude: {
-    event: "Stop",
-    command: 'node "/srv/co/crewrig/hooks/usage-capture.ts" claude-code Stop',
-  },
-  gemini: {
-    event: "AfterModel",
-    command: 'node "/srv/co/crewrig/hooks/usage-capture.ts" gemini-cli AfterModel',
-  },
+  claude: [
+    ["Stop", "claude-code Stop"],
+    ["SessionEnd", "claude-code SessionEnd"],
+  ],
+  gemini: [["AfterModel", "gemini-cli AfterModel"]],
 } as const;
 
 /** The file as the shell had it: installed = one registered capture command; absent = no capture. */
 function seed(cli: HookCli, state: "absent" | "installed"): void {
   if (cli === "copilot") {
     if (state === "installed") {
-      const command = 'bash "/opt/old/hooks/usage-capture.sh" copilot-cli sessionEnd';
-      put(hooksFileOf(cli), json({ hooks: { sessionEnd: [{ type: "command", command }] } }));
+      const entry = (e: string): unknown[] => [
+        { type: "command", command: direct(`copilot-cli ${e}`) },
+      ];
+      put(
+        hooksFileOf(cli),
+        json({ hooks: { sessionEnd: entry("sessionEnd"), agentStop: entry("agentStop") } }),
+      );
     }
     return;
   }
   if (state === "installed") {
-    const { event, command } = CAPTURE[cli];
-    put(
-      hooksFileOf(cli),
-      json({ hooks: { [event]: [{ hooks: [{ type: "command", command }] }] } }),
+    const hooks = Object.fromEntries(
+      CAPTURE[cli].map(([event, args]) => [
+        event,
+        [{ hooks: [{ type: "command", command: direct(args) }] }],
+      ]),
     );
+    put(hooksFileOf(cli), json({ hooks }));
   } else if (cli === "claude") seedClaudeSettings();
   else put(hooksFileOf(cli), "{}\n");
 }
@@ -77,7 +84,13 @@ function sameCopilotFiles(cell: string, backups: boolean): void {
   const wanted = goldenShas("copilot", cell, at);
   assert.deepEqual(fs.existsSync(file) ? [hashOf(file)] : [], wanted);
   const baks = goldenShas("copilot", cell, `${at}.bak.<STAMP>`).sort();
-  assert.deepEqual(backups ? backupShas(file) : [], baks);
+  // The golden also holds the backups the migration made before the step (spec 0268): the step's
+  // own backups are a subset of them.
+  const mine = backups ? backupShas(file) : [];
+  assert.ok(
+    mine.every((h) => baks.includes(h)),
+    `backups ${mine.join(",")} not in the golden's ${baks.join(",")}`,
+  );
 }
 
 describe("usage-capture: the golden cells", { skip: POSIX_ONLY }, () => {

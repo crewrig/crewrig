@@ -68,10 +68,6 @@ Tier not built (no <REPO>/dist/library/.github/skills) — building automaticall
 Done.
   Tier 'library' has no built skills (no <REPO>/dist/library/.github/skills) — run 'node scripts/build-components.ts --target copilot' first.
 
-  Session recording disabled (re-run this script to enable).
-
-Usage capture is registered in <HOME>/.copilot/hooks/copilot-transcript-hooks.json, at:
-  /opt/old/hooks/usage-capture.sh
   Backed up: copilot-transcript-hooks.json -> copilot-transcript-hooks.json.bak.<STAMP>
   Usage capture re-pointed /opt/old/hooks/usage-capture.sh -> <REPO>/hooks/usage-capture.ts
   Usage capture re-registered on 1 event(s) at <REPO>/hooks/usage-capture.ts
@@ -80,6 +76,14 @@ Usage capture is registered in <HOME>/.copilot/hooks/copilot-transcript-hooks.js
   Usage capture: left <REPO>/hooks/usage-capture.ts on agentStop (already the direct form)
   Backed up: copilot-transcript-hooks.json -> copilot-transcript-hooks.json.bak.<STAMP>
   Usage capture: rewrote 1, left 1, dropped 0 duplicate(s) in <HOME>/.copilot/hooks/copilot-transcript-hooks.json
+  Session recording disabled (re-run this script to enable).
+
+Usage capture is registered in <HOME>/.copilot/hooks/copilot-transcript-hooks.json, at:
+  <REPO>/hooks/usage-capture.ts
+  Usage capture kept unchanged in <HOME>/.copilot/hooks/copilot-transcript-hooks.json
+  Usage capture: left <REPO>/hooks/usage-capture.ts on sessionEnd (already the direct form)
+  Usage capture: left <REPO>/hooks/usage-capture.ts on agentStop (already the direct form)
+  Usage capture: 2 command(s) left as they are in <HOME>/.copilot/hooks/copilot-transcript-hooks.json; nothing written.
   MemPalace session check registered in ~/.copilot/hooks/crewrig-mempalace-session-check.json
 
 ====================================

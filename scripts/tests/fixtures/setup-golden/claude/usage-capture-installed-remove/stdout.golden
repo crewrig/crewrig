@@ -73,11 +73,18 @@ Done.
   Tier 'library' not built (no <REPO>/dist/library/.claude) — run 'node scripts/build-components.ts' first.
 
 
+  Backed up: settings.json -> settings.json.bak.<STAMP>
+  Usage capture re-pointed /srv/co/crewrig/hooks/usage-capture.ts -> <REPO>/hooks/usage-capture.ts
+  Usage capture re-registered on 1 event(s) at <REPO>/hooks/usage-capture.ts
+  Usage capture kept in <HOME>/.claude/settings.json (one entry per event)
+  Usage capture: left <REPO>/hooks/usage-capture.ts on Stop (already the direct form)
+  Usage capture: left <REPO>/hooks/usage-capture.ts on SessionEnd (already the direct form)
+  Usage capture: 2 command(s) left as they are in <HOME>/.claude/settings.json; nothing written.
 
   Session recording disabled (can enable later by re-running this script).
 
 Usage capture is registered in <HOME>/.claude/settings.json, at:
-  /srv/co/crewrig/hooks/usage-capture.ts
+  <REPO>/hooks/usage-capture.ts
   Backed up: settings.json -> settings.json.bak.<STAMP>
   Usage capture removed from <HOME>/.claude/settings.json (every other entry left as it was)
   MemPalace session check registered in ~/.claude/settings.json

@@ -10,6 +10,8 @@
     {"path":"<HOME>/.copilot/.selected_team","kind":"file","mode":"0644","sha256":"b1c18110bc9445eaea4f25fd4bd0e1e0793384976901a6dda1e6abc3c6c11437"},
     {"path":"<HOME>/.copilot/hooks","kind":"dir"},
     {"path":"<HOME>/.copilot/hooks/copilot-transcript-hooks.json","kind":"file","mode":"0600","sha256":"78922a784ee78e9e50587e93628cd3b9d4dfbe49087adc4514e6781cea38cbb9"},
+    {"path":"<HOME>/.copilot/hooks/copilot-transcript-hooks.json.bak.<STAMP>","kind":"file","mode":"0600","sha256":"64519f0731c6ea9bdd3d5f91fbcb7c7e429379ea7d359f48090524323bd57a93"},
+    {"path":"<HOME>/.copilot/hooks/copilot-transcript-hooks.json.bak.<STAMP>","kind":"file","mode":"0600","sha256":"b9effd6c56a6f3164df898243de933728c06c36d8ecee6bfbb019bb0a8587711"},
     {"path":"<HOME>/.copilot/hooks/copilot-transcript-hooks.json.bak.<STAMP>","kind":"file","mode":"0600","sha256":"c55e78158214da1fabe6b5259dde17aadf75e272d1c51175a011205fb605af57"},
     {"path":"<HOME>/.copilot/hooks/crewrig-mempalace-session-check.json","kind":"file","mode":"0600","sha256":"7f935a053efc74d0162db7281d57727f964839b3fb5a7c8d04f4309eee260682"},
     {"path":"<HOME>/.copilot/instructions","kind":"dir"},
@@ -61,7 +63,7 @@
     {"path":"<REPO>/.github/copilot","kind":"dir"},
     {"path":"<REPO>/.github/copilot/settings.json","kind":"file","mode":"0644","sha256":"9b3048f441e133e06fec8231f7963b6718788ca178c1b9a02f1f0b74b8107b6f"}
   ],
-  "bakCount": {"<HOME>/.copilot/hooks/copilot-transcript-hooks.json":1},
+  "bakCount": {"<HOME>/.copilot/hooks/copilot-transcript-hooks.json":3},
   "fzf": [
     {"header":"Validation backend? (internal = built-in AskUserQuestion prompt; plannotator = rich browser review, opt-in)","options":["internal","plannotator"],"answer":"internal","unscripted":false,"cancelled":false},
     {"header":"Translate the spec/plan into your preferred language for the gate presentation only? (the repo artifact stays English)","options":["off","on"],"answer":"off","unscripted":false,"cancelled":false},

@@ -40,6 +40,7 @@
     {"path":"<HOME>/.gemini/settings.json.bak.<STAMP>","kind":"file","mode":"0600","sha256":"0b33037ba356d21b967e488ad6aef341141a30b1afd928b352309900ca568a40"},
     {"path":"<HOME>/.gemini/settings.json.bak.<STAMP>","kind":"file","mode":"0600","sha256":"539da038e9f14c49dcb667c8018960a683e1cc96a8007bd4602dd5da54033848"},
     {"path":"<HOME>/.gemini/settings.json.bak.<STAMP>","kind":"file","mode":"0600","sha256":"77ff793e6108031c6b223f26278b482741c01b323bc8cce38343d6d7cff0d62b"},
+    {"path":"<HOME>/.gemini/settings.json.bak.<STAMP>","kind":"file","mode":"0600","sha256":"a6517ab5df96b86aeab8a7a384799245cf42dae898ffc54de34ea207ce1fc942"},
     {"path":"<HOME>/.local","kind":"dir"},
     {"path":"<HOME>/.local/share","kind":"dir"},
     {"path":"<HOME>/.local/share/pipx","kind":"dir"},
@@ -56,7 +57,7 @@
     {"path":"<REPO>/.crewrig-state","kind":"dir"},
     {"path":"<REPO>/.crewrig-state/production-deps.sha256","kind":"file","mode":"0600","sha256":"2a95986b778fe580a34a96cabc9d9661eb0c1f10e3aa46b9c5f086272430fdf6"}
   ],
-  "bakCount": {"<HOME>/.gemini/settings.json":3},
+  "bakCount": {"<HOME>/.gemini/settings.json":4},
   "fzf": [
     {"header":"Validation backend? (internal = built-in AskUserQuestion prompt; plannotator = rich browser review, opt-in)","options":["internal","plannotator"],"answer":"internal","unscripted":false,"cancelled":false},
     {"header":"Translate the spec/plan into your preferred language for the gate presentation only? (the repo artifact stays English)","options":["off","on"],"answer":"off","unscripted":false,"cancelled":false},
