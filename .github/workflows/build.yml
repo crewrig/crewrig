@@ -1328,7 +1328,10 @@ jobs:
               - 'scripts/ci-cache-guard.sh'
               - 'scripts/ci-changeset-coverage.sh'
               - 'scripts/tests/test-check-ci-parity.sh'
-              - 'scripts/tests/test-build-ci.sh'
+              - 'scripts/tests/build-ci-real-tree.test.ts'
+              - 'scripts/tests/build-ci-synthetic.test.ts'
+              - 'scripts/tests/build-ci-synthetic-write.test.ts'
+              - 'scripts/tests/lib/ci-reference-fixtures.ts'
               - 'ci/ci-capabilities.yml'
               - '.gitlab-ci.yml'
               - '.github/workflows/build.yml'
@@ -1354,13 +1357,13 @@ jobs:
         if: steps.filter.outputs.ci-parity == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/check-ci-parity.sh', 'scripts/build-ci.sh', 'scripts/ci-cache-guard.sh', 'scripts/ci-changeset-coverage.sh', 'scripts/tests/test-check-ci-parity.sh', 'scripts/tests/test-build-ci.sh', 'ci/ci-capabilities.yml', '.gitlab-ci.yml', '.github/workflows/build.yml', 'docs/ci-reference-format.md') }}
+          key: ${{ hashFiles('scripts/check-ci-parity.sh', 'scripts/build-ci.sh', 'scripts/ci-cache-guard.sh', 'scripts/ci-changeset-coverage.sh', 'scripts/tests/test-check-ci-parity.sh', 'scripts/tests/build-ci-real-tree.test.ts', 'scripts/tests/build-ci-synthetic.test.ts', 'scripts/tests/build-ci-synthetic-write.test.ts', 'scripts/tests/lib/ci-reference-fixtures.ts', 'ci/ci-capabilities.yml', '.gitlab-ci.yml', '.github/workflows/build.yml', 'docs/ci-reference-format.md') }}
       - name: Test Check Ci Parity
         if: steps.filter.outputs.ci-parity == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-ci-parity.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-ci-parity.sh
       - name: Test Build Ci
         if: steps.filter.outputs.ci-parity == 'true'
-        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-ci.sh
+        run: bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files "scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-ci-real-tree.test.ts scripts/tests/build-ci-synthetic.test.ts scripts/tests/build-ci-synthetic-write.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1756,7 +1759,11 @@ jobs:
               - 'model-mappings/**'
               - 'docs/model-mapping-format.md'
               - 'scripts/check-model-mappings.sh'
-              - 'scripts/tests/test-check-model-mappings.sh'
+              - 'scripts/tests/check-model-mappings-rejections.test.ts'
+              - 'scripts/tests/check-model-mappings-org.test.ts'
+              - 'scripts/tests/check-model-mappings-selection.test.ts'
+              - 'scripts/tests/check-model-mappings-committed.test.ts'
+              - 'scripts/tests/lib/model-mapping-fixtures.ts'
       - name: Install yq
         if: steps.filter.outputs.check-model-mappings == 'true'
         run: |
@@ -1779,7 +1786,7 @@ jobs:
         run: bash scripts/check-model-mappings.sh
       - name: Test Check Model Mappings
         if: steps.filter.outputs.check-model-mappings == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-model-mappings.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-model-mappings-rejections.test.ts scripts/tests/check-model-mappings-org.test.ts scripts/tests/check-model-mappings-selection.test.ts scripts/tests/check-model-mappings-committed.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1794,7 +1801,9 @@ jobs:
             check-agent-profiles:
               - 'artifacts/**'
               - 'scripts/check-agent-profiles.sh'
-              - 'scripts/tests/test-check-agent-profiles.sh'
+              - 'scripts/tests/check-agent-profiles-rejections.test.ts'
+              - 'scripts/tests/check-agent-profiles-green.test.ts'
+              - 'scripts/tests/lib/agent-profile-fixtures.ts'
       - uses: actions/setup-node@v4
         if: steps.filter.outputs.check-agent-profiles == 'true'
         with:
@@ -1813,7 +1822,7 @@ jobs:
         run: bash scripts/check-agent-profiles.sh
       - name: Test Check Agent Profiles
         if: steps.filter.outputs.check-agent-profiles == 'true'
-        run: bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-agent-profiles.sh
+        run: bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-agent-profiles-rejections.test.ts scripts/tests/check-agent-profiles-green.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

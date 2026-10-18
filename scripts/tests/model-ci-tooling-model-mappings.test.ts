@@ -1,7 +1,7 @@
 // model-ci-tooling-model-mappings.test.ts — TS-only assertions of scripts/check-model-mappings.ts
 // (spec 0262 requirements 6, 24) for --print-selection and the shape pass. The
-// shell-versus-TypeScript comparison was retired with the switch; the Bash suite
-// scripts/tests/test-check-model-mappings.sh runs through the forwarding shim.
+// shell-versus-TypeScript comparison was retired with the switch; the case tables are asserted
+// by scripts/tests/check-model-mappings-*.test.ts.
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";

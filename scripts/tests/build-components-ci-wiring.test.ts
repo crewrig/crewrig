@@ -49,7 +49,7 @@ const BUILD_COMMAND = new RegExp(
     "task check-components",
     "build-assembly-routing\\.test\\.ts",
     "agent-profile-(committed|baseline-doc|build)\\.test\\.ts",
-    "test-check-agent-profiles\\.sh",
+    "check-agent-profiles-(rejections|green)\\.test\\.ts",
     "tier-resolution-[a-z-]+\\.test\\.ts",
     "build-components-frontmatter-fence\\.test\\.ts",
     "build-install-scope-(build|gate)\\.test\\.ts",

@@ -426,4 +426,4 @@ so the checker does not assume rank and rung move together.
 document makes normative (spec 0197 R46–R51). Its own header comment carries
 the full usage and exit-code contract, including the `--print-selection`
 mode used to pin the golden per-rung selection tables in
-`scripts/tests/test-check-model-mappings.sh`.
+`scripts/tests/check-model-mappings-selection.test.ts`.

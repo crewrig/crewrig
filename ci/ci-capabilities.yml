@@ -2062,7 +2062,10 @@ capabilities:
           - "scripts/ci-cache-guard.sh"
           - "scripts/ci-changeset-coverage.sh"
           - "scripts/tests/test-check-ci-parity.sh"
-          - "scripts/tests/test-build-ci.sh"
+          - "scripts/tests/build-ci-real-tree.test.ts"
+          - "scripts/tests/build-ci-synthetic.test.ts"
+          - "scripts/tests/build-ci-synthetic-write.test.ts"
+          - "scripts/tests/lib/ci-reference-fixtures.ts"
           - "ci/ci-capabilities.yml"
           - ".gitlab-ci.yml"
           - ".github/workflows/build.yml"
@@ -2075,7 +2078,10 @@ capabilities:
           - "scripts/ci-cache-guard.sh"
           - "scripts/ci-changeset-coverage.sh"
           - "scripts/tests/test-check-ci-parity.sh"
-          - "scripts/tests/test-build-ci.sh"
+          - "scripts/tests/build-ci-real-tree.test.ts"
+          - "scripts/tests/build-ci-synthetic.test.ts"
+          - "scripts/tests/build-ci-synthetic-write.test.ts"
+          - "scripts/tests/lib/ci-reference-fixtures.ts"
           - "ci/ci-capabilities.yml"
           - ".gitlab-ci.yml"
           - ".github/workflows/build.yml"
@@ -2092,7 +2098,10 @@ capabilities:
         - "scripts/ci-cache-guard.sh"
         - "scripts/ci-changeset-coverage.sh"
         - "scripts/tests/test-check-ci-parity.sh"
-        - "scripts/tests/test-build-ci.sh"
+        - "scripts/tests/build-ci-real-tree.test.ts"
+        - "scripts/tests/build-ci-synthetic.test.ts"
+        - "scripts/tests/build-ci-synthetic-write.test.ts"
+        - "scripts/tests/lib/ci-reference-fixtures.ts"
         - "ci/ci-capabilities.yml"
         - ".gitlab-ci.yml"
         - ".github/workflows/build.yml"
@@ -2102,7 +2111,7 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-ci-parity.sh
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-ci.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-ci-real-tree.test.ts scripts/tests/build-ci-synthetic.test.ts scripts/tests/build-ci-synthetic-write.test.ts
 
   - id: docs-index
     name: "Check docs index drift"
@@ -2851,14 +2860,22 @@ capabilities:
           - "model-mappings/**"
           - "docs/model-mapping-format.md"
           - "scripts/check-model-mappings.sh"
-          - "scripts/tests/test-check-model-mappings.sh"
+          - "scripts/tests/check-model-mappings-rejections.test.ts"
+          - "scripts/tests/check-model-mappings-org.test.ts"
+          - "scripts/tests/check-model-mappings-selection.test.ts"
+          - "scripts/tests/check-model-mappings-committed.test.ts"
+          - "scripts/tests/lib/model-mapping-fixtures.ts"
       - on: push
         branches: [main, "release/**"]
         paths:
           - "model-mappings/**"
           - "docs/model-mapping-format.md"
           - "scripts/check-model-mappings.sh"
-          - "scripts/tests/test-check-model-mappings.sh"
+          - "scripts/tests/check-model-mappings-rejections.test.ts"
+          - "scripts/tests/check-model-mappings-org.test.ts"
+          - "scripts/tests/check-model-mappings-selection.test.ts"
+          - "scripts/tests/check-model-mappings-committed.test.ts"
+          - "scripts/tests/lib/model-mapping-fixtures.ts"
     portability: portable
     changeset-gated: true
     requires:
@@ -2868,7 +2885,7 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
       - bash scripts/check-model-mappings.sh
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-model-mappings.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-model-mappings-rejections.test.ts scripts/tests/check-model-mappings-org.test.ts scripts/tests/check-model-mappings-selection.test.ts scripts/tests/check-model-mappings-committed.test.ts
 
   - id: check-agent-profiles
     name: "Check agent capability-profile conformance and run its mutation test suite"
@@ -2878,13 +2895,17 @@ capabilities:
         paths:
           - "artifacts/**"
           - "scripts/check-agent-profiles.sh"
-          - "scripts/tests/test-check-agent-profiles.sh"
+          - "scripts/tests/check-agent-profiles-rejections.test.ts"
+          - "scripts/tests/check-agent-profiles-green.test.ts"
+          - "scripts/tests/lib/agent-profile-fixtures.ts"
       - on: push
         branches: [main, "release/**"]
         paths:
           - "artifacts/**"
           - "scripts/check-agent-profiles.sh"
-          - "scripts/tests/test-check-agent-profiles.sh"
+          - "scripts/tests/check-agent-profiles-rejections.test.ts"
+          - "scripts/tests/check-agent-profiles-green.test.ts"
+          - "scripts/tests/lib/agent-profile-fixtures.ts"
     portability: portable
     changeset-gated: true
     requires:
@@ -2893,7 +2914,7 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - bash scripts/check-agent-profiles.sh
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-agent-profiles.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-agent-profiles-rejections.test.ts scripts/tests/check-agent-profiles-green.test.ts
 
   - id: check-metadata-keys
     name: "Check the component metadata: closed key set and run its mutation test suite"

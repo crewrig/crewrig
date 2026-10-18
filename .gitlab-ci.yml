@@ -1595,7 +1595,10 @@ ci-parity:
         - "scripts/ci-cache-guard.sh"
         - "scripts/ci-changeset-coverage.sh"
         - "scripts/tests/test-check-ci-parity.sh"
-        - "scripts/tests/test-build-ci.sh"
+        - "scripts/tests/build-ci-real-tree.test.ts"
+        - "scripts/tests/build-ci-synthetic.test.ts"
+        - "scripts/tests/build-ci-synthetic-write.test.ts"
+        - "scripts/tests/lib/ci-reference-fixtures.ts"
         - "ci/ci-capabilities.yml"
         - ".gitlab-ci.yml"
         - ".github/workflows/build.yml"
@@ -1605,8 +1608,8 @@ ci-parity:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-ci-parity.sh"
-    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/test-build-ci.sh,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-build-ci.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-ci-parity.sh"
+    - "bash scripts/ci-cache-guard.sh --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.sh,scripts/build-ci.sh,scripts/ci-cache-guard.sh,scripts/ci-changeset-coverage.sh,scripts/tests/test-check-ci-parity.sh,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-ci-real-tree.test.ts scripts/tests/build-ci-synthetic.test.ts scripts/tests/build-ci-synthetic-write.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -1615,7 +1618,10 @@ ci-parity:
         - "scripts/ci-cache-guard.sh"
         - "scripts/ci-changeset-coverage.sh"
         - "scripts/tests/test-check-ci-parity.sh"
-        - "scripts/tests/test-build-ci.sh"
+        - "scripts/tests/build-ci-real-tree.test.ts"
+        - "scripts/tests/build-ci-synthetic.test.ts"
+        - "scripts/tests/build-ci-synthetic-write.test.ts"
+        - "scripts/tests/lib/ci-reference-fixtures.ts"
         - "ci/ci-capabilities.yml"
         - ".gitlab-ci.yml"
         - ".github/workflows/build.yml"
@@ -1627,7 +1633,10 @@ ci-parity:
         - "scripts/ci-cache-guard.sh"
         - "scripts/ci-changeset-coverage.sh"
         - "scripts/tests/test-check-ci-parity.sh"
-        - "scripts/tests/test-build-ci.sh"
+        - "scripts/tests/build-ci-real-tree.test.ts"
+        - "scripts/tests/build-ci-synthetic.test.ts"
+        - "scripts/tests/build-ci-synthetic-write.test.ts"
+        - "scripts/tests/lib/ci-reference-fixtures.ts"
         - "ci/ci-capabilities.yml"
         - ".gitlab-ci.yml"
         - ".github/workflows/build.yml"
@@ -2312,20 +2321,28 @@ check-model-mappings:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
     - "bash scripts/check-model-mappings.sh"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-model-mappings.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-model-mappings-rejections.test.ts scripts/tests/check-model-mappings-org.test.ts scripts/tests/check-model-mappings-selection.test.ts scripts/tests/check-model-mappings-committed.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "model-mappings/**"
         - "docs/model-mapping-format.md"
         - "scripts/check-model-mappings.sh"
-        - "scripts/tests/test-check-model-mappings.sh"
+        - "scripts/tests/check-model-mappings-rejections.test.ts"
+        - "scripts/tests/check-model-mappings-org.test.ts"
+        - "scripts/tests/check-model-mappings-selection.test.ts"
+        - "scripts/tests/check-model-mappings-committed.test.ts"
+        - "scripts/tests/lib/model-mapping-fixtures.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "model-mappings/**"
         - "docs/model-mapping-format.md"
         - "scripts/check-model-mappings.sh"
-        - "scripts/tests/test-check-model-mappings.sh"
+        - "scripts/tests/check-model-mappings-rejections.test.ts"
+        - "scripts/tests/check-model-mappings-org.test.ts"
+        - "scripts/tests/check-model-mappings-selection.test.ts"
+        - "scripts/tests/check-model-mappings-committed.test.ts"
+        - "scripts/tests/lib/model-mapping-fixtures.ts"
 
 check-agent-profiles:
   image: node:24
@@ -2337,18 +2354,22 @@ check-agent-profiles:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "bash scripts/check-agent-profiles.sh"
-    - "bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-agent-profiles.sh"
+    - "bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-agent-profiles-rejections.test.ts scripts/tests/check-agent-profiles-green.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "artifacts/**"
         - "scripts/check-agent-profiles.sh"
-        - "scripts/tests/test-check-agent-profiles.sh"
+        - "scripts/tests/check-agent-profiles-rejections.test.ts"
+        - "scripts/tests/check-agent-profiles-green.test.ts"
+        - "scripts/tests/lib/agent-profile-fixtures.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "artifacts/**"
         - "scripts/check-agent-profiles.sh"
-        - "scripts/tests/test-check-agent-profiles.sh"
+        - "scripts/tests/check-agent-profiles-rejections.test.ts"
+        - "scripts/tests/check-agent-profiles-green.test.ts"
+        - "scripts/tests/lib/agent-profile-fixtures.ts"
 
 check-metadata-keys:
   image: node:24

@@ -1,7 +1,7 @@
 // model-ci-tooling-agent-profiles.test.ts — TS-only assertions of scripts/check-agent-profiles.ts
 // (spec 0262 requirements 7, 24): the real repository, the exit 2 paths and the deliberate
 // deviations. The shell-versus-TypeScript comparison was retired with the switch; the case table
-// is asserted by scripts/tests/test-check-agent-profiles.sh through the forwarding shim.
+// is asserted by scripts/tests/check-agent-profiles-*.test.ts.
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
