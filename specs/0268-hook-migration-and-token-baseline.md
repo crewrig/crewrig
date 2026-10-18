@@ -2,7 +2,7 @@
 id: "0268"
 slug: hook-migration-and-token-baseline
 status: draft
-complexity: small
+complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1725
 version: 1.0.0
@@ -26,18 +26,18 @@ A contributor with an install older than #1715 runs setup once and, with no furt
 ## Requirements
 
 1. Setup SHALL, in one run and on each of Claude Code, Gemini CLI, Copilot CLI and Antigravity CLI, replace every stale framework-owned hook registration that names a removed `.sh` file (usage capture, worktree git guard, session recording) with the registration that runs the corresponding TypeScript hook of the checkout.
-2. The migration SHALL NOT depend on any answer the user gives during setup, including declining session recording, choosing to remove usage capture, or running in a non-interactive context; the only exception is that a user who removes usage capture SHALL have its entries removed, not migrated.
+2. The migration SHALL NOT depend on any answer the user gives during setup, including declining session recording or running in a non-interactive context. A stale usage-capture entry is migrated, not removed, whenever the user has not explicitly chosen removal in that run: when no answer is available (non-interactive run or cancelled question) the opt-in state is treated as unknown and the entry is migrated, because a registration the user already installed expresses an opt-in and migrating preserves it while removing would silently discard it. A user who explicitly chooses removal SHALL have the entries removed, not migrated.
 3. The migration SHALL be idempotent: a second setup run over an already migrated file SHALL leave it byte-identical and SHALL NOT create a backup.
 4. The migration SHALL NOT leave two registrations of the same framework hook for the same event; where a stale entry and a current entry coexist, one SHALL remain.
 5. The migration MUST NOT modify, reorder or remove any hook registration that the framework does not own, including the hooks that Orca writes into the same Claude Code settings file, and MUST NOT alter any other key of the configuration.
 6. A configuration file that is modified SHALL be backed up before it is written, and a file that cannot be read as a JSON object SHALL be left unchanged with a reported reason.
 7. When the migration cannot proceed (for example below the minimum Node.js version), setup SHALL report which entries were left stale and why, rather than leaving them silently.
 8. Setup SHALL report each migrated, removed or left entry by hook name and event, so the maintainer can confirm the result from the setup output alone.
-9. A regression test SHALL exercise one setup run per CLI over a fixture configuration that contains the stale `.sh` entries of every framework-owned hook that CLI registers, plus at least one foreign hook, and SHALL assert requirements 1, 3, 4 and 5 on the result. The Claude Code fixture SHALL include the user-level session-recording copy path.
+9. A regression test, authored by the `tester` role, SHALL exercise one setup run per CLI over a fixture configuration that contains the stale `.sh` entries of every framework-owned hook that CLI registers, plus at least one foreign hook, and SHALL assert requirements 1, 3, 4 and 5 on the result. The Claude Code fixture SHALL include the user-level session-recording copy path.
 10. After one setup run on the maintainer machine, a new usage record SHALL appear in the usage journal once a session ends; this is verified manually and recorded in the logbook of #1725.
-11. A baseline of the efficiency indicators E1 to E4 defined in epic #1724 section 4.3 SHALL be posted as one comment on #1724, covering the last full calendar month before posting for E2 to E4 and the three reference tickets for E4 and E1 (one small bug, one standard feature, one docs-only change, chosen by the maintainer and named in the comment).
+11. A baseline of the indicators of epic #1724 section 4.3 SHALL be posted as one comment on #1724: E1 measured once on the repository and deployed rules; E2 to E4 measured over the last full calendar month before posting (usage journal, `claude-code`), and E2 to E4 plus Q2 (REQUEST CHANGES verdicts and blocking findings in the logbook) measured per reference ticket. The reference tickets, chosen by the maintainer, are #1205 (small bug), #1334 (standard feature) and #1175 (docs-only change).
 12. The baseline comment SHALL state, for each indicator, the exact command run (for example `task usage:query -- --period <YYYY-MM> --cli claude-code` and `task usage:query -- --task-key <N> --rollup`), the usage-journal field or fields it reads, the aggregation (percentile or sum), the period or ticket, the CLI filter, and the date it was produced, so that a later run is comparable.
-13. The baseline comment SHALL state the E1 byte counts with the exact file list measured, and SHALL flag any difference between the repository rules and the deployed rules.
+13. The baseline comment SHALL state the E1 byte count once, with the exact file list measured, and SHALL flag any difference between the repository rules and the deployed rules.
 14. The baseline comment is a non-code deliverable: it SHALL be listed as such in the logbook of #1725 and is verified by a reviewer reading it on #1724 and checking requirements 11 to 13 against it; no automated check applies to it.
 15. This ticket SHALL NOT change any rule, skill, agent definition or lifecycle document.
 
@@ -106,7 +106,7 @@ Then  the file is unchanged and the reason is reported
 ```text
 Given the baseline comment posted on #1724
 When  a reviewer reads it
-Then  every one of E1 to E4 has its command, field, aggregation, period or ticket and date, and the three reference tickets are named
+Then  E1 has one measurement with its file list, E2 to E4 each have command, field, aggregation, period or ticket and date for the month and for each of #1205, #1334 and #1175, and Q2 is given per ticket
 ```
 
 ## Out of scope
@@ -121,4 +121,3 @@ Then  every one of E1 to E4 has its command, field, aggregation, period or ticke
 ## Open questions
 
 - The code path of setup already rewrites stale entries and a rewrite on a copy of the maintainer file succeeds; the reason the installed file is still stale (setup not re-run since #1715, a gate in the interactive flow, or a defect) is not yet established. The PLAN stage must reproduce it by running setup against a copy of the pre-#1715 file for each of the four CLIs before choosing a change, and record the finding in the logbook of #1725.
-- The three reference tickets for the baseline are not named in the epic; the maintainer is to choose them (one small bug, one standard feature, one docs-only change).
