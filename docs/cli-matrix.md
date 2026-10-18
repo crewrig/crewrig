@@ -222,6 +222,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > `scripts/build-*.sh` script and therefore on the *CLI Matrix Maintenance*
 > trigger surface; this paragraph discharges that CLI-matrix-update
 > obligation for spec 0242.
+>
+> Spec 0262 requirement 16: `scripts/{check-model-mappings,check-agent-profiles,check-ci-parity,check-spec-id-reserved,build-ci,ci-cache-guard,ci-changeset-coverage,reserve-spec-id,merge-spec-pr,sweep-en-us}.sh` are now forwarding shims to their TypeScript twins (`<name>.ts`); behaviour, arguments, streams and exit statuses are unchanged and no row above changes. `scripts/build-ci.sh` is on the *CLI Matrix Maintenance* trigger surface, so this note discharges the obligation for that diff.
 
 ## Parity gaps
 

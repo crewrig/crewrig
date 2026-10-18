@@ -1,7 +1,7 @@
-// model-ci-tooling-model-mappings-c.test.ts — differential test of the projection, guard,
-// totality and org-override passes of scripts/check-model-mappings.ts against the shell
-// (spec 0262 requirements 1-4, 6, 24). Every case writes a scratch repository, runs the
-// shell and the twin in parallel under LC_ALL=C, and compares stdout, stderr and status.
+// model-ci-tooling-model-mappings-c.test.ts — the projection, guard, totality and
+// org-override passes of scripts/check-model-mappings.ts (spec 0262 requirements 6, 24). Every
+// case writes a scratch repository and asserts the diagnostic id and the exit status; the
+// shell comparison was retired with the switch.
 
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
@@ -10,12 +10,9 @@ import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 
-import { REPO, WINDOWS } from "./lib/worktree-fixtures.ts";
+import { REPO } from "./lib/worktree-fixtures.ts";
 
-const SH = path.join(REPO, "scripts", "check-model-mappings.sh");
 const TS = path.join(REPO, "scripts", "check-model-mappings.ts");
-const HAS_YQ = !WINDOWS && spawnSync("yq", ["--version"], { stdio: "ignore" }).status === 0;
-const SKIP = HAS_YQ ? false : "SKIP: shell leg needs bash and yq (not on win32)";
 const roots: string[] = [];
 after(() => {
   for (const root of roots) fs.rmSync(root, { recursive: true, force: true });
@@ -168,24 +165,24 @@ const CASES: Case[] = [
   ["org guard state override only", "none", {}, ORG("guard:\n  state: withheld\n")],
 ];
 
-describe(
-  "projection, guard, totality and org passes vs the shell",
-  { skip: SKIP, concurrency: 6 },
-  () => {
-    for (const [name, id, edits, extra] of CASES) {
-      test(name, async () => {
-        const repo = repoWith(edits, extra);
-        const [sh, ts] = await Promise.all([
-          run("bash", [SH], repo),
-          run(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", TS], repo),
-        ]);
-        assert.deepEqual(ts, sh);
-        if (id !== "none")
-          assert.ok(ts.stderr.includes(`: ${id} `), `expected ${id} in ${ts.stderr}`);
-      });
-    }
-  },
-);
+describe("projection, guard, totality and org passes", { concurrency: 6 }, () => {
+  for (const [name, id, edits, extra] of CASES) {
+    test(name, async () => {
+      const repo = repoWith(edits, extra);
+      const ts = await run(
+        process.execPath,
+        ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", TS],
+        repo,
+      );
+      if (id !== "none") {
+        assert.equal(ts.status, 1, ts.stderr);
+        assert.ok(ts.stderr.includes(`: ${id} `), `expected ${id} in ${ts.stderr}`);
+      } else {
+        assert.equal(ts.status, 0, ts.stderr);
+      }
+    });
+  }
+});
 
 describe("deviations of requirement 24 (c)", () => {
   test("a null node where the shell's keys call aborts is one Error line and exit 1", async () => {

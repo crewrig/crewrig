@@ -1,6 +1,6 @@
-// model-ci-tooling-changeset-coverage.test.ts — shell versus TypeScript twin of
-// ci-changeset-coverage (spec 0262 req 11, 21, 23) on a scratch reference per sandbox. Shell legs
-// are POSIX only. Every path written or linked is inside the sandbox root the helper created.
+// model-ci-tooling-changeset-coverage.test.ts — TS assertions of
+// ci-changeset-coverage (spec 0262 req 11, 23) on a scratch reference per sandbox; the
+// shell-versus-TypeScript comparison was retired with the switch. POSIX only. Every path written or linked is inside the sandbox root the helper created.
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -66,7 +66,6 @@ function agree(
     extra?.(ctx);
   }
   const r = shared.run({ ...CASE, ...c });
-  assert.deepEqual(r.diffs, []);
   return r;
 }
 
@@ -101,28 +100,28 @@ describe("ci-changeset-coverage twin: TS-only (spec 0262 delta-02 (g))", () => {
 describe("ci-changeset-coverage twin", posix, () => {
   test("runs only the gated capabilities, in reference order, and passes", () => {
     const r = agree(REFERENCE);
-    assert.equal(r.shell.status, 0);
+    assert.equal(r.ts.status, 0);
     assert.match(
-      r.shell.stdout,
+      r.ts.stdout,
       /running \[alpha\] echo alpha-1[\s\S]*running \[quoted\] echo block-2[\s\S]*exhaustive run passed\.\n$/,
     );
-    assert.doesNotMatch(r.shell.stdout, /ungated|\[off\]/);
+    assert.doesNotMatch(r.ts.stdout, /ungated|\[off\]/);
   });
 
   test("continues after failures and exits 1", () => {
     const r = agree(FAILING);
-    assert.equal(r.shell.status, 1);
-    assert.match(r.shell.stderr, /FAILED \[broken\] exit 3/);
-    assert.match(r.shell.stderr, /command not found/);
-    assert.match(r.shell.stderr, /3 command\(s\) failed in the exhaustive run\.\n$/);
+    assert.equal(r.ts.status, 1);
+    assert.match(r.ts.stderr, /FAILED \[broken\] exit 3/);
+    assert.match(r.ts.stderr, /command not found/);
+    assert.match(r.ts.stderr, /3 command\(s\) failed in the exhaustive run\.\n$/);
   });
 
   test("a missing reference exits 2", () => {
     const r = agree(null, { env: { REPO_DIR: "{ROOT}/empty" } }, (ctx) =>
       fs.mkdirSync(path.join(ctx.root, "empty"), { recursive: true }),
     );
-    assert.equal(r.shell.status, 2);
-    assert.match(r.shell.stderr, /^Error: CI reference not found: /);
+    assert.equal(r.ts.status, 2);
+    assert.match(r.ts.stderr, /^Error: CI reference not found: /);
   });
 
   test("a missing yq exits 2", () => {
@@ -141,8 +140,8 @@ describe("ci-changeset-coverage twin", posix, () => {
         if (!fs.existsSync(link)) fs.symlinkSync(target, link);
       }
     });
-    assert.equal(r.shell.status, 2);
-    assert.equal(r.shell.stderr, "Error: yq is required. Install with: brew install yq\n");
+    assert.equal(r.ts.status, 2);
+    assert.equal(r.ts.stderr, "Error: yq is required. Install with: brew install yq\n");
   });
 
   test("the registered stray-scan form fails a gated command on a stray", () => {
@@ -153,7 +152,7 @@ describe("ci-changeset-coverage twin", posix, () => {
       - bash scripts/ci-cache-guard.sh --stray-scan -- bash -c 'bogus_cmd_q || true'
 `;
     const r = agree(ref);
-    assert.equal(r.shell.status, 1);
-    assert.match(r.shell.stderr, /STRAY in: bash -c bogus_cmd_q \|\| true/);
+    assert.equal(r.ts.status, 1);
+    assert.match(r.ts.stderr, /STRAY in: bash -c bogus_cmd_q \|\| true/);
   });
 });

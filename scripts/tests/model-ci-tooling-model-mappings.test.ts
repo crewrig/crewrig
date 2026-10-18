@@ -1,8 +1,7 @@
-// model-ci-tooling-model-mappings.test.ts — differential test of
-// scripts/check-model-mappings.ts against scripts/check-model-mappings.sh (spec 0262
-// requirements 1-4, 6, 24): the same input through both entries under LC_ALL=C must give
-// equal stdout, stderr and status. The shell leg needs bash and yq (skipped otherwise).
-// Slice 1 covers --print-selection and the shape pass; later slices add the other passes.
+// model-ci-tooling-model-mappings.test.ts — TS-only assertions of scripts/check-model-mappings.ts
+// (spec 0262 requirements 6, 24) for --print-selection and the shape pass. The
+// shell-versus-TypeScript comparison was retired with the switch; the Bash suite
+// scripts/tests/test-check-model-mappings.sh runs through the forwarding shim.
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -11,12 +10,9 @@ import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 
-import { REPO, WINDOWS } from "./lib/worktree-fixtures.ts";
+import { REPO } from "./lib/worktree-fixtures.ts";
 
-const SH = path.join(REPO, "scripts", "check-model-mappings.sh");
 const TS = path.join(REPO, "scripts", "check-model-mappings.ts");
-const HAS_YQ = !WINDOWS && spawnSync("yq", ["--version"], { stdio: "ignore" }).status === 0;
-const SKIP = HAS_YQ ? false : "SKIP: shell leg needs bash and yq (not on win32)";
 const roots: string[] = [];
 after(() => {
   for (const root of roots) fs.rmSync(root, { recursive: true, force: true });
@@ -36,7 +32,6 @@ function run(cmd: string, args: string[], repoDir: string): Run {
   return { stdout: r.stdout, stderr: r.stderr, status: r.status };
 }
 
-const runSh = (args: string[], repo: string): Run => run("bash", [SH, ...args], repo);
 const runTs = (args: string[], repo: string): Run =>
   run(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", TS, ...args], repo);
 
@@ -59,13 +54,10 @@ function scratch(edits: Record<string, (text: string) => string> = {}): string {
 }
 
 function same(args: string[], repo: string): Run {
-  const sh = runSh(args, repo);
-  const ts = runTs(args, repo);
-  assert.deepEqual(ts, sh);
-  return ts;
+  return runTs(args, repo);
 }
 
-describe("check-model-mappings.ts vs check-model-mappings.sh", { skip: SKIP }, () => {
+describe("check-model-mappings.ts on the real repository and shape rejections", () => {
   test("real repository, conform mode: clean", () => {
     const r = same([], REPO);
     assert.equal(r.status, 0);
@@ -78,8 +70,11 @@ describe("check-model-mappings.ts vs check-model-mappings.sh", { skip: SKIP }, (
 
   test("--print-selection with named files, core and org", () => {
     const named = ["claude", "copilot", "gemini"].map((t) => `${REPO}/model-mappings/${t}.yml`);
-    same(["--print-selection", ...named], REPO);
-    same(["--print-selection", `${REPO}/model-mappings/claude.org.yml`], REPO);
+    assert.equal(same(["--print-selection", ...named], REPO).status, 0);
+    assert.equal(
+      same(["--print-selection", `${REPO}/model-mappings/claude.org.yml`], REPO).status,
+      0,
+    );
   });
 
   test("missing named file and missing directory exit 2", () => {
@@ -105,7 +100,7 @@ describe("check-model-mappings.ts vs check-model-mappings.sh", { skip: SKIP }, (
       "antigravity.yml": (t) => t.replace(/^offerings:/m, "offeringz:"),
     });
     assert.equal(same([], repo).status, 1);
-    same(["--print-selection"], repo);
+    assert.equal(same(["--print-selection"], repo).status, 0);
   });
 });
 
