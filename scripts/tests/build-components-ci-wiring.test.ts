@@ -38,7 +38,7 @@ const SUITE_COMMAND = /--test /;
 
 // A command "builds" when it runs the component build directly, or runs a script that builds.
 // The script names are the ones the reference runs for the capabilities `frontmatter`,
-// `model-resolution`, `agent-profile-migration`, `check-agent-profiles` and `component-drift`:
+// `agent-profile-migration`, `check-agent-profiles` and `component-drift`:
 // each shell test assembles components through the build, so it needs Node.js 24 and the
 // production dependencies exactly as the direct invocation does. `check-core-paths` (the `.sh`
 // shim or the `.ts` entry) builds nothing here; `core-paths` is listed separately in NODE_ONLY_CAPABILITIES.
@@ -48,7 +48,6 @@ const BUILD_COMMAND = new RegExp(
     "task build-components",
     "task check-components",
     "build-assembly-routing\\.test\\.ts",
-    "test-model-resolution\\.sh",
     "agent-profile-(committed|baseline-doc|build)\\.test\\.ts",
     "test-check-agent-profiles\\.sh",
     "tier-resolution-[a-z-]+\\.test\\.ts",

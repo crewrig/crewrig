@@ -163,8 +163,8 @@ function gitCapture(args, cwd) {
 }
 
 // resolveBaseRef() — the base ref to compare against, resolved exactly as
-// scripts/lib/base-ref-resolve.sh does (sourced by check-skill-versions.sh and
-// check-extension-version-bump.sh) so the repository has one idiom rather than
+// the retired scripts/lib/base-ref-resolve.sh did (its TypeScript twin is
+// scripts/lib/governance/base-ref.ts) so the repository has one idiom rather than
 // two, mirrored here in JS rather than shared by sourcing: `BASE_REF` when
 // set, else the first remote matching `crewrig|origin` (falling back to the
 // first remote at all) with `/main` appended, falling back to `/develop` when

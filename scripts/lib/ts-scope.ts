@@ -155,7 +155,7 @@ function mergeBaseOf(ref: string): BaseRef {
 
 /**
  * The base the diff arms compare against, normalized as
- * scripts/lib/base-ref-resolve.sh does. An explicit `BASE_REF` that resolves
+ * the retired scripts/lib/base-ref-resolve.sh did. An explicit `BASE_REF` that resolves
  * nowhere, even after one `git fetch origin <x>`, is a wiring fault. With no
  * `BASE_REF`, the default `<remote>/main` (then `/develop`) is used when it
  * verifies; otherwise `null` — the diff arms are skipped, not failed.

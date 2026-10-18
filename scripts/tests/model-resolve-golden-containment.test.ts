@@ -34,15 +34,18 @@ describe("restoreFiles containment", () => {
     canary = fs.mkdtempSync(path.join(root, "canary-"));
     fs.writeFileSync(path.join(canary, "keep.txt"), CANARY_TEXT);
   };
-  const escaping: Record<string, string> = {
-    "a `..` key": "../x",
-    "an absolute key": "/abs-key-never-written",
-    "a nested `a/../../x` key": "a/../../x",
+  // The absolute key points at a file inside this test's own canary directory, so a write
+  // would be observable and can never touch anything real.
+  const escaping: Record<string, (canaryDir: string) => string> = {
+    "a `..` key": () => "../x",
+    "an absolute key": (canaryDir) => path.join(canaryDir, "abs-key-written.txt"),
+    "a nested `a/../../x` key": () => "a/../../x",
   };
 
-  for (const [name, key] of Object.entries(escaping)) {
+  for (const [name, keyOf] of Object.entries(escaping)) {
     test(`${name} throws and writes nothing`, () => {
       fresh();
+      const key = keyOf(canary);
       const beforeRoot = listing(root);
       // a clean key listed first must not be written either: every key is checked first
       assert.throws(
@@ -52,7 +55,7 @@ describe("restoreFiles containment", () => {
       assert.deepEqual(listing(merge), []);
       assert.deepEqual(listing(root), beforeRoot);
       assert.equal(fs.readFileSync(path.join(canary, "keep.txt"), "utf8"), CANARY_TEXT);
-      assert.equal(fs.existsSync("/abs-key-never-written"), false);
+      assert.equal(fs.existsSync(path.join(canary, "abs-key-written.txt")), false);
     });
   }
 
