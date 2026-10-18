@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 
 import * as modelResolve from "../../lib/model-resolve.ts";
 import { extractFrontmatter } from "../../lib/render-command.ts";
+import { scrubPath } from "./path-scrub.ts";
 import { record, recording, replay } from "./model-resolve-golden.ts";
 import { yamlText } from "./yaml-lib.ts";
 
@@ -84,7 +85,7 @@ const scrub =
     if (c.mergeDir !== undefined) out = out.replaceAll(c.mergeDir, "<MERGE>");
     if (c.tmpDir !== undefined) out = out.replaceAll(c.tmpDir, "<TMP>");
     out = out.replaceAll(c.source, "<SOURCE>").replaceAll(c.repoDir, "<REPO_DIR>");
-    out = out.replaceAll(REPO, "<REPO>");
+    out = scrubPath(out, REPO, "<REPO>");
     out = out.replace(/\.compose\.[A-Za-z0-9]{6}/g, ".compose.XXXXXX");
     return out.replace(/\/crewrig-mapping-\d+/g, "/crewrig-mapping-PID");
   };

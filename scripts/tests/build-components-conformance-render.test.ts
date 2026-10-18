@@ -23,6 +23,7 @@ import {
   targetRecordLine,
 } from "../lib/component-resolve.ts";
 import { createRenderCommand, extractBody, extractFrontmatter } from "../lib/render-command.ts";
+import { frozenAsync } from "./lib/component-resolve-golden.ts";
 import { fields, parityGate, REPO, runBash, sh } from "./lib/shell-resolve-harness.ts";
 import { yamlText } from "./lib/yaml-lib.ts";
 
@@ -84,14 +85,16 @@ interface CollisionReport {
   stderr: string;
   status: number;
 }
-async function shellCollisions(dirs: readonly string[]): Promise<CollisionReport[]> {
-  const f = fields(await runBash(COLLISION_DRIVER, [REPO, ...dirs]));
-  return dirs.map((_, i) => ({
-    records: f[3 * i] ?? "",
-    stderr: f[3 * i + 1] ?? "",
-    status: Number(f[3 * i + 2]),
-  }));
-}
+/** Frozen: the shell leg of component-resolve.sh is replayed (spec 0262 R17). */
+const shellCollisions = (dirs: readonly string[]): Promise<CollisionReport[]> =>
+  frozenAsync("render-collisions", dirs, { "<TMP>": tmp, "<REPO>": REPO }, async () => {
+    const f = fields(await runBash(COLLISION_DRIVER, [REPO, ...dirs]));
+    return dirs.map((_, i) => ({
+      records: f[3 * i] ?? "",
+      stderr: f[3 * i + 1] ?? "",
+      status: Number(f[3 * i + 2]),
+    }));
+  });
 function twinCollisions(artifactsDir: string): CollisionReport {
   let stderr = "";
   const status = reportInstalledNameCollisions(artifactsDir, (t) => void (stderr += t));

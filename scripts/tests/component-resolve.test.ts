@@ -8,13 +8,13 @@
 // Trees live under the OS temp dir. A small parity set runs the shell (LC_ALL=C) on Linux.
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { makeSh } from "./lib/component-resolve-sh.ts";
 import {
   componentDeclaredName,
   componentEmitTarget,
@@ -60,16 +60,7 @@ function report(artifacts: string): { status: number; text: string; chunks: numb
 const refused = (a: string): (string | undefined)[] =>
   [...report(a).text.matchAll(/^Refusing '(.*?)'/gm)].map((m) => m[1]);
 
-const noShell =
-  process.platform === "linux" || process.env["CREWRIG_SHELL_PARITY"] === "1"
-    ? undefined
-    : "skipped: needs Linux with bash";
-function sh(body: string, ...args: string[]): { out: string; err: string; status: number | null } {
-  const script = `. "${REPO}/scripts/lib/component-resolve.sh"; ${body}`;
-  const env = { ...process.env, LC_ALL: "C" };
-  const r = spawnSync("bash", ["-c", script, "x", ...args], { encoding: "utf8", env });
-  return { out: r.stdout, err: r.stderr, status: r.status };
-}
+const sh = makeSh(tmp, REPO);
 
 // label, whole file text, the name the shell read (FB: the fallback)
 const nameRows: readonly (readonly [string, string, string])[] = [
@@ -262,7 +253,7 @@ describe("reportInstalledNameCollisions", () => {
   });
 });
 
-describe("parity with the shell library (LC_ALL=C)", { skip: noShell }, () => {
+describe("parity with the frozen shell library (LC_ALL=C)", () => {
   const collide = build(`
     library/skills/a/SKILL.md @dup; community/commands/dup.md @dup; org/skills/b/SKILL.md @dup
     core/skills/c/SKILL.md @dup; core/skills/d/SKILL.md @dup; library/themes/th.json; org/themes/th.json
@@ -273,28 +264,35 @@ describe("parity with the shell library (LC_ALL=C)", { skip: noShell }, () => {
   test("records, collision report and status: the real tree, a collision tree, empty and absent", () => {
     const [real, empty] = [path.join(REPO, "artifacts"), `${build("a/")}/a`];
     const trees = [real, collide, empty, path.join(tmp, "absent")];
-    for (const dir of trees) {
-      assert.equal(records(dir), sh('installed_targets "$1"', dir).out, dir);
-      const shell = sh('report_installed_name_collisions "$1"', dir);
+    trees.forEach((dir, i) => {
+      assert.equal(records(dir), sh(`records ${i}`, 'installed_targets "$1"', dir).out, dir);
+      const shell = sh(`report ${i}`, 'report_installed_name_collisions "$1"', dir);
       const ts = report(dir);
       assert.deepEqual([ts.text, ts.status], [shell.err, shell.status], dir);
-    }
+    });
   });
   test("every declared-name row above, and display names", () => {
     for (const [label, text] of nameRows) {
       const file = fileWith(text);
-      const shell = sh('printf "%s" "$(_component_declared_name "$1" "$2")"', file, "FB").out;
+      const declared = 'printf "%s" "$(_component_declared_name "$1" "$2")"';
+      const shell = sh(`name ${label}`, declared, file, "FB").out;
       assert.equal(componentDeclaredName(file, "FB"), shell, label);
     }
     const display = 'printf "%s" "$(_component_target_display_name "$1")"';
     for (const t of ".claude/skills/mcpServers.foo claude:mcpServers.foo x.toml.md".split(" "))
-      assert.equal(componentTargetDisplayName(t), sh(display, t).out, t);
+      assert.equal(componentTargetDisplayName(t), sh(`display ${t}`, display, t).out, t);
   });
   test("report_collision and the record line", () => {
     let ts = "";
     reportCollision("n'q", ["a", "tier 'x' declares"], (t) => (ts += t));
-    assert.equal(ts, sh('report_collision "$@"', "n'q", "a", "tier 'x' declares").err);
+    assert.equal(
+      ts,
+      sh("report_collision", 'report_collision "$@"', "n'q", "a", "tier 'x' declares").err,
+    );
     const line = targetRecordLine(componentEmitTarget("core", "t", "tier", "skills"));
-    assert.equal(line, sh('_component_emit_target "$@"', "core", "t", "tier", "skills").out);
+    assert.equal(
+      line,
+      sh("emit_target", '_component_emit_target "$@"', "core", "t", "tier", "skills").out,
+    );
   });
 });

@@ -24,6 +24,10 @@
 // recorded by running the four conformance suites with MODEL_RESOLVE_GOLDEN_REGEN=1 inherited:
 // model-resolve-golden.ts then executes the shell leg instead of replaying it. The container
 // needs the mikefarah `yq` besides bash; the argument must be the default fixtures directory.
+// The `yq` must be the CI one, v4.54.1 (mount the linux binary over /usr/local/bin/yq): the
+// merged documents the shell writes, stored in resolve-org, depend on the yq version.
+// component-resolve.sh is recorded the same way into fixtures/component-resolve-oracle/
+// (COMPONENT_RESOLVE_GOLDEN_REGEN=1, set below); its goldens need no yq.
 // The suites' own assertions may fail while recording; the exit status reports only the recording.
 
 import { spawnSync } from "node:child_process";
@@ -70,6 +74,23 @@ function main(): number {
     const file = `scripts/tests/build-components-conformance${name}.test.ts`;
     spawnSync("node", ["--test", file], { cwd: REPO, stdio: "ignore", env: process.env });
   }
+  // component-resolve.sh: the same technique, one golden file per suite family (spec 0262 R17)
+  const components = path.join(REPO, "scripts/tests/fixtures/component-resolve-oracle");
+  fs.mkdirSync(components, { recursive: true });
+  for (const name of ["component-twins", "component-resolve", "render-collisions"])
+    fs.writeFileSync(path.join(components, `${name}.json.golden`), "{}\n"); // drop stale keys
+  const suites = [
+    "component-twins-conformance",
+    "component-twins-conformance-migrate",
+    "component-resolve",
+    "build-components-conformance-render",
+  ];
+  for (const name of suites)
+    spawnSync("node", ["--test", `scripts/tests/${name}.test.ts`], {
+      cwd: REPO,
+      stdio: "ignore",
+      env: { ...process.env, COMPONENT_RESOLVE_GOLDEN_REGEN: "1" },
+    });
   return 0;
 }
 

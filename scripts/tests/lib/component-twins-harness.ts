@@ -14,6 +14,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { frozen } from "./component-resolve-golden.ts";
+
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
 /** The suites skip on Windows: they spawn `bash`. */
@@ -66,8 +68,19 @@ function listTree(dir: string, rel = ""): string[] {
 
 const scrub = (text: string, sb: string): string => text.replaceAll(sb, "<SB>");
 
-/** The shell side: `body` runs after both libraries are sourced, `$SB` is the sandbox. */
+/**
+ * The shell side, REPLAYED from the goldens (spec 0262 R17): keyed by the layout, body and env.
+ * Only the Linux golden container (`COMPONENT_RESOLVE_GOLDEN_REGEN=1`) runs the shell.
+ */
 export function runShell(layout: Layout, body: string, env: Record<string, string> = {}): Side {
+  const input = [Object.entries(layout).sort(), body, Object.entries(env).sort()];
+  return frozen("component-twins", input, { "<REPO>": REPO }, () =>
+    runShellLive(layout, body, env),
+  );
+}
+
+/** `body` runs after both libraries are sourced, `$SB` is the sandbox. */
+function runShellLive(layout: Layout, body: string, env: Record<string, string>): Side {
   const sb = sandbox(layout);
   const script = [
     "set +e",

@@ -1,0 +1,187 @@
+{
+ "display .claude/skills/mcpServers.foo": {
+  "out": "foo",
+  "err": "",
+  "status": 0
+ },
+ "display claude:mcpServers.foo": {
+  "out": "claude:mcpServers.foo",
+  "err": "",
+  "status": 0
+ },
+ "display x.toml.md": {
+  "out": "x",
+  "err": "",
+  "status": 0
+ },
+ "emit_target": {
+  "out": "core\tt\ttier\tskills\n",
+  "err": "",
+  "status": 0
+ },
+ "name CRLF on a plain name line is removed": {
+  "out": "crlf",
+  "err": "",
+  "status": 0
+ },
+ "name CRLF on the name line only: closing quote kept": {
+  "out": "c\"",
+  "err": "",
+  "status": 0
+ },
+ "name CRLF whole file: no fence on line 1": {
+  "out": "FB",
+  "err": "",
+  "status": 0
+ },
+ "name a byte-order mark hides the opening fence": {
+  "out": "FB",
+  "err": "",
+  "status": 0
+ },
+ "name a carriage return inside the name is removed": {
+  "out": "ab",
+  "err": "",
+  "status": 0
+ },
+ "name a nested name does not shadow the top one": {
+  "out": "b",
+  "err": "",
+  "status": 0
+ },
+ "name a trailing comment is part of the name": {
+  "out": "probe # note",
+  "err": "",
+  "status": 0
+ },
+ "name an indented name is not a name": {
+  "out": "FB",
+  "err": "",
+  "status": 0
+ },
+ "name blanks after a quoted name hide its quote": {
+  "out": "foo\"",
+  "err": "",
+  "status": 0
+ },
+ "name double inside single keeps the double": {
+  "out": "\"foo\"",
+  "err": "",
+  "status": 0
+ },
+ "name double-quoted": {
+  "out": "foo",
+  "err": "",
+  "status": 0
+ },
+ "name duplicate name: the first wins": {
+  "out": "a",
+  "err": "",
+  "status": 0
+ },
+ "name empty name": {
+  "out": "FB",
+  "err": "",
+  "status": 0
+ },
+ "name empty quoted name": {
+  "out": "FB",
+  "err": "",
+  "status": 0
+ },
+ "name fences followed by blanks open and close": {
+  "out": "a",
+  "err": "",
+  "status": 0
+ },
+ "name mixed: CRLF opening fence hides the name": {
+  "out": "FB",
+  "err": "",
+  "status": 0
+ },
+ "name mixed: LF opening fence, CRLF after": {
+  "out": "m",
+  "err": "",
+  "status": 0
+ },
+ "name name after the closing fence": {
+  "out": "FB",
+  "err": "",
+  "status": 0
+ },
+ "name no blank after the colon": {
+  "out": "foo",
+  "err": "",
+  "status": 0
+ },
+ "name no frontmatter": {
+  "out": "FB",
+  "err": "",
+  "status": 0
+ },
+ "name plain": {
+  "out": "foo",
+  "err": "",
+  "status": 0
+ },
+ "name quoted name then a comment keeps one quote": {
+  "out": "probe\" # note",
+  "err": "",
+  "status": 0
+ },
+ "name single inside double loses both": {
+  "out": "foo",
+  "err": "",
+  "status": 0
+ },
+ "name tab after the colon and at the end": {
+  "out": "foo",
+  "err": "",
+  "status": 0
+ },
+ "records 0": {
+  "out": "core\t.claude/skills/architect\tcore\tskills\ncore\t.gemini/skills/architect\tcore\tskills\ncore\t.github/skills/architect\tcore\tskills\ncore\t.agents/skills/architect\tcore\tskills\ncore\t.claude/skills/astro\tcore\tskills\ncore\t.gemini/skills/astro\tcore\tskills\ncore\t.github/skills/astro\tcore\tskills\ncore\t.agents/skills/astro\tcore\tskills\ncore\t.claude/skills/copywriting\tcore\tskills\ncore\t.gemini/skills/copywriting\tcore\tskills\ncore\t.github/skills/copywriting\tcore\tskills\ncore\t.agents/skills/copywriting\tcore\tskills\ncore\t.claude/skills/developer\tcore\tskills\ncore\t.gemini/skills/developer\tcore\tskills\ncore\t.github/skills/developer\tcore\tskills\ncore\t.agents/skills/developer\tcore\tskills\ncore\t.claude/skills/doc-writer\tcore\tskills\ncore\t.gemini/skills/doc-writer\tcore\tskills\ncore\t.github/skills/doc-writer\tcore\tskills\ncore\t.agents/skills/doc-writer\tcore\tskills\ncore\t.claude/skills/frontend\tcore\tskills\ncore\t.gemini/skills/frontend\tcore\tskills\ncore\t.github/skills/frontend\tcore\tskills\ncore\t.agents/skills/frontend\tcore\tskills\ncore\t.claude/skills/github-actions\tcore\tskills\ncore\t.gemini/skills/github-actions\tcore\tskills\ncore\t.github/skills/github-actions\tcore\tskills\ncore\t.agents/skills/github-actions\tcore\tskills\ncore\t.claude/skills/gitlab-ci\tcore\tskills\ncore\t.gemini/skills/gitlab-ci\tcore\tskills\ncore\t.github/skills/gitlab-ci\tcore\tskills\ncore\t.agents/skills/gitlab-ci\tcore\tskills\ncore\t.claude/skills/idea\tcore\tskills\ncore\t.gemini/skills/idea\tcore\tskills\ncore\t.github/skills/idea\tcore\tskills\ncore\t.agents/skills/idea\tcore\tskills\ncore\t.claude/skills/init-expertise\tcore\tskills\ncore\t.gemini/skills/init-expertise\tcore\tskills\ncore\t.github/skills/init-expertise\tcore\tskills\ncore\t.agents/skills/init-expertise\tcore\tskills\ncore\t.claude/skills/init-team\tcore\tskills\ncore\t.gemini/skills/init-team\tcore\tskills\ncore\t.github/skills/init-team\tcore\tskills\ncore\t.agents/skills/init-team\tcore\tskills\ncore\t.claude/skills/pr-logbook\tcore\tskills\ncore\t.gemini/skills/pr-logbook\tcore\tskills\ncore\t.github/skills/pr-logbook\tcore\tskills\ncore\t.agents/skills/pr-logbook\tcore\tskills\ncore\t.claude/skills/pr-reviewer\tcore\tskills\ncore\t.gemini/skills/pr-reviewer\tcore\tskills\ncore\t.github/skills/pr-reviewer\tcore\tskills\ncore\t.agents/skills/pr-reviewer\tcore\tskills\ncore\t.claude/skills/security\tcore\tskills\ncore\t.gemini/skills/security\tcore\tskills\ncore\t.github/skills/security\tcore\tskills\ncore\t.agents/skills/security\tcore\tskills\ncore\t.claude/skills/spec-author\tcore\tskills\ncore\t.gemini/skills/spec-author\tcore\tskills\ncore\t.github/skills/spec-author\tcore\tskills\ncore\t.agents/skills/spec-author\tcore\tskills\ncore\t.claude/skills/tester\tcore\tskills\ncore\t.gemini/skills/tester\tcore\tskills\ncore\t.github/skills/tester\tcore\tskills\ncore\t.agents/skills/tester\tcore\tskills\ncore\t.claude/skills/web-tester\tcore\tskills\ncore\t.gemini/skills/web-tester\tcore\tskills\ncore\t.github/skills/web-tester\tcore\tskills\ncore\t.agents/skills/web-tester\tcore\tskills\ncore\t.claude/skills/init-personal-profile\tcore\tcommands\ncore\t.gemini/commands/init-personal-profile.toml\tcore\tcommands\ncore\t.github/skills/init-personal-profile\tcore\tcommands\ncore\t.agents/skills/init-personal-profile\tcore\tcommands\ncore\t.claude/skills/init-soul\tcore\tcommands\ncore\t.gemini/commands/init-soul.toml\tcore\tcommands\ncore\t.github/skills/init-soul\tcore\tcommands\ncore\t.agents/skills/init-soul\tcore\tcommands\ncore\t.claude/agents/accessibility-auditor.md\tcore\tagents\ncore\t.gemini/agents/accessibility-auditor.md\tcore\tagents\ncore\t.github/agents/accessibility-auditor.md\tcore\tagents\ncore\t.agents/agents/accessibility-auditor\tcore\tagents\ncore\t.claude/agents/accessibility-tester.md\tcore\tagents\ncore\t.gemini/agents/accessibility-tester.md\tcore\tagents\ncore\t.github/agents/accessibility-tester.md\tcore\tagents\ncore\t.agents/agents/accessibility-tester\tcore\tagents\ncore\t.claude/agents/architect.md\tcore\tagents\ncore\t.gemini/agents/architect.md\tcore\tagents\ncore\t.github/agents/architect.md\tcore\tagents\ncore\t.agents/agents/architect\tcore\tagents\ncore\t.claude/agents/astro-developer.md\tcore\tagents\ncore\t.gemini/agents/astro-developer.md\tcore\tagents\ncore\t.github/agents/astro-developer.md\tcore\tagents\ncore\t.agents/agents/astro-developer\tcore\tagents\ncore\t.claude/agents/ci-configurator.md\tcore\tagents\ncore\t.gemini/agents/ci-configurator.md\tcore\tagents\ncore\t.github/agents/ci-configurator.md\tcore\tagents\ncore\t.agents/agents/ci-configurator\tcore\tagents\ncore\t.claude/agents/ci-debugger.md\tcore\tagents\ncore\t.gemini/agents/ci-debugger.md\tcore\tagents\ncore\t.github/agents/ci-debugger.md\tcore\tagents\ncore\t.agents/agents/ci-debugger\tcore\tagents\ncore\t.claude/agents/ci-parity.md\tcore\tagents\ncore\t.gemini/agents/ci-parity.md\tcore\tagents\ncore\t.github/agents/ci-parity.md\tcore\tagents\ncore\t.agents/agents/ci-parity\tcore\tagents\ncore\t.claude/agents/copywriter.md\tcore\tagents\ncore\t.gemini/agents/copywriter.md\tcore\tagents\ncore\t.github/agents/copywriter.md\tcore\tagents\ncore\t.agents/agents/copywriter\tcore\tagents\ncore\t.claude/agents/designer.md\tcore\tagents\ncore\t.gemini/agents/designer.md\tcore\tagents\ncore\t.github/agents/designer.md\tcore\tagents\ncore\t.agents/agents/designer\tcore\tagents\ncore\t.claude/agents/developer.md\tcore\tagents\ncore\t.gemini/agents/developer.md\tcore\tagents\ncore\t.github/agents/developer.md\tcore\tagents\ncore\t.agents/agents/developer\tcore\tagents\ncore\t.claude/agents/doc-writer.md\tcore\tagents\ncore\t.gemini/agents/doc-writer.md\tcore\tagents\ncore\t.github/agents/doc-writer.md\tcore\tagents\ncore\t.agents/agents/doc-writer\tcore\tagents\ncore\t.claude/agents/frontend-developer.md\tcore\tagents\ncore\t.gemini/agents/frontend-developer.md\tcore\tagents\ncore\t.github/agents/frontend-developer.md\tcore\tagents\ncore\t.agents/agents/frontend-developer\tcore\tagents\ncore\t.claude/agents/pr-logbook.md\tcore\tagents\ncore\t.gemini/agents/pr-logbook.md\tcore\tagents\ncore\t.github/agents/pr-logbook.md\tcore\tagents\ncore\t.agents/agents/pr-logbook\tcore\tagents\ncore\t.claude/agents/pr-reviewer.md\tcore\tagents\ncore\t.gemini/agents/pr-reviewer.md\tcore\tagents\ncore\t.github/agents/pr-reviewer.md\tcore\tagents\ncore\t.agents/agents/pr-reviewer\tcore\tagents\ncore\t.claude/agents/regression-sentinel.md\tcore\tagents\ncore\t.gemini/agents/regression-sentinel.md\tcore\tagents\ncore\t.github/agents/regression-sentinel.md\tcore\tagents\ncore\t.agents/agents/regression-sentinel\tcore\tagents\ncore\t.claude/agents/scenario-author.md\tcore\tagents\ncore\t.gemini/agents/scenario-author.md\tcore\tagents\ncore\t.github/agents/scenario-author.md\tcore\tagents\ncore\t.agents/agents/scenario-author\tcore\tagents\ncore\t.claude/agents/security.md\tcore\tagents\ncore\t.gemini/agents/security.md\tcore\tagents\ncore\t.github/agents/security.md\tcore\tagents\ncore\t.agents/agents/security\tcore\tagents\ncore\t.claude/agents/seo-specialist.md\tcore\tagents\ncore\t.gemini/agents/seo-specialist.md\tcore\tagents\ncore\t.github/agents/seo-specialist.md\tcore\tagents\ncore\t.agents/agents/seo-specialist\tcore\tagents\ncore\t.claude/agents/spec-author.md\tcore\tagents\ncore\t.gemini/agents/spec-author.md\tcore\tagents\ncore\t.github/agents/spec-author.md\tcore\tagents\ncore\t.agents/agents/spec-author\tcore\tagents\ncore\t.claude/agents/tester.md\tcore\tagents\ncore\t.gemini/agents/tester.md\tcore\tagents\ncore\t.github/agents/tester.md\tcore\tagents\ncore\t.agents/agents/tester\tcore\tagents\ncore\t.claude/agents/visual-regression-tester.md\tcore\tagents\ncore\t.gemini/agents/visual-regression-tester.md\tcore\tagents\ncore\t.github/agents/visual-regression-tester.md\tcore\tagents\ncore\t.agents/agents/visual-regression-tester\tcore\tagents\ncore\t.claude/agents/web-conformity-checker.md\tcore\tagents\ncore\t.gemini/agents/web-conformity-checker.md\tcore\tagents\ncore\t.github/agents/web-conformity-checker.md\tcore\tagents\ncore\t.agents/agents/web-conformity-checker\tcore\tagents\noverlay\t.claude/skills/harness-curator\tlibrary\tskills\noverlay\t.gemini/skills/harness-curator\tlibrary\tskills\noverlay\t.github/skills/harness-curator\tlibrary\tskills\noverlay\t.agents/skills/harness-curator\tlibrary\tskills\noverlay\t.claude/skills/harness-report\tlibrary\tskills\noverlay\t.gemini/skills/harness-report\tlibrary\tskills\noverlay\t.github/skills/harness-report\tlibrary\tskills\noverlay\t.agents/skills/harness-report\tlibrary\tskills\noverlay\t.claude/skills/user-validate\tlibrary\tskills\noverlay\t.gemini/skills/user-validate\tlibrary\tskills\noverlay\t.github/skills/user-validate\tlibrary\tskills\noverlay\t.agents/skills/user-validate\tlibrary\tskills\noverlay\t.claude/agents/harness-curator.md\tlibrary\tagents\noverlay\t.gemini/agents/harness-curator.md\tlibrary\tagents\noverlay\t.github/agents/harness-curator.md\tlibrary\tagents\noverlay\t.agents/agents/harness-curator\tlibrary\tagents\n",
+  "err": "",
+  "status": 0
+ },
+ "records 1": {
+  "out": "overlay\t.claude/skills/dup\tcommunity\tcommands\noverlay\t.gemini/commands/dup.toml\tcommunity\tcommands\noverlay\t.github/skills/dup\tcommunity\tcommands\noverlay\t.agents/skills/dup\tcommunity\tcommands\ncore\t.claude/skills/dup\tcore\tskills\ncore\t.gemini/skills/dup\tcore\tskills\ncore\t.github/skills/dup\tcore\tskills\ncore\t.agents/skills/dup\tcore\tskills\ncore\t.claude/skills/dup\tcore\tskills\ncore\t.gemini/skills/dup\tcore\tskills\ncore\t.github/skills/dup\tcore\tskills\ncore\t.agents/skills/dup\tcore\tskills\noverlay\t.claude/skills/dup\tlibrary\tskills\noverlay\t.gemini/skills/dup\tlibrary\tskills\noverlay\t.github/skills/dup\tlibrary\tskills\noverlay\t.agents/skills/dup\tlibrary\tskills\noverlay\t.claude/skills/Zed\tlibrary\tskills\noverlay\t.gemini/skills/Zed\tlibrary\tskills\noverlay\t.github/skills/Zed\tlibrary\tskills\noverlay\t.agents/skills/Zed\tlibrary\tskills\noverlay\t.claude/skills/mcpServers.foo\tlibrary\tskills\noverlay\t.gemini/skills/mcpServers.foo\tlibrary\tskills\noverlay\t.github/skills/mcpServers.foo\tlibrary\tskills\noverlay\t.agents/skills/mcpServers.foo\tlibrary\tskills\noverlay\tclaude:rules/p.md\tlibrary\tpolicies\noverlay\tgemini:policies/p.md\tlibrary\tpolicies\noverlay\tantigravity:rules/p.md\tlibrary\tpolicies\noverlay\tgemini:settings.themes.th\tlibrary\tthemes\noverlay\tclaude:mcpServers.s\tlibrary\tmcp-servers\noverlay\tgemini:mcpServers.s\tlibrary\tmcp-servers\noverlay\tcopilot:mcpServers.s\tlibrary\tmcp-servers\noverlay\tantigravity:mcpServers.s\tlibrary\tmcp-servers\noverlay\t.claude/skills/dup\torg\tskills\noverlay\t.gemini/skills/dup\torg\tskills\noverlay\t.github/skills/dup\torg\tskills\noverlay\t.agents/skills/dup\torg\tskills\noverlay\t.claude/skills/Zed\torg\tskills\noverlay\t.gemini/skills/Zed\torg\tskills\noverlay\t.github/skills/Zed\torg\tskills\noverlay\t.agents/skills/Zed\torg\tskills\noverlay\t.claude/skills/mcpServers.foo\torg\tskills\noverlay\t.gemini/skills/mcpServers.foo\torg\tskills\noverlay\t.github/skills/mcpServers.foo\torg\tskills\noverlay\t.agents/skills/mcpServers.foo\torg\tskills\noverlay\tclaude:rules/p.md\torg\tpolicies\noverlay\tgemini:policies/p.md\torg\tpolicies\noverlay\tantigravity:rules/p.md\torg\tpolicies\noverlay\tgemini:settings.themes.th\torg\tthemes\noverlay\tclaude:mcpServers.s\torg\tmcp-servers\noverlay\tgemini:mcpServers.s\torg\tmcp-servers\noverlay\tcopilot:mcpServers.s\torg\tmcp-servers\noverlay\tantigravity:mcpServers.s\torg\tmcp-servers\n",
+  "err": "",
+  "status": 0
+ },
+ "records 2": {
+  "out": "",
+  "err": "",
+  "status": 0
+ },
+ "records 3": {
+  "out": "",
+  "err": "",
+  "status": 0
+ },
+ "report 0": {
+  "out": "",
+  "err": "",
+  "status": 0
+ },
+ "report 1": {
+  "out": "",
+  "err": "Refusing 'dup': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'core' declares a skills component installing to .agents/skills/dup\n  - tier 'core' declares a skills component installing to .agents/skills/dup\nRefusing 'dup': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'core' declares a skills component installing to .claude/skills/dup\n  - tier 'core' declares a skills component installing to .claude/skills/dup\nRefusing 'dup': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'core' declares a skills component installing to .gemini/skills/dup\n  - tier 'core' declares a skills component installing to .gemini/skills/dup\nRefusing 'dup': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'core' declares a skills component installing to .github/skills/dup\n  - tier 'core' declares a skills component installing to .github/skills/dup\nRefusing 'Zed': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a skills component installing to .agents/skills/Zed\n  - tier 'org' declares a skills component installing to .agents/skills/Zed\nRefusing 'dup': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'community' declares a commands component installing to .agents/skills/dup\n  - tier 'library' declares a skills component installing to .agents/skills/dup\n  - tier 'org' declares a skills component installing to .agents/skills/dup\nRefusing 'foo': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a skills component installing to .agents/skills/mcpServers.foo\n  - tier 'org' declares a skills component installing to .agents/skills/mcpServers.foo\nRefusing 'Zed': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a skills component installing to .claude/skills/Zed\n  - tier 'org' declares a skills component installing to .claude/skills/Zed\nRefusing 'dup': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'community' declares a commands component installing to .claude/skills/dup\n  - tier 'library' declares a skills component installing to .claude/skills/dup\n  - tier 'org' declares a skills component installing to .claude/skills/dup\nRefusing 'foo': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a skills component installing to .claude/skills/mcpServers.foo\n  - tier 'org' declares a skills component installing to .claude/skills/mcpServers.foo\nRefusing 'Zed': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a skills component installing to .gemini/skills/Zed\n  - tier 'org' declares a skills component installing to .gemini/skills/Zed\nRefusing 'dup': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a skills component installing to .gemini/skills/dup\n  - tier 'org' declares a skills component installing to .gemini/skills/dup\nRefusing 'foo': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a skills component installing to .gemini/skills/mcpServers.foo\n  - tier 'org' declares a skills component installing to .gemini/skills/mcpServers.foo\nRefusing 'Zed': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a skills component installing to .github/skills/Zed\n  - tier 'org' declares a skills component installing to .github/skills/Zed\nRefusing 'dup': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'community' declares a commands component installing to .github/skills/dup\n  - tier 'library' declares a skills component installing to .github/skills/dup\n  - tier 'org' declares a skills component installing to .github/skills/dup\nRefusing 'foo': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a skills component installing to .github/skills/mcpServers.foo\n  - tier 'org' declares a skills component installing to .github/skills/mcpServers.foo\nRefusing 'antigravity:mcpServers.s': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a mcp-servers component installing to antigravity:mcpServers.s\n  - tier 'org' declares a mcp-servers component installing to antigravity:mcpServers.s\nRefusing 'p': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a policies component installing to antigravity:rules/p.md\n  - tier 'org' declares a policies component installing to antigravity:rules/p.md\nRefusing 'claude:mcpServers.s': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a mcp-servers component installing to claude:mcpServers.s\n  - tier 'org' declares a mcp-servers component installing to claude:mcpServers.s\nRefusing 'p': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a policies component installing to claude:rules/p.md\n  - tier 'org' declares a policies component installing to claude:rules/p.md\nRefusing 'copilot:mcpServers.s': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a mcp-servers component installing to copilot:mcpServers.s\n  - tier 'org' declares a mcp-servers component installing to copilot:mcpServers.s\nRefusing 'gemini:mcpServers.s': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a mcp-servers component installing to gemini:mcpServers.s\n  - tier 'org' declares a mcp-servers component installing to gemini:mcpServers.s\nRefusing 'p': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a policies component installing to gemini:policies/p.md\n  - tier 'org' declares a policies component installing to gemini:policies/p.md\nRefusing 'gemini:settings.themes.th': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - tier 'library' declares a themes component installing to gemini:settings.themes.th\n  - tier 'org' declares a themes component installing to gemini:settings.themes.th\n",
+  "status": 1
+ },
+ "report 2": {
+  "out": "",
+  "err": "",
+  "status": 0
+ },
+ "report 3": {
+  "out": "",
+  "err": "",
+  "status": 0
+ },
+ "report_collision": {
+  "out": "",
+  "err": "Refusing 'n'q': one installed name is claimed by more than one component.\nEvery source presenting it, in no significant order:\n  - a\n  - tier 'x' declares\n",
+  "status": 0
+ }
+}
