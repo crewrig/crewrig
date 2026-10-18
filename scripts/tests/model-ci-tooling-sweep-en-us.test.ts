@@ -1,8 +1,6 @@
-// model-ci-tooling-sweep-en-us.test.ts — scripts/sweep-en-us.ts against its
-// shell+Python original (spec 0262 requirements 1-4, 15). Fixtures are built at
-// runtime in two identical scratch git repos; each implementation runs in its
-// own repo and stdout, stderr, status and every resulting file are compared.
-// The shell+Python side is skipped when python3 is absent or on win32.
+// model-ci-tooling-sweep-en-us.test.ts — TS-only assertions of scripts/sweep-en-us.ts (spec 0262
+// requirements 15, 16): it runs without Python. The shell-versus-TypeScript comparison was retired
+// with the switch, when scripts/sweep-en-us.sh became a forwarding shim.
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -188,80 +186,6 @@ before(() => {
 });
 after(() => {
   fs.rmSync(work, { recursive: true, force: true });
-});
-
-describe("sweep-en-us.ts matches sweep-en-us.sh on a scratch repo", { skip }, () => {
-  for (const mode of ["--list", "--check", "--scope-test", "--aspell", "--bogus"]) {
-    test(`${mode} output and status`, () => {
-      const a = makeRepo();
-      const b = makeRepo();
-      assert.deepEqual(norm(ts(a, [mode])), norm(sh(b, [mode])));
-    });
-  }
-
-  test("--list keeps the in-scope set only", () => {
-    const r = ts(makeRepo(), ["--list"]).stdout.split("\n");
-    assert.ok(
-      r.includes("docs/prose.md") &&
-        r.includes("scripts/x.sh") &&
-        r.includes(".github/workflows/copilot.yml"),
-    );
-    assert.ok(
-      !r.includes("LICENSE") &&
-        !r.includes("docs/fixtures/skip.md") &&
-        !r.includes("docs/other.txt"),
-    );
-  });
-
-  test("--apply rewrites byte-identical files, then --check passes and a rerun is a no-op", () => {
-    const a = makeRepo();
-    const b = makeRepo();
-    for (const args of [["--apply"], ["--check"], ["--apply"]]) {
-      const x = ts(a, args);
-      const y = sh(b, args);
-      assert.deepEqual(x, y);
-      assert.deepEqual(tree(a), tree(b));
-    }
-    assert.match(ts(a, ["--check"]).stdout, /\[R6\] PASS/);
-    assert.match(
-      fs.readFileSync(path.join(a, "docs/prose.md"), "utf8"),
-      /Organize, Organization and ORGANIZATION/,
-    );
-    assert.equal(fs.readFileSync(path.join(a, "docs/fixtures/skip.md"), "utf8"), "organise\n");
-  });
-
-  test("the exclusion guard fails with the same stderr when an excluded tree is modified", () => {
-    const a = makeRepo();
-    const b = makeRepo();
-    for (const d of [a, b]) fs.writeFileSync(path.join(d, "LICENSE"), "changed\n");
-    const x = ts(a, ["--check"]);
-    assert.equal(x.status, 1);
-    assert.match(x.stderr, /\[exclusion-guard\] FAIL/);
-    assert.deepEqual(x, sh(b, ["--check"]));
-  });
-
-  test("a malformed map line gives the same message and status", () => {
-    const a = makeRepo();
-    const b = makeRepo();
-    for (const d of [a, b])
-      fs.appendFileSync(path.join(d, "scripts/lib/en-gb-us-map.txt"), "oneword\n");
-    for (const mode of ["--apply", "--check"]) assert.deepEqual(ts(a, [mode]), sh(b, [mode]));
-    assert.equal(ts(a, ["--apply"]).stderr, "malformed map line: 'oneword\\n'\n");
-  });
-
-  test("a map key missing from the detect list fails the superset assertion identically", () => {
-    const a = makeRepo();
-    const b = makeRepo();
-    for (const d of [a, b])
-      fs.appendFileSync(path.join(d, "scripts/lib/en-gb-us-map.txt"), "zzbrit zzamer\n");
-    for (const mode of ["--check", "--scope-test"]) assert.deepEqual(ts(a, [mode]), sh(b, [mode]));
-    assert.equal(ts(a, ["--scope-test"]).status, 1);
-  });
-
-  test("the real repository gives the same --check and --list", () => {
-    for (const mode of ["--check", "--list"])
-      assert.deepEqual(norm(ts(REPO, [mode])), norm(sh(REPO, [mode])));
-  });
 });
 
 describe("sweep-en-us.ts runs without python", () => {

@@ -127,11 +127,15 @@ describe("ci-changeset-coverage twin", posix, () => {
 
   test("a missing yq exits 2", () => {
     const which = spawnSync("sh", ["-c", "command -v bash"], { encoding: "utf8" }).stdout.trim();
+    const dirnameBin = spawnSync("sh", ["-c", "command -v dirname"], {
+      encoding: "utf8",
+    }).stdout.trim();
     const r = agree(REFERENCE, { env: { PATH: "{ROOT}/nobin" } }, (ctx) => {
       fs.mkdirSync(path.join(ctx.root, "nobin"), { recursive: true });
       for (const [name, target] of [
         ["bash", which],
         ["node", process.execPath],
+        ["dirname", dirnameBin],
       ] as const) {
         const link = path.join(ctx.root, "nobin", name);
         if (!fs.existsSync(link)) fs.symlinkSync(target, link);

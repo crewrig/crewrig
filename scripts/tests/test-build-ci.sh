@@ -65,6 +65,20 @@ assert_contains() {
   fi
 }
 
+# copy_shim_support <root> — the forwarding shim needs the floor guard, the TypeScript entry,
+# its modules under scripts/lib/{build-ci,yq-accessors} (git-tracked files only) and js-yaml.
+copy_shim_support() {
+  local dir="$1" f
+  while IFS= read -r f; do
+    mkdir -p "$dir/$(dirname "$f")"
+    cp "$REPO_ROOT/$f" "$dir/$f"
+  done < <(git -C "$REPO_ROOT" ls-files -- scripts/build-ci.ts scripts/lib/node-floor-guard.js scripts/lib/build-ci scripts/lib/yq-accessors)
+  if [ -d "$REPO_ROOT/node_modules/js-yaml" ]; then
+    mkdir -p "$dir/node_modules"
+    cp -R "$REPO_ROOT/node_modules/js-yaml" "$dir/node_modules/js-yaml"
+  fi
+}
+
 # Build a throwaway "repo" with a scripts/ + ci/ layout and the generator
 # copied in; echo its root.
 new_tree() {
@@ -72,6 +86,7 @@ new_tree() {
   dir="$(mktemp -d "$TMP_ROOT/tree.XXXXXX")"
   mkdir -p "$dir/scripts" "$dir/ci"
   cp "$SCRIPT_UNDER_TEST" "$dir/scripts/build-ci.sh"
+  copy_shim_support "$dir"
   echo "$dir"
 }
 

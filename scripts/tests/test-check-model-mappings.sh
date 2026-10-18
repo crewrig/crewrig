@@ -56,14 +56,12 @@ pass=0
 fail=0
 
 # setup_pass3_root <root> — a throwaway CREWRIG_REPO_DIR carrying only
-# scripts/lib/model-resolve.sh (the file pass 3 sources fresh per target, D7)
-# and an empty model-mappings/ the test populates itself. Outside
+# an empty model-mappings/ the test populates itself. Outside
 # artifacts/ and model-mappings/ (D10): no tier discovery, no drift guard,
 # and the checker's own default glob never sees it.
 setup_pass3_root() {
   local root="$1"
-  mkdir -p "$root/model-mappings" "$root/scripts/lib"
-  cp "$REPO_DIR/scripts/lib/model-resolve.sh" "$root/scripts/lib/model-resolve.sh"
+  mkdir -p "$root/model-mappings"
 }
 
 # run_case runs the checker against a hermetic CREWRIG_REPO_DIR (issue #1421):
@@ -410,19 +408,9 @@ f="$dir/gemini.yml"
 render_zero_offerings_valid > "$f"
 run_case "zero-offerings mapping conforms" 0 "" "$f"
 
-# --- Exit 2 — yq absent from PATH -----------------------------------------
-# Invoke bash by its resolved absolute path: the child's PATH is what must be
-# yq-less, not bash's own lookup.
-f="$(render_case_file claude)"
-BASH_ABS="$(command -v bash)"
-out="$(PATH=/nonexistent-dir-for-this-test "$BASH_ABS" "$SCRIPT_UNDER_TEST" "$f" 2>&1)"; rc=$?
-if [ "$rc" -eq 2 ]; then
-  echo "PASS  exit 2 — yq absent from PATH"
-  pass=$((pass + 1))
-else
-  echo "FAIL  exit 2 — yq absent from PATH (got exit $rc): $out"
-  fail=$((fail + 1))
-fi
+# The former "exit 2 — yq absent from PATH" case is retired: the TypeScript entry reads YAML itself
+# and has no yq prerequisite (spec 0262 requirement 5; deviation asserted in
+# scripts/tests/model-ci-tooling-model-mappings-d.test.ts).
 
 echo ""
 echo "=== Section 1b — org channel classification and org-only assertions (spec 0199, plan steps 2, 7, 8) ==="

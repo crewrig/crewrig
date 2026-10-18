@@ -258,19 +258,9 @@ else
   fail=$((fail + 1))
 fi
 
-echo ""
-echo "=== Section 3 — exit 2, yq absent from PATH ==="
-
-f="$(render_case_file probe)"
-BASH_ABS="$(command -v bash)"
-out="$(PATH=/nonexistent-dir-for-this-test "$BASH_ABS" "$SCRIPT_UNDER_TEST" "$f" 2>&1)"; rc=$?
-if [ "$rc" -eq 2 ]; then
-  echo "PASS  exit 2 — yq absent from PATH"
-  pass=$((pass + 1))
-else
-  echo "FAIL  exit 2 — yq absent from PATH (got exit $rc): $out"
-  fail=$((fail + 1))
-fi
+# The former "exit 2 — yq absent from PATH" case is retired: the TypeScript entry reads YAML itself
+# and has no yq prerequisite (spec 0262 requirement 5; deviation asserted in
+# scripts/tests/model-ci-tooling-agent-profiles.test.ts).
 
 echo ""
 echo "Results: $pass passed, $fail failed"

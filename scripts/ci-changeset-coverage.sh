@@ -1,73 +1,23 @@
-#!/usr/bin/env bash
-# ci-changeset-coverage.sh — Exhaustive run of every changeset-gated check
-# (spec 0147 delta-01 R21).
+#!/bin/bash
+# ci-changeset-coverage.sh — forwarding shim (spec 0262 requirement 16). The check is
+# scripts/ci-changeset-coverage.ts; this file remains so every caller that still runs
+# `bash scripts/ci-changeset-coverage.sh` reaches the TypeScript version until the shell files are retired.
 #
-# The monolithic `check-components` job was split into focused, changeset-gated
-# capabilities, each with a `paths:` filter (spec 0147 R1-R4). A pull request
-# runs only the capabilities whose `paths:` it touches; the static
-# `path-ownership` check (scripts/check-path-ownership.ts) guarantees that every
-# tracked file is owned by one of them or carries a reasoned exemption.
+# It runs the Node.js floor guard (scripts/lib/node-floor-guard.js), then the TypeScript entry
+# with every argument and its standard input, and returns the entry's exit status, standard
+# output and standard error unchanged. It fails closed: with `node` absent it writes one
+# `Error:` line and exits 1; below the floor it exits with the floor guard's status and
+# diagnostic, and the entry is not run.
 #
-# This script is the net underneath that guarantee. It has NO diff and NO base
-# ref: it reads the capabilities marked `changeset-gated: true` from
-# ci/ci-capabilities.yml (via yq — never hardcoded, to avoid drift) and runs
-# EVERY command of every one of them, unconditionally, in reference order. It
-# is triggered `scheduled` (daily) and `manual` — never on a pull request or a
-# push (see the `changeset-coverage` capability and
-# .github/workflows/changeset-coverage.yml).
-#
-# Exit status: 0 when every command passed; 1 when any command failed (the
-# remaining commands still run, so one run reports every failure); 2 when yq or
-# the reference is missing.
-#
-# Stray scan (spec 0170 delta-01): every registered suite command in the
-# reference is declared as
-# `bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/<suite>`.
-# This script `eval`s each reference command as written, so the exhaustive run
-# scans every suite for strays through its wrapped command, with no code here.
-# scripts/check-test-strays.sh executes no suite and only runs `bash -n`, so
-# there is nothing diff-scoped left to cover. The run executes every gated
-# command; it does not make each command itself exhaustive.
-#
-# The changeset-coverage job carries python@3.12 + node@24 + yq, which satisfies
-# every changeset-gated group's `requires` (a node@22 capability is therefore
-# never changeset-gated).
-#
-# Prerequisites: yq (mikefarah v4).
+# Usage: bash scripts/ci-changeset-coverage.sh [<arguments of scripts/ci-changeset-coverage.ts> ...]
 
-set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
-command -v yq >/dev/null 2>&1 || {
-  echo "Error: yq is required. Install with: brew install yq" >&2
-  exit 2
-}
-
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_DIR="${REPO_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
-REFERENCE="$REPO_DIR/ci/ci-capabilities.yml"
-
-if [ ! -f "$REFERENCE" ]; then
-  echo "Error: CI reference not found: $REFERENCE" >&2
-  exit 2
-fi
-
-# --- Run the full check suite ----------------------------------------------
-# All commands from the changeset-gated capabilities, in reference order.
-failures=0
-while IFS= read -r id; do
-  [ -z "$id" ] && continue
-  while IFS= read -r cmd; do
-    [ -z "$cmd" ] && continue
-    echo "ci-changeset-coverage: running [$id] $cmd"
-    if ! ( cd "$REPO_DIR" && eval "$cmd" ); then
-      echo "ci-changeset-coverage: FAILED [$id] $cmd" >&2
-      failures=$((failures + 1))
-    fi
-  done < <(yq -r ".capabilities[] | select(.id == \"$id\" and .changeset-gated == true) | .command[]" "$REFERENCE")
-done < <(yq -r '.capabilities[] | select(.changeset-gated == true) | .id' "$REFERENCE")
-
-if [ "$failures" -gt 0 ]; then
-  echo "ci-changeset-coverage: $failures command(s) failed in the exhaustive run." >&2
+if ! command -v node >/dev/null 2>&1; then
+  echo "Error: node was not found on PATH; ci-changeset-coverage needs Node.js 24 or later (https://nodejs.org/en/download)." >&2
   exit 1
 fi
-echo "ci-changeset-coverage: exhaustive run passed."
+
+node "$DIR/lib/node-floor-guard.js" || exit $?
+
+exec node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$DIR/ci-changeset-coverage.ts" "$@"

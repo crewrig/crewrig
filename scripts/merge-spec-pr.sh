@@ -1,38 +1,23 @@
-#!/usr/bin/env bash
-# scripts/merge-spec-pr.sh — exclusive merge mechanism for spec-PRs.
+#!/bin/bash
+# merge-spec-pr.sh — forwarding shim (spec 0262 requirement 16). The check is
+# scripts/merge-spec-pr.ts; this file remains so every caller that still runs
+# `bash scripts/merge-spec-pr.sh` reaches the TypeScript version until the shell files are retired.
+#
+# It runs the Node.js floor guard (scripts/lib/node-floor-guard.js), then the TypeScript entry
+# with every argument and its standard input, and returns the entry's exit status, standard
+# output and standard error unchanged. It fails closed: with `node` absent it writes one
+# `Error:` line and exits 1; below the floor it exits with the floor guard's status and
+# diagnostic, and the entry is not run.
+#
+# Usage: bash scripts/merge-spec-pr.sh [<arguments of scripts/merge-spec-pr.ts> ...]
 
-set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
-cd "$REPO_ROOT"
-
-if [ -f "scripts/lib/common.sh" ]; then
-  . scripts/lib/common.sh
+if ! command -v node >/dev/null 2>&1; then
+  echo "Error: node was not found on PATH; merge-spec-pr needs Node.js 24 or later (https://nodejs.org/en/download)." >&2
+  exit 1
 fi
 
-BRANCH_NAME="$(git branch --show-current)"
+node "$DIR/lib/node-floor-guard.js" || exit $?
 
-if [[ "$BRANCH_NAME" != spec/* ]]; then
-    echo "  Not on a spec/ branch. Delegating to gh pr merge."
-    exec gh pr merge --squash "$@"
-fi
-
-SPEC_SLUG="${BRANCH_NAME#spec/}"
-SPEC_SLUG="$(echo "$SPEC_SLUG" | sed 's/-delta-\([0-9][0-9]*\)$/.delta-\1/')"
-SPEC_FILE="specs/${SPEC_SLUG}.md"
-
-if [ ! -f "$SPEC_FILE" ]; then
-    echo "  WARNING: Spec file $SPEC_FILE not found on branch $BRANCH_NAME. Delegating to gh pr merge."
-    exec gh pr merge --squash "$@"
-fi
-
-STATUS=$(awk '/^---$/{ c++ } c==1 && /^status:/{ print $2; exit }' "$SPEC_FILE")
-
-if [ "$STATUS" = "draft" ]; then
-    echo "ERROR: Spec file $SPEC_FILE has 'status: draft' in its frontmatter." >&2
-    echo "       A draft spec cannot be merged. Please approve it first." >&2
-    exit 1
-fi
-
-echo "  Spec file $SPEC_FILE is not draft. Delegating to gh pr merge."
-exec gh pr merge --squash "$@"
+exec node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON "$DIR/merge-spec-pr.ts" "$@"
