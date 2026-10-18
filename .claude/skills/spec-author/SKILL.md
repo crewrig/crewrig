@@ -95,8 +95,7 @@ audits after the fact via the spec PR.
 ## Finding class taxonomy
 
 This skill participates in the retroactive review loop on both ends
-(per [`specs/0005-retroactive-routing-engine.md`](../../../specs/0005-retroactive-routing-engine.md)
-R2, R6 and [`docs/retroactive-loop.md`](../../../docs/retroactive-loop.md)
+(per [`docs/retroactive-loop.md`](../../../docs/retroactive-loop.md)
 → *Routing matrix*):
 
 - **As reviewer.** When the skill reviews a spec-PR (originating or

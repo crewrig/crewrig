@@ -11,7 +11,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.7"
+    version: "1.1.8"
 claude:
   allowed-tools:
     - Read
@@ -138,8 +138,7 @@ independent — serialize them.
 
 When re-spawned as the DEV target of a `tech`-class iteration of the
 retroactive review loop (per
-[`specs/0005-retroactive-routing-engine.md`](../../../../specs/0005-retroactive-routing-engine.md)
-R2 and [`docs/retroactive-loop.md`](../../../../docs/retroactive-loop.md)
+[`docs/retroactive-loop.md`](../../../../docs/retroactive-loop.md)
 → *Routing matrix*), the brief carries reviewer findings each
 tagged with a `class:` field. The skill SHALL act on findings whose
 `class:` is `tech` and SHALL surface a violation back to the

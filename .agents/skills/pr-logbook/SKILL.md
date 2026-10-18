@@ -7,7 +7,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.3.3"
+    version: "1.3.4"
 ---
 
 
@@ -235,10 +235,9 @@ when this skill is the only contract you have loaded.
 
 ## Grounding discipline
 
-PR bodies, logbook entries, and squash commit messages compose under
-narrative pressure — the temptation is to produce a fluent paragraph that
-*sounds* like a faithful summary. Plausible-sounding detail is the failure
-mode, not vague writing.
+The generic rationale is in
+[`artifacts/core/skills/architect/SKILL.md`](../architect/SKILL.md) →
+*Grounding discipline*; the rules below are specific to this role.
 
 **Hard rule.** Every technical claim MUST cite a verifiable source — a
 file path with line range, a command output excerpt, or a sentence from
