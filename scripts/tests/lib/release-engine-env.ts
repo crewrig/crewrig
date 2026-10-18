@@ -17,6 +17,7 @@
 //   extensionLine(out, ext)                  the REHEARSAL/PUBLISHED/UNCHANGED/RELEASE-FAILED line
 
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -28,9 +29,25 @@ export const CI_PROJECT_URL = `${CI_SERVER_URL}/${CI_PROJECT_PATH}`;
 export const GITLAB_FORGE_URL = `${CI_PROJECT_URL}.git`;
 
 /** The child PATH: the running Node's directory first, then the system directories. */
-export function cleanPath(): string {
+export function cleanPath(stubDir?: string): string {
   const system = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"];
-  return [path.dirname(process.execPath), ...system].join(path.delimiter);
+  const front = stubDir === undefined ? [] : [stubDir];
+  return [...front, path.dirname(process.execPath), ...system].join(path.delimiter);
+}
+
+/** A directory under `home` (a mkdtemp path of the caller) holding refusing `gh` and `glab`, so a real forge CLI of the host is never reachable. */
+function forgeStubDir(home: string): string {
+  const dir = path.join(home, ".forge-refuse-bin");
+  fs.mkdirSync(dir, { recursive: true });
+  for (const name of ["gh", "glab"]) {
+    const file = path.join(dir, name);
+    fs.writeFileSync(
+      file,
+      '#!/bin/sh\necho "stub ' + name + ': no real forge CLI in a test" >&2\nexit 97\n',
+      { mode: 0o755 },
+    );
+  }
+  return dir;
 }
 
 /** A complete child environment; an `undefined` value in `extra` removes the variable. */
@@ -40,7 +57,7 @@ export function cleanEnv(
   extra: Readonly<Record<string, string | undefined>> = {},
 ): Record<string, string> {
   const env: Record<string, string> = {
-    PATH: cleanPath(),
+    PATH: cleanPath(forgeStubDir(home)),
     HOME: home,
     LC_ALL: "C",
     GIT_CONFIG_GLOBAL: gitconfig ?? os.devNull,
