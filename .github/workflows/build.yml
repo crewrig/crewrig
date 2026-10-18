@@ -1957,7 +1957,6 @@ jobs:
               - 'scripts/tests/lib/governance-*.ts'
               - 'scripts/check-gemini-overlay-enrollment.sh'
               - 'scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts'
-              - 'scripts/tests/lib/governance-*.ts'
               - 'scripts/tests/lib/build-fixture-tree.ts'
               - 'scripts/tests/test-check-bash32-portability.sh'
               - 'scripts/check-pipefail-grep.sh'
