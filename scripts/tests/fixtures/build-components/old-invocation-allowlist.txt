@@ -13,6 +13,10 @@ scripts/build-components.sh
 scripts/lib/common.sh
 scripts/lib/component-resolve.sh
 
+# Spec 0262 R17: the golden record of the component-resolve shell leg holds the shell's own
+# diagnostics, which name the invocation; it outlives the library it was recorded from.
+scripts/tests/fixtures/component-resolve-oracle/component-twins.json.golden
+
 # Spec 0256: the setup scripts became forwarding shims of the TypeScript entries; the TypeScript
 # setup modules reproduce, byte for byte, the hint the shell printed ("run bash
 # scripts/build-components.sh first"), because the build shim stays until its own row.
