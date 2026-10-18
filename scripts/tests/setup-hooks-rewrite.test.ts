@@ -96,7 +96,7 @@ describe("the rewrite", { skip: SKIP }, () => {
         spawn,
         unusedCopy: copy,
       });
-      assert.deepEqual(res, { guard: 0, transcript: 0 });
+      assert.deepEqual(res, { guard: 0, transcript: 0, usage: 0 });
       assert.equal(fs.statSync(b).mode & 0o777, 0o600);
       const tsOut = norm(run.out.join("\n"), b);
       assert.ok(tsOut.some((l) => l.includes("No longer used (left on disk)")));
@@ -132,14 +132,22 @@ describe("below the floor, with nothing registered, with a broken file", () => {
       settingsPath: b,
       spawn: below,
     });
-    assert.deepEqual(res, { guard: 1, transcript: 1 });
+    assert.deepEqual(res, { guard: 1, transcript: 1, usage: 0 });
     assert.equal(read(b), before);
-    assert.deepEqual(run.err, [
+    // R7 (spec 0268): each stale entry is listed after the generic line, by hook name and event.
+    const kept = run.err.filter((l) => !l.includes(": stale "));
+    assert.deepEqual(kept, [
       FLOOR_LINE,
       "  Installed worktree git guard command left as it is.",
       FLOOR_LINE,
       "  Installed session-recording commands left as they are.",
     ]);
+    assert.ok(
+      run.err.some((l) => l.includes("Worktree git guard: stale") && l.includes(" on Stop")),
+    );
+    assert.ok(
+      run.err.some((l) => l.includes("Session recording: stale") && l.includes(" on Stop")),
+    );
   });
   test("a file naming neither hook needs no Node.js: nothing is spawned", () => {
     const { co, b } = pair("gemini", () => ({ ui: { theme: "dark" } }));
@@ -156,7 +164,7 @@ describe("below the floor, with nothing registered, with a broken file", () => {
       spawn,
       unusedCopy: "",
     });
-    assert.deepEqual(res, { guard: 0, transcript: 0 });
+    assert.deepEqual(res, { guard: 0, transcript: 0, usage: 0 });
     assert.deepEqual([calls, run.out, run.err], [[], [], []]);
   });
   test("an absent file is a no-op", () => {
@@ -168,7 +176,7 @@ describe("below the floor, with nothing registered, with a broken file", () => {
       settingsPath: missing,
       spawn: below,
     });
-    assert.deepEqual(res, { guard: 0, transcript: 0 });
+    assert.deepEqual(res, { guard: 0, transcript: 0, usage: 0 });
     assert.equal(fs.existsSync(missing), false);
   });
   test("a file that is not a JSON object names the file, changes nothing and returns a status", () => {
@@ -182,7 +190,7 @@ describe("below the floor, with nothing registered, with a broken file", () => {
       spawn: () => OK,
       unusedCopy: "",
     });
-    assert.deepEqual(res, { guard: 1, transcript: 1 });
+    assert.deepEqual(res, { guard: 1, transcript: 1, usage: 0 });
     assert.equal(read(b), '["worktree-git-guard", "mempalace-transcript"]\n');
     assert.ok(
       run.err.every((l) => l.includes(b)),

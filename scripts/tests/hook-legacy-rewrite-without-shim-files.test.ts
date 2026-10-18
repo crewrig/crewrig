@@ -141,7 +141,7 @@ describe("setup's installed-hooks step: guard and transcript, per CLI, in a scra
           spawn: () => ({ status: 0, stdout: "", stderr: "" }),
           unusedCopy: "",
         });
-        assert.deepEqual(res, { guard: 0, transcript: 0 });
+        assert.deepEqual(res, { guard: 0, transcript: 0, usage: 0 });
       };
       run();
       const after1 = JSON.parse(fs.readFileSync(settings, "utf8")) as JsonObject;

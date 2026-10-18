@@ -114,6 +114,24 @@ export function keepStatusline(ctx: AgyCtx, spawn: Spawner, paths: AgyPaths): vo
   }
 }
 
+/**
+ * Spec 0268 R1, R2: before any question, bring a framework-installed `statusLine.command` that still
+ * names the removed `.sh` to the direct form. Independent of every answer; a foreign command or an
+ * already direct one is left alone (R5). Below the floor the stale entry is listed (R7).
+ */
+export function migrateInstalledStatusline(ctx: AgyCtx, spawn: Spawner, paths: AgyPaths): void {
+  const { installed, current } = statuslineInstalled(paths);
+  if (!installed || !/\.sh\b/.test(current)) return;
+  if (!requireNodeFloor(ctx, spawn, "usage capture")) {
+    ctx.io.err(`  Usage capture: stale ${current} on statusLine.command (left as it is)`);
+    return;
+  }
+  const target = { ...paths, repo: ctx.repoDir, platform: ctx.platform };
+  if (rewriteStatusline(target, ctx.io.out) !== 0) {
+    ctx.io.err("  Antigravity usage capture rewrite FAILED — setup continues.");
+  }
+}
+
 /** The `yes` answer to the enable question: install only over an empty `statusLine.command` (R20). */
 export function enableStatusline(ctx: AgyCtx, spawn: Spawner, paths: AgyPaths): void {
   const say = ctx.io.out;

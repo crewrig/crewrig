@@ -1,0 +1,63 @@
+{
+  "primary": ".copilot/hooks/copilot-transcript-hooks.json",
+  "files": {
+    ".copilot/hooks/copilot-transcript-hooks.json": {
+      "version": 1,
+      "disableAllHooks": false,
+      "hooks": {
+        "preToolUse": [
+          {
+            "type": "command",
+            "command": "bash \"@REPO@/hooks/worktree-git-guard.sh\""
+          }
+        ],
+        "sessionStart": [
+          {
+            "type": "command",
+            "command": "bash \"@REPO@/hooks/mempalace-transcript.sh\" copilot-cli"
+          }
+        ],
+        "userPromptSubmitted": [
+          {
+            "type": "command",
+            "command": "bash \"@REPO@/hooks/mempalace-transcript.sh\" copilot-cli"
+          }
+        ],
+        "postToolUse": [
+          {
+            "type": "command",
+            "command": "bash \"@REPO@/hooks/mempalace-transcript.sh\" copilot-cli"
+          }
+        ],
+        "agentStop": [
+          {
+            "type": "command",
+            "command": "bash \"@REPO@/hooks/mempalace-transcript.sh\" copilot-cli"
+          },
+          {
+            "type": "command",
+            "command": "node \"@REPO@/hooks/mempalace-transcript.ts\" copilot-cli"
+          },
+          {
+            "type": "command",
+            "command": "bash \"@REPO@/hooks/usage-capture.sh\" copilot-cli agentStop"
+          },
+          {
+            "type": "command",
+            "command": "/opt/other-team/bin/usage-capture-viewer --tail"
+          }
+        ],
+        "sessionEnd": [
+          {
+            "type": "command",
+            "command": "bash \"@REPO@/hooks/mempalace-transcript.sh\" copilot-cli"
+          },
+          {
+            "type": "command",
+            "command": "bash \"@REPO@/hooks/usage-capture.sh\" copilot-cli sessionEnd"
+          }
+        ]
+      }
+    }
+  }
+}

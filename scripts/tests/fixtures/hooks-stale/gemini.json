@@ -1,0 +1,92 @@
+{
+  "primary": ".gemini/settings.json",
+  "files": {
+    ".gemini/settings.json": {
+      "theme": "dark",
+      "hooks": {
+        "BeforeTool": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"@REPO@/hooks/worktree-git-guard.sh\"",
+                "name": "transcript-git-guard"
+              }
+            ]
+          }
+        ],
+        "BeforeAgent": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"@REPO@/hooks/mempalace-transcript.sh\" gemini-cli",
+                "name": "transcript-user-prompt"
+              }
+            ]
+          }
+        ],
+        "AfterTool": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"@REPO@/hooks/mempalace-transcript.sh\" gemini-cli",
+                "name": "transcript-tool-use"
+              }
+            ]
+          }
+        ],
+        "AfterModel": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"@REPO@/hooks/mempalace-transcript.sh\" gemini-cli",
+                "name": "transcript-agent-response"
+              }
+            ]
+          },
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "node \"@REPO@/hooks/mempalace-transcript.ts\" gemini-cli",
+                "name": "transcript-agent-response"
+              }
+            ]
+          },
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"@REPO@/hooks/usage-capture.sh\" gemini-cli AfterModel",
+                "name": "usage-capture-agent-response"
+              }
+            ]
+          },
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "/opt/other-team/bin/usage-capture-viewer --tail",
+                "name": "foreign-viewer"
+              }
+            ]
+          }
+        ],
+        "SessionEnd": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"@REPO@/hooks/mempalace-transcript.sh\" gemini-cli",
+                "name": "transcript-session-end"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

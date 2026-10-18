@@ -1,0 +1,141 @@
+{
+  "primary": ".claude/settings.json",
+  "files": {
+    ".claude/settings.json": {
+      "model": "opus",
+      "env": {
+        "MEMPALACE_TRANSCRIPT_ENABLED": "1"
+      },
+      "permissions": {
+        "allow": ["Bash(git status)"]
+      },
+      "hooks": {
+        "PreToolUse": [
+          {
+            "matcher": "Bash",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"@REPO@/hooks/worktree-git-guard.sh\""
+              }
+            ]
+          },
+          {
+            "matcher": "*",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "if [ -z \"${ORCA_AGENT_HOOK_PORT-}\" ]; then exit 0; fi; \"${HOME}/.orca/agent-hooks/claude-hook.sh\""
+              }
+            ]
+          }
+        ],
+        "UserPromptSubmit": [
+          {
+            "matcher": "",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"@HOME@/.claude/hooks/mempalace-transcript.sh\""
+              }
+            ]
+          },
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "if [ -z \"${ORCA_AGENT_HOOK_PORT-}\" ]; then exit 0; fi; \"${HOME}/.orca/agent-hooks/claude-hook.sh\""
+              }
+            ]
+          }
+        ],
+        "PostToolUse": [
+          {
+            "matcher": "",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"@HOME@/.claude/hooks/mempalace-transcript.sh\""
+              }
+            ]
+          }
+        ],
+        "Stop": [
+          {
+            "matcher": "",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"@HOME@/.claude/hooks/mempalace-transcript.sh\" claude-code"
+              }
+            ]
+          },
+          {
+            "matcher": "",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"@REPO@/hooks/usage-capture.sh\" claude-code Stop"
+              }
+            ]
+          },
+          {
+            "matcher": "",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "node \"@REPO@/hooks/usage-capture.ts\" claude-code Stop"
+              }
+            ]
+          },
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "if [ -z \"${ORCA_AGENT_HOOK_PORT-}\" ]; then exit 0; fi; \"${HOME}/.orca/agent-hooks/claude-hook.sh\""
+              }
+            ]
+          },
+          {
+            "matcher": "",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "/opt/other-team/bin/usage-capture-viewer --tail"
+              }
+            ]
+          }
+        ],
+        "SessionEnd": [
+          {
+            "matcher": "",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"@HOME@/.claude/hooks/mempalace-transcript.sh\" claude-code"
+              }
+            ]
+          },
+          {
+            "matcher": "",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"@REPO@/hooks/usage-capture.sh\" claude-code SessionEnd"
+              }
+            ]
+          },
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "if [ -z \"${ORCA_AGENT_HOOK_PORT-}\" ]; then exit 0; fi; \"${HOME}/.orca/agent-hooks/claude-hook.sh\""
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "userCopies": [".claude/hooks/mempalace-transcript.sh"]
+}

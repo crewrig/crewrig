@@ -26,6 +26,7 @@ import {
   USAGE_CAPTURE_DISABLED,
   enableStatusline,
   keepStatusline,
+  migrateInstalledStatusline,
   removeStatusline,
   statuslineInstalled,
   statuslineInstalledNotice,
@@ -34,6 +35,7 @@ import { migrateSupersededPlacement } from "./antigravity-tier.ts";
 import type { Io, SetupCtx } from "./context.ts";
 import type { StepFn, StepRegistry } from "./descriptor.ts";
 import { SetupExit } from "./exit.ts";
+import { reportUnreadableHooksFile } from "./hooks-rewrite.ts";
 import { failClosed } from "./steps.ts";
 
 type PrepareFn = (env: Parameters<StepFn>[0]) => Promise<void> | void;
@@ -65,7 +67,10 @@ const migrateSuperseded: StepFn = async ({ ctx, state }) => {
 
 /** The per-run rewrites of an installed guard and transcript registration, no leading blank line. */
 export const agyHooksRewriteInstalled: StepFn = async ({ ctx, spawn }) => {
-  rewriteInstalledAntigravityHooks(ctx, spawn, agyPaths(ctx));
+  const paths = agyPaths(ctx);
+  reportUnreadableHooksFile(ctx, paths.hooksJson);
+  rewriteInstalledAntigravityHooks(ctx, spawn, paths);
+  migrateInstalledStatusline(ctx, spawn, paths);
 };
 
 /**

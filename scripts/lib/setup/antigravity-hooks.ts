@@ -6,6 +6,7 @@
 // (hook-guard-manifest.ts, hook-transcript-manifest.ts, hook-antigravity-transcript.ts,
 // hook-antigravity-write.ts); the only child process is the Node.js floor guard, through the
 // injected `Spawner`. Messages are the shell's, byte for byte.
+import { reportStaleEntries } from "./hooks-rewrite.ts";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -260,11 +261,7 @@ export function applyTranscriptHooks(ctx: AgyCtx, spawn: Spawner, paths: AgyPath
   return result.ok;
 }
 
-/**
- * The two per-run rewrites of an installed registration (guard, then transcript) and the notice
- * about the unused shell copy: `guard_rewrite_installed`, `transcript_rewrite_installed`,
- * `report_unused_transcript_copy` for `antigravity`. Neither fails the run.
- */
+/** Per-run guard and transcript rewrites plus the unused-copy notice; none fails the run. */
 export function rewriteInstalledAntigravityHooks(
   ctx: AgyCtx,
   spawn: Spawner,
@@ -278,6 +275,7 @@ export function rewriteInstalledAntigravityHooks(
       rewriteAntigravityGuardFile(hooksJson, { platform: ctx.platform }, ctx.io.out, ctx.io.err);
     } else {
       ctx.io.err("  Installed worktree git guard command left as it is.");
+      reportStaleEntries(ctx, hooksJson, "worktree-git-guard", "Worktree git guard");
     }
   }
   if (mentions("mempalace-transcript")) {
@@ -290,6 +288,7 @@ export function rewriteInstalledAntigravityHooks(
       );
     } else {
       ctx.io.err("  Installed session-recording commands left as they are.");
+      reportStaleEntries(ctx, hooksJson, "mempalace-transcript", "Session recording");
     }
   }
   const copy = path.join(paths.agyHome, "hooks", "mempalace-transcript.sh");

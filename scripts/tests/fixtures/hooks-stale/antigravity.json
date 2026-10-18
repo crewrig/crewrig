@@ -1,0 +1,55 @@
+{
+  "primary": ".gemini/config/hooks.json",
+  "files": {
+    ".gemini/config/hooks.json": {
+      "crewrig-mempalace-transcript": {
+        "Stop": [
+          {
+            "type": "command",
+            "command": "bash \"@REPO@/hooks/mempalace-transcript.sh\" antigravity-cli Stop",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"@REPO@/hooks/mempalace-transcript.ts\" antigravity-cli Stop",
+            "timeout": 10
+          }
+        ]
+      },
+      "crewrig-worktree-git-guard": {
+        "PreToolUse": [
+          {
+            "matcher": "run_command",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "bash \"@REPO@/hooks/worktree-git-guard.sh\"",
+                "timeout": 5
+              }
+            ]
+          }
+        ]
+      },
+      "foreign-usage-capture-report": {
+        "Stop": [
+          {
+            "type": "command",
+            "command": "/opt/other-team/bin/usage-capture-viewer --tail"
+          }
+        ]
+      }
+    },
+    ".gemini/antigravity-cli/settings.json": {
+      "statusLine": {
+        "type": "command",
+        "command": "bash \"@REPO@/hooks/antigravity-statusline-shim.sh\""
+      },
+      "other": 1
+    },
+    ".crewrig/usage/state/antigravity-statusline.json": {
+      "installedBy": "crewrig-setup-antigravity-interactive",
+      "installedStatusLineCommand": "bash \"@REPO@/hooks/antigravity-statusline-shim.sh\"",
+      "priorStatusLineCommand": ""
+    }
+  }
+}

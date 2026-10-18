@@ -25,6 +25,8 @@ import { transcriptCommand } from "../hook-transcript-cli.ts";
 import type { Cli, InstallCtx, Spawner } from "./context.ts";
 import { reportIfLossy } from "./lossless.ts";
 import { createSpawner } from "./spawner.ts";
+import { usageCaptureRewrite } from "./usage-capture.ts";
+import { usageCaptureKeep } from "./usage-capture-keep.ts";
 
 /** What the hook steps read from the setup context. */
 export type HooksCtx = Pick<InstallCtx, "io" | "env" | "platform" | "home" | "repoDir">;
@@ -56,6 +58,60 @@ export function requireNodeFloor(ctx: HooksCtx, spawn: Spawner, guard = FLOOR_GU
     return false;
   }
   return true;
+}
+
+/**
+ * R7: the entries of `file` whose command names `needle` and still end in the removed `.sh`, read
+ * only (no write), as `<label>: stale <path> on <event>` lines on standard error.
+ */
+export function reportStaleEntries(
+  ctx: Pick<HooksCtx, "io">,
+  file: string,
+  needle: string,
+  label: string,
+): void {
+  let doc: JsonObject | null;
+  try {
+    doc = readJsonObject(file);
+  } catch {
+    return;
+  }
+  const wrapped = doc?.["hooks"];
+  // Antigravity's hooks.json has no `hooks` wrapper: `{ <hook id>: { <event>: [...] } }`.
+  const byEvent: [string, unknown][] =
+    typeof wrapped === "object" && wrapped !== null
+      ? Object.entries(wrapped as Record<string, unknown>)
+      : Object.values(doc ?? {}).flatMap((entry) =>
+          typeof entry === "object" && entry !== null && !Array.isArray(entry)
+            ? Object.entries(entry as Record<string, unknown>)
+            : [],
+        );
+  for (const [event, groups] of byEvent) {
+    const walk = (node: unknown): void => {
+      if (Array.isArray(node)) node.forEach(walk);
+      else if (typeof node === "object" && node !== null) {
+        const rec = node as Record<string, unknown>;
+        for (const key of ["command", "bash", "powershell"]) {
+          const cmd = rec[key];
+          if (typeof cmd === "string" && cmd.includes(needle) && /\.sh\b/.test(cmd)) {
+            ctx.io.err(`  ${label}: stale ${cmd} on ${event} (left as it is)`);
+          }
+        }
+        Object.values(rec).forEach(walk);
+      }
+    };
+    walk(groups);
+  }
+}
+
+/** R6: a hook file that is not one JSON object is named and left as it is, whatever it holds. */
+export function reportUnreadableHooksFile(ctx: Pick<HooksCtx, "io">, file: string): void {
+  try {
+    readJsonObject(file);
+  } catch (error) {
+    if (!(error instanceof NotAJsonObjectError)) throw error;
+    ctx.io.err(`  ERROR: ${file} is not a JSON object; its hook entries are left as they are.`);
+  }
 }
 
 /** `hook-wiring.ts guard rewrite <cli> --config <path>` for claude, gemini and copilot. */
@@ -134,6 +190,7 @@ export function rewriteInstalledGuard(options: RewriteStepOptions): number {
   const spawn = options.spawn ?? createSpawner(ctx);
   if (!requireNodeFloor(ctx, spawn, options.floorGuard)) {
     ctx.io.err("  Installed worktree git guard command left as it is.");
+    reportStaleEntries(ctx, settingsPath, "worktree-git-guard", "Worktree git guard");
     return 1;
   }
   const { out, err } = ctx.io;
@@ -152,6 +209,7 @@ export function rewriteInstalledTranscript(options: RewriteStepOptions): number 
   const spawn = options.spawn ?? createSpawner(ctx);
   if (!requireNodeFloor(ctx, spawn, options.floorGuard)) {
     ctx.io.err("  Installed session-recording commands left as they are.");
+    reportStaleEntries(ctx, settingsPath, "mempalace-transcript", "Session recording");
     return 1;
   }
   const action = cli === "antigravity" ? "antigravity-rewrite" : "rewrite";
@@ -165,6 +223,32 @@ export function rewriteInstalledTranscript(options: RewriteStepOptions): number 
       err: ctx.io.err,
     }),
   );
+}
+
+/**
+ * Usage capture of the three hook-file CLIs, brought to the direct form before any question and
+ * whatever the answers (spec 0268 R1, R2): the existing keep (dedupe, re-point) then the rewrite.
+ * 0 done (also nothing to do), 1 below the floor or failed. An explicit `remove` later still
+ * recognises the direct form.
+ */
+export function rewriteInstalledUsageCapture(options: RewriteStepOptions): number {
+  const { ctx, cli, settingsPath } = options;
+  if (cli === "antigravity") return 0;
+  if (!fs.existsSync(settingsPath) || !fs.statSync(settingsPath).isFile()) return 0;
+  if (!fs.readFileSync(settingsPath, "latin1").includes("usage-capture")) return 0;
+  const spawn = options.spawn ?? createSpawner(ctx);
+  const deps = {
+    spawn,
+    ...(options.floorGuard === undefined ? {} : { floorGuard: options.floorGuard }),
+  };
+  const repoDir = options.repoDir ?? ctx.repoDir;
+  const uc = { ctx, cli, settingsPath, repoDir, deps };
+  if (!requireNodeFloor(ctx, spawn, options.floorGuard)) {
+    ctx.io.err("  Installed usage-capture commands left as they are.");
+    reportStaleEntries(ctx, settingsPath, "usage-capture", "Usage capture");
+    return 1;
+  }
+  return guarded(ctx, () => (usageCaptureKeep(uc) !== 0 ? 1 : usageCaptureRewrite(uc)));
 }
 
 /** `report_unused_transcript_copy`: the copy of the shell hook an earlier setup installed is left on disk. */
@@ -185,6 +269,7 @@ export function cliHome(ctx: Pick<HooksCtx, "home">, cli: Cli): string {
 export interface RewriteInstalledResult {
   readonly guard: number;
   readonly transcript: number;
+  readonly usage: number;
 }
 
 /**
@@ -194,11 +279,13 @@ export interface RewriteInstalledResult {
 export function rewriteInstalledHooks(
   options: RewriteStepOptions & { readonly unusedCopy?: string },
 ): RewriteInstalledResult {
+  reportUnreadableHooksFile(options.ctx, options.settingsPath);
   const guard = rewriteInstalledGuard(options);
   const transcript = rewriteInstalledTranscript(options);
+  const usage = rewriteInstalledUsageCapture(options);
   const copy =
     options.unusedCopy ??
     path.join(cliHome(options.ctx, options.cli), "hooks", "mempalace-transcript.sh");
   reportUnusedTranscriptCopy(options.ctx, copy);
-  return { guard, transcript };
+  return { guard, transcript, usage };
 }
