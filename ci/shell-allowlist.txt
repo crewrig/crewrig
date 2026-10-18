@@ -83,9 +83,6 @@ scripts/stop-mcp-server.sh
 scripts/sweep-en-us.sh
 scripts/switch-mempalace-http.sh
 scripts/sync-from-upstream.sh
-scripts/tests/test-check-ci-parity.sh
-scripts/tests/test-check-spec-id-reserved.sh
-scripts/tests/test-reserve-spec-id.sh
 scripts/uninstall-mcp-daemon.sh
 scripts/unlink-component.sh
 scripts/unlink-extensions.sh

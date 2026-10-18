@@ -1,6 +1,6 @@
 // model-ci-tooling-ci-parity.test.ts — TS-only assertions of scripts/check-ci-parity.ts (spec 0262
 // req 9, 24): exit statuses and diagnostics on scratch fixtures. The shell-versus-TypeScript
-// comparison was retired with the switch; scripts/tests/test-check-ci-parity.sh runs through the shim.
+// comparison was retired with the switch; scripts/tests/ci-parity-*.test.ts cover the entry.
 // Fixtures are copies in mkdtemp directories; the test deletes only those.
 
 import assert from "node:assert/strict";

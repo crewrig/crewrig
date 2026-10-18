@@ -2061,7 +2061,15 @@ capabilities:
           - "scripts/build-ci.sh"
           - "scripts/ci-cache-guard.sh"
           - "scripts/ci-changeset-coverage.sh"
-          - "scripts/tests/test-check-ci-parity.sh"
+          - "scripts/tests/ci-parity-positive.test.ts"
+          - "scripts/tests/ci-parity-fail-closed.test.ts"
+          - "scripts/tests/ci-parity-stray-scan.test.ts"
+          - "scripts/tests/ci-parity-path-filters.test.ts"
+          - "scripts/tests/ci-parity-path-filters-undet.test.ts"
+          - "scripts/tests/lib/ci-parity-fixture.ts"
+          - "scripts/tests/lib/ci-parity-blocks.ts"
+          - "scripts/tests/lib/ci-parity-matrix.ts"
+          - "scripts/tests/lib/yaml-lib.ts"
           - "scripts/tests/build-ci-real-tree.test.ts"
           - "scripts/tests/build-ci-synthetic.test.ts"
           - "scripts/tests/build-ci-synthetic-write.test.ts"
@@ -2077,7 +2085,15 @@ capabilities:
           - "scripts/build-ci.sh"
           - "scripts/ci-cache-guard.sh"
           - "scripts/ci-changeset-coverage.sh"
-          - "scripts/tests/test-check-ci-parity.sh"
+          - "scripts/tests/ci-parity-positive.test.ts"
+          - "scripts/tests/ci-parity-fail-closed.test.ts"
+          - "scripts/tests/ci-parity-stray-scan.test.ts"
+          - "scripts/tests/ci-parity-path-filters.test.ts"
+          - "scripts/tests/ci-parity-path-filters-undet.test.ts"
+          - "scripts/tests/lib/ci-parity-fixture.ts"
+          - "scripts/tests/lib/ci-parity-blocks.ts"
+          - "scripts/tests/lib/ci-parity-matrix.ts"
+          - "scripts/tests/lib/yaml-lib.ts"
           - "scripts/tests/build-ci-real-tree.test.ts"
           - "scripts/tests/build-ci-synthetic.test.ts"
           - "scripts/tests/build-ci-synthetic-write.test.ts"
@@ -2097,7 +2113,15 @@ capabilities:
         - "scripts/build-ci.sh"
         - "scripts/ci-cache-guard.sh"
         - "scripts/ci-changeset-coverage.sh"
-        - "scripts/tests/test-check-ci-parity.sh"
+        - "scripts/tests/ci-parity-positive.test.ts"
+        - "scripts/tests/ci-parity-fail-closed.test.ts"
+        - "scripts/tests/ci-parity-stray-scan.test.ts"
+        - "scripts/tests/ci-parity-path-filters.test.ts"
+        - "scripts/tests/ci-parity-path-filters-undet.test.ts"
+        - "scripts/tests/lib/ci-parity-fixture.ts"
+        - "scripts/tests/lib/ci-parity-blocks.ts"
+        - "scripts/tests/lib/ci-parity-matrix.ts"
+        - "scripts/tests/lib/yaml-lib.ts"
         - "scripts/tests/build-ci-real-tree.test.ts"
         - "scripts/tests/build-ci-synthetic.test.ts"
         - "scripts/tests/build-ci-synthetic-write.test.ts"
@@ -2110,7 +2134,7 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-ci-parity.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-parity-positive.test.ts scripts/tests/ci-parity-fail-closed.test.ts scripts/tests/ci-parity-stray-scan.test.ts scripts/tests/ci-parity-path-filters.test.ts scripts/tests/ci-parity-path-filters-undet.test.ts
       - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-ci-real-tree.test.ts scripts/tests/build-ci-synthetic.test.ts scripts/tests/build-ci-synthetic-write.test.ts
 
   - id: docs-index
@@ -2669,8 +2693,19 @@ capabilities:
           - "scripts/check-gemini-overlay-enrollment.sh"
           - "scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts"
           - "scripts/tests/lib/build-fixture-tree.ts"
-          - "scripts/tests/test-reserve-spec-id.sh"
-          - "scripts/tests/test-check-spec-id-reserved.sh"
+          - "scripts/tests/reserve-spec-id-contract.test.ts"
+          - "scripts/tests/reserve-spec-id-carrier-reuse.test.ts"
+          - "scripts/tests/reserve-spec-id-races.test.ts"
+          - "scripts/tests/check-spec-id-reserved-blocking.test.ts"
+          - "scripts/tests/check-spec-id-reserved-mark.test.ts"
+          - "scripts/tests/check-spec-id-reserved-origin.test.ts"
+          - "scripts/tests/check-spec-id-reserved-degraded.test.ts"
+          - "scripts/tests/check-spec-id-reserved-base-ref.test.ts"
+          - "scripts/tests/lib/reserve-spec-id-fixture.ts"
+          - "scripts/tests/lib/spec-id-fixture.ts"
+          - "scripts/tests/lib/spec-id-constants.ts"
+          - "scripts/tests/lib/scratch-remote.ts"
+          - "scripts/tests/lib/differential-guard.ts"
           - "scripts/reserve-spec-id.sh"
           - "scripts/check-spec-id-reserved.sh"
           - "model-mappings/**"
@@ -2692,8 +2727,19 @@ capabilities:
           - "scripts/check-gemini-overlay-enrollment.sh"
           - "scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts"
           - "scripts/tests/lib/build-fixture-tree.ts"
-          - "scripts/tests/test-reserve-spec-id.sh"
-          - "scripts/tests/test-check-spec-id-reserved.sh"
+          - "scripts/tests/reserve-spec-id-contract.test.ts"
+          - "scripts/tests/reserve-spec-id-carrier-reuse.test.ts"
+          - "scripts/tests/reserve-spec-id-races.test.ts"
+          - "scripts/tests/check-spec-id-reserved-blocking.test.ts"
+          - "scripts/tests/check-spec-id-reserved-mark.test.ts"
+          - "scripts/tests/check-spec-id-reserved-origin.test.ts"
+          - "scripts/tests/check-spec-id-reserved-degraded.test.ts"
+          - "scripts/tests/check-spec-id-reserved-base-ref.test.ts"
+          - "scripts/tests/lib/reserve-spec-id-fixture.ts"
+          - "scripts/tests/lib/spec-id-fixture.ts"
+          - "scripts/tests/lib/spec-id-constants.ts"
+          - "scripts/tests/lib/scratch-remote.ts"
+          - "scripts/tests/lib/differential-guard.ts"
           - "scripts/reserve-spec-id.sh"
           - "scripts/check-spec-id-reserved.sh"
           - "model-mappings/**"
@@ -2725,8 +2771,8 @@ capabilities:
       - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-no-machine-paths.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-gemini-overlay-enrollment.ts
       - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-reserve-spec-id.sh
-      - bash scripts/ci-cache-guard.sh --stray-scan -- bash scripts/tests/test-check-spec-id-reserved.sh
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/reserve-spec-id-contract.test.ts scripts/tests/reserve-spec-id-carrier-reuse.test.ts scripts/tests/reserve-spec-id-races.test.ts
+      - bash scripts/ci-cache-guard.sh --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-spec-id-reserved-blocking.test.ts scripts/tests/check-spec-id-reserved-mark.test.ts scripts/tests/check-spec-id-reserved-origin.test.ts scripts/tests/check-spec-id-reserved-degraded.test.ts scripts/tests/check-spec-id-reserved-base-ref.test.ts
 
   # repository-scan runs the checks whose verdict depends on files anywhere in
   # the repository (spec 0251 R1-R4): check-no-machine-paths.sh scans every
