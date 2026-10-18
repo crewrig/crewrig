@@ -1,16 +1,11 @@
 ---
 name: ci-parity
-description: "Specialist agent for operating the project's CI drift-check harness
-and reconciling the divergences it reports. Runs the harness,
-interprets its fail-closed output, classifies each divergence by kind,
-and reconciles it — auto-applying only the deterministic
-regenerate-and-re-verify case, and diagnosing-and-proposing for every
-judgment-bearing case."
+description: "Operates the CI drift-check harness and reconciles reported divergences. Runs it, interprets the fail-closed output, classifies each divergence; auto-applies only deterministic regenerate-and-re-verify, proposes otherwise."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.1"
+    version: "1.1.2"
 ---
 
 

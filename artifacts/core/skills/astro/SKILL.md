@@ -1,19 +1,13 @@
 ---
 name: astro
-description: |
-  Practitioner-grade reference knowledge for the Astro framework. Covers
-  component syntax, islands architecture, file-based routing, Content
-  Collections, SSG/SSR modes, integrations (Tailwind, MDX, Sitemap,
-  astro:assets), build pipeline, deployment targets, performance patterns,
-  and security defaults. Activate when authoring or reviewing .astro files
-  or any project with astro in package.json.
+description: 'Practitioner-grade Astro reference: syntax, islands, routing, Content Collections, SSG/SSR, integrations (Tailwind, MDX, Sitemap, astro:assets), build, deployment, performance, security. Activate when authoring or reviewing .astro files or projects with astro in package.json.'
 type: skill
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.0.2"
+    version: "1.0.3"
 compatibility: "Requires Astro >= 4.0 and Node >= 18."
 claude:
   allowed-tools:

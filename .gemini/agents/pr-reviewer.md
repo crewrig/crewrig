@@ -1,9 +1,9 @@
 ---
 name: pr-reviewer
-description: "Independent PR reviewer agent. Spawns cold — receives a references-only brief (seat key, PR number, the revision the seat last examined, where its prior verdicts live), never authoring-session context. Activates the pr-reviewer skill to audit the diff, runs linter scripts against changed files, and posts a structured review verdict via the forge CLI (`gh`)."
+description: "Independent PR reviewer. Spawns cold with a references-only brief (seat key, PR number, last examined revision, prior verdicts). Activates the pr-reviewer skill, runs linters on changed files, posts a structured verdict via `gh`."
 model: gemini-3.1-pro-preview
 ---
-<!-- crewrig-provenance: version="1.4.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.4.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # PR Reviewer Agent
 

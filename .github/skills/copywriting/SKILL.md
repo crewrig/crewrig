@@ -1,17 +1,13 @@
 ---
 name: copywriting
-description: "Practitioner-grade reference knowledge for product-oriented web copywriting.
-Covers landing page anatomy, copywriting frameworks (PAS, BAB, AIDA), tone
-calibration, headline patterns, CTA mechanics, microcopy, i18n considerations,
-and SEO-aware writing. Activate when authoring or reviewing page content,
-marketing copy, README prose, or UX microcopy."
+description: "Practitioner-grade web copywriting reference: landing page anatomy, frameworks (PAS, BAB, AIDA), tone, headlines, CTAs, microcopy, i18n, SEO-aware writing. Activate when authoring or reviewing page content, marketing copy, README prose, or UX microcopy."
 license: Apache-2.0
 compatibility: "No runtime prerequisites; this skill is documentation-only."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.2"
+    version: "1.0.3"
 ---
 
 

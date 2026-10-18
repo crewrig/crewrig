@@ -1,14 +1,11 @@
 ---
 name: copywriter
-description: "Content production specialist. Interviews the product brief, produces a
-content outline for review, then writes final page copy (hero, features,
-social proof, CTA). Delivers structured Markdown ready for handoff to
-frontend-developer or astro-developer. Does NOT make layout or visual decisions."
+description: "Content production specialist. Interviews the product brief, outlines for review, then writes final page copy (hero, features, social proof, CTA) as Markdown. Hands off to frontend-developer or astro-developer. No layout decisions."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.0"
+    version: "1.1.1"
 ---
 
 

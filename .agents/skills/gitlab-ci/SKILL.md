@@ -1,21 +1,12 @@
 ---
 name: gitlab-ci
-description: "Deep, practitioner-grade knowledge of GitLab CI/CD for authoring,
-reviewing, hardening, and debugging pipelines. Activate when reading
-or writing a `.gitlab-ci.yml`, when reviewing a CI change in a merge
-request, when designing runners/executors or reusable CI/CD
-Components, or when migrating to GitLab CI from another engine.
-Covers pipeline/stage/job structure, the `rules:`/`workflow:` trigger
-model, runners and executors, caching vs. artifacts, the
-protected/masked variable and secret model, `id_tokens:` OIDC
-federation, and includes/components — plus the security defaults that
-should never be negotiated away."
+description: "Practitioner-grade GitLab CI/CD knowledge: authoring, reviewing, hardening, debugging pipelines. Activate when reading or writing `.gitlab-ci.yml`, reviewing a CI change in a merge request, designing runners or CI/CD Components, or migrating to GitLab CI. Covers `rules:`, caching, OIDC."
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.0"
+    version: "1.1.1"
 ---
 
 

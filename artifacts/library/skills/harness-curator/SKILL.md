@@ -1,14 +1,6 @@
 ---
 name: harness-curator
-description: "Harness feedback-loop curator. Activate on demand to read
-  friction tags from the global harness-friction wing, cluster them, and
-  open one descriptive issue per cluster on the canonical/feedback repos
-  declared in components' provenance blocks. The fix MR lands later
-  (human-authored or via the auto-fix mode tracked in #42). Also supports
-  a `--deep` mode that sweeps `wing=transcripts` with heuristic
-  pre-filtering and emits a Markdown review document for triage. Auto
-  mode (#42) supports scheduled runs via scripts/schedule-curator.ts
-  with dedup and per-run issue cap."
+description: Harness feedback-loop curator. Activate on demand to read friction tags from the harness-friction wing, cluster them, and open one issue per cluster on the canonical/feedback repos in provenance blocks. `--deep` sweeps `wing=transcripts`; auto mode (#42) runs scheduled.
 type: skill
 license: Apache-2.0
 compatibility: Requires Node.js 24 or later, a forge CLI (setup-labels.ts uses gh; --apply selects gh, glab, or tea per the target repository's forge), and the mempalace Python package (pipx install 'mempalace>=3.6.0,<3.7').
@@ -16,7 +8,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "2.0.0"
+    version: "2.0.1"
 claude:
   allowed-tools:
     - Read

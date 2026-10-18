@@ -1,18 +1,13 @@
 ---
 name: spec-author
-description: "Specification authoring skill for the SPECS stage of the
-  ADR-0010 lifecycle. Activate as step 0 of any non-trivial ticket — before
-  any architect, developer, or tester — to qualify the user intent and emit
-  exactly one Markdown spec file under `/specs/` conforming to
-  `docs/spec-format.md`. Mode-aware (FULL / INTERMEDIATE / MINIMAL / AUTO)
-  and gated on resolved open questions."
+description: Specification authoring for the SPECS stage of the ADR-0010 lifecycle. Activate as step 0 of any non-trivial ticket, before architect, developer or tester, to qualify the intent and emit one spec under `/specs/` per `docs/spec-format.md`. Mode-aware (FULL/INTERMEDIATE/MINIMAL/AUTO).
 type: skill
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.9.1"
+    version: "1.9.2"
 claude:
   allowed-tools:
     - Read

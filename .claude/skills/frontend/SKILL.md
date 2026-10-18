@@ -1,11 +1,6 @@
 ---
 name: frontend
-description: "Practitioner-grade reference knowledge for modern frontend development.
-Covers HTML semantics, CSS custom properties and design tokens, Tailwind CSS,
-WCAG 2.1 AA accessibility baseline, Core Web Vitals, asset optimization, and
-framework-agnostic JavaScript baseline. Activate when authoring or reviewing
-HTML, CSS, Tailwind configuration, accessibility audits, performance budgets,
-or any UI implementation concern that is not tied to a specific framework."
+description: "Practitioner-grade frontend reference: HTML semantics, CSS tokens, Tailwind, WCAG 2.1 AA, Core Web Vitals, asset optimization, framework-agnostic JavaScript. Activate when authoring or reviewing HTML, CSS, Tailwind config, accessibility audits, performance budgets, or framework-free UI work."
 license: Apache-2.0
 compatibility: "No runtime prerequisites; this skill is documentation-only."
 allowed-tools:
@@ -18,7 +13,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.2"
+    version: "1.0.3"
 ---
 
 

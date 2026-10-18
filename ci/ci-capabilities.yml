@@ -3522,6 +3522,49 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-skill-versions.ts
 
+  # Spec 0269 R11: a skill or agent description is capped at 300 characters, on the
+  # artifacts/ sources and on the compiled outputs of every CLI.
+  - id: check-description-length
+    name: "Cap skill and agent descriptions at 300 characters"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "artifacts/**"
+          - ".claude/skills/**"
+          - ".claude/agents/**"
+          - ".gemini/skills/**"
+          - ".gemini/agents/**"
+          - ".github/skills/**"
+          - ".github/agents/**"
+          - ".agents/skills/**"
+          - ".agents/agents/**"
+          - "scripts/check-description-length.ts"
+          - "scripts/lib/governance/**"
+          - "scripts/lib/require-dependency.ts"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "artifacts/**"
+          - ".claude/skills/**"
+          - ".claude/agents/**"
+          - ".gemini/skills/**"
+          - ".gemini/agents/**"
+          - ".github/skills/**"
+          - ".github/agents/**"
+          - ".agents/skills/**"
+          - ".agents/agents/**"
+          - "scripts/check-description-length.ts"
+          - "scripts/lib/governance/**"
+          - "scripts/lib/require-dependency.ts"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-description-length.ts
+
   - id: check-extension-version-bump
     name: "Enforce carrier-version bump on changed extension sources"
     trigger:

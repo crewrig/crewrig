@@ -1,18 +1,13 @@
 ---
 name: user-validate
-description: "Realise a user-gate validation of an artifact (spec, plan, or any
-  document) through the configured backend. The single canonical implementation
-  of the backend-configurable gate protocol — CrewRig lifecycle stages and any
-  external workflow invoke this skill instead of reimplementing a gate inline.
-  Backends: `plannotator` (rich browser review, opt-in) and `internal`
-  (AskUserQuestion, the default floor)."
+description: 'Realise a user-gate validation of an artifact (spec, plan, any document) through the configured backend: `plannotator` (browser review, opt-in) or `internal` (AskUserQuestion, default). The canonical gate implementation; invoke it instead of reimplementing a gate inline.'
 type: skill
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.6.3"
+    version: "1.6.4"
 claude:
   allowed-tools:
     - Read

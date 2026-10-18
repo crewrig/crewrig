@@ -1,17 +1,13 @@
 ---
 name: init-team
-description: "Create and populate a new team file under config/teams/ through a
-  guided interview. Activate when an adopter wants to add a per-team context and
-  configuration profile. Collects the team's mission, technology stack, and
-  development practices and writes a conformant config/teams/<TEAM>.md, refusing
-  to silently overwrite an existing file."
+description: Create a new team file under config/teams/ through a guided interview. Activate when an adopter wants a per-team context and configuration profile. Collects mission, technology stack and development practices, writes config/teams/<TEAM>.md, never silently overwrites.
 type: skill
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.0.2"
+    version: "1.0.3"
 claude:
   allowed-tools:
     - Read

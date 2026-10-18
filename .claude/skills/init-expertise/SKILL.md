@@ -1,6 +1,6 @@
 ---
 name: init-expertise
-description: "Create and populate a new expertise (role) file under config/expertise/ through a guided interview. Activate when an adopter wants to add a domain-expertise context profile for a role the catalog does not yet cover. Collects the role's responsibilities and key practices and writes a conformant config/expertise/<ROLE>.md, refusing to silently overwrite an existing file."
+description: "Create a new expertise (role) file under config/expertise/ through a guided interview. Activate when an adopter wants a domain-expertise profile for a role the catalog lacks. Collects responsibilities and key practices, writes config/expertise/<ROLE>.md, never silently overwrites."
 license: Apache-2.0
 allowed-tools:
   - Read
@@ -13,7 +13,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.2"
+    version: "1.0.3"
 ---
 
 

@@ -2733,6 +2733,41 @@ check-skill-versions:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
 
+check-description-length:
+  image: node:24
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-description-length.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "artifacts/**"
+        - ".claude/skills/**"
+        - ".claude/agents/**"
+        - ".gemini/skills/**"
+        - ".gemini/agents/**"
+        - ".github/skills/**"
+        - ".github/agents/**"
+        - ".agents/skills/**"
+        - ".agents/agents/**"
+        - "scripts/check-description-length.ts"
+        - "scripts/lib/governance/**"
+        - "scripts/lib/require-dependency.ts"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "artifacts/**"
+        - ".claude/skills/**"
+        - ".claude/agents/**"
+        - ".gemini/skills/**"
+        - ".gemini/agents/**"
+        - ".github/skills/**"
+        - ".github/agents/**"
+        - ".agents/skills/**"
+        - ".agents/agents/**"
+        - "scripts/check-description-length.ts"
+        - "scripts/lib/governance/**"
+        - "scripts/lib/require-dependency.ts"
+
 check-extension-version-bump:
   image: node:24
   variables:

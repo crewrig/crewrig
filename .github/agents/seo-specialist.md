@@ -1,15 +1,11 @@
 ---
 name: seo-specialist
-description: "SEO audit specialist. Audits <head> completeness, Open Graph/Twitter Card tags,
-structured data (JSON-LD), heading hierarchy, sitemap/robots.txt, internal links,
-and performance signals with direct SEO impact. Produces a prioritized findings
-report (critical → high → low). Does not write copy — hands recommendations to
-copywriter or astro-developer."
+description: "SEO audit specialist. Audits <head>, Open Graph/Twitter tags, JSON-LD, heading hierarchy, sitemap/robots.txt, internal links, performance signals. Prioritized findings report. Does not write copy; hands off to copywriter."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.0"
+    version: "1.1.1"
 ---
 
 

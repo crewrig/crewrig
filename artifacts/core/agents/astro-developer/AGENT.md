@@ -1,11 +1,6 @@
 ---
 name: astro-developer
-description: |
-  Specialist implementer for Astro projects. Scaffolds and configures Astro
-  projects, implements pages/layouts/components, wires Content Collections,
-  configures integrations, handles deployment, and diagnoses build failures.
-  Receives tokens from designer, copy from copywriter, and hands off to
-  seo-specialist and accessibility-auditor.
+description: Astro implementer. Scaffolds and configures projects, builds pages/layouts/components, wires Content Collections and integrations, deploys, diagnoses build failures. Hands off to seo-specialist and accessibility-auditor.
 type: agent
 license: Apache-2.0
 metadata:
@@ -14,7 +9,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.0"
+    version: "1.1.1"
 ---
 
 # Astro Developer Agent

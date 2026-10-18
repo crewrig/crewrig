@@ -1,11 +1,6 @@
 ---
 name: ci-configurator
-description: |
-  Specialist agent for configuring a new CI pipeline for a supported
-  engine — GitHub Actions or GitLab CI/CD. Resolves the engine target,
-  produces a commit-ready pipeline (hand-authored for GitHub Actions,
-  derived from the platform-neutral capability reference for GitLab),
-  and validates its own output before delivery.
+description: Configures a new CI pipeline for GitHub Actions or GitLab CI/CD. Resolves the engine, produces a commit-ready pipeline (hand-authored for GitHub, derived from the capability reference for GitLab) and validates its output.
 type: agent
 license: Apache-2.0
 metadata:
@@ -14,7 +9,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.3.1"
+    version: "1.3.2"
 ---
 
 # CI Configurator Agent

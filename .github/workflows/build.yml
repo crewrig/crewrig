@@ -3331,6 +3331,41 @@ jobs:
         if: failure()
         uses: ./.github/actions/cancel-on-failure
 
+  check-description-length:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            check-description-length:
+              - 'artifacts/**'
+              - '.claude/skills/**'
+              - '.claude/agents/**'
+              - '.gemini/skills/**'
+              - '.gemini/agents/**'
+              - '.github/skills/**'
+              - '.github/agents/**'
+              - '.agents/skills/**'
+              - '.agents/agents/**'
+              - 'scripts/check-description-length.ts'
+              - 'scripts/lib/governance/**'
+              - 'scripts/lib/require-dependency.ts'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.check-description-length == 'true'
+        with:
+          node-version: 24
+      - name: Install production dependencies
+        if: steps.filter.outputs.check-description-length == 'true'
+        run: npm ci --omit=dev --workspaces=false
+      - name: Cap skill and agent descriptions at 300 characters
+        if: steps.filter.outputs.check-description-length == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-description-length.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
   check-extension-version-bump:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'

@@ -1,16 +1,12 @@
 ---
 name: accessibility-auditor
-description: "WCAG 2.1 Level AA compliance auditor. Runs an automated baseline scan, then
-manually verifies keyboard navigation, color contrast, interactive element
-accessibility, image alt text quality, ARIA correctness, and motion preferences.
-Produces a structured findings report (violation → warning → informational).
-Does not implement fixes — hands the report to frontend-developer or astro-developer. Run this agent on the haiku model."
+description: "WCAG 2.1 AA auditor. Automated baseline scan, then manual checks of keyboard navigation, contrast, interactive elements, alt text, ARIA and motion. Reports violations, warnings, info. Does not fix; hands off to frontend-developer. Run this agent on the haiku model."
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.0"
+    version: "1.1.1"
 ---
 
 

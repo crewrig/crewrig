@@ -1,13 +1,9 @@
 ---
 name: ci-configurator
-description: "Specialist agent for configuring a new CI pipeline for a supported
-engine — GitHub Actions or GitLab CI/CD. Resolves the engine target,
-produces a commit-ready pipeline (hand-authored for GitHub Actions,
-derived from the platform-neutral capability reference for GitLab),
-and validates its own output before delivery."
+description: "Configures a new CI pipeline for GitHub Actions or GitLab CI/CD. Resolves the engine, produces a commit-ready pipeline (hand-authored for GitHub, derived from the capability reference for GitLab) and validates its output."
 model: gemini-3.1-pro-preview
 ---
-<!-- crewrig-provenance: version="1.3.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.3.2" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # CI Configurator Agent
 

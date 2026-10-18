@@ -1,21 +1,13 @@
 ---
 name: github-actions
-description: |
-  Deep, practitioner-grade knowledge of GitHub Actions for authoring,
-  reviewing, hardening, and debugging workflows. Activate when reading
-  or writing any file under `.github/workflows/`, when diagnosing a
-  failing pipeline, when reviewing a CI change in a pull request, or
-  when designing reusable / composite actions. Covers workflow syntax,
-  expressions, runners, caching, secrets, the GITHUB_TOKEN permission
-  model, OIDC federation, and reusable workflows — plus the security
-  defaults that should never be negotiated away.
+description: 'Practitioner-grade GitHub Actions knowledge: authoring, reviewing, hardening, debugging workflows. Activate when reading or writing `.github/workflows/` files, diagnosing a failing pipeline, reviewing a CI change, or designing reusable/composite actions. Covers caching, secrets, GITHUB_TOKEN, OIDC.'
 type: skill
 license: Apache-2.0
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.0"
+    version: "1.1.1"
 claude:
   allowed-tools:
     - Read

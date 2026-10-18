@@ -1,13 +1,9 @@
 ---
 name: astro-developer
-description: "Specialist implementer for Astro projects. Scaffolds and configures Astro
-projects, implements pages/layouts/components, wires Content Collections,
-configures integrations, handles deployment, and diagnoses build failures.
-Receives tokens from designer, copy from copywriter, and hands off to
-seo-specialist and accessibility-auditor."
+description: "Astro implementer. Scaffolds and configures projects, builds pages/layouts/components, wires Content Collections and integrations, deploys, diagnoses build failures. Hands off to seo-specialist and accessibility-auditor."
 model: gemini-3.1-pro-preview
 ---
-<!-- crewrig-provenance: version="1.1.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.1.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Astro Developer Agent
 
