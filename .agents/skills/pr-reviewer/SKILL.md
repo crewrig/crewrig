@@ -31,7 +31,19 @@ why.
 
 Six ordered steps. Do not skip ahead.
 
-Detailed sub-steps of steps 1-6: `references/protocol.md`.
+### 1. Preflight — check CI status
+
+### 2. Read the project conventions
+
+### 3. Fetch the PR diff and metadata
+
+### 4. Run the bundled linter scripts
+
+### 5. Compose the structured review
+
+### 6. Post the review
+
+Read `references/protocol.md` before step 1: it holds the detailed sub-steps of all six.
 
 ## Cross-cutting: assert only a fresh observation
 
