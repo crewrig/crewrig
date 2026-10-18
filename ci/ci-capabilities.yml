@@ -3148,6 +3148,8 @@ capabilities:
       runtime: node@24
       tools: [yq]
     command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-changeset-coverage.test.ts
 
   # path-ownership is the static ownership check (spec 0147 delta-01 R11-R18):

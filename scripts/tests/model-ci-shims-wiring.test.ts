@@ -12,6 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
+import { globToRegExp } from "../lib/glob-engine.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
@@ -36,7 +37,9 @@ const NEEDS_DEPS = [
   "ci-changeset-coverage",
 ];
 const SHIM_RE = new RegExp(`scripts/(${SHIMS.join("|")})\\.sh`, "g");
-const PROD_INSTALL = /^npm ci --omit=dev( --workspaces=false)?$/;
+// A TypeScript test names a shim when its text spawns or mentions `<name>.sh`.
+const NAMED_RE = new RegExp(`\\b(${SHIMS.join("|")})\\.sh\\b`, "g");
+const PROD_INSTALL = /^npm ci( --omit=dev( --workspaces=false)?)?$/;
 
 /** The shims one command line runs: named in it, or named by a script it runs (one level). */
 function shimsRun(command: string): Set<string> {
@@ -49,6 +52,21 @@ function shimsRun(command: string): Set<string> {
     const file = path.join(REPO, m[0]);
     if (/ci-cache-guard\.sh$/.test(m[0]) || !fs.existsSync(file)) continue;
     scan(fs.readFileSync(file, "utf8"));
+  }
+  // `node --test <files|globs>`: every test file that names a shim makes the command shim-running.
+  if (/--test\b/.test(command)) {
+    const tests = fs
+      .readdirSync(path.join(REPO, "scripts", "tests"))
+      .map((f) => `scripts/tests/${f}`);
+    for (const tok of command.split(/\s+/).map((t) => t.replace(/^['"]|['"]$/g, ""))) {
+      if (!/^scripts\/tests\/.*\.test\.ts$/.test(tok)) continue;
+      const re = globToRegExp(tok);
+      for (const f of tests.filter((t) => re.test(t))) {
+        for (const m of fs.readFileSync(path.join(REPO, f), "utf8").matchAll(NAMED_RE)) {
+          found.add(m[1] as string);
+        }
+      }
+    }
   }
   return found;
 }
@@ -157,6 +175,12 @@ describe("the wiring assertions can go red", () => {
     const base = CAPS.find((c) => c.id === "check-model-mappings") as Capability;
     const swapped = { ...base, command: [...(base.command ?? [])].reverse() };
     assert.match(capabilityFaults([swapped]).join("\n"), /install runs after/);
+  });
+
+  test("a capability whose TypeScript test spawns a shim, with no install, is reported", () => {
+    const base = CAPS.find((c) => c.id === "changeset-coverage-test") as Capability;
+    const bare = { ...base, command: (base.command ?? []).filter((c) => c.includes("--test")) };
+    assert.match(capabilityFaults([bare]).join("\n"), /no production install/);
   });
 
   test("a job without setup-node 24 is reported", () => {
