@@ -22,15 +22,21 @@
 //     `options` is tainted), except `.length` and `.size`. Destructuring a tainted value taints
 //     every name it binds. This is what flags
 //     `const options = parseOptions(process.argv.slice(2)); renameSync(staging, options.portFile)`.
-//  3. A binding whose initializer CONTAINS a clean-origin call is clean, even when untrusted
-//     components sit inside its argument (`mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "x-"))`
-//     and `realpathSync(mkdtempSync(...))`).
+//  3. CLEAN MEANS "DERIVES ONLY FROM" A CLEAN ORIGIN (spec R5). A binding is a clean root only when
+//     EVERY value-position branch of every initializer and later assignment is clean: the
+//     clean-origin call itself, a clean binding, a pure path/string transform or concatenation whose
+//     parts are each clean or untainted (at least one clean), or a conditional / `??` / `||` / `&&`
+//     whose branches all are. `process.env.X ?? mkdtempSync(...)` and `c ? process.env.X : mkdtempSync(...)`
+//     are therefore NOT clean, and taint (rule 5) still reaches them. Untrusted components inside the
+//     ARGUMENT of the clean-origin call stay irrelevant (`mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "x-"))`,
+//     `realpathSync(mkdtempSync(...))`). Cleanness only feeds the guard-root test below; an untainted
+//     binding is never flagged whether or not it is clean.
 //  4. Names resolve by LEXICAL SCOPE, never by bare name: `for (const r of roots)` and a sibling
 //     `const r = spawnSync(process.execPath, ...)` are two different bindings. A name that resolves to
 //     no local binding is not tainted, and `process` is only the global when it is not shadowed.
 //  5. A binding is tainted when ANY of its initializer, later assignments (`x = ...`, `x += ...`),
 //     loop iterable or callback receiver (`Object.values(process.env).forEach((v) => ...)`) is.
-//     Conditionals take the taint of either branch (never of the condition); `a && b` takes b;
+//     Conditionals, `??`, `||` and `&&` take the taint of either branch (never of the condition);
 //     comparisons, `typeof` and `!` are clean.
 //
 // Deliberate limits (false negatives, documented in docs/host-safety-check.md): no cross-function,
@@ -38,7 +44,7 @@
 // no dynamic `import()`, and `writeFileSync`-family writes are not sinks (PLAN open question 3).
 //
 // Containment (spec R4): an `assertInside(root, X)` / `isInside(root, X)` call EARLIER IN THE SAME
-// FUNCTION whose `root` traces to a clean origin and whose X is the sink argument, or an
+// FUNCTION whose `root` is clean in the sense of rule 3 and whose X is the sink argument, or an
 // expression inside it, covers the sink.
 
 import { NodeFlags, SyntaxKind, as, compactText, lineOf } from "./ast.ts";
@@ -187,10 +193,12 @@ interface Source {
 
 interface Binding {
   sources: Source[];
-  clean: boolean;
+  /** Declared as a plain identifier by a variable declaration: eligible to be a clean root. */
+  plain: boolean;
   imp?: { module: string; imported: string };
   memo?: Taint | null;
   busy?: boolean;
+  cleanBusy?: boolean;
 }
 
 interface Scope {
@@ -264,17 +272,6 @@ function calleeName(callee: Node): string {
   return "";
 }
 
-function containsCleanOrigin(node: Node): boolean {
-  if (node.kind === SyntaxKind.CallExpression) {
-    if (CLEAN_ORIGINS.has(calleeName(as<CallExpression>(node).expression))) return true;
-  }
-  let found = false;
-  children(node, (c) => {
-    if (!found && containsCleanOrigin(c)) found = true;
-  });
-  return found;
-}
-
 const ASSIGN_OPS = new Set<SyntaxKind>([
   SyntaxKind.EqualsToken,
   SyntaxKind.PlusEqualsToken,
@@ -312,11 +309,11 @@ export function analyzeFile(file: SourceFile, rel: string): FileReport {
     name: Node | undefined,
     scope: Scope,
     source: Source | undefined,
-    clean: boolean,
+    plain: boolean,
   ): void {
     if (name === undefined) return;
     if (name.kind === SyntaxKind.Identifier) {
-      declare(scope, nameText(name), { sources: source ? [source] : [], clean });
+      declare(scope, nameText(name), { sources: source ? [source] : [], plain });
       return;
     }
     if (
@@ -329,7 +326,7 @@ export function analyzeFile(file: SourceFile, rel: string): FileReport {
         const be = as<BindingElement>(el);
         const sources = source ? [source] : [];
         if (be.initializer) sources.push({ expr: be.initializer, scope });
-        declarePatternWithSources(be.name, scope, sources, clean);
+        declarePatternWithSources(be.name, scope, sources);
       }
     }
   }
@@ -338,14 +335,13 @@ export function analyzeFile(file: SourceFile, rel: string): FileReport {
     name: Node | undefined,
     scope: Scope,
     sources: Source[],
-    clean: boolean,
   ): void {
     if (name === undefined) return;
     if (name.kind === SyntaxKind.Identifier) {
-      declare(scope, nameText(name), { sources, clean });
+      declare(scope, nameText(name), { sources, plain: false });
       return;
     }
-    declarePattern(name, scope, sources[0], clean);
+    declarePattern(name, scope, sources[0], false);
   }
 
   function functionScopeOf(scope: Scope): Scope {
@@ -397,7 +393,7 @@ export function analyzeFile(file: SourceFile, rel: string): FileReport {
     if (isFunctionLike(kind)) {
       if (kind === SyntaxKind.FunctionDeclaration) {
         const nm = nameText(as<FunctionDeclaration>(node).name);
-        if (nm !== "") declare(scope, nm, { sources: [], clean: false });
+        if (nm !== "") declare(scope, nm, { sources: [], plain: false });
       }
       const fscope = newScope(scope, true);
       const ctx: FnCtx = { name: fnNameOf(node), guards: [] };
@@ -408,7 +404,7 @@ export function analyzeFile(file: SourceFile, rel: string): FileReport {
         const sources: Source[] = [];
         if (pd.initializer) sources.push({ expr: pd.initializer, scope: fscope });
         if (cbSource) sources.push(cbSource);
-        declarePatternWithSources(pd.name, fscope, sources, false);
+        declarePatternWithSources(pd.name, fscope, sources);
         if (pd.initializer) visit(pd.initializer, fscope, ctx);
       }
       const body = (node as unknown as { body?: Node }).body;
@@ -458,18 +454,13 @@ export function analyzeFile(file: SourceFile, rel: string): FileReport {
         const blockScoped = (listFlags & (NodeFlags.Let | NodeFlags.Const)) !== 0;
         const target = blockScoped ? scope : functionScopeOf(scope);
         const init = d.initializer;
-        declarePattern(
-          d.name,
-          target,
-          init ? { expr: init, scope } : undefined,
-          init ? containsCleanOrigin(init) : false,
-        );
+        declarePattern(d.name, target, init ? { expr: init, scope } : undefined, true);
         if (init) visit(init, scope, fn);
         return;
       }
       case SyntaxKind.ClassDeclaration: {
         const nm = nameText((node as { name?: Node }).name);
-        if (nm !== "") declare(scope, nm, { sources: [], clean: false });
+        if (nm !== "") declare(scope, nm, { sources: [], plain: false });
         children(node, (c) => visit(c, scope, fn));
         return;
       }
@@ -517,7 +508,7 @@ export function analyzeFile(file: SourceFile, rel: string): FileReport {
     if (clause.name !== undefined)
       declare(root, nameText(clause.name), {
         sources: [],
-        clean: false,
+        plain: false,
         imp: { module, imported: "default" },
       });
     const nb = clause.namedBindings;
@@ -525,7 +516,7 @@ export function analyzeFile(file: SourceFile, rel: string): FileReport {
     if (nb.kind === SyntaxKind.NamespaceImport) {
       declare(root, nameText((nb as unknown as { name: Node }).name), {
         sources: [],
-        clean: false,
+        plain: false,
         imp: { module, imported: "*" },
       });
       return;
@@ -535,7 +526,7 @@ export function analyzeFile(file: SourceFile, rel: string): FileReport {
       const spec = el as unknown as { name: Node; propertyName?: Node };
       declare(root, nameText(spec.name), {
         sources: [],
-        clean: false,
+        plain: false,
         imp: { module, imported: nameText(spec.propertyName) || nameText(spec.name) },
       });
     }
@@ -583,7 +574,6 @@ export function analyzeFile(file: SourceFile, rel: string): FileReport {
   }
 
   function bindingTaint(b: Binding): Taint | null {
-    if (b.clean) return null;
     if (b.memo !== undefined) return b.memo;
     if (b.busy) return null;
     b.busy = true;
@@ -598,6 +588,85 @@ export function analyzeFile(file: SourceFile, rel: string): FileReport {
     b.busy = false;
     b.memo = result;
     return result;
+  }
+
+  // A value is CLEAN when every value-position branch of it is: the clean-origin call itself, a
+  // binding that is clean, a pure path/string transform or concatenation whose parts are each clean
+  // or untainted (at least one clean), or a conditional / `??` / `||` / `&&` whose branches ALL are.
+  // Untrusted components inside the ARGUMENT of a clean-origin call never matter (spec R5).
+  function bindingClean(b: Binding): boolean {
+    if (!b.plain || b.sources.length === 0) return false;
+    if (b.cleanBusy) return true; // a cycle (`d = path.join(d, "x")`) adds no new branch
+    b.cleanBusy = true;
+    const ok = b.sources.every((s) => isCleanValue(s.expr, s.scope));
+    b.cleanBusy = false;
+    return ok;
+  }
+
+  function cleanParts(parts: readonly Node[], scope: Scope): boolean {
+    let anyClean = false;
+    for (const p of parts) {
+      if (isCleanValue(p, scope)) anyClean = true;
+      else if (taintOf(p, scope) !== null) return false;
+    }
+    return anyClean;
+  }
+
+  function isCleanValue(node: Node, scope: Scope): boolean {
+    switch (node.kind) {
+      case SyntaxKind.Identifier: {
+        const b = resolve(scope, nameText(node));
+        return b !== undefined && bindingClean(b);
+      }
+      case SyntaxKind.CallExpression: {
+        const c = as<CallExpression>(node);
+        const name = calleeName(c.expression);
+        if (CLEAN_ORIGINS.has(name)) return true;
+        if (!(PURE_CALLS.has(name) || isPathModuleCall(c, scope))) return false;
+        const parts: Node[] = [...c.arguments];
+        if (
+          c.expression.kind === SyntaxKind.PropertyAccessExpression &&
+          !isPathModuleCall(c, scope)
+        )
+          parts.push(as<PropertyAccessExpression>(c.expression).expression);
+        return cleanParts(parts, scope);
+      }
+      case SyntaxKind.ConditionalExpression: {
+        const ce = as<ConditionalExpression>(node);
+        return isCleanValue(ce.whenTrue, scope) && isCleanValue(ce.whenFalse, scope);
+      }
+      case SyntaxKind.BinaryExpression: {
+        const b = as<BinaryExpression>(node);
+        const op = b.operatorToken.kind;
+        if (
+          op === SyntaxKind.QuestionQuestionToken ||
+          op === SyntaxKind.BarBarToken ||
+          op === SyntaxKind.AmpersandAmpersandToken
+        )
+          return isCleanValue(b.left, scope) && isCleanValue(b.right, scope);
+        if (op === SyntaxKind.PlusToken) return cleanParts([b.left, b.right], scope);
+        if (op === SyntaxKind.CommaToken || op === SyntaxKind.EqualsToken)
+          return isCleanValue(b.right, scope);
+        return false;
+      }
+      case SyntaxKind.TemplateExpression: {
+        const spans = (node as unknown as { templateSpans: readonly { expression: Node }[] })
+          .templateSpans;
+        return cleanParts(
+          spans.map((sp) => sp.expression),
+          scope,
+        );
+      }
+      case SyntaxKind.AsExpression:
+      case SyntaxKind.SatisfiesExpression:
+      case SyntaxKind.TypeAssertionExpression:
+      case SyntaxKind.NonNullExpression:
+      case SyntaxKind.ParenthesizedExpression:
+      case SyntaxKind.AwaitExpression:
+        return isCleanValue((node as unknown as { expression: Node }).expression, scope);
+      default:
+        return false;
+    }
   }
 
   function envKey(node: Node): string | undefined {
@@ -674,11 +743,7 @@ export function analyzeFile(file: SourceFile, rel: string): FileReport {
         const b = as<BinaryExpression>(node);
         const op = b.operatorToken.kind;
         if (CLEAN_RESULT_OPS.has(op)) return null;
-        if (
-          op === SyntaxKind.AmpersandAmpersandToken ||
-          op === SyntaxKind.CommaToken ||
-          op === SyntaxKind.EqualsToken
-        )
+        if (op === SyntaxKind.CommaToken || op === SyntaxKind.EqualsToken)
           return taintOf(b.right, scope);
         return taintOf(b.left, scope) ?? taintOf(b.right, scope);
       }
@@ -753,9 +818,7 @@ export function analyzeFile(file: SourceFile, rel: string): FileReport {
   }
 
   function isCleanRoot(rootExpr: Node, scope: Scope): boolean {
-    if (containsCleanOrigin(rootExpr)) return true;
-    if (rootExpr.kind === SyntaxKind.Identifier)
-      return resolve(scope, nameText(rootExpr))?.clean === true;
+    if (isCleanValue(rootExpr, scope)) return true;
     if (rootExpr.kind === SyntaxKind.PropertyAccessExpression)
       return isCleanRoot(as<PropertyAccessExpression>(rootExpr).expression, scope);
     return false;

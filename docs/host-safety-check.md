@@ -22,11 +22,16 @@ not contained. Destructive calls are `rm`, `rmdir`, `unlink`, `cp`,
 `copyFile` and `rename`, in their sync, callback and `fs/promises` forms. For
 `cp`, `copyFile` and `rename` both arguments are checked.
 
-A target is clean when it comes from `mkdtemp`/`mkdtempSync` or from
+A target is clean when it derives only from `mkdtemp`/`mkdtempSync` or from
 `createRoot(...)`, or when an earlier `assertInside(root, <same path>)` or
-`isInside` guard in the same function is anchored on such a root. Otherwise a
-fix is to guard the call with `assertInside(root, p)` against an `mkdtemp`
-root.
+`isInside` guard in the same function is anchored on such a root. "Only" is
+literal: a conditional, `??`, `||` or `&&` is a union, so one untrusted branch
+(`process.env.X ?? fs.mkdtempSync(...)`, `cond ? process.env.X : mkdtempSync(...)`)
+taints the binding, and a later assignment from an untrusted source taints it
+too. A guard root is held to the same rule. Untrusted components inside the
+argument of the `mkdtemp` call itself do not matter, because the result is a
+fresh directory whatever its prefix. Otherwise a fix is to guard the call with
+`assertInside(root, p)` against an `mkdtemp` root.
 
 ### Scan roots
 

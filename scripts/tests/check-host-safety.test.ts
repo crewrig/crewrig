@@ -9,6 +9,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { afterEach, describe, it } from "node:test";
 import {
+  ALL_CLEAN_ROOT_GUARDED_RM,
   ALLOWLIST_HEADER,
   ARGV_RENAME,
   ENV_RM,
@@ -16,11 +17,17 @@ import {
   ENV_RM_LINE,
   GUARDED_RM,
   HOME_CP,
+  NULLISH_MKDTEMP_RM,
+  OR_MKDTEMP_RM,
   OWN_MKDTEMP_RM,
   PARAMETER_HELPER,
+  REASSIGNED_RM,
   REPO,
   SCOPE_COLLISION,
+  TERNARY_ALL_CLEAN_RM,
+  TERNARY_MKDTEMP_RM,
   TMPDIR_MKDTEMP,
+  UNION_ROOT_GUARDED_RM,
   commitAll,
   disposeFixture,
   makeFixture,
@@ -74,12 +81,56 @@ describe("check-host-safety: findings", () => {
     assert.equal(runCheck(fx).status, 0);
   });
 
+  const flaggedAs = (src: string, re: RegExp): void => {
+    const fx = fixture({ sources: { "scripts/tests/scratch.ts": src } });
+    const res = runCheck(fx);
+    assert.equal(res.status, 1, res.stderr);
+    assert.equal(res.findings.length, 1, res.stderr);
+    assert.match(res.findings[0] as string, re);
+  };
+
+  it("flags an rmSync of `process.env.X ?? mkdtempSync(...)`: one untrusted branch taints the binding", () => {
+    flaggedAs(NULLISH_MKDTEMP_RM, /env-derived-destructive: .*process\.env\.CANARY_DIR/);
+  });
+
+  it("flags an rmSync of `process.env.X || mkdtempSync(...)`", () => {
+    flaggedAs(OR_MKDTEMP_RM, /env-derived-destructive: .*process\.env\.CANARY_DIR/);
+  });
+
+  it("flags an rmSync of `cond ? process.env.X : mkdtempSync(...)`", () => {
+    flaggedAs(TERNARY_MKDTEMP_RM, /env-derived-destructive: .*process\.env\.CANARY_DIR/);
+  });
+
+  it("passes a conditional whose every branch is an mkdtemp result", () => {
+    const fx = fixture({ sources: { "scripts/tests/scratch.ts": TERNARY_ALL_CLEAN_RM } });
+    assert.equal(runCheck(fx).status, 0);
+  });
+
+  it("flags a binding that began as an mkdtemp result and was later reassigned from process.env", () => {
+    flaggedAs(REASSIGNED_RM, /env-derived-destructive: .*process\.env\.CANARY_DIR/);
+  });
+
+  it("does not count a guard root that is a union with an untrusted branch as containment", () => {
+    const fx = fixture({ sources: { "scripts/tests/wipe.ts": UNION_ROOT_GUARDED_RM } });
+    const res = runCheck(fx);
+    assert.equal(res.status, 1, res.stderr);
+    assert.equal(res.findings.length, 1, res.stderr);
+  });
+
+  it("counts a guard root whose every branch is an mkdtemp result as containment", () => {
+    const fx = fixture({ sources: { "scripts/tests/wipe.ts": ALL_CLEAN_ROOT_GUARDED_RM } });
+    assert.equal(runCheck(fx).status, 0);
+  });
+
   it("flags path.join(process.env.HOME, ...) as a cpSync destination, naming HOME", () => {
     const fx = fixture({ sources: { "scripts/tests/copy-in.ts": HOME_CP } });
     const res = runCheck(fx);
     assert.equal(res.status, 1, res.stderr);
     assert.equal(res.findings.length, 1, res.stderr);
-    assert.match(res.findings[0] as string, /^host-safety: env-derived-destructive: scripts\/tests\/copy-in\.ts:\d+: .*process\.env\.HOME/);
+    assert.match(
+      res.findings[0] as string,
+      /^host-safety: env-derived-destructive: scripts\/tests\/copy-in\.ts:\d+: .*process\.env\.HOME/,
+    );
   });
 
   it("flags an argv-derived path reaching renameSync through a parsed options object", () => {
@@ -87,7 +138,10 @@ describe("check-host-safety: findings", () => {
     const res = runCheck(fx);
     assert.equal(res.status, 1, res.stderr);
     assert.equal(res.findings.length, 1, res.stderr);
-    assert.match(res.findings[0] as string, /^host-safety: argv-derived-destructive: scripts\/tests\/publish\.ts:\d+: .*process\.argv/);
+    assert.match(
+      res.findings[0] as string,
+      /^host-safety: argv-derived-destructive: scripts\/tests\/publish\.ts:\d+: .*process\.argv/,
+    );
   });
 
   it("resolves names by lexical scope: a loop variable does not taint a sibling binding of the same name", () => {
@@ -123,7 +177,10 @@ describe("check-host-safety: allowlist", () => {
     const fx = fixture({ sources: source, allowlist: `${ALLOWLIST_HEADER}${ENV_RM_KEY}\t\n` });
     const res = runCheck(fx);
     assert.equal(res.status, 1, res.stderr);
-    assert.match(res.stderr, /host-safety: allowlist-unjustified: ci\/host-safety-allowlist\.txt:2: /);
+    assert.match(
+      res.stderr,
+      /host-safety: allowlist-unjustified: ci\/host-safety-allowlist\.txt:2: /,
+    );
   });
 
   it("reports allowlist-stale for an entry whose call site is no longer flagged", () => {
@@ -146,14 +203,23 @@ describe("check-host-safety: allowlist", () => {
     const res = runCheck(fx);
     assert.equal(res.status, 1, res.stderr);
     assert.deepEqual(res.findings.length, 1, res.stderr);
-    assert.match(res.findings[0] as string, /^host-safety: allowlist-unsorted: ci\/host-safety-allowlist\.txt:3: .*out of byte order/);
+    assert.match(
+      res.findings[0] as string,
+      /^host-safety: allowlist-unsorted: ci\/host-safety-allowlist\.txt:3: .*out of byte order/,
+    );
   });
 
   it("reports allowlist-unsorted for a duplicate entry", () => {
-    const fx = fixture({ sources: source, allowlist: ALLOWLIST_HEADER + entry(ENV_RM_KEY) + entry(ENV_RM_KEY) });
+    const fx = fixture({
+      sources: source,
+      allowlist: ALLOWLIST_HEADER + entry(ENV_RM_KEY) + entry(ENV_RM_KEY),
+    });
     const res = runCheck(fx);
     assert.equal(res.status, 1, res.stderr);
-    assert.match(res.stderr, /host-safety: allowlist-unsorted: ci\/host-safety-allowlist\.txt:3: duplicate entry/);
+    assert.match(
+      res.stderr,
+      /host-safety: allowlist-unsorted: ci\/host-safety-allowlist\.txt:3: duplicate entry/,
+    );
   });
 
   it("reports allowlist-entry-added, exit 1, for an entry absent from the merge base", () => {
@@ -162,7 +228,10 @@ describe("check-host-safety: allowlist", () => {
     writeAllowlist(fx, ALLOWLIST_HEADER + entry(ENV_RM_KEY));
     const res = runCheck(fx, { BASE_REF: "main" });
     assert.equal(res.status, 1, res.stderr);
-    assert.match(res.stderr, /host-safety: allowlist-entry-added: ci\/host-safety-allowlist\.txt:2: .*assertInside\(root, p\)/);
+    assert.match(
+      res.stderr,
+      /host-safety: allowlist-entry-added: ci\/host-safety-allowlist\.txt:2: .*assertInside\(root, p\)/,
+    );
   });
 
   it("accepts the same entry when it already exists on the merge base", () => {
@@ -192,7 +261,9 @@ describe("check-host-safety: wiring faults", () => {
 describe("check-host-safety: real tree", () => {
   it("exits 0 on this repository without modifying it", () => {
     const status = (): string =>
-      spawnSync("git", ["--no-optional-locks", "-C", REPO, "status", "--porcelain"], { encoding: "utf8" }).stdout;
+      spawnSync("git", ["--no-optional-locks", "-C", REPO, "status", "--porcelain"], {
+        encoding: "utf8",
+      }).stdout;
     const before = status();
     const res = runCheck(null);
     assert.equal(res.status, 0, res.stderr);

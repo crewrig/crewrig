@@ -18,7 +18,8 @@ import { fileURLToPath } from "node:url";
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
 /** The checker under test; HOST_SAFETY_CHECKER points the suite at a mutated copy (mutation proof). */
-export const CHECKER = process.env.HOST_SAFETY_CHECKER ?? path.join(REPO, "scripts", "check-host-safety.ts");
+export const CHECKER =
+  process.env.HOST_SAFETY_CHECKER ?? path.join(REPO, "scripts", "check-host-safety.ts");
 
 export const ALLOWLIST_REL = "ci/host-safety-allowlist.txt";
 export const ALLOWLIST_HEADER = "# fixture allowlist\n";
@@ -66,7 +67,9 @@ function put(root: string, rel: string, content: string): void {
 
 /** Build a fixture tree: tsconfig, scanned sources, allowlist, canary, and the executed-probe source. */
 export function makeFixture(opts: FixtureOptions = {}): Fixture {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "host-safety-")));
+  const root = fs.realpathSync(
+    fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "host-safety-")),
+  );
   created.add(root);
   const canaryDir = path.join(root, "canary");
   const canaryFile = path.join(canaryDir, "keep.txt");
@@ -116,7 +119,8 @@ export function runCheck(
   repoDir: string = fx?.root ?? REPO,
 ): CheckResult {
   const env: NodeJS.ProcessEnv = { ...process.env };
-  for (const key of Object.keys(env)) if (key.startsWith("GIT_") || key === "BASE_REF") delete env[key];
+  for (const key of Object.keys(env))
+    if (key.startsWith("GIT_") || key === "BASE_REF") delete env[key];
   env.CREWRIG_REPO_DIR = repoDir;
   if (fx !== null) {
     env.HOME = fx.home;
@@ -129,7 +133,10 @@ export function runCheck(
     { cwd: fx?.root ?? REPO, env, encoding: "utf8" },
   );
   if (fx !== null) {
-    assert.ok(fs.existsSync(fx.canaryFile), "canary file was removed: a scanned source was executed");
+    assert.ok(
+      fs.existsSync(fx.canaryFile),
+      "canary file was removed: a scanned source was executed",
+    );
     assert.equal(fs.readFileSync(fx.canaryFile, "utf8"), "canary");
     assert.ok(!fs.existsSync(fx.sentinel), "sentinel exists: a scanned source was executed");
   }
@@ -231,5 +238,53 @@ export const PARAMETER_HELPER = `${IMPORTS}function removeScratch(dir: string): 
 }
 export function main(): void {
   removeScratch(process.env.CANARY_DIR as string);
+}
+`;
+
+/** Union forms: ONE untrusted branch taints the binding, whatever the mkdtemp fallback (i1-F2). */
+const unionRm = (
+  initializer: string,
+): string => `${IMPORTS}export function scratch(flag: boolean): void {
+  const dir = ${initializer};
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+`;
+export const NULLISH_MKDTEMP_RM = unionRm(
+  `process.env.CANARY_DIR ?? fs.mkdtempSync(path.join(os.tmpdir(), "x-"))`,
+);
+export const OR_MKDTEMP_RM = unionRm(
+  `process.env.CANARY_DIR || fs.mkdtempSync(path.join(os.tmpdir(), "x-"))`,
+);
+export const TERNARY_MKDTEMP_RM = unionRm(
+  `flag ? (process.env.CANARY_DIR as string) : fs.mkdtempSync(path.join(os.tmpdir(), "x-"))`,
+);
+/** Every branch is an mkdtemp result, so the binding stays clean. */
+export const TERNARY_ALL_CLEAN_RM = unionRm(
+  `flag ? fs.mkdtempSync(path.join(os.tmpdir(), "a-")) : fs.mkdtempSync(path.join(os.tmpdir(), "b-"))`,
+);
+/** A later assignment from an untrusted source taints a binding that began as an mkdtemp result. */
+export const REASSIGNED_RM = `${IMPORTS}export function scratch(): void {
+  let dir = fs.mkdtempSync(path.join(os.tmpdir(), "x-"));
+  dir = process.env.CANARY_DIR as string;
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+`;
+
+/** A guard whose root is a union with an untrusted branch is not containment. */
+export const UNION_ROOT_GUARDED_RM = `${IMPORTS}import { assertInside } from "./lib/differential-guard.ts";
+export function wipe(): void {
+  const root = process.env.CANARY_ROOT ?? fs.mkdtempSync(path.join(os.tmpdir(), "x-"));
+  const dir = process.env.CANARY_DIR as string;
+  assertInside(root, dir);
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+`;
+/** The same guard, with a root whose every branch is an mkdtemp result, does contain. */
+export const ALL_CLEAN_ROOT_GUARDED_RM = `${IMPORTS}import { assertInside } from "./lib/differential-guard.ts";
+export function wipe(flag: boolean): void {
+  const root = flag ? fs.mkdtempSync(path.join(os.tmpdir(), "a-")) : fs.mkdtempSync(path.join(os.tmpdir(), "b-"));
+  const dir = process.env.CANARY_DIR as string;
+  assertInside(root, dir);
+  fs.rmSync(dir, { recursive: true, force: true });
 }
 `;
