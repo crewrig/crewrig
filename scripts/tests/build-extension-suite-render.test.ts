@@ -37,9 +37,31 @@ before(() => {
 const read = (file: string): string => fs.readFileSync(file, "utf8");
 const toml = tomlSkip();
 
+/** Sorted `relative path:size:mtimeMs` lines of a directory tree, or null when it is absent. */
+function snapshotTree(dir: string): string[] | null {
+  if (!fs.existsSync(dir)) return null;
+  const out: string[] = [];
+  const walk = (d: string): void => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const f = path.join(d, e.name);
+      if (e.isDirectory()) walk(f);
+      else {
+        const s = fs.statSync(f);
+        out.push(`${path.relative(dir, f)}:${s.size}:${s.mtimeMs}`);
+      }
+    }
+  };
+  walk(dir);
+  return out.sort();
+}
+
 describe("Case 1 — round-trip on hello-world", () => {
   test("Case 1 — build/extensions/hello-world/commands/hello.toml matches a direct render of hello.md", () => {
     const root = cloneTemplate(template);
+    // Host-independent: a developer machine may or may not hold a real build/ output, so record
+    // the real directory's state first and assert the render left it exactly as it was.
+    const realOut = path.join(REPO, "build", "extensions", "hello-world");
+    const before = snapshotTree(realOut);
     const res = render(root, "gemini", "hello-world");
     assert.equal(res.status, 0, res.combined);
     const produced = path.join(
@@ -54,7 +76,7 @@ describe("Case 1 — round-trip on hello-world", () => {
     const src = path.join(REPO, "extensions", "core", "hello-world", "commands", "hello.md");
     const expected = createRenderCommand(yamlText).renderCommandGemini(src);
     assert.equal(read(produced), `${expected}\n`);
-    assert.equal(fs.existsSync(path.join(REPO, "build", "extensions", "hello-world")), false);
+    assert.deepEqual(snapshotTree(realOut), before, "the render wrote into the real checkout");
   });
 });
 
