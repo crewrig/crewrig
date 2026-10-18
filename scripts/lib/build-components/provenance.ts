@@ -68,3 +68,28 @@ export function injectProvenance(content: string, source: SourceDoc): string {
   }
   return content;
 }
+
+const PROVENANCE_COMMENT = /<!--\s*provenance:[\s\S]*?-->/g;
+
+/**
+ * Strip `<!-- provenance: ... -->` citation comments (spec 0269 R7). A comment alone on
+ * its line is removed with the line; an inline one is removed alone. Only the `provenance:`
+ * form matches: the Gemini carrier `<!-- crewrig-provenance: ... -->` and every other
+ * comment are kept.
+ */
+export function stripProvenanceComments(text: string): string {
+  if (!text.includes("<!--")) return text;
+  const lines = text.split("\n");
+  const out: string[] = [];
+  for (const line of lines) {
+    if (!PROVENANCE_COMMENT.test(line)) {
+      out.push(line);
+      PROVENANCE_COMMENT.lastIndex = 0;
+      continue;
+    }
+    PROVENANCE_COMMENT.lastIndex = 0;
+    const rest = line.replace(PROVENANCE_COMMENT, "");
+    if (rest.trim() !== "") out.push(rest);
+  }
+  return out.join("\n");
+}

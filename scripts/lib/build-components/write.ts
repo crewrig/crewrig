@@ -18,7 +18,7 @@ import path from "node:path";
 import { toLf } from "../line-endings.ts";
 import { resolvePlaceholders } from "./config.ts";
 import { escapeControl } from "./diagnostics.ts";
-import { injectProvenance } from "./provenance.ts";
+import { injectProvenance, stripProvenanceComments } from "./provenance.ts";
 import { BuildFailure } from "./types.ts";
 import type { Ctx, SourceDoc } from "./types.ts";
 
@@ -100,7 +100,8 @@ export function checkOrWrite(
   root: string,
 ): void {
   assertInsideRoot(ctx, root, targetFile);
-  const spliced = source === null ? content : injectProvenance(content, source);
+  const stripped = stripProvenanceComments(content);
+  const spliced = source === null ? stripped : injectProvenance(stripped, source);
   const text = finalizeText(resolvePlaceholders(ctx.config, spliced));
   if (comparing(ctx)) {
     if (!isRegularFile(targetFile)) reportDrift(ctx, targetFile, true);

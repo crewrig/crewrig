@@ -29,6 +29,7 @@ import path from "node:path";
 
 import { joinRoot } from "./args.ts";
 import { rewriteResourceLinks } from "./links.ts";
+import { stripProvenanceComments } from "./provenance.ts";
 import { assertInsideRoot, comparing, isRegularFile, reportDrift, sameBytes } from "./write.ts";
 import { escapeControl } from "./diagnostics.ts";
 import type { Ctx } from "./types.ts";
@@ -69,7 +70,10 @@ function listResourceFiles(folder: string): string[] {
 function resourceBytes(src: string): Buffer {
   const raw = fs.readFileSync(src);
   if (!src.endsWith(".md")) return raw;
-  return Buffer.from(rewriteResourceLinks(raw.toString("latin1")), "latin1");
+  return Buffer.from(
+    stripProvenanceComments(rewriteResourceLinks(raw.toString("latin1"))),
+    "latin1",
+  );
 }
 
 function executableByProcess(file: string): boolean {
