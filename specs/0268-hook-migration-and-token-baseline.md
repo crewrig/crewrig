@@ -1,7 +1,7 @@
 ---
 id: "0268"
 slug: hook-migration-and-token-baseline
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1725
