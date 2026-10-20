@@ -1078,6 +1078,9 @@ governance-checks-ts:
         - "scripts/tests/lib/governance-*"
         - "scripts/tests/check-agents-size.test.ts"
         - "scripts/tests/check-rules-size.test.ts"
+        - "docs/**"
+        - "AGENTS.md"
+        - "scripts/tests/fixtures/agent-team-protocol/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/check-*.ts"
@@ -1087,6 +1090,9 @@ governance-checks-ts:
         - "scripts/tests/lib/governance-*"
         - "scripts/tests/check-agents-size.test.ts"
         - "scripts/tests/check-rules-size.test.ts"
+        - "docs/**"
+        - "AGENTS.md"
+        - "scripts/tests/fixtures/agent-team-protocol/**"
 
 model-ci-tooling-ts:
   image: node:24

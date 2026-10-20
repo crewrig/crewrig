@@ -363,6 +363,9 @@ jobs:
               - 'scripts/tests/lib/governance-*'
               - 'scripts/tests/check-agents-size.test.ts'
               - 'scripts/tests/check-rules-size.test.ts'
+              - 'docs/**'
+              - 'AGENTS.md'
+              - 'scripts/tests/fixtures/agent-team-protocol/**'
       - uses: actions/setup-node@v4
         if: steps.filter.outputs.governance-checks-ts == 'true'
         with:

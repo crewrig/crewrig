@@ -1427,6 +1427,9 @@ capabilities:
           - "scripts/tests/lib/governance-*"
           - "scripts/tests/check-agents-size.test.ts"
           - "scripts/tests/check-rules-size.test.ts"
+          - "docs/**"
+          - "AGENTS.md"
+          - "scripts/tests/fixtures/agent-team-protocol/**"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -1437,6 +1440,9 @@ capabilities:
           - "scripts/tests/lib/governance-*"
           - "scripts/tests/check-agents-size.test.ts"
           - "scripts/tests/check-rules-size.test.ts"
+          - "docs/**"
+          - "AGENTS.md"
+          - "scripts/tests/fixtures/agent-team-protocol/**"
     portability: portable
     requires:
       runtime: node@24
