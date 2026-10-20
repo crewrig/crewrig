@@ -55,6 +55,11 @@ none exists). The subagent never runs the sweep, MAY make one
 its final report; the orchestrator writes the handoff drawer and the diary
 entry once.
 
+**Role-file citation rule**: A spawn brief cites
+`docs/agent-team-protocol/<role-file>.md#<anchor>` for the role it spawns,
+using the table in [`docs/agent-team-protocol.md`](../agent-team-protocol.md),
+not the whole protocol.
+
 **Verified-claim rule**: Technical assertions embedded in a developer
 brief (package names, install paths, command flags, file locations,
 schema fields, API shapes) MUST be either (a) sourced from the

@@ -32,14 +32,9 @@ upgrades), insert `security` after `developer` in the applicable template.
 ### Seated review passes
 
 Every review pass a template spawns — on the `specs`, `plan` or `review`
-surface — is attributed to a **reviewer seat** keyed
-`<surface>/<ticket>`, and the orchestrator instantiates it with a
-**references-only brief**: the seat key, the artifact identifier, the
-revision the seat last examined, and the locations of the seat's prior
-verdicts and of the finding-disposition record. A brief that carries a
-diff, a summary, an assessment or a rationale from the authoring session
-makes the pass discardable — its verdict is not consumed and the
-iteration counter does not increment.
+surface — is attributed to a **reviewer seat** keyed `<surface>/<ticket>`
+and briefed with references only; the definition of that brief is in
+[`docs/reviewer-seat.md`](../reviewer-seat.md).
 
 The contract in full, including the seat line every verdict carries and
 the bounded reading that applies from a seat's second pass onward, is
@@ -71,6 +66,21 @@ The spec PR SHALL be merged before the team proceeds to PLAN/DEV. The
 ordering is enforced by the spec-PR workflow (#170) — agents do not
 hand-roll it.
 
+<a id="shared-template-rules"></a>
+
+### Shared rules for Templates 1 to 3
+
+**REVIEW is a looping stage**, not terminal — the orchestrator follows the routing engine documented in [`docs/retroactive-loop.md`](../retroactive-loop.md) until the termination criterion is met.
+
+**Ordering constraint:** `pr-logbook` MUST open the PR (or hand the complete
+draft to `team-lead` for opening) before `pr-reviewer` is spawned. The
+orchestrator MUST NOT parallelise these two roles — `pr-reviewer` cannot
+fulfill its cold-start contract without a valid PR number. `pr-reviewer`
+receives the PR number from `pr-logbook`'s result message (see *Team
+Communication → Rule 1*).
+
+**Shared-identity workaround:** When the orchestrator and `pr-reviewer` share the same GitHub identity (common in solo-dev setups), GitHub rejects `gh pr review --approve` with "Can not approve your own pull request"; in that case `pr-reviewer` MUST post its verdict as a regular PR comment opening with a `## Verdict: APPROVE` or `## Verdict: REQUEST CHANGES` header. This applies to every template below that includes `pr-reviewer`.
+
 <a id="template-1"></a>
 
 ### Template 1 — Feature implementation (results in a PR)
@@ -88,16 +98,7 @@ user.
 | 4 | `pr-logbook` | Draft PR title, body, and logbook entry |
 | 5 | `pr-reviewer` | Independent cold review of the diff; verifies CI checks pass before posting verdict |
 
-**REVIEW is a looping stage**, not terminal — the orchestrator follows the routing engine documented in [`docs/retroactive-loop.md`](../retroactive-loop.md) until the termination criterion is met.
-
-**Ordering constraint:** `pr-logbook` MUST open the PR (or hand the complete
-draft to `team-lead` for opening) before `pr-reviewer` is spawned. The
-orchestrator MUST NOT parallelise these two roles — `pr-reviewer` cannot
-fulfill its cold-start contract without a valid PR number. `pr-reviewer`
-receives the PR number from `pr-logbook`'s result message (see *Team
-Communication → Rule 1*).
-
-**Shared-identity workaround:** When the orchestrator and `pr-reviewer` share the same GitHub identity (common in solo-dev setups), GitHub rejects `gh pr review --approve` with "Can not approve your own pull request"; in that case `pr-reviewer` MUST post its verdict as a regular PR comment opening with a `## Verdict: APPROVE` or `## Verdict: REQUEST CHANGES` header. This applies to every template below that includes `pr-reviewer`.
+See [Shared rules for Templates 1 to 3](#shared-template-rules).
 
 Use multiple `developer` agents in parallel when the work decomposes into
 independent files or modules; a single developer suffices otherwise.
@@ -116,14 +117,7 @@ Lighter pipeline — no code, no tests.
 | 2 | `pr-logbook` | Draft PR title, body, and logbook entry |
 | 3 | `pr-reviewer` | Independent cold review of the diff; verifies CI checks pass before posting verdict |
 
-**REVIEW is a looping stage**, not terminal — the orchestrator follows the routing engine documented in [`docs/retroactive-loop.md`](../retroactive-loop.md) until the termination criterion is met.
-
-**Ordering constraint:** `pr-logbook` MUST open the PR (or hand the complete
-draft to `team-lead` for opening) before `pr-reviewer` is spawned. The
-orchestrator MUST NOT parallelise these two roles — `pr-reviewer` cannot
-fulfill its cold-start contract without a valid PR number. `pr-reviewer`
-receives the PR number from `pr-logbook`'s result message (see *Team
-Communication → Rule 1*).
+See [Shared rules for Templates 1 to 3](#shared-template-rules).
 
 If the documentation change modifies an established protocol, convention, or
 contract (e.g. AGENTS.md itself), insert `architect` as step 0.
@@ -144,14 +138,7 @@ to lock in reproduction.
 | 3 | `pr-logbook` | Draft PR title, body, and logbook entry |
 | 4 | `pr-reviewer` | Independent cold review of the diff; verifies CI checks pass before posting verdict |
 
-**REVIEW is a looping stage**, not terminal — the orchestrator follows the routing engine documented in [`docs/retroactive-loop.md`](../retroactive-loop.md) until the termination criterion is met.
-
-**Ordering constraint:** `pr-logbook` MUST open the PR (or hand the complete
-draft to `team-lead` for opening) before `pr-reviewer` is spawned. The
-orchestrator MUST NOT parallelise these two roles — `pr-reviewer` cannot
-fulfill its cold-start contract without a valid PR number. `pr-reviewer`
-receives the PR number from `pr-logbook`'s result message (see *Team
-Communication → Rule 1*).
+See [Shared rules for Templates 1 to 3](#shared-template-rules).
 
 `architect` is optional: include it only when the root cause exposes a
 design flaw rather than a localized defect.

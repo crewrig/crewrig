@@ -28,7 +28,7 @@ A spawn brief cites the one role file (and anchor) its role needs, not the whole
 | `tester` | [solo-work-prohibition](agent-team-protocol/orchestrator.md#solo-work-prohibition) |
 | `doc-writer` | [solo-work-prohibition](agent-team-protocol/orchestrator.md#solo-work-prohibition) |
 | `architect` | [seated-review-passes](agent-team-protocol/templates.md#seated-review-passes) |
-| `pr-logbook` | [standard-team-templates](agent-team-protocol/templates.md#standard-team-templates) |
+| `pr-logbook` | [shared-template-rules](agent-team-protocol/templates.md#shared-template-rules) |
 | `pr-reviewer` | [seated-review-passes](agent-team-protocol/templates.md#seated-review-passes) |
 | `security` | [worktree-isolation](agent-team-protocol/worktree-isolation.md#worktree-isolation) |
 

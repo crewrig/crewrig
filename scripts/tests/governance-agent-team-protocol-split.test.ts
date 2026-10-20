@@ -40,7 +40,28 @@ interface ParagraphException {
   readonly remaining: number;
   readonly requirement: string;
 }
-const EXCEPTIONS: readonly ParagraphException[] = [];
+const EXCEPTIONS: readonly ParagraphException[] = [
+  // R7: the REVIEW-loop sentence repeated in Templates 1, 2 and 3 now lives once in
+  // "Shared rules for Templates 1 to 3" (templates.md#shared-template-rules).
+  {
+    prefix: "**REVIEW is a looping stage**, not terminal — the orchestrat",
+    remaining: 1,
+    requirement: "R7",
+  },
+  // R7: the Ordering constraint paragraph repeated in Templates 1, 2 and 3 now lives once there too.
+  {
+    prefix: "**Ordering constraint:** `pr-logbook` MUST open the PR (or h",
+    remaining: 1,
+    requirement: "R7",
+  },
+  // R8: the references-only brief definition in "Seated review passes" is cut to a pointer;
+  // docs/reviewer-seat.md stays canonical.
+  {
+    prefix: "Every review pass a template spawns — on the `specs`, `plan`",
+    remaining: 0,
+    requirement: "R8",
+  },
+];
 
 // Baseline sentences carrying MUST / SHALL that a later commit may move; each names the
 // canonical location that keeps the obligation.
