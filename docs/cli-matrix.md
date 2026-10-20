@@ -21,15 +21,18 @@ CLI-specific feature — drift here is a parity bug.
   - Plugin install dir: `~/.gemini/extensions/`
   - Notes: Extension-based loading. Settings live in `~/.gemini/settings.json`.
 - **Copilot CLI**
-  - Config root: **Split**: `.github/copilot/` (settings + hooks) + `.github/skills/` (skills) + `.github/agents/` (agents)
+  - Config root: **Split**: `.github/copilot/` (settings + hooks) + `.github/skills/` (skills) + `.github/agents/`
+    (agents)
   - Entry point file: `.github/copilot-instructions.md` (re-exports `AGENTS.md`)
   - Plugin install dir: In-place via `.github/`
-  - Notes: Open Agent Skills standard. No single config root by design — Copilot reads each sibling path independently. `@copilot` mentions on issues / PRs trigger the coding agent natively.
+  - Notes: Open Agent Skills standard. No single config root by design — Copilot reads each sibling path
+    independently. `@copilot` mentions on issues / PRs trigger the coding agent natively.
 - **Antigravity CLI**
   - Config root: `~/.gemini/antigravity-cli/`
   - Entry point file: `.agents/ANTIGRAVITY.md`
   - Plugin install dir: `~/.gemini/config/plugins/`
-  - Notes: Plugin-based loading via `agy plugin install`. Workspace entry point is `.agents/ANTIGRAVITY.md`; user-level config lives under `~/.gemini/antigravity-cli/`. (spec 0052)
+  - Notes: Plugin-based loading via `agy plugin install`. Workspace entry point is `.agents/ANTIGRAVITY.md`; user-level
+    config lives under `~/.gemini/antigravity-cli/`. (spec 0052)
 
 ## Feature matrix
 
@@ -51,77 +54,236 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Copilot CLI:** ✅ `.github/copilot-instructions.md`
 - **Antigravity CLI:** ✅ `.agents/ANTIGRAVITY.md` (spec 0052)
 
-### 3 — Skill definitions directory (built output) — the build is tier-agnostic (globs `artifacts/*/`); output is routed by tier (ADR-0011, spec 0019): `core` → committed project tree (paths shown); every non-`core` tier (`library`, `community`, `org`) → gitignored staging `dist/<tier>/.<cli>/skills/<name>/SKILL.md`. The `init-expertise` and `init-team` guided skills (spec 0021) are `core` artifact sources and build to all four CLI skill surfaces through this path — but they are not the only guided bootstrap components at the `core` tier: `init-personal-profile` and `init-soul` (spec 0191) are also `core` bootstrap sources reaching all four CLI surfaces, through the `command` kind (row 5) rather than `skill`, since only the `command` kind gives Gemini CLI a native slash-command output. Skill `scripts/` resources are copied extension-agnostically by `propagateSkillResources`, `.ts` included — first instance `pr-reviewer/scripts/lint-typescript.ts` (spec 0238 R14), run from its `.ts` source by `node` ≥ 24 type stripping on every CLI, so the copy is symmetric and opens no parity gap. The `harness-curator` skill (spec 0258) carries three TypeScript entries (`curate.ts`, `setup-labels.ts`, `schedule-curator.ts`, run as `node <entry>.ts`); since the switch of ticket #1337 its three `.sh` of those names were forwarding shims, deleted by spec 0266 (ticket #1344, slice 3b) once the Bash oracle `test.sh` was replaced; `docs/shell-removal.md` maps each removed path to its `node` command, while `curate.py` and `apply.py` stay Python. The eleven scripts of the `github-actions`, `gitlab-ci` and `pr-reviewer` skills (spec 0258) are also TypeScript entries, their `.sh` retired outright, so the curator is not the first skill to ship entries; the claim of symmetry is scoped to the built tree, which carries the skill `scripts/` for all four CLIs. It does not extend to a user directory: when a `TIER` install copies a skill there (`scripts/lib/setup/tier-install.ts`), the Copilot CLI installs only the skill's `SKILL.md` into `~/.copilot/skills/<name>/`, so a skill's `scripts/` reach a Copilot user directory only through the repository tree, not through that install. Relative Markdown link ascent depths are adjusted symmetrically across all targets (issue #872). **Build-system parity (spec 0250 R19):** the TypeScript build produces the 272 committed generated files identically on Linux and Windows (CI run 37940874726 on PR #1506, job `windows-build-proof`: 272 files identical on `linux` and `win32`) and on macOS (measured locally); the generated tree is one set of files shared by all four CLI columns, so no CLI column differs from another.
+### 3 — Skill definitions directory
 
+- **Feature:** Skill definitions directory (built output) — the build is tier-agnostic (globs `artifacts/*/`); output
+  is routed by tier (ADR-0011, spec 0019): `core` → committed project tree (paths shown); every non-`core` tier
+  (`library`, `community`, `org`) → gitignored staging `dist/<tier>/.<cli>/skills/<name>/SKILL.md`. The
+  `init-expertise` and `init-team` guided skills (spec 0021) are `core` artifact sources and build to all four CLI skill
+  surfaces through this path — but they are not the only guided bootstrap components at the `core` tier:
+  `init-personal-profile` and `init-soul` (spec 0191) are also `core` bootstrap sources reaching all four CLI surfaces,
+  through the `command` kind (row 5) rather than `skill`, since only the `command` kind gives Gemini CLI a native
+  slash-command output. Skill `scripts/` resources are copied extension-agnostically by `propagateSkillResources`, `.ts`
+  included — first instance `pr-reviewer/scripts/lint-typescript.ts` (spec 0238 R14), run from its `.ts` source by
+  `node` ≥ 24 type stripping on every CLI, so the copy is symmetric and opens no parity gap. The `harness-curator`
+  skill (spec 0258) carries three TypeScript entries (`curate.ts`, `setup-labels.ts`, `schedule-curator.ts`, run as
+  `node <entry>.ts`); since the switch of ticket #1337 its three `.sh` of those names were forwarding shims, deleted by
+  spec 0266 (ticket #1344, slice 3b) once the Bash oracle `test.sh` was replaced; `docs/shell-removal.md` maps each
+  removed path to its `node` command, while `curate.py` and `apply.py` stay Python. The eleven scripts of the
+  `github-actions`, `gitlab-ci` and `pr-reviewer` skills (spec 0258) are also TypeScript entries, their `.sh` retired
+  outright, so the curator is not the first skill to ship entries; the claim of symmetry is scoped to the built tree,
+  which carries the skill `scripts/` for all four CLIs. It does not extend to a user directory: when a `TIER` install
+  copies a skill there (`scripts/lib/setup/tier-install.ts`), the Copilot CLI installs only the skill's `SKILL.md` into
+  `~/.copilot/skills/<name>/`, so a skill's `scripts/` reach a Copilot user directory only through the repository tree,
+  not through that install. Relative Markdown link ascent depths are adjusted symmetrically across all targets (issue #872). **Build-system
+  parity (spec 0250 R19):** the TypeScript build produces the 272 committed generated files identically on Linux and
+  Windows (CI run 37940874726 on PR #1506, job `windows-build-proof`: 272 files identical on `linux` and `win32`) and on
+  macOS (measured locally); the generated tree is one set of files shared by all four CLI columns, so no CLI column
+  differs from another.
 - **Source of truth:** `scripts/build-components.ts` `buildSkills` + `outputRootForTier`
-- **Claude Code:** ✅ `core`: `.claude/skills/<name>/SKILL.md` · non-`core`: `dist/<tier>/.claude/skills/<name>/SKILL.md`
-- **Gemini CLI:** ✅ `core`: `.gemini/skills/<name>/SKILL.md` · non-`core`: `dist/<tier>/.gemini/skills/<name>/SKILL.md`
-- **Copilot CLI:** ✅ `core`: `.github/skills/<name>/SKILL.md` · non-`core`: `dist/<tier>/.github/skills/<name>/SKILL.md`
-- **Antigravity CLI:** ✅ `scripts/build-components.ts --target antigravity` (spec 0053 / PR #441); `core`: `.agents/skills/<name>/SKILL.md` · non-`core`: `dist/<tier>/.agents/skills/<name>/SKILL.md`
+- **Claude Code:** ✅ `core`: `.claude/skills/<name>/SKILL.md` · non-`core`:
+  `dist/<tier>/.claude/skills/<name>/SKILL.md`
+- **Gemini CLI:** ✅ `core`: `.gemini/skills/<name>/SKILL.md` · non-`core`:
+  `dist/<tier>/.gemini/skills/<name>/SKILL.md`
+- **Copilot CLI:** ✅ `core`: `.github/skills/<name>/SKILL.md` · non-`core`:
+  `dist/<tier>/.github/skills/<name>/SKILL.md`
+- **Antigravity CLI:** ✅ `scripts/build-components.ts --target antigravity` (spec 0053 / PR #441); `core`:
+  `.agents/skills/<name>/SKILL.md` · non-`core`: `dist/<tier>/.agents/skills/<name>/SKILL.md`
 
-### 4 — Agent definitions directory (built output) — same tier routing as row 3 (`core` → project tree; non-`core` → `dist/<tier>/`)
+### 4 — Agent definitions directory
 
+- **Feature:** Agent definitions directory (built output) — same tier routing as row 3 (`core` → project tree;
+  non-`core` → `dist/<tier>/`)
 - **Source of truth:** `scripts/build-components.ts` `buildAgents` + `outputRootForTier`
-- **Claude Code:** ✅ `.claude/agents/<name>.md` (flat file; spec 0201) — the Claude Code subagents page documents `.claude/agents/` and `~/.claude/agents/` as the two scopes and a single flat file per agent, with no nested per-agent directory form documented anywhere on it; only the page's separately-documented recursive-scan behavior made the retired nested form work incidentally. **Unchanged by spec 0201, and recorded here (requirements 24, 26):** the Antigravity cell of this row stays nested — its shipped customization documentation names no agent customization type at all, and requirement 3 of `specs/0053-antigravity-build-pipeline.md` normatively pins the nested Antigravity path; the Claude Code **plugin** packaging of extension agents (row 5c, row 13) is flattened to `agents/<name>.md` (spec 0201 delta-01, issue #1140): live empirical evidence proved that Claude Code's plugin component discovery loader does not scan subdirectories and only discovers flat `agents/*.md` regular files.
+- **Claude Code:** ✅ `.claude/agents/<name>.md` (flat file; spec 0201) — the Claude Code subagents page documents
+  `.claude/agents/` and `~/.claude/agents/` as the two scopes and a single flat file per agent, with no nested per-agent
+  directory form documented anywhere on it; only the page's separately-documented recursive-scan behavior made the
+  retired nested form work incidentally. **Unchanged by spec 0201, and recorded here (requirements 24, 26):** the
+  Antigravity cell of this row stays nested — its shipped customization documentation names no agent customization
+  type at all, and requirement 3 of `specs/0053-antigravity-build-pipeline.md` normatively pins the nested Antigravity
+  path; the Claude Code **plugin** packaging of extension agents (row 5c, row 13) is flattened to `agents/<name>.md`
+  (spec 0201 delta-01, issue #1140): live empirical evidence proved that Claude Code's plugin component discovery loader
+  does not scan subdirectories and only discovers flat `agents/*.md` regular files.
 - **Gemini CLI:** ✅ `.gemini/agents/<name>.md` (flat file)
-- **Copilot CLI:** ✅ `.github/agents/<name>.md` (flat file) **[GAP-confirmation]** — repo-level layout not in the public reference
-- **Antigravity CLI:** ✅ `.agents/agents/<name>/AGENT.md` (directory; spec 0053). Corrected in spec 0119: this cell previously read `.antigravity/agents/<name>.md` (flat file), which contradicted both `build_agents` (now `buildAgents` in the TypeScript build) and row 1's `.agents/` root. The spec 0119 collision key derives from these paths, so the contradiction would have made that guard unauditable against its own reference table. Since spec 0201 flattened the Claude cell of this row, this Antigravity path no longer mirrors it — both remain per-agent directories on their own terms, but the parallelism this cell once described no longer holds.
+- **Copilot CLI:** ✅ `.github/agents/<name>.md` (flat file) **[GAP-confirmation]** — repo-level layout not in the
+  public reference
+- **Antigravity CLI:** ✅ `.agents/agents/<name>/AGENT.md` (directory; spec 0053). Corrected in spec 0119: this cell
+  previously read `.antigravity/agents/<name>.md` (flat file), which contradicted both `build_agents` (now `buildAgents`
+  in the TypeScript build) and row 1's `.agents/` root. The spec 0119 collision key derives from these paths, so the
+  contradiction would have made that guard unauditable against its own reference table. Since spec 0201 flattened the
+  Claude cell of this row, this Antigravity path no longer mirrors it — both remain per-agent directories on their own
+  terms, but the parallelism this cell once described no longer holds.
 
-### 4b — Agent provenance carrier — upstream-tier `feedback` resolves to `canonical` regardless of a fork's `feedback_repo` (spec 0030); the carrier *mechanism* varies by CLI constraint (frontmatter YAML for Claude, Copilot, and Antigravity; body HTML comment for Gemini), but the resolved *value* shifts symmetrically
+### 4b — Agent provenance carrier
 
-- **Source of truth:** `scripts/build-components.ts` `buildAgents` (`injectProvenance` vs `geminiProvenanceComment`, `scripts/lib/build-components/provenance.ts`; shell origin `build_agents`, `inject_provenance`, `gemini_provenance_comment`)
+- **Feature:** Agent provenance carrier — upstream-tier `feedback` resolves to `canonical` regardless of a fork's
+  `feedback_repo` (spec 0030); the carrier *mechanism* varies by CLI constraint (frontmatter YAML for Claude, Copilot,
+  and Antigravity; body HTML comment for Gemini), but the resolved *value* shifts symmetrically
+- **Source of truth:** `scripts/build-components.ts` `buildAgents` (`injectProvenance` vs `geminiProvenanceComment`,
+  `scripts/lib/build-components/provenance.ts`; shell origin `build_agents`, `inject_provenance`,
+  `gemini_provenance_comment`)
 - **Claude Code:** ✅ YAML `metadata.provenance` block inside frontmatter (Claude accepts arbitrary frontmatter keys)
-- **Gemini CLI:** ✅ HTML comment `<!-- crewrig-provenance: version="…" canonical="…" feedback="…" -->` as first line of body — Gemini CLI 0.42.0 rejected this repository's own `type:` / `metadata:` keys (issue #54); a live re-probe of Gemini CLI 0.46.0 (issue #1116, spec 0198 R22) confirmed that narrower rejection still holds while `model:` / `temperature:` / `max_turns:` are accepted (bundled `subagents.md`), so `metadata.provenance` still travels as a body comment (build intentionally bypasses `injectProvenance`, formerly `inject_provenance` — see the Gemini branch of `buildAgents` in `scripts/lib/build-components/emit-agents.ts`)
-- **Copilot CLI:** ⚠️ YAML `metadata.provenance` block inside frontmatter (parallel with Claude — **[GAP-confirmation]** — public Copilot reference does not document tolerated frontmatter keys; verify and downgrade to HTML comment if rejected)
-- **Antigravity CLI:** ✅ YAML `metadata.provenance` block inside frontmatter (parallel with Claude and Copilot; spec 0053 R5)
+- **Gemini CLI:** ✅ HTML comment `<!-- crewrig-provenance: version="…" canonical="…" feedback="…" -->` as first
+  line of body — Gemini CLI 0.42.0 rejected this repository's own `type:` / `metadata:` keys (issue #54); a live
+  re-probe of Gemini CLI 0.46.0 (issue #1116, spec 0198 R22) confirmed that narrower rejection still holds while
+  `model:` / `temperature:` / `max_turns:` are accepted (bundled `subagents.md`), so `metadata.provenance` still travels
+  as a body comment (build intentionally bypasses `injectProvenance`, formerly `inject_provenance` — see the Gemini
+  branch of `buildAgents` in `scripts/lib/build-components/emit-agents.ts`)
+- **Copilot CLI:** ⚠️ YAML `metadata.provenance` block inside frontmatter (parallel with Claude — **[GAP-confirmation]**
+  — public Copilot reference does not document tolerated frontmatter keys; verify and downgrade to HTML comment if
+  rejected)
+- **Antigravity CLI:** ✅ YAML `metadata.provenance` block inside frontmatter (parallel with Claude and Copilot; spec
+  0053 R5)
 
-### 4c — Agent tool mapping / capabilities — maps tool requirements/capabilities from source frontmatter to output agent definitions
+### 4c — Agent tool mapping / capabilities
 
+- **Feature:** Agent tool mapping / capabilities — maps tool requirements/capabilities from source frontmatter to
+  output agent definitions
 - **Source of truth:** `scripts/build-components.ts` `buildAgents` (shell origin `build_agents`)
 - **Claude Code:** ❌ N/A (Claude Code does not use agent-level allowed-tools)
 - **Gemini CLI:** ❌ N/A (Gemini CLI has no agent-level tool requirements)
 - **Copilot CLI:** ❌ N/A (Copilot CLI has no agent-level tool requirements)
-- **Antigravity CLI:** ✅ Mapped: maps `Bash` from `claude.allowed-tools` to `enable_write_tools: true` and supports explicit `antigravity` configuration block (`enable_write_tools`, `enable_mcp_tools`, `enable_subagent_tools`) (spec 0137)
+- **Antigravity CLI:** ✅ Mapped: maps `Bash` from `claude.allowed-tools` to `enable_write_tools: true` and supports
+  explicit `antigravity` configuration block (`enable_write_tools`, `enable_mcp_tools`, `enable_subagent_tools`) (spec 0137)
 
-### 4d — Skill bundled scripts (spec 0258, ticket #1337; continues row 3) — the eleven script entries of the `github-actions` (`check-pinned-actions`, `check-secrets-exposure`, `lint-workflow`, `simulate-job`, `simulate-workflow`), `gitlab-ci` (`check-pinned-images`, `check-secrets-exposure`) and `pr-reviewer` (`lint-json`, `lint-markdown`, `lint-python`, `lint-skill`) skills are TypeScript files run as `node <name>.ts` (Node.js 24 type stripping), each a single self-contained file with no import, so the copy `propagateSkillResources` makes is byte for byte and survives being moved out of the checkout; the `.sh` each one replaced was deleted by the switch (requirement 35), which retargeted every caller to `node scripts/<name>.ts`. `lint-skill` resolves `js-yaml` from the script directory, then from the working directory, and falls back to a line scan with a one-line note when neither has it. The four CLIs consume the same skill scripts: these three skills are `core`, and the committed built tree carries a skill's `scripts/` on all four surfaces. The one asymmetry is a different path, not the build: the overlay-tier install of non-`core` skills into a user directory (`scripts/lib/setup/tier-install.ts`) places `SKILL.md` only for Copilot CLI, while Claude Code, Gemini CLI and Antigravity CLI receive the whole skill directory; it does not touch these `core` skills. Recorded, not changed. Windows proof: the `windows-skill-scripts` job runs each entry from PowerShell and `cmd.exe` with no `bash` on the child `PATH` (`scripts/tests/windows-skill-scripts.test.ts`)
+### 4d — Skill bundled scripts
 
-- **Source of truth:** `artifacts/core/skills/{github-actions,gitlab-ci,pr-reviewer}/scripts/*.ts`; `scripts/build-components.ts` `propagateSkillResources`
-- **Claude Code:** ✅ `.claude/skills/<name>/scripts/<name>.ts` (core tree); overlay-tier install copies the whole skill directory
-- **Gemini CLI:** ✅ `.gemini/skills/<name>/scripts/<name>.ts` (core tree); overlay-tier install copies the whole skill directory
-- **Copilot CLI:** ✅ `.github/skills/<name>/scripts/<name>.ts` (core tree); ⚠️ overlay-tier install to `~/.copilot` places `SKILL.md` only (non-`core` skills)
+- **Feature:** Skill bundled scripts (spec 0258, ticket #1337; continues row 3) — the eleven script entries of the
+  `github-actions` (`check-pinned-actions`, `check-secrets-exposure`, `lint-workflow`, `simulate-job`,
+  `simulate-workflow`), `gitlab-ci` (`check-pinned-images`, `check-secrets-exposure`) and `pr-reviewer` (`lint-json`,
+  `lint-markdown`, `lint-python`, `lint-skill`) skills are TypeScript files run as `node <name>.ts` (Node.js 24 type
+  stripping), each a single self-contained file with no import, so the copy `propagateSkillResources` makes is byte for
+  byte and survives being moved out of the checkout; the `.sh` each one replaced was deleted by the switch (requirement 35),
+  which retargeted every caller to `node scripts/<name>.ts`. `lint-skill` resolves `js-yaml` from the script directory,
+  then from the working directory, and falls back to a line scan with a one-line note when neither has it. The four CLIs
+  consume the same skill scripts: these three skills are `core`, and the committed built tree carries a skill's
+  `scripts/` on all four surfaces. The one asymmetry is a different path, not the build: the overlay-tier install of
+  non-`core` skills into a user directory (`scripts/lib/setup/tier-install.ts`) places `SKILL.md` only for Copilot CLI,
+  while Claude Code, Gemini CLI and Antigravity CLI receive the whole skill directory; it does not touch these `core`
+  skills. Recorded, not changed. Windows proof: the `windows-skill-scripts` job runs each entry from PowerShell and
+  `cmd.exe` with no `bash` on the child `PATH` (`scripts/tests/windows-skill-scripts.test.ts`)
+- **Source of truth:** `artifacts/core/skills/{github-actions,gitlab-ci,pr-reviewer}/scripts/*.ts`;
+  `scripts/build-components.ts` `propagateSkillResources`
+- **Claude Code:** ✅ `.claude/skills/<name>/scripts/<name>.ts` (core tree); overlay-tier install copies the whole
+  skill directory
+- **Gemini CLI:** ✅ `.gemini/skills/<name>/scripts/<name>.ts` (core tree); overlay-tier install copies the whole skill
+  directory
+- **Copilot CLI:** ✅ `.github/skills/<name>/scripts/<name>.ts` (core tree); ⚠️ overlay-tier install to
+  `~/.copilot` places `SKILL.md` only (non-`core` skills)
 - **Antigravity CLI:** ✅ `.agents/skills/<name>/scripts/<name>.ts` (core tree)
 
-### 5 — Slash-command directory (built output) — `init-personal-profile` and `init-soul` (spec 0191) are `core` command sources compiled through this path, reaching all four CLI surfaces shown here. On Gemini CLI specifically, they are reachable **only** as this native slash command (spec 0191.delta-01 R18): the `.agents/skills/<name>/SKILL.md` output this same source also compiles (row 3) is a Gemini-visible workspace skill by the `.agents/skills/` alias (row 3's mechanism), which would otherwise let Gemini's `SkillCommandLoader` mint a second, competing `/<name>` reachable through the `activate_skill` tool — row 7's `.gemini/settings.json` deliberately disables that path for exactly these two names, so there is no model-side activation route to either interview on Gemini CLI, by design, not by omission.
+### 5 — Slash-command directory
 
+- **Feature:** Slash-command directory (built output) — `init-personal-profile` and `init-soul` (spec 0191) are `core`
+  command sources compiled through this path, reaching all four CLI surfaces shown here. On Gemini CLI specifically,
+  they are reachable **only** as this native slash command (spec 0191.delta-01 R18): the
+  `.agents/skills/<name>/SKILL.md` output this same source also compiles (row 3) is a Gemini-visible workspace skill by
+  the `.agents/skills/` alias (row 3's mechanism), which would otherwise let Gemini's `SkillCommandLoader` mint a
+  second, competing `/<name>` reachable through the `activate_skill` tool — row 7's `.gemini/settings.json`
+  deliberately disables that path for exactly these two names, so there is no model-side activation route to either
+  interview on Gemini CLI, by design, not by omission.
 - **Source of truth:** `scripts/build-components.ts` `buildCommands` (shell origin `build_commands`)
 - **Claude Code:** ✅ Compiled into `.claude/skills/<name>/SKILL.md` (commands are wrapped as user-invocable skills)
-- **Gemini CLI:** ✅ `.gemini/commands/<name>.toml` (native TOML) — the sole Gemini-reachable form for these two names
+- **Gemini CLI:** ✅ `.gemini/commands/<name>.toml` (native TOML) — the sole Gemini-reachable form for these two
+  names
 - **Copilot CLI:** ✅ Compiled into `.github/skills/<name>/SKILL.md` (no first-class slash-command file format — **[GAP]**)
-- **Antigravity CLI:** ✅ Compiled into `.agents/skills/<name>/SKILL.md` (same skill-wrapper pattern as Claude and Copilot; spec 0053). **Invocation caveat, measured during the issue #1077 probe:** Antigravity CLI resolves a scripted or headless invocation (`agy -p`/`-i`) against its own last-active *project* state, not the shell's `cwd` — on a machine that already has other Antigravity projects, `agy -i "/init-personal-profile"` run from a fresh crewrig clone resolved against an unrelated, previously-active project's `config/PROFILE.md` instead. Passing `--new-project` anchors the session to the current directory and was required for every probe run in that logbook; a first clone with no prior Antigravity project history is unaffected, but the flag is safe and recommended unconditionally.
+- **Antigravity CLI:** ✅ Compiled into `.agents/skills/<name>/SKILL.md` (same skill-wrapper pattern as Claude and
+  Copilot; spec 0053). **Invocation caveat, measured during the issue #1077 probe:** Antigravity CLI resolves a scripted
+  or headless invocation (`agy -p`/`-i`) against its own last-active *project* state, not the shell's `cwd` — on a
+  machine that already has other Antigravity projects, `agy -i "/init-personal-profile"` run from a fresh crewrig clone
+  resolved against an unrelated, previously-active project's `config/PROFILE.md` instead. Passing `--new-project`
+  anchors the session to the current directory and was required for every probe run in that logbook; a first clone with
+  no prior Antigravity project history is unaffected, but the flag is safe and recommended unconditionally.
 
-### 5b — Extension command render (spec 0042) — an extension's command pivot source `commands/<name>.md` is rendered per-CLI by how that CLI *loads* the extension (row 13), NOT by the component build (`scripts/build-components.ts`, formerly `build_components`) (spec 0024 delta-01 forbids it from walking `extensions/`). Both paths share `scripts/lib/render-command.ts` (with `scripts/lib/yaml-text.ts`; the shell library `render-command.sh` was retired in #1344), so no `yq` is involved. **Carrier is format-specific (R5):** the command→TOML path carries provenance as a TOML `# crewrig-provenance: …` comment line (a bare HTML comment between TOML keys is a `TOMLDecodeError`); the skill/agent→Markdown paths keep the HTML-comment carrier of row 4b.
+### 5b — Extension command render
 
-- **Source of truth:** `scripts/build-extension.ts` (Gemini, build-tree `.toml`), `scripts/build-claude-plugin.ts` (Claude, ephemeral plugin skill), `scripts/lib/render-command.ts` (shared)
-- **Claude Code:** ✅ Ephemeral: `build-claude-plugin.ts` renders the pivot `commands/<name>.md` body into `dist-claude-plugin/<ext>/skills/<name>/SKILL.md` at install time (it no longer reads the Gemini `.toml`). The `extension.json` generic `commands.convertToSkills` flag (the retired `components.commands.enabled` wrapper is gone — spec 0183 R1; this was already stale before this change, since the generic top-level `commands` section had already replaced it) means "render pivot `.md` → Claude skill", not "convert `.toml` → skill" (rename deferred to spec 0044).
-- **Gemini CLI:** ✅ Ephemeral, build tree: `node scripts/build-extension.ts --target gemini` renders `commands/<name>.md` → `build/extensions/<ext>/commands/<name>.toml`, because Gemini loads an extension installed from that build tree with no install-time render hook of its own (row 13, spec 0173 delta-01). No `.toml` may be committed in the source tree at all; `node scripts/build-extension.ts --check` fails the build the moment one is.
-- **Copilot CLI:** ✅ Ephemeral: `build-copilot-plugin.ts` renders pivot `commands/<name>.md` body into `dist-copilot-plugin/<ext>/skills/<name>/SKILL.md` when `convertToSkills` is `true` (same pattern as Claude and Antigravity; spec 0065)
-- **Antigravity CLI:** ✅ Ephemeral: `build-antigravity-extension.ts` renders pivot `commands/<name>.md` body into `dist-antigravity-plugin/<ext>/skills/<name>/SKILL.md` when `convertToSkills` is `true` (same pattern as Claude and Copilot; spec 0063). **Correction (issue #1007):** this cell previously read "❌ No extension command pivot — [GAP] by design" and named a phantom `scripts/build-antigravity-plugin.sh` (no such file exists in the tree; the real builder is `build-antigravity-extension.ts`, row 13). That claim directly contradicted row 13's own description of the same builder and is corrected here rather than left standing; the matching GAP-inventory entry below is removed in the same change.
+- **Feature:** Extension command render (spec 0042) — an extension's command pivot source `commands/<name>.md` is
+  rendered per-CLI by how that CLI *loads* the extension (row 13), NOT by the component build
+  (`scripts/build-components.ts`, formerly `build_components`) (spec 0024 delta-01 forbids it from walking
+  `extensions/`). Both paths share `scripts/lib/render-command.ts` (with `scripts/lib/yaml-text.ts`; the shell library
+  `render-command.sh` was retired in #1344), so no `yq` is involved. **Carrier is format-specific (R5):** the
+  command→TOML path carries provenance as a TOML `# crewrig-provenance: …` comment line (a bare HTML comment between
+  TOML keys is a `TOMLDecodeError`); the skill/agent→Markdown paths keep the HTML-comment carrier of row 4b.
+- **Source of truth:** `scripts/build-extension.ts` (Gemini, build-tree `.toml`), `scripts/build-claude-plugin.ts`
+  (Claude, ephemeral plugin skill), `scripts/lib/render-command.ts` (shared)
+- **Claude Code:** ✅ Ephemeral: `build-claude-plugin.ts` renders the pivot `commands/<name>.md` body into
+  `dist-claude-plugin/<ext>/skills/<name>/SKILL.md` at install time (it no longer reads the Gemini `.toml`). The
+  `extension.json` generic `commands.convertToSkills` flag (the retired `components.commands.enabled` wrapper is gone
+  — spec 0183 R1; this was already stale before this change, since the generic top-level `commands` section had
+  already replaced it) means "render pivot `.md` → Claude skill", not "convert `.toml` → skill" (rename deferred to
+  spec 0044).
+- **Gemini CLI:** ✅ Ephemeral, build tree: `node scripts/build-extension.ts --target gemini` renders
+  `commands/<name>.md` → `build/extensions/<ext>/commands/<name>.toml`, because Gemini loads an extension installed
+  from that build tree with no install-time render hook of its own (row 13, spec 0173 delta-01). No `.toml` may be
+  committed in the source tree at all; `node scripts/build-extension.ts --check` fails the build the moment one is.
+- **Copilot CLI:** ✅ Ephemeral: `build-copilot-plugin.ts` renders pivot `commands/<name>.md` body into
+  `dist-copilot-plugin/<ext>/skills/<name>/SKILL.md` when `convertToSkills` is `true` (same pattern as Claude and
+  Antigravity; spec 0065)
+- **Antigravity CLI:** ✅ Ephemeral: `build-antigravity-extension.ts` renders pivot `commands/<name>.md` body into
+  `dist-antigravity-plugin/<ext>/skills/<name>/SKILL.md` when `convertToSkills` is `true` (same pattern as Claude and
+  Copilot; spec 0063). **Correction (issue #1007):** this cell previously read "❌ No extension command pivot — [GAP]
+  by design" and named a phantom `scripts/build-antigravity-plugin.sh` (no such file exists in the tree; the real
+  builder is `build-antigravity-extension.ts`, row 13). That claim directly contradicted row 13's own description of the
+  same builder and is corrected here rather than left standing; the matching GAP-inventory entry below is removed in the
+  same change.
 
-### 5c — Extension **skill/agent** provenance carrier (spec 0043) — an extension's `skills/<name>/SKILL.md` / `agents/<name>/AGENT.md` is consumed **in place** with **no render seam**: `install-extension.ts` does `ln -s` / `cp -rf` of the whole extension dir, `link-extensions.ts` calls it, and `build-claude-plugin.ts` does `cp -r` of the skill dir — so all CLIs read the **same source bytes**. Agents are the one exception to whole-directory copying: since an `agents/<name>/` dir may hold sibling pivot sources for other CLIs (e.g. `PROMPT.md` for Gemini), `build-claude-plugin.ts` flattens source agents to `agents/<name>.md` at the root of the plugin archive (spec 0201 delta-01, issue #1140): live empirical testing proved Claude Code discovers only top-level `agents/*.md` in plugins and ignores subdirectories. Sibling files (like `PROMPT.md`) are excluded, preventing them from leaking into the plugin output. The copied `AGENT.md` bytes themselves are unchanged (beyond the flattened output path), so the "same source bytes" and provenance-carrier reasoning below still hold for the file that *is* copied. Unlike row 4b (artifacts/ agents keep `metadata.provenance` in *frontmatter* in the source and the build strips it → comment for Gemini only), an extension skill/agent has nowhere to strip: there is no `.md`/`.toml` filename split (row 5b is *commands*, not skills) to host a Gemini-safe sibling. So the provenance is authored **directly as the HTML-comment carrier on the first body line** — Gemini-safe as written. `canonical`/`feedback` are **literal** repo URLs (NOT `${CANONICAL_REPO}`): a consuming project's config cannot resolve a third-party extension's origin (spec 0043 R2). **R5 enforcement note:** `check-feedback-routing.ts` (spec 0030) reads `metadata.provenance` from *frontmatter* (a YAML parse; the TypeScript entry needs no `yq`), so it **cannot see** the comment carrier and **permanently skips** extension skills — R5 (feedback==canonical) for extension skills/agents lives **solely** in `check-extension-provenance.ts`; there is **no** defense-in-depth overlap with the 0030 guard.
+### 5c — Extension **skill/agent** provenance carrier
 
-- **Source of truth:** `scripts/check-extension-provenance.ts` (presence + R1/R5 routing guard, parses the comment carrier, NOT `yq`); carrier producer `gemini_provenance_comment` (row 4b)
-- **Claude Code:** ✅ HTML comment `<!-- crewrig-provenance: version="…" canonical="…" feedback="…" -->` as first body line of the in-place `SKILL.md` (Claude tolerates the inert body comment; greeter has no prior frontmatter provenance, so this is not a downgrade)
-- **Gemini CLI:** ✅ Same source bytes — the first-body-line HTML comment is Gemini-safe as authored (no non-`name`/`description` frontmatter key)
-- **Copilot CLI:** ✅ Same in-place source bytes — `build-copilot-plugin.ts` copies `skills/<name>/SKILL.md` verbatim; the first-body-line HTML-comment carrier (spec 0043) is preserved unchanged (spec 0065)
-- **Antigravity CLI:** ❌ No extension skill/agent loader — **[GAP]** by design. Antigravity CLI uses `agy plugin install` to load plugins; no in-repo extension skill/agent loader path exists. Evidence: `scripts/install-antigravity-extension.ts` builds a plugin package and calls `agy plugin install` — the plugin is consumed by the CLI as a whole package, not via a per-skill directory link
+- **Feature:** Extension **skill/agent** provenance carrier (spec 0043) — an extension's `skills/<name>/SKILL.md` /
+  `agents/<name>/AGENT.md` is consumed **in place** with **no render seam**: `install-extension.ts` does `ln -s` /
+  `cp -rf` of the whole extension dir, `link-extensions.ts` calls it, and `build-claude-plugin.ts` does `cp -r` of the
+  skill dir — so all CLIs read the **same source bytes**. Agents are the one exception to whole-directory copying:
+  since an `agents/<name>/` dir may hold sibling pivot sources for other CLIs (e.g. `PROMPT.md` for Gemini),
+  `build-claude-plugin.ts` flattens source agents to `agents/<name>.md` at the root of the plugin archive (spec 0201
+  delta-01, issue #1140): live empirical testing proved Claude Code discovers only top-level `agents/*.md` in plugins
+  and ignores subdirectories. Sibling files (like `PROMPT.md`) are excluded, preventing them from leaking into the
+  plugin output. The copied `AGENT.md` bytes themselves are unchanged (beyond the flattened output path), so the "same
+  source bytes" and provenance-carrier reasoning below still hold for the file that *is* copied. Unlike row 4b
+  (artifacts/ agents keep `metadata.provenance` in *frontmatter* in the source and the build strips it → comment for
+  Gemini only), an extension skill/agent has nowhere to strip: there is no `.md`/`.toml` filename split (row 5b is *commands*,
+  not skills) to host a Gemini-safe sibling. So the provenance is authored **directly as the HTML-comment carrier on the
+  first body line** — Gemini-safe as written. `canonical`/`feedback` are **literal** repo URLs (NOT
+  `${CANONICAL_REPO}`): a consuming project's config cannot resolve a third-party extension's origin (spec 0043 R2). **R5
+  enforcement note:** `check-feedback-routing.ts` (spec 0030) reads `metadata.provenance` from *frontmatter* (a YAML
+  parse; the TypeScript entry needs no `yq`), so it **cannot see** the comment carrier and **permanently skips**
+  extension skills — R5 (feedback==canonical) for extension skills/agents lives **solely** in
+  `check-extension-provenance.ts`; there is **no** defense-in-depth overlap with the 0030 guard.
+- **Source of truth:** `scripts/check-extension-provenance.ts` (presence + R1/R5 routing guard, parses the comment
+  carrier, NOT `yq`); carrier producer `gemini_provenance_comment` (row 4b)
+- **Claude Code:** ✅ HTML comment `<!-- crewrig-provenance: version="…" canonical="…" feedback="…" -->` as first
+  body line of the in-place `SKILL.md` (Claude tolerates the inert body comment; greeter has no prior frontmatter
+  provenance, so this is not a downgrade)
+- **Gemini CLI:** ✅ Same source bytes — the first-body-line HTML comment is Gemini-safe as authored (no
+  non-`name`/`description` frontmatter key)
+- **Copilot CLI:** ✅ Same in-place source bytes — `build-copilot-plugin.ts` copies `skills/<name>/SKILL.md`
+  verbatim; the first-body-line HTML-comment carrier (spec 0043) is preserved unchanged (spec 0065)
+- **Antigravity CLI:** ❌ No extension skill/agent loader — **[GAP]** by design. Antigravity CLI uses
+  `agy plugin install` to load plugins; no in-repo extension skill/agent loader path exists. Evidence:
+  `scripts/install-antigravity-extension.ts` builds a plugin package and calls `agy plugin install` — the plugin is
+  consumed by the CLI as a whole package, not via a per-skill directory link
 
-### 5d — Extension context render (spec 0181, issue #1007) — symmetric with row 5b: an extension's agent-facing context source `CONTEXT.md` (named by the generic `context.source` key) is rendered per-CLI by how that CLI *loads* the extension, through the shared render-variable resolver `scripts/lib/extension/context-render.ts`, which also reads its per-target constants (display name, `commandRef`/`skillRef` templates, `contextOutput` location) from `scripts/lib/extension-targets.json` — the same descriptor shared with rows 5b's sibling hook/MCP translators. No per-CLI context key remains admissible in `extension.json` (`gemini.contextFileName`, `claude.contextFileName`, `antigravity.contextFileName` all retired); the built filename is the render's own knowledge on every target.
+### 5d — Extension context render
 
-- **Source of truth:** `scripts/lib/extension/context-render.ts` (shared resolver), `scripts/build-extension.ts`, `scripts/build-claude-plugin.ts`, `scripts/build-copilot-plugin.ts`, `scripts/build-antigravity-extension.ts`
+- **Feature:** Extension context render (spec 0181, issue #1007) — symmetric with row 5b: an extension's agent-facing
+  context source `CONTEXT.md` (named by the generic `context.source` key) is rendered per-CLI by how that CLI *loads*
+  the extension, through the shared render-variable resolver `scripts/lib/extension/context-render.ts`, which also reads
+  its per-target constants (display name, `commandRef`/`skillRef` templates, `contextOutput` location) from
+  `scripts/lib/extension-targets.json` — the same descriptor shared with rows 5b's sibling hook/MCP translators. No
+  per-CLI context key remains admissible in `extension.json` (`gemini.contextFileName`, `claude.contextFileName`,
+  `antigravity.contextFileName` all retired); the built filename is the render's own knowledge on every target.
+- **Source of truth:** `scripts/lib/extension/context-render.ts` (shared resolver), `scripts/build-extension.ts`,
+  `scripts/build-claude-plugin.ts`, `scripts/build-copilot-plugin.ts`, `scripts/build-antigravity-extension.ts`
 - **Claude Code:** ✅ Rendered into the built plugin root: `dist-claude-plugin/<ext>/CLAUDE.md`
-- **Gemini CLI:** ✅ Rendered into the build tree: `build/extensions/<ext>/GEMINI.md`, sibling to `gemini-extension.json`, which still names it via `contextFileName` (render-supplied, not authored)
-- **Copilot CLI:** ✅ Rendered as a user-invocable skill — the same surface row 5b's command render already uses for this target — `dist-copilot-plugin/<ext>/skills/<ext>-context/SKILL.md`. Pinned by live evidence (`tests/extension-context-delivery-evidence.md`): the CLI's plugin surface carries no context/instructions concept of its own (`copilot plugin --help`), confirmed rather than assumed before this delivery was declared mapped
-- **Antigravity CLI:** ✅ Rendered as a plugin rule file — `dist-antigravity-plugin/<ext>/rules/AGENTS.md`, pinned by the same live-evidence probe (a throwaway plugin's `rules/AGENTS.md` was loaded as active session context by a real `agy -p` call, and a skill in the same plugin was listed and invoked by its bare name — no vendor-documentation-only claim)
+- **Gemini CLI:** ✅ Rendered into the build tree: `build/extensions/<ext>/GEMINI.md`, sibling to
+  `gemini-extension.json`, which still names it via `contextFileName` (render-supplied, not authored)
+- **Copilot CLI:** ✅ Rendered as a user-invocable skill — the same surface row 5b's command render already uses for
+  this target — `dist-copilot-plugin/<ext>/skills/<ext>-context/SKILL.md`. Pinned by live evidence
+  (`tests/extension-context-delivery-evidence.md`): the CLI's plugin surface carries no context/instructions concept of
+  its own (`copilot plugin --help`), confirmed rather than assumed before this delivery was declared mapped
+- **Antigravity CLI:** ✅ Rendered as a plugin rule file — `dist-antigravity-plugin/<ext>/rules/AGENTS.md`, pinned by
+  the same live-evidence probe (a throwaway plugin's `rules/AGENTS.md` was loaded as active session context by a real
+  `agy -p` call, and a skill in the same plugin was listed and invoked by its bare name — no vendor-documentation-only
+  claim)
 
 ### 6 — Settings file in `config/`
 
@@ -129,186 +291,890 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Claude Code:** ✅ `config/claude/settings.json.template`
 - **Gemini CLI:** ✅ `config/gemini/settings.json`
 - **Copilot CLI:** ✅ `config/copilot/settings.json.template`
-- **Antigravity CLI:** ❌ No `config/antigravity/` settings template — **[GAP]**. Antigravity CLI settings are written to `~/.gemini/antigravity-cli/settings.json` directly by the CLI and the setup script; no repo template equivalent exists. Evidence: `scripts/setup-antigravity-interactive.ts` (PR #443) does not write a `config/antigravity/` file
+- **Antigravity CLI:** ❌ No `config/antigravity/` settings template — **[GAP]**. Antigravity CLI settings are
+  written to `~/.gemini/antigravity-cli/settings.json` directly by the CLI and the setup script; no repo template
+  equivalent exists. Evidence: `scripts/setup-antigravity-interactive.ts` (PR #443) does not write a
+  `config/antigravity/` file
 
 ### 7 — Active workspace settings file
 
 - **Source of truth:** `.claude/`, `.gemini/`, `.github/copilot/`
 - **Claude Code:** ✅ `.claude/settings.json`
-- **Gemini CLI:** ✅ `.gemini/settings.json` (spec 0191.delta-01) — single purpose: `skills.disabled` names exactly `init-personal-profile` and `init-soul`, so Gemini CLI's `SkillCommandLoader` does not mint a competing skill-derived `/<name>` slash command for either, leaving the native `.gemini/commands/<name>.toml` workspace command the sole claimant of the bare name (row 5). Declares no other key and disables no other skill (R15). Distinct from `~/.gemini/settings.json`, which the CLI still loads at user scope and which this repo's own `config/gemini/settings.json` template deploys there — that template carries no `skills` key and is untouched by this file.
+- **Gemini CLI:** ✅ `.gemini/settings.json` (spec 0191.delta-01) — single purpose: `skills.disabled` names exactly
+  `init-personal-profile` and `init-soul`, so Gemini CLI's `SkillCommandLoader` does not mint a competing skill-derived
+  `/<name>` slash command for either, leaving the native `.gemini/commands/<name>.toml` workspace command the sole
+  claimant of the bare name (row 5). Declares no other key and disables no other skill (R15). Distinct from
+  `~/.gemini/settings.json`, which the CLI still loads at user scope and which this repo's own
+  `config/gemini/settings.json` template deploys there — that template carries no `skills` key and is untouched by
+  this file.
 - **Copilot CLI:** ✅ `.github/copilot/settings.json`
-- **Antigravity CLI:** ❌ No in-repo workspace settings file — **[GAP]**. Antigravity CLI reads settings from `~/.gemini/antigravity-cli/settings.json` only; no `.agents/settings.json` analog is defined. Evidence: `scripts/setup-antigravity-interactive.ts` (the TypeScript entry; PR #443 wrote it as the shell script, removed in #1344) writes no workspace settings file to the project tree
+- **Antigravity CLI:** ❌ No in-repo workspace settings file — **[GAP]**. Antigravity CLI reads settings from
+  `~/.gemini/antigravity-cli/settings.json` only; no `.agents/settings.json` analog is defined. Evidence:
+  `scripts/setup-antigravity-interactive.ts` (the TypeScript entry; PR #443 wrote it as the shell script, removed in #1344)
+  writes no workspace settings file to the project tree
 
-### 7b — User-level layered context (00–65 priority files) — deployed by the TypeScript setup entries `scripts/setup-<cli>-interactive.ts` (spec 0256, row 10b)
+### 7b — User-level layered context
 
-- **Source of truth:** `config/SOUL.md`, `config/level/`, `config/ORGANIZATION.md`, `config/PROFILE.md`, `config/expertise/`, `config/teams/`, `artifacts/core/rules/60-tools.md` (priority 60, core; total core-rules size capped by `scripts/check-rules-size.ts`, spec 0270, relocated blocks in `docs/mempalace-*.md` and `docs/friction-failure-mode.md`), `config/TOOLS.md` (priority 65, overlay)
-- **Claude Code:** ✅ `~/.claude/rules/60-tools.md` (core) + `~/.claude/rules/65-org-tools.md` (overlay), plus other `*.md` files — deployed by `setup-claude-interactive.ts`
-- **Gemini CLI:** ✅ `~/.gemini/60_TOOLS.md` (core) + `~/.gemini/65_TOOLS.md` (overlay), plus other `[0-6][0-9]_*.md` files — deployed by `setup-gemini-interactive.ts`. Gemini loads **only** files enrolled in `context.fileName` (`~/.gemini/settings.json` ← `config/gemini/settings.json`), unlike Claude/Copilot which read an entire directory, so every deployed overlay MUST also be enrolled there (e.g. `65_TOOLS.md`; the priority-66 org-rules overlay is enrolled likewise, see row 7e) (#576)
-- **Copilot CLI:** ✅ `~/.copilot/instructions/60-tools.instructions.md` (core) + `~/.copilot/instructions/65-org-tools.instructions.md` (overlay), plus other `*.instructions.md` files — deployed by `setup-copilot-interactive.ts`
-- **Antigravity CLI:** ✅ `~/.gemini/antigravity-cli/` — priority `[0-6][0-9]_*.md` files deployed by `setup-antigravity-interactive.ts`; concatenated into `~/.gemini/config/AGENTS.md` (the single system context file Antigravity CLI reads) at the end of each setup run; any superseded `~/.gemini/GEMINI.md` context file is removed to prevent duplicate/stale rule loading (spec 0054 / PR #443; spec 0061 delta-01 / issue #478; spec 0061 delta-02 / issue #1082)
+- **Feature:** User-level layered context (00–65 priority files) — deployed by the TypeScript setup entries
+  `scripts/setup-<cli>-interactive.ts` (spec 0256, row 10b)
+- **Source of truth:** `config/SOUL.md`, `config/level/`, `config/ORGANIZATION.md`, `config/PROFILE.md`,
+  `config/expertise/`, `config/teams/`, `artifacts/core/rules/60-tools.md` (priority 60, core; total core-rules size
+  capped by `scripts/check-rules-size.ts`, spec 0270, relocated blocks in `docs/mempalace-*.md` and
+  `docs/friction-failure-mode.md`), `config/TOOLS.md` (priority 65, overlay)
+- **Claude Code:** ✅ `~/.claude/rules/60-tools.md` (core) + `~/.claude/rules/65-org-tools.md` (overlay), plus other
+  `*.md` files — deployed by `setup-claude-interactive.ts`
+- **Gemini CLI:** ✅ `~/.gemini/60_TOOLS.md` (core) + `~/.gemini/65_TOOLS.md` (overlay), plus other `[0-6][0-9]_*.md`
+  files — deployed by `setup-gemini-interactive.ts`. Gemini loads **only** files enrolled in `context.fileName`
+  (`~/.gemini/settings.json` ← `config/gemini/settings.json`), unlike Claude/Copilot which read an entire directory,
+  so every deployed overlay MUST also be enrolled there (e.g. `65_TOOLS.md`; the priority-66 org-rules overlay is
+  enrolled likewise, see row 7e) (#576)
+- **Copilot CLI:** ✅ `~/.copilot/instructions/60-tools.instructions.md` (core) +
+  `~/.copilot/instructions/65-org-tools.instructions.md` (overlay), plus other `*.instructions.md` files — deployed by
+  `setup-copilot-interactive.ts`
+- **Antigravity CLI:** ✅ `~/.gemini/antigravity-cli/` — priority `[0-6][0-9]_*.md` files deployed by
+  `setup-antigravity-interactive.ts`; concatenated into `~/.gemini/config/AGENTS.md` (the single system context file
+  Antigravity CLI reads) at the end of each setup run; any superseded `~/.gemini/GEMINI.md` context file is removed to
+  prevent duplicate/stale rule loading (spec 0054 / PR #443; spec 0061 delta-01 / issue #478; spec 0061 delta-02 / issue #1082)
 
-### 7c — MCP server configuration file — pre-existing **non-reserved** `mcpServers` declarations are preserved across a setup run on all four CLIs (spec 0089). The names `mempalace` / `sequentialthinking` are **framework-reserved** (`MCP_RESERVED_NAMES` in `scripts/lib/org-mcp.ts`; formerly `scripts/lib/common.sh`, retired in #1344): framework-wins on selection (the reserved entry replaces any prior one), removed on decline (a decline that since spec 0113 delta-02 no longer exists for `mempalace` — setup registers it against the shared HTTP daemon by default, row 10; `sequentialthinking` keeps its decline), each with a non-silent warning + timestamped backup. The two overwrite-based setups (Copilot/Antigravity) get this by folding the captured pre-run config back over the framework write via the shared `merge_preexisting_mcp_servers` helper. Gemini merges `settings.json` in place instead (spec 0214, `scripts/lib/setup/gemini-settings.ts`; the shell function `gemini_settings_write` was retired in #1344): its non-reserved servers are operator content kept verbatim, its reserved entries are replaced whole from the template on every run, and it still calls `merge_preexisting_mcp_servers` after the merge for the R9 warnings. Claude already preserves declarations through its idempotent `claude mcp add` and is the R5 reference behavior. Org-declared servers are folded as a third precedence tier on top of this merge — see row 7h. **Issue #1248 hardening:** the operator/org JSON these helpers (and the template writes in `setup-copilot-interactive.ts` / `setup-antigravity-interactive.ts`) fold now reaches jq via `--slurpfile` from a private 0600 temp file rather than `--argjson`, and every write to the MCP config target goes through `write_json_config_secure` / `write_json_config_secure_from` (mktemp'd name, atomic rename, no symlink follow) instead of a predictable `.tmp` name.
+### 7c — MCP server configuration file
 
-- **Source of truth:** `config/`, `scripts/lib/setup/gemini-settings.ts` and `scripts/lib/setup/mcp-json-writers.ts` (spec 0256: the setup entries use them; deviation (j) for the written JSON; the shell libraries `common.sh` and `gemini-settings.sh` were retired in #1344) **Spec 0113 — the `mempalace` entry switches transport.** It is registered against the shared HTTP daemon instead of a per-session stdio command, through one helper emitting four native shapes: Claude `claude mcp add --transport http … --header`, Gemini and Copilot `{type:"http",url,headers}`, Antigravity `{serverUrl,headers}` with no transport key. Built rather than reused: the spec-0091 appliers skip every name in `MCP_RESERVED_NAMES` by design and `mempalace` is reserved, so they refuse the one server this needs. The switch is a machine-wide transaction (`task mempalace:switch-http`) — readable/writable floor first, capture, apply, restore on failure, and report which assistant is in which arrangement when a restore itself fails. A scoped single-CLI run stays legitimate and sits outside that obligation. The arrangement classifier reports a configuration that does not parse as JSON as `unknown` (neither arrangement), not `none` — a non-parseable file is residue, not a convergeable no-registration (spec 0165 R3).
-- **Claude Code:** ✅ User-managed via `claude mcp add` / `~/.claude/mcp.json` (no repo template — managed per-user by the CLI). **Reference behavior for spec 0089 R5** — the idempotent server-add already preserves operator declarations
-- **Gemini CLI:** ✅ `config/gemini/settings.json` → `~/.gemini/settings.json` (2 servers: MemPalace, SequentialThinking; no forge MCP — CLI-only forge access per spec 0090). Merged in place, never rebuilt (spec 0214): every operator key, hook and non-reserved `mcpServers` entry is kept, template keys are seeds an operator value overrides, and only `context.fileName` (ordered union) and the reserved entries are framework-owned; a commented file is read as Gemini CLI reads it, with a warning that the comments stay only in the timestamped backup
-- **Copilot CLI:** ✅ `config/copilot/mcp-config.json.template` → `~/.copilot/mcp-config.json` (2 servers: MemPalace, SequentialThinking; no forge MCP — CLI-only forge access per spec 0090; deployed by `setup-copilot-interactive.ts`). Preserves pre-existing non-reserved `mcpServers` across setup (spec 0089)
-- **Antigravity CLI:** ✅ `~/.gemini/config/mcp_config.json` `mcpServers` block written by `setup-antigravity-interactive.ts` (spec 0054 / PR #443). Preserves pre-existing non-reserved `mcpServers` across setup despite its empty MCP base (spec 0089)
+- **Feature:** MCP server configuration file — pre-existing **non-reserved** `mcpServers` declarations are preserved
+  across a setup run on all four CLIs (spec 0089). The names `mempalace` / `sequentialthinking` are **framework-reserved**
+  (`MCP_RESERVED_NAMES` in `scripts/lib/org-mcp.ts`; formerly `scripts/lib/common.sh`, retired in #1344): framework-wins
+  on selection (the reserved entry replaces any prior one), removed on decline (a decline that since spec 0113 delta-02
+  no longer exists for `mempalace` — setup registers it against the shared HTTP daemon by default, row 10;
+  `sequentialthinking` keeps its decline), each with a non-silent warning + timestamped backup. The two overwrite-based
+  setups (Copilot/Antigravity) get this by folding the captured pre-run config back over the framework write via the
+  shared `merge_preexisting_mcp_servers` helper. Gemini merges `settings.json` in place instead (spec 0214,
+  `scripts/lib/setup/gemini-settings.ts`; the shell function `gemini_settings_write` was retired in #1344): its
+  non-reserved servers are operator content kept verbatim, its reserved entries are replaced whole from the template on
+  every run, and it still calls `merge_preexisting_mcp_servers` after the merge for the R9 warnings. Claude already
+  preserves declarations through its idempotent `claude mcp add` and is the R5 reference behavior. Org-declared servers
+  are folded as a third precedence tier on top of this merge — see row 7h. **Issue #1248 hardening:** the operator/org
+  JSON these helpers (and the template writes in `setup-copilot-interactive.ts` / `setup-antigravity-interactive.ts`)
+  fold now reaches jq via `--slurpfile` from a private 0600 temp file rather than `--argjson`, and every write to the
+  MCP config target goes through `write_json_config_secure` / `write_json_config_secure_from` (mktemp'd name, atomic
+  rename, no symlink follow) instead of a predictable `.tmp` name.
+- **Source of truth:** `config/`, `scripts/lib/setup/gemini-settings.ts` and `scripts/lib/setup/mcp-json-writers.ts`
+  (spec 0256: the setup entries use them; deviation (j) for the written JSON; the shell libraries `common.sh` and
+  `gemini-settings.sh` were retired in #1344) **Spec 0113 — the `mempalace` entry switches transport.** It is
+  registered against the shared HTTP daemon instead of a per-session stdio command, through one helper emitting four
+  native shapes: Claude `claude mcp add --transport http … --header`, Gemini and Copilot `{type:"http",url,headers}`,
+  Antigravity `{serverUrl,headers}` with no transport key. Built rather than reused: the spec-0091 appliers skip every
+  name in `MCP_RESERVED_NAMES` by design and `mempalace` is reserved, so they refuse the one server this needs. The
+  switch is a machine-wide transaction (`task mempalace:switch-http`) — readable/writable floor first, capture, apply,
+  restore on failure, and report which assistant is in which arrangement when a restore itself fails. A scoped
+  single-CLI run stays legitimate and sits outside that obligation. The arrangement classifier reports a configuration
+  that does not parse as JSON as `unknown` (neither arrangement), not `none` — a non-parseable file is residue, not a
+  convergeable no-registration (spec 0165 R3).
+- **Claude Code:** ✅ User-managed via `claude mcp add` / `~/.claude/mcp.json` (no repo template — managed per-user
+  by the CLI). **Reference behavior for spec 0089 R5** — the idempotent server-add already preserves operator
+  declarations
+- **Gemini CLI:** ✅ `config/gemini/settings.json` → `~/.gemini/settings.json` (2 servers: MemPalace,
+  SequentialThinking; no forge MCP — CLI-only forge access per spec 0090). Merged in place, never rebuilt (spec 0214):
+  every operator key, hook and non-reserved `mcpServers` entry is kept, template keys are seeds an operator value
+  overrides, and only `context.fileName` (ordered union) and the reserved entries are framework-owned; a commented file
+  is read as Gemini CLI reads it, with a warning that the comments stay only in the timestamped backup
+- **Copilot CLI:** ✅ `config/copilot/mcp-config.json.template` → `~/.copilot/mcp-config.json` (2 servers: MemPalace,
+  SequentialThinking; no forge MCP — CLI-only forge access per spec 0090; deployed by `setup-copilot-interactive.ts`).
+  Preserves pre-existing non-reserved `mcpServers` across setup (spec 0089)
+- **Antigravity CLI:** ✅ `~/.gemini/config/mcp_config.json` `mcpServers` block written by
+  `setup-antigravity-interactive.ts` (spec 0054 / PR #443). Preserves pre-existing non-reserved `mcpServers` across
+  setup despite its empty MCP base (spec 0089)
 
 ### 7d — MemPalace MCP backend
 
-- **Source of truth:** `scripts/lib/mempalace-http-wrapper.py` + `scripts/lib/mempalace_pin.py` + `scripts/doctor-mempalace.ts` + ADR 0006. **Launch-time version guard (spec 0108):** the wrapper determines, inside the very process that goes on to serve and before it begins serving, the MemPalace version its own interpreter resolves, and refuses to serve when that version is outside the range pinned in `scripts/lib/mempalace-pin.json` — Phase A range-checks `importlib.metadata.version("mempalace")` ahead of `import chromadb`, Phase B independently range-checks `mempalace.__version__` after the handoff import (never an equality test against Phase A's value: `mempalace/version.py` is a hand-maintained literal, so a `.postN` rebuild disagrees with both values in range). The comparator is `packaging` when importable and a closed stdlib whitelist grammar otherwise, never more permissive than `packaging`. Refusals name the version, the range, the interpreter, the comparator and the remedy on **stderr only**, then exit non-zero; the session's protocol channel carries nothing extra on the happy path. **Operator diagnostic:** `node scripts/doctor-mempalace.ts` (`task mempalace:doctor`) reports, for every MemPalace command on `PATH` and for each of the four CLI registrations, the resolved path, the interpreter, the declared pin and the served version, and exits non-zero on divergence. Uniform across all four CLIs because the guard lives in the one wrapper they all invoke; a registration naming a checkout that predates the guard is reported as `GUARD ABSENT`, distinct from an argv routing through no wrapper at all (`UNGUARDED`). **Residue repair (spec 0165):** `node scripts/repair-mempalace-http.ts` (`task mempalace:repair`) detects the residue repetition cannot reach — a configuration that does not parse as JSON, or whose `mempalace` registration matches neither the `http` nor the `stdio` shape — reports each affected assistant with its config path, backup existence and available actions, and repairs it with `--restore-backup` (most recent usable backup, mode preserved, 0600 on a bearer token and 0600 when the backup's mode would deny its own owner read, so the restored config is one the repair can verify and converge on) or `--reset-none` (removes the registration). It restores recognisability only; it never registers anyone for `http` and never places the bearer token in argv. **Shared MCP HTTP daemon (spec 0113):** the four CLIs no longer each spawn a stdio memory server; one supervised daemon holds the palace writer lease and serves all of them over `--transport http`, so concurrent sessions stop contending for it (the failure was MCP error `-32001` for every session but the first to mutate). Its `ExecStart` is `~/.crewrig/mcp-daemon-launcher.sh`, installed OUTSIDE the repository so a revert cannot delete the program the unit names; the launcher reads the `0600` bearer token and **refuses to start when it is absent or empty** — MemPalace requires a token only on a non-loopback bind and its auth gate short-circuits on an empty one, so serving without it would silently disable authentication for every client. Uniform across all four CLIs: the daemon and the launcher are one shared mechanism, and only the registration shape differs (see row 7c). **#749:** the wrapper's orphan-reaper thread is armed only for the stdio transport. A supervised daemon is reparented to PID 1 by construction, so the reaper read that as an abandoned session and called `os._exit(0)` every poll interval — the daemon killed itself roughly once a minute, silently, with exit code 0. The default port also moved from 8021 (registered as `intu-ec-client`, and held by a launchd system service on the first machine this ran on) to 41893, outside the ephemeral range; a taken port is now refused once with a diagnostic instead of respawned forever (#748). **Half-converted writability & lockout detection (spec 0172):** When the shared MCP HTTP daemon is serving and healthy, any assistant configured in `stdio` mode is permanently locked out of writing by the daemon's lease. `scripts/status-mcp-server.ts` (`task mempalace:status`) flags stdio registrations as `stdio (LOCKED OUT by shared daemon)` and exits non-zero (exit 1); `scripts/doctor-mempalace.ts` (`task mempalace:doctor`) reports the lockout as a failure; the daemon launcher warns on stderr at startup if stdio assistants remain; and `60-tools.md` mandates `task mempalace:status` as the primary diagnostic step upon receiving error `-32001` (`Peer MCP writer active`). **Token rotation (spec 0176):** `scripts/switch-mempalace-http.ts --rotate` (`task mempalace:rotate-token`) rotates the bearer token, replaces the daemon process (spec 0139), purges stale backup files holding the old token, and re-registers all present assistants with the new credential. **Backup refusal (spec 0252 delta-04, requirement 34):** the switch aborts with `No assistant has been changed.` and exit 1 when an assistant's configuration cannot be backed up, so `--restore-backup` always has a backup to restore; the shell script only warned.
-- **Claude Code:** ✅ MCP entry → `node <repo>/scripts/tls-exec.ts <mempalace-python> <repo>/scripts/lib/mempalace-http-wrapper.py` → `HttpClient → chroma run` (registered by `setup-claude-interactive.ts` via `claude mcp add`; the `tls-exec.ts` prefix comes from spec 0084). Guard + diagnostic per the mechanism cell — no CLI-specific code
-- **Gemini CLI:** ✅ Same wrapper invoked from `mcpServers.mempalace` in `~/.gemini/settings.json`; setup script substitutes `__CREWRIG_REPO_DIR__` with the repo root at install time and rewrites `.command` to `node` with the `tls-exec.ts` + interpreter prefix in `.args`. Guard + diagnostic per the mechanism cell — no CLI-specific code
-- **Copilot CLI:** ✅ Same wrapper invoked from `mcpServers.mempalace` in `~/.copilot/mcp-config.json`; setup script substitutes `__CREWRIG_REPO_DIR__` with the repo root at install time and applies the same `node` + `tls-exec.ts` prefix. Shared ChromaDB HTTP daemon (`chroma run`) supervised by launchd (macOS) or systemd-user (Linux); replaces concurrent `PersistentClient` instances (#98). Guard + diagnostic per the mechanism cell — no CLI-specific code
-- **Antigravity CLI:** ✅ Same wrapper invoked from `mcpServers.mempalace` in `~/.gemini/config/mcp_config.json` — the file `setup-antigravity-interactive.ts` actually writes, NOT `~/.gemini/antigravity-cli/settings.json`, which carries no `mempalace` key (verified); `__CREWRIG_REPO_DIR__` substituted at install time (spec 0054), same `node` + `tls-exec.ts` prefix. Guard + diagnostic per the mechanism cell — no CLI-specific code
+- **Source of truth:** `scripts/lib/mempalace-http-wrapper.py` + `scripts/lib/mempalace_pin.py` +
+  `scripts/doctor-mempalace.ts` + ADR 0006. **Launch-time version guard (spec 0108):** the wrapper determines, inside
+  the very process that goes on to serve and before it begins serving, the MemPalace version its own interpreter
+  resolves, and refuses to serve when that version is outside the range pinned in `scripts/lib/mempalace-pin.json` —
+  Phase A range-checks `importlib.metadata.version("mempalace")` ahead of `import chromadb`, Phase B independently
+  range-checks `mempalace.__version__` after the handoff import (never an equality test against Phase A's value:
+  `mempalace/version.py` is a hand-maintained literal, so a `.postN` rebuild disagrees with both values in range). The
+  comparator is `packaging` when importable and a closed stdlib whitelist grammar otherwise, never more permissive than
+  `packaging`. Refusals name the version, the range, the interpreter, the comparator and the remedy on **stderr only**,
+  then exit non-zero; the session's protocol channel carries nothing extra on the happy path. **Operator diagnostic:**
+  `node scripts/doctor-mempalace.ts` (`task mempalace:doctor`) reports, for every MemPalace command on `PATH` and for
+  each of the four CLI registrations, the resolved path, the interpreter, the declared pin and the served version, and
+  exits non-zero on divergence. Uniform across all four CLIs because the guard lives in the one wrapper they all invoke;
+  a registration naming a checkout that predates the guard is reported as `GUARD ABSENT`, distinct from an argv routing
+  through no wrapper at all (`UNGUARDED`). **Residue repair (spec 0165):** `node scripts/repair-mempalace-http.ts`
+  (`task mempalace:repair`) detects the residue repetition cannot reach — a configuration that does not parse as JSON,
+  or whose `mempalace` registration matches neither the `http` nor the `stdio` shape — reports each affected assistant
+  with its config path, backup existence and available actions, and repairs it with `--restore-backup` (most recent
+  usable backup, mode preserved, 0600 on a bearer token and 0600 when the backup's mode would deny its own owner read,
+  so the restored config is one the repair can verify and converge on) or `--reset-none` (removes the registration). It
+  restores recognisability only; it never registers anyone for `http` and never places the bearer token in argv. **Shared
+  MCP HTTP daemon (spec 0113):** the four CLIs no longer each spawn a stdio memory server; one supervised daemon holds
+  the palace writer lease and serves all of them over `--transport http`, so concurrent sessions stop contending for it
+  (the failure was MCP error `-32001` for every session but the first to mutate). Its `ExecStart` is
+  `~/.crewrig/mcp-daemon-launcher.sh`, installed OUTSIDE the repository so a revert cannot delete the program the unit
+  names; the launcher reads the `0600` bearer token and **refuses to start when it is absent or empty** — MemPalace
+  requires a token only on a non-loopback bind and its auth gate short-circuits on an empty one, so serving without it
+  would silently disable authentication for every client. Uniform across all four CLIs: the daemon and the launcher are
+  one shared mechanism, and only the registration shape differs (see row 7c). **#749:** the wrapper's orphan-reaper
+  thread is armed only for the stdio transport. A supervised daemon is reparented to PID 1 by construction, so the
+  reaper read that as an abandoned session and called `os._exit(0)` every poll interval — the daemon killed itself
+  roughly once a minute, silently, with exit code 0. The default port also moved from 8021 (registered as
+  `intu-ec-client`, and held by a launchd system service on the first machine this ran on) to 41893, outside the
+  ephemeral range; a taken port is now refused once with a diagnostic instead of respawned forever (#748). **Half-converted
+  writability & lockout detection (spec 0172):** When the shared MCP HTTP daemon is serving and healthy, any assistant
+  configured in `stdio` mode is permanently locked out of writing by the daemon's lease. `scripts/status-mcp-server.ts`
+  (`task mempalace:status`) flags stdio registrations as `stdio (LOCKED OUT by shared daemon)` and exits non-zero (exit 1);
+  `scripts/doctor-mempalace.ts` (`task mempalace:doctor`) reports the lockout as a failure; the daemon launcher warns on
+  stderr at startup if stdio assistants remain; and `60-tools.md` mandates `task mempalace:status` as the primary
+  diagnostic step upon receiving error `-32001` (`Peer MCP writer active`). **Token rotation (spec 0176):**
+  `scripts/switch-mempalace-http.ts --rotate` (`task mempalace:rotate-token`) rotates the bearer token, replaces the
+  daemon process (spec 0139), purges stale backup files holding the old token, and re-registers all present assistants
+  with the new credential. **Backup refusal (spec 0252 delta-04, requirement 34):** the switch aborts with
+  `No assistant has been changed.` and exit 1 when an assistant's configuration cannot be backed up, so
+  `--restore-backup` always has a backup to restore; the shell script only warned.
+- **Claude Code:** ✅ MCP entry →
+  `node <repo>/scripts/tls-exec.ts <mempalace-python> <repo>/scripts/lib/mempalace-http-wrapper.py` →
+  `HttpClient → chroma run` (registered by `setup-claude-interactive.ts` via `claude mcp add`; the `tls-exec.ts`
+  prefix comes from spec 0084). Guard + diagnostic per the mechanism cell — no CLI-specific code
+- **Gemini CLI:** ✅ Same wrapper invoked from `mcpServers.mempalace` in `~/.gemini/settings.json`; setup script
+  substitutes `__CREWRIG_REPO_DIR__` with the repo root at install time and rewrites `.command` to `node` with the
+  `tls-exec.ts` + interpreter prefix in `.args`. Guard + diagnostic per the mechanism cell — no CLI-specific code
+- **Copilot CLI:** ✅ Same wrapper invoked from `mcpServers.mempalace` in `~/.copilot/mcp-config.json`; setup script
+  substitutes `__CREWRIG_REPO_DIR__` with the repo root at install time and applies the same `node` + `tls-exec.ts`
+  prefix. Shared ChromaDB HTTP daemon (`chroma run`) supervised by launchd (macOS) or systemd-user (Linux); replaces
+  concurrent `PersistentClient` instances (#98). Guard + diagnostic per the mechanism cell — no CLI-specific code
+- **Antigravity CLI:** ✅ Same wrapper invoked from `mcpServers.mempalace` in `~/.gemini/config/mcp_config.json` —
+  the file `setup-antigravity-interactive.ts` actually writes, NOT `~/.gemini/antigravity-cli/settings.json`, which
+  carries no `mempalace` key (verified); `__CREWRIG_REPO_DIR__` substituted at install time (spec 0054), same `node` +
+  `tls-exec.ts` prefix. Guard + diagnostic per the mechanism cell — no CLI-specific code
 
-### 7e — Org-rules extension delivery (`AGENTS.org.md`) (spec 0020)
+### 7e — Org-rules extension delivery
 
-- **Source of truth:** `AGENTS.org.md`, `AGENTS.md` (`@` import), `scripts/setup-{gemini,copilot,antigravity}-interactive.ts`
-- **Claude Code:** ✅ Native recursive `@AGENTS.org.md` import (`CLAUDE.md` → `@AGENTS.md` → `@AGENTS.org.md`); no setup deployment needed
-- **Gemini CLI:** ✅ Fallback: `setup-gemini-interactive.ts` deploys `AGENTS.org.md` → `~/.gemini/66_ORG_RULES.md` (priority 66, after 65 org-tools). Gemini resolves `@file` imports only in `GEMINI.md` (absent at repo root), so the directive does not resolve — setup copy is the equivalent, enrolled in `context.fileName` alongside the other overlays (`config/gemini/settings.json`; #576)
-- **Copilot CLI:** ✅ Fallback: `setup-copilot-interactive.ts` deploys `AGENTS.org.md` → `~/.copilot/instructions/66-org-rules.instructions.md`. Copilot does not resolve `@file` includes in instruction files and auto-reads only the standard `AGENTS.md` name. **Fallback drift:** the deployed copy is taken at setup time; editing `AGENTS.org.md` requires re-running setup (org rules change rarely; setup is idempotent)
-- **Antigravity CLI:** ✅ Fallback: `setup-antigravity-interactive.ts` deploys `AGENTS.org.md` → `~/.gemini/antigravity-cli/66_ORG_RULES.md` (priority 66); included in the `~/.gemini/config/AGENTS.md` concatenation (spec 0061 delta-01). Same pattern as Gemini CLI (spec 0054)
+- **Feature:** Org-rules extension delivery (`AGENTS.org.md`) (spec 0020)
+- **Source of truth:** `AGENTS.org.md`, `AGENTS.md` (`@` import),
+  `scripts/setup-{gemini,copilot,antigravity}-interactive.ts`
+- **Claude Code:** ✅ Native recursive `@AGENTS.org.md` import (`CLAUDE.md` → `@AGENTS.md` → `@AGENTS.org.md`); no
+  setup deployment needed
+- **Gemini CLI:** ✅ Fallback: `setup-gemini-interactive.ts` deploys `AGENTS.org.md` → `~/.gemini/66_ORG_RULES.md`
+  (priority 66, after 65 org-tools). Gemini resolves `@file` imports only in `GEMINI.md` (absent at repo root), so the
+  directive does not resolve — setup copy is the equivalent, enrolled in `context.fileName` alongside the other
+  overlays (`config/gemini/settings.json`; #576)
+- **Copilot CLI:** ✅ Fallback: `setup-copilot-interactive.ts` deploys `AGENTS.org.md` →
+  `~/.copilot/instructions/66-org-rules.instructions.md`. Copilot does not resolve `@file` includes in instruction files
+  and auto-reads only the standard `AGENTS.md` name. **Fallback drift:** the deployed copy is taken at setup time;
+  editing `AGENTS.org.md` requires re-running setup (org rules change rarely; setup is idempotent)
+- **Antigravity CLI:** ✅ Fallback: `setup-antigravity-interactive.ts` deploys `AGENTS.org.md` →
+  `~/.gemini/antigravity-cli/66_ORG_RULES.md` (priority 66); included in the `~/.gemini/config/AGENTS.md` concatenation
+  (spec 0061 delta-01). Same pattern as Gemini CLI (spec 0054)
 
-### 7f — User-space system-context store — on-demand direct read (spec 0068)
+### 7f — User-space system-context store
 
-- **Source of truth:** `artifacts/core/system-context/`, `scripts/lib/setup/files.ts` (`install_dir` of the retired `common.sh`), `scripts/setup-*-interactive.ts`, `artifacts/core/rules/60-tools.md` (retrieval protocol + stubs)
-- **Claude Code:** ✅ `~/.crewrig/system-context/` installed by `setup-claude-interactive.ts` (`install_dir`, link/copy duality). **Direct read PASS-default** — the Step 1 probe read the store from an untrusted scratch dir with bare `claude -p`, no flags/config (the `Read` tool has unrestricted absolute-path access). Evidence: `docs/research/system-context-sandbox-probe.md` §4.1
-- **Gemini CLI:** ⚠️ `~/.crewrig/system-context/` installed by `setup-gemini-interactive.ts` (same `install_dir` call). **Direct read could-not-probe** — auth ineligible on the authoring machine (`IneligibleTierError`, free-tier deprecated), so the read is unverifiable; Gemini also gates tool use on workspace trust by default. **[R6 trigger candidate]** for the deferred dedicated retrieval service; covered at runtime by the store's explicit-signal fallback. No unverified Gemini-specific config is written. `setup-gemini-interactive.ts` now prints actionable store-access guidance naming the per-invocation grant (`--include-directories` / `GEMINI_CLI_TRUST_WORKSPACE=true` / `--skip-trust`), still writing no durable config (spec 0075 R6). Evidence: probe doc §4.4
-- **Copilot CLI:** ⚠️ installed by `setup-copilot-interactive.ts` (same `install_dir` call). **Direct read PASS only with a path grant** — reads via per-invocation `--add-dir`/`--allow-all-paths` or interactive approval; path verification denies the out-of-workspace read otherwise, and `trustedFolders` in `~/.copilot/config.json` does **not** grant a durable cross-project read (tested, denied). No ineffective durable config is written; headless-deny covered by the fallback stub. **[R6 trigger candidate]**. `setup-copilot-interactive.ts` now prints actionable store-access guidance naming the per-invocation grant (`--add-dir` / `--allow-all-paths`), still writing no durable config (spec 0075 R6). Evidence: probe doc §4.3
-- **Antigravity CLI:** ✅ `~/.crewrig/system-context/` installed by `setup-antigravity-interactive.ts` (same `install_dir` call). **Direct read PASS-default** — the Step 1 probe read the store from an untrusted scratch dir with bare `agy --print`, no flags/config. Evidence: probe doc §4.2
+- **Feature:** User-space system-context store — on-demand direct read (spec 0068)
+- **Source of truth:** `artifacts/core/system-context/`, `scripts/lib/setup/files.ts` (`install_dir` of the retired
+  `common.sh`), `scripts/setup-*-interactive.ts`, `artifacts/core/rules/60-tools.md` (retrieval protocol + stubs)
+- **Claude Code:** ✅ `~/.crewrig/system-context/` installed by `setup-claude-interactive.ts` (`install_dir`, link/copy
+  duality). **Direct read PASS-default** — the Step 1 probe read the store from an untrusted scratch dir with bare
+  `claude -p`, no flags/config (the `Read` tool has unrestricted absolute-path access). Evidence:
+  `docs/research/system-context-sandbox-probe.md` §4.1
+- **Gemini CLI:** ⚠️ `~/.crewrig/system-context/` installed by `setup-gemini-interactive.ts` (same `install_dir`
+  call). **Direct read could-not-probe** — auth ineligible on the authoring machine (`IneligibleTierError`, free-tier
+  deprecated), so the read is unverifiable; Gemini also gates tool use on workspace trust by default. **[R6 trigger
+  candidate]** for the deferred dedicated retrieval service; covered at runtime by the store's explicit-signal fallback.
+  No unverified Gemini-specific config is written. `setup-gemini-interactive.ts` now prints actionable store-access
+  guidance naming the per-invocation grant (`--include-directories` / `GEMINI_CLI_TRUST_WORKSPACE=true` /
+  `--skip-trust`), still writing no durable config (spec 0075 R6). Evidence: probe doc §4.4
+- **Copilot CLI:** ⚠️ installed by `setup-copilot-interactive.ts` (same `install_dir` call). **Direct read PASS only
+  with a path grant** — reads via per-invocation `--add-dir`/`--allow-all-paths` or interactive approval; path
+  verification denies the out-of-workspace read otherwise, and `trustedFolders` in `~/.copilot/config.json` does **not**
+  grant a durable cross-project read (tested, denied). No ineffective durable config is written; headless-deny covered
+  by the fallback stub. **[R6 trigger candidate]**. `setup-copilot-interactive.ts` now prints actionable store-access
+  guidance naming the per-invocation grant (`--add-dir` / `--allow-all-paths`), still writing no durable config (spec
+  0075 R6). Evidence: probe doc §4.3
+- **Antigravity CLI:** ✅ `~/.crewrig/system-context/` installed by `setup-antigravity-interactive.ts` (same
+  `install_dir` call). **Direct read PASS-default** — the Step 1 probe read the store from an untrusted scratch dir
+  with bare `agy --print`, no flags/config. Evidence: probe doc §4.2
 
-### 7g — MemPalace layered wake-up (L0–L3)
+### 7g — MemPalace layered wake-up
 
-- **Source of truth:** MemPalace `mempalace.layers` exposes `Layer0/1/2/3` + `MemoryStack.wake_up()/recall()/search()/status()`; the `mempalace` CLI exposes `wake-up`; the `mempalace.mcp_server` tool registry exposes **none** of these. Installed **3.6.0** (pinned `>=3.6.0,<3.7`); issue #415 spike, re-verified 2026-07-20 against the live 36-tool MCP surface (issue #566, e2e sidecar image `docker/e2e/mempalace.Dockerfile`)
-- **Claude Code:** ❌ via MCP — uniform (same MCP surface, per row 7d); ✅ in CLI/library but forbidden as an ad-hoc agent action
-- **Gemini CLI:** ❌ via MCP — uniform (same MCP surface, per row 7d); ✅ in CLI/library but forbidden as an ad-hoc agent action
-- **Copilot CLI:** ❌ via MCP — uniform (same MCP surface, per row 7d); ✅ in CLI/library but forbidden as an ad-hoc agent action
-- **Antigravity CLI:** ❌ via MCP — uniform (same MCP surface, per row 7d); ✅ in CLI/library but forbidden as an ad-hoc agent action
+- **Feature:** MemPalace layered wake-up (L0–L3)
+- **Source of truth:** MemPalace `mempalace.layers` exposes `Layer0/1/2/3` +
+  `MemoryStack.wake_up()/recall()/search()/status()`; the `mempalace` CLI exposes `wake-up`; the `mempalace.mcp_server`
+  tool registry exposes **none** of these. Installed **3.6.0** (pinned `>=3.6.0,<3.7`); issue #415 spike, re-verified
+  2026-07-20 against the live 36-tool MCP surface (issue #566, e2e sidecar image `docker/e2e/mempalace.Dockerfile`)
+- **Claude Code:** ❌ via MCP — uniform (same MCP surface, per row 7d); ✅ in CLI/library but forbidden as an ad-hoc
+  agent action
+- **Gemini CLI:** ❌ via MCP — uniform (same MCP surface, per row 7d); ✅ in CLI/library but forbidden as an ad-hoc
+  agent action
+- **Copilot CLI:** ❌ via MCP — uniform (same MCP surface, per row 7d); ✅ in CLI/library but forbidden as an ad-hoc
+  agent action
+- **Antigravity CLI:** ❌ via MCP — uniform (same MCP surface, per row 7d); ✅ in CLI/library but forbidden as an
+  ad-hoc agent action
 
-### 7g — Custom root-CA / native-TLS delegation (spec 0084) — opt-in setup offer writes only `~/.crewrig/tls-env.sh` (never the shell profile); MCP registrations, the launchd/systemd ChromaDB daemon, the standalone `task install-mempalace` and the opt-in Playwright MCP registration (`task setup:playwright-mcp`, spec 0245) are routed through the shared `scripts/tls-exec.ts` wrapper so runtime network inherits the trust. The session-recording hook (row 8b, spec 0247 R16) **reads** `~/.crewrig/tls-env.sh` through `scripts/lib/tls-env.ts` and never executes or sources it: the reader accepts only the format the TypeScript offer writes (`scripts/lib/setup/tls-offer.ts`, formerly `tls-delegation.sh`) (comments, blank lines, `export NAME=VALUE` with a `printf %q` value, LF or CRLF), applies what it read to the environment of the one Git process the hook spawns, and on any other line ignores the whole file and writes one line on standard error naming the file and the first such line number; the hook's own request is plain HTTP to the daemon, so the trust never changes it. Never disables verification. Shared mechanism ⇒ full parity. **Windows (spec 0256 requirement 41):** the setup entries run on Windows, but the operating-system CA bundle candidates of the TLS step are POSIX paths, so only an explicit `CREWRIG_TLS_CA` selects a bundle there — an expected gap, with evidence `docs/runbooks/custom-ca-tls-trust.md:17` (Windows is out of scope of spec 0084).
+### 7g — Custom root-CA / native-TLS delegation
 
-- **Source of truth:** `scripts/tls-exec.ts` (the Node.js wrapper that replaced `scripts/lib/tls-exec.sh` and `tls-delegation.sh`, retired in #1344), `scripts/lib/setup/tls-detect.ts`, `scripts/lib/setup/tls-offer.ts`, `scripts/tls-exec.ts`, `scripts/lib/tls-env.ts`, `scripts/setup-*-interactive.ts`, `Taskfile.yml` (`install-mempalace`, `setup:playwright-mcp`), `scripts/setup-playwright-mcp.ts`, `scripts/lib/playwright-mcp.ts`, `docs/runbooks/custom-ca-tls-trust.md`
-- **Claude Code:** ✅ offer in `setup-claude-interactive.ts`; MCP via `claude mcp add … -- node <repo>/scripts/tls-exec.ts …`; Playwright via `task setup:playwright-mcp`
-- **Gemini CLI:** ✅ offer in `setup-gemini-interactive.ts`; `mcpServers.*` in `~/.gemini/settings.json` routed through `tls-exec.ts`; Playwright via `task setup:playwright-mcp`
-- **Copilot CLI:** ✅ offer in `setup-copilot-interactive.ts`; `mcpServers.*` in `~/.copilot/mcp-config.json` routed through `tls-exec.ts`; Playwright via `task setup:playwright-mcp`
-- **Antigravity CLI:** ✅ offer in `setup-antigravity-interactive.ts`; `mcpServers.*` in `~/.gemini/config/mcp_config.json` routed through `tls-exec.ts`; Playwright via `task setup:playwright-mcp`
+- **Feature:** Custom root-CA / native-TLS delegation (spec 0084) — opt-in setup offer writes only
+  `~/.crewrig/tls-env.sh` (never the shell profile); MCP registrations, the launchd/systemd ChromaDB daemon, the
+  standalone `task install-mempalace` and the opt-in Playwright MCP registration (`task setup:playwright-mcp`, spec 0245)
+  are routed through the shared `scripts/tls-exec.ts` wrapper so runtime network inherits the trust. The
+  session-recording hook (row 8b, spec 0247 R16) **reads** `~/.crewrig/tls-env.sh` through `scripts/lib/tls-env.ts` and
+  never executes or sources it: the reader accepts only the format the TypeScript offer writes
+  (`scripts/lib/setup/tls-offer.ts`, formerly `tls-delegation.sh`) (comments, blank lines, `export NAME=VALUE` with a
+  `printf %q` value, LF or CRLF), applies what it read to the environment of the one Git process the hook spawns, and on
+  any other line ignores the whole file and writes one line on standard error naming the file and the first such line
+  number; the hook's own request is plain HTTP to the daemon, so the trust never changes it. Never disables
+  verification. Shared mechanism ⇒ full parity. **Windows (spec 0256 requirement 41):** the setup entries run on
+  Windows, but the operating-system CA bundle candidates of the TLS step are POSIX paths, so only an explicit
+  `CREWRIG_TLS_CA` selects a bundle there — an expected gap, with evidence `docs/runbooks/custom-ca-tls-trust.md:17`
+  (Windows is out of scope of spec 0084).
+- **Source of truth:** `scripts/tls-exec.ts` (the Node.js wrapper that replaced `scripts/lib/tls-exec.sh` and
+  `tls-delegation.sh`, retired in #1344), `scripts/lib/setup/tls-detect.ts`, `scripts/lib/setup/tls-offer.ts`,
+  `scripts/tls-exec.ts`, `scripts/lib/tls-env.ts`, `scripts/setup-*-interactive.ts`, `Taskfile.yml`
+  (`install-mempalace`, `setup:playwright-mcp`), `scripts/setup-playwright-mcp.ts`, `scripts/lib/playwright-mcp.ts`,
+  `docs/runbooks/custom-ca-tls-trust.md`
+- **Claude Code:** ✅ offer in `setup-claude-interactive.ts`; MCP via
+  `claude mcp add … -- node <repo>/scripts/tls-exec.ts …`; Playwright via `task setup:playwright-mcp`
+- **Gemini CLI:** ✅ offer in `setup-gemini-interactive.ts`; `mcpServers.*` in `~/.gemini/settings.json` routed through
+  `tls-exec.ts`; Playwright via `task setup:playwright-mcp`
+- **Copilot CLI:** ✅ offer in `setup-copilot-interactive.ts`; `mcpServers.*` in `~/.copilot/mcp-config.json` routed
+  through `tls-exec.ts`; Playwright via `task setup:playwright-mcp`
+- **Antigravity CLI:** ✅ offer in `setup-antigravity-interactive.ts`; `mcpServers.*` in
+  `~/.gemini/config/mcp_config.json` routed through `tls-exec.ts`; Playwright via `task setup:playwright-mcp`
 
-### 7h — Org-declared MCP server delivery (spec 0091) — the org-owned root manifest `mcp-servers.org.json` (a CLI-agnostic neutral schema keyed by name: `transport` stdio/http/sse → command/args/env or url/headers) is translated into each CLI's native MCP shape and folded **after** the spec-0089 operator merge, so precedence is **framework-reserved > org > operator-pre-existing**. R10 — an org declaration under a reserved name (`mempalace`/`sequentialthinking`) is NOT applied (framework wins), warned. R11 — a non-reserved org name that collides with an operator entry wins, warned. **stdio and http/sse reach all four CLIs (grounded). The neutral `url` maps to each CLI's native remote key: Antigravity `serverUrl` (no transport `type`), Copilot/Claude `{type,url}`, and — repaired by spec 0180 PLAN v5 step 4 (2026-08-25 maintainer arbitration) — Gemini `httpUrl` (http) or `url` (sse), with no `type`/`transport` key at all; Gemini infers the transport from WHICH key is present.** **Claude's R13 coverage is realized by the hermetic-equivalent — a pure `org_mcp_to_claude_argv` unit test + structural call-site assertions — the *sanctioned* shape, NOT a silent parity gap** (mirrors how spec 0089 made Claude its R5 reference rather than an end-to-end test; the imperative `claude mcp add` path is undrivable hermetically without the `claude` binary + a live `~/.claude.json`).
+### 7h — Org-declared MCP server delivery
 
-- **Source of truth:** `mcp-servers.org.json`, `scripts/lib/org-mcp.ts`, `scripts/lib/setup/org-mcp-fold.ts`, `scripts/lib/setup/mcp-claude-step.ts` (twins of the `common.sh` functions `read_org_mcp_manifest`, `org_mcp_to_native`, `apply_org_mcp_servers`, `register_org_mcp_claude`, retired in #1344), `scripts/setup-*-interactive.ts`, `docs/org-mcp-declaration.md`
-- **Claude Code:** ✅ imperative: `register_org_mcp_claude` iterates the manifest and issues `claude mcp add --scope user` per entry (stdio `[-e K=V]… <name> -- cmd args`; http/sse `--transport <t> <name> <url> [--header …]` — grounded against `claude mcp add --help`). R11 remove-then-add is **guarded** — the prior entry is captured from `~/.claude.json` and restored if the re-add fails, so a partial run never drops the operator's server
-- **Gemini CLI:** ✅ `org_mcp_to_native gemini` → native entry folded into `~/.gemini/settings.json` by `apply_org_mcp_servers`. stdio `{command,args,env}`; http/sse `{httpUrl|url,headers}` — no `type`/`transport` key at all, transport inferred from which key is present. **Re-grounded (spec 0180 PLAN v5 step 4, 2026-08-25):** gemini-cli 0.46.0's own schema (`bundle/docs/reference/configuration.md:2251-2287`) lists `command, args, env, cwd, url, httpUrl, headers, timeout, trust, description, includeTools, excludeTools` — no `type` key anywhere. The earlier "grounded empirically" run (`gemini mcp add --scope user -t http -H …`, temp HOME) actually observed `gemini mcp add`'s OWN CLI-flag echo, not the schema the extension/settings file itself accepts, and the shape it recorded (`{type,url}`) does not appear in that schema — it was a defect, not a second valid shape, now repaired
-- **Copilot CLI:** ✅ same applier into `~/.copilot/mcp-config.json`. stdio `{type:"stdio",command,args,env}` (the shipped template convention; the CLI's own `mcp add` writes `type:"local"`, both accepted); http/sse `{type,url,headers}` — grounded empirically (`copilot mcp add --transport http --header …`, temp HOME)
-- **Antigravity CLI:** ✅ stdio delivered into `~/.gemini/config/mcp_config.json` as `{command,args,env}`; http/sse delivered as the Antigravity-native `{serverUrl,headers}` shape — the neutral `url` is translated to **`serverUrl`** (not `url`), with no transport `type` field (one shape covers http + Streamable-HTTP/SSE). Grounded against the official Antigravity MCP docs (`mcp_config.json` structure: stdio `{command,args,env,cwd?}` + remote `{serverUrl,headers?}`), which supersede spec 0054's stale "format not publicly documented" note — closing the former remote-transport gap. Auth extras (`authProviderType`/`oauth`) are out of scope for this base declaration
+- **Feature:** Org-declared MCP server delivery (spec 0091) — the org-owned root manifest `mcp-servers.org.json` (a
+  CLI-agnostic neutral schema keyed by name: `transport` stdio/http/sse → command/args/env or url/headers) is
+  translated into each CLI's native MCP shape and folded **after** the spec-0089 operator merge, so precedence is **framework-reserved >
+  org > operator-pre-existing**. R10 — an org declaration under a reserved name (`mempalace`/`sequentialthinking`) is
+  NOT applied (framework wins), warned. R11 — a non-reserved org name that collides with an operator entry wins,
+  warned. **stdio and http/sse reach all four CLIs (grounded). The neutral `url` maps to each CLI's native remote key:
+  Antigravity `serverUrl` (no transport `type`), Copilot/Claude `{type,url}`, and — repaired by spec 0180 PLAN v5 step
+  4 (2026-08-25 maintainer arbitration) — Gemini `httpUrl` (http) or `url` (sse), with no `type`/`transport` key at
+  all; Gemini infers the transport from WHICH key is present.** **Claude's R13 coverage is realized by the
+  hermetic-equivalent — a pure `org_mcp_to_claude_argv` unit test + structural call-site assertions — the *sanctioned*
+  shape, NOT a silent parity gap** (mirrors how spec 0089 made Claude its R5 reference rather than an end-to-end test;
+  the imperative `claude mcp add` path is undrivable hermetically without the `claude` binary + a live
+  `~/.claude.json`).
+- **Source of truth:** `mcp-servers.org.json`, `scripts/lib/org-mcp.ts`, `scripts/lib/setup/org-mcp-fold.ts`,
+  `scripts/lib/setup/mcp-claude-step.ts` (twins of the `common.sh` functions `read_org_mcp_manifest`,
+  `org_mcp_to_native`, `apply_org_mcp_servers`, `register_org_mcp_claude`, retired in #1344),
+  `scripts/setup-*-interactive.ts`, `docs/org-mcp-declaration.md`
+- **Claude Code:** ✅ imperative: `register_org_mcp_claude` iterates the manifest and issues
+  `claude mcp add --scope user` per entry (stdio `[-e K=V]… <name> -- cmd args`; http/sse
+  `--transport <t> <name> <url> [--header …]` — grounded against `claude mcp add --help`). R11 remove-then-add is **guarded**
+  — the prior entry is captured from `~/.claude.json` and restored if the re-add fails, so a partial run never drops
+  the operator's server
+- **Gemini CLI:** ✅ `org_mcp_to_native gemini` → native entry folded into `~/.gemini/settings.json` by
+  `apply_org_mcp_servers`. stdio `{command,args,env}`; http/sse `{httpUrl|url,headers}` — no `type`/`transport` key at
+  all, transport inferred from which key is present. **Re-grounded (spec 0180 PLAN v5 step 4, 2026-08-25):** gemini-cli 0.46.0's
+  own schema (`bundle/docs/reference/configuration.md:2251-2287`) lists
+  `command, args, env, cwd, url, httpUrl, headers, timeout, trust, description, includeTools, excludeTools` — no
+  `type` key anywhere. The earlier "grounded empirically" run (`gemini mcp add --scope user -t http -H …`, temp HOME)
+  actually observed `gemini mcp add`'s OWN CLI-flag echo, not the schema the extension/settings file itself accepts, and
+  the shape it recorded (`{type,url}`) does not appear in that schema — it was a defect, not a second valid shape, now
+  repaired
+- **Copilot CLI:** ✅ same applier into `~/.copilot/mcp-config.json`. stdio `{type:"stdio",command,args,env}` (the
+  shipped template convention; the CLI's own `mcp add` writes `type:"local"`, both accepted); http/sse
+  `{type,url,headers}` — grounded empirically (`copilot mcp add --transport http --header …`, temp HOME)
+- **Antigravity CLI:** ✅ stdio delivered into `~/.gemini/config/mcp_config.json` as `{command,args,env}`; http/sse
+  delivered as the Antigravity-native `{serverUrl,headers}` shape — the neutral `url` is translated to **`serverUrl`**
+  (not `url`), with no transport `type` field (one shape covers http + Streamable-HTTP/SSE). Grounded against the
+  official Antigravity MCP docs (`mcp_config.json` structure: stdio `{command,args,env,cwd?}` + remote
+  `{serverUrl,headers?}`), which supersede spec 0054's stale "format not publicly documented" note — closing the
+  former remote-transport gap. Auth extras (`authProviderType`/`oauth`) are out of scope for this base declaration
 
-### 8 — Hook-integration manifest — prompt submissions distinguish human prompts (`[USER]` / `user-prompt`) from automated harness injections (`[HARNESS]` / `harness-injection`) via structural pattern matching (spec 0161)
+### 8 — Hook-integration manifest
 
+- **Feature:** Hook-integration manifest — prompt submissions distinguish human prompts (`[USER]` / `user-prompt`)
+  from automated harness injections (`[HARNESS]` / `harness-injection`) via structural pattern matching (spec 0161)
 - **Source of truth:** `hooks/`
-- **Claude Code:** ✅ `hooks/claude-transcript-hooks.json` (`PreToolUse` for git guard; `UserPromptSubmit`, `PostToolUse`, `Stop`, `SessionEnd` for transcripts; setup wires both by in-repo absolute path as direct `node` command lines: the transcripts as `hooks/mempalace-transcript.ts claude-code` (spec 0247, row 8b), the guard as `hooks/worktree-git-guard.ts` — spec 0169, spec 0248, row 29). The session-recording opt-in registers these transcript and guard entries only, and its merge into `~/.claude/settings.json` preserves any registered usage-capture command unchanged (spec 0211 R2, R8); usage capture has its own opt-in (row 8c)
-- **Gemini CLI:** ✅ `hooks/gemini-transcript-hooks.json` (`BeforeTool` for git guard; `BeforeAgent`, `AfterTool`, `AfterModel`, `SessionEnd` for transcripts; setup wires both by in-repo absolute path as direct `node` command lines: the transcripts as `hooks/mempalace-transcript.ts gemini-cli` (spec 0247, row 8b), the guard as `hooks/worktree-git-guard.ts` — spec 0169, spec 0248, row 29). The session-recording opt-in registers these transcript and guard entries only, and its merge into `~/.gemini/settings.json` preserves any registered usage-capture command unchanged (spec 0211 R2, R8); usage capture has its own opt-in (row 8c)
-- **Copilot CLI:** ✅ `hooks/copilot-transcript-hooks.json` — deployed as opt-in by `setup-copilot-interactive.ts` to: `~/.copilot/hooks/copilot-transcript-hooks.json` (user-level, all projects). Committed `settings.json` has `"hooks": {}` by design and is NOT mutated at workspace level. The manifest uses the documented object schema: `hooks` is an object keyed by **camelCase** config key (`preToolUse` for git guard, a direct `node` command line since spec 0248 — row 29; `sessionStart`, `userPromptSubmitted`, `postToolUse`, `agentStop`, `sessionEnd` for transcripts), each mapping to an array of `{"type": "command", "bash"/"command": "…"}` entries; `version` is the integer `1`. Setup wires transcripts and guard by in-repo absolute path as direct `node` command lines, the transcripts as `hooks/mempalace-transcript.ts copilot-cli` (spec 0169, spec 0247, row 8b). The session-recording opt-in registers these transcript and guard entries only (spec 0211 R2); it writes the user-level file with a backup first and, since spec 0247 R23(b), **merges** into it instead of replacing it whole: operator entries and top-level keys other than `hooks` are kept, any registered usage-capture command is carried through unchanged (spec 0211 R8), and a kept `"disableAllHooks": true` is reported as leaving session recording inactive until the operator sets it to `false`. Usage capture has its own opt-in (row 8c). The hook payload's `hook_event_name` stays PascalCase regardless, so `hooks/mempalace-transcript.ts` is unaffected.
-- **Antigravity CLI:** ✅ `hooks/antigravity-transcript-hooks.json` (**Stop only**) — deployed as opt-in by `setup-antigravity-interactive.ts` to: `~/.gemini/config/hooks.json` (the GLOBAL customization root, all projects), with the transcript command wired by in-repo absolute path as the direct form `node "<abs>/hooks/mempalace-transcript.ts" antigravity-cli Stop` on macOS and Linux and the guarded form `set NoDefaultCurrentDirectoryInExePath=1&& node <abs>/hooks/mempalace-transcript.ts antigravity-cli Stop` on Windows (spec 0247 R20, row 8b); no copy is installed under `~/.gemini/antigravity-cli/hooks/` any more. Setup treats the named hook `crewrig-mempalace-transcript` per event (spec 0247 R23(c)): an event holding an operator's `foreign-prefix` command keeps it and loses only the framework's transcript commands. **NOT the Gemini shape**: the top level is a map of NAMED hooks (`{"<name>": {"<Event>": [...]}}`), and the CLI's only events are `PreToolUse`/`PostToolUse` (grouped, `matcher`+`hooks`) and `PreInvocation`/`PostInvocation`/`Stop` (flat). The four names spec 0056 shipped do not exist; spec 0116 supersedes 0056 R2/R4/R6. **`Stop` is the only event registered under the named transcript hook `crewrig-mempalace-transcript`, and it is the only one that fires once per turn.** The manifest also carries the named hook `crewrig-worktree-git-guard` (`PreToolUse` grouped `run_command`, deployed to the repository path, not installed, as a direct `node` command line — spec 0116 delta-03 R27/R28; spec 0169; spec 0248, row 29); spec 0206 registers no usage-capture hook in this manifest — the only Antigravity usage channel is the statusline shim, wired into `statusLine.command` by `setup-antigravity-interactive.ts` (row 8c, `docs/usage-capture.md`). Measured on `agy` 1.0.16 (spec 0116 delta-02 R26 — the exercise, not just the counts). **Exercise A**, one `agy --print` turn issuing three shell commands: `PreInvocation` 4×, `PostInvocation` 4×, `PreToolUse` 3×, `Stop` 1× — the other four have roughly per-tool-round cardinality and the CLI runs hooks synchronously, blocking the agent loop. **Exercise B**, two turns in ONE conversation (`agy --print`, then `agy --continue --print`): `Stop` 2×, same `conversationId`, `executionNum` **0 on both**. B is the one that clears R23's bar — A alone cannot separate once-per-turn from once-per-execution-process, since it contains one turn. B also shows `executionNum` does NOT accumulate, so `conversationId`+`executionNum` is not a unique key and per-turn idempotence is not buildable from the payload at all (spec 0116 delta-01; the parent spec mislabelled `PreInvocation` as a start-of-turn event, on the strength of a single-prompt probe in which one invocation equals one turn). **[GAP-content]** Antigravity entries are turn markers only — `[AGENT] Session turn completed (<terminationReason>)` — where Claude, Gemini and Copilot persist actual prompt and response text: no Antigravity hook payload carries either, so the content is unavailable rather than dropped (`specs/0116` → *Out of scope*). Evidence: the CLI's own `~/.gemini/antigravity-cli/builtin/skills/agy-customizations/docs/hooks.md`, confirmed by live `agy` 1.0.16 probes (spec 0116 / issue #724)
+- **Claude Code:** ✅ `hooks/claude-transcript-hooks.json` (`PreToolUse` for git guard; `UserPromptSubmit`,
+  `PostToolUse`, `Stop`, `SessionEnd` for transcripts; setup wires both by in-repo absolute path as direct `node`
+  command lines: the transcripts as `hooks/mempalace-transcript.ts claude-code` (spec 0247, row 8b), the guard as
+  `hooks/worktree-git-guard.ts` — spec 0169, spec 0248, row 29). The session-recording opt-in registers these
+  transcript and guard entries only, and its merge into `~/.claude/settings.json` preserves any registered usage-capture
+  command unchanged (spec 0211 R2, R8); usage capture has its own opt-in (row 8c)
+- **Gemini CLI:** ✅ `hooks/gemini-transcript-hooks.json` (`BeforeTool` for git guard; `BeforeAgent`, `AfterTool`,
+  `AfterModel`, `SessionEnd` for transcripts; setup wires both by in-repo absolute path as direct `node` command lines:
+  the transcripts as `hooks/mempalace-transcript.ts gemini-cli` (spec 0247, row 8b), the guard as
+  `hooks/worktree-git-guard.ts` — spec 0169, spec 0248, row 29). The session-recording opt-in registers these
+  transcript and guard entries only, and its merge into `~/.gemini/settings.json` preserves any registered usage-capture
+  command unchanged (spec 0211 R2, R8); usage capture has its own opt-in (row 8c)
+- **Copilot CLI:** ✅ `hooks/copilot-transcript-hooks.json` — deployed as opt-in by `setup-copilot-interactive.ts`
+  to: `~/.copilot/hooks/copilot-transcript-hooks.json` (user-level, all projects). Committed `settings.json` has
+  `"hooks": {}` by design and is NOT mutated at workspace level. The manifest uses the documented object schema: `hooks`
+  is an object keyed by **camelCase** config key (`preToolUse` for git guard, a direct `node` command line since spec
+  0248 — row 29; `sessionStart`, `userPromptSubmitted`, `postToolUse`, `agentStop`, `sessionEnd` for transcripts),
+  each mapping to an array of `{"type": "command", "bash"/"command": "…"}` entries; `version` is the integer `1`.
+  Setup wires transcripts and guard by in-repo absolute path as direct `node` command lines, the transcripts as
+  `hooks/mempalace-transcript.ts copilot-cli` (spec 0169, spec 0247, row 8b). The session-recording opt-in registers
+  these transcript and guard entries only (spec 0211 R2); it writes the user-level file with a backup first and, since
+  spec 0247 R23(b), **merges** into it instead of replacing it whole: operator entries and top-level keys other than
+  `hooks` are kept, any registered usage-capture command is carried through unchanged (spec 0211 R8), and a kept
+  `"disableAllHooks": true` is reported as leaving session recording inactive until the operator sets it to `false`.
+  Usage capture has its own opt-in (row 8c). The hook payload's `hook_event_name` stays PascalCase regardless, so
+  `hooks/mempalace-transcript.ts` is unaffected.
+- **Antigravity CLI:** ✅ `hooks/antigravity-transcript-hooks.json` (**Stop only**) — deployed as opt-in by
+  `setup-antigravity-interactive.ts` to: `~/.gemini/config/hooks.json` (the GLOBAL customization root, all projects),
+  with the transcript command wired by in-repo absolute path as the direct form
+  `node "<abs>/hooks/mempalace-transcript.ts" antigravity-cli Stop` on macOS and Linux and the guarded form
+  `set NoDefaultCurrentDirectoryInExePath=1&& node <abs>/hooks/mempalace-transcript.ts antigravity-cli Stop` on Windows
+  (spec 0247 R20, row 8b); no copy is installed under `~/.gemini/antigravity-cli/hooks/` any more. Setup treats the
+  named hook `crewrig-mempalace-transcript` per event (spec 0247 R23(c)): an event holding an operator's
+  `foreign-prefix` command keeps it and loses only the framework's transcript commands. **NOT the Gemini shape**: the
+  top level is a map of NAMED hooks (`{"<name>": {"<Event>": [...]}}`), and the CLI's only events are
+  `PreToolUse`/`PostToolUse` (grouped, `matcher`+`hooks`) and `PreInvocation`/`PostInvocation`/`Stop` (flat). The four
+  names spec 0056 shipped do not exist; spec 0116 supersedes 0056 R2/R4/R6. **`Stop` is the only event registered under
+  the named transcript hook `crewrig-mempalace-transcript`, and it is the only one that fires once per turn.** The
+  manifest also carries the named hook `crewrig-worktree-git-guard` (`PreToolUse` grouped `run_command`, deployed to the
+  repository path, not installed, as a direct `node` command line — spec 0116 delta-03 R27/R28; spec 0169; spec 0248,
+  row 29); spec 0206 registers no usage-capture hook in this manifest — the only Antigravity usage channel is the
+  statusline shim, wired into `statusLine.command` by `setup-antigravity-interactive.ts` (row 8c,
+  `docs/usage-capture.md`). Measured on `agy` 1.0.16 (spec 0116 delta-02 R26 — the exercise, not just the counts). **Exercise
+  A**, one `agy --print` turn issuing three shell commands: `PreInvocation` 4×, `PostInvocation` 4×, `PreToolUse` 3×,
+  `Stop` 1× — the other four have roughly per-tool-round cardinality and the CLI runs hooks synchronously, blocking
+  the agent loop. **Exercise B**, two turns in ONE conversation (`agy --print`, then `agy --continue --print`): `Stop`
+  2×, same `conversationId`, `executionNum` **0 on both**. B is the one that clears R23's bar — A alone cannot
+  separate once-per-turn from once-per-execution-process, since it contains one turn. B also shows `executionNum` does
+  NOT accumulate, so `conversationId`+`executionNum` is not a unique key and per-turn idempotence is not buildable from
+  the payload at all (spec 0116 delta-01; the parent spec mislabelled `PreInvocation` as a start-of-turn event, on the
+  strength of a single-prompt probe in which one invocation equals one turn). **[GAP-content]** Antigravity entries are
+  turn markers only — `[AGENT] Session turn completed (<terminationReason>)` — where Claude, Gemini and Copilot
+  persist actual prompt and response text: no Antigravity hook payload carries either, so the content is unavailable
+  rather than dropped (`specs/0116` → *Out of scope*). Evidence: the CLI's own
+  `~/.gemini/antigravity-cli/builtin/skills/agy-customizations/docs/hooks.md`, confirmed by live `agy` 1.0.16 probes
+  (spec 0116 / issue #724)
 
-### 8b — Transcript hook runtime, write path and wiring (spec 0164; TypeScript since spec 0247) — `hooks/mempalace-transcript.ts` sends one JSON-RPC 2.0 `mempalace_add_drawer` request over plain HTTP to the shared MCP HTTP daemon with Node.js's standard library: **no `jq`, no `curl`, no Python**, and no third-party package. The content and the bearer token stay off every process argument list, and the only process the hook spawns is Git. The outcome lines are spec 0074's, on standard error: `persisted <entry type> to transcripts/<room>` unless `MEMPALACE_TRANSCRIPT_QUIET=1`; `ADD_FAILED` (rc=3) or `DAEMON_UNREACHABLE: <host>:<port> — <reason>` (rc=4), then `FAILED to persist`. The request is bounded at 5 seconds, and a non-2xx or non-JSON response now counts as a failure (spec 0247 R30 lists every deviation from the shell hook). The hook exits `0` on every path but a missing dependency (status `1`, unreachable while it imports only the standard library) and, in Antigravity mode, writes exactly `{}` and a line feed on standard output. **Wiring (spec 0247 R20–R22):** a direct `node` command line naming the CLI, `node "<abs>/hooks/mempalace-transcript.ts" <cli-id>` (`antigravity-cli Stop` for Antigravity CLI), built by `scripts/lib/hook-command.ts` through `scripts/hook-wiring.ts transcript render`. It is wired by **in-repo absolute path** with no environment prefix, the treatment of row 8c; no copy is installed under a CLI's home any more. A copy an earlier setup installed there is left on disk, and setup reports its path as no longer used. **Enablement (R4, decision Q1):** a command naming a CLI identifier is itself the consent and records unless `MEMPALACE_TRANSCRIPT_ENABLED` is set to a non-empty value other than `1`, which stays a kill-switch. The legacy forms (no argument, or a bare event name) still record only when it equals `1`. **Setup rewrites on every run (R23–R26)**, before the session-recording question and whatever its answer, through `transcript_rewrite_installed`. Commands are recognised by content and fall in one class, decided by `sr_is_transcript` (Bash) and `scripts/lib/transcript-recognition.ts`, checked against one corpus (`scripts/tests/fixtures/mempalace-transcript/recognition-corpus.json`). Commands whose consent is established are rewritten to the direct form of the checkout running setup: `direct`, `legacy-enabled` (the `MEMPALACE_TRANSCRIPT_ENABLED=1` prefix earlier setups wrote) and, on Claude Code only, `legacy-unmarked` when `env.MEMPALACE_TRANSCRIPT_ENABLED` is `"1"` in the same file. Any other `legacy-unmarked` command is left and reported as disabled and not upgraded. A `foreign-prefix` command, one carrying an operator's own assignment, is kept byte-identical and reported. Enabling then removes the framework's transcript commands and adds the manifest's on each event left without one, so no event ends with two. Writes are backup-first and 0600, and a second run writes nothing. **Needs Node.js 24 or later when it fires.** Setup on a Node.js below 24 prints the floor guard's diagnostic, writes no direct form and leaves every installed command as it is. **Retired shim:** the forwarding shim `hooks/mempalace-transcript.sh` was removed in #1344; the setup rewrite still migrates a command wired to it. Without `node` it prints `mempalace-transcript: node required`; below Node.js 24 it prints the floor guard's diagnostic. Either way it exits `0`, writing `{}` for the Antigravity argument shapes. A directly wired `.ts` is not a shim: with Node.js downgraded after setup it fails with Node.js's own status (*Parity gaps*). Recording depends on the checkout staying at its path; re-running setup from a durable checkout repairs it, and setup warns when that checkout is a linked worktree (`warn_if_linked_worktree`, `docs/usage-capture.md` → *Checkout-location dependency*). CI: `mempalace-transcript`, `mempalace-transcript-node-24-0` and `windows-mempalace-transcript` (`ci/ci-capabilities.yml`).
+### 8b — Transcript hook runtime, write path and wiring
 
-- **Source of truth:** `hooks/mempalace-transcript.ts`, `scripts/lib/mempalace-transcript/`, `scripts/lib/tls-env.ts`, `scripts/lib/transcript-recognition.ts`, `scripts/lib/hook-transcript-cli.ts`, `scripts/lib/hook-transcript-manifest.ts`, `scripts/lib/transcript-hook-rewrite.ts`, `scripts/lib/hook-antigravity-transcript.ts`, `scripts/lib/hook-command.ts`, `scripts/hook-wiring.ts`, `scripts/setup-*-interactive.ts`, `hooks/*-transcript-hooks.json`
-- **Claude Code:** ✅ `node "<abs>/hooks/mempalace-transcript.ts" claude-code` on every OS (Git Bash on Windows, row 37), in `~/.claude/settings.json`. The disclosure before enabling names the checkout path.
-- **Gemini CLI:** ✅ `node "<abs>/hooks/mempalace-transcript.ts" gemini-cli` on macOS and Linux; on Windows the same text with the absolute path spelled out and no `NAME=value` prefix, because PowerShell 5.1 expands no project-directory token and rejects the prefix (row 37c).
-- **Copilot CLI:** ✅ `node "<abs>/hooks/mempalace-transcript.ts" copilot-cli`, same forms as Gemini CLI, under the `command` key on Windows; merged into `~/.copilot/hooks/copilot-transcript-hooks.json`, no longer replacing it (row 8).
-- **Antigravity CLI:** ✅ `node "<abs>/hooks/mempalace-transcript.ts" antigravity-cli Stop` on macOS and Linux; on Windows the guarded form `set NoDefaultCurrentDirectoryInExePath=1&& node <abs>/hooks/mempalace-transcript.ts antigravity-cli Stop`, path unquoted (rows 37b, 37f). **[GAP]** a Windows checkout path holding whitespace or one of `& | < > ^ % ( )` is refused (*Parity gaps*).
+- **Feature:** Transcript hook runtime, write path and wiring (spec 0164; TypeScript since spec 0247) —
+  `hooks/mempalace-transcript.ts` sends one JSON-RPC 2.0 `mempalace_add_drawer` request over plain HTTP to the shared
+  MCP HTTP daemon with Node.js's standard library: **no `jq`, no `curl`, no Python**, and no third-party package. The
+  content and the bearer token stay off every process argument list, and the only process the hook spawns is Git. The
+  outcome lines are spec 0074's, on standard error: `persisted <entry type> to transcripts/<room>` unless
+  `MEMPALACE_TRANSCRIPT_QUIET=1`; `ADD_FAILED` (rc=3) or `DAEMON_UNREACHABLE: <host>:<port> — <reason>` (rc=4), then
+  `FAILED to persist`. The request is bounded at 5 seconds, and a non-2xx or non-JSON response now counts as a failure
+  (spec 0247 R30 lists every deviation from the shell hook). The hook exits `0` on every path but a missing dependency
+  (status `1`, unreachable while it imports only the standard library) and, in Antigravity mode, writes exactly `{}` and
+  a line feed on standard output. **Wiring (spec 0247 R20–R22):** a direct `node` command line naming the CLI,
+  `node "<abs>/hooks/mempalace-transcript.ts" <cli-id>` (`antigravity-cli Stop` for Antigravity CLI), built by
+  `scripts/lib/hook-command.ts` through `scripts/hook-wiring.ts transcript render`. It is wired by **in-repo absolute
+  path** with no environment prefix, the treatment of row 8c; no copy is installed under a CLI's home any more. A copy
+  an earlier setup installed there is left on disk, and setup reports its path as no longer used. **Enablement (R4,
+  decision Q1):** a command naming a CLI identifier is itself the consent and records unless
+  `MEMPALACE_TRANSCRIPT_ENABLED` is set to a non-empty value other than `1`, which stays a kill-switch. The legacy forms
+  (no argument, or a bare event name) still record only when it equals `1`. **Setup rewrites on every run (R23–R26)**,
+  before the session-recording question and whatever its answer, through `transcript_rewrite_installed`. Commands are
+  recognised by content and fall in one class, decided by `sr_is_transcript` (Bash) and
+  `scripts/lib/transcript-recognition.ts`, checked against one corpus
+  (`scripts/tests/fixtures/mempalace-transcript/recognition-corpus.json`). Commands whose consent is established are
+  rewritten to the direct form of the checkout running setup: `direct`, `legacy-enabled` (the
+  `MEMPALACE_TRANSCRIPT_ENABLED=1` prefix earlier setups wrote) and, on Claude Code only, `legacy-unmarked` when
+  `env.MEMPALACE_TRANSCRIPT_ENABLED` is `"1"` in the same file. Any other `legacy-unmarked` command is left and reported
+  as disabled and not upgraded. A `foreign-prefix` command, one carrying an operator's own assignment, is kept
+  byte-identical and reported. Enabling then removes the framework's transcript commands and adds the manifest's on each
+  event left without one, so no event ends with two. Writes are backup-first and 0600, and a second run writes nothing. **Needs
+  Node.js 24 or later when it fires.** Setup on a Node.js below 24 prints the floor guard's diagnostic, writes no direct
+  form and leaves every installed command as it is. **Retired shim:** the forwarding shim
+  `hooks/mempalace-transcript.sh` was removed in #1344; the setup rewrite still migrates a command wired to it. Without
+  `node` it prints `mempalace-transcript: node required`; below Node.js 24 it prints the floor guard's diagnostic.
+  Either way it exits `0`, writing `{}` for the Antigravity argument shapes. A directly wired `.ts` is not a shim: with
+  Node.js downgraded after setup it fails with Node.js's own status (*Parity gaps*). Recording depends on the checkout
+  staying at its path; re-running setup from a durable checkout repairs it, and setup warns when that checkout is a
+  linked worktree (`warn_if_linked_worktree`, `docs/usage-capture.md` → *Checkout-location dependency*). CI:
+  `mempalace-transcript`, `mempalace-transcript-node-24-0` and `windows-mempalace-transcript`
+  (`ci/ci-capabilities.yml`).
+- **Source of truth:** `hooks/mempalace-transcript.ts`, `scripts/lib/mempalace-transcript/`, `scripts/lib/tls-env.ts`,
+  `scripts/lib/transcript-recognition.ts`, `scripts/lib/hook-transcript-cli.ts`,
+  `scripts/lib/hook-transcript-manifest.ts`, `scripts/lib/transcript-hook-rewrite.ts`,
+  `scripts/lib/hook-antigravity-transcript.ts`, `scripts/lib/hook-command.ts`, `scripts/hook-wiring.ts`,
+  `scripts/setup-*-interactive.ts`, `hooks/*-transcript-hooks.json`
+- **Claude Code:** ✅ `node "<abs>/hooks/mempalace-transcript.ts" claude-code` on every OS (Git Bash on Windows, row 37),
+  in `~/.claude/settings.json`. The disclosure before enabling names the checkout path.
+- **Gemini CLI:** ✅ `node "<abs>/hooks/mempalace-transcript.ts" gemini-cli` on macOS and Linux; on Windows the same
+  text with the absolute path spelled out and no `NAME=value` prefix, because PowerShell 5.1 expands no
+  project-directory token and rejects the prefix (row 37c).
+- **Copilot CLI:** ✅ `node "<abs>/hooks/mempalace-transcript.ts" copilot-cli`, same forms as Gemini CLI, under the
+  `command` key on Windows; merged into `~/.copilot/hooks/copilot-transcript-hooks.json`, no longer replacing it (row 8).
+- **Antigravity CLI:** ✅ `node "<abs>/hooks/mempalace-transcript.ts" antigravity-cli Stop` on macOS and Linux; on
+  Windows the guarded form
+  `set NoDefaultCurrentDirectoryInExePath=1&& node <abs>/hooks/mempalace-transcript.ts antigravity-cli Stop`, path
+  unquoted (rows 37b, 37f). **[GAP]** a Windows checkout path holding whitespace or one of `& | < > ^ % ( )` is refused
+  (*Parity gaps*).
 
-### 8c — Usage-capture command wiring and Antigravity statusline channel (spec 0206) — the capture hook and Antigravity statusline shim (`hooks/usage-capture.ts`, `hooks/antigravity-statusline-shim.ts`, spec 0243) are wired as direct `node` command lines by **in-repo absolute path**, never copied to CLI homes (same treatment as the worktree git guard, spec 0169). The absolute path is resolved by `scripts/hook-wiring.ts`, which each installer calls through `node`, and substituted for the token the fragment carries. The `.sh` files of the same names remain as forwarding shims, except `hooks/antigravity-statusline-shim.sh`, deleted by spec 0266, so an installation still wired to a surviving `.sh` path keeps capturing until setup rewrites it. This approach avoids stale module-tree copies across CLI homes with no re-sync mechanism on `git pull`. The installed-path dependency is disclosed at install time and documented in `docs/usage-capture.md`; recovery is re-running the installer (a `keep` re-run from a durable checkout re-points a vanished path) or using `scripts/usage-backfill.tsh` (row 11b) to re-derive from source history when the live path breaks. **Usage-capture opt-in (spec 0211):** on all four CLIs usage capture is an opt-in of its own, independent from the MemPalace session-recording opt-in and not gated on MemPalace. On Claude Code, Gemini CLI and Copilot CLI the question is asked after the session-recording block, whatever that block's answer (declined, canceled at confirmation, or Esc — which now reads as a decline instead of aborting setup). With no capture command registered it is `no`/`yes`, default `no` (an empty or canceled answer writes nothing and prints how to enable capture later). With one registered — a command recognised by its whole shape (a script path ending in `/hooks/usage-capture.sh` (the retired shim, still recognised) or `/hooks/usage-capture.ts`, quoted or not and wherever it points, followed by exactly `<cli-id> <Event>` with `<cli-id>` one of `claude-code`, `gemini-cli`, `copilot-cli`), which covers every form the former coupled deployment wrote, the unquoted Gemini one included, and never an operator hook that runs a same-named script with other arguments — it is `keep`/`remove`, default `keep`: `keep` leaves one capture command per event (preferring one whose path resolves), rewrites each legacy `.sh` command to the direct form — only where a `hooks/usage-capture.ts` sits next to the registered `.sh`, otherwise it leaves the command and says why — re-points only a path that no longer resolves and says so, and leaves a path it cannot judge (relative, `$…`, `~…`) as it is; a second run writes nothing; `remove` backs the file up and deletes every capture command, pruning only the matcher groups and event keys that deletion emptied. Every read and write of a capture entry lives in `scripts/lib/setup/usage-capture.ts` (the library `scripts/lib/usage-capture-optin.sh` was a forwarding function shim to it, retired in #1344) and `scripts/hook-wiring.ts`; setup never writes the direct form when `node` reports a major version below 24 (floor guard, spec 0240 R1); each write is backup-first and 0600, backups are 0600 too (`backup_file` also narrows the earlier `.bak.*` copies the user owns), and each write preserves every other entry and non-hook key. The command line is built by one module, `scripts/lib/hook-command.ts`: `node "<abs>" <args>` on macOS and Linux and, on Windows, for Claude Code (Git Bash) and Gemini CLI and Copilot CLI (Windows PowerShell 5.1, absolute path spelled out, never a `$…` token); on Windows, `set NoDefaultCurrentDirectoryInExePath=1&& node <abs> <args>`, path unquoted, for both Antigravity CLI `cmd.exe` surfaces (rows 37b, 37e and 37f); a checkout path holding `"`, `$`, a backtick, a backslash, a carriage return or a newline is refused, and for `cmd.exe` whitespace and `& | < > ^ % ( )` too. That prefix is the **guarded form** of #1392: `cmd.exe` looks a bare `node` up in the working directory before `PATH`, so a `node.cmd`, `node.bat` or `node.exe` planted there would run instead of Node.js (CWE-427), and the variable makes `cmd.exe` skip that step. The module produces it only when the surface's row and the constant's entry record a holding guarded-form measurement (spec 0243 R32(e)); otherwise it refuses the status line, and no row writes the hooks surface on Windows; setup recognises only the exact prefix as the framework's (R34), upgrades a framework status line in the bare `node` form to it, and does not cover a `PATH` that names the current directory (R36). See *Parity gaps* → Windows checkout paths. The hooks exit zero with both streams empty on every failure, except status 1 with one diagnostic line on a missing dependency (spec 0243 R12); the per-CLI exit statuses were probed on macOS on 2026-10-01, and status 1 blocks no wired event (`docs/usage-capture.md` → *Exit status and blocking*); where the diagnostic is visible differs per CLI, and that difference is an accepted gap while spec 0243 R11 holds (same section, and *Parity gaps* → R12 missing-dependency diagnostic visibility). The entries come from the per-CLI capture fragments `hooks/{claude,gemini,copilot}-usage-capture-hooks.json`; the transcript manifests no longer carry them.
+### 8c — Usage-capture command wiring and Antigravity statusline channel
 
-- **Source of truth:** `hooks/usage-capture.ts`, `hooks/antigravity-statusline-shim.ts`, `hooks/claude-usage-capture-hooks.json`, `hooks/gemini-usage-capture-hooks.json`, `hooks/copilot-usage-capture-hooks.json`, `scripts/hook-wiring.ts`, `scripts/lib/hook-command.ts`, `scripts/lib/setup/usage-capture.ts`, `scripts/setup-*-interactive.ts`
-- **Claude Code:** ✅ Claude Code: capture command on `Stop`, `SessionEnd` events, registered in `~/.claude/settings.json` by the usage-capture question of `setup-claude-interactive.ts` (default `no`; `keep`/`remove`, default `keep`, when already registered; removal via `remove`) at the in-repo absolute path of `hooks/usage-capture.ts` (`node "<abs>/hooks/usage-capture.ts" claude-code <Event>`) — specs 0211 and 0243. No copy to `~/.claude/hooks/`.
-- **Gemini CLI:** ✅ Gemini CLI: capture command on `AfterModel` event, registered in `~/.gemini/settings.json` by the usage-capture question of `setup-gemini-interactive.ts` (default `no`; `keep`/`remove`, default `keep`, when already registered; removal via `remove`) at the in-repo absolute path of `hooks/usage-capture.ts`, spelled out on Windows because Gemini CLI does not expand `${GEMINI_PROJECT_DIR}` there (row 37c) — specs 0211 and 0243. No copy to `~/.gemini/hooks/`. The setup merges `settings.json` in place (spec 0214), so every hook entry survives a re-run whatever the answers: registered capture entries are retained by the merge itself, with no separate carry-over (spec 0211 R13 holds through spec 0214 R3 and R16), and a re-run that declines or cancels session recording leaves the transcript hooks and the worktree git guard an earlier run registered in place, as Claude Code and Copilot CLI do. Trigger choice (spec 0206 R14) rests on two #1169 probes: probe 1 — `AfterModel` fires 5× per prompt (streaming); probe 7 — full re-parse of the largest measured source (a Claude Code session, not a Gemini one) ~142–168 ms. Unmeasured PLAN v3 estimates: ~40–60 ms Node start-up, and a stamp fast path keeping 4 of 5 firings from spawning Node — the latter described the shell wrapper; since spec 0243 every firing starts Node.js and the guard spares only the module-graph load (budgets of spec 0243 R15 apply). No Gemini-specific re-parse timing was taken; `AfterAgent` stays unregistered until a measurement shows `AfterModel` insufficient (`docs/usage-capture.md` → *Gemini CLI trigger measurement*).
-- **Copilot CLI:** ✅ Copilot CLI: capture command on `agentStop`, `sessionEnd` events, registered by the usage-capture question of `setup-copilot-interactive.ts` (default `no`; `keep`/`remove`, default `keep`, when already registered; removal via `remove`) at the in-repo absolute path of `hooks/usage-capture.ts`, under the `command` key (never `bash`, row 37) and spelled out on Windows (row 37c) — specs 0211 and 0243. It is written into `~/.copilot/hooks/copilot-transcript-hooks.json`, the user-level file session recording also uses; each opt-in leaves the other's entries in place. No copy to `~/.copilot/hooks/`.
-- **Antigravity CLI:** ✅ Antigravity CLI (**[GAP]** granularity — `session-cumulative` only, see *Parity gaps*): statusline channel installed into `statusLine.command` of `~/.gemini/antigravity-cli/settings.json` only when that value is empty (R20); prior value recorded in `~/.crewrig/usage/state/antigravity-statusline.json` for restoration on removal (R21) — spec 0206 PLAN v3 step 13. Shim (`hooks/antigravity-statusline-shim.ts`) wired to in-repo absolute path as `node "<abs>"` on macOS and Linux, not copied; a legacy `.sh` command is rewritten on the next setup run in three ordered writes (marker, settings, marker) so a crash leaves a state setup still recognises as the framework's (spec 0243 R19). On Windows the shim is wired in the guarded form `set NoDefaultCurrentDirectoryInExePath=1&& node <abs>/hooks/antigravity-statusline-shim.ts`, path unquoted (rows 37e and 37f, spec 0243 delta-03); a framework status line still in the bare `node` form is rewritten to it on the next setup run, and a non-empty prior command then runs with the current-directory lookup disabled (R35).
+- **Feature:** Usage-capture command wiring and Antigravity statusline channel (spec 0206) — the capture hook and
+  Antigravity statusline shim (`hooks/usage-capture.ts`, `hooks/antigravity-statusline-shim.ts`, spec 0243) are wired as
+  direct `node` command lines by **in-repo absolute path**, never copied to CLI homes (same treatment as the worktree
+  git guard, spec 0169). The absolute path is resolved by `scripts/hook-wiring.ts`, which each installer calls through
+  `node`, and substituted for the token the fragment carries. The `.sh` files of the same names remain as forwarding
+  shims, except `hooks/antigravity-statusline-shim.sh`, deleted by spec 0266, so an installation still wired to a
+  surviving `.sh` path keeps capturing until setup rewrites it. This approach avoids stale module-tree copies across CLI
+  homes with no re-sync mechanism on `git pull`. The installed-path dependency is disclosed at install time and
+  documented in `docs/usage-capture.md`; recovery is re-running the installer (a `keep` re-run from a durable checkout
+  re-points a vanished path) or using `scripts/usage-backfill.tsh` (row 11b) to re-derive from source history when the
+  live path breaks. **Usage-capture opt-in (spec 0211):** on all four CLIs usage capture is an opt-in of its own,
+  independent from the MemPalace session-recording opt-in and not gated on MemPalace. On Claude Code, Gemini CLI and
+  Copilot CLI the question is asked after the session-recording block, whatever that block's answer (declined, canceled
+  at confirmation, or Esc — which now reads as a decline instead of aborting setup). With no capture command
+  registered it is `no`/`yes`, default `no` (an empty or canceled answer writes nothing and prints how to enable capture
+  later). With one registered — a command recognised by its whole shape (a script path ending in
+  `/hooks/usage-capture.sh` (the retired shim, still recognised) or `/hooks/usage-capture.ts`, quoted or not and
+  wherever it points, followed by exactly `<cli-id> <Event>` with `<cli-id>` one of `claude-code`, `gemini-cli`,
+  `copilot-cli`), which covers every form the former coupled deployment wrote, the unquoted Gemini one included, and
+  never an operator hook that runs a same-named script with other arguments — it is `keep`/`remove`, default `keep`:
+  `keep` leaves one capture command per event (preferring one whose path resolves), rewrites each legacy `.sh` command
+  to the direct form — only where a `hooks/usage-capture.ts` sits next to the registered `.sh`, otherwise it leaves
+  the command and says why — re-points only a path that no longer resolves and says so, and leaves a path it cannot
+  judge (relative, `$…`, `~…`) as it is; a second run writes nothing; `remove` backs the file up and deletes every
+  capture command, pruning only the matcher groups and event keys that deletion emptied. Every read and write of a
+  capture entry lives in `scripts/lib/setup/usage-capture.ts` (the library `scripts/lib/usage-capture-optin.sh` was a
+  forwarding function shim to it, retired in #1344) and `scripts/hook-wiring.ts`; setup never writes the direct form
+  when `node` reports a major version below 24 (floor guard, spec 0240 R1); each write is backup-first and 0600, backups
+  are 0600 too (`backup_file` also narrows the earlier `.bak.*` copies the user owns), and each write preserves every
+  other entry and non-hook key. The command line is built by one module, `scripts/lib/hook-command.ts`:
+  `node "<abs>" <args>` on macOS and Linux and, on Windows, for Claude Code (Git Bash) and Gemini CLI and Copilot CLI
+  (Windows PowerShell 5.1, absolute path spelled out, never a `$…` token); on Windows,
+  `set NoDefaultCurrentDirectoryInExePath=1&& node <abs> <args>`, path unquoted, for both Antigravity CLI `cmd.exe`
+  surfaces (rows 37b, 37e and 37f); a checkout path holding `"`, `$`, a backtick, a backslash, a carriage return or a
+  newline is refused, and for `cmd.exe` whitespace and `& | < > ^ % ( )` too. That prefix is the **guarded form** of #1392:
+  `cmd.exe` looks a bare `node` up in the working directory before `PATH`, so a `node.cmd`, `node.bat` or `node.exe`
+  planted there would run instead of Node.js (CWE-427), and the variable makes `cmd.exe` skip that step. The module
+  produces it only when the surface's row and the constant's entry record a holding guarded-form measurement (spec 0243
+  R32(e)); otherwise it refuses the status line, and no row writes the hooks surface on Windows; setup recognises only
+  the exact prefix as the framework's (R34), upgrades a framework status line in the bare `node` form to it, and does
+  not cover a `PATH` that names the current directory (R36). See *Parity gaps* → Windows checkout paths. The hooks
+  exit zero with both streams empty on every failure, except status 1 with one diagnostic line on a missing dependency
+  (spec 0243 R12); the per-CLI exit statuses were probed on macOS on 2026-10-01, and status 1 blocks no wired event
+  (`docs/usage-capture.md` → *Exit status and blocking*); where the diagnostic is visible differs per CLI, and that
+  difference is an accepted gap while spec 0243 R11 holds (same section, and *Parity gaps* → R12 missing-dependency
+  diagnostic visibility). The entries come from the per-CLI capture fragments
+  `hooks/{claude,gemini,copilot}-usage-capture-hooks.json`; the transcript manifests no longer carry them.
+- **Source of truth:** `hooks/usage-capture.ts`, `hooks/antigravity-statusline-shim.ts`,
+  `hooks/claude-usage-capture-hooks.json`, `hooks/gemini-usage-capture-hooks.json`,
+  `hooks/copilot-usage-capture-hooks.json`, `scripts/hook-wiring.ts`, `scripts/lib/hook-command.ts`,
+  `scripts/lib/setup/usage-capture.ts`, `scripts/setup-*-interactive.ts`
+- **Claude Code:** ✅ Claude Code: capture command on `Stop`, `SessionEnd` events, registered in
+  `~/.claude/settings.json` by the usage-capture question of `setup-claude-interactive.ts` (default `no`;
+  `keep`/`remove`, default `keep`, when already registered; removal via `remove`) at the in-repo absolute path of
+  `hooks/usage-capture.ts` (`node "<abs>/hooks/usage-capture.ts" claude-code <Event>`) — specs 0211 and 0243. No copy
+  to `~/.claude/hooks/`.
+- **Gemini CLI:** ✅ Gemini CLI: capture command on `AfterModel` event, registered in `~/.gemini/settings.json` by the
+  usage-capture question of `setup-gemini-interactive.ts` (default `no`; `keep`/`remove`, default `keep`, when already
+  registered; removal via `remove`) at the in-repo absolute path of `hooks/usage-capture.ts`, spelled out on Windows
+  because Gemini CLI does not expand `${GEMINI_PROJECT_DIR}` there (row 37c) — specs 0211 and 0243. No copy to
+  `~/.gemini/hooks/`. The setup merges `settings.json` in place (spec 0214), so every hook entry survives a re-run
+  whatever the answers: registered capture entries are retained by the merge itself, with no separate carry-over (spec
+  0211 R13 holds through spec 0214 R3 and R16), and a re-run that declines or cancels session recording leaves the
+  transcript hooks and the worktree git guard an earlier run registered in place, as Claude Code and Copilot CLI do.
+  Trigger choice (spec 0206 R14) rests on two #1169 probes: probe 1 — `AfterModel` fires 5× per prompt (streaming);
+  probe 7 — full re-parse of the largest measured source (a Claude Code session, not a Gemini one) ~142–168 ms.
+  Unmeasured PLAN v3 estimates: ~40–60 ms Node start-up, and a stamp fast path keeping 4 of 5 firings from spawning
+  Node — the latter described the shell wrapper; since spec 0243 every firing starts Node.js and the guard spares only
+  the module-graph load (budgets of spec 0243 R15 apply). No Gemini-specific re-parse timing was taken; `AfterAgent`
+  stays unregistered until a measurement shows `AfterModel` insufficient (`docs/usage-capture.md` → *Gemini CLI
+  trigger measurement*).
+- **Copilot CLI:** ✅ Copilot CLI: capture command on `agentStop`, `sessionEnd` events, registered by the usage-capture
+  question of `setup-copilot-interactive.ts` (default `no`; `keep`/`remove`, default `keep`, when already registered;
+  removal via `remove`) at the in-repo absolute path of `hooks/usage-capture.ts`, under the `command` key (never `bash`,
+  row 37) and spelled out on Windows (row 37c) — specs 0211 and 0243. It is written into
+  `~/.copilot/hooks/copilot-transcript-hooks.json`, the user-level file session recording also uses; each opt-in leaves
+  the other's entries in place. No copy to `~/.copilot/hooks/`.
+- **Antigravity CLI:** ✅ Antigravity CLI (**[GAP]** granularity — `session-cumulative` only, see *Parity gaps*):
+  statusline channel installed into `statusLine.command` of `~/.gemini/antigravity-cli/settings.json` only when that
+  value is empty (R20); prior value recorded in `~/.crewrig/usage/state/antigravity-statusline.json` for restoration on
+  removal (R21) — spec 0206 PLAN v3 step 13. Shim (`hooks/antigravity-statusline-shim.ts`) wired to in-repo absolute
+  path as `node "<abs>"` on macOS and Linux, not copied; a legacy `.sh` command is rewritten on the next setup run in
+  three ordered writes (marker, settings, marker) so a crash leaves a state setup still recognises as the framework's
+  (spec 0243 R19). On Windows the shim is wired in the guarded form
+  `set NoDefaultCurrentDirectoryInExePath=1&& node <abs>/hooks/antigravity-statusline-shim.ts`, path unquoted (rows 37e
+  and 37f, spec 0243 delta-03); a framework status line still in the bare `node` form is rewritten to it on the next
+  setup run, and a non-empty prior command then runs with the current-directory lookup disabled (R35).
 
-### 8d — Attribution declaration and ledger command surface (spec 0208) — the four commands for declaring task attribution, listing the attribution ledger, and querying rollups (`scripts/usage-task.ts`, `scripts/usage-attribute.ts`, `scripts/usage-query.ts --rollup`) are **repository-level** and **identical on all four CLIs** — invoked through `task` or `node` with no per-CLI wiring or integration point; the nine `scripts/usage-<name>.sh` forwarding shims of spec 0253 were removed in #1344, including `usage-mirror.sh`. Windows evidence: the `windows-usage-wrappers` job (`.github/workflows/build.yml`) runs the nine entries from pwsh, offline, with no Python and no `bash`, and records each command's wall time without gating on it (spec 0253 R24, R27). The usage mirror's detached spawn runs `process.execPath` on `scripts/usage-mirror.ts --from-write` with no `bash`, proved on Linux and `windows-latest` by `scripts/tests/usage-mirror-spawn.test.ts` (spec 0253 delta-04, #1515; see *Parity gaps* → usage mirror on Windows, closed). Attribution is resolved once, at capture time (spec 0208 R1), from one of four ordered declaration channels (explicit human declaration, `CREWRIG_TASK` environment variable, worktree/branch derivation, session-start protocol). The attribution sidecar (`.attr.json`) and ledger (spec 0208 R13) are storage-contract artifacts (spec 0207), not capture-step features; a record's attribution resolves at hand-over to storage, never before or after.
+### 8d — Attribution declaration and ledger command surface
 
-- **Source of truth:** `scripts/usage-task.ts`, `scripts/usage-attribute.ts`, `scripts/lib/usage-wrapper.ts`, `scripts/lib/usage-store/{declaration,ledger,query,attribution}.js`, `docs/usage-attribution.md`
-- **Claude Code:** ✅ All CLIs share the same TypeScript entries and Node module tree; no CLI-specific registration, environment substitution, or hook wiring
+- **Feature:** Attribution declaration and ledger command surface (spec 0208) — the four commands for declaring task
+  attribution, listing the attribution ledger, and querying rollups (`scripts/usage-task.ts`,
+  `scripts/usage-attribute.ts`, `scripts/usage-query.ts --rollup`) are **repository-level** and **identical on all four
+  CLIs** — invoked through `task` or `node` with no per-CLI wiring or integration point; the nine
+  `scripts/usage-<name>.sh` forwarding shims of spec 0253 were removed in #1344, including `usage-mirror.sh`. Windows
+  evidence: the `windows-usage-wrappers` job (`.github/workflows/build.yml`) runs the nine entries from pwsh, offline,
+  with no Python and no `bash`, and records each command's wall time without gating on it (spec 0253 R24, R27). The
+  usage mirror's detached spawn runs `process.execPath` on `scripts/usage-mirror.ts --from-write` with no `bash`, proved
+  on Linux and `windows-latest` by `scripts/tests/usage-mirror-spawn.test.ts` (spec 0253 delta-04, #1515; see *Parity
+  gaps* → usage mirror on Windows, closed). Attribution is resolved once, at capture time (spec 0208 R1), from one of
+  four ordered declaration channels (explicit human declaration, `CREWRIG_TASK` environment variable, worktree/branch
+  derivation, session-start protocol). The attribution sidecar (`.attr.json`) and ledger (spec 0208 R13) are
+  storage-contract artifacts (spec 0207), not capture-step features; a record's attribution resolves at hand-over to
+  storage, never before or after.
+- **Source of truth:** `scripts/usage-task.ts`, `scripts/usage-attribute.ts`, `scripts/lib/usage-wrapper.ts`,
+  `scripts/lib/usage-store/{declaration,ledger,query,attribution}.js`, `docs/usage-attribution.md`
+- **Claude Code:** ✅ All CLIs share the same TypeScript entries and Node module tree; no CLI-specific registration,
+  environment substitution, or hook wiring
 - **Gemini CLI:** ✅ same
 - **Copilot CLI:** ✅ same
 - **Antigravity CLI:** ✅ same
 
-### 8e — MemPalace session-start registration check (spec 0246, delta-01) — at session start, reads the expected endpoint from the installed launcher (`MCP_HOST`/`MCP_PORT` in the installed launcher `~/.crewrig/mcp-daemon-launcher.sh`, never the session's environment), sends one unauthenticated loopback request to its `/mcp` (1 s bound), classifies the CLI's user-level `mempalace` registration (`ok`, `absent`, `stdio`, `wrong-endpoint`, `unrecognised`), and emits at most one warning of at most 600 bytes on every channel the CLI offers on that event (R5, R7). Silent when the registration is correct, when no daemon is installed, on a platform with no supported supervisor, and when the daemon is down while the CLI is on its stdio fallback (R6). Always exits 0 within 2 s and uses no blocking or denying output (R9); spawns no child process and never sends the bearer token (R10). The hook runs the installed copy under `~/.crewrig/hooks/session-check/`, so it survives a moved checkout. Its entry is identified by content (a command ending in `/session-check/mempalace-session-check.ts <cli>`), registered by every setup run (row 10), and carried by no committed `hooks/*-transcript-hooks.json` or `hooks/*-usage-capture-hooks.json` manifest (R11). Warnings, repairs and manual removal: [`docs/runbooks/mempalace-mcp-server.md`](runbooks/mempalace-mcp-server.md) → *Session-start registration warnings*. Channel and timeout evidence for Claude, Gemini and Copilot: live probes recorded on [issue #1410](https://github.com/crewrig/crewrig/issues/1410#issuecomment-5950885519) (Claude Code 2.1.287, Gemini CLI 0.28.2, Copilot CLI 1.0.90).
+### 8e — MemPalace session-start registration check
 
-- **Source of truth:** `scripts/mempalace-session-check.ts`, `scripts/lib/mempalace-registration.ts` (`SESSION_CHECK_CHANNELS`), `scripts/lib/session-check-throttle.ts` (`ANTIGRAVITY_SESSION_CHECK`), `scripts/session-check-hooks.ts`, `scripts/lib/session-check-config.ts`, `scripts/setup-*-interactive.ts`
-- **Claude Code:** ✅ Event `SessionStart` (matcher `""`), in `~/.claude/settings.json` → `hooks.SessionStart`. **Model:** `hookSpecificOutput.additionalContext` — verified live (the model quoted the probe marker from the SessionStart system reminder; `systemMessage` did not reach it). **User:** `systemMessage` — documented; the live UI check is pending on the owner (headless, the marker appears only in the raw `hook_response`). **Timeout:** `timeout: 5`, in seconds — verified live (a 3 s probe under `timeout: 1` was cancelled before its post-sleep line).
-- **Gemini CLI:** ✅ Event `SessionStart`, in `~/.gemini/settings.json` → `hooks.SessionStart`, as the named handler `crewrig-mempalace-session-check`. This is the same file that holds the `mempalace` registration, so losing it loses both; R13 is the backstop (runbook). **User:** `systemMessage` — verified live (`Hook system message: <marker>` on the terminal). **Model:** `hookSpecificOutput.additionalContext` — **documented, no live probe ran** (spec 0246 delta-02 R7). Evidence: the hooks reference shipped in Gemini CLI 0.28.2 (`@google/gemini-cli-core/dist/docs/hooks/reference.md` → *SessionStart*, also [online](https://geminicli.com/docs/hooks/reference/)): "`hookSpecificOutput.additionalContext`: (`string`) — **Interactive**: Injected as the first turn in history. **Non-interactive**: Prepended to the user's prompt." The probe account cannot reach a model (`IneligibleTierError … UNSUPPORTED_CLIENT`); live confirmation is tracked in [#1472](https://github.com/crewrig/crewrig/issues/1472), see *Parity gaps*. **Timeout:** `timeout: 5000`, in milliseconds — verified live (`Hook timed out after 1000ms` under `1000`).
-- **Copilot CLI:** ✅ Event `sessionStart`, in the dedicated file `~/.copilot/hooks/crewrig-mempalace-session-check.json` (`version: 1`), because the session-recording writer replaces `copilot-transcript-hooks.json` whole. Loading of every `*.json` in the hooks directory verified live at both the repository and the user level. **Model:** top-level `additionalContext` — verified live (`systemMessage` and `hookSpecificOutput.additionalContext` did not reach the model). **User:** ❌ none — **[GAP]**, see *Parity gaps*. **Timeout:** `timeoutSec: 5`, in seconds — verified live.
-- **Antigravity CLI:** ✅ Event `PreInvocation`, under the named hook `crewrig-mempalace-session-check` in `~/.gemini/config/hooks.json`, written directly by the setup writer, not through the transcript deploy path (spec 0116 delta-03 replacement R3 scopes its `PreInvocation` prohibition to `crewrig-mempalace-transcript`). **Model:** `injectSteps[].ephemeralMessage` ("transient system message"); output `{"injectSteps":[{"ephemeralMessage":"<warning>"}]}`. **User:** ❓ unconfirmed — **[GAP-confirmation]**, pending [#1472](https://github.com/crewrig/crewrig/issues/1472): none emitted; the compiled schema of `agy` 1.2.14 holds `system_message` and `error_message.user_message` step types that might reach the user, and an undocumented `SessionStart` hook (`CallSessionStartHook`) that the check does not use. See *Parity gaps*. **Timeout:** `timeout: 5`, in seconds. **Throttle key:** `conversationId` ("Every hook payload sent to `stdin` includes these common system metadata fields", `conversationId` first among them): configuration is read and the daemon probed at most once per conversation, and a payload without a usable `conversationId` falls back to once per 30-minute window per user; state in `~/.crewrig/state/session-check/antigravity.json` (0600, bounded). **Suppressed-path cost (R8 bound: 150 ms, so the hook is registered):** p95 **84.6 ms** with the `conversationId` key (p50 81.7 ms, max 85.4 ms), and p95 85.6 ms under the 30-minute window with no identifier (p50 81.9 ms). Method: 25 consecutive `/bin/sh -c '<registered command>'` runs after one warm-up, each with a `PreInvocation`-shaped payload on stdin and a warm throttle state, wall clock from spawn to exit; Apple M1 Pro (MacBookPro18,1), Darwin 25.6.0, Node v24.13.1, with `agy` 1.2.14 installed (the measurement runs the registered command directly, not through `agy`). **Evidence: documentation only** — the hooks documentation embedded in `agy` 1.2.14 (*Input/Output Contract* → *Common Input Fields*, *`PreInvocation` Contract*, and the `timeout` field "Execution timeout in seconds"), accepted as evidence under spec 0246 delta-02 R7 and R8 because no account was available; **no live probe ran**. Live confirmation is tracked in [#1472](https://github.com/crewrig/crewrig/issues/1472); see *Parity gaps*.
+- **Feature:** MemPalace session-start registration check (spec 0246, delta-01) — at session start, reads the expected
+  endpoint from the installed launcher (`MCP_HOST`/`MCP_PORT` in the installed launcher
+  `~/.crewrig/mcp-daemon-launcher.sh`, never the session's environment), sends one unauthenticated loopback request to
+  its `/mcp` (1 s bound), classifies the CLI's user-level `mempalace` registration (`ok`, `absent`, `stdio`,
+  `wrong-endpoint`, `unrecognised`), and emits at most one warning of at most 600 bytes on every channel the CLI offers
+  on that event (R5, R7). Silent when the registration is correct, when no daemon is installed, on a platform with no
+  supported supervisor, and when the daemon is down while the CLI is on its stdio fallback (R6). Always exits 0 within 2
+  s and uses no blocking or denying output (R9); spawns no child process and never sends the bearer token (R10). The
+  hook runs the installed copy under `~/.crewrig/hooks/session-check/`, so it survives a moved checkout. Its entry is
+  identified by content (a command ending in `/session-check/mempalace-session-check.ts <cli>`), registered by every
+  setup run (row 10), and carried by no committed `hooks/*-transcript-hooks.json` or `hooks/*-usage-capture-hooks.json`
+  manifest (R11). Warnings, repairs and manual removal:
+  [`docs/runbooks/mempalace-mcp-server.md`](runbooks/mempalace-mcp-server.md) → *Session-start registration
+  warnings*. Channel and timeout evidence for Claude, Gemini and Copilot: live probes recorded on [issue #1410](https://github.com/crewrig/crewrig/issues/1410#issuecomment-5950885519)
+  (Claude Code 2.1.287, Gemini CLI 0.28.2, Copilot CLI 1.0.90).
+- **Source of truth:** `scripts/mempalace-session-check.ts`, `scripts/lib/mempalace-registration.ts`
+  (`SESSION_CHECK_CHANNELS`), `scripts/lib/session-check-throttle.ts` (`ANTIGRAVITY_SESSION_CHECK`),
+  `scripts/session-check-hooks.ts`, `scripts/lib/session-check-config.ts`, `scripts/setup-*-interactive.ts`
+- **Claude Code:** ✅ Event `SessionStart` (matcher `""`), in `~/.claude/settings.json` → `hooks.SessionStart`. **Model:**
+  `hookSpecificOutput.additionalContext` — verified live (the model quoted the probe marker from the SessionStart
+  system reminder; `systemMessage` did not reach it). **User:** `systemMessage` — documented; the live UI check is
+  pending on the owner (headless, the marker appears only in the raw `hook_response`). **Timeout:** `timeout: 5`, in
+  seconds — verified live (a 3 s probe under `timeout: 1` was cancelled before its post-sleep line).
+- **Gemini CLI:** ✅ Event `SessionStart`, in `~/.gemini/settings.json` → `hooks.SessionStart`, as the named handler
+  `crewrig-mempalace-session-check`. This is the same file that holds the `mempalace` registration, so losing it loses
+  both; R13 is the backstop (runbook). **User:** `systemMessage` — verified live (`Hook system message: <marker>` on
+  the terminal). **Model:** `hookSpecificOutput.additionalContext` — **documented, no live probe ran** (spec 0246
+  delta-02 R7). Evidence: the hooks reference shipped in Gemini CLI 0.28.2
+  (`@google/gemini-cli-core/dist/docs/hooks/reference.md` → *SessionStart*, also
+  [online](https://geminicli.com/docs/hooks/reference/)): "`hookSpecificOutput.additionalContext`: (`string`) — **Interactive**:
+  Injected as the first turn in history. **Non-interactive**: Prepended to the user's prompt." The probe account cannot
+  reach a model (`IneligibleTierError … UNSUPPORTED_CLIENT`); live confirmation is tracked in
+  [#1472](https://github.com/crewrig/crewrig/issues/1472), see *Parity gaps*. **Timeout:** `timeout: 5000`, in
+  milliseconds — verified live (`Hook timed out after 1000ms` under `1000`).
+- **Copilot CLI:** ✅ Event `sessionStart`, in the dedicated file
+  `~/.copilot/hooks/crewrig-mempalace-session-check.json` (`version: 1`), because the session-recording writer replaces
+  `copilot-transcript-hooks.json` whole. Loading of every `*.json` in the hooks directory verified live at both the
+  repository and the user level. **Model:** top-level `additionalContext` — verified live (`systemMessage` and
+  `hookSpecificOutput.additionalContext` did not reach the model). **User:** ❌ none — **[GAP]**, see *Parity gaps*. **Timeout:**
+  `timeoutSec: 5`, in seconds — verified live.
+- **Antigravity CLI:** ✅ Event `PreInvocation`, under the named hook `crewrig-mempalace-session-check` in
+  `~/.gemini/config/hooks.json`, written directly by the setup writer, not through the transcript deploy path (spec 0116
+  delta-03 replacement R3 scopes its `PreInvocation` prohibition to `crewrig-mempalace-transcript`). **Model:**
+  `injectSteps[].ephemeralMessage` ("transient system message"); output
+  `{"injectSteps":[{"ephemeralMessage":"<warning>"}]}`. **User:** ❓ unconfirmed — **[GAP-confirmation]**, pending
+  [#1472](https://github.com/crewrig/crewrig/issues/1472): none emitted; the compiled schema of `agy` 1.2.14 holds
+  `system_message` and `error_message.user_message` step types that might reach the user, and an undocumented
+  `SessionStart` hook (`CallSessionStartHook`) that the check does not use. See *Parity gaps*. **Timeout:**
+  `timeout: 5`, in seconds. **Throttle key:** `conversationId` ("Every hook payload sent to `stdin` includes these
+  common system metadata fields", `conversationId` first among them): configuration is read and the daemon probed at
+  most once per conversation, and a payload without a usable `conversationId` falls back to once per 30-minute window
+  per user; state in `~/.crewrig/state/session-check/antigravity.json` (0600, bounded). **Suppressed-path cost (R8
+  bound: 150 ms, so the hook is registered):** p95 **84.6 ms** with the `conversationId` key (p50 81.7 ms, max 85.4 ms),
+  and p95 85.6 ms under the 30-minute window with no identifier (p50 81.9 ms). Method: 25 consecutive
+  `/bin/sh -c '<registered command>'` runs after one warm-up, each with a `PreInvocation`-shaped payload on stdin and a
+  warm throttle state, wall clock from spawn to exit; Apple M1 Pro (MacBookPro18,1), Darwin 25.6.0, Node v24.13.1, with
+  `agy` 1.2.14 installed (the measurement runs the registered command directly, not through `agy`). **Evidence:
+  documentation only** — the hooks documentation embedded in `agy` 1.2.14 (*Input/Output Contract* → *Common Input
+  Fields*, *`PreInvocation` Contract*, and the `timeout` field "Execution timeout in seconds"), accepted as evidence
+  under spec 0246 delta-02 R7 and R8 because no account was available; **no live probe ran**. Live confirmation is
+  tracked in [#1472](https://github.com/crewrig/crewrig/issues/1472); see *Parity gaps*.
 
 ### 9 — Project-dir env var consumed by hooks
 
 - **Source of truth:** `hooks/*-transcript-hooks.json`, `hooks/usage-capture.ts`
-- **Claude Code:** ✅ `$CLAUDE_PROJECT_DIR` — the usage-capture command line carries no token (setup writes the absolute path, spec 0243) and reads its own `cwd` from the hook payload (spec 0206)
-- **Gemini CLI:** ✅ `${GEMINI_PROJECT_DIR}` — the usage-capture command line carries no token (setup writes the absolute path, spelled out on Windows — spec 0243, row 37c) and captures from the payload's own `cwd` (spec 0206)
-- **Copilot CLI:** ✅ `$COPILOT_PROJECT_DIR` — **exported into the hook environment on Windows** (Copilot CLI 1.0.89, set to the session cwd, alongside `CLAUDE_PROJECT_DIR`; measured by spec 0237, row 37c; the name ships in Copilot's own `prebuilds/win32-x64/runtime.node`). This supersedes the earlier **[GAP]**, which macOS/Linux have not re-measured. Hooks keep reading the workspace path from stdin JSON with a `$PWD` fallback, so they work either way. The usage-capture command line no longer depends on it: setup writes the absolute path of `hooks/usage-capture.ts` (spec 0243), and the hook reads its own `cwd` from the payload.
-- **Antigravity CLI:** ❌ No `$ANTIGRAVITY_PROJECT_DIR` — **[GAP]**. Hooks read project path from stdin payload's `workspacePaths[0]` per spec 0116, fall back to git root then `$PWD`. Usage-capture reads `workspace.project_dir` from the statusline payload (spec 0206, row 8c). Statusline shim is wired by in-repo absolute path (`node "<abs>/hooks/antigravity-statusline-shim.ts"`).
+- **Claude Code:** ✅ `$CLAUDE_PROJECT_DIR` — the usage-capture command line carries no token (setup writes the
+  absolute path, spec 0243) and reads its own `cwd` from the hook payload (spec 0206)
+- **Gemini CLI:** ✅ `${GEMINI_PROJECT_DIR}` — the usage-capture command line carries no token (setup writes the
+  absolute path, spelled out on Windows — spec 0243, row 37c) and captures from the payload's own `cwd` (spec 0206)
+- **Copilot CLI:** ✅ `$COPILOT_PROJECT_DIR` — **exported into the hook environment on Windows** (Copilot CLI 1.0.89,
+  set to the session cwd, alongside `CLAUDE_PROJECT_DIR`; measured by spec 0237, row 37c; the name ships in Copilot's
+  own `prebuilds/win32-x64/runtime.node`). This supersedes the earlier **[GAP]**, which macOS/Linux have not
+  re-measured. Hooks keep reading the workspace path from stdin JSON with a `$PWD` fallback, so they work either way.
+  The usage-capture command line no longer depends on it: setup writes the absolute path of `hooks/usage-capture.ts`
+  (spec 0243), and the hook reads its own `cwd` from the payload.
+- **Antigravity CLI:** ❌ No `$ANTIGRAVITY_PROJECT_DIR` — **[GAP]**. Hooks read project path from stdin payload's
+  `workspacePaths[0]` per spec 0116, fall back to git root then `$PWD`. Usage-capture reads `workspace.project_dir` from
+  the statusline payload (spec 0206, row 8c). Statusline shim is wired by in-repo absolute path
+  (`node "<abs>/hooks/antigravity-statusline-shim.ts"`).
 
-### 10 — Interactive setup script — since spec 0256 (ticket #1335) the real implementation is the TypeScript entries `scripts/setup-<cli>-interactive.ts` (row 10b). Parity covers all four CLIs and macOS, Linux and Windows (`windows-setup-entries` CI job); the deviations are (a)-(t) of spec 0256 requirement 44 (delta-01, delta-03)
+### 10 — Interactive setup script
 
-- **Source of truth:** `scripts/`                                       **Spec 0113 delta-02:** each script makes the shared MemPalace MCP HTTP daemon the default outcome of setup (`ensure_mempalace_http`, no opt-in prompt): it probes the daemon with an authenticated accept probe (never `/healthz`), installs and starts it when it is not serving, and registers the HTTP entry — falling back to the stdio arrangement only on a reported failure, naming the repair (`task mempalace:status` / `task mempalace:switch-http`, then re-run setup). **Issue #1243:** all four call sites ran under `set -e` with a bare `ensure_mempalace_http "$REPO_DIR" <cli>` immediately followed by `_mempalace_rc=$?` on the next line — a `1`/`2` return aborted the script at the call itself, before the rc was ever captured, so the fallback warning described above (and every later setup step: team, expertise, level, profile, overlays, session recording, usage capture) was silently skipped. Fixed by folding the call into a two-command OR-list (`_mempalace_rc=0` then `ensure_mempalace_http … || _mempalace_rc=$?`), symmetric across all four scripts and regression-covered by `scripts/tests/setup-retarget-rc-guard.test.ts`. Wiring all four is mandatory, not tidiness: `mempalace` is in `MCP_RESERVED_NAMES`, so `merge_preexisting_mcp_servers` deliberately does not preserve an operator entry under that name and the framework write that replaces it is stdio-shaped — a setup run on an unwired CLI would silently revert the entry to stdio. A single-CLI run switches that CLI only and reports which others it leaves behind; the machine-wide all-or-nothing obligation belongs to `task mempalace:switch-http`. See [`docs/runbooks/mempalace-mcp-server.md`](runbooks/mempalace-mcp-server.md) for the conversion command, daily operations, and the token-replacement procedure (spec 0136). **Spec 0246 R11 (delta-01):** every run also registers the MemPalace session-start check (row 8e) in that CLI's user-level hook file, without asking, after the session-recording and usage-capture steps and whatever their answers or the MemPalace step's outcome (`node scripts/session-check-hooks.ts register <cli>`). The write is idempotent, backup-first and `0600`, identifies the entry by content, and preserves every other hook entry and non-hook key. Two exceptions make `register` act as `unregister`, removing any entry an earlier run left: a platform other than macOS and Linux (delta-01 R11 *Platform* — on Windows the CLIs run hook commands under PowerShell 5.1 or `cmd.exe`, row 37), and Antigravity CLI while `ANTIGRAVITY_SESSION_CHECK.registered` is false (R8 fallback). A registration that cannot run (no `node`, or one below the floor) prints `Session check registration FAILED — setup continues.` and does not stop setup. There is no setup-level opt-out; manual removal is in the runbook, and the next run restores the entry.
-- **Claude Code:** ✅ `scripts/setup-claude-interactive.ts` (offers MemPalace auto-install via pipx; MemPalace itself now defaults to the shared HTTP daemon — see the delta-02 clause; installs built artifacts from `dist/<tier>/` to `~/.claude/skills`+`agents` — `library` automatically, `community`/`org` per opt-in prompt — ADR-0011, spec 0019; the `library` tier's `dist/library/.claude` staging output is now auto-built on the fly via `node scripts/build-components.ts --target claude` if missing, before the install step — spec 0107, issue #618)
-- **Gemini CLI:** ✅ `scripts/setup-gemini-interactive.ts` (same HTTP-by-default MemPalace registration; installs from `dist/<tier>/` to `~/.gemini/skills`+`agents` — `library` auto, `community`/`org` opt-in; `dist/library/.gemini` is auto-built via `node scripts/build-components.ts --target gemini` if missing, before the install step — spec 0107, issue #618)
-- **Copilot CLI:** ✅ `scripts/setup-copilot-interactive.ts` (same HTTP-by-default MemPalace registration; installs skills from `dist/<tier>/.github/skills/` to `~/.copilot/skills` — `library` auto, `community`/`org` opt-in; agents skipped, see row 4 **[GAP-confirmation]**; `dist/library/.github/skills` is auto-built via `node scripts/build-components.ts --target copilot` if missing, before the install step — spec 0107, issue #618)
-- **Antigravity CLI:** ✅ `scripts/setup-antigravity-interactive.ts` (same HTTP-by-default MemPalace registration; installs from `dist/<tier>/.agents/` to `~/.gemini/config/skills`+`agents` — the machine-local customization root the vendor documents — `library` auto, `community`/`org` opt-in. **Spec 0123 moved both kinds here from `~/.gemini/antigravity-cli/`**, where the assistant never looked: R12 evidence is asymmetric and both halves are recorded. **Skills — documented AND observed**: the vendor's own `~/.gemini/antigravity-cli/builtin/skills/agy-customizations/SKILL.md` lists `skills/<name>/SKILL.md` relative to the global root `~/.gemini/config/`, and a sentinel there is found while sentinels at the two other candidate roots are not. **Agents — OBSERVATION ONLY**: that same table lists five customization types (Rules, Skills, Plugins, Hooks, MCP Servers) with agents absent entirely, so nothing about agents can be read out of the vendor documentation at all. Measured `agy` 1.1.11, 2026-08-11, two reproducible runs; method, full matrix and the re-runnable procedure (R13/R14) in [`docs/runbooks/antigravity-discovery-probe.md`](runbooks/antigravity-discovery-probe.md), driven by `scripts/probe-antigravity-discovery.sh`. The install step is now a VERIFIER rather than a reporter of intent: `install_antigravity_tier_to_home` (now `scripts/lib/setup/antigravity-tier.ts`; the shell original in `common.sh` was retired in #1344) asserts each component's presence at the destination before printing its `Installed` line (R5), reports any staged-vs-placed shortfall (R4), and returns non-zero for a kind that staged components and placed none (R6) — the superseded code globbed `"$staging/agents"/*.md` for a flat shape the build has never produced, so it installed no agent at all and exited 0. `migrate_antigravity_superseded_components()` clears the superseded placement on re-run (R8/R9), sweeping all three non-core tiers regardless of which the run installs. Both helpers are hermetically covered by `scripts/tests/antigravity-common-sh.test.ts`, `antigravity-common-sh-migrate.test.ts` and `antigravity-tier-twin.test.ts`; generates `~/.gemini/config/AGENTS.md` by concatenating deployed context files; **spec 0116** adds the MemPalace transcript opt-in its three siblings already had — two `fzf` prompts, then `deploy_antigravity_transcript_hooks` (now `scripts/lib/setup/antigravity-hooks.ts`; the `common.sh` original was retired in #1344). The deployment lives in a helper rather than inline, because the interactive scripts cannot run end-to-end in CI (`fzf`, the `agy` guard, the chroma daemon) and spec 0116 R17 requires hermetic coverage; the prompts are asserted structurally by `scripts/tests/setup-transcript-antigravity-manifest.test.ts`; spec 0054 / PR #443, spec 0061 delta-01 / issue #478; `dist/library/.agents` is auto-built via `node scripts/build-components.ts --target antigravity` if missing, before the install step — spec 0107, issue #618)
+- **Feature:** Interactive setup script — since spec 0256 (ticket #1335) the real implementation is the TypeScript
+  entries `scripts/setup-<cli>-interactive.ts` (row 10b). Parity covers all four CLIs and macOS, Linux and Windows
+  (`windows-setup-entries` CI job); the deviations are (a)-(t) of spec 0256 requirement 44 (delta-01, delta-03)
+- **Source of truth:** `scripts/` **Spec 0113 delta-02:** each script makes the shared MemPalace MCP HTTP daemon the
+  default outcome of setup (`ensure_mempalace_http`, no opt-in prompt): it probes the daemon with an authenticated
+  accept probe (never `/healthz`), installs and starts it when it is not serving, and registers the HTTP entry —
+  falling back to the stdio arrangement only on a reported failure, naming the repair (`task mempalace:status` /
+  `task mempalace:switch-http`, then re-run setup). **Issue #1243:** all four call sites ran under `set -e` with a bare
+  `ensure_mempalace_http "$REPO_DIR" <cli>` immediately followed by `_mempalace_rc=$?` on the next line — a `1`/`2`
+  return aborted the script at the call itself, before the rc was ever captured, so the fallback warning described above
+  (and every later setup step: team, expertise, level, profile, overlays, session recording, usage capture) was silently
+  skipped. Fixed by folding the call into a two-command OR-list (`_mempalace_rc=0` then
+  `ensure_mempalace_http … || _mempalace_rc=$?`), symmetric across all four scripts and regression-covered by
+  `scripts/tests/setup-retarget-rc-guard.test.ts`. Wiring all four is mandatory, not tidiness: `mempalace` is in
+  `MCP_RESERVED_NAMES`, so `merge_preexisting_mcp_servers` deliberately does not preserve an operator entry under that
+  name and the framework write that replaces it is stdio-shaped — a setup run on an unwired CLI would silently revert
+  the entry to stdio. A single-CLI run switches that CLI only and reports which others it leaves behind; the
+  machine-wide all-or-nothing obligation belongs to `task mempalace:switch-http`. See
+  [`docs/runbooks/mempalace-mcp-server.md`](runbooks/mempalace-mcp-server.md) for the conversion command, daily
+  operations, and the token-replacement procedure (spec 0136). **Spec 0246 R11 (delta-01):** every run also registers
+  the MemPalace session-start check (row 8e) in that CLI's user-level hook file, without asking, after the
+  session-recording and usage-capture steps and whatever their answers or the MemPalace step's outcome
+  (`node scripts/session-check-hooks.ts register <cli>`). The write is idempotent, backup-first and `0600`, identifies
+  the entry by content, and preserves every other hook entry and non-hook key. Two exceptions make `register` act as
+  `unregister`, removing any entry an earlier run left: a platform other than macOS and Linux (delta-01 R11 *Platform*
+  — on Windows the CLIs run hook commands under PowerShell 5.1 or `cmd.exe`, row 37), and Antigravity CLI while
+  `ANTIGRAVITY_SESSION_CHECK.registered` is false (R8 fallback). A registration that cannot run (no `node`, or one below
+  the floor) prints `Session check registration FAILED — setup continues.` and does not stop setup. There is no
+  setup-level opt-out; manual removal is in the runbook, and the next run restores the entry.
+- **Claude Code:** ✅ `scripts/setup-claude-interactive.ts` (offers MemPalace auto-install via pipx; MemPalace itself
+  now defaults to the shared HTTP daemon — see the delta-02 clause; installs built artifacts from `dist/<tier>/` to
+  `~/.claude/skills`+`agents` — `library` automatically, `community`/`org` per opt-in prompt — ADR-0011, spec 0019;
+  the `library` tier's `dist/library/.claude` staging output is now auto-built on the fly via
+  `node scripts/build-components.ts --target claude` if missing, before the install step — spec 0107, issue #618)
+- **Gemini CLI:** ✅ `scripts/setup-gemini-interactive.ts` (same HTTP-by-default MemPalace registration; installs from
+  `dist/<tier>/` to `~/.gemini/skills`+`agents` — `library` auto, `community`/`org` opt-in; `dist/library/.gemini` is
+  auto-built via `node scripts/build-components.ts --target gemini` if missing, before the install step — spec 0107,
+  issue #618)
+- **Copilot CLI:** ✅ `scripts/setup-copilot-interactive.ts` (same HTTP-by-default MemPalace registration; installs
+  skills from `dist/<tier>/.github/skills/` to `~/.copilot/skills` — `library` auto, `community`/`org` opt-in; agents
+  skipped, see row 4 **[GAP-confirmation]**; `dist/library/.github/skills` is auto-built via
+  `node scripts/build-components.ts --target copilot` if missing, before the install step — spec 0107, issue #618)
+- **Antigravity CLI:** ✅ `scripts/setup-antigravity-interactive.ts` (same HTTP-by-default MemPalace registration;
+  installs from `dist/<tier>/.agents/` to `~/.gemini/config/skills`+`agents` — the machine-local customization root
+  the vendor documents — `library` auto, `community`/`org` opt-in. **Spec 0123 moved both kinds here from
+  `~/.gemini/antigravity-cli/`**, where the assistant never looked: R12 evidence is asymmetric and both halves are
+  recorded. **Skills — documented AND observed**: the vendor's own
+  `~/.gemini/antigravity-cli/builtin/skills/agy-customizations/SKILL.md` lists `skills/<name>/SKILL.md` relative to the
+  global root `~/.gemini/config/`, and a sentinel there is found while sentinels at the two other candidate roots are
+  not. **Agents — OBSERVATION ONLY**: that same table lists five customization types (Rules, Skills, Plugins, Hooks,
+  MCP Servers) with agents absent entirely, so nothing about agents can be read out of the vendor documentation at all.
+  Measured `agy` 1.1.11, 2026-08-11, two reproducible runs; method, full matrix and the re-runnable procedure (R13/R14)
+  in [`docs/runbooks/antigravity-discovery-probe.md`](runbooks/antigravity-discovery-probe.md), driven by
+  `scripts/probe-antigravity-discovery.sh`. The install step is now a VERIFIER rather than a reporter of intent:
+  `install_antigravity_tier_to_home` (now `scripts/lib/setup/antigravity-tier.ts`; the shell original in `common.sh` was
+  retired in #1344) asserts each component's presence at the destination before printing its `Installed` line (R5),
+  reports any staged-vs-placed shortfall (R4), and returns non-zero for a kind that staged components and placed none
+  (R6) — the superseded code globbed `"$staging/agents"/*.md` for a flat shape the build has never produced, so it
+  installed no agent at all and exited 0. `migrate_antigravity_superseded_components()` clears the superseded placement
+  on re-run (R8/R9), sweeping all three non-core tiers regardless of which the run installs. Both helpers are
+  hermetically covered by `scripts/tests/antigravity-common-sh.test.ts`, `antigravity-common-sh-migrate.test.ts` and
+  `antigravity-tier-twin.test.ts`; generates `~/.gemini/config/AGENTS.md` by concatenating deployed context files; **spec
+  0116** adds the MemPalace transcript opt-in its three siblings already had — two `fzf` prompts, then
+  `deploy_antigravity_transcript_hooks` (now `scripts/lib/setup/antigravity-hooks.ts`; the `common.sh` original was
+  retired in #1344). The deployment lives in a helper rather than inline, because the interactive scripts cannot run
+  end-to-end in CI (`fzf`, the `agy` guard, the chroma daemon) and spec 0116 R17 requires hermetic coverage; the prompts
+  are asserted structurally by `scripts/tests/setup-transcript-antigravity-manifest.test.ts`; spec 0054 / PR #443, spec
+  0061 delta-01 / issue #478; `dist/library/.agents` is auto-built via
+  `node scripts/build-components.ts --target antigravity` if missing, before the install step — spec 0107, issue #618)
 
-### 10b — Interactive setup entries in TypeScript (spec 0256, ticket #1335, PR C of the migration; parent epic #1231) — `scripts/setup-<cli>-interactive.ts` run the flow `scripts/lib/setup/flow.ts` over one descriptor per CLI (`scripts/lib/setup/cli-<cli>.ts`), with line-mode questions answerable by `--answer <id>=<value>` and a one-key `--link` question (deviations (a)-(t) of spec 0256 requirement 44, recorded by delta-01 for (m)-(r) and delta-03 for (s)-(t)). Since the switch PR (spec 0256 requirement 33) the four `scripts/setup-<cli>-interactive.ts` run the floor guard `scripts/lib/node-floor-guard.js` as its own step, then the entry (the `.sh` shims were removed in #1344); `scripts/lib/tls-delegation.sh` and `scripts/lib/usage-capture-optin.sh` (forwarding function shims) were retired in #1344; `task setup-<cli>-interactive` runs the same two steps with no `fzf` precondition, and the setup suites run the entries directly. Windows parity: the entries run natively on Windows with no POSIX shell; the one expected gap is that the TLS step's operating-system CA bundle candidates are POSIX paths, so only an explicit `CREWRIG_TLS_CA` selects a bundle there (evidence `docs/runbooks/custom-ca-tls-trust.md:17`, Windows out of scope of spec 0084). Parity with the retired shell is carried by the golden fixtures recorded from it and by the tagged deviations (a)-(t). The Windows job `windows-setup-entries` (PowerShell, no POSIX shell) is the evidence for the native Windows run.
+### 10b — Interactive setup entries in TypeScript
 
-- **Source of truth:** `scripts/setup-*-interactive.ts`, `scripts/lib/setup/`, `scripts/tests/setup-differential*.test.ts`, `scripts/tests/lib/windows-setup-proof.ts`
+- **Feature:** Interactive setup entries in TypeScript (spec 0256, ticket #1335, PR C of the migration; parent epic #1231)
+  — `scripts/setup-<cli>-interactive.ts` run the flow `scripts/lib/setup/flow.ts` over one descriptor per CLI
+  (`scripts/lib/setup/cli-<cli>.ts`), with line-mode questions answerable by `--answer <id>=<value>` and a one-key
+  `--link` question (deviations (a)-(t) of spec 0256 requirement 44, recorded by delta-01 for (m)-(r) and delta-03 for
+  (s)-(t)). Since the switch PR (spec 0256 requirement 33) the four `scripts/setup-<cli>-interactive.ts` run the floor
+  guard `scripts/lib/node-floor-guard.js` as its own step, then the entry (the `.sh` shims were removed in #1344);
+  `scripts/lib/tls-delegation.sh` and `scripts/lib/usage-capture-optin.sh` (forwarding function shims) were retired in #1344;
+  `task setup-<cli>-interactive` runs the same two steps with no `fzf` precondition, and the setup suites run the
+  entries directly. Windows parity: the entries run natively on Windows with no POSIX shell; the one expected gap is
+  that the TLS step's operating-system CA bundle candidates are POSIX paths, so only an explicit `CREWRIG_TLS_CA`
+  selects a bundle there (evidence `docs/runbooks/custom-ca-tls-trust.md:17`, Windows out of scope of spec 0084). Parity
+  with the retired shell is carried by the golden fixtures recorded from it and by the tagged deviations (a)-(t). The
+  Windows job `windows-setup-entries` (PowerShell, no POSIX shell) is the evidence for the native Windows run.
+- **Source of truth:** `scripts/setup-*-interactive.ts`, `scripts/lib/setup/`,
+  `scripts/tests/setup-differential*.test.ts`, `scripts/tests/lib/windows-setup-proof.ts`
 - **Claude Code:** ✅ `scripts/setup-claude-interactive.ts`
 - **Gemini CLI:** ✅ `scripts/setup-gemini-interactive.ts`
-- **Copilot CLI:** ✅ `scripts/setup-copilot-interactive.ts` (asks neither `link-confirm` nor `profile-method`, spec 0256 delta-02)
-- **Antigravity CLI:** ✅ `scripts/setup-antigravity-interactive.ts` (abort-class cancels exit 130 and print `Setup cancelled at: <header>`)
+- **Copilot CLI:** ✅ `scripts/setup-copilot-interactive.ts` (asks neither `link-confirm` nor `profile-method`, spec
+  0256 delta-02)
+- **Antigravity CLI:** ✅ `scripts/setup-antigravity-interactive.ts` (abort-class cancels exit 130 and print
+  `Setup cancelled at: <header>`)
 
-### 11 — Transcript and usage backfill scripts (spec 0253: the four importers and `scripts/prune-transcripts.ts`, the transcript retention command, are TypeScript entries run as `node scripts/<name>.ts`; the importers no longer need `fzf`, their two yes/no questions read standard input, `yes` or `y` meaning yes and anything else, an empty line or end of input meaning no)
+### 11 — Transcript and usage backfill scripts
 
+- **Feature:** Transcript and usage backfill scripts (spec 0253: the four importers and `scripts/prune-transcripts.ts`,
+  the transcript retention command, are TypeScript entries run as `node scripts/<name>.ts`; the importers no longer need
+  `fzf`, their two yes/no questions read standard input, `yes` or `y` meaning yes and anything else, an empty line or
+  end of input meaning no)
 - **Source of truth:** `scripts/`
-- **Claude Code:** ✅ Transcript: `scripts/import-claude-history.ts`(reads `~/.claude/projects`); Usage: `scripts/usage-backfill.ts` (reads `~/.claude/projects` and emits `run-total` records per spec 0206 R19, row 11b)
-- **Gemini CLI:** ✅ Transcript: `scripts/import-gemini-history.ts`(reads `~/.gemini/tmp`); Usage: `scripts/usage-backfill.ts` (reads `~/.gemini/tmp`, row 11b)
-- **Copilot CLI:** ✅ Transcript: `scripts/import-copilot-history.ts`(reads `~/.copilot/session-state/<session-id>/events.jsonl`); Usage: `scripts/usage-backfill.ts` (reads `~/.copilot/session-store.db`, row 11b)
-- **Antigravity CLI:** ✅ Transcript: `scripts/import-antigravity-history.ts`(reads `~/.gemini/antigravity-cli/history.jsonl`; spec 0055 / PR #446); Usage backfill not applicable (session-cumulative fidelity; row 8c, row 11b)
+- **Claude Code:** ✅ Transcript: `scripts/import-claude-history.ts`(reads `~/.claude/projects`); Usage:
+  `scripts/usage-backfill.ts` (reads `~/.claude/projects` and emits `run-total` records per spec 0206 R19, row 11b)
+- **Gemini CLI:** ✅ Transcript: `scripts/import-gemini-history.ts`(reads `~/.gemini/tmp`); Usage:
+  `scripts/usage-backfill.ts` (reads `~/.gemini/tmp`, row 11b)
+- **Copilot CLI:** ✅ Transcript: `scripts/import-copilot-history.ts`(reads
+  `~/.copilot/session-state/<session-id>/events.jsonl`); Usage: `scripts/usage-backfill.ts` (reads
+  `~/.copilot/session-store.db`, row 11b)
+- **Antigravity CLI:** ✅ Transcript: `scripts/import-antigravity-history.ts`(reads
+  `~/.gemini/antigravity-cli/history.jsonl`; spec 0055 / PR #446); Usage backfill not applicable (session-cumulative
+  fidelity; row 8c, row 11b)
 
-### 11b — Usage-capture backfill command — replays the per-CLI adapters against records already present on a machine without duplicating what an earlier run produced. Recovers data when the live hook path breaks (e.g., checkout moved). Touches no transcript import scripts or their source trees (spec 0206 R24). Usage backfill is a distinct script from transcript imports (row 11) — separate source paths, separate output targets, separate triggering logic.
+### 11b — Usage-capture backfill command
 
+- **Feature:** Usage-capture backfill command — replays the per-CLI adapters against records already present on a
+  machine without duplicating what an earlier run produced. Recovers data when the live hook path breaks (e.g., checkout
+  moved). Touches no transcript import scripts or their source trees (spec 0206 R24). Usage backfill is a distinct
+  script from transcript imports (row 11) — separate source paths, separate output targets, separate triggering logic.
 - **Source of truth:** `scripts/usage-backfill.ts`, `scripts/lib/usage-capture/**`
-- **Claude Code:** ✅ Claude Code: `usage_backfill_cli claude-code` replays `adapters/claude-code.js` against `~/.claude/projects/<project>/<session>.jsonl` and `<session>/subagents/agent-*.jsonl`; per-request idempotence via cursor + stamp sidecar in `~/.crewrig/usage/state/claude-code/` (spec 0206 PLAN v3 step 4). `--reset-cursors` flag clears the state for full re-derivation.
-- **Gemini CLI:** ✅ Gemini CLI: `usage_backfill_cli gemini-cli` replays `adapters/gemini-cli.js` against `~/.gemini/tmp/<project>/chats/` and subagent files; three generations supported (legacy `.json`, `.json` with `kind`/`summary`, `.jsonl` `$set`-patch journal). Cursor per-generation verified by format fingerprint (spec 0206 PLAN v3 step 1).
-- **Copilot CLI:** ✅ Copilot CLI: `usage_backfill_cli copilot-cli` replays `adapters/copilot-cli.js` against `~/.copilot/session-store.db` (SQLite, schema v8+) with WAL fallback copy on lock; per-row idempotence via cursor in `~/.crewrig/usage/state/copilot-cli/` keyed on source path SHA256. Caveats: `cliVersion` is backfilled from memoized `copilot --version` (may differ from version that served the row, documented in `docs/usage-capture.md`).
-- **Antigravity CLI:** ❌ Antigravity CLI: **[GAP]** (see *Parity gaps* → usage-capture granularity) — backfill not applicable. The capture channel is the live statusline (`session-cumulative` fidelity), not a durable session record. Sourcing from `~/.gemini/antigravity-cli/history.jsonl` would require reverse-engineering per-turn summaries from a text journal, which is out of scope.
+- **Claude Code:** ✅ Claude Code: `usage_backfill_cli claude-code` replays `adapters/claude-code.js` against
+  `~/.claude/projects/<project>/<session>.jsonl` and `<session>/subagents/agent-*.jsonl`; per-request idempotence via
+  cursor + stamp sidecar in `~/.crewrig/usage/state/claude-code/` (spec 0206 PLAN v3 step 4). `--reset-cursors` flag
+  clears the state for full re-derivation.
+- **Gemini CLI:** ✅ Gemini CLI: `usage_backfill_cli gemini-cli` replays `adapters/gemini-cli.js` against
+  `~/.gemini/tmp/<project>/chats/` and subagent files; three generations supported (legacy `.json`, `.json` with
+  `kind`/`summary`, `.jsonl` `$set`-patch journal). Cursor per-generation verified by format fingerprint (spec 0206 PLAN
+  v3 step 1).
+- **Copilot CLI:** ✅ Copilot CLI: `usage_backfill_cli copilot-cli` replays `adapters/copilot-cli.js` against
+  `~/.copilot/session-store.db` (SQLite, schema v8+) with WAL fallback copy on lock; per-row idempotence via cursor in
+  `~/.crewrig/usage/state/copilot-cli/` keyed on source path SHA256. Caveats: `cliVersion` is backfilled from memoized
+  `copilot --version` (may differ from version that served the row, documented in `docs/usage-capture.md`).
+- **Antigravity CLI:** ❌ Antigravity CLI: **[GAP]** (see *Parity gaps* → usage-capture granularity) — backfill not
+  applicable. The capture channel is the live statusline (`session-cumulative` fidelity), not a durable session record.
+  Sourcing from `~/.gemini/antigravity-cli/history.jsonl` would require reverse-engineering per-turn summaries from a
+  text journal, which is out of scope.
 
-### 12 — Component-management script — since spec 0119 every command serves the ordered overlay tier set `library` → `community` → `org` and never `core`, on both request shapes, through the shared resolver `scripts/lib/component-resolve.ts` (its Bash predecessor `component-resolve.sh` was retired in row I2 of spec 0215). A named request that resolves in no served tier fails, naming every root examined; a name resolving to more than one component in one landing zone installs nothing under that name and is reported (R15). The compiled types prune and rebuild `dist/<tier>/<cli-root>` on demand — on a miss for a named request, up front for an unnamed one. Since spec 0255 the four `manage-<cli>-component` commands run as TypeScript: `scripts/manage-<cli>-component.ts` is the entry (the `.sh` shims were removed in #1344; modules `scripts/lib/manage/**` and the placement primitive `scripts/lib/link-or-copy*.ts`, run on Node.js 24 behind `scripts/lib/node-floor-guard.js`). macOS, Linux and Windows parity (`windows-install-entries` CI job): in link mode, a Windows account without the symlink privilege gets a copy through the link-or-copy fallback (one notice on standard error) instead of a failure, on all four CLIs.
+### 12 — Component-management script
 
+- **Feature:** Component-management script — since spec 0119 every command serves the ordered overlay tier set
+  `library` → `community` → `org` and never `core`, on both request shapes, through the shared resolver
+  `scripts/lib/component-resolve.ts` (its Bash predecessor `component-resolve.sh` was retired in row I2 of spec 0215). A
+  named request that resolves in no served tier fails, naming every root examined; a name resolving to more than one
+  component in one landing zone installs nothing under that name and is reported (R15). The compiled types prune and
+  rebuild `dist/<tier>/<cli-root>` on demand — on a miss for a named request, up front for an unnamed one. Since spec
+  0255 the four `manage-<cli>-component` commands run as TypeScript: `scripts/manage-<cli>-component.ts` is the entry
+  (the `.sh` shims were removed in #1344; modules `scripts/lib/manage/**` and the placement primitive
+  `scripts/lib/link-or-copy*.ts`, run on Node.js 24 behind `scripts/lib/node-floor-guard.js`). macOS, Linux and Windows
+  parity (`windows-install-entries` CI job): in link mode, a Windows account without the symlink privilege gets a copy
+  through the link-or-copy fallback (one notice on standard error) instead of a failure, on all four CLIs.
 - **Source of truth:** `scripts/`
-- **Claude Code:** ✅ `scripts/manage-claude-component.ts` — `claude-skills` → `~/.claude/skills`, basis `dist/{library,community,org}/.claude/skills`; `policies` → `~/.claude/rules`, basis `artifacts/{library,community,org}/policies`; `mcp-servers` → `~/.claude.json` via `claude mcp add`, basis `artifacts/{library,community,org}/mcp-servers`
-- **Gemini CLI:** ✅ `scripts/manage-workspace-component.ts` — `skills` → `~/.gemini/skills` and `agents` → `~/.gemini/agents`, basis `dist/{library,community,org}/.gemini/{skills,agents}` (R2: the assisted setup reads the same); `commands`, `hooks`, `policies` → `~/.gemini/<type>` and `mcp-servers`/`themes` → `~/.gemini/settings.json`, basis `artifacts/{library,community,org}/<type>`. **[GAP]** link mode warns but does not prompt, unlike the other three: `scripts/install-workspace.ts` drives this script seven times per run, so a per-type confirmation would fire seven times for one `task link-workspace`. The disclaimer closes the harm; the prompt asymmetry is recorded here rather than left silent. Spec 0255 keeps it as is (R30): the TypeScript `workspace` descriptor prints the warning and asks nothing, as the shell did.
-- **Copilot CLI:** ✅ `scripts/manage-copilot-component.ts` — `skills`/`commands` → `~/.copilot/skills` (was `.github/skills` in the committed tree, which spec 0119 R3 forbids for a non-`core` tier), basis `dist/{library,community,org}/.github/skills`; `mcp-servers` → `~/.copilot/mcp-config.json`, basis `artifacts/{library,community,org}/mcp-servers`. **[GAP]** `agents` is refused with a non-zero status: R3 bars the project tree for a non-`core` tier, R6 bars `core`, and R4 declines to oblige a landing zone where the assisted setup installs none — see rows 4 and 10 for the underlying repo-level-layout gap.
-- **Antigravity CLI:** ✅ `scripts/manage-antigravity-component.ts` — `antigravity-skills` → `~/.gemini/config/skills` (spec 0123 R7: the same location a full setup run places it, row 10), basis `dist/{library,community,org}/.agents/skills`, followed by a per-name sweep of the superseded placement. Only the skills `DEST` moved: `ANTIGRAVITY_HOME` also resolves `policies` and `mcp-servers` below, both excluded by spec 0123 for want of a probe, so the obvious one-line edit to that constant would have relocated two kinds silently; `policies` → `~/.gemini/antigravity-cli/rules` and `mcp-servers` → `~/.gemini/antigravity-cli/settings.json`, basis `artifacts/{library,community,org}/<type>` (both were hardcoded to `community` alone before spec 0119); spec 0058
+- **Claude Code:** ✅ `scripts/manage-claude-component.ts` — `claude-skills` → `~/.claude/skills`, basis
+  `dist/{library,community,org}/.claude/skills`; `policies` → `~/.claude/rules`, basis
+  `artifacts/{library,community,org}/policies`; `mcp-servers` → `~/.claude.json` via `claude mcp add`, basis
+  `artifacts/{library,community,org}/mcp-servers`
+- **Gemini CLI:** ✅ `scripts/manage-workspace-component.ts` — `skills` → `~/.gemini/skills` and `agents` →
+  `~/.gemini/agents`, basis `dist/{library,community,org}/.gemini/{skills,agents}` (R2: the assisted setup reads the
+  same); `commands`, `hooks`, `policies` → `~/.gemini/<type>` and `mcp-servers`/`themes` →
+  `~/.gemini/settings.json`, basis `artifacts/{library,community,org}/<type>`. **[GAP]** link mode warns but does not
+  prompt, unlike the other three: `scripts/install-workspace.ts` drives this script seven times per run, so a per-type
+  confirmation would fire seven times for one `task link-workspace`. The disclaimer closes the harm; the prompt
+  asymmetry is recorded here rather than left silent. Spec 0255 keeps it as is (R30): the TypeScript `workspace`
+  descriptor prints the warning and asks nothing, as the shell did.
+- **Copilot CLI:** ✅ `scripts/manage-copilot-component.ts` — `skills`/`commands` → `~/.copilot/skills` (was
+  `.github/skills` in the committed tree, which spec 0119 R3 forbids for a non-`core` tier), basis
+  `dist/{library,community,org}/.github/skills`; `mcp-servers` → `~/.copilot/mcp-config.json`, basis
+  `artifacts/{library,community,org}/mcp-servers`. **[GAP]** `agents` is refused with a non-zero status: R3 bars the
+  project tree for a non-`core` tier, R6 bars `core`, and R4 declines to oblige a landing zone where the assisted setup
+  installs none — see rows 4 and 10 for the underlying repo-level-layout gap.
+- **Antigravity CLI:** ✅ `scripts/manage-antigravity-component.ts` — `antigravity-skills` →
+  `~/.gemini/config/skills` (spec 0123 R7: the same location a full setup run places it, row 10), basis
+  `dist/{library,community,org}/.agents/skills`, followed by a per-name sweep of the superseded placement. Only the
+  skills `DEST` moved: `ANTIGRAVITY_HOME` also resolves `policies` and `mcp-servers` below, both excluded by spec 0123
+  for want of a probe, so the obvious one-line edit to that constant would have relocated two kinds silently; `policies`
+  → `~/.gemini/antigravity-cli/rules` and `mcp-servers` → `~/.gemini/antigravity-cli/settings.json`, basis
+  `artifacts/{library,community,org}/<type>` (both were hardcoded to `community` alone before spec 0119); spec 0058
 
 ### 13 — Plugin / extension build script
 
 - **Source of truth:** `scripts/`
-- **Claude Code:** ✅ `scripts/build-claude-plugin.ts` → `dist-claude-plugin/.claude-plugin/marketplace.json`; also renders extension command pivots `commands/*.md` → ephemeral plugin skills (row 5b); flattens agents from source `agents/<name>/AGENT.md` (or flat `agents/<name>.md`) → `agents/<name>.md` at the plugin root (spec 0201 delta-01, issue #1140); copies the extension's `hooks/` handler tree into the output when the generic `hooks` section is declared (spec 0179 R9/v2-F1 — the hook FILE, `hooks/hooks.json`, is emitted separately by `render_plugin`, AFTER this builder runs; this builder no longer reads a per-CLI `claude.hooks` key). **Spec 0180 (issue #1006):** generates `.mcp.json` from the generic `mcpServers` section via the shared translator `ext_mcp_native claude` (the shell library `scripts/lib/extension-manifest.sh` is retired; the TypeScript module `scripts/lib/extension/mcp-delivery.ts` is the implementation), rewriting the one neutral path token `${extensionRoot}` to `${CLAUDE_PLUGIN_ROOT}` — resolved by Claude Code itself at plugin-load time (no render-time absolute path, R8); copies `dist/` + `package.json` alongside it (R16)
-- **Gemini CLI:** ✅ `node scripts/build-extension.ts --target gemini` (the `scripts/build-extension.ts` shim forwards to it; modules `scripts/lib/extension/build-main.ts`, `render-extension.ts`, `gemini-render.ts`, `check-scan.ts`, `check-arms.ts`, `mcp-delivery.ts`, with `scripts/lib/org-mcp.ts` for the org-declared MCP servers; macOS, Linux and Windows parity, `windows-extension-builders` CI job) — Gemini-side symmetric counterpart to `build-claude-plugin.ts` (spec 0042, generalized by spec 0173). Renders the complete installable tree — the verbatim source plus `gemini-extension.json` and `commands/*.toml` — into `build/extensions/<name>/`; nothing is committed and nothing is installed by this script (that is row 14's `install-extension.ts`, a shim to `install-extension.ts`). The verbatim-copy step also strips `.releaserc.json` — release-tooling debris `scripts/monorepo-release.ts` writes directly into the extension's OWN source directory for the duration of its `npx semantic-release` run, removed again once that run returns — so a release invoked while this render is in flight can never leak that file into the archive `scripts/release-package-extension.ts` packages from this tree (issue #1229, spec 0183 R17/R18). Also renders the generic `hooks` section (spec 0179) via the shared translator `scripts/lib/extension/hooks-emit.ts` (the shell library `extension-hooks.sh` was retired in #1344), which reads its per-target constants (shell-tool name, time unit, root-token form, hook file, match-all form) from `scripts/lib/extension-targets.json` — a descriptor shared across S2/S3/S4 (issues #1005/#1006/#1007). **Spec 0180:** `mcpServers` is translated via `ext_mcp_native gemini` (the neutral `${extensionRoot}` rewritten to Gemini's own `${extensionPath}`, which gemini-cli itself resolves when it loads the extension in place) instead of the prior verbatim-passthrough; the shared translator (`scripts/lib/org-mcp.ts` `org_mcp_to_native`) also repairs a live defect in the same diff — Gemini's remote transport now emits `httpUrl`/`url` with no `type` key, instead of the `{type,url}` shape that landed a declared `http` server on Gemini's SSE transport (row 7h). **Packaging and release entries (spec 0257, issue #1336):** the packaging and release scripts `scripts/build-docs-index.ts`, `package-extension.ts`, `package-extensions.ts`, `release-package-extension.ts` and `monorepo-release.ts` are forwarding shims to the TypeScript entries `scripts/build-docs-index.ts`, `scripts/package-extension.ts`, `scripts/package-extensions.ts`, `scripts/release-package-extension.ts` and `scripts/monorepo-release.ts` (with `scripts/release-sync-manifests.ts` for the manifest rewrite; thin entries over modules under `scripts/lib/`, run on Node.js 24 behind `scripts/lib/node-floor-guard.js`); the shell library `scripts/lib/monorepo-release-lib.sh` no longer exists. **The release archive serves the Gemini CLI alone (Ruling A, spec 0183 delta-01):** the Claude Code, GitHub Copilot CLI and Antigravity CLI extension and plugin outputs keep their builders (spec 0254) and their local render-and-install paths, and are neither packaged nor changed by this row. Evidence: `docs/runbooks/extension-release-install-probe.md`.
-- **Copilot CLI:** ✅ `scripts/build-copilot-plugin.ts` — mirrors `build-antigravity-extension.ts`; resolves extension name across tiers, reads `extension.json` (no `gemini-extension.json` fallback — retired, spec 0183 R14: an extension with no committed `extension.json` fails naming `scripts/migrate-extension.ts`), generates `plugin.json` at output root, copies skills, flattens agents from `agents/<name>/AGENT.md` → `agents/<name>.agent.md`, renders command pivots as skills when `convertToSkills` is `true`, copies the extension's `hooks/` handler tree into the output when the generic `hooks` section is declared (spec 0179 R9/v2-F1 — the hook FILE itself is emitted separately, by `render_plugin` in row 13's own `build-extension.ts`, AFTER this builder runs, via `scripts/lib/extension/hooks-emit.ts`; this builder no longer reads `copilot.hooks`, retired by 0065 delta-01). Output: `dist-copilot-plugin/<name>/` (spec 0065). **Spec 0180 (issue #1006):** generates `.mcp.json` at the plugin root (`"source": "plugin"` in Copilot's own registry — probed empirically, 1.0.80) via `ext_mcp_native copilot`, rewriting the neutral token to `${COPILOT_PLUGIN_ROOT}` — confirmed by a live non-interactive session actually spawning the declared stdio server with the token resolved (Copilot defaults a plugin server's `cwd` to its own plugin root, so even a bare relative form resolves); copies `dist/` + `package.json` alongside it (R16)
-- **Antigravity CLI:** ✅ `scripts/build-antigravity-extension.ts` — mirrors `build-claude-plugin.ts`; resolves extension name across tiers, reads `extension.json` (no `gemini-extension.json` fallback — retired, spec 0183 R14: an extension with no committed `extension.json` fails naming `scripts/migrate-extension.ts`), generates `plugin.json` at output root, copies skills/agents, renders command pivots as skills when `convertToSkills` is `true`, renders the context file via the shared resolver when a `context` source is declared (row 5d, spec 0181, issue #1007 — no longer a copy from a per-CLI `antigravity.contextFileName` key, retired), copies the extension's `hooks/` handler tree into the output when the generic `hooks` section is declared (spec 0179 R9/v2-F1 — the emitted command is working-directory-relative, so the handler MUST land at `hooks/<handler>`, not beside `hooks.json` itself; the hook FILE is emitted separately by `render_plugin`, AFTER this builder runs; this builder no longer reads `antigravity.hooks`, retired by 0063 delta-01). Output: `dist-antigravity-plugin/<name>/` (spec 0063). **Spec 0180 (issue #1006), superseding the prior "copies MCP artifacts" note:** generates `mcp_config.json` at the plugin root (`plugins.md`/`mcp_servers.md`'s own documented location) via `ext_mcp_native antigravity`, which LEAVES the neutral `${extensionRoot}` token UNRESOLVED — a live probe proved a relative `command`/`args` does NOT resolve against the plugin directory (Antigravity spawns a plugin's MCP server with the CLI's own launch directory as CWD, unlike Copilot's default, and unlike how Antigravity itself fires a hook). `scripts/install-antigravity-extension.ts`'s POST-INSTALL step resolves the token once `agy plugin install` has placed the plugin at its real, deterministic destination (`~/.gemini/config/plugins/<pluginName>/`, confirmed to copy `mcp_config.json` verbatim, no rewriting of its own); copies `dist/` + `package.json` alongside it (R16). Evidence: `docs/runbooks/extension-mcp-token-probe.md` (2026-08-25)
+- **Claude Code:** ✅ `scripts/build-claude-plugin.ts` → `dist-claude-plugin/.claude-plugin/marketplace.json`; also
+  renders extension command pivots `commands/*.md` → ephemeral plugin skills (row 5b); flattens agents from source
+  `agents/<name>/AGENT.md` (or flat `agents/<name>.md`) → `agents/<name>.md` at the plugin root (spec 0201 delta-01,
+  issue #1140); copies the extension's `hooks/` handler tree into the output when the generic `hooks` section is
+  declared (spec 0179 R9/v2-F1 — the hook FILE, `hooks/hooks.json`, is emitted separately by `render_plugin`, AFTER
+  this builder runs; this builder no longer reads a per-CLI `claude.hooks` key). **Spec 0180 (issue #1006):** generates
+  `.mcp.json` from the generic `mcpServers` section via the shared translator `ext_mcp_native claude` (the shell library
+  `scripts/lib/extension-manifest.sh` is retired; the TypeScript module `scripts/lib/extension/mcp-delivery.ts` is the
+  implementation), rewriting the one neutral path token `${extensionRoot}` to `${CLAUDE_PLUGIN_ROOT}` — resolved by
+  Claude Code itself at plugin-load time (no render-time absolute path, R8); copies `dist/` + `package.json` alongside
+  it (R16)
+- **Gemini CLI:** ✅ `node scripts/build-extension.ts --target gemini` (the `scripts/build-extension.ts` shim forwards
+  to it; modules `scripts/lib/extension/build-main.ts`, `render-extension.ts`, `gemini-render.ts`, `check-scan.ts`,
+  `check-arms.ts`, `mcp-delivery.ts`, with `scripts/lib/org-mcp.ts` for the org-declared MCP servers; macOS, Linux and
+  Windows parity, `windows-extension-builders` CI job) — Gemini-side symmetric counterpart to `build-claude-plugin.ts`
+  (spec 0042, generalized by spec 0173). Renders the complete installable tree — the verbatim source plus
+  `gemini-extension.json` and `commands/*.toml` — into `build/extensions/<name>/`; nothing is committed and nothing is
+  installed by this script (that is row 14's `install-extension.ts`, a shim to `install-extension.ts`). The
+  verbatim-copy step also strips `.releaserc.json` — release-tooling debris `scripts/monorepo-release.ts` writes
+  directly into the extension's OWN source directory for the duration of its `npx semantic-release` run, removed again
+  once that run returns — so a release invoked while this render is in flight can never leak that file into the
+  archive `scripts/release-package-extension.ts` packages from this tree (issue #1229, spec 0183 R17/R18). Also renders
+  the generic `hooks` section (spec 0179) via the shared translator `scripts/lib/extension/hooks-emit.ts` (the shell
+  library `extension-hooks.sh` was retired in #1344), which reads its per-target constants (shell-tool name, time unit,
+  root-token form, hook file, match-all form) from `scripts/lib/extension-targets.json` — a descriptor shared across
+  S2/S3/S4 (issues #1005/#1006/#1007). **Spec 0180:** `mcpServers` is translated via `ext_mcp_native gemini` (the
+  neutral `${extensionRoot}` rewritten to Gemini's own `${extensionPath}`, which gemini-cli itself resolves when it
+  loads the extension in place) instead of the prior verbatim-passthrough; the shared translator
+  (`scripts/lib/org-mcp.ts` `org_mcp_to_native`) also repairs a live defect in the same diff — Gemini's remote
+  transport now emits `httpUrl`/`url` with no `type` key, instead of the `{type,url}` shape that landed a declared
+  `http` server on Gemini's SSE transport (row 7h). **Packaging and release entries (spec 0257, issue #1336):** the
+  packaging and release scripts `scripts/build-docs-index.ts`, `package-extension.ts`, `package-extensions.ts`,
+  `release-package-extension.ts` and `monorepo-release.ts` are forwarding shims to the TypeScript entries
+  `scripts/build-docs-index.ts`, `scripts/package-extension.ts`, `scripts/package-extensions.ts`,
+  `scripts/release-package-extension.ts` and `scripts/monorepo-release.ts` (with `scripts/release-sync-manifests.ts` for
+  the manifest rewrite; thin entries over modules under `scripts/lib/`, run on Node.js 24 behind
+  `scripts/lib/node-floor-guard.js`); the shell library `scripts/lib/monorepo-release-lib.sh` no longer exists. **The
+  release archive serves the Gemini CLI alone (Ruling A, spec 0183 delta-01):** the Claude Code, GitHub Copilot CLI and
+  Antigravity CLI extension and plugin outputs keep their builders (spec 0254) and their local render-and-install paths,
+  and are neither packaged nor changed by this row. Evidence: `docs/runbooks/extension-release-install-probe.md`.
+- **Copilot CLI:** ✅ `scripts/build-copilot-plugin.ts` — mirrors `build-antigravity-extension.ts`; resolves
+  extension name across tiers, reads `extension.json` (no `gemini-extension.json` fallback — retired, spec 0183 R14:
+  an extension with no committed `extension.json` fails naming `scripts/migrate-extension.ts`), generates `plugin.json`
+  at output root, copies skills, flattens agents from `agents/<name>/AGENT.md` → `agents/<name>.agent.md`, renders
+  command pivots as skills when `convertToSkills` is `true`, copies the extension's `hooks/` handler tree into the
+  output when the generic `hooks` section is declared (spec 0179 R9/v2-F1 — the hook FILE itself is emitted
+  separately, by `render_plugin` in row 13's own `build-extension.ts`, AFTER this builder runs, via
+  `scripts/lib/extension/hooks-emit.ts`; this builder no longer reads `copilot.hooks`, retired by 0065 delta-01).
+  Output: `dist-copilot-plugin/<name>/` (spec 0065). **Spec 0180 (issue #1006):** generates `.mcp.json` at the plugin
+  root (`"source": "plugin"` in Copilot's own registry — probed empirically, 1.0.80) via `ext_mcp_native copilot`,
+  rewriting the neutral token to `${COPILOT_PLUGIN_ROOT}` — confirmed by a live non-interactive session actually
+  spawning the declared stdio server with the token resolved (Copilot defaults a plugin server's `cwd` to its own plugin
+  root, so even a bare relative form resolves); copies `dist/` + `package.json` alongside it (R16)
+- **Antigravity CLI:** ✅ `scripts/build-antigravity-extension.ts` — mirrors `build-claude-plugin.ts`; resolves
+  extension name across tiers, reads `extension.json` (no `gemini-extension.json` fallback — retired, spec 0183 R14:
+  an extension with no committed `extension.json` fails naming `scripts/migrate-extension.ts`), generates `plugin.json`
+  at output root, copies skills/agents, renders command pivots as skills when `convertToSkills` is `true`, renders the
+  context file via the shared resolver when a `context` source is declared (row 5d, spec 0181, issue #1007 — no longer
+  a copy from a per-CLI `antigravity.contextFileName` key, retired), copies the extension's `hooks/` handler tree into
+  the output when the generic `hooks` section is declared (spec 0179 R9/v2-F1 — the emitted command is
+  working-directory-relative, so the handler MUST land at `hooks/<handler>`, not beside `hooks.json` itself; the hook
+  FILE is emitted separately by `render_plugin`, AFTER this builder runs; this builder no longer reads
+  `antigravity.hooks`, retired by 0063 delta-01). Output: `dist-antigravity-plugin/<name>/` (spec 0063). **Spec 0180
+  (issue #1006), superseding the prior "copies MCP artifacts" note:** generates `mcp_config.json` at the plugin root
+  (`plugins.md`/`mcp_servers.md`'s own documented location) via `ext_mcp_native antigravity`, which LEAVES the neutral
+  `${extensionRoot}` token UNRESOLVED — a live probe proved a relative `command`/`args` does NOT resolve against the
+  plugin directory (Antigravity spawns a plugin's MCP server with the CLI's own launch directory as CWD, unlike
+  Copilot's default, and unlike how Antigravity itself fires a hook). `scripts/install-antigravity-extension.ts`'s
+  POST-INSTALL step resolves the token once `agy plugin install` has placed the plugin at its real, deterministic
+  destination (`~/.gemini/config/plugins/<pluginName>/`, confirmed to copy `mcp_config.json` verbatim, no rewriting of
+  its own); copies `dist/` + `package.json` alongside it (R16). Evidence: `docs/runbooks/extension-mcp-token-probe.md`
+  (2026-08-25)
 
 ### 14 — Plugin / extension install script
 
 - **Source of truth:** `scripts/`
-- **Claude Code:** ✅ `scripts/install-claude-plugin.ts` — builds into a single SHARED local marketplace home (`${CLAUDE_CONFIG_DIR:-$HOME/.claude}/local-marketplace/`) OUTSIDE the working tree, NOT in-tree `dist-claude-plugin/` (spec 0045): multiple extensions coexist in one marketplace, the manifest upserts each by name, and installs survive branch switches. Known limitation: the home is keyed only on `CLAUDE_CONFIG_DIR`, so two different repos under the same config root share one `marketplace.json` (top-level `name` is last-writer-wins) — single-repo assumption, multi-repo namespacing out of scope. The bare build path (row 13) still emits in-tree.
-- **Gemini CLI:** ✅ `scripts/install-extension.ts` — renders the extension (`node scripts/build-extension.ts --target gemini`), then copies or links the resulting **build directory** into `$GEMINI_HOME/extensions/<name>` where Gemini CLI auto-discovers it (spec 0177, as amended by spec 0173 delta-01 R20). `link-gemini-extension-build` is a dedicated, documented debugging path pointed at the build directory, not an install path.
-- **Copilot CLI:** ✅ `scripts/install-copilot-plugin.ts` — resolves the extension name across tiers, builds into `dist-copilot-plugin/<name>/`, and invokes `copilot plugin install <output-dir>` (spec 0065)
-- **Antigravity CLI:** ✅ `scripts/install-antigravity-extension.ts` — resolves the extension name across tiers, builds into `dist-antigravity-plugin/<name>/`, and invokes `agy plugin install <output-dir>` (spec 0063)
+- **Claude Code:** ✅ `scripts/install-claude-plugin.ts` — builds into a single SHARED local marketplace home
+  (`${CLAUDE_CONFIG_DIR:-$HOME/.claude}/local-marketplace/`) OUTSIDE the working tree, NOT in-tree `dist-claude-plugin/`
+  (spec 0045): multiple extensions coexist in one marketplace, the manifest upserts each by name, and installs survive
+  branch switches. Known limitation: the home is keyed only on `CLAUDE_CONFIG_DIR`, so two different repos under the
+  same config root share one `marketplace.json` (top-level `name` is last-writer-wins) — single-repo assumption,
+  multi-repo namespacing out of scope. The bare build path (row 13) still emits in-tree.
+- **Gemini CLI:** ✅ `scripts/install-extension.ts` — renders the extension
+  (`node scripts/build-extension.ts --target gemini`), then copies or links the resulting **build directory** into
+  `$GEMINI_HOME/extensions/<name>` where Gemini CLI auto-discovers it (spec 0177, as amended by spec 0173 delta-01 R20).
+  `link-gemini-extension-build` is a dedicated, documented debugging path pointed at the build directory, not an install
+  path.
+- **Copilot CLI:** ✅ `scripts/install-copilot-plugin.ts` — resolves the extension name across tiers, builds into
+  `dist-copilot-plugin/<name>/`, and invokes `copilot plugin install <output-dir>` (spec 0065)
+- **Antigravity CLI:** ✅ `scripts/install-antigravity-extension.ts` — resolves the extension name across tiers,
+  builds into `dist-antigravity-plugin/<name>/`, and invokes `agy plugin install <output-dir>` (spec 0063)
 
-### 15 — Build-components target and tier flags — `--target <cli>` selects the CLI; `--tier <name>` (repeatable, spec 0119) narrows the tier set and is CLI-agnostic, so it applies identically to all four targets. It exists for the per-component install path: filtered to the served overlay tiers a rebuild takes 0.57 s and writes nothing git-visible, where an unfiltered one takes 4.31 s and, on a branch carrying an unbuilt `core` source edit, leaves four unrequested tracked modifications per edited skill behind.
+### 15 — Build-components target and tier flags
 
+- **Feature:** Build-components target and tier flags — `--target <cli>` selects the CLI; `--tier <name>` (repeatable,
+  spec 0119) narrows the tier set and is CLI-agnostic, so it applies identically to all four targets. It exists for the
+  per-component install path: filtered to the served overlay tiers a rebuild takes 0.57 s and writes nothing
+  git-visible, where an unfiltered one takes 4.31 s and, on a branch carrying an unbuilt `core` source edit, leaves four
+  unrequested tracked modifications per edited skill behind.
 - **Source of truth:** `scripts/build-components.ts`
 - **Claude Code:** ✅ `--target claude` · `--tier <name>`
 - **Gemini CLI:** ✅ `--target gemini` · `--tier <name>`
@@ -318,58 +1184,161 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 ### 15b — REPO_DIR build-root override
 
 - **Source of truth:** `scripts/build-components.ts`
-- **Claude Code:** ✅ `REPO_DIR` env var — redirects the inferred repo root to an arbitrary directory (e.g. a temp dir for test isolation); introduced in spec 0018; CLI-agnostic
+- **Claude Code:** ✅ `REPO_DIR` env var — redirects the inferred repo root to an arbitrary directory (e.g. a temp
+  dir for test isolation); introduced in spec 0018; CLI-agnostic
 - **Gemini CLI:** ✅ same
 - **Copilot CLI:** ✅ same
 - **Antigravity CLI:** ✅ same
 
-### 15c — Build-components declared query mode (`--list-output-dirs`) — queries declared relative output directories fast without building or checking prerequisites (the shell build needed `yq`/`jq`; the TypeScript build needs neither), consumed by `scripts/check-core-paths.ts` to enforce output governance (spec 0125); CLI-agnostic
+### 15c — Build-components declared query mode
 
-- **Source of truth:** `scripts/build-components.ts` `outputDirLines` (`scripts/lib/build-components/output-dirs.ts`; shell origin `list_output_dirs`)
+- **Feature:** Build-components declared query mode (`--list-output-dirs`) — queries declared relative output
+  directories fast without building or checking prerequisites (the shell build needed `yq`/`jq`; the TypeScript build
+  needs neither), consumed by `scripts/check-core-paths.ts` to enforce output governance (spec 0125); CLI-agnostic
+- **Source of truth:** `scripts/build-components.ts` `outputDirLines` (`scripts/lib/build-components/output-dirs.ts`;
+  shell origin `list_output_dirs`)
 - **Claude Code:** ✅ same
 - **Gemini CLI:** ✅ same
 - **Copilot CLI:** ✅ same
 - **Antigravity CLI:** ✅ same
 
-### 16 — Taskfile entries (the `build-components*` tasks run `node scripts/build-components.ts` directly; the install, manage and link tasks likewise run `node scripts/<name>.ts` behind the floor-guard step, spec 0255; the `usage:*` tasks run `node scripts/usage-<name>.ts` directly, with the `.sh` kept as forwarding shim, spec 0253; the `import-*-history` and `prune-transcripts` tasks likewise run `node scripts/<name>.ts` behind the floor-guard step, with the `.sh` kept as forwarding shim and no `fzf` precondition, spec 0253; the `create-extension` task runs `node scripts/create-extension.ts` behind the floor-guard step with no `fzf` precondition, spec 0258)
+### 16 — Taskfile entries
 
+- **Feature:** Taskfile entries (the `build-components*` tasks run `node scripts/build-components.ts` directly; the
+  install, manage and link tasks likewise run `node scripts/<name>.ts` behind the floor-guard step, spec 0255; the
+  `usage:*` tasks run `node scripts/usage-<name>.ts` directly, with the `.sh` kept as forwarding shim, spec 0253; the
+  `import-*-history` and `prune-transcripts` tasks likewise run `node scripts/<name>.ts` behind the floor-guard step,
+  with the `.sh` kept as forwarding shim and no `fzf` precondition, spec 0253; the `create-extension` task runs
+  `node scripts/create-extension.ts` behind the floor-guard step with no `fzf` precondition, spec 0258)
 - **Source of truth:** `Taskfile.yml`
-- **Claude Code:** ✅ `setup-claude-interactive` (floor guard, then the TypeScript entry, two steps; spec 0256), `install-claude-workspace`, `link-claude-workspace`, `install-claude-component`, `link-claude-component`, `build-claude-plugin`, `install-claude-plugin`, `import-claude-history`, `build-components-claude`
-- **Gemini CLI:** ✅ `setup-gemini-interactive` (same two steps), `import-gemini-history`, `build-components-gemini`, `install-gemini-extension`, `install-gemini-extensions`, `link-gemini-extensions`, `link-gemini-extension-build` (debugging path, spec 0173 delta-01 R20), `unlink-gemini-extensions`, `install-extension-all` (plus deprecated `install-extension`, `install-extensions`, `link-extensions`, `unlink-extensions`) (spec 0177), `migrate-extension` (spec 0183, issue #1008 — converts an extension source tree off the retired `components.<subject>.enabled` shape; cross-CLI, listed here beside the other extension-lifecycle tasks)
-- **Copilot CLI:** ✅ `setup-copilot-interactive` (same two steps), `import-copilot-history`, `build-components-copilot`, `build-copilot-plugin`, `install-copilot-plugin`
-- **Antigravity CLI:** ✅ `setup-antigravity-interactive` (same two steps), `import-antigravity-history`, `build-antigravity-extension`, `install-antigravity-extension`, `build-components-antigravity`, `install-antigravity-component`, `link-antigravity-component` (spec 0054/0055/0057/0058/0063)
+- **Claude Code:** ✅ `setup-claude-interactive` (floor guard, then the TypeScript entry, two steps; spec 0256),
+  `install-claude-workspace`, `link-claude-workspace`, `install-claude-component`, `link-claude-component`,
+  `build-claude-plugin`, `install-claude-plugin`, `import-claude-history`, `build-components-claude`
+- **Gemini CLI:** ✅ `setup-gemini-interactive` (same two steps), `import-gemini-history`, `build-components-gemini`,
+  `install-gemini-extension`, `install-gemini-extensions`, `link-gemini-extensions`, `link-gemini-extension-build`
+  (debugging path, spec 0173 delta-01 R20), `unlink-gemini-extensions`, `install-extension-all` (plus deprecated
+  `install-extension`, `install-extensions`, `link-extensions`, `unlink-extensions`) (spec 0177), `migrate-extension`
+  (spec 0183, issue #1008 — converts an extension source tree off the retired `components.<subject>.enabled` shape;
+  cross-CLI, listed here beside the other extension-lifecycle tasks)
+- **Copilot CLI:** ✅ `setup-copilot-interactive` (same two steps), `import-copilot-history`,
+  `build-components-copilot`, `build-copilot-plugin`, `install-copilot-plugin`
+- **Antigravity CLI:** ✅ `setup-antigravity-interactive` (same two steps), `import-antigravity-history`,
+  `build-antigravity-extension`, `install-antigravity-extension`, `build-components-antigravity`,
+  `install-antigravity-component`, `link-antigravity-component` (spec 0054/0055/0057/0058/0063)
 
-### 17 — Per-CLI extension manifest. **Two committed manifests under version lockstep (spec 0044, as amended by delta-01), one built and asserted separately.** An extension's `package.json` `version` is authoritative; the committed `extension.json` of the SAME extension MUST declare that SAME version — `scripts/check-extension-manifest-version.ts` is a static CI guard that fails on a divergent `extension.json`, and `scripts/monorepo-release.ts` rewrites it to `nextRelease.version` at release time (spec 0257: `scripts/monorepo-release.ts` is a forwarding shim to that entry, with `scripts/release-sync-manifests.ts` for the manifest rewrite). The release archive packages the Gemini CLI output alone (Ruling A, spec 0183 delta-01): the Claude Code, GitHub Copilot CLI and Antigravity CLI manifests and outputs of this row are neither packaged nor changed by spec 0257 (row 13). `gemini-extension.json` is no longer a committed sibling: it is a BUILD output (`node scripts/build-extension.ts --target gemini`, spec 0173 delta-01), and its version lockstep is asserted separately, non-vacuously, by `node scripts/build-extension.ts --check`'s `VERSION-DRIFT` arm against the built manifest.
+### 17 — Per-CLI extension manifest
 
+- **Feature:** Per-CLI extension manifest. **Two committed manifests under version lockstep (spec 0044, as amended by
+  delta-01), one built and asserted separately.** An extension's `package.json` `version` is authoritative; the
+  committed `extension.json` of the SAME extension MUST declare that SAME version —
+  `scripts/check-extension-manifest-version.ts` is a static CI guard that fails on a divergent `extension.json`, and
+  `scripts/monorepo-release.ts` rewrites it to `nextRelease.version` at release time (spec 0257:
+  `scripts/monorepo-release.ts` is a forwarding shim to that entry, with `scripts/release-sync-manifests.ts` for the
+  manifest rewrite). The release archive packages the Gemini CLI output alone (Ruling A, spec 0183 delta-01): the Claude
+  Code, GitHub Copilot CLI and Antigravity CLI manifests and outputs of this row are neither packaged nor changed by
+  spec 0257 (row 13). `gemini-extension.json` is no longer a committed sibling: it is a BUILD output
+  (`node scripts/build-extension.ts --target gemini`, spec 0173 delta-01), and its version lockstep is asserted
+  separately, non-vacuously, by `node scripts/build-extension.ts --check`'s `VERSION-DRIFT` arm against the built
+  manifest.
 - **Source of truth:** `extensions/<tier>/<name>/`
-- **Claude Code:** ✅ `extension.json` (+ `CLAUDE.md`, RENDERED from the generic `context.source` — spec 0181, no longer a per-CLI `claude.contextFileName` key) — `version` MUST equal authoritative `package.json` `version` (consumed by `build-claude-plugin.ts:64` → generated `plugin.json`)
-- **Gemini CLI:** ✅ `extension.json`'s generic sections and `gemini:` section render `build/extensions/<name>/gemini-extension.json` (+ `GEMINI.md`, RENDERED from `context.source`, spec 0181 — no longer a per-CLI `gemini.contextFileName` key nor a verbatim copy) — the built manifest's `version` MUST equal authoritative `package.json` `version`, asserted by `--check` (row 13/14; spec 0173 delta-01 R11)
-- **Copilot CLI:** ✅ Copilot CLI plugin uses the same `extension.json` as Claude Code, with **no `copilot:` section at all** — `copilot.pluginName` was the section's only key and is retired, reducible from `.name` (spec 0183 R7/R8); `build-copilot-plugin.ts` reads `.name` directly. `hooks` was never admissible there (0065 delta-01 R1); hooks are declared once in the generic top-level `hooks` section (spec 0179) and translated by `scripts/lib/extension/hooks-emit.ts`.
-- **Antigravity CLI:** ✅ Antigravity CLI uses the same `extension.json` as Claude Code, with **no `antigravity:` section at all** — `antigravity.pluginName` was the section's only surviving key (`contextFileName` already retired, spec 0181 R10) and is now itself retired, reducible from `.name` (spec 0183 R7/R8); `build-antigravity-extension.ts` reads `.name` directly (+ `rules/AGENTS.md`, RENDERED from `context.source` — spec 0181, row 5d). `hooks` was never admissible there (0063 delta-01 R1); hooks are declared once in the generic top-level `hooks` section (spec 0179) and translated by `scripts/lib/extension/hooks-emit.ts`.
+- **Claude Code:** ✅ `extension.json` (+ `CLAUDE.md`, RENDERED from the generic `context.source` — spec 0181, no
+  longer a per-CLI `claude.contextFileName` key) — `version` MUST equal authoritative `package.json` `version`
+  (consumed by `build-claude-plugin.ts:64` → generated `plugin.json`)
+- **Gemini CLI:** ✅ `extension.json`'s generic sections and `gemini:` section render
+  `build/extensions/<name>/gemini-extension.json` (+ `GEMINI.md`, RENDERED from `context.source`, spec 0181 — no
+  longer a per-CLI `gemini.contextFileName` key nor a verbatim copy) — the built manifest's `version` MUST equal
+  authoritative `package.json` `version`, asserted by `--check` (row 13/14; spec 0173 delta-01 R11)
+- **Copilot CLI:** ✅ Copilot CLI plugin uses the same `extension.json` as Claude Code, with **no `copilot:` section at
+  all** — `copilot.pluginName` was the section's only key and is retired, reducible from `.name` (spec 0183 R7/R8);
+  `build-copilot-plugin.ts` reads `.name` directly. `hooks` was never admissible there (0065 delta-01 R1); hooks are
+  declared once in the generic top-level `hooks` section (spec 0179) and translated by
+  `scripts/lib/extension/hooks-emit.ts`.
+- **Antigravity CLI:** ✅ Antigravity CLI uses the same `extension.json` as Claude Code, with **no `antigravity:`
+  section at all** — `antigravity.pluginName` was the section's only surviving key (`contextFileName` already retired,
+  spec 0181 R10) and is now itself retired, reducible from `.name` (spec 0183 R7/R8); `build-antigravity-extension.ts`
+  reads `.name` directly (+ `rules/AGENTS.md`, RENDERED from `context.source` — spec 0181, row 5d). `hooks` was never
+  admissible there (0063 delta-01 R1); hooks are declared once in the generic top-level `hooks` section (spec 0179) and
+  translated by `scripts/lib/extension/hooks-emit.ts`.
 
-### 17b — Extension hook subject (spec 0179, issue #1005) — a single generic `hooks` section, translated for every target by `scripts/lib/extension/hooks-emit.ts` and `hooks-resolve.ts` (the shell library `extension-hooks.sh` was retired in #1344; invoked from `scripts/build-extension.ts`, row 13). The normative per-target correspondence — event names, matcher form, hook file, time unit, extension-root token — is [`docs/extension-hook-events.md`](extension-hook-events.md), kept honest against the translator by `scripts/check-extension-hook-map.ts` (R6) and against unresolved tokens by `scripts/check-extension-hook-tokens.ts` (R12); both are re-grounded, per target, by `scripts/probe-extension-hooks.ts` / `docs/runbooks/extension-hook-probe.md`. Per-target constants live in `scripts/lib/extension-targets.json`, shared additively with #1006/#1007.
+### 17b — Extension hook subject
 
-- **Source of truth:** `scripts/lib/extension/hooks-emit.ts`, `scripts/lib/extension-targets.json`, `docs/extension-hook-events.md`
-- **Claude Code:** ✅ `PreToolUse`/`UserPromptSubmit` → `hooks/hooks.json` at the plugin root, envelope-grouped, matcher on tool name (`Bash`), root token `${CLAUDE_PLUGIN_ROOT}`
-- **Gemini CLI:** ✅ `PreToolUse`/`UserPromptSubmit` → `BeforeTool`/`BeforeAgent` in `hooks/hooks.json` in the extension directory, envelope-grouped, matcher `run_shell_command`, root token `${extensionPath}`
-- **Copilot CLI:** ✅ `PreToolUse`/`UserPromptSubmit` → `preToolUse`/`userPromptSubmitted` in `hooks.json` at the plugin root, flat (inline matcher per handler), matcher `bash`, root token `${COPILOT_PLUGIN_ROOT}` — grounded live (B1A), not by analogy (0065 delta-01 R12)
-- **Antigravity CLI:** ✅ `PreToolUse` only (`UserPromptSubmit` has no counterpart) → named-hook map in `hooks.json` at the plugin root, matcher `run_command`, no root token (working-directory-relative; handler MUST resolve to `hooks/<handler>`, v2-F1)
+- **Feature:** Extension hook subject (spec 0179, issue #1005) — a single generic `hooks` section, translated for
+  every target by `scripts/lib/extension/hooks-emit.ts` and `hooks-resolve.ts` (the shell library `extension-hooks.sh`
+  was retired in #1344; invoked from `scripts/build-extension.ts`, row 13). The normative per-target correspondence —
+  event names, matcher form, hook file, time unit, extension-root token — is
+  [`docs/extension-hook-events.md`](extension-hook-events.md), kept honest against the translator by
+  `scripts/check-extension-hook-map.ts` (R6) and against unresolved tokens by `scripts/check-extension-hook-tokens.ts`
+  (R12); both are re-grounded, per target, by `scripts/probe-extension-hooks.ts` /
+  `docs/runbooks/extension-hook-probe.md`. Per-target constants live in `scripts/lib/extension-targets.json`, shared
+  additively with #1006/#1007.
+- **Source of truth:** `scripts/lib/extension/hooks-emit.ts`, `scripts/lib/extension-targets.json`,
+  `docs/extension-hook-events.md`
+- **Claude Code:** ✅ `PreToolUse`/`UserPromptSubmit` → `hooks/hooks.json` at the plugin root, envelope-grouped,
+  matcher on tool name (`Bash`), root token `${CLAUDE_PLUGIN_ROOT}`
+- **Gemini CLI:** ✅ `PreToolUse`/`UserPromptSubmit` → `BeforeTool`/`BeforeAgent` in `hooks/hooks.json` in the
+  extension directory, envelope-grouped, matcher `run_shell_command`, root token `${extensionPath}`
+- **Copilot CLI:** ✅ `PreToolUse`/`UserPromptSubmit` → `preToolUse`/`userPromptSubmitted` in `hooks.json` at the
+  plugin root, flat (inline matcher per handler), matcher `bash`, root token `${COPILOT_PLUGIN_ROOT}` — grounded live
+  (B1A), not by analogy (0065 delta-01 R12)
+- **Antigravity CLI:** ✅ `PreToolUse` only (`UserPromptSubmit` has no counterpart) → named-hook map in `hooks.json`
+  at the plugin root, matcher `run_command`, no root token (working-directory-relative; handler MUST resolve to
+  `hooks/<handler>`, v2-F1)
 
-### 17c — Extension-scoped MCP server subject (spec 0180, issue #1006; spec 0185, issue #1035) — a single generic `mcpServers` section, translated for every target by the SAME translator the org-level channel (spec 0091, row 7h) uses — `scripts/lib/org-mcp.ts`'s `org_mcp_to_native`, reached through `ext_mcp_native` (the shell library `scripts/lib/extension-manifest.sh` is retired; the TypeScript module `scripts/lib/extension/mcp-delivery.ts` is the implementation) (invoked from row 13's four builders). The neutral vocabulary and the positional path-token rule are validated by `ext_validate_mcp_shape` / `ext_validate_mcp_tokens` / `ext_validate_mcp_names` in the same file; both are re-grounded by `scripts/probe-extension-mcp-token.ts` / `docs/runbooks/extension-mcp-token-probe.md`. Framework-reserved names (`mempalace`, `sequentialthinking`) are refused everywhere (R12). **`cwd` (for stdio) and `timeout` (for stdio, http, sse) are admitted into the neutral vocabulary (spec 0185 / issue #1035)**, translated symmetrically across both extension and org declaration channels. Peripheral fields (`description`, `includeTools`, `excludeTools`, `trust`) remain refused.
+### 17c — Extension-scoped MCP server subject
 
-- **Source of truth:** `scripts/lib/extension/mcp-delivery.ts` and `scripts/lib/extension/validate-mcp.ts` (`ext_mcp_native`, the three validators; the shell library `scripts/lib/extension-manifest.sh` is retired), `scripts/lib/org-mcp.ts` (`org_mcp_to_native`), `scripts/lib/extension-targets.json` (`mcpDelivery` column), `scripts/probe-extension-mcp-token.ts`
-- **Claude Code:** ✅ **File** `.mcp.json` at the plugin root. **Resolver/moment** — the neutral `${extensionRoot}` is rewritten to `${CLAUDE_PLUGIN_ROOT}` at RENDER time; Claude Code resolves that token itself when it LOADS the installed plugin (evidenced: the official marketplace plugin `discord/.mcp.json`, and `CLAUDE_PLUGIN_ROOT` substitution entries in the installed changelog). **R13 collision** — an extension-declared server is NAMESPACED as `plugin:<pluginName>:<serverName>`, never colliding with a bare name at user/project scope (both listed side by side) — confirmed live, 2026-08-25. **R14 layout** — `src/` (source) + `dist/` (build output) at the extension root; `dist/` + `package.json` copied alongside `.mcp.json`
-- **Gemini CLI:** ✅ **File** `gemini-extension.json`'s own `mcpServers` key (no separate file — it is one of the six fields the built manifest carries, row 17). **Resolver/moment** — rewritten to `${extensionPath}` at RENDER time; gemini-cli resolves that token itself when it LOADS the extension from the installed tree. **R13 collision** — `settings.json` (where the org/operator declaration lives) wins over an extension-declared server of the same name (`bundle/docs/extensions/reference.md:151`, citation). **R14 layout** — same as Claude. This subject ALSO repairs a live defect in the shared translator: Gemini's remote transport now emits `httpUrl`/`url` with no `type` key (row 7h)
-- **Copilot CLI:** ✅ **File** `.mcp.json` at the plugin root, `"source": "plugin"` in Copilot's own registry (probed empirically, 1.0.80). **Resolver/moment** — rewritten to `${COPILOT_PLUGIN_ROOT}` at RENDER time; Copilot resolves it AND defaults the server's `cwd` to its own plugin root when it SPAWNS the server (confirmed live: all three candidate forms spawn correctly, 2026-08-25). **R13 collision** — the PLUGIN-sourced entry wins over a same-named user-scope entry, which is written successfully but never surfaces in `copilot mcp list`/`get` — confirmed live, 2026-08-25. **R14 layout** — same as Claude
-- **Antigravity CLI:** ✅ **File** `mcp_config.json` at the plugin root (`plugins.md`/`mcp_servers.md`'s own documented location). **Resolver/moment** — the neutral token is LEFT UNRESOLVED at render time (a relative `command`/`args` does NOT resolve against the plugin directory when Antigravity spawns a plugin's MCP server — confirmed live, no error surfaced, 2026-08-25); resolved by `scripts/install-antigravity-extension.ts`'s POST-INSTALL step, once `agy plugin install` has placed the plugin at its real destination (`~/.gemini/config/plugins/<pluginName>/`, confirmed deterministic and copied verbatim). **R13 collision** — plugin tools "namespaced if necessary to prevent collisions" (`plugins.md`, citation). **R14 layout** — same as Claude
+- **Feature:** Extension-scoped MCP server subject (spec 0180, issue #1006; spec 0185, issue #1035) — a single generic
+  `mcpServers` section, translated for every target by the SAME translator the org-level channel (spec 0091, row 7h)
+  uses — `scripts/lib/org-mcp.ts`'s `org_mcp_to_native`, reached through `ext_mcp_native` (the shell library
+  `scripts/lib/extension-manifest.sh` is retired; the TypeScript module `scripts/lib/extension/mcp-delivery.ts` is the
+  implementation) (invoked from row 13's four builders). The neutral vocabulary and the positional path-token rule are
+  validated by `ext_validate_mcp_shape` / `ext_validate_mcp_tokens` / `ext_validate_mcp_names` in the same file; both
+  are re-grounded by `scripts/probe-extension-mcp-token.ts` / `docs/runbooks/extension-mcp-token-probe.md`.
+  Framework-reserved names (`mempalace`, `sequentialthinking`) are refused everywhere (R12). **`cwd` (for stdio) and
+  `timeout` (for stdio, http, sse) are admitted into the neutral vocabulary (spec 0185 / issue #1035)**, translated
+  symmetrically across both extension and org declaration channels. Peripheral fields (`description`, `includeTools`,
+  `excludeTools`, `trust`) remain refused.
+- **Source of truth:** `scripts/lib/extension/mcp-delivery.ts` and `scripts/lib/extension/validate-mcp.ts`
+  (`ext_mcp_native`, the three validators; the shell library `scripts/lib/extension-manifest.sh` is retired),
+  `scripts/lib/org-mcp.ts` (`org_mcp_to_native`), `scripts/lib/extension-targets.json` (`mcpDelivery` column),
+  `scripts/probe-extension-mcp-token.ts`
+- **Claude Code:** ✅ **File** `.mcp.json` at the plugin root. **Resolver/moment** — the neutral `${extensionRoot}`
+  is rewritten to `${CLAUDE_PLUGIN_ROOT}` at RENDER time; Claude Code resolves that token itself when it LOADS the
+  installed plugin (evidenced: the official marketplace plugin `discord/.mcp.json`, and `CLAUDE_PLUGIN_ROOT`
+  substitution entries in the installed changelog). **R13 collision** — an extension-declared server is NAMESPACED as
+  `plugin:<pluginName>:<serverName>`, never colliding with a bare name at user/project scope (both listed side by side)
+  — confirmed live, 2026-08-25. **R14 layout** — `src/` (source) + `dist/` (build output) at the extension root;
+  `dist/` + `package.json` copied alongside `.mcp.json`
+- **Gemini CLI:** ✅ **File** `gemini-extension.json`'s own `mcpServers` key (no separate file — it is one of the six
+  fields the built manifest carries, row 17). **Resolver/moment** — rewritten to `${extensionPath}` at RENDER time;
+  gemini-cli resolves that token itself when it LOADS the extension from the installed tree. **R13 collision** —
+  `settings.json` (where the org/operator declaration lives) wins over an extension-declared server of the same name
+  (`bundle/docs/extensions/reference.md:151`, citation). **R14 layout** — same as Claude. This subject ALSO repairs a
+  live defect in the shared translator: Gemini's remote transport now emits `httpUrl`/`url` with no `type` key (row 7h)
+- **Copilot CLI:** ✅ **File** `.mcp.json` at the plugin root, `"source": "plugin"` in Copilot's own registry (probed
+  empirically, 1.0.80). **Resolver/moment** — rewritten to `${COPILOT_PLUGIN_ROOT}` at RENDER time; Copilot resolves
+  it AND defaults the server's `cwd` to its own plugin root when it SPAWNS the server (confirmed live: all three
+  candidate forms spawn correctly, 2026-08-25). **R13 collision** — the PLUGIN-sourced entry wins over a same-named
+  user-scope entry, which is written successfully but never surfaces in `copilot mcp list`/`get` — confirmed live,
+  2026-08-25. **R14 layout** — same as Claude
+- **Antigravity CLI:** ✅ **File** `mcp_config.json` at the plugin root (`plugins.md`/`mcp_servers.md`'s own documented
+  location). **Resolver/moment** — the neutral token is LEFT UNRESOLVED at render time (a relative `command`/`args`
+  does NOT resolve against the plugin directory when Antigravity spawns a plugin's MCP server — confirmed live, no
+  error surfaced, 2026-08-25); resolved by `scripts/install-antigravity-extension.ts`'s POST-INSTALL step, once
+  `agy plugin install` has placed the plugin at its real destination (`~/.gemini/config/plugins/<pluginName>/`,
+  confirmed deterministic and copied verbatim). **R13 collision** — plugin tools "namespaced if necessary to prevent
+  collisions" (`plugins.md`, citation). **R14 layout** — same as Claude
 
 ### 18 — CI workflow targeting the CLI
 
 - **Source of truth:** `.github/workflows/`
 - **Claude Code:** ✅ `claude.yml` (anthropics/claude-code-action on `@claude` mentions)
 - **Gemini CLI:** ❌ No `gemini.yml` equivalent
-- **Copilot CLI:** ✅ `copilot.yml` (placeholder — native `@copilot` mention trigger is set at repo / org level, not via this workflow)
-- **Antigravity CLI:** ❌ No `antigravity.yml` — **[GAP]**. `agy --print` is confirmed non-interactive (exit 0), but no published GitHub Action (analogous to `anthropics/claude-code-action`) exists for Antigravity CLI. Evidence: `gh api /repos/antigravity-labs/agy-code-action` → HTTP 404; `gh api /users/antigravity-labs` → HTTP 404 (org not found on GitHub); `gh search repos "agy-action"` — no relevant results
+- **Copilot CLI:** ✅ `copilot.yml` (placeholder — native `@copilot` mention trigger is set at repo / org level, not
+  via this workflow)
+- **Antigravity CLI:** ❌ No `antigravity.yml` — **[GAP]**. `agy --print` is confirmed non-interactive (exit 0), but
+  no published GitHub Action (analogous to `anthropics/claude-code-action`) exists for Antigravity CLI. Evidence:
+  `gh api /repos/antigravity-labs/agy-code-action` → HTTP 404; `gh api /users/antigravity-labs` → HTTP 404 (org not
+  found on GitHub); `gh search repos "agy-action"` — no relevant results
 
 ### 19 — Documentation prose references
 
@@ -384,252 +1353,726 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Source of truth:** `.gitignore`
 - **Claude Code:** ✅ `dist-claude-plugin/`, `.claude/settings.local.json`, `CLAUDE.local.md`
 - **Gemini CLI:** ❌ No Gemini-specific entries
-- **Copilot CLI:** ✅ `.github/copilot/settings.local.json`, `copilot-instructions.local.md`, `dist-copilot-plugin/` (spec 0065)
-- **Antigravity CLI:** ✅ `dist-antigravity-*/` — covers `dist-antigravity-plugin/<name>/` emitted by `build-antigravity-extension.ts` (spec 0063). Already present in `.gitignore` as `dist-antigravity-*/` (added with spec 0057 / PR #449).
+- **Copilot CLI:** ✅ `.github/copilot/settings.local.json`, `copilot-instructions.local.md`, `dist-copilot-plugin/`
+  (spec 0065)
+- **Antigravity CLI:** ✅ `dist-antigravity-*/` — covers `dist-antigravity-plugin/<name>/` emitted by
+  `build-antigravity-extension.ts` (spec 0063). Already present in `.gitignore` as `dist-antigravity-*/` (added with
+  spec 0057 / PR #449).
 
 ### 21 — e2e dedicated-account auth flow
 
-- **Source of truth:** `scripts/e2e/auth-<cli>.ts` (the `.sh` forwarding shim was removed), `Taskfile.yml` → `e2e:auth:*`, ADR 0002
-- **Claude Code:** ✅ `scripts/e2e/auth-claude.ts` — interactive `claude /login` in `crewrig/e2e-claude:latest`, persists `~/.crewrig-e2e/claude/{.credentials.json,.claude.json}` (RW one-shot, RO at scenario time)
-- **Gemini CLI:** ✅ `scripts/e2e/auth-gemini.ts` — interactive `gemini` "Login with Google" in `crewrig/e2e-gemini:latest`. Persists `~/.crewrig-e2e/gemini/` with `oauth_creds.json`, `settings.json`, `google_accounts.json`, `google_account_id`, `installation_id`, `gemini-credentials.json`, `extension_integrity.json`, `trustedFolders.json`, `acknowledgments/`, `history/`, `projects.json`, `state.json`, etc. — full `~/.gemini` minus the `antigravity*` and `tmp/` subtrees and backup leftovers (`.bak`, `.ori`, `.orig`). Bundle dir is `chmod 0700`. Mounted `:ro` at `/run/gemini-creds`; a container-side wrapper copies it to `/home/agent/.gemini` before `exec gemini` (see issue #147 §5).
-- **Copilot CLI:** ⚠️ `scripts/e2e/auth-copilot.ts` — **guidance-only, no container**. Prints PAT setup steps for the test account; scenarios consume `$COPILOT_GITHUB_TOKEN` at run time via `docker run -e`. Nothing persisted under `~/.crewrig-e2e/copilot/`. **[GAP-soft]** — empirically justified divergence (see Parity gaps). The e2e runner (#78) consumes this asymmetry first-class via `mounts = []` in `tests/e2e/defaults.toml [cli.copilot]`, so no CLI-branching is needed in `tests/e2e/run.ts`. When local.toml routes Copilot through Ollama Cloud, `task e2e:auth:ollama` persists an Ed25519 keypair under `~/.crewrig-e2e/ollama/` that is mounted RO into the copilot container (see ADR 0002 Decision 8).
-- **Antigravity CLI:** ❌ No `scripts/e2e/auth-antigravity.ts` — **[GAP-soft]**. No `crewrig/e2e-antigravity:latest` Docker image or e2e auth flow has been defined for Antigravity CLI. Adding e2e coverage is explicitly out of scope for spec 0058
+- **Source of truth:** `scripts/e2e/auth-<cli>.ts` (the `.sh` forwarding shim was removed), `Taskfile.yml` →
+  `e2e:auth:*`, ADR 0002
+- **Claude Code:** ✅ `scripts/e2e/auth-claude.ts` — interactive `claude /login` in `crewrig/e2e-claude:latest`,
+  persists `~/.crewrig-e2e/claude/{.credentials.json,.claude.json}` (RW one-shot, RO at scenario time)
+- **Gemini CLI:** ✅ `scripts/e2e/auth-gemini.ts` — interactive `gemini` "Login with Google" in
+  `crewrig/e2e-gemini:latest`. Persists `~/.crewrig-e2e/gemini/` with `oauth_creds.json`, `settings.json`,
+  `google_accounts.json`, `google_account_id`, `installation_id`, `gemini-credentials.json`, `extension_integrity.json`,
+  `trustedFolders.json`, `acknowledgments/`, `history/`, `projects.json`, `state.json`, etc. — full `~/.gemini` minus
+  the `antigravity*` and `tmp/` subtrees and backup leftovers (`.bak`, `.ori`, `.orig`). Bundle dir is `chmod 0700`.
+  Mounted `:ro` at `/run/gemini-creds`; a container-side wrapper copies it to `/home/agent/.gemini` before `exec gemini`
+  (see issue #147 §5).
+- **Copilot CLI:** ⚠️ `scripts/e2e/auth-copilot.ts` — **guidance-only, no container**. Prints PAT setup steps for
+  the test account; scenarios consume `$COPILOT_GITHUB_TOKEN` at run time via `docker run -e`. Nothing persisted under
+  `~/.crewrig-e2e/copilot/`. **[GAP-soft]** — empirically justified divergence (see Parity gaps). The e2e runner (#78)
+  consumes this asymmetry first-class via `mounts = []` in `tests/e2e/defaults.toml [cli.copilot]`, so no CLI-branching
+  is needed in `tests/e2e/run.ts`. When local.toml routes Copilot through Ollama Cloud, `task e2e:auth:ollama` persists
+  an Ed25519 keypair under `~/.crewrig-e2e/ollama/` that is mounted RO into the copilot container (see ADR 0002 Decision 8).
+- **Antigravity CLI:** ❌ No `scripts/e2e/auth-antigravity.ts` — **[GAP-soft]**. No `crewrig/e2e-antigravity:latest`
+  Docker image or e2e auth flow has been defined for Antigravity CLI. Adding e2e coverage is explicitly out of scope for
+  spec 0058
 
-### 22 — e2e pillar 01 — layered context
+### 22 — e2e pillar 01
 
+- **Feature:** e2e pillar 01 — layered context
 - **Source of truth:** `tests/e2e/scenarios/01-layered-context/`, ADR 0005
-- **Claude Code:** ✅ host-orchestrated probe via `claude -p`; mounts `${CREWRIG_E2E_HOME}/claude` ro; structural + LLM-judge assertions
-- **Gemini CLI:** ✅ host-orchestrated probe via `gemini -p`; dual `:ro` mounts — `${CREWRIG_E2E_HOME}/gemini` at `/run/gemini-creds` (auth bundle) **and** `${HOME}/.gemini` at `/run/gemini-rules` (layered-context rules, `[0-6]0_*.md` only); container-side bootstrap copies both into `/home/agent/.gemini` before `exec gemini` (see issue #148 Decision 5 Revision 2)
-- **Copilot CLI:** ✅ host-orchestrated probe via `copilot -p`; mounts `${CREWRIG_E2E_HOME}/copilot` ro (auth-copilot.ts currently writes nothing here — scenario soft-skips if the dir is absent)
-- **Antigravity CLI:** ❌ No e2e coverage — **[GAP-soft]**. No `crewrig/e2e-antigravity:latest` image or dedicated auth flow exists. Out of scope per spec 0058
+- **Claude Code:** ✅ host-orchestrated probe via `claude -p`; mounts `${CREWRIG_E2E_HOME}/claude` ro; structural +
+  LLM-judge assertions
+- **Gemini CLI:** ✅ host-orchestrated probe via `gemini -p`; dual `:ro` mounts — `${CREWRIG_E2E_HOME}/gemini` at
+  `/run/gemini-creds` (auth bundle) **and** `${HOME}/.gemini` at `/run/gemini-rules` (layered-context rules,
+  `[0-6]0_*.md` only); container-side bootstrap copies both into `/home/agent/.gemini` before `exec gemini` (see issue #148
+  Decision 5 Revision 2)
+- **Copilot CLI:** ✅ host-orchestrated probe via `copilot -p`; mounts `${CREWRIG_E2E_HOME}/copilot` ro
+  (auth-copilot.ts currently writes nothing here — scenario soft-skips if the dir is absent)
+- **Antigravity CLI:** ❌ No e2e coverage — **[GAP-soft]**. No `crewrig/e2e-antigravity:latest` image or dedicated
+  auth flow exists. Out of scope per spec 0058
 
-### 23 — e2e pillar 02 — cross-tool memory
+### 23 — e2e pillar 02
 
+- **Feature:** e2e pillar 02 — cross-tool memory
 - **Source of truth:** `tests/e2e/scenarios/02-cross-tool-memory/`, ADR 0005
 - **Claude Code:** ✅ MemPalace sidecar (per-run volume); drawer write + read across two short-lived containers
 - **Gemini CLI:** ✅ same path
-- **Copilot CLI:** ❌ **[GAP-soft]** — `crewrig/e2e-copilot:latest` (`docker/e2e/copilot.Dockerfile`) does not embed the `mempalace` CLI, and Copilot CLI ships no MemPalace MCP integration in `artifacts/community/`. Empirical reproduction: `docker run --rm crewrig/e2e-copilot:latest which mempalace` → exit 1 (binary absent). Scenario excluded via `applies_to = ["claude","gemini"]` until the Copilot image gains a MemPalace surface.
+- **Copilot CLI:** ❌ **[GAP-soft]** — `crewrig/e2e-copilot:latest` (`docker/e2e/copilot.Dockerfile`) does not embed
+  the `mempalace` CLI, and Copilot CLI ships no MemPalace MCP integration in `artifacts/community/`. Empirical
+  reproduction: `docker run --rm crewrig/e2e-copilot:latest which mempalace` → exit 1 (binary absent). Scenario
+  excluded via `applies_to = ["claude","gemini"]` until the Copilot image gains a MemPalace surface.
 - **Antigravity CLI:** ❌ No e2e coverage — **[GAP-soft]**. Out of scope per spec 0058
 
-### 24 — e2e pillar 03 — skill build
+### 24 — e2e pillar 03
 
+- **Feature:** e2e pillar 03 — skill build
 - **Source of truth:** `tests/e2e/scenarios/03-skill-build/`, ADR 0005
-- **Claude Code:** ✅ runs `scripts/build-components.ts --target claude` inside the container; asserts `.claude/` populated + first `SKILL.md` has `metadata:` frontmatter
+- **Claude Code:** ✅ runs `scripts/build-components.ts --target claude` inside the container; asserts `.claude/`
+  populated + first `SKILL.md` has `metadata:` frontmatter
 - **Gemini CLI:** ✅ same with `--target gemini` → `.gemini/`
 - **Copilot CLI:** ✅ same with `--target copilot` → `.github/`
 - **Antigravity CLI:** ❌ No e2e coverage — **[GAP-soft]**. Out of scope per spec 0058
 
-### 25 — e2e pillar 04 — harness loop
+### 25 — e2e pillar 04
 
+- **Feature:** e2e pillar 04 — harness loop
 - **Source of truth:** `tests/e2e/scenarios/04-harness-loop/`, ADR 0005
-- **Claude Code:** ✅ simulated path (drawer write to `wing=harness-friction` + curator-style search); MemPalace sidecar; LLM-judge on the friction summary
+- **Claude Code:** ✅ simulated path (drawer write to `wing=harness-friction` + curator-style search); MemPalace
+  sidecar; LLM-judge on the friction summary
 - **Gemini CLI:** ✅ same simulated path
-- **Copilot CLI:** ✅ same simulated path. **[GAP-soft]** — full interactive `harness-report` skill invocation is not yet driven non-interactively from any CLI; the simulation matches what the curator reads and is parity-equivalent for v1.
+- **Copilot CLI:** ✅ same simulated path. **[GAP-soft]** — full interactive `harness-report` skill invocation is not
+  yet driven non-interactively from any CLI; the simulation matches what the curator reads and is parity-equivalent for
+  v1.
 - **Antigravity CLI:** ❌ No e2e coverage — **[GAP-soft]**. Out of scope per spec 0058
 
-### 26 — `idea` skill — IDEA lifecycle stage (spec 0066); v1.1.0 added the R15/R16 candidate-designation mechanism (spec 0066 delta-01) — content-only change, no new integration point, build stays symmetric across all four CLIs
+### 26 — `idea` skill
 
+- **Feature:** `idea` skill — IDEA lifecycle stage (spec 0066); v1.1.0 added the R15/R16 candidate-designation
+  mechanism (spec 0066 delta-01) — content-only change, no new integration point, build stays symmetric across all
+  four CLIs
 - **Source of truth:** `artifacts/core/skills/idea/SKILL.md`
-- **Claude Code:** ✅ `.claude/skills/idea/SKILL.md` (built by `scripts/build-components.ts --target claude`; row 3 core path)
-- **Gemini CLI:** ✅ `.gemini/skills/idea/SKILL.md` (built by `scripts/build-components.ts --target gemini`; row 3 core path)
-- **Copilot CLI:** ✅ `.github/skills/idea/SKILL.md` (built by `scripts/build-components.ts --target copilot`; row 3 core path)
-- **Antigravity CLI:** ✅ `.agents/skills/idea/SKILL.md` (built by `scripts/build-components.ts --target antigravity`; row 3 core path)
+- **Claude Code:** ✅ `.claude/skills/idea/SKILL.md` (built by `scripts/build-components.ts --target claude`; row 3
+  core path)
+- **Gemini CLI:** ✅ `.gemini/skills/idea/SKILL.md` (built by `scripts/build-components.ts --target gemini`; row 3 core
+  path)
+- **Copilot CLI:** ✅ `.github/skills/idea/SKILL.md` (built by `scripts/build-components.ts --target copilot`; row 3
+  core path)
+- **Antigravity CLI:** ✅ `.agents/skills/idea/SKILL.md` (built by `scripts/build-components.ts --target antigravity`;
+  row 3 core path)
 
-### 27 — User-gate validation backend (spec 0080, spec 0189) — the `user-validate` skill is the sole implementation of the backend-configurable gate protocol (R9); the per-user backend and cross-cutting options (translate / pedagogy / illustration / theme) are captured symmetrically by the four `setup-<cli>-interactive.ts` entries through the shared `scripts/lib/setup/validation-backend.ts` module (the twin of the `configure_validation_backend` helper of the retired `scripts/lib/common.sh`) and persisted to `~/.crewrig/validation.conf` — per-user, machine-local, outside the core layer (R15/R16). When cross-cutting options are active, a bespoke presentation document is generated honoring translation, pedagogy, and theme; illustrations (R14, spec 0189 R4) are embedded as inline base64 data URIs to avoid browser sandbox security blocks.
+### 27 — User-gate validation backend
 
-- **Source of truth:** `artifacts/library/skills/user-validate/SKILL.md`, `scripts/lib/setup/validation-backend.ts`, `scripts/setup-*-interactive.ts`, `~/.crewrig/validation.conf`
-- **Claude Code:** ✅ built to `dist/library/.claude/skills/user-validate/SKILL.md` (`--target claude`; row 3 non-`core` tier routing to `dist/<tier>/`), auto-installed to `~/.claude/skills/user-validate/` by the interactive setup (row 10, `library` tier); setup opt-in via `configure_validation_backend` → `~/.crewrig/validation.conf`; `plannotator annotate <file> --gate --json` detached invocation **verified** (Bash `run_in_background` re-invokes the agent on process exit; foreground `sleep` blocked — use `Monitor` for conditional waits); `internal` guaranteed floor
-- **Gemini CLI:** ✅ built to `dist/library/.gemini/skills/user-validate/SKILL.md` (`--target gemini`; row 3 non-`core` tier routing to `dist/<tier>/`), auto-installed to `~/.gemini/skills/user-validate/` by the interactive setup (row 10, `library` tier); same setup opt-in → `~/.crewrig/validation.conf`; `plannotator annotate <file> --gate --json` detached invocation **verified** (degrades to `internal` at gate time if infeasible — R4); `internal` guaranteed floor
-- **Copilot CLI:** ✅ built to `dist/library/.github/skills/user-validate/SKILL.md` (`--target copilot`; row 3 non-`core` tier routing to `dist/<tier>/`), auto-installed to `~/.copilot/skills/user-validate/` by the interactive setup (row 10, `library` tier); same setup opt-in → `~/.crewrig/validation.conf`; `plannotator annotate <file> --gate --json` detached invocation **verified** (same as Gemini); `internal` guaranteed floor
-- **Antigravity CLI:** ✅ built to `dist/library/.agents/skills/user-validate/SKILL.md` (`--target antigravity`; row 3 non-`core` tier routing to `dist/<tier>/`), auto-installed to `~/.gemini/config/skills/user-validate/` by the interactive setup (row 10, `library` tier; moved there by spec 0123 — under the superseded placement this skill was installed but never discovered); same setup opt-in → `~/.crewrig/validation.conf`; `plannotator annotate <file> --gate --json` detached invocation **verified** (same as Gemini); `internal` guaranteed floor
+- **Feature:** User-gate validation backend (spec 0080, spec 0189) — the `user-validate` skill is the sole
+  implementation of the backend-configurable gate protocol (R9); the per-user backend and cross-cutting options
+  (translate / pedagogy / illustration / theme) are captured symmetrically by the four `setup-<cli>-interactive.ts`
+  entries through the shared `scripts/lib/setup/validation-backend.ts` module (the twin of the
+  `configure_validation_backend` helper of the retired `scripts/lib/common.sh`) and persisted to
+  `~/.crewrig/validation.conf` — per-user, machine-local, outside the core layer (R15/R16). When cross-cutting options
+  are active, a bespoke presentation document is generated honoring translation, pedagogy, and theme; illustrations
+  (R14, spec 0189 R4) are embedded as inline base64 data URIs to avoid browser sandbox security blocks.
+- **Source of truth:** `artifacts/library/skills/user-validate/SKILL.md`, `scripts/lib/setup/validation-backend.ts`,
+  `scripts/setup-*-interactive.ts`, `~/.crewrig/validation.conf`
+- **Claude Code:** ✅ built to `dist/library/.claude/skills/user-validate/SKILL.md` (`--target claude`; row 3
+  non-`core` tier routing to `dist/<tier>/`), auto-installed to `~/.claude/skills/user-validate/` by the interactive
+  setup (row 10, `library` tier); setup opt-in via `configure_validation_backend` → `~/.crewrig/validation.conf`;
+  `plannotator annotate <file> --gate --json` detached invocation **verified** (Bash `run_in_background` re-invokes the
+  agent on process exit; foreground `sleep` blocked — use `Monitor` for conditional waits); `internal` guaranteed
+  floor
+- **Gemini CLI:** ✅ built to `dist/library/.gemini/skills/user-validate/SKILL.md` (`--target gemini`; row 3 non-`core`
+  tier routing to `dist/<tier>/`), auto-installed to `~/.gemini/skills/user-validate/` by the interactive setup (row 10,
+  `library` tier); same setup opt-in → `~/.crewrig/validation.conf`; `plannotator annotate <file> --gate --json`
+  detached invocation **verified** (degrades to `internal` at gate time if infeasible — R4); `internal` guaranteed
+  floor
+- **Copilot CLI:** ✅ built to `dist/library/.github/skills/user-validate/SKILL.md` (`--target copilot`; row 3
+  non-`core` tier routing to `dist/<tier>/`), auto-installed to `~/.copilot/skills/user-validate/` by the interactive
+  setup (row 10, `library` tier); same setup opt-in → `~/.crewrig/validation.conf`;
+  `plannotator annotate <file> --gate --json` detached invocation **verified** (same as Gemini); `internal` guaranteed
+  floor
+- **Antigravity CLI:** ✅ built to `dist/library/.agents/skills/user-validate/SKILL.md` (`--target antigravity`; row 3
+  non-`core` tier routing to `dist/<tier>/`), auto-installed to `~/.gemini/config/skills/user-validate/` by the
+  interactive setup (row 10, `library` tier; moved there by spec 0123 — under the superseded placement this skill was
+  installed but never discovered); same setup opt-in → `~/.crewrig/validation.conf`;
+  `plannotator annotate <file> --gate --json` detached invocation **verified** (same as Gemini); `internal` guaranteed
+  floor
 
-### 27b — Internal-backend interactive prompt (spec 0080 R5) — the `internal` backend realises the gate through a structured interactive prompt, never a prose question (preserves spec 0037)
+### 27b — Internal-backend interactive prompt
 
+- **Feature:** Internal-backend interactive prompt (spec 0080 R5) — the `internal` backend realises the gate through a
+  structured interactive prompt, never a prose question (preserves spec 0037)
 - **Source of truth:** `artifacts/library/skills/user-validate/SKILL.md` (`internal` backend)
 - **Claude Code:** ✅ `AskUserQuestion` (confirmed, used across the repo)
 - **Gemini CLI:** ⚠️ **[GAP-confirmation]** — structured interactive-prompt equivalent unverified; evidence at DEV
 - **Copilot CLI:** ⚠️ **[GAP-confirmation]** — same
 - **Antigravity CLI:** ⚠️ **[GAP-confirmation]** — same
 
-### 28 — Spec-id reservation (spec 0112 + delta-01) — `scripts/reserve-spec-id.ts` secures an id before the spec file exists (parentless git object pushed under the namespace named by `.crewrig/spec-id-carrier`; the guarantee is the remote's create-only compare-and-swap via `--force-with-lease=<ref>:`), and `scripts/check-spec-id-reserved.ts` is the pull-request backstop. **CLI-agnostic by construction, so full parity is structural, not asserted:** both are plain `git`-only Bash 3.2 scripts (spec 0111) invoked from the shell, with no per-CLI surface, no MCP tool, and no forge API — requirement 4 makes forge-independence a requirement, and `AGENTS.md` → *Forge Access* keeps the credential the one the contributor already holds for `git`. The behavioural contract each CLI's `spec-author` consumes is the exit code only: `0` secured, `3` allocated-but-unsecured (stdout carries `unsecured-id: true` verbatim), `1` genuine failure. **Enforcement is CI-side, not CLI-side:** the `check-spec-id-reserved` capability in `ci/ci-capabilities.yml` (portable, `history-depth: full`, no `tools:` key — git is installed conditionally as `command[0]` so the GitLab `debian:stable-slim` job needs no generator change) becomes the GHA job of the same name plus the generated `.gitlab-ci.yml` job. **Delta-02** (`specs/0112-spec-id-reservation.delta-02.md`, requirements 17-21) adds that the `--issue`-only path now reuses an existing per-issue reservation instead of always computing a new one.
+### 28 — Spec-id reservation
 
-- **Source of truth:** `scripts/reserve-spec-id.ts`, `scripts/check-spec-id-reserved.ts`, `.crewrig/spec-id-carrier`, `ci/ci-capabilities.yml`, `docs/spec-pr-workflow.md` → *Reserving the spec id*, `specs/0112-spec-id-reservation.delta-02.md`
-- **Claude Code:** ✅ consumed by `.claude/skills/spec-author/SKILL.md` + `.claude/agents/spec-author.md` (built from `artifacts/core/`, row 3 core path)
+- **Feature:** Spec-id reservation (spec 0112 + delta-01) — `scripts/reserve-spec-id.ts` secures an id before the spec
+  file exists (parentless git object pushed under the namespace named by `.crewrig/spec-id-carrier`; the guarantee is
+  the remote's create-only compare-and-swap via `--force-with-lease=<ref>:`), and `scripts/check-spec-id-reserved.ts` is
+  the pull-request backstop. **CLI-agnostic by construction, so full parity is structural, not asserted:** both are
+  plain `git`-only Bash 3.2 scripts (spec 0111) invoked from the shell, with no per-CLI surface, no MCP tool, and no
+  forge API — requirement 4 makes forge-independence a requirement, and `AGENTS.md` → *Forge Access* keeps the
+  credential the one the contributor already holds for `git`. The behavioural contract each CLI's `spec-author` consumes
+  is the exit code only: `0` secured, `3` allocated-but-unsecured (stdout carries `unsecured-id: true` verbatim), `1`
+  genuine failure. **Enforcement is CI-side, not CLI-side:** the `check-spec-id-reserved` capability in
+  `ci/ci-capabilities.yml` (portable, `history-depth: full`, no `tools:` key — git is installed conditionally as
+  `command[0]` so the GitLab `debian:stable-slim` job needs no generator change) becomes the GHA job of the same name
+  plus the generated `.gitlab-ci.yml` job. **Delta-02** (`specs/0112-spec-id-reservation.delta-02.md`, requirements
+  17-21) adds that the `--issue`-only path now reuses an existing per-issue reservation instead of always computing a
+  new one.
+- **Source of truth:** `scripts/reserve-spec-id.ts`, `scripts/check-spec-id-reserved.ts`, `.crewrig/spec-id-carrier`,
+  `ci/ci-capabilities.yml`, `docs/spec-pr-workflow.md` → *Reserving the spec id*,
+  `specs/0112-spec-id-reservation.delta-02.md`
+- **Claude Code:** ✅ consumed by `.claude/skills/spec-author/SKILL.md` + `.claude/agents/spec-author.md` (built from
+  `artifacts/core/`, row 3 core path)
 - **Gemini CLI:** ✅ same contract via `.gemini/skills/spec-author/SKILL.md` + `.gemini/agents/spec-author.md`
 - **Copilot CLI:** ✅ same contract via `.github/skills/spec-author/SKILL.md` + `.github/agents/spec-author.md`
-- **Antigravity CLI:** ✅ same contract via `.agents/skills/spec-author/SKILL.md` + `.agents/agents/spec-author/AGENT.md`
+- **Antigravity CLI:** ✅ same contract via `.agents/skills/spec-author/SKILL.md` +
+  `.agents/agents/spec-author/AGENT.md`
 
-### 29 — Tool-boundary git worktree guard (spec 0153; TypeScript since spec 0248) — pre-tool hook intercepting prohibited whole-tree git operations in shared ticket worktrees unless an exclusive claim is held. The hook is `hooks/worktree-git-guard.ts`, wired as a direct `node` command line by **in-repo absolute path**, never copied to a CLI home (spec 0169, the treatment of row 8c); the claim tool it consults is `scripts/worktree-claim.ts` (`docs/agent-team-protocol.md`). **Setup rewrites the guard command on every run**, whatever the answer to the session-recording question, so an installation wired to the old `bash …/worktree-git-guard.sh` form is migrated (that shim was retired in #1344); it writes nothing and leaves the installed command as it is when `node` runs a major version below 24, or when `scripts/lib/hook-command.ts` refuses the checkout path (parity gaps below). **Retired shims:** `hooks/worktree-git-guard.sh` was a forwarding shim and was removed in #1344, so an installation not yet rewritten has no guard until setup re-runs; the `scripts/worktree-claim.sh` shim was removed (see `docs/shell-removal.md`). The retired hook shim used to **fail open** without Node.js 24 (exit `0` and one diagnostic line, so a fail-closed Copilot CLI `preToolUse` never refused every tool call); the claim entry fails closed, with one `Error:` line and exit `1` (or the floor guard's own status), and runs nothing. **Needs Node.js 24 or later when it fires**; a Node.js downgraded after setup makes the directly wired guard fail with Node.js's own non-zero status until setup is re-run (spec 0243 R30). Whether exit status `1` blocks the tool call on each CLI, and the working directory of the Antigravity CLI hooks surface, are open measurements recorded under *Parity gaps* (probe case `X2` of `docs/runbooks/windows-hook-parsing-probe.md`).
+### 29 — Tool-boundary git worktree guard
 
-- **Source of truth:** `hooks/worktree-git-guard.ts`, `scripts/worktree-claim.ts`, `scripts/lib/worktree-claim/`, `scripts/lib/hook-command.ts`, `scripts/hook-wiring.ts`, `hooks/*-transcript-hooks.json`
-- **Claude Code:** ✅ `hooks/claude-transcript-hooks.json` (`PreToolUse` on `Bash`); command `node "<abs>/hooks/worktree-git-guard.ts"` on every OS (Git Bash on Windows, row 37)
-- **Gemini CLI:** ✅ `hooks/gemini-transcript-hooks.json` (`BeforeTool` on `transcript-git-guard`); `node "<abs>/hooks/worktree-git-guard.ts"` on macOS and Linux; on Windows the same text with the absolute path spelled out, no token and no `NAME=value` prefix, because PowerShell 5.1 does not expand the project-directory tokens and rejects the prefix (row 37c)
-- **Copilot CLI:** ✅ `hooks/copilot-transcript-hooks.json` (`preToolUse` hook); same forms as Gemini CLI, under the `command` key on Windows. **`preToolUse` is fail-closed**, so a guard that cannot start fails every tool call (see the setup guidance under *Parity gaps*)
-- **Antigravity CLI:** ✅ `hooks/antigravity-transcript-hooks.json` (`PreToolUse` grouped `run_command` guard — spec 0153 R4 / spec 0116 delta-03 R27; fires once per tool step, on `run_command` only; `timeout` 5). macOS and Linux `node <abs>/hooks/worktree-git-guard.ts`; on Windows the guarded form `set NoDefaultCurrentDirectoryInExePath=1&& node <abs>/hooks/worktree-git-guard.ts`, path unquoted and in forward slashes (row 37f), written only where the module finds that surface measured, never otherwise (parity gaps below)
+- **Feature:** Tool-boundary git worktree guard (spec 0153; TypeScript since spec 0248) — pre-tool hook intercepting
+  prohibited whole-tree git operations in shared ticket worktrees unless an exclusive claim is held. The hook is
+  `hooks/worktree-git-guard.ts`, wired as a direct `node` command line by **in-repo absolute path**, never copied to a
+  CLI home (spec 0169, the treatment of row 8c); the claim tool it consults is `scripts/worktree-claim.ts`
+  (`docs/agent-team-protocol.md`). **Setup rewrites the guard command on every run**, whatever the answer to the
+  session-recording question, so an installation wired to the old `bash …/worktree-git-guard.sh` form is migrated
+  (that shim was retired in #1344); it writes nothing and leaves the installed command as it is when `node` runs a major
+  version below 24, or when `scripts/lib/hook-command.ts` refuses the checkout path (parity gaps below). **Retired
+  shims:** `hooks/worktree-git-guard.sh` was a forwarding shim and was removed in #1344, so an installation not yet
+  rewritten has no guard until setup re-runs; the `scripts/worktree-claim.sh` shim was removed (see
+  `docs/shell-removal.md`). The retired hook shim used to **fail open** without Node.js 24 (exit `0` and one diagnostic
+  line, so a fail-closed Copilot CLI `preToolUse` never refused every tool call); the claim entry fails closed, with one
+  `Error:` line and exit `1` (or the floor guard's own status), and runs nothing. **Needs Node.js 24 or later when it
+  fires**; a Node.js downgraded after setup makes the directly wired guard fail with Node.js's own non-zero status until
+  setup is re-run (spec 0243 R30). Whether exit status `1` blocks the tool call on each CLI, and the working directory
+  of the Antigravity CLI hooks surface, are open measurements recorded under *Parity gaps* (probe case `X2` of
+  `docs/runbooks/windows-hook-parsing-probe.md`).
+- **Source of truth:** `hooks/worktree-git-guard.ts`, `scripts/worktree-claim.ts`, `scripts/lib/worktree-claim/`,
+  `scripts/lib/hook-command.ts`, `scripts/hook-wiring.ts`, `hooks/*-transcript-hooks.json`
+- **Claude Code:** ✅ `hooks/claude-transcript-hooks.json` (`PreToolUse` on `Bash`); command
+  `node "<abs>/hooks/worktree-git-guard.ts"` on every OS (Git Bash on Windows, row 37)
+- **Gemini CLI:** ✅ `hooks/gemini-transcript-hooks.json` (`BeforeTool` on `transcript-git-guard`);
+  `node "<abs>/hooks/worktree-git-guard.ts"` on macOS and Linux; on Windows the same text with the absolute path spelled
+  out, no token and no `NAME=value` prefix, because PowerShell 5.1 does not expand the project-directory tokens and
+  rejects the prefix (row 37c)
+- **Copilot CLI:** ✅ `hooks/copilot-transcript-hooks.json` (`preToolUse` hook); same forms as Gemini CLI, under the
+  `command` key on Windows. **`preToolUse` is fail-closed**, so a guard that cannot start fails every tool call (see the
+  setup guidance under *Parity gaps*)
+- **Antigravity CLI:** ✅ `hooks/antigravity-transcript-hooks.json` (`PreToolUse` grouped `run_command` guard — spec
+  0153 R4 / spec 0116 delta-03 R27; fires once per tool step, on `run_command` only; `timeout` 5). macOS and Linux
+  `node <abs>/hooks/worktree-git-guard.ts`; on Windows the guarded form
+  `set NoDefaultCurrentDirectoryInExePath=1&& node <abs>/hooks/worktree-git-guard.ts`, path unquoted and in forward
+  slashes (row 37f), written only where the module finds that surface measured, never otherwise (parity gaps below)
 
-### 30 — Reviewer seat contract (spec 0166) — every review pass is attributed to one **reviewer seat** keyed `<surface>/<ticket>` on the `specs` / `plan` / `review` surfaces; each verdict carries a `seat:` line, the instantiation brief is references-only, and from a seat's second pass the mandatory reading is bounded to the change since the revision it last examined. Parity is **uniform, not per-CLI**: every obligation is dischargeable with the forge's own CLI and a self-contained brief, so nothing depends on a message bus, a surviving process, a shared memory service, or a CLI-exclusive primitive (spec 0166 R19). No CI check observes the contract — spec 0166 → *Out of scope* rules one out by name. Spec 0271 (superseding spec 0226 R1-R6) replaced the seated-pass step-3/step-6 exemption by the rule that every subagent skips the session-start sweep entirely, which does not change this row's "uniform, not per-CLI" parity story: no new CLI-specific path, command, hook, or build output — the edited files (`AGENTS.md`, `artifacts/core/rules/60-tools.md`, `docs/reviewer-seat.md`) are either already covered by row 7b's byte-identical cross-CLI deployment or read directly from the repo, never CLI-specific.
+### 30 — Reviewer seat contract
 
-- **Source of truth:** `docs/reviewer-seat.md` (normative contract); sources `artifacts/core/agents/pr-reviewer/AGENT.md`, `artifacts/core/skills/{pr-reviewer,architect,spec-author}/SKILL.md`
-- **Claude Code:** ✅ `.claude/agents/pr-reviewer.md` + `.claude/skills/{pr-reviewer,architect,spec-author}/SKILL.md` (built by `scripts/build-components.ts --target claude`; row 3 core path)
-- **Gemini CLI:** ✅ `.gemini/agents/pr-reviewer.md` + `.gemini/skills/{pr-reviewer,architect,spec-author}/SKILL.md` (built by `scripts/build-components.ts --target gemini`; row 3 core path)
-- **Copilot CLI:** ✅ `.github/agents/pr-reviewer.md` + `.github/skills/{pr-reviewer,architect,spec-author}/SKILL.md` (built by `scripts/build-components.ts --target copilot`; row 3 core path)
-- **Antigravity CLI:** ✅ `.agents/agents/pr-reviewer/AGENT.md` + `.agents/skills/{pr-reviewer,architect,spec-author}/SKILL.md` (built by `scripts/build-components.ts --target antigravity`; row 3 core path)
+- **Feature:** Reviewer seat contract (spec 0166) — every review pass is attributed to one **reviewer seat** keyed
+  `<surface>/<ticket>` on the `specs` / `plan` / `review` surfaces; each verdict carries a `seat:` line, the
+  instantiation brief is references-only, and from a seat's second pass the mandatory reading is bounded to the change
+  since the revision it last examined. Parity is **uniform, not per-CLI**: every obligation is dischargeable with the
+  forge's own CLI and a self-contained brief, so nothing depends on a message bus, a surviving process, a shared memory
+  service, or a CLI-exclusive primitive (spec 0166 R19). No CI check observes the contract — spec 0166 → *Out of
+  scope* rules one out by name. Spec 0271 (superseding spec 0226 R1-R6) replaced the seated-pass step-3/step-6 exemption
+  by the rule that every subagent skips the session-start sweep entirely, which does not change this row's "uniform, not
+  per-CLI" parity story: no new CLI-specific path, command, hook, or build output — the edited files (`AGENTS.md`,
+  `artifacts/core/rules/60-tools.md`, `docs/reviewer-seat.md`) are either already covered by row 7b's byte-identical
+  cross-CLI deployment or read directly from the repo, never CLI-specific.
+- **Source of truth:** `docs/reviewer-seat.md` (normative contract); sources
+  `artifacts/core/agents/pr-reviewer/AGENT.md`, `artifacts/core/skills/{pr-reviewer,architect,spec-author}/SKILL.md`
+- **Claude Code:** ✅ `.claude/agents/pr-reviewer.md` + `.claude/skills/{pr-reviewer,architect,spec-author}/SKILL.md`
+  (built by `scripts/build-components.ts --target claude`; row 3 core path)
+- **Gemini CLI:** ✅ `.gemini/agents/pr-reviewer.md` + `.gemini/skills/{pr-reviewer,architect,spec-author}/SKILL.md`
+  (built by `scripts/build-components.ts --target gemini`; row 3 core path)
+- **Copilot CLI:** ✅ `.github/agents/pr-reviewer.md` + `.github/skills/{pr-reviewer,architect,spec-author}/SKILL.md`
+  (built by `scripts/build-components.ts --target copilot`; row 3 core path)
+- **Antigravity CLI:** ✅ `.agents/agents/pr-reviewer/AGENT.md` +
+  `.agents/skills/{pr-reviewer,architect,spec-author}/SKILL.md` (built by
+  `scripts/build-components.ts --target antigravity`; row 3 core path)
 
-### 31 — e2e probe A — Copilot BYOK model-routing (spec 0194 R8-R11) — differential probe for the upstream defect tracked as `github/copilot-cli#4437`: does a `model:` hint in a repository agent declaration break subagent routing on a bring-your-own-key session? Copilot-only by construction (`applies_to = ["copilot"]`) — no cross-CLI parity is claimed. Skips (records no verdict) unless `tests/e2e/local.toml` declares a backed `byok_provider`/`byok_model` pair. Verdict published as a comment on issue #1103 and cited from row 4's gap note below.
+### 31 — e2e probe A
 
-- **Source of truth:** `tests/e2e/scenarios/05-copilot-model-routing/`, `tests/e2e/lib/probe_a_resolve.ts`, `scripts/e2e/publish-probe-verdict.ts`
+- **Feature:** e2e probe A — Copilot BYOK model-routing (spec 0194 R8-R11) — differential probe for the upstream
+  defect tracked as `github/copilot-cli#4437`: does a `model:` hint in a repository agent declaration break subagent
+  routing on a bring-your-own-key session? Copilot-only by construction (`applies_to = ["copilot"]`) — no cross-CLI
+  parity is claimed. Skips (records no verdict) unless `tests/e2e/local.toml` declares a backed
+  `byok_provider`/`byok_model` pair. Verdict published as a comment on issue #1103 and cited from row 4's gap note
+  below.
+- **Source of truth:** `tests/e2e/scenarios/05-copilot-model-routing/`, `tests/e2e/lib/probe_a_resolve.ts`,
+  `scripts/e2e/publish-probe-verdict.ts`
 - **Claude Code:** ❌ N/A — probe is Copilot-only by design
 - **Gemini CLI:** ❌ N/A — probe is Copilot-only by design
-- **Copilot CLI:** ✅ host-orchestrated three-leg differential probe (control / hint-efficacy / model-bearing) against the effective `[cli.copilot]` configuration; lands declarations at the workspace-relative `.claude/agents/probe-router/AGENT.md` surface; verdict vocabulary `BUG-PRESENT`|`BUG-ABSENT`|`INDETERMINATE`
+- **Copilot CLI:** ✅ host-orchestrated three-leg differential probe (control / hint-efficacy / model-bearing) against
+  the effective `[cli.copilot]` configuration; lands declarations at the workspace-relative
+  `.claude/agents/probe-router/AGENT.md` surface; verdict vocabulary `BUG-PRESENT`|`BUG-ABSENT`|`INDETERMINATE`
 - **Antigravity CLI:** ❌ N/A — probe is Copilot-only by design
 
-### 32 — e2e probe B — agent-surface consumption (spec 0194 R12-R15) — per CLI, per per-file-layout determination of whether `.claude/agents/` repository declarations (nested `<n>/AGENT.md` and flat `<n>.md`) are actually consumed. Covers copilot and claude (R12 "at least"; neither Gemini CLI nor Antigravity CLI is a consumer of epic #1100's compiled-layout seam, so out of scope). Each cell carries an in-cell session-liveness baseline plus, for copilot, one cross-cell control at the only documented user-level layout (`~/.copilot/agents/<n>.md`). Outcomes published as a comment on issue #1103 and cited from row 4's `[GAP-confirmation]` note and epic #1100.
+### 32 — e2e probe B
 
-- **Source of truth:** `tests/e2e/scenarios/06-agent-surface-consumption/`, `tests/e2e/lib/probe_b_resolve.ts`, `tests/e2e/lib/copilot_ephemeral_home.ts`
-- **Claude Code:** ✅ two cells (nested, flat), same mechanism as Copilot — no user-level Claude agent layout was documented in `docs/` or `artifacts/` when probe B ran, so its cells record `control: in-cell-liveness-baseline-only` (weaker attribution); spec 0201 has since named `~/.claude/agents/` in this table's own row 4 and in `docs/agent-profile-migration.md`, and the recorded control value stands as the record of that run rather than a still-true absence. **Probe B initial run `20260902T154627Z-0d89`** (issue #1103, comment [5512320726](https://github.com/crewrig/crewrig/issues/1103#issuecomment-5512320726)) recorded `indeterminate` due to expired workstation credentials. **Confirmatory re-run `20260911T181123Z-179e`** (issue #1103, comment [5638783943](https://github.com/crewrig/crewrig/issues/1103#issuecomment-5638783943); issue #1139): following workstation re-authentication, both cells (`.claude/agents/<n>/AGENT.md` nested and `.claude/agents/<n>.md` flat) recorded **`consumed`**, confirming that Claude Code consumes both per-file layouts.
+- **Feature:** e2e probe B — agent-surface consumption (spec 0194 R12-R15) — per CLI, per per-file-layout
+  determination of whether `.claude/agents/` repository declarations (nested `<n>/AGENT.md` and flat `<n>.md`) are
+  actually consumed. Covers copilot and claude (R12 "at least"; neither Gemini CLI nor Antigravity CLI is a consumer of
+  epic #1100's compiled-layout seam, so out of scope). Each cell carries an in-cell session-liveness baseline plus, for
+  copilot, one cross-cell control at the only documented user-level layout (`~/.copilot/agents/<n>.md`). Outcomes
+  published as a comment on issue #1103 and cited from row 4's `[GAP-confirmation]` note and epic #1100.
+- **Source of truth:** `tests/e2e/scenarios/06-agent-surface-consumption/`, `tests/e2e/lib/probe_b_resolve.ts`,
+  `tests/e2e/lib/copilot_ephemeral_home.ts`
+- **Claude Code:** ✅ two cells (nested, flat), same mechanism as Copilot — no user-level Claude agent layout was
+  documented in `docs/` or `artifacts/` when probe B ran, so its cells record `control: in-cell-liveness-baseline-only`
+  (weaker attribution); spec 0201 has since named `~/.claude/agents/` in this table's own row 4 and in
+  `docs/agent-profile-migration.md`, and the recorded control value stands as the record of that run rather than a
+  still-true absence. **Probe B initial run `20260902T154627Z-0d89`** (issue #1103, comment
+  [5512320726](https://github.com/crewrig/crewrig/issues/1103#issuecomment-5512320726)) recorded `indeterminate` due to
+  expired workstation credentials. **Confirmatory re-run `20260911T181123Z-179e`** (issue #1103, comment
+  [5638783943](https://github.com/crewrig/crewrig/issues/1103#issuecomment-5638783943); issue #1139): following
+  workstation re-authentication, both cells (`.claude/agents/<n>/AGENT.md` nested and `.claude/agents/<n>.md` flat)
+  recorded **`consumed`**, confirming that Claude Code consumes both per-file layouts.
 - **Gemini CLI:** ❌ N/A — not a consumer of epic #1100's compiled-layout seam (out of scope)
-- **Copilot CLI:** ✅ three cells: nested and flat (recorded, workspace-relative `.claude/agents/`) plus a cross-cell control at `~/.copilot/agents/<n>.md` via an ephemeral-home substitution (never the persisted credential bundle); outcome vocabulary `consumed`|`not-consumed`|`indeterminate`; a `not-consumed` nested outcome is recorded against row 4's `[GAP-confirmation]` and against specs/0143-copilot-subagent-model-fallback.md's `## Intent`, without resolving the contradiction here. **Probe B run `20260902T154627Z-0d89`** (issue #1103, comment [5512320726](https://github.com/crewrig/crewrig/issues/1103#issuecomment-5512320726)): all three cells recorded `consumed` — `.claude/agents/` nested, `.claude/agents/` flat, and the documented `~/.copilot/agents/<n>.md` surface. Consequence for spec 0201 (epic #1100 seam (g)): flattening the compiled Claude Code output does **not** remove Copilot's consumption of the `.claude/agents/` surface under either per-file layout — the requirement 8 shared-read guard of `specs/0143-copilot-subagent-model-fallback.delta-01.md` remains necessary regardless.
+- **Copilot CLI:** ✅ three cells: nested and flat (recorded, workspace-relative `.claude/agents/`) plus a cross-cell
+  control at `~/.copilot/agents/<n>.md` via an ephemeral-home substitution (never the persisted credential bundle);
+  outcome vocabulary `consumed`|`not-consumed`|`indeterminate`; a `not-consumed` nested outcome is recorded against row
+  4's `[GAP-confirmation]` and against specs/0143-copilot-subagent-model-fallback.md's `## Intent`, without resolving
+  the contradiction here. **Probe B run `20260902T154627Z-0d89`** (issue #1103, comment
+  [5512320726](https://github.com/crewrig/crewrig/issues/1103#issuecomment-5512320726)): all three cells recorded
+  `consumed` — `.claude/agents/` nested, `.claude/agents/` flat, and the documented `~/.copilot/agents/<n>.md`
+  surface. Consequence for spec 0201 (epic #1100 seam (g)): flattening the compiled Claude Code output does **not**
+  remove Copilot's consumption of the `.claude/agents/` surface under either per-file layout — the requirement 8
+  shared-read guard of `specs/0143-copilot-subagent-model-fallback.delta-01.md` remains necessary regardless.
 - **Antigravity CLI:** ❌ N/A — not a consumer of epic #1100's compiled-layout seam (out of scope)
 
-### 33 — Per-agent model-mapping declaration surface (spec 0197) — the per-CLI mapping that translates a spec 0195 capability profile into a target's native fields and prose; read since spec 0198 landed the build-time resolution (row 34), and populated against a real declaring source since spec 0200 migrated the 22 core agent sources onto `metadata.model:` (docs/agent-profile-migration.md).
+### 33 — Per-agent model-mapping declaration surface
 
+- **Feature:** Per-agent model-mapping declaration surface (spec 0197) — the per-CLI mapping that translates a spec
+  0195 capability profile into a target's native fields and prose; read since spec 0198 landed the build-time resolution
+  (row 34), and populated against a real declaring source since spec 0200 migrated the 22 core agent sources onto
+  `metadata.model:` (docs/agent-profile-migration.md).
 - **Source of truth:** `model-mappings/<target>.yml`, `docs/model-mapping-format.md`, `scripts/check-model-mappings.ts`
-- **Claude Code:** ✅ frontmatter `model` and `effort`; the `model` item alone is withheld by the shared-read guard (spec 0143 delta-01 R8, `resolveItem` in `scripts/lib/model-resolve/resolve-item.ts`) while its state is `withheld`, with the declination stated on the guidance surface instead — `effort` reaches frontmatter regardless of the guard's state
-- **Gemini CLI:** ✅ frontmatter `model`/`temperature`/`max_turns`; reasoning ⚠️ out-of-band in `settings.json` `modelConfigs.overrides` only, no guidance surface
-- **Copilot CLI:** ⚠️ zero offerings, unconfigured by design — the served model lineup is deployment knowledge the core layer does not have (spec 0197 R41)
-- **Antigravity CLI:** ⚠️ guidance surface only — no per-agent frontmatter surface exists on this target (spec 0197 Premise 1)
+- **Claude Code:** ✅ frontmatter `model` and `effort`; the `model` item alone is withheld by the shared-read guard
+  (spec 0143 delta-01 R8, `resolveItem` in `scripts/lib/model-resolve/resolve-item.ts`) while its state is `withheld`,
+  with the declination stated on the guidance surface instead — `effort` reaches frontmatter regardless of the guard's
+  state
+- **Gemini CLI:** ✅ frontmatter `model`/`temperature`/`max_turns`; reasoning ⚠️ out-of-band in `settings.json`
+  `modelConfigs.overrides` only, no guidance surface
+- **Copilot CLI:** ⚠️ zero offerings, unconfigured by design — the served model lineup is deployment knowledge the
+  core layer does not have (spec 0197 R41)
+- **Antigravity CLI:** ⚠️ guidance surface only — no per-agent frontmatter surface exists on this target (spec
+  0197 Premise 1)
 
-### 34 — Build-time resolution of a declared profile against the mapping in force (spec 0198) — realized against the 22 core agent sources migrated onto `metadata.model:` by spec 0200 (`docs/agent-profile-migration.md`); a resolution never fails a build (spec 0197 R15), degrading a mapping's unreadable cells and a target's unserved axes to drop records on the build's diagnostic stream instead. Since spec 0200, each migrated source's compiled output consequently carries: guidance prose naming the resolved alias on Claude Code and Antigravity CLI, a `model:` field on Gemini CLI, and no change on GitHub Copilot CLI (beyond the `metadata.provenance.version` line every version bump reaches).
+### 34 — Build-time resolution of a declared profile against the mapping in force
 
-- **Source of truth:** `scripts/lib/model-resolve.ts` (`resolveAgent`, modules in `scripts/lib/model-resolve/`), `scripts/build-components.ts` `buildAgents`, `scripts/check-agent-profiles.ts`
-- **Claude Code:** ✅ writes `effort:` (frontmatter), and `model:` only while the guard's state is `directed`; while `withheld`, the model item is directed onto the compiled `description` instead (row 33's guard)
-- **Gemini CLI:** ✅ writes `model:`/`temperature:`/`max_turns:` (frontmatter) — re-probed live for Gemini CLI 0.46.0 (issue #1116, spec 0198 R22) confirming those three keys are accepted; withholds `reasoning` and every tuning knob the mapping's out-of-band surface alone names
-- **Copilot CLI:** ⚠️ withholds every item — `model-mappings/copilot.yml` declares zero offerings (row 33), so every declared axis and knob drops `unsupported-on-cli`
-- **Antigravity CLI:** ✅ writes the model item onto the compiled `description` alone (no frontmatter surface exists on this target, row 33); withholds every tuning knob the same way
+- **Feature:** Build-time resolution of a declared profile against the mapping in force (spec 0198) — realized against
+  the 22 core agent sources migrated onto `metadata.model:` by spec 0200 (`docs/agent-profile-migration.md`); a
+  resolution never fails a build (spec 0197 R15), degrading a mapping's unreadable cells and a target's unserved axes to
+  drop records on the build's diagnostic stream instead. Since spec 0200, each migrated source's compiled output
+  consequently carries: guidance prose naming the resolved alias on Claude Code and Antigravity CLI, a `model:` field on
+  Gemini CLI, and no change on GitHub Copilot CLI (beyond the `metadata.provenance.version` line every version bump
+  reaches).
+- **Source of truth:** `scripts/lib/model-resolve.ts` (`resolveAgent`, modules in `scripts/lib/model-resolve/`),
+  `scripts/build-components.ts` `buildAgents`, `scripts/check-agent-profiles.ts`
+- **Claude Code:** ✅ writes `effort:` (frontmatter), and `model:` only while the guard's state is `directed`; while
+  `withheld`, the model item is directed onto the compiled `description` instead (row 33's guard)
+- **Gemini CLI:** ✅ writes `model:`/`temperature:`/`max_turns:` (frontmatter) — re-probed live for Gemini CLI 0.46.0
+  (issue #1116, spec 0198 R22) confirming those three keys are accepted; withholds `reasoning` and every tuning knob the
+  mapping's out-of-band surface alone names
+- **Copilot CLI:** ⚠️ withholds every item — `model-mappings/copilot.yml` declares zero offerings (row 33), so
+  every declared axis and knob drops `unsupported-on-cli`
+- **Antigravity CLI:** ✅ writes the model item onto the compiled `description` alone (no frontmatter surface exists on
+  this target, row 33); withholds every tuning knob the same way
 
-### 35 — Organization-level override of the mapping in force (spec 0199) — an org-owned `model-mappings/<target>.org.yml` beside each core mapping, merged into it inside `mapping_in_force` before row 34's resolution runs. Upstream ships all four silent (no offering, no surface, no guard state), so a fresh adopter's compiled agent outputs are byte-for-byte unaffected. Because a populated override legitimately changes what a compiled agent output contains, the four compiled agent output trees carry the sync policy `regenerable` (not `strict`) — an upstream synchronization restores and reports a diverged agent output rather than aborting on it; the compiled skill and command trees reach no mapping and stay `strict`.
+### 35 — Organization-level override of the mapping in force
 
-- **Source of truth:** `scripts/lib/model-resolve/merge-mapping.ts` (`mappingInForce`), `scripts/check-model-mappings.ts` (pass 3), `scripts/sync-from-upstream.ts` (entry; `scripts/sync-from-upstream.ts`, with modules in `scripts/lib/sync-from-upstream/`; Windows evidence: CI job `windows-sync-from-upstream`, spec 0253 R27, which spawns only `git`), `scripts/check-core-paths.ts`, `docs/org-model-mapping-override.md`
+- **Feature:** Organization-level override of the mapping in force (spec 0199) — an org-owned
+  `model-mappings/<target>.org.yml` beside each core mapping, merged into it inside `mapping_in_force` before row 34's
+  resolution runs. Upstream ships all four silent (no offering, no surface, no guard state), so a fresh adopter's
+  compiled agent outputs are byte-for-byte unaffected. Because a populated override legitimately changes what a compiled
+  agent output contains, the four compiled agent output trees carry the sync policy `regenerable` (not `strict`) — an
+  upstream synchronization restores and reports a diverged agent output rather than aborting on it; the compiled skill
+  and command trees reach no mapping and stay `strict`.
+- **Source of truth:** `scripts/lib/model-resolve/merge-mapping.ts` (`mappingInForce`),
+  `scripts/check-model-mappings.ts` (pass 3), `scripts/sync-from-upstream.ts` (entry; `scripts/sync-from-upstream.ts`,
+  with modules in `scripts/lib/sync-from-upstream/`; Windows evidence: CI job `windows-sync-from-upstream`, spec 0253
+  R27, which spawns only `git`), `scripts/check-core-paths.ts`, `docs/org-model-mapping-override.md`
 - **Claude Code:** ✅ `.claude/agents/` — `regenerable`
 - **Gemini CLI:** ✅ `.gemini/agents/` — `regenerable`
 - **Copilot CLI:** ✅ `.github/agents/` — `regenerable` (`.github/skills/` stays `strict`, no mapping reaches it)
 - **Antigravity CLI:** ✅ `.agents/agents/` — `regenerable`
 
-### 36 — Production-dependency step (spec 0240 R4-R6, delta-01 R4/R5) — every setup run executes `npm ci --omit=dev --workspaces=false` at the repository root, gated on the `package-lock.json` SHA-256 recorded in the git-ignored per-checkout stamp `.crewrig-state/production-deps.sha256` (skipped with a named report when unchanged; re-run when the hash differs or `node_modules/` is missing; on failure setup aborts with npm's diagnostic and removes `node_modules/`). Placed after the TLS offer; the TypeScript step (`scripts/lib/setup/deps-step.ts`) puts the spec 0084 custom-CA variables into its own environment, so npm inherits that trust (deviation (l) of spec 0256 requirement 44; the shell twin ran through `scripts/lib/tls-exec.sh`, retired in #1344). The Node.js floor guard (`scripts/lib/node-floor-guard.js`, spec 0240 R1-R3) ships alongside; its first entry point is the `task ticket-pickup` Taskfile entry (spec 0244, row 38), which runs it before the tool, and the setup wiring is done by spec 0256 (sub-spec F1, #1335): `task setup-<cli>-interactive` runs the guard as its own step before the entry.
+### 36 — Production-dependency step
 
-- **Source of truth:** `scripts/lib/setup/deps-step.ts` (`install_production_dependencies` of the retired `common.sh`), `scripts/setup-*-interactive.ts`, `scripts/tests/setup-dependency-step.test.ts`
+- **Feature:** Production-dependency step (spec 0240 R4-R6, delta-01 R4/R5) — every setup run executes
+  `npm ci --omit=dev --workspaces=false` at the repository root, gated on the `package-lock.json` SHA-256 recorded in
+  the git-ignored per-checkout stamp `.crewrig-state/production-deps.sha256` (skipped with a named report when
+  unchanged; re-run when the hash differs or `node_modules/` is missing; on failure setup aborts with npm's diagnostic
+  and removes `node_modules/`). Placed after the TLS offer; the TypeScript step (`scripts/lib/setup/deps-step.ts`) puts
+  the spec 0084 custom-CA variables into its own environment, so npm inherits that trust (deviation (l) of spec 0256
+  requirement 44; the shell twin ran through `scripts/lib/tls-exec.sh`, retired in #1344). The Node.js floor guard
+  (`scripts/lib/node-floor-guard.js`, spec 0240 R1-R3) ships alongside; its first entry point is the
+  `task ticket-pickup` Taskfile entry (spec 0244, row 38), which runs it before the tool, and the setup wiring is done
+  by spec 0256 (sub-spec F1, #1335): `task setup-<cli>-interactive` runs the guard as its own step before the entry.
+- **Source of truth:** `scripts/lib/setup/deps-step.ts` (`install_production_dependencies` of the retired `common.sh`),
+  `scripts/setup-*-interactive.ts`, `scripts/tests/setup-dependency-step.test.ts`
 - **Claude Code:** ✅ `scripts/setup-claude-interactive.ts`
 - **Gemini CLI:** ✅ `scripts/setup-gemini-interactive.ts`
 - **Copilot CLI:** ✅ `scripts/setup-copilot-interactive.ts`
 - **Antigravity CLI:** ✅ `scripts/setup-antigravity-interactive.ts`
 
-### 37 — Windows hook command line — interpreter (spec 0237 R2). Measured 2026-09-30 on Windows 11 Pro 10.0.26200 **ARM64** (Parallels VM; GitHub `windows-latest` is x64), Node.js 24.21.0, Git for Windows 2.56.0 installed at `C:\Program Files\Git` with `bash`, `sh` and `pwsh` all off `PATH`, Windows PowerShell 5.1 only; CLIs started from a Win32-OpenSSH `cmd.exe` session, except Antigravity CLI, started in the interactive console session (it cannot authenticate from a key-based SSH logon); Gemini CLI through Vertex AI, Copilot CLI through `ollama launch copilot --model glm-5.3-flash:cloud`. Each hook ran `node <probe> record …` and wrote the argv it received, its cwd, its environment and its parent-process command lines. Evidence: the per-CLI transcripts in the pull request that added this row (case ids below).
+### 37 — Windows hook command line
 
+- **Feature:** Windows hook command line — interpreter (spec 0237 R2). Measured 2026-09-30 on Windows 11 Pro 10.0.26200 **ARM64**
+  (Parallels VM; GitHub `windows-latest` is x64), Node.js 24.21.0, Git for Windows 2.56.0 installed at
+  `C:\Program Files\Git` with `bash`, `sh` and `pwsh` all off `PATH`, Windows PowerShell 5.1 only; CLIs started from a
+  Win32-OpenSSH `cmd.exe` session, except Antigravity CLI, started in the interactive console session (it cannot
+  authenticate from a key-based SSH logon); Gemini CLI through Vertex AI, Copilot CLI through
+  `ollama launch copilot --model glm-5.3-flash:cloud`. Each hook ran `node <probe> record …` and wrote the argv it
+  received, its cwd, its environment and its parent-process command lines. Evidence: the per-CLI transcripts in the pull
+  request that added this row (case ids below).
 - **Source of truth:** `scripts/probe-windows-hook-parsing.ts`, `docs/runbooks/windows-hook-parsing-probe.md`
-- **Claude Code:** ✅ **Git Bash**: `"C:\Program Files\Git\bin\bash.exe" -c "<command>"` (which re-execs `usr\bin\bash.exe`), hook env `SHELL=C:\Program Files\Git\bin\bash.exe`, `MSYSTEM=UCRT64`; `--debug` log: `Using bash path: "C:\Program Files\Git\bin\bash.exe"`, found with `bash` off `PATH` (2.1.285; case I)
-- **Gemini CLI:** ✅ **Windows PowerShell 5.1**: `powershell.exe -NoProfile -NonInteractive -Command "<command>; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"` (0.61.0; case I). Corroborated by the installed bundle's `getShellConfiguration()`: `%ComSpec%` when it names `powershell.exe`/`pwsh.exe`, else `pwsh.exe` on `PATH`, else `powershell.exe`
-- **Copilot CLI:** ✅ **Windows PowerShell 5.1**: `"powershell.exe" -nop -nol -c "<command>"` for the entry key `command` (case I) and the key `powershell` (case I-ps); the key `bash` never launched — no record, no diagnostic (case I-bash) (1.0.89)
-- **Antigravity CLI:** ✅ **`cmd.exe`**: `cmd /c "<command>"`; the hook's cwd is `~\.gemini\config` (the directory holding `hooks.json`), not the project (1.2.13; case I)
+- **Claude Code:** ✅ **Git Bash**: `"C:\Program Files\Git\bin\bash.exe" -c "<command>"` (which re-execs
+  `usr\bin\bash.exe`), hook env `SHELL=C:\Program Files\Git\bin\bash.exe`, `MSYSTEM=UCRT64`; `--debug` log:
+  `Using bash path: "C:\Program Files\Git\bin\bash.exe"`, found with `bash` off `PATH` (2.1.285; case I)
+- **Gemini CLI:** ✅ **Windows PowerShell 5.1**:
+  `powershell.exe -NoProfile -NonInteractive -Command "<command>; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"`
+  (0.61.0; case I). Corroborated by the installed bundle's `getShellConfiguration()`: `%ComSpec%` when it names
+  `powershell.exe`/`pwsh.exe`, else `pwsh.exe` on `PATH`, else `powershell.exe`
+- **Copilot CLI:** ✅ **Windows PowerShell 5.1**: `"powershell.exe" -nop -nol -c "<command>"` for the entry key
+  `command` (case I) and the key `powershell` (case I-ps); the key `bash` never launched — no record, no diagnostic
+  (case I-bash) (1.0.89)
+- **Antigravity CLI:** ✅ **`cmd.exe`**: `cmd /c "<command>"`; the hook's cwd is `~\.gemini\config` (the directory
+  holding `hooks.json`), not the project (1.2.13; case I)
 
-### 37b — Windows hook command line — quoting (spec 0237 R3)
+### 37b — Windows hook command line
 
+- **Feature:** Windows hook command line — quoting (spec 0237 R3)
 - **Source of truth:** same as row 37
-- **Claude Code:** ✅ quoted spaced script path `node "C:/…/sp ace/probe.ts"`: launched (Q0); `"a b"`→`a b` (Q1); `'c d'`→`c d` (Q2); `"e\"f"`→`e"f` (Q3); `a^b`→`a^b` (Q4) — POSIX shell quoting
-- **Gemini CLI:** ✅ quoted spaced script path: launched (Q0); `"a b"`→`a b`; `'c d'`→`c d`; `"e\"f"`: **not launched**, PowerShell `ParserError` `TerminatorExpectedAtEndOfString` (backslash does not escape `"`); `a^b`→`a^b` — PowerShell quoting
-- **Copilot CLI:** ✅ quoted spaced script path: launched (Q0); `"a b"`→`a b`; `'c d'`→`c d`; `"e\"f"`: **not launched**, no record, no diagnostic surfaced; `a^b`→`a^b` — PowerShell quoting
-- **Antigravity CLI:** ✅ quoted spaced script path: **not launched**, no record (Q0); `"a b"`→ two arguments `"a` and `b"`, quotes kept (Q1); `'c d'`→ `'c` and `d'` (Q2); `"e\"f"`→`"e\"f"` verbatim (Q3); `a^b`→`ab`, caret consumed (Q4) — a double-quoted argument does not group
+- **Claude Code:** ✅ quoted spaced script path `node "C:/…/sp ace/probe.ts"`: launched (Q0); `"a b"`→`a b` (Q1);
+  `'c d'`→`c d` (Q2); `"e\"f"`→`e"f` (Q3); `a^b`→`a^b` (Q4) — POSIX shell quoting
+- **Gemini CLI:** ✅ quoted spaced script path: launched (Q0); `"a b"`→`a b`; `'c d'`→`c d`; `"e\"f"`: **not
+  launched**, PowerShell `ParserError` `TerminatorExpectedAtEndOfString` (backslash does not escape `"`); `a^b`→`a^b`
+  — PowerShell quoting
+- **Copilot CLI:** ✅ quoted spaced script path: launched (Q0); `"a b"`→`a b`; `'c d'`→`c d`; `"e\"f"`: **not
+  launched**, no record, no diagnostic surfaced; `a^b`→`a^b` — PowerShell quoting
+- **Antigravity CLI:** ✅ quoted spaced script path: **not launched**, no record (Q0); `"a b"`→ two arguments `"a`
+  and `b"`, quotes kept (Q1); `'c d'`→ `'c` and `d'` (Q2); `"e\"f"`→`"e\"f"` verbatim (Q3); `a^b`→`ab`, caret
+  consumed (Q4) — a double-quoted argument does not group
 
-### 37c — Windows hook command line — project-dir variable expansion (spec 0237 R4)
+### 37c — Windows hook command line
 
+- **Feature:** Windows hook command line — project-dir variable expansion (spec 0237 R4)
 - **Source of truth:** same as row 37
-- **Claude Code:** ✅ `CLAUDE_PROJECT_DIR` exported as `C:/crewrig-probe/proj` (**forward slashes**); `"$V"`→value (E1); `"${V}"`→value (E2); `"%V%"`→literal `%CLAUDE_PROJECT_DIR%` (E3); `"$env:V"`→`:CLAUDE_PROJECT_DIR` (E4); `"${V:-$PWD}"`→value (E5); committed-manifest shape `node "$CLAUDE_PROJECT_DIR/…"`: launched (M); deployed shape (absolute path): launched (D)
-- **Gemini CLI:** ✅ `GEMINI_PROJECT_DIR` exported as `C:\crewrig-probe\proj`; `"$V"`→`'C:\crewrig-probe\proj'` **single quotes included** — the CLI textually replaces the unbraced `$GEMINI_PROJECT_DIR` (and `$CLAUDE_PROJECT_DIR`) with a PowerShell-quoted literal before spawning (E1); `"${V}"`→ argument dropped, not substituted (E2); `"%V%"`→literal (E3); `"$env:V"`→value (E4); `"${V:-$PWD}"`→`C:\crewrig-probe\proj`, reproduced in 3 sessions, mechanism not isolated (E5); committed-manifest shape `node ${GEMINI_PROJECT_DIR}/…`: **not launched**, `Cannot find module 'C:\.crewrig-probe\probe.ts'` (M); deployed shape `MEMPALACE_TRANSCRIPT_ENABLED=1 node <abs>`: **not launched**, PowerShell `CommandNotFoundException` on `MEMPALACE_TRANSCRIPT_ENABLED=1` (D)
-- **Copilot CLI:** ✅ `COPILOT_PROJECT_DIR` **exported** as `C:\crewrig-probe\proj` (with `CLAUDE_PROJECT_DIR`; corrects row 9); `"$V"`→ argument dropped (E1); `"${V}"`→dropped (E2); `"%V%"`→literal (E3); `"$env:V"`→value (E4); `"${V:-$PWD}"`→dropped (E5); committed-manifest shape `node "${COPILOT_PROJECT_DIR:-$PWD}/…"`: **not launched**, no record (M); deployed shape (absolute path): launched (D)
-- **Antigravity CLI:** ✅ `ANTIGRAVITY_PROJECT_DIR` not exported (row 9 [GAP] holds on Windows); every syntax arrives verbatim with its quotes, e.g. `"$V"`→`"$ANTIGRAVITY_PROJECT_DIR"`, `"%V%"`→`"%ANTIGRAVITY_PROJECT_DIR%"` (E1–E5); committed-manifest shape `node .crewrig-probe/probe.ts` (relative): **not launched**, the hook cwd is `~\.gemini\config` (M); deployed shape `node <abs> … Stop`: launched, `Stop` received (D)
+- **Claude Code:** ✅ `CLAUDE_PROJECT_DIR` exported as `C:/crewrig-probe/proj` (**forward slashes**); `"$V"`→value
+  (E1); `"${V}"`→value (E2); `"%V%"`→literal `%CLAUDE_PROJECT_DIR%` (E3); `"$env:V"`→`:CLAUDE_PROJECT_DIR` (E4);
+  `"${V:-$PWD}"`→value (E5); committed-manifest shape `node "$CLAUDE_PROJECT_DIR/…"`: launched (M); deployed shape
+  (absolute path): launched (D)
+- **Gemini CLI:** ✅ `GEMINI_PROJECT_DIR` exported as `C:\crewrig-probe\proj`; `"$V"`→`'C:\crewrig-probe\proj'` **single
+  quotes included** — the CLI textually replaces the unbraced `$GEMINI_PROJECT_DIR` (and `$CLAUDE_PROJECT_DIR`) with a
+  PowerShell-quoted literal before spawning (E1); `"${V}"`→ argument dropped, not substituted (E2); `"%V%"`→literal
+  (E3); `"$env:V"`→value (E4); `"${V:-$PWD}"`→`C:\crewrig-probe\proj`, reproduced in 3 sessions, mechanism not
+  isolated (E5); committed-manifest shape `node ${GEMINI_PROJECT_DIR}/…`: **not launched**,
+  `Cannot find module 'C:\.crewrig-probe\probe.ts'` (M); deployed shape `MEMPALACE_TRANSCRIPT_ENABLED=1 node <abs>`: **not
+  launched**, PowerShell `CommandNotFoundException` on `MEMPALACE_TRANSCRIPT_ENABLED=1` (D)
+- **Copilot CLI:** ✅ `COPILOT_PROJECT_DIR` **exported** as `C:\crewrig-probe\proj` (with `CLAUDE_PROJECT_DIR`;
+  corrects row 9); `"$V"`→ argument dropped (E1); `"${V}"`→dropped (E2); `"%V%"`→literal (E3); `"$env:V"`→value
+  (E4); `"${V:-$PWD}"`→dropped (E5); committed-manifest shape `node "${COPILOT_PROJECT_DIR:-$PWD}/…"`: **not
+  launched**, no record (M); deployed shape (absolute path): launched (D)
+- **Antigravity CLI:** ✅ `ANTIGRAVITY_PROJECT_DIR` not exported (row 9 [GAP] holds on Windows); every syntax arrives
+  verbatim with its quotes, e.g. `"$V"`→`"$ANTIGRAVITY_PROJECT_DIR"`, `"%V%"`→`"%ANTIGRAVITY_PROJECT_DIR%"`
+  (E1–E5); committed-manifest shape `node .crewrig-probe/probe.ts` (relative): **not launched**, the hook cwd is
+  `~\.gemini\config` (M); deployed shape `node <abs> … Stop`: launched, `Stop` received (D)
 
-### 37d — Windows hook command line — path separators (spec 0237 R5)
+### 37d — Windows hook command line
 
+- **Feature:** Windows hook command line — path separators (spec 0237 R5)
 - **Source of truth:** same as row 37
-- **Claude Code:** ✅ backslash script path `node C:\crewrig-probe\kit\probe.ts`: **not launched**, `--debug` log `Cannot find module 'C:\crewrig-probe\proj\crewrig-probekitprobe.ts'` (P); backslashes are removed from unquoted arguments: `C:\a\b`→`C:ab`, `.\r\x`→`.rx`, `\\srv\s`→`srvs` (P2a–c); `C:/a/b` and `./r/x` unchanged (P2d–e); MSYS path conversion when bash spawns `node.exe`: `/c/crewrig-probe/x`→`C:/crewrig-probe/x` (P3a), `/x/y:/z`→`X:\y;Z:\` (P3b)
-- **Gemini CLI:** ✅ backslash script path: launched (P); every token verbatim — `C:\a\b`, `.\r\x`, `\\srv\s`, `C:/a/b`, `./r/x`, `/c/crewrig-probe/x`, `/x/y:/z` (P2a–P3b); no conversion
+- **Claude Code:** ✅ backslash script path `node C:\crewrig-probe\kit\probe.ts`: **not launched**, `--debug` log
+  `Cannot find module 'C:\crewrig-probe\proj\crewrig-probekitprobe.ts'` (P); backslashes are removed from unquoted
+  arguments: `C:\a\b`→`C:ab`, `.\r\x`→`.rx`, `\\srv\s`→`srvs` (P2a–c); `C:/a/b` and `./r/x` unchanged (P2d–e);
+  MSYS path conversion when bash spawns `node.exe`: `/c/crewrig-probe/x`→`C:/crewrig-probe/x` (P3a),
+  `/x/y:/z`→`X:\y;Z:\` (P3b)
+- **Gemini CLI:** ✅ backslash script path: launched (P); every token verbatim — `C:\a\b`, `.\r\x`, `\\srv\s`,
+  `C:/a/b`, `./r/x`, `/c/crewrig-probe/x`, `/x/y:/z` (P2a–P3b); no conversion
 - **Copilot CLI:** ✅ backslash script path: launched (P); every token verbatim, no conversion (P2a–P3b)
 - **Antigravity CLI:** ✅ backslash script path: launched (P); every token verbatim, no conversion (P2a–P3b)
 
-### 37e — Windows Antigravity CLI status line — `statusLine.command` (spec 0243 R18, #1389; guarded form: spec 0243 delta-03, #1392). Measured 2026-09-30 on Windows 11 Pro 10.0.26200 **ARM64** (Parallels VM; GitHub `windows-latest` is x64), Node.js 24.21.0, **Antigravity CLI 1.2.14** (rows 37–37d measured 1.2.13), with the probe of row 37 (byte-identical at `6985e49` and at the branch tip). Each case: `install antigravity-statusline --only <id>`, `agy` started interactively in the console session (through a temporary `schtasks /it` task) and left up for about 60 s, then `collect` and `restore`; `agy` runs `statusLine.command` on every render of its idle start-up screen (8–12 draws per case), so no prompt was needed. Evidence: the measurement comment on #1389. The guarded form was measured on 2026-10-01 on the same host and release with a purpose-built marker probe (see its caveats below). Evidence: the measurement comment on #1392 (<https://github.com/crewrig/crewrig/issues/1392#issuecomment-5934346722>).
+### 37e — Windows Antigravity CLI status line
 
-- **Source of truth:** `scripts/probe-windows-hook-parsing.ts`, `docs/runbooks/windows-hook-parsing-probe.md`, `scripts/lib/hook-command.ts`, `scripts/tests/hook-command-matrix.test.ts`, `scripts/tests/usage-capture-windows.test.ts`
+- **Feature:** Windows Antigravity CLI status line — `statusLine.command` (spec 0243 R18, #1389; guarded form: spec
+  0243 delta-03, #1392). Measured 2026-09-30 on Windows 11 Pro 10.0.26200 **ARM64** (Parallels VM; GitHub
+  `windows-latest` is x64), Node.js 24.21.0, **Antigravity CLI 1.2.14** (rows 37–37d measured 1.2.13), with the probe
+  of row 37 (byte-identical at `6985e49` and at the branch tip). Each case:
+  `install antigravity-statusline --only <id>`, `agy` started interactively in the console session (through a temporary
+  `schtasks /it` task) and left up for about 60 s, then `collect` and `restore`; `agy` runs `statusLine.command` on
+  every render of its idle start-up screen (8–12 draws per case), so no prompt was needed. Evidence: the measurement
+  comment on #1389. The guarded form was measured on 2026-10-01 on the same host and release with a purpose-built marker
+  probe (see its caveats below). Evidence: the measurement comment on #1392
+  (<https://github.com/crewrig/crewrig/issues/1392#issuecomment-5934346722>).
+- **Source of truth:** `scripts/probe-windows-hook-parsing.ts`, `docs/runbooks/windows-hook-parsing-probe.md`,
+  `scripts/lib/hook-command.ts`, `scripts/tests/hook-command-matrix.test.ts`,
+  `scripts/tests/usage-capture-windows.test.ts`
 - **Claude Code:** ➖ not a status-line surface (see rows 37–37d)
 - **Gemini CLI:** ➖ not a status-line surface (see rows 37–37d)
 - **Copilot CLI:** ➖ not a status-line surface (see rows 37–37d)
-- **Antigravity CLI:** ✅ **`cmd.exe`, conforming to row 37b; guarded form holds** `[measured: interpreter=cmd.exe; quoting=cmd-no-grouping; planted-binary=planted-runs; caveats=arm64-vm,agy-1.2.14,idle-start-screen,node.cmd-only; guarded-form=node.cmd:real,node.bat:real,node.exe:real; guarded-caveats=arm64-vm,agy-1.2.14,idle-start-screen,one-plant-cwd-only,marker-probe,node.exe-control-two-draws]` (quoting `cmd-no-grouping`: a double-quoted argument does not group). **Interpreter:** `agy.exe` → `cmd /c "<command>"` (the whole command in one pair of quotes, inner `"` escaped as `\"`) → `node.exe`. **Quoting:** `cmd.exe` does not honour `\"`, so a double-quoted argument does not group: `"a b"` → `"a` and `b"` (Q1), the quoted spaced script path does not launch (Q0), `^` is consumed (`a^b` → `ab`, Q4). **Working directory:** the directory `agy` was started in (`C:\crewrig-probe\proj`, equal to the `cwd` field on stdin); `ANTIGRAVITY_PROJECT_DIR` is not set; this differs from the hooks surface, whose cwd is `~\.gemini\config`. **Separators:** a backslash script path launches (P) and a forward-slash argument arrives untouched (P2d), with no MSYS conversion. **Security (finding 1 of the C1 security review): unsafe.** With `NoDefaultCurrentDirectoryInExePath` unset (the default), a planted `node.cmd` in the working directory ran on all 8 draws and the real `node` on none, so a bare `node <abs> <args>` is hijackable by any repository the user opens (CWE-427). `scripts/lib/hook-command.ts` therefore never writes the bare form for this surface on Windows: it writes the guarded form below, and only in state (e) of spec 0243 R32, when this row and the constant's entry record a holding guarded-form result; in every other state it refuses with the single diagnostic R32 gives that state. The alternatives (an 8.3 short interpreter path, a generated `.cmd` shim, or the guarded form with an 8.3 fallback) were rejected without measurement; spec 0243 delta-03 records why. stdin carries a JSON object (`agent_state`, `context_window`, `conversation_id`, `cwd`, `model`, `session_id`, `transcript_path`, `workspace`, …). **Planted-binary result:** a `node.cmd` placed in that working directory ran on every status-line draw and the real `node` ran on none. **Caveats** (spec 0243 delta-02 R31), as the source states them: (1) measured on Windows 11 Pro 10.0.26200 **ARM64** in a virtual machine, whereas the `windows-usage-capture` CI job runs on x64 `windows-latest` and only repeats the planted-binary case there; (2) Antigravity CLI **1.2.14**, whereas row 37b was measured on **1.2.13**, so the `conforming` verdict compares two versions; (3) `statusLine.command` was observed on the idle start-up screen of an interactive `agy` session because the scripted prompt did not reach `agy`: it ran on every draw of that screen and no turn was observed; (4) the #1389 bare result was measured with `node.cmd` only and no alternative form, with `NoDefaultCurrentDirectoryInExePath` unset (the Windows default), whereas the #1392 measurement planted `node.cmd`, `node.bat` and `node.exe` for both the bare and the guarded form. **Guarded form** (spec 0243 delta-03 R16(c)): `set NoDefaultCurrentDirectoryInExePath=1&& node <abs> <args>`, path unquoted and in forward slashes. `cmd.exe` leaves out the current-directory step of its program search when that variable exists (`NeedCurrentDirectoryForExePathW`); `set` is a builtin that no file can replace. The `agy` wrapper leaves the `&&` outside any quote run (`%CMDCMDLINE%`: `cmd /c "set NoDefaultCurrentDirectoryInExePath=1&& … node C:/crewrig-1392/kit/probe.js DC \"a b\""`), `node` sees the value `1` exactly, and arguments behave as above (`"a b"` → `"a`, `b"`). **Guarded-form result:** with a `node.cmd`, a `node.bat` or a `node.exe` planted in the working directory, the guarded form ran the real `C:\Program Files\nodejs\node.exe` on every draw (11, 7 and 9 draws) and the planted one on none, while the bare-`node` controls ran the planted one on every draw (12, 9 and 2 draws). **Guarded-form caveats** (spec 0243 delta-03 R31), as the source states them: (1) Windows 11 Pro 10.0.26200 **ARM64** in a virtual machine, whereas `windows-latest` is x64; Antigravity CLI **1.2.14**, the release of the first measurement of this row; Node.js 24.21.0; (2) `statusLine.command` was observed on the idle start-up screen only, as on #1389, and no turn was observed; (3) one plant was present per run, in the surface's working directory only, and nothing was planted earlier on `PATH`; (4) the measurement used a purpose-built marker probe, not the probe of spec 0237, which hides the value of `NoDefaultCurrentDirectoryInExePath`, and the parent command line was captured from inside `cmd.exe` through `%CMDCMDLINE%`, because `wmic` is no longer present on the host; (5) the `node.exe` bare control drew twice in 60 s, against 7 to 12 draws for every other case, and the cause was not investigated. **Propagation** (spec 0243 R35, intended): the variable is inherited by `node`, by the prior status-line command the shim hands to `%ComSpec%`, and by every process either launches, so none of them finds a program in the current directory without a path. A prior command that relied on that lookup was exposed to the same hijack. Setup says so in its install and rewrite messages when the marker records a non-empty `priorStatusLineCommand`; recovery: name that program by an explicit path in the prior command. **Not covered** (spec 0243 R36): the guard closes the implicit current-directory step of the `cmd.exe` search only. It does not close a `PATH` that itself names the current directory: a `.` entry, an empty entry, a relative entry, or an entry the user can write that comes before the real `node`. The module never reads, rewrites or judges `PATH`; recovery: remove such an entry, which is machine configuration outside setup's writes.
+- **Antigravity CLI:** ✅ **`cmd.exe`, conforming to row 37b; guarded form holds**
+  `[measured: interpreter=cmd.exe; quoting=cmd-no-grouping; planted-binary=planted-runs; caveats=arm64-vm,agy-1.2.14,idle-start-screen,node.cmd-only; guarded-form=node.cmd:real,node.bat:real,node.exe:real; guarded-caveats=arm64-vm,agy-1.2.14,idle-start-screen,one-plant-cwd-only,marker-probe,node.exe-control-two-draws]`
+  (quoting `cmd-no-grouping`: a double-quoted argument does not group). **Interpreter:** `agy.exe` →
+  `cmd /c "<command>"` (the whole command in one pair of quotes, inner `"` escaped as `\"`) → `node.exe`. **Quoting:**
+  `cmd.exe` does not honour `\"`, so a double-quoted argument does not group: `"a b"` → `"a` and `b"` (Q1), the quoted
+  spaced script path does not launch (Q0), `^` is consumed (`a^b` → `ab`, Q4). **Working directory:** the directory
+  `agy` was started in (`C:\crewrig-probe\proj`, equal to the `cwd` field on stdin); `ANTIGRAVITY_PROJECT_DIR` is not
+  set; this differs from the hooks surface, whose cwd is `~\.gemini\config`. **Separators:** a backslash script path
+  launches (P) and a forward-slash argument arrives untouched (P2d), with no MSYS conversion. **Security (finding 1 of
+  the C1 security review): unsafe.** With `NoDefaultCurrentDirectoryInExePath` unset (the default), a planted `node.cmd`
+  in the working directory ran on all 8 draws and the real `node` on none, so a bare `node <abs> <args>` is hijackable
+  by any repository the user opens (CWE-427). `scripts/lib/hook-command.ts` therefore never writes the bare form for
+  this surface on Windows: it writes the guarded form below, and only in state (e) of spec 0243 R32, when this row and
+  the constant's entry record a holding guarded-form result; in every other state it refuses with the single diagnostic
+  R32 gives that state. The alternatives (an 8.3 short interpreter path, a generated `.cmd` shim, or the guarded form
+  with an 8.3 fallback) were rejected without measurement; spec 0243 delta-03 records why. stdin carries a JSON object
+  (`agent_state`, `context_window`, `conversation_id`, `cwd`, `model`, `session_id`, `transcript_path`, `workspace`,
+  …). **Planted-binary result:** a `node.cmd` placed in that working directory ran on every status-line draw and the
+  real `node` ran on none. **Caveats** (spec 0243 delta-02 R31), as the source states them: (1) measured on Windows 11
+  Pro 10.0.26200 **ARM64** in a virtual machine, whereas the `windows-usage-capture` CI job runs on x64 `windows-latest`
+  and only repeats the planted-binary case there; (2) Antigravity CLI **1.2.14**, whereas row 37b was measured on **1.2.13**,
+  so the `conforming` verdict compares two versions; (3) `statusLine.command` was observed on the idle start-up screen
+  of an interactive `agy` session because the scripted prompt did not reach `agy`: it ran on every draw of that screen
+  and no turn was observed; (4) the #1389 bare result was measured with `node.cmd` only and no alternative form, with
+  `NoDefaultCurrentDirectoryInExePath` unset (the Windows default), whereas the #1392 measurement planted `node.cmd`,
+  `node.bat` and `node.exe` for both the bare and the guarded form. **Guarded form** (spec 0243 delta-03 R16(c)):
+  `set NoDefaultCurrentDirectoryInExePath=1&& node <abs> <args>`, path unquoted and in forward slashes. `cmd.exe` leaves
+  out the current-directory step of its program search when that variable exists (`NeedCurrentDirectoryForExePathW`);
+  `set` is a builtin that no file can replace. The `agy` wrapper leaves the `&&` outside any quote run (`%CMDCMDLINE%`:
+  `cmd /c "set NoDefaultCurrentDirectoryInExePath=1&& … node C:/crewrig-1392/kit/probe.js DC \"a b\""`), `node` sees
+  the value `1` exactly, and arguments behave as above (`"a b"` → `"a`, `b"`). **Guarded-form result:** with a
+  `node.cmd`, a `node.bat` or a `node.exe` planted in the working directory, the guarded form ran the real
+  `C:\Program Files\nodejs\node.exe` on every draw (11, 7 and 9 draws) and the planted one on none, while the
+  bare-`node` controls ran the planted one on every draw (12, 9 and 2 draws). **Guarded-form caveats** (spec 0243
+  delta-03 R31), as the source states them: (1) Windows 11 Pro 10.0.26200 **ARM64** in a virtual machine, whereas
+  `windows-latest` is x64; Antigravity CLI **1.2.14**, the release of the first measurement of this row; Node.js 24.21.0;
+  (2) `statusLine.command` was observed on the idle start-up screen only, as on #1389, and no turn was observed; (3) one
+  plant was present per run, in the surface's working directory only, and nothing was planted earlier on `PATH`; (4) the
+  measurement used a purpose-built marker probe, not the probe of spec 0237, which hides the value of
+  `NoDefaultCurrentDirectoryInExePath`, and the parent command line was captured from inside `cmd.exe` through
+  `%CMDCMDLINE%`, because `wmic` is no longer present on the host; (5) the `node.exe` bare control drew twice in 60 s,
+  against 7 to 12 draws for every other case, and the cause was not investigated. **Propagation** (spec 0243 R35,
+  intended): the variable is inherited by `node`, by the prior status-line command the shim hands to `%ComSpec%`, and by
+  every process either launches, so none of them finds a program in the current directory without a path. A prior
+  command that relied on that lookup was exposed to the same hijack. Setup says so in its install and rewrite messages
+  when the marker records a non-empty `priorStatusLineCommand`; recovery: name that program by an explicit path in the
+  prior command. **Not covered** (spec 0243 R36): the guard closes the implicit current-directory step of the `cmd.exe`
+  search only. It does not close a `PATH` that itself names the current directory: a `.` entry, an empty entry, a
+  relative entry, or an entry the user can write that comes before the real `node`. The module never reads, rewrites or
+  judges `PATH`; recovery: remove such an entry, which is machine configuration outside setup's writes.
 
-### 37f — Windows Antigravity CLI hooks surface — guarded form (spec 0243 delta-03 R33, #1392). Measured 2026-10-01 on Windows 11 Pro 10.0.26200 **ARM64** (Parallels VM; GitHub `windows-latest` is x64), Node.js 24.21.0, **Antigravity CLI 1.2.14**, with a purpose-built marker probe instead of the probe of row 37. Each run: one candidate planted in `~\.gemini\config`, the entries written to `~\.gemini\config\hooks.json`, one `Stop` event fired by a non-interactive `agy --print` in the console session (through a temporary `schtasks /it` task, the method of row 37), then restore. Evidence: the measurement comment on #1392 (<https://github.com/crewrig/crewrig/issues/1392#issuecomment-5934346722>).
+### 37f — Windows Antigravity CLI hooks surface
 
-- **Source of truth:** `scripts/lib/hook-command.ts`, `scripts/tests/hook-command-matrix.test.ts`, `scripts/tests/usage-capture-windows.test.ts`
+- **Feature:** Windows Antigravity CLI hooks surface — guarded form (spec 0243 delta-03 R33, #1392). Measured
+  2026-10-01 on Windows 11 Pro 10.0.26200 **ARM64** (Parallels VM; GitHub `windows-latest` is x64), Node.js 24.21.0, **Antigravity
+  CLI 1.2.14**, with a purpose-built marker probe instead of the probe of row 37. Each run: one candidate planted in
+  `~\.gemini\config`, the entries written to `~\.gemini\config\hooks.json`, one `Stop` event fired by a non-interactive
+  `agy --print` in the console session (through a temporary `schtasks /it` task, the method of row 37), then restore.
+  Evidence: the measurement comment on #1392 (<https://github.com/crewrig/crewrig/issues/1392#issuecomment-5934346722>).
+- **Source of truth:** `scripts/lib/hook-command.ts`, `scripts/tests/hook-command-matrix.test.ts`,
+  `scripts/tests/usage-capture-windows.test.ts`
 - **Claude Code:** ➖ not an Antigravity CLI surface (see rows 37–37d)
 - **Gemini CLI:** ➖ not an Antigravity CLI surface (see rows 37–37d)
 - **Copilot CLI:** ➖ not an Antigravity CLI surface (see rows 37–37d)
-- **Antigravity CLI:** ✅ **`cmd.exe`, conforming to row 37b; guarded form holds** `[measured: interpreter=cmd.exe; quoting=cmd-no-grouping; planted-binary=planted-runs; caveats=arm64-vm,agy-1.2.14,stop-print-console,one-plant-cwd-only,marker-probe; guarded-form=node.cmd:real,node.bat:real,node.exe:real; guarded-caveats=arm64-vm,agy-1.2.14,stop-print-console,one-plant-cwd-only,marker-probe]`. **Interpreter and quoting:** as row 37b; `agy` wraps the command as `cmd /c "<command>"` with each inner `"` escaped as `\"`, as on the status line (row 37e), and the `&&` of the guarded prefix stays outside any quote run. **Working directory:** `~\.gemini\config` (`C:\Users\<user>\.gemini\config`), the directory holding `hooks.json`, in every record: row 37 recorded it under Antigravity CLI 1.2.13 (case I), and this measurement confirms it under 1.2.14. It is the user's own configuration directory, not a repository, so a plant there needs write access to the user's home. The exposure is lower than on the status line; it is not a reason to keep the bare form. **Planted-binary result (bare form):** with a `node.cmd`, a `node.bat` or a `node.exe` planted there, the bare `node` ran the planted one on each `Stop` firing. **Guarded-form result:** the guarded form `set NoDefaultCurrentDirectoryInExePath=1&& node <abs> <args>` ran the real `C:\Program Files\nodejs\node.exe` on each firing (3 of 3), and `node` saw the value `1`. **Caveats** (spec 0243 delta-03 R33: those of R31, with R33's exceptions stated), as the source states them: (1) Windows 11 Pro 10.0.26200 **ARM64** in a virtual machine, whereas `windows-latest` is x64; Antigravity CLI **1.2.14**; Node.js 24.21.0; (2) the surface was fired once per run by `Stop`, from a non-interactive `agy --print` in the console session, the method of row 37, which replaces R31's idle start-up screen caveat; (3) one plant was present per run, in the surface's working directory only, and nothing was planted earlier on `PATH`; (4) the measurement used a purpose-built marker probe, not the probe of spec 0237, which hides the value of `NoDefaultCurrentDirectoryInExePath`, and the parent command line was captured from inside `cmd.exe` through `%CMDCMDLINE%`, because `wmic` is no longer present on the host. R31's two-draw `node.exe` control is a status-line observation and is not a caveat of this row. **Wiring:** rows C2 and C3 write this surface on Windows only through `scripts/lib/hook-command.ts`, in the guarded form, and no row writes it while the hooks entry is in a state other than (e) of spec 0243 R32. The propagation (R35) and the `PATH` limit (R36) of row 37e apply here unchanged: every process a guarded hook launches inherits the variable, and a `PATH` that names the current directory is not covered.
+- **Antigravity CLI:** ✅ **`cmd.exe`, conforming to row 37b; guarded form holds**
+  `[measured: interpreter=cmd.exe; quoting=cmd-no-grouping; planted-binary=planted-runs; caveats=arm64-vm,agy-1.2.14,stop-print-console,one-plant-cwd-only,marker-probe; guarded-form=node.cmd:real,node.bat:real,node.exe:real; guarded-caveats=arm64-vm,agy-1.2.14,stop-print-console,one-plant-cwd-only,marker-probe]`. **Interpreter
+  and quoting:** as row 37b; `agy` wraps the command as `cmd /c "<command>"` with each inner `"` escaped as `\"`, as on
+  the status line (row 37e), and the `&&` of the guarded prefix stays outside any quote run. **Working directory:**
+  `~\.gemini\config` (`C:\Users\<user>\.gemini\config`), the directory holding `hooks.json`, in every record: row 37
+  recorded it under Antigravity CLI 1.2.13 (case I), and this measurement confirms it under 1.2.14. It is the user's own
+  configuration directory, not a repository, so a plant there needs write access to the user's home. The exposure is
+  lower than on the status line; it is not a reason to keep the bare form. **Planted-binary result (bare form):** with a
+  `node.cmd`, a `node.bat` or a `node.exe` planted there, the bare `node` ran the planted one on each `Stop` firing. **Guarded-form
+  result:** the guarded form `set NoDefaultCurrentDirectoryInExePath=1&& node <abs> <args>` ran the real
+  `C:\Program Files\nodejs\node.exe` on each firing (3 of 3), and `node` saw the value `1`. **Caveats** (spec 0243
+  delta-03 R33: those of R31, with R33's exceptions stated), as the source states them: (1) Windows 11 Pro 10.0.26200 **ARM64**
+  in a virtual machine, whereas `windows-latest` is x64; Antigravity CLI **1.2.14**; Node.js 24.21.0; (2) the surface
+  was fired once per run by `Stop`, from a non-interactive `agy --print` in the console session, the method of row 37,
+  which replaces R31's idle start-up screen caveat; (3) one plant was present per run, in the surface's working
+  directory only, and nothing was planted earlier on `PATH`; (4) the measurement used a purpose-built marker probe, not
+  the probe of spec 0237, which hides the value of `NoDefaultCurrentDirectoryInExePath`, and the parent command line was
+  captured from inside `cmd.exe` through `%CMDCMDLINE%`, because `wmic` is no longer present on the host. R31's two-draw
+  `node.exe` control is a status-line observation and is not a caveat of this row. **Wiring:** rows C2 and C3 write this
+  surface on Windows only through `scripts/lib/hook-command.ts`, in the guarded form, and no row writes it while the
+  hooks entry is in a state other than (e) of spec 0243 R32. The propagation (R35) and the `PATH` limit (R36) of row 37e
+  apply here unchanged: every process a guarded hook launches inherits the variable, and a `PATH` that names the current
+  directory is not covered.
 
-### 37g — Windows extension hook command lines — plugin-root tokens (spec 0258 R17, R21, #1601). **NOT MEASURED on any of the four (CLI, Windows) cells.** Rows 37–37f measured project-directory tokens (`CLAUDE_PROJECT_DIR`, `${GEMINI_PROJECT_DIR}`), never the plugin-root tokens or Antigravity's plugin-relative path, so no cell of this row claims the command line launches. The command lines below are the forms the builders now emit: the switch pull request (spec 0258 PR S2) points the `hello-world` and skeleton manifests at the `.ts` hooks (`node "${extensionRoot}/hooks/<hook>.ts"`, one source, four targets) and deleted the three hook shell scripts, so no built extension names a `.sh` hook. The quotes keep a root that holds a space whole under the POSIX and PowerShell parsers of row 37b; whether each CLI expands its token on Windows, and the Antigravity working directory a plugin-relative path resolves against (row 37f measured `~\.gemini\config` for the hooks file's own directory, not a plugin's), is exactly what is unmeasured. The example hooks only echo a payload, so an unmeasured cell cannot lose user data; a hook that does real work SHALL NOT ship on an unmeasured cell (spec 0258 R21). Owner of the obligation: spec 0258; the measurement, run on the maintainer's Windows machine with `scripts/probe-windows-hook-parsing.ts`, is tracked by issue #1601 and replaces this row. Parity: the four CLIs consume the same hook source (`extensions/core/hello-world/hooks/*.ts`); the Copilot CLI installs only the `SKILL.md` of a skill, never its `scripts/` (`scripts/lib/setup/tier-install.ts`), an existing asymmetry this spec records and does not change.
+### 37g — Windows extension hook command lines
 
-- **Source of truth:** `extensions/core/hello-world/hooks/prompt-logger.ts`, `extensions/core/hello-world/hooks/shell-logger.ts`, `extension-skeleton/hook/hooks/logger.ts`, `scripts/tests/extension-hooks-differential.test.ts`, `scripts/probe-windows-hook-parsing.ts`
-- **Claude Code:** ❓ **NOT MEASURED** — target form `node "${CLAUDE_PLUGIN_ROOT}/hooks/<hook>.ts"` (Git Bash on Windows, row 37); whether `${CLAUDE_PLUGIN_ROOT}` expands in a plugin hook command on Windows is open (#1601).
-- **Gemini CLI:** ❓ **NOT MEASURED** — target form `node "${extensionPath}/hooks/<hook>.ts"` (Windows PowerShell 5.1, row 37); whether Gemini CLI expands `${extensionPath}` there is open (#1601); row 37c recorded that it does not expand `${GEMINI_PROJECT_DIR}`.
-- **Copilot CLI:** ❓ **NOT MEASURED** — target form `node "${COPILOT_PLUGIN_ROOT}/hooks/<hook>.ts"` (Windows PowerShell 5.1, `command` key, row 37); whether `${COPILOT_PLUGIN_ROOT}` expands there is open (#1601).
-- **Antigravity CLI:** ❓ **NOT MEASURED** — target form the plugin-relative `node "hooks/<hook>.ts"` (`cmd.exe`, rows 37 and 37e). On a `win32` build host (`ctx.platform`) the builder writes the guarded line `set NoDefaultCurrentDirectoryInExePath=1&& node "hooks/<hook>.ts"` (`GUARDED_PREFIX` of `scripts/lib/hook-command.ts`; spec 0258 delta-01 R17), because `cmd.exe` looks a bare `node` up in the working directory before `PATH` (CWE-427); on every other platform the line stays the bare form. Row 37f measured that prefix holding in front of an **unquoted absolute** script path; the working directory of an Antigravity **plugin** hook and the behaviour of the **quoted plugin-relative** remainder `node "hooks/<hook>.ts"` under `cmd.exe` stay **NOT MEASURED** (#1601), and the guard applies whichever directory it is.
+- **Feature:** Windows extension hook command lines — plugin-root tokens (spec 0258 R17, R21, #1601). **NOT MEASURED
+  on any of the four (CLI, Windows) cells.** Rows 37–37f measured project-directory tokens (`CLAUDE_PROJECT_DIR`,
+  `${GEMINI_PROJECT_DIR}`), never the plugin-root tokens or Antigravity's plugin-relative path, so no cell of this row
+  claims the command line launches. The command lines below are the forms the builders now emit: the switch pull request
+  (spec 0258 PR S2) points the `hello-world` and skeleton manifests at the `.ts` hooks
+  (`node "${extensionRoot}/hooks/<hook>.ts"`, one source, four targets) and deleted the three hook shell scripts, so no
+  built extension names a `.sh` hook. The quotes keep a root that holds a space whole under the POSIX and PowerShell
+  parsers of row 37b; whether each CLI expands its token on Windows, and the Antigravity working directory a
+  plugin-relative path resolves against (row 37f measured `~\.gemini\config` for the hooks file's own directory, not a
+  plugin's), is exactly what is unmeasured. The example hooks only echo a payload, so an unmeasured cell cannot lose
+  user data; a hook that does real work SHALL NOT ship on an unmeasured cell (spec 0258 R21). Owner of the obligation:
+  spec 0258; the measurement, run on the maintainer's Windows machine with `scripts/probe-windows-hook-parsing.ts`, is
+  tracked by issue #1601 and replaces this row. Parity: the four CLIs consume the same hook source
+  (`extensions/core/hello-world/hooks/*.ts`); the Copilot CLI installs only the `SKILL.md` of a skill, never its
+  `scripts/` (`scripts/lib/setup/tier-install.ts`), an existing asymmetry this spec records and does not change.
+- **Source of truth:** `extensions/core/hello-world/hooks/prompt-logger.ts`,
+  `extensions/core/hello-world/hooks/shell-logger.ts`, `extension-skeleton/hook/hooks/logger.ts`,
+  `scripts/tests/extension-hooks-differential.test.ts`, `scripts/probe-windows-hook-parsing.ts`
+- **Claude Code:** ❓ **NOT MEASURED** — target form `node "${CLAUDE_PLUGIN_ROOT}/hooks/<hook>.ts"` (Git Bash on
+  Windows, row 37); whether `${CLAUDE_PLUGIN_ROOT}` expands in a plugin hook command on Windows is open (#1601).
+- **Gemini CLI:** ❓ **NOT MEASURED** — target form `node "${extensionPath}/hooks/<hook>.ts"` (Windows PowerShell 5.1,
+  row 37); whether Gemini CLI expands `${extensionPath}` there is open (#1601); row 37c recorded that it does not expand
+  `${GEMINI_PROJECT_DIR}`.
+- **Copilot CLI:** ❓ **NOT MEASURED** — target form `node "${COPILOT_PLUGIN_ROOT}/hooks/<hook>.ts"` (Windows
+  PowerShell 5.1, `command` key, row 37); whether `${COPILOT_PLUGIN_ROOT}` expands there is open (#1601).
+- **Antigravity CLI:** ❓ **NOT MEASURED** — target form the plugin-relative `node "hooks/<hook>.ts"` (`cmd.exe`,
+  rows 37 and 37e). On a `win32` build host (`ctx.platform`) the builder writes the guarded line
+  `set NoDefaultCurrentDirectoryInExePath=1&& node "hooks/<hook>.ts"` (`GUARDED_PREFIX` of
+  `scripts/lib/hook-command.ts`; spec 0258 delta-01 R17), because `cmd.exe` looks a bare `node` up in the working
+  directory before `PATH` (CWE-427); on every other platform the line stays the bare form. Row 37f measured that prefix
+  holding in front of an **unquoted absolute** script path; the working directory of an Antigravity **plugin** hook and
+  the behaviour of the **quoted plugin-relative** remainder `node "hooks/<hook>.ts"` under `cmd.exe` stay **NOT
+  MEASURED** (#1601), and the guard applies whichever directory it is.
 
-### 38 — Ticket-pickup ownership check (spec 0244) — before any branch, spec id, or worktree for a ticket, the agent runs one forge-agnostic tool that determines the owner from the forge assignment record (first taker since last free), self-assigns a free ticket, repairs displacements without ever emptying the set, and fails closed (exit codes `0`/`1`/`2`/`3`/`4`/`5`, `docs/ticket-ownership.md`). Parity is **uniform, not per-CLI**: the same command on every CLI, no hook, no CLI-exclusive primitive. Forge sub-note — GitHub: `gh api` timeline `assigned`/`unassigned` events, `POST`/`DELETE …/assignees`; GitLab: `glab api` assignment system notes parsed under a fail-closed grammar, `PUT assignee_ids`; Gitea: `tea api` timeline `type: "assignees"` entries, dedicated `POST`/`DELETE …/assignees` where the server exposes them, else add-only / remove-only `PATCH`.
+### 38 — Ticket-pickup ownership check
 
-- **Source of truth:** `scripts/ticket-pickup.ts`, `scripts/lib/ticket-ownership.ts`, `scripts/lib/forge-assignment.ts`, `docs/ticket-ownership.md`, `artifacts/core/skills/spec-author/SKILL.md`, `artifacts/core/agents/spec-author/AGENT.md`, `docs/agent-team-protocol.md`
-- **Claude Code:** ✅ `task -x ticket-pickup -- --issue <N>` (fallback: `node scripts/lib/node-floor-guard.js`, then `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ticket-pickup.ts --issue <N>` as two separate steps, never chained with `&&` — some CLIs' Windows shell is PowerShell 5.1, row 37) run through the CLI's shell tool; reached through `AGENTS.md` (row 7e entry points) and the compiled `spec-author` skill and agent (`.claude/skills/spec-author/SKILL.md`, `.claude/agents/spec-author.md`)
-- **Gemini CLI:** ✅ `task -x ticket-pickup -- --issue <N>` (fallback: `node scripts/lib/node-floor-guard.js`, then `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ticket-pickup.ts --issue <N>` as two separate steps, never chained with `&&` — some CLIs' Windows shell is PowerShell 5.1, row 37) run through the CLI's shell tool; reached through `AGENTS.md` (row 7e entry points) and the compiled `spec-author` skill and agent (`.gemini/skills/spec-author/SKILL.md`, `.gemini/agents/spec-author.md`)
-- **Copilot CLI:** ✅ `task -x ticket-pickup -- --issue <N>` (fallback: `node scripts/lib/node-floor-guard.js`, then `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ticket-pickup.ts --issue <N>` as two separate steps, never chained with `&&` — some CLIs' Windows shell is PowerShell 5.1, row 37) run through the CLI's shell tool; reached through `AGENTS.md` (row 7e entry points) and the compiled `spec-author` skill and agent (`.github/skills/spec-author/SKILL.md`, `.github/agents/spec-author.md`)
-- **Antigravity CLI:** ✅ `task -x ticket-pickup -- --issue <N>` (fallback: `node scripts/lib/node-floor-guard.js`, then `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ticket-pickup.ts --issue <N>` as two separate steps, never chained with `&&` — some CLIs' Windows shell is PowerShell 5.1, row 37) run through the CLI's shell tool; reached through `AGENTS.md` (row 7e entry points) and the compiled `spec-author` skill and agent (`.agents/skills/spec-author/SKILL.md`, `.agents/agents/spec-author/AGENT.md`)
+- **Feature:** Ticket-pickup ownership check (spec 0244) — before any branch, spec id, or worktree for a ticket, the
+  agent runs one forge-agnostic tool that determines the owner from the forge assignment record (first taker since last
+  free), self-assigns a free ticket, repairs displacements without ever emptying the set, and fails closed (exit codes
+  `0`/`1`/`2`/`3`/`4`/`5`, `docs/ticket-ownership.md`). Parity is **uniform, not per-CLI**: the same command on every
+  CLI, no hook, no CLI-exclusive primitive. Forge sub-note — GitHub: `gh api` timeline `assigned`/`unassigned` events,
+  `POST`/`DELETE …/assignees`; GitLab: `glab api` assignment system notes parsed under a fail-closed grammar,
+  `PUT assignee_ids`; Gitea: `tea api` timeline `type: "assignees"` entries, dedicated `POST`/`DELETE …/assignees`
+  where the server exposes them, else add-only / remove-only `PATCH`.
+- **Source of truth:** `scripts/ticket-pickup.ts`, `scripts/lib/ticket-ownership.ts`, `scripts/lib/forge-assignment.ts`,
+  `docs/ticket-ownership.md`, `artifacts/core/skills/spec-author/SKILL.md`,
+  `artifacts/core/agents/spec-author/AGENT.md`, `docs/agent-team-protocol.md`
+- **Claude Code:** ✅ `task -x ticket-pickup -- --issue <N>` (fallback: `node scripts/lib/node-floor-guard.js`, then
+  `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ticket-pickup.ts --issue <N>` as two separate steps,
+  never chained with `&&` — some CLIs' Windows shell is PowerShell 5.1, row 37) run through the CLI's shell tool;
+  reached through `AGENTS.md` (row 7e entry points) and the compiled `spec-author` skill and agent
+  (`.claude/skills/spec-author/SKILL.md`, `.claude/agents/spec-author.md`)
+- **Gemini CLI:** ✅ `task -x ticket-pickup -- --issue <N>` (fallback: `node scripts/lib/node-floor-guard.js`, then
+  `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ticket-pickup.ts --issue <N>` as two separate steps,
+  never chained with `&&` — some CLIs' Windows shell is PowerShell 5.1, row 37) run through the CLI's shell tool;
+  reached through `AGENTS.md` (row 7e entry points) and the compiled `spec-author` skill and agent
+  (`.gemini/skills/spec-author/SKILL.md`, `.gemini/agents/spec-author.md`)
+- **Copilot CLI:** ✅ `task -x ticket-pickup -- --issue <N>` (fallback: `node scripts/lib/node-floor-guard.js`, then
+  `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ticket-pickup.ts --issue <N>` as two separate steps,
+  never chained with `&&` — some CLIs' Windows shell is PowerShell 5.1, row 37) run through the CLI's shell tool;
+  reached through `AGENTS.md` (row 7e entry points) and the compiled `spec-author` skill and agent
+  (`.github/skills/spec-author/SKILL.md`, `.github/agents/spec-author.md`)
+- **Antigravity CLI:** ✅ `task -x ticket-pickup -- --issue <N>` (fallback: `node scripts/lib/node-floor-guard.js`,
+  then `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ticket-pickup.ts --issue <N>` as two separate steps,
+  never chained with `&&` — some CLIs' Windows shell is PowerShell 5.1, row 37) run through the CLI's shell tool;
+  reached through `AGENTS.md` (row 7e entry points) and the compiled `spec-author` skill and agent
+  (`.agents/skills/spec-author/SKILL.md`, `.agents/agents/spec-author/AGENT.md`)
 
-### 39 — OS service management (spec 0252, [ADR 0019](adr/0019-windows-per-user-service-task-scheduler.md)) — the two per-user MemPalace daemons (ChromaDB, MCP HTTP), each with install / start / stop / status / uninstall, per-user scope, no administrator elevation. **macOS**: launchd LaunchAgents under `~/Library/LaunchAgents`, loaded with `launchctl load -w`. **Linux**: systemd user units under `~/.config/systemd/user`, driven with `systemctl --user`. **Windows**: one Task Scheduler per-user task per daemon (`\CrewRig\mempalace-…`), registered with `schtasks /XML` from `config/windows/`. The service layer is shared: the four CLIs reach the same daemon, so **no CLI column differs**. Gaps are recorded only with evidence (ADR 0019 *Measurements*, `MEASURE:` lines of the `windows-service-task` job on `windows-latest`, runs 37984532681, 37989182023, 37991291835). **Measured:** on Windows the Task Scheduler does not restart a task through `RestartOnFailure` (nothing within 240 s); a repeating one-minute time trigger with `IgnoreNew` restarts it 25 to 58 s after its action process ends, so the restart floor on Windows is one minute (launchd and systemd restart in 3 to 10 s) and there is no finite restart count; reading a task's state through the COM interface takes 0.4 to 0.6 s once the PowerShell child keeps `PSModulePath` (18 s without it; 5 s bound asserted, spec 0252 delta-02); `EnginePID` equals the launcher PID, so the owner verdict works; `/End` ends the whole daemon tree. **Unverified:** launcher console window on a desktop session (hosted runner has none); token file protected by the user-profile ACL instead of mode 0600; survival of the daemon after an external kill of the launcher alone, on any of the three operating systems; the run of the lifecycle without administrator rights. The same layer also registers the calendar-triggered harness-curator job (spec 0258), which is not a supervised daemon: on Linux a systemd user timer (the former crontab entry is no longer written), on macOS a launchd agent with a calendar interval, on Windows a Task Scheduler task with a weekly or daily calendar trigger and no `/Run`; the entry is `artifacts/library/skills/harness-curator/scripts/schedule-curator.ts`, run with `node`.
+### 39 — OS service management
 
-- **Source of truth:** `scripts/lib/service/` (service module, three backends), `config/launchd/`, `config/systemd/`, `config/windows/`. Entry points: `scripts/{start,stop,status}-chroma-server.ts` (migrated in PR C). The Windows start path and the Windows PID-file stop path run in CI only through the `windows-chroma-trio` job's stand-in legs (a compiled `chroma.exe` stand-in and a process tree), not against a real ChromaDB; the POSIX paths run against the real binary in the Bash oracle. MCP daemon entry points (migrated in PR D): `scripts/{status,stop}-mcp-server.ts`, `scripts/switch-mempalace-http.ts`, `scripts/uninstall-mcp-daemon.ts`; `status` gains a `task:` line on Windows and the `windows-mcp-daemon` job asserts the owner verdicts VERIFIED and USURPED, the `task:` line, the 5 s bound and the uninstall against the real Task Scheduler. PR E entry points (entries): `scripts/repair-mempalace-http.ts`, `scripts/doctor-mempalace.ts`; `doctor-mempalace` gains a fourth section, *4. Background service mechanism*, on Windows only (informational, never changes the exit status; `schtasks.exe` presence, the task-creation policy read without creating a task and reported UNDETERMINED when it cannot be read, and registered, running and last result for the two CrewRig tasks), and the `windows-doctor-repair` job runs it against the real Task Scheduler and runs the repair verbs through `scripts/tests/repair-windows.test.ts` (`repair-verbs.test.ts` is POSIX only)
+- **Feature:** OS service management (spec 0252, [ADR 0019](adr/0019-windows-per-user-service-task-scheduler.md))
+  — the two per-user MemPalace daemons (ChromaDB, MCP HTTP), each with install / start / stop / status / uninstall,
+  per-user scope, no administrator elevation. **macOS**: launchd LaunchAgents under `~/Library/LaunchAgents`, loaded
+  with `launchctl load -w`. **Linux**: systemd user units under `~/.config/systemd/user`, driven with
+  `systemctl --user`. **Windows**: one Task Scheduler per-user task per daemon (`\CrewRig\mempalace-…`), registered
+  with `schtasks /XML` from `config/windows/`. The service layer is shared: the four CLIs reach the same daemon, so **no
+  CLI column differs**. Gaps are recorded only with evidence (ADR 0019 *Measurements*, `MEASURE:` lines of the
+  `windows-service-task` job on `windows-latest`, runs 37984532681, 37989182023, 37991291835). **Measured:** on Windows
+  the Task Scheduler does not restart a task through `RestartOnFailure` (nothing within 240 s); a repeating one-minute
+  time trigger with `IgnoreNew` restarts it 25 to 58 s after its action process ends, so the restart floor on Windows is
+  one minute (launchd and systemd restart in 3 to 10 s) and there is no finite restart count; reading a task's state
+  through the COM interface takes 0.4 to 0.6 s once the PowerShell child keeps `PSModulePath` (18 s without it; 5 s
+  bound asserted, spec 0252 delta-02); `EnginePID` equals the launcher PID, so the owner verdict works; `/End` ends the
+  whole daemon tree. **Unverified:** launcher console window on a desktop session (hosted runner has none); token file
+  protected by the user-profile ACL instead of mode 0600; survival of the daemon after an external kill of the launcher
+  alone, on any of the three operating systems; the run of the lifecycle without administrator rights. The same layer
+  also registers the calendar-triggered harness-curator job (spec 0258), which is not a supervised daemon: on Linux a
+  systemd user timer (the former crontab entry is no longer written), on macOS a launchd agent with a calendar interval,
+  on Windows a Task Scheduler task with a weekly or daily calendar trigger and no `/Run`; the entry is
+  `artifacts/library/skills/harness-curator/scripts/schedule-curator.ts`, run with `node`.
+- **Source of truth:** `scripts/lib/service/` (service module, three backends), `config/launchd/`, `config/systemd/`,
+  `config/windows/`. Entry points: `scripts/{start,stop,status}-chroma-server.ts` (migrated in PR C). The Windows start
+  path and the Windows PID-file stop path run in CI only through the `windows-chroma-trio` job's stand-in legs (a
+  compiled `chroma.exe` stand-in and a process tree), not against a real ChromaDB; the POSIX paths run against the real
+  binary in the Bash oracle. MCP daemon entry points (migrated in PR D): `scripts/{status,stop}-mcp-server.ts`,
+  `scripts/switch-mempalace-http.ts`, `scripts/uninstall-mcp-daemon.ts`; `status` gains a `task:` line on Windows and
+  the `windows-mcp-daemon` job asserts the owner verdicts VERIFIED and USURPED, the `task:` line, the 5 s bound and the
+  uninstall against the real Task Scheduler. PR E entry points (entries): `scripts/repair-mempalace-http.ts`,
+  `scripts/doctor-mempalace.ts`; `doctor-mempalace` gains a fourth section, *4. Background service mechanism*, on
+  Windows only (informational, never changes the exit status; `schtasks.exe` presence, the task-creation policy read
+  without creating a task and reported UNDETERMINED when it cannot be read, and registered, running and last result for
+  the two CrewRig tasks), and the `windows-doctor-repair` job runs it against the real Task Scheduler and runs the
+  repair verbs through `scripts/tests/repair-windows.test.ts` (`repair-verbs.test.ts` is POSIX only)
 - **Claude Code:** ✅ Shared daemon, identical on every OS above; no Claude Code-specific surface
 - **Gemini CLI:** ✅ Shared daemon, identical; no Gemini CLI-specific surface
 - **Copilot CLI:** ✅ Shared daemon, identical; no Copilot CLI-specific surface
 - **Antigravity CLI:** ✅ Shared daemon, identical; no Antigravity CLI-specific surface
 
-### 40 — e2e harness — Windows cell (spec 0261 R21, ticket #1342) — the scenarios that drive a Linux container (`tests/e2e/scenarios/01-layered-context/` through `07-*`, the container-backed auth flows) on Windows. **[GAP-hard]** parity gap, evidence: the `windows-latest` runner cannot run Linux containers; the harness's Windows proof covers only the entries that need no container (the TypeScript runner, libraries and probe resolvers).
+### 40 — e2e harness
 
+- **Feature:** e2e harness — Windows cell (spec 0261 R21, ticket #1342) — the scenarios that drive a Linux container
+  (`tests/e2e/scenarios/01-layered-context/` through `07-*`, the container-backed auth flows) on Windows. **[GAP-hard]**
+  parity gap, evidence: the `windows-latest` runner cannot run Linux containers; the harness's Windows proof covers only
+  the entries that need no container (the TypeScript runner, libraries and probe resolvers).
 - **Source of truth:** `tests/e2e/run.ts`, `.github/workflows/`, spec 0261 R21
 - **Claude Code:** ❌ container-driven scenarios not run on Windows (no Linux containers on `windows-latest`)
 - **Gemini CLI:** ❌ same
 - **Copilot CLI:** ❌ same
 - **Antigravity CLI:** ❌ same
 
-### 41 — e2e harness — real-CLI run status (spec 0261 R22, ticket #1342) — the scenarios and probes against real accounts are proven by a manual owner run after the switch to TypeScript. **Status: `not requested yet`.** Cells not measured are named, not claimed: no scenario × CLI cell and no probe (A, B, C) has been run against a real account on the TypeScript harness.
+### 41 — e2e harness
 
+- **Feature:** e2e harness — real-CLI run status (spec 0261 R22, ticket #1342) — the scenarios and probes against
+  real accounts are proven by a manual owner run after the switch to TypeScript. **Status: `not requested yet`.** Cells
+  not measured are named, not claimed: no scenario × CLI cell and no probe (A, B, C) has been run against a real
+  account on the TypeScript harness.
 - **Source of truth:** `tests/e2e/run.ts`, `scripts/probe-*.ts`, spec 0261 R22
 - **Claude Code:** ❌ not measured — not requested yet
 - **Gemini CLI:** ❌ not measured — not requested yet
 - **Copilot CLI:** ❌ not measured — not requested yet
 - **Antigravity CLI:** ❌ not measured — no e2e coverage (row 21)
 
-### 42 — Hook command naming a missing script file (spec 0266 R9, ticket #1344) — after the Class B shells `hooks/{mempalace-transcript,usage-capture,worktree-git-guard,antigravity-statusline-shim}.sh` are deleted (`antigravity-statusline-shim.sh` is deleted by #1344 slice 4; the other three go with the library retirement of spec 0266), a legacy installed `bash <path>.sh` line names a file that no longer exists until setup is re-run (it rewrites the line to `node "<path>.ts"`; `scripts/tests/hook-legacy-rewrite-without-shim-files.test.ts`). What each CLI does with such a line is not measured here; no cell below is a measurement.
+### 42 — Hook command naming a missing script file
 
-- **Source of truth:** `scripts/tests/hook-recognition-without-shim-files.test.ts`, `scripts/tests/hook-legacy-rewrite-without-shim-files.test.ts`, row 29
+- **Feature:** Hook command naming a missing script file (spec 0266 R9, ticket #1344) — after the Class B shells
+  `hooks/{mempalace-transcript,usage-capture,worktree-git-guard,antigravity-statusline-shim}.sh` are deleted
+  (`antigravity-statusline-shim.sh` is deleted by #1344 slice 4; the other three go with the library retirement of spec 0266),
+  a legacy installed `bash <path>.sh` line names a file that no longer exists until setup is re-run (it rewrites the
+  line to `node "<path>.ts"`; `scripts/tests/hook-legacy-rewrite-without-shim-files.test.ts`). What each CLI does with
+  such a line is not measured here; no cell below is a measurement.
+- **Source of truth:** `scripts/tests/hook-recognition-without-shim-files.test.ts`,
+  `scripts/tests/hook-legacy-rewrite-without-shim-files.test.ts`, row 29
 - **Claude Code:** ❓ **NOT MEASURED** — #1717.
 - **Gemini CLI:** ❓ **NOT MEASURED** — #1717.
-- **Copilot CLI:** ❓ **NOT MEASURED** — only repo evidence: its `preToolUse` is fail-closed, so a missing guard script fails every tool call (see the row 29 [GAP] note on the guard registration); transcript and usage-capture lines unmeasured, tracked in #1717.
+- **Copilot CLI:** ❓ **NOT MEASURED** — only repo evidence: its `preToolUse` is fail-closed, so a missing guard
+  script fails every tool call (see the row 29 [GAP] note on the guard registration); transcript and usage-capture lines
+  unmeasured, tracked in #1717.
 - **Antigravity CLI:** ❓ **NOT MEASURED** — #1717.
 
-### 43 — Skill preload from an agent definition (spec 0269 R9/R10, ticket #1726) — whether an agent definition can load a named skill at start, so the AGENT.md sentence "read the skill once at the start" could be dropped for that CLI. **Evidence:** Claude Code documents subagent frontmatter `skills:` upstream (not observed in this session); Gemini CLI 0.28.2 validates local agent frontmatter with a strict schema in `agentLoader.js` (`name`, `description`, `display_name`, `tools`, `model`, `temperature`, `max_turns`, `timeout_mins`) and `docs/core/subagents.md` never mentions skills; Copilot CLI and Antigravity CLI were not determined (the Copilot binary was not inspected, Antigravity CLI is not installed here). **Decision:** KEEP the instruction in every AGENT.md and emit no field, since a per-CLI conditional would need a new emitter mechanism, which spec 0269 excludes.
+### 43 — Skill preload from an agent definition
 
+- **Feature:** Skill preload from an agent definition (spec 0269 R9/R10, ticket #1726) — whether an agent definition
+  can load a named skill at start, so the AGENT.md sentence "read the skill once at the start" could be dropped for that
+  CLI. **Evidence:** Claude Code documents subagent frontmatter `skills:` upstream (not observed in this session);
+  Gemini CLI 0.28.2 validates local agent frontmatter with a strict schema in `agentLoader.js` (`name`, `description`,
+  `display_name`, `tools`, `model`, `temperature`, `max_turns`, `timeout_mins`) and `docs/core/subagents.md` never
+  mentions skills; Copilot CLI and Antigravity CLI were not determined (the Copilot binary was not inspected,
+  Antigravity CLI is not installed here). **Decision:** KEEP the instruction in every AGENT.md and emit no field, since
+  a per-CLI conditional would need a new emitter mechanism, which spec 0269 excludes.
 - **Source of truth:** `artifacts/*/agents/*/AGENT.md`, `scripts/lib/build-components/emit-agents.ts`
 - **Claude Code:** ✅ `skills:` documented upstream, not verified here
 - **Gemini CLI:** ❌ strict schema, no `skills` key (`agentLoader.js`, 0.28.2)
 - **Copilot CLI:** ❓ not determined
 - **Antigravity CLI:** ❓ not determined
 
-### 44 — Subagent usage attribution (spec 0271 R10, R11, ticket #1728) — since a subagent runs no session-start sweep and no `usage-task set`, its usage records must resolve to the orchestrator's ticket through the parent's session declaration (channel 4) or the worktree/branch channel (channel 3). **Evidence** (real fixtures derived by the real adapters, then resolved with `resolveAttribution`; `scripts/tests/usage-attribution-channels.test.ts`, describe *subagent attribution*): Claude Code `2.1.x-subagents` yields a subagent record (`agentId` `agent-fixture01`) whose `identity.sessionId` equals the main record's, so the parent's session declaration covers it; Copilot CLI `assistant-usage-events` yields a sub-agent row (`agent_id` `agent-fixture-77`) with the same `session_id` as the parent, covered the same way; Gemini CLI `subagent-jsonl` yields a subagent record with its own session id (`gemini-sub-fixture-001` against `gemini-parent-fixture-001`) and `projectRoot` `unknown`, so the parent declaration does NOT cover it and the record resolves only through the worktree/branch channel from the capturing process's cwd; Antigravity CLI `statusline-payload` yields one `session-cumulative` record with no subagent identity, so subagent usage is folded into the parent session and covered by its declaration. **Decision:** no CLI fails both channels, so no subagent keeps a declaration call and no asymmetry is introduced; Gemini CLI's coverage is conditional on the subagent's capture running inside the ticket worktree or branch (the Pre-Edit Guard requires one), see *Parity gaps*.
+### 44 — Subagent usage attribution
 
-- **Source of truth:** `scripts/lib/usage-capture/adapters/{claude-code,gemini-cli,copilot-cli,antigravity}.js`, `scripts/lib/usage-capture/attribution.js`, `scripts/tests/usage-attribution-channels.test.ts`, `docs/usage-attribution.md`
+- **Feature:** Subagent usage attribution (spec 0271 R10, R11, ticket #1728) — since a subagent runs no session-start
+  sweep and no `usage-task set`, its usage records must resolve to the orchestrator's ticket through the parent's
+  session declaration (channel 4) or the worktree/branch channel (channel 3). **Evidence** (real fixtures derived by the
+  real adapters, then resolved with `resolveAttribution`; `scripts/tests/usage-attribution-channels.test.ts`, describe *subagent
+  attribution*): Claude Code `2.1.x-subagents` yields a subagent record (`agentId` `agent-fixture01`) whose
+  `identity.sessionId` equals the main record's, so the parent's session declaration covers it; Copilot CLI
+  `assistant-usage-events` yields a sub-agent row (`agent_id` `agent-fixture-77`) with the same `session_id` as the
+  parent, covered the same way; Gemini CLI `subagent-jsonl` yields a subagent record with its own session id
+  (`gemini-sub-fixture-001` against `gemini-parent-fixture-001`) and `projectRoot` `unknown`, so the parent declaration
+  does NOT cover it and the record resolves only through the worktree/branch channel from the capturing process's cwd;
+  Antigravity CLI `statusline-payload` yields one `session-cumulative` record with no subagent identity, so subagent
+  usage is folded into the parent session and covered by its declaration. **Decision:** no CLI fails both channels, so
+  no subagent keeps a declaration call and no asymmetry is introduced; Gemini CLI's coverage is conditional on the
+  subagent's capture running inside the ticket worktree or branch (the Pre-Edit Guard requires one), see *Parity gaps*.
+- **Source of truth:** `scripts/lib/usage-capture/adapters/{claude-code,gemini-cli,copilot-cli,antigravity}.js`,
+  `scripts/lib/usage-capture/attribution.js`, `scripts/tests/usage-attribution-channels.test.ts`,
+  `docs/usage-attribution.md`
 - **Claude Code:** ✅ parent session declaration covers the subagent (same `sessionId`, proven by test)
 - **Gemini CLI:** ⚠️ worktree/branch channel only (own session id, `projectRoot` unknown)
 - **Copilot CLI:** ✅ parent session declaration covers the sub-agent row (same `session_id`)
@@ -770,87 +2213,422 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 The following features exist for one CLI but not the other. Each gap is a
 candidate follow-up issue. **Do not fix them in this ticket.**
 
-- [GAP] Copilot CLI model-mapping offerings (row 33) — `model-mappings/copilot.yml` declares zero offerings by design: the model lineup actually served to GitHub Copilot CLI is deployment knowledge (a GitHub-routed deployment and a bring-your-own-key deployment reach disjoint sets), not something the core layer can name without reproducing the silent routing failure of `github/copilot-cli#4437`. Empirical reproduction: probe run `20260902T153919Z-0aa9` of issue #1103, verdict `BUG-PRESENT`, plus the unknown BYOK lineup recorded in the live-verification research report (issue #1111 comment 5523492666). Spec 0197 R42 states the condition a later delta must meet to lift this.
-- [GAP] Antigravity CLI per-agent model frontmatter surface (row 33) — no per-agent `model:` field exists on this target; `model-mappings/antigravity.yml` states its declination on the guidance surface instead. Empirical reproduction: `agy --help`, `agy models`, `~/.gemini/antigravity-cli/settings.json`, and ten on-disk documentation files read in full, none naming a per-agent model field (spec 0197 Premise 1).
+- [GAP] Copilot CLI model-mapping offerings (row 33) — `model-mappings/copilot.yml` declares zero offerings by design:
+  the model lineup actually served to GitHub Copilot CLI is deployment knowledge (a GitHub-routed deployment and a
+  bring-your-own-key deployment reach disjoint sets), not something the core layer can name without reproducing the
+  silent routing failure of `github/copilot-cli#4437`. Empirical reproduction: probe run `20260902T153919Z-0aa9` of
+  issue #1103, verdict `BUG-PRESENT`, plus the unknown BYOK lineup recorded in the live-verification research report
+  (issue #1111 comment 5523492666). Spec 0197 R42 states the condition a later delta must meet to lift this.
+- [GAP] Antigravity CLI per-agent model frontmatter surface (row 33) — no per-agent `model:` field exists on this
+  target; `model-mappings/antigravity.yml` states its declination on the guidance surface instead. Empirical
+  reproduction: `agy --help`, `agy models`, `~/.gemini/antigravity-cli/settings.json`, and ten on-disk documentation
+  files read in full, none naming a per-agent model field (spec 0197 Premise 1).
 
 - [GAP] CI workflow — present for Claude Code (`.github/workflows/claude.yml`), missing for Gemini CLI.
-- [GAP, CLOSED — spec 0183, issue #1008] Plugin/extension build script — was present for Claude Code (`scripts/build-claude-plugin.ts`), missing for Gemini CLI. `node scripts/build-extension.ts --target gemini` (spec 0173) is the render-side symmetric counterpart (row 13); `scripts/release-package-extension.ts` (spec 0183; `scripts/release-package-extension.ts` is a forwarding shim to it) is the RELEASE-artifact-packaging counterpart, since Claude's own release path never needed one — its plugin is installed via the marketplace mechanism (row 14), not a published archive. Left recorded here as history rather than deleted outright: the extensions-are-consumed-in-place framing was the reason no path existed, and this row is where a future reader would look for it.
-- [GAP] In-repo workspace settings file — present for Claude Code (`.claude/settings.json`), missing for Gemini CLI (settings live only in `~/.gemini/settings.json`).
-- [GAP] `.gitignore` carve-outs — Claude-specific entries (`dist-claude-plugin/`, `.claude/settings.local.json`, `CLAUDE.local.md`) have no Gemini equivalents (e.g., a `.gemini/settings.local.json` analog).
-- [GAP] Top-level entry point file — `CLAUDE.md` lives at the repo root; `GEMINI.md` only appears inside extensions (no repo-root `GEMINI.md`).
-- [GAP] Slash commands — Copilot CLI has no user-definable slash-command file format. CrewRig commands compile as user-invocable skills under `.github/skills/` (same workaround Claude uses). Same trade-off, documented and accepted.
-- [GAP, CONTRADICTED on Windows — spec 0237] Project-dir env var — recorded as "Copilot does not export a `$COPILOT_PROJECT_DIR`". On Windows 11 ARM64 Copilot CLI 1.0.89 **does** export it, set to the session cwd (row 37c, measured transcript). macOS and Linux have not been re-measured, so the gap is kept open for them only. `hooks/mempalace-transcript.ts` (spec 0247) still extracts the workspace path from the hook stdin JSON payload and falls back to `$PWD`, which is correct either way.
-- [GAP-confirmation] Repo-level Copilot agent layout — the public Copilot reference only documents the user-level `~/.copilot/agents/` directory. CrewRig adopts `.github/agents/<name>.md` by parallelism with the skills layout; implementers must verify loading behavior and downgrade to a hard `[GAP]` if the path is rejected. **Probe B run 2026-09-02 (spec 0194 R12-R15, issue #1103, comment [5507202742](https://github.com/crewrig/crewrig/issues/1103#issuecomment-5507202742)):** all five cells (copilot nested/flat/cross-cell-control, claude nested/flat) recorded `indeterminate` — neither CLI session established (unrelated environment issues, not a defect in the probe), so no cell reached `consumed` or `not-consumed`. This gap stays a `[GAP-confirmation]`; a re-run with working sessions for both CLIs is needed to resolve it, and to ground epic #1100's compiled-layout seam.
-- [GAP-confirmation] Copilot agent provenance carrier — CrewRig currently emits the same `metadata.provenance` YAML block in `.github/agents/<name>.md` that it emits for Claude. Copilot CLI's tolerance for non-standard frontmatter keys is undocumented; if Copilot rejects the block (as Gemini CLI 0.42.0 did, see issue #54), migrate Copilot agents to the same HTML-comment carrier used by Gemini. Follow-up ticket to be filed.
-- [GAP-soft] e2e pillar 02 (cross-tool memory) for Copilot CLI — the `crewrig/e2e-copilot:latest` image does not embed the `mempalace` CLI (`docker/e2e/copilot.Dockerfile` installs only Node, `gh`, and `@github/copilot`; verified via `docker run --rm crewrig/e2e-copilot:latest which mempalace` → exit 1) and no MemPalace MCP wiring ships in `artifacts/community/` for Copilot. The scenario excludes Copilot via `applies_to = ["claude","gemini"]` in `tests/e2e/defaults.toml`. Re-evaluate when either the Copilot image gains the `mempalace` binary or a MemPalace MCP integration appears for Copilot.
-- [GAP-soft] e2e pillar 04 (harness loop) full interactive leg — the scenario currently uses the simulated path (direct drawer write to `wing=harness-friction`, curator-style search) for all three CLIs. The fully interactive path that drives the `harness-report` skill end-to-end through the CLI's slash-command surface is not yet supported non-interactively from any CLI. The simulated path is parity-equivalent for v1: it writes the same drawer shape the skill would write and the curator reads the same lane regardless of the writer's identity.
-- [GAP-soft] e2e auth flow for Copilot CLI (spec 0194 R1-R7, issue #1103) — `auth-claude.ts` and `auth-gemini.ts` persist a credential via a fresh, **interactive container login**; `auth-copilot.ts` instead **passes through** the workstation's own already-authenticated `~/.copilot/config.json` (copied to `~/.crewrig-e2e/copilot/config.json`, mounted read-write at `/home/agent/.copilot`), alongside the pre-existing env-var PAT (`$COPILOT_GITHUB_TOKEN` / `$GH_TOKEN`) and Ollama Cloud keypair paths. `e2e_auth_ready` (`scripts/e2e/lib/auth-common.ts`) recognizes all four. Empirical evidence for why no interactive container login exists is captured in `docs/adr/0002-e2e-auth-flow.md` Decision 4: the `crewrig/e2e-copilot:latest` image lacks `libsecret`, so the upstream desktop-keychain path is unavailable, and the documented plaintext-fallback device-flow adds login friction without scenario-coverage gain over the passthrough. Re-evaluate if a scenario ever needs a credential distinct from the developer's own workstation session.
-- [GAP] Copilot CLI subagent model routing on BYOK/Ollama (row 4) — on a BYOK provider (e.g. Ollama), spawning a repo-level Copilot custom agent as a `task`-tool subagent **silently fails** (`Agent completed but produced no response.` / `Model '...' not found on provider ... (HTTP 404)`) when the session model differs from the subagent's default. Root cause: the **default subagent-model routing** (flight `copilot_cli_gpt_5_4_for_subagents` in `~/.copilot/config.json`) and hardcoded `model:` hints in repo agent files. Solution: `scripts/build-components.ts` omits hardcoded `model:` frontmatter from the two compiled agent surfaces GitHub Copilot CLI reads, `.claude/agents/` and `.github/agents/` — since spec 0200 migrated the 22 core agent sources onto `metadata.model:`, 22 `.gemini/agents/*.md` files carry a `model:` field (docs/agent-profile-migration.md), so the claim no longer holds tree-wide and is narrowed to the surfaces this hazard actually reaches. Workaround if using custom agent files: pass `model: <session-model>` explicitly to the `task` tool call. Tracked upstream at `github/copilot-cli#4437`. **Remove this note when the upstream fix lands.** **Probe A run 2026-09-02 (spec 0194 R8-R11, issue #1103, comment [5506957758](https://github.com/crewrig/crewrig/issues/1103#issuecomment-5506957758)): `INDETERMINATE` / `surface-not-read-or-session-broken`** — Copilot CLI 1.0.82 via the Ollama Cloud BYOK path; the run did not discriminate because the BYOK session itself never established (an unrelated Ollama-client write-path regression against the read-only credential mount, not the routing defect this note tracks). This note stays **in force** per R11 (an `INDETERMINATE` verdict neither discharges nor re-dates it); a re-run on a working BYOK session (or a `COPILOT_GITHUB_TOKEN`-backed provider) is needed for a discriminating verdict. **Probe B run `20260902T154627Z-0d89`** (spec 0201, epic #1100 seam (g), issue #1103, comment [5512320726](https://github.com/crewrig/crewrig/issues/1103#issuecomment-5512320726)): all three Copilot cells recorded `consumed` for the `.claude/agents/` surface — nested, flat, and the documented `~/.copilot/agents/` surface — confirming the shared-read hazard this note tracks holds on **both** compiled per-file layouts. Flattening the compiled Claude Code output to `.claude/agents/<name>.md` (spec 0201) therefore does **not** retire this note or the requirement 8 shared-read guard of `specs/0143-copilot-subagent-model-fallback.delta-01.md`; neither the Copilot emission nor that guard changes, and both remain necessary regardless of per-file layout.
-- [GAP] MemPalace layered wake-up (row 7g) — MemPalace's `MemoryStack.wake_up()` (`L0–L3`) is exposed by the Python library and the `mempalace` CLI (`wake-up`) but is **absent from the agent-facing MCP tool surface** on the installed **3.6.0** (pinned `>=3.6.0,<3.7`; re-verified 2026-07-20 against the live 36-tool surface, issue #566). Unlike the gaps above, this is **not** a cross-CLI asymmetry: all four CLIs share the one MCP surface (row 7d), so the gap is uniform across them. The **MCP-only access** guard in `artifacts/core/rules/60-tools.md` forbids reaching it ad-hoc, and the deterministic session-start sweep (that file's *Wake-up budget* stub; full figures in `docs/mempalace-wakeup-budget.md`) is its bounded substitute. Candidate follow-up: an upstream request to expose the wake-up through MCP (consent-gated, out of scope for spec 0069).
+- [GAP, CLOSED — spec 0183, issue #1008] Plugin/extension build script — was present for Claude Code
+  (`scripts/build-claude-plugin.ts`), missing for Gemini CLI. `node scripts/build-extension.ts --target gemini` (spec 0173)
+  is the render-side symmetric counterpart (row 13); `scripts/release-package-extension.ts` (spec 0183;
+  `scripts/release-package-extension.ts` is a forwarding shim to it) is the RELEASE-artifact-packaging counterpart,
+  since Claude's own release path never needed one — its plugin is installed via the marketplace mechanism (row 14),
+  not a published archive. Left recorded here as history rather than deleted outright: the
+  extensions-are-consumed-in-place framing was the reason no path existed, and this row is where a future reader would
+  look for it.
+- [GAP] In-repo workspace settings file — present for Claude Code (`.claude/settings.json`), missing for Gemini CLI
+  (settings live only in `~/.gemini/settings.json`).
+- [GAP] `.gitignore` carve-outs — Claude-specific entries (`dist-claude-plugin/`, `.claude/settings.local.json`,
+  `CLAUDE.local.md`) have no Gemini equivalents (e.g., a `.gemini/settings.local.json` analog).
+- [GAP] Top-level entry point file — `CLAUDE.md` lives at the repo root; `GEMINI.md` only appears inside extensions
+  (no repo-root `GEMINI.md`).
+- [GAP] Slash commands — Copilot CLI has no user-definable slash-command file format. CrewRig commands compile as
+  user-invocable skills under `.github/skills/` (same workaround Claude uses). Same trade-off, documented and accepted.
+- [GAP, CONTRADICTED on Windows — spec 0237] Project-dir env var — recorded as "Copilot does not export a
+  `$COPILOT_PROJECT_DIR`". On Windows 11 ARM64 Copilot CLI 1.0.89 **does** export it, set to the session cwd (row 37c,
+  measured transcript). macOS and Linux have not been re-measured, so the gap is kept open for them only.
+  `hooks/mempalace-transcript.ts` (spec 0247) still extracts the workspace path from the hook stdin JSON payload and
+  falls back to `$PWD`, which is correct either way.
+- [GAP-confirmation] Repo-level Copilot agent layout — the public Copilot reference only documents the user-level
+  `~/.copilot/agents/` directory. CrewRig adopts `.github/agents/<name>.md` by parallelism with the skills layout;
+  implementers must verify loading behavior and downgrade to a hard `[GAP]` if the path is rejected. **Probe B run
+  2026-09-02 (spec 0194 R12-R15, issue #1103, comment
+  [5507202742](https://github.com/crewrig/crewrig/issues/1103#issuecomment-5507202742)):** all five cells (copilot
+  nested/flat/cross-cell-control, claude nested/flat) recorded `indeterminate` — neither CLI session established
+  (unrelated environment issues, not a defect in the probe), so no cell reached `consumed` or `not-consumed`. This gap
+  stays a `[GAP-confirmation]`; a re-run with working sessions for both CLIs is needed to resolve it, and to ground epic #1100's
+  compiled-layout seam.
+- [GAP-confirmation] Copilot agent provenance carrier — CrewRig currently emits the same `metadata.provenance` YAML
+  block in `.github/agents/<name>.md` that it emits for Claude. Copilot CLI's tolerance for non-standard frontmatter
+  keys is undocumented; if Copilot rejects the block (as Gemini CLI 0.42.0 did, see issue #54), migrate Copilot agents
+  to the same HTML-comment carrier used by Gemini. Follow-up ticket to be filed.
+- [GAP-soft] e2e pillar 02 (cross-tool memory) for Copilot CLI — the `crewrig/e2e-copilot:latest` image does not embed
+  the `mempalace` CLI (`docker/e2e/copilot.Dockerfile` installs only Node, `gh`, and `@github/copilot`; verified via
+  `docker run --rm crewrig/e2e-copilot:latest which mempalace` → exit 1) and no MemPalace MCP wiring ships in
+  `artifacts/community/` for Copilot. The scenario excludes Copilot via `applies_to = ["claude","gemini"]` in
+  `tests/e2e/defaults.toml`. Re-evaluate when either the Copilot image gains the `mempalace` binary or a MemPalace MCP
+  integration appears for Copilot.
+- [GAP-soft] e2e pillar 04 (harness loop) full interactive leg — the scenario currently uses the simulated path
+  (direct drawer write to `wing=harness-friction`, curator-style search) for all three CLIs. The fully interactive path
+  that drives the `harness-report` skill end-to-end through the CLI's slash-command surface is not yet supported
+  non-interactively from any CLI. The simulated path is parity-equivalent for v1: it writes the same drawer shape the
+  skill would write and the curator reads the same lane regardless of the writer's identity.
+- [GAP-soft] e2e auth flow for Copilot CLI (spec 0194 R1-R7, issue #1103) — `auth-claude.ts` and `auth-gemini.ts`
+  persist a credential via a fresh, **interactive container login**; `auth-copilot.ts` instead **passes through** the
+  workstation's own already-authenticated `~/.copilot/config.json` (copied to `~/.crewrig-e2e/copilot/config.json`,
+  mounted read-write at `/home/agent/.copilot`), alongside the pre-existing env-var PAT (`$COPILOT_GITHUB_TOKEN` /
+  `$GH_TOKEN`) and Ollama Cloud keypair paths. `e2e_auth_ready` (`scripts/e2e/lib/auth-common.ts`) recognizes all four.
+  Empirical evidence for why no interactive container login exists is captured in `docs/adr/0002-e2e-auth-flow.md`
+  Decision 4: the `crewrig/e2e-copilot:latest` image lacks `libsecret`, so the upstream desktop-keychain path is
+  unavailable, and the documented plaintext-fallback device-flow adds login friction without scenario-coverage gain over
+  the passthrough. Re-evaluate if a scenario ever needs a credential distinct from the developer's own workstation
+  session.
+- [GAP] Copilot CLI subagent model routing on BYOK/Ollama (row 4) — on a BYOK provider (e.g. Ollama), spawning a
+  repo-level Copilot custom agent as a `task`-tool subagent **silently fails**
+  (`Agent completed but produced no response.` / `Model '...' not found on provider ... (HTTP 404)`) when the session
+  model differs from the subagent's default. Root cause: the **default subagent-model routing** (flight
+  `copilot_cli_gpt_5_4_for_subagents` in `~/.copilot/config.json`) and hardcoded `model:` hints in repo agent files.
+  Solution: `scripts/build-components.ts` omits hardcoded `model:` frontmatter from the two compiled agent surfaces
+  GitHub Copilot CLI reads, `.claude/agents/` and `.github/agents/` — since spec 0200 migrated the 22 core agent
+  sources onto `metadata.model:`, 22 `.gemini/agents/*.md` files carry a `model:` field
+  (docs/agent-profile-migration.md), so the claim no longer holds tree-wide and is narrowed to the surfaces this hazard
+  actually reaches. Workaround if using custom agent files: pass `model: <session-model>` explicitly to the `task` tool
+  call. Tracked upstream at `github/copilot-cli#4437`. **Remove this note when the upstream fix lands.** **Probe A run
+  2026-09-02 (spec 0194 R8-R11, issue #1103, comment
+  [5506957758](https://github.com/crewrig/crewrig/issues/1103#issuecomment-5506957758)): `INDETERMINATE` /
+  `surface-not-read-or-session-broken`** — Copilot CLI 1.0.82 via the Ollama Cloud BYOK path; the run did not
+  discriminate because the BYOK session itself never established (an unrelated Ollama-client write-path regression
+  against the read-only credential mount, not the routing defect this note tracks). This note stays **in force** per R11
+  (an `INDETERMINATE` verdict neither discharges nor re-dates it); a re-run on a working BYOK session (or a
+  `COPILOT_GITHUB_TOKEN`-backed provider) is needed for a discriminating verdict. **Probe B run
+  `20260902T154627Z-0d89`** (spec 0201, epic #1100 seam (g), issue #1103, comment
+  [5512320726](https://github.com/crewrig/crewrig/issues/1103#issuecomment-5512320726)): all three Copilot cells
+  recorded `consumed` for the `.claude/agents/` surface — nested, flat, and the documented `~/.copilot/agents/`
+  surface — confirming the shared-read hazard this note tracks holds on **both** compiled per-file layouts. Flattening
+  the compiled Claude Code output to `.claude/agents/<name>.md` (spec 0201) therefore does **not** retire this note or
+  the requirement 8 shared-read guard of `specs/0143-copilot-subagent-model-fallback.delta-01.md`; neither the Copilot
+  emission nor that guard changes, and both remain necessary regardless of per-file layout.
+- [GAP] MemPalace layered wake-up (row 7g) — MemPalace's `MemoryStack.wake_up()` (`L0–L3`) is exposed by the Python
+  library and the `mempalace` CLI (`wake-up`) but is **absent from the agent-facing MCP tool surface** on the installed **3.6.0**
+  (pinned `>=3.6.0,<3.7`; re-verified 2026-07-20 against the live 36-tool surface, issue #566). Unlike the gaps above,
+  this is **not** a cross-CLI asymmetry: all four CLIs share the one MCP surface (row 7d), so the gap is uniform across
+  them. The **MCP-only access** guard in `artifacts/core/rules/60-tools.md` forbids reaching it ad-hoc, and the
+  deterministic session-start sweep (that file's *Wake-up budget* stub; full figures in
+  `docs/mempalace-wakeup-budget.md`) is its bounded substitute. Candidate follow-up: an upstream request to expose the
+  wake-up through MCP (consent-gated, out of scope for spec 0069).
 
 <!-- Antigravity CLI gaps (spec 0058) -->
 
-- [GAP] Settings template in `config/` (row 6) — Antigravity CLI writes settings directly to `~/.gemini/antigravity-cli/settings.json` via `setup-antigravity-interactive.ts`; no `config/antigravity/` repo template is defined. Same pattern as Gemini CLI's row-7 gap.
-- [GAP] In-repo workspace settings file (row 7) — Antigravity CLI reads from `~/.gemini/antigravity-cli/settings.json` only; no `.agents/settings.json` analog written to the project tree.
-- [GAP] Project-dir env var (row 9) — no `$ANTIGRAVITY_PROJECT_DIR` is injected. Since spec 0116 the project path is read from the hook payload's `workspacePaths[0]`, with the git root and `$PWD` as fallbacks. Evidence: a captured hook payload carries `workspacePaths`; no env var appears in any handler's environment.
-- [GAP] Workspace-level hook discovery (row 8) — the vendor documents a per-workspace customization root (`.agents/` at the repository root) alongside the global one, but a manifest registered there **did not fire**. Evidence: two `agy --print` runs from a `git init`-ed workspace containing `.agents/hooks.json`, with a handler that appends its stdin to a log, produced no log entry; the identical manifest at `~/.gemini/config/hooks.json` fired `PreInvocation`, `PostInvocation` and `Stop` on the next run. `setup-antigravity-interactive.ts` therefore deploys only to the global root. Whether the per-workspace root fails in every configuration or only in the probed one (headless, single prompt, freshly initialized repository) is not established.
-- [GAP-soft] Duplicate agent names across discovery roots (rows 4, 10) — Antigravity CLI does **not** de-duplicate an agent name discovered at two roots at once: `agy agents` lists it **twice**. Neither copy shadows the other and the CLI does not refuse the pair. Evidence: one probe sentinel installed simultaneously at `~/.gemini/config/agents/` and `~/.gemini/agents/`, listed twice while its unique-named siblings at the same two roots were each listed once (`agy` 1.1.11, 2026-08-11, two runs; `docs/runbooks/antigravity-discovery-probe.md`). The live instance is `harness-curator`, which after spec 0123 exists at `~/.gemini/agents/harness-curator.md` from the Gemini setup and `~/.gemini/config/agents/harness-curator/AGENT.md` from the Antigravity setup. Both are the same crewrig component rendered for two CLIs, so either resolution yields the same agent and the only effect is a doubled line in the listing. Recorded rather than worked around: renaming a shipped component to dodge a vendor listing artifact would cost more than the artifact does.
-- [GAP-confirmation] Two agent-discovery instruments, and they disagree (rows 4, 10) — `agy agents` enumerates agents from **all three** candidate roots (`~/.gemini/antigravity-cli/agents/`, `~/.gemini/config/agents/`, `~/.gemini/agents/`), in both the flat and the directory shape. A forced-choice prompt in the same session, against the same sentinels, reports only those under `~/.gemini/config/` as available. The two are not contradicting each other about facts — the subcommand reads a registry, the prompt measures what the assistant can reach in a session — but a discovery claim resting on `agy agents` alone rests on the more permissive of the two. The first probe on issue #761 concluded from `agy agents` alone that the application-data root "is a discovery location"; that conclusion is instrument-dependent and is corrected here. `~/.gemini/config/agents/` is the only root that satisfies both instruments, which is why spec 0123 R2's single documented root is the right target under either reading. Evidence: `agy` 1.1.11, 2026-08-11, two reproducible runs; `docs/runbooks/antigravity-discovery-probe.md`.
-- [GAP] Extension skill/agent loader (row 5c) — Antigravity CLI has no in-repo extension skill/agent loader. `scripts/install-antigravity-extension.ts` builds a plugin package and calls `agy plugin install` — the plugin is consumed as a package, not via per-skill directory links.
-- [GAP] CI workflow (row 18) — `agy --print` is confirmed non-interactive (exit 0; output: `Pong! How can I help you today?`), but no published GitHub Action (analogous to `anthropics/claude-code-action`) exists for Antigravity CLI. Evidence: `gh api /repos/antigravity-labs/agy-code-action` → HTTP 404; `gh api /users/antigravity-labs` → HTTP 404; `gh search repos "agy-action"` — no relevant results.
-- [GAP-soft] e2e dedicated-account auth flow (row 21) — no `scripts/e2e/auth-antigravity.ts` or `crewrig/e2e-antigravity:latest` Docker image has been defined. Adding Antigravity CLI e2e coverage is explicitly out of scope per spec 0058.
-- [GAP-soft] e2e pillar 01 — layered context (row 22) — no Antigravity CLI e2e container or scenario variant exists. Out of scope per spec 0058.
-- [GAP-soft] e2e pillar 02 — cross-tool memory (row 23) — no Antigravity CLI e2e container or scenario variant exists. Out of scope per spec 0058.
-- [GAP-soft] e2e pillar 03 — skill build (row 24) — no Antigravity CLI e2e container or scenario variant exists. Out of scope per spec 0058.
-- [GAP-soft] e2e pillar 04 — harness loop (row 25) — no Antigravity CLI e2e container or scenario variant exists. Out of scope per spec 0058.
-- [GAP] Usage-capture granularity (rows 8c, 11b) — Antigravity usage records are `session-cumulative`, never `per-request` or per-subordinate-agent, and have no backfill (spec 0206 R22/R23); the statusline payload is the only usage-bearing channel. Evidence, each link independent: (1) no hook payload carries a token or model field — the vendor's `~/.gemini/antigravity-cli/builtin/skills/agy-customizations/docs/hooks.md`, read field by field (#1167 triage); (2) the per-conversation store the `transcriptPath` points at is sqlite whose payload columns are opaque protobuf blobs with no shipped `.proto` — no field could be tied to a token count with confidence (#1167, #1169); (3) telemetry is outbound-only (`enableTelemetry`, internal `AnalyticsService`) and the binary carries no `OTEL_*` string, so no local exporter exists (#1167); (4) an independent empirical reproduction with commands and outputs on upstream feature request [google-antigravity/antigravity-cli#366](https://github.com/google-antigravity/antigravity-cli/issues/366) (open, no maintainer decision as of 2026-09-24): [comment of 2026-07-31](https://github.com/google-antigravity/antigravity-cli/issues/366#issuecomment-5140583537) — `agy --output-format=json --print=…` yields a print-mode `usage` object only, `--log-file` holds no `token`/`usage` field, the `conversations/*.db` protobuf blobs locate one of five known token counts, `OTEL_*` variables produce nothing. Revisit when #366 ships.
-- [GAP] Windows checkout paths the usage-capture command line cannot carry (rows 8c, 37–37f; spec 0243 R17–R18, delta-03) — refused by `scripts/lib/hook-command.ts` with a diagnostic naming the character and the path, and no write, never a command line that cannot launch or that would launch the wrong program. A Windows checkout path holding whitespace or one of `& | < > ^ % ( )` cannot be wired where the target interpreter is `cmd.exe` and the path must stay unquoted, because a double-quoted argument does not group there (row 37b): both Antigravity CLI surfaces, `statusLine.command` (row 37e) and the hooks surface (row 37f), which receive the guarded form `set NoDefaultCurrentDirectoryInExePath=1&& node <abs> <args>` of #1392. Only the checkout path is judged: the `&&` and `=` of the guarded prefix belong to the template. Claude Code, Gemini CLI and Copilot CLI keep the path in double quotes, which their interpreters group (row 37b), so a path with a space works for them; `"`, `$`, a backtick, a backslash, a carriage return and a newline are refused for every CLI. macOS and Linux are unaffected. Residual (spec 0243 R36): the guarded form closes only the implicit current-directory step of the `cmd.exe` search, on both surfaces. A `PATH` that itself names the current directory — a `.` entry, an empty entry, a relative entry, or an entry the user can write that comes before the real `node` — still lets a planted `node` run, and the module never reads, rewrites or judges `PATH`. Recovery: for a refused path, move the checkout to a path without the refused character; for the residual, remove such an entry from `PATH`, which is machine configuration outside setup's writes.
-- [GAP] R12 missing-dependency diagnostic visibility (row 8c; spec 0243 R37–R38, delta-04) — the diagnostic line of spec 0243 R12 does not reach the user on every wired CLI. Copilot CLI shows no notice: the line reaches only `~/.copilot/logs/process-*.log`. Gemini CLI in interactive mode shows only a generic `Hook(s) [<name>] failed for event AfterModel` notice and hides the diagnostic text behind the F12 debug drawer, and in both modes `AfterModel` fires once per streamed chunk, so the notice or the line repeats within one turn. Evidence: the macOS probe of 2026-10-01 ([#1398](https://github.com/crewrig/crewrig/issues/1398#issuecomment-5935751970)). The gap is latent while spec 0243 R11 holds, because no entry point imports a third-party package and no firing takes the R12 path. The first change that adds such an import must close it or record per-CLI evidence under spec 0243 R38. Per-CLI detail: `docs/usage-capture.md` → *Exit status and blocking*.
-- [CLOSED] Usage mirror on Windows (row 8d; spec 0253 delta-04, closed by issue [#1515](https://github.com/crewrig/crewrig/issues/1515)) — the detached spawn at the end of `onWrite` in `scripts/lib/usage-store/mirror.js` now runs `process.execPath` on `scripts/usage-mirror.ts --from-write` (no shell, no `bash`, `windowsHide: true`), with an `error` listener attached before `unref()` and a `try`/`catch` around the call, so a failed spawn never changes the write outcome; the pending marker is the recovery. Proved on Linux and on `windows-latest` (job `windows-usage-wrappers`) by `scripts/tests/usage-mirror-spawn.test.ts`, which runs with no `bash` on `PATH`. `scripts/usage-mirror.sh` was removed in #1344.
-- [GAP] Windows: a real MemPalace is unverified, every flow is verified against a fake package (rows 11, 16; spec 0253 R23 and R27 as modified by delta-03) — the four history importers (`scripts/import-{claude,gemini,copilot,antigravity}-history.ts`) and `scripts/prune-transcripts.ts` reach MemPalace through a Python interpreter with `mempalace` installed, and no Windows run installs the real package or touches a real palace. The `windows-history-import` job runs the TypeScript entries from PowerShell against the runner's real Python (`actions/setup-python`) with a FAKE `mempalace` package on `PYTHONPATH` (a `__main__` that logs its arguments and exits with a chosen status, and an `mcp_server` with two dummy drawer functions): the interpreter probe, the missing-interpreter, missing-source and empty-source paths, the declined and confirmed prompts, the dry-run and real `mine` calls with their arguments, the propagation of a failing `mine`, the Antigravity staging directory, and the Python body of `prune-transcripts` (dry run, `--apply`, `--project`) all run. A `.cmd` stub cannot be used (Node.js 20.12.2 and 21.7.3 refuse to spawn `.cmd` or `.bat` files without a shell, CVE-2024-27980). Evidence: the `windows-history-import` job (`.github/workflows/build.yml`), added by spec 0253 PR C, passed on `windows-latest` (https://github.com/crewrig/crewrig/actions/runs/37983663078, head `09d0858` of PR #1530). The macOS and Linux behaviour is also covered by the Bash-driven oracle tests, which formerly called the `.sh` shims (removed).
+- [GAP] Settings template in `config/` (row 6) — Antigravity CLI writes settings directly to
+  `~/.gemini/antigravity-cli/settings.json` via `setup-antigravity-interactive.ts`; no `config/antigravity/` repo
+  template is defined. Same pattern as Gemini CLI's row-7 gap.
+- [GAP] In-repo workspace settings file (row 7) — Antigravity CLI reads from `~/.gemini/antigravity-cli/settings.json`
+  only; no `.agents/settings.json` analog written to the project tree.
+- [GAP] Project-dir env var (row 9) — no `$ANTIGRAVITY_PROJECT_DIR` is injected. Since spec 0116 the project path is
+  read from the hook payload's `workspacePaths[0]`, with the git root and `$PWD` as fallbacks. Evidence: a captured hook
+  payload carries `workspacePaths`; no env var appears in any handler's environment.
+- [GAP] Workspace-level hook discovery (row 8) — the vendor documents a per-workspace customization root (`.agents/`
+  at the repository root) alongside the global one, but a manifest registered there **did not fire**. Evidence: two
+  `agy --print` runs from a `git init`-ed workspace containing `.agents/hooks.json`, with a handler that appends its
+  stdin to a log, produced no log entry; the identical manifest at `~/.gemini/config/hooks.json` fired `PreInvocation`,
+  `PostInvocation` and `Stop` on the next run. `setup-antigravity-interactive.ts` therefore deploys only to the global
+  root. Whether the per-workspace root fails in every configuration or only in the probed one (headless, single prompt,
+  freshly initialized repository) is not established.
+- [GAP-soft] Duplicate agent names across discovery roots (rows 4, 10) — Antigravity CLI does **not** de-duplicate an
+  agent name discovered at two roots at once: `agy agents` lists it **twice**. Neither copy shadows the other and the
+  CLI does not refuse the pair. Evidence: one probe sentinel installed simultaneously at `~/.gemini/config/agents/` and
+  `~/.gemini/agents/`, listed twice while its unique-named siblings at the same two roots were each listed once (`agy` 1.1.11,
+  2026-08-11, two runs; `docs/runbooks/antigravity-discovery-probe.md`). The live instance is `harness-curator`, which
+  after spec 0123 exists at `~/.gemini/agents/harness-curator.md` from the Gemini setup and
+  `~/.gemini/config/agents/harness-curator/AGENT.md` from the Antigravity setup. Both are the same crewrig component
+  rendered for two CLIs, so either resolution yields the same agent and the only effect is a doubled line in the
+  listing. Recorded rather than worked around: renaming a shipped component to dodge a vendor listing artifact would
+  cost more than the artifact does.
+- [GAP-confirmation] Two agent-discovery instruments, and they disagree (rows 4, 10) — `agy agents` enumerates agents
+  from **all three** candidate roots (`~/.gemini/antigravity-cli/agents/`, `~/.gemini/config/agents/`,
+  `~/.gemini/agents/`), in both the flat and the directory shape. A forced-choice prompt in the same session, against
+  the same sentinels, reports only those under `~/.gemini/config/` as available. The two are not contradicting each
+  other about facts — the subcommand reads a registry, the prompt measures what the assistant can reach in a session
+  — but a discovery claim resting on `agy agents` alone rests on the more permissive of the two. The first probe on
+  issue #761 concluded from `agy agents` alone that the application-data root "is a discovery location"; that conclusion
+  is instrument-dependent and is corrected here. `~/.gemini/config/agents/` is the only root that satisfies both
+  instruments, which is why spec 0123 R2's single documented root is the right target under either reading. Evidence:
+  `agy` 1.1.11, 2026-08-11, two reproducible runs; `docs/runbooks/antigravity-discovery-probe.md`.
+- [GAP] Extension skill/agent loader (row 5c) — Antigravity CLI has no in-repo extension skill/agent loader.
+  `scripts/install-antigravity-extension.ts` builds a plugin package and calls `agy plugin install` — the plugin is
+  consumed as a package, not via per-skill directory links.
+- [GAP] CI workflow (row 18) — `agy --print` is confirmed non-interactive (exit 0; output:
+  `Pong! How can I help you today?`), but no published GitHub Action (analogous to `anthropics/claude-code-action`)
+  exists for Antigravity CLI. Evidence: `gh api /repos/antigravity-labs/agy-code-action` → HTTP 404;
+  `gh api /users/antigravity-labs` → HTTP 404; `gh search repos "agy-action"` — no relevant results.
+- [GAP-soft] e2e dedicated-account auth flow (row 21) — no `scripts/e2e/auth-antigravity.ts` or
+  `crewrig/e2e-antigravity:latest` Docker image has been defined. Adding Antigravity CLI e2e coverage is explicitly out
+  of scope per spec 0058.
+- [GAP-soft] e2e pillar 01 — layered context (row 22) — no Antigravity CLI e2e container or scenario variant exists.
+  Out of scope per spec 0058.
+- [GAP-soft] e2e pillar 02 — cross-tool memory (row 23) — no Antigravity CLI e2e container or scenario variant
+  exists. Out of scope per spec 0058.
+- [GAP-soft] e2e pillar 03 — skill build (row 24) — no Antigravity CLI e2e container or scenario variant exists. Out
+  of scope per spec 0058.
+- [GAP-soft] e2e pillar 04 — harness loop (row 25) — no Antigravity CLI e2e container or scenario variant exists.
+  Out of scope per spec 0058.
+- [GAP] Usage-capture granularity (rows 8c, 11b) — Antigravity usage records are `session-cumulative`, never
+  `per-request` or per-subordinate-agent, and have no backfill (spec 0206 R22/R23); the statusline payload is the only
+  usage-bearing channel. Evidence, each link independent: (1) no hook payload carries a token or model field — the
+  vendor's `~/.gemini/antigravity-cli/builtin/skills/agy-customizations/docs/hooks.md`, read field by field (#1167
+  triage); (2) the per-conversation store the `transcriptPath` points at is sqlite whose payload columns are opaque
+  protobuf blobs with no shipped `.proto` — no field could be tied to a token count with confidence (#1167, #1169);
+  (3) telemetry is outbound-only (`enableTelemetry`, internal `AnalyticsService`) and the binary carries no `OTEL_*`
+  string, so no local exporter exists (#1167); (4) an independent empirical reproduction with commands and outputs on
+  upstream feature request
+  [google-antigravity/antigravity-cli#366](https://github.com/google-antigravity/antigravity-cli/issues/366) (open, no
+  maintainer decision as of 2026-09-24): [comment of
+  2026-07-31](https://github.com/google-antigravity/antigravity-cli/issues/366#issuecomment-5140583537) —
+  `agy --output-format=json --print=…` yields a print-mode `usage` object only, `--log-file` holds no `token`/`usage`
+  field, the `conversations/*.db` protobuf blobs locate one of five known token counts, `OTEL_*` variables produce
+  nothing. Revisit when #366 ships.
+- [GAP] Windows checkout paths the usage-capture command line cannot carry (rows 8c, 37–37f; spec 0243 R17–R18,
+  delta-03) — refused by `scripts/lib/hook-command.ts` with a diagnostic naming the character and the path, and no
+  write, never a command line that cannot launch or that would launch the wrong program. A Windows checkout path holding
+  whitespace or one of `& | < > ^ % ( )` cannot be wired where the target interpreter is `cmd.exe` and the path must
+  stay unquoted, because a double-quoted argument does not group there (row 37b): both Antigravity CLI surfaces,
+  `statusLine.command` (row 37e) and the hooks surface (row 37f), which receive the guarded form
+  `set NoDefaultCurrentDirectoryInExePath=1&& node <abs> <args>` of #1392. Only the checkout path is judged: the `&&`
+  and `=` of the guarded prefix belong to the template. Claude Code, Gemini CLI and Copilot CLI keep the path in double
+  quotes, which their interpreters group (row 37b), so a path with a space works for them; `"`, `$`, a backtick, a
+  backslash, a carriage return and a newline are refused for every CLI. macOS and Linux are unaffected. Residual (spec
+  0243 R36): the guarded form closes only the implicit current-directory step of the `cmd.exe` search, on both surfaces.
+  A `PATH` that itself names the current directory — a `.` entry, an empty entry, a relative entry, or an entry the
+  user can write that comes before the real `node` — still lets a planted `node` run, and the module never reads,
+  rewrites or judges `PATH`. Recovery: for a refused path, move the checkout to a path without the refused character;
+  for the residual, remove such an entry from `PATH`, which is machine configuration outside setup's writes.
+- [GAP] R12 missing-dependency diagnostic visibility (row 8c; spec 0243 R37–R38, delta-04) — the diagnostic line of
+  spec 0243 R12 does not reach the user on every wired CLI. Copilot CLI shows no notice: the line reaches only
+  `~/.copilot/logs/process-*.log`. Gemini CLI in interactive mode shows only a generic
+  `Hook(s) [<name>] failed for event AfterModel` notice and hides the diagnostic text behind the F12 debug drawer, and
+  in both modes `AfterModel` fires once per streamed chunk, so the notice or the line repeats within one turn. Evidence:
+  the macOS probe of 2026-10-01 ([#1398](https://github.com/crewrig/crewrig/issues/1398#issuecomment-5935751970)). The
+  gap is latent while spec 0243 R11 holds, because no entry point imports a third-party package and no firing takes the
+  R12 path. The first change that adds such an import must close it or record per-CLI evidence under spec 0243 R38.
+  Per-CLI detail: `docs/usage-capture.md` → *Exit status and blocking*.
+- [CLOSED] Usage mirror on Windows (row 8d; spec 0253 delta-04, closed by issue
+  [#1515](https://github.com/crewrig/crewrig/issues/1515)) — the detached spawn at the end of `onWrite` in
+  `scripts/lib/usage-store/mirror.js` now runs `process.execPath` on `scripts/usage-mirror.ts --from-write` (no shell,
+  no `bash`, `windowsHide: true`), with an `error` listener attached before `unref()` and a `try`/`catch` around the
+  call, so a failed spawn never changes the write outcome; the pending marker is the recovery. Proved on Linux and on
+  `windows-latest` (job `windows-usage-wrappers`) by `scripts/tests/usage-mirror-spawn.test.ts`, which runs with no
+  `bash` on `PATH`. `scripts/usage-mirror.sh` was removed in #1344.
+- [GAP] Windows: a real MemPalace is unverified, every flow is verified against a fake package (rows 11, 16; spec 0253
+  R23 and R27 as modified by delta-03) — the four history importers
+  (`scripts/import-{claude,gemini,copilot,antigravity}-history.ts`) and `scripts/prune-transcripts.ts` reach MemPalace
+  through a Python interpreter with `mempalace` installed, and no Windows run installs the real package or touches a
+  real palace. The `windows-history-import` job runs the TypeScript entries from PowerShell against the runner's real
+  Python (`actions/setup-python`) with a FAKE `mempalace` package on `PYTHONPATH` (a `__main__` that logs its arguments
+  and exits with a chosen status, and an `mcp_server` with two dummy drawer functions): the interpreter probe, the
+  missing-interpreter, missing-source and empty-source paths, the declined and confirmed prompts, the dry-run and real
+  `mine` calls with their arguments, the propagation of a failing `mine`, the Antigravity staging directory, and the
+  Python body of `prune-transcripts` (dry run, `--apply`, `--project`) all run. A `.cmd` stub cannot be used (Node.js 20.12.2
+  and 21.7.3 refuse to spawn `.cmd` or `.bat` files without a shell, CVE-2024-27980). Evidence: the
+  `windows-history-import` job (`.github/workflows/build.yml`), added by spec 0253 PR C, passed on `windows-latest`
+  (https://github.com/crewrig/crewrig/actions/runs/37983663078, head `09d0858` of PR #1530). The macOS and Linux
+  behaviour is also covered by the Bash-driven oracle tests, which formerly called the `.sh` shims (removed).
 
 <!-- Worktree git guard gaps (spec 0248) -->
 
-- [GAP] Windows Antigravity CLI checkout path with whitespace (row 29; spec 0248 R29) — the guard command of the Antigravity CLI hooks surface on Windows is the guarded form `set NoDefaultCurrentDirectoryInExePath=1&& node <abs>/hooks/worktree-git-guard.ts`, whose path must stay unquoted because `cmd.exe` does not group a double-quoted argument (rows 37b, 37f). A checkout path holding whitespace or one of `& | < > ^ % ( )` therefore cannot be wired: `scripts/lib/hook-command.ts` refuses it with a diagnostic naming the character and the path, setup writes nothing for that CLI and reports the diagnostic, so no guard is registered there until the checkout moves to a path without those characters. It is the same refusal, for the same reason, as the usage-capture entry above, applied to a second hook; the other three CLIs keep the path in double quotes and are unaffected. macOS and Linux are unaffected.
-- [GAP] `worktree-claim run` on Windows refuses some `.cmd` and `.bat` commands (row 29; spec 0248 R22) — the wrapped command is started from its argument vector with no shell, so on Windows it is resolved the way the platform resolves an executable name (a bare name through `PATH` and `PATHEXT` only, never the current directory) and `.exe` and `.com` files start directly. A `.cmd` or `.bat` cannot start without `cmd.exe`, so `run` hands one to `cmd.exe` only when `cmd.exe` has nothing in it to interpret: a path free of its metacharacters and arguments drawn from a small allowlist (`scripts/lib/worktree-claim/launch-windows.ts`). Any other argument or path is refused with exit `1` and a diagnostic **before the claim is taken**, never passed to a shell that would read it as syntax and never routed through a POSIX shell. A wrapped `npm` or other `.cmd` shim given an argument outside the allowlist is therefore refused on Windows; macOS and Linux are unaffected. Each Windows leg is proved by the `windows-worktree-git-guard` job, not by a developer host.
-- [GAP] The worktree guard has no shim to fall back on (row 29; spec 0248 R13, R38(g); the shim `hooks/worktree-git-guard.sh`, which failed open without Node.js 24, was retired in #1344) — an installation still wired to the retired `.sh` path has **no enforcement** until setup is re-run. `scripts/worktree-claim.ts` fails closed, since it is invoked by name, since it is invoked by name: one `Error:` line and exit `1`, or the floor guard's own status and diagnostic, with the tool not run. A guard wired directly as `node "<abs>/hooks/worktree-git-guard.ts"` is not a shim: a Node.js downgraded after setup makes it fail with Node.js's own non-zero status until setup is re-run (spec 0243 R30), and how each CLI reads that status is the open measurement below. The Node.js 24 floor is checked at setup, not when the hook fires.
-- [GAP-confirmation] Exit status `1` of the guard, and the Antigravity CLI hooks-surface working directory (row 29; spec 0248, open measurements M1 and M2) — **pending owner measurement; no result is recorded here.** The guard refuses with exit status `1` on every CLI, as the shell guard did. `docs/usage-capture.md` records Claude Code and Gemini CLI reading a status other than `2` as a non-blocking error on the events measured there, and Copilot CLI documenting `preToolUse` as fail-closed; the tool events `PreToolUse` (Claude Code), `BeforeTool` (Gemini CLI) and `PreToolUse` (Antigravity CLI) are unmeasured in this repository. If status `1` does not block on a CLI, the guard has not protected that CLI since spec 0153: record it here, open a separate ticket and a delta of `specs/0153-tool-boundary-git-worktree-guard.md`, and the owner decides whether the change waits. M2 asks the working directory of the Antigravity CLI `PreToolUse` hook: row 37 records `~\.gemini\config` on the hooks surface for another event, which is not a repository, so the claim read cannot succeed there and every prohibited command is refused even with a claim held; the behaviour is preserved by spec 0248 and a change is a separate ticket. Both are measured with probe case `X2` (`docs/runbooks/windows-hook-parsing-probe.md`): macOS for Claude Code, Gemini CLI and Copilot CLI, the Windows host of rows 37e and 37f for Antigravity CLI.
-- [GAP] The guard registration outlives the branch that carries its file (row 29; spec 0248, plan hazard O3) — the registered command names `<checkout>/hooks/worktree-git-guard.ts` by absolute path (spec 0169), so it keeps pointing there after that checkout switches to a branch without the file. On Copilot CLI, whose `preToolUse` is fail-closed, a missing `.ts` fails **every** tool call; the other CLIs read the status per M1. **Setup guidance:** run each setup from a checkout that stays on a branch carrying `hooks/worktree-git-guard.ts`, never from a throwaway or a linked worktree (the installers warn on the latter, `docs/usage-capture.md` → *Checkout-location dependency*). Recovery is the one it is for any in-repo path: restore the file or re-run setup from a durable checkout, and, on Copilot CLI, remove the guard entry from `~/.copilot/hooks/copilot-transcript-hooks.json` to unblock a session that cannot run a tool.
+- [GAP] Windows Antigravity CLI checkout path with whitespace (row 29; spec 0248 R29) — the guard command of the
+  Antigravity CLI hooks surface on Windows is the guarded form
+  `set NoDefaultCurrentDirectoryInExePath=1&& node <abs>/hooks/worktree-git-guard.ts`, whose path must stay unquoted
+  because `cmd.exe` does not group a double-quoted argument (rows 37b, 37f). A checkout path holding whitespace or one
+  of `& | < > ^ % ( )` therefore cannot be wired: `scripts/lib/hook-command.ts` refuses it with a diagnostic naming the
+  character and the path, setup writes nothing for that CLI and reports the diagnostic, so no guard is registered there
+  until the checkout moves to a path without those characters. It is the same refusal, for the same reason, as the
+  usage-capture entry above, applied to a second hook; the other three CLIs keep the path in double quotes and are
+  unaffected. macOS and Linux are unaffected.
+- [GAP] `worktree-claim run` on Windows refuses some `.cmd` and `.bat` commands (row 29; spec 0248 R22) — the wrapped
+  command is started from its argument vector with no shell, so on Windows it is resolved the way the platform resolves
+  an executable name (a bare name through `PATH` and `PATHEXT` only, never the current directory) and `.exe` and `.com`
+  files start directly. A `.cmd` or `.bat` cannot start without `cmd.exe`, so `run` hands one to `cmd.exe` only when
+  `cmd.exe` has nothing in it to interpret: a path free of its metacharacters and arguments drawn from a small allowlist
+  (`scripts/lib/worktree-claim/launch-windows.ts`). Any other argument or path is refused with exit `1` and a diagnostic **before
+  the claim is taken**, never passed to a shell that would read it as syntax and never routed through a POSIX shell. A
+  wrapped `npm` or other `.cmd` shim given an argument outside the allowlist is therefore refused on Windows; macOS and
+  Linux are unaffected. Each Windows leg is proved by the `windows-worktree-git-guard` job, not by a developer host.
+- [GAP] The worktree guard has no shim to fall back on (row 29; spec 0248 R13, R38(g); the shim
+  `hooks/worktree-git-guard.sh`, which failed open without Node.js 24, was retired in #1344) — an installation still
+  wired to the retired `.sh` path has **no enforcement** until setup is re-run. `scripts/worktree-claim.ts` fails
+  closed, since it is invoked by name, since it is invoked by name: one `Error:` line and exit `1`, or the floor guard's
+  own status and diagnostic, with the tool not run. A guard wired directly as `node "<abs>/hooks/worktree-git-guard.ts"`
+  is not a shim: a Node.js downgraded after setup makes it fail with Node.js's own non-zero status until setup is re-run
+  (spec 0243 R30), and how each CLI reads that status is the open measurement below. The Node.js 24 floor is checked at
+  setup, not when the hook fires.
+- [GAP-confirmation] Exit status `1` of the guard, and the Antigravity CLI hooks-surface working directory (row 29; spec
+  0248, open measurements M1 and M2) — **pending owner measurement; no result is recorded here.** The guard refuses
+  with exit status `1` on every CLI, as the shell guard did. `docs/usage-capture.md` records Claude Code and Gemini CLI
+  reading a status other than `2` as a non-blocking error on the events measured there, and Copilot CLI documenting
+  `preToolUse` as fail-closed; the tool events `PreToolUse` (Claude Code), `BeforeTool` (Gemini CLI) and `PreToolUse`
+  (Antigravity CLI) are unmeasured in this repository. If status `1` does not block on a CLI, the guard has not
+  protected that CLI since spec 0153: record it here, open a separate ticket and a delta of
+  `specs/0153-tool-boundary-git-worktree-guard.md`, and the owner decides whether the change waits. M2 asks the working
+  directory of the Antigravity CLI `PreToolUse` hook: row 37 records `~\.gemini\config` on the hooks surface for another
+  event, which is not a repository, so the claim read cannot succeed there and every prohibited command is refused even
+  with a claim held; the behaviour is preserved by spec 0248 and a change is a separate ticket. Both are measured with
+  probe case `X2` (`docs/runbooks/windows-hook-parsing-probe.md`): macOS for Claude Code, Gemini CLI and Copilot CLI,
+  the Windows host of rows 37e and 37f for Antigravity CLI.
+- [GAP] The guard registration outlives the branch that carries its file (row 29; spec 0248, plan hazard O3) — the
+  registered command names `<checkout>/hooks/worktree-git-guard.ts` by absolute path (spec 0169), so it keeps pointing
+  there after that checkout switches to a branch without the file. On Copilot CLI, whose `preToolUse` is fail-closed, a
+  missing `.ts` fails **every** tool call; the other CLIs read the status per M1. **Setup guidance:** run each setup
+  from a checkout that stays on a branch carrying `hooks/worktree-git-guard.ts`, never from a throwaway or a linked
+  worktree (the installers warn on the latter, `docs/usage-capture.md` → *Checkout-location dependency*). Recovery is
+  the one it is for any in-repo path: restore the file or re-run setup from a durable checkout, and, on Copilot CLI,
+  remove the guard entry from `~/.copilot/hooks/copilot-transcript-hooks.json` to unblock a session that cannot run a
+  tool.
 
 <!-- Session-recording hook gaps (spec 0247) -->
 
-- [GAP] Windows Antigravity CLI checkout path the transcript command cannot carry (rows 8b, 37b, 37f; spec 0247 R20, R33) — on Windows the Antigravity CLI hooks surface receives the guarded form `set NoDefaultCurrentDirectoryInExePath=1&& node <abs>/hooks/mempalace-transcript.ts antigravity-cli Stop`, whose path must stay unquoted because `cmd.exe` does not group a double-quoted argument. A checkout path holding whitespace or one of `& | < > ^ % ( )` therefore cannot be wired. `hookCommandLine` in `scripts/lib/hook-command.ts` refuses it with a diagnostic naming the character and the path. `scripts/hook-wiring.ts transcript render antigravity` then prints an `ERROR: <diagnostic>` line on standard error and leaves the transcript handler out of the rendered manifest, so setup writes no transcript command for that CLI and reports session recording as not activated. An installed transcript command is left as it is. Evidence: the refusal branch of `hookCommandLine` (`CMD_UNSAFE`, applied when the measured interpreter is `cmd.exe`) and its transcript-render test `scripts/tests/hook-transcript-render.test.ts`. It is the same refusal, for the same reason, as the usage-capture and worktree-guard entries above, applied to a third hook. Claude Code, Gemini CLI and Copilot CLI keep the path in double quotes, which their interpreters group (row 37b), so a path with a space works for them. macOS and Linux are unaffected. Recovery: move the checkout to a path without the refused character and re-run setup.
-- [GAP] Checkout paths no CLI's transcript command can carry (row 8b; spec 0247 R20, R33; spec 0243 R17) — a checkout path holding `"`, `$`, a backtick, a carriage return or a newline is refused by `hookCommandLine` for every CLI on every OS, and so is a backslash left in a POSIX path. Gemini CLI and Copilot CLI on Windows also refuse the typographic double quotes `“ ” „`, which PowerShell reads as quotes. The result is the one of the entry above: no transcript command is written for that CLI, and setup says why. Evidence: the same refusal branch of `hookCommandLine` and `scripts/tests/hook-transcript-render.test.ts`. Recovery: move the checkout.
-- [GAP] The transcript hook cannot run without Node.js 24 when it fires (row 8b; spec 0247 R2, R27, R34) — on every CLI and OS, `hooks/mempalace-transcript.ts` needs Node.js 24 or later at firing time. A command still wired to the retired `.sh` shim (removed in #1344) records nothing on such a machine, and the setup rewrite re-points it; Antigravity CLI still reads its acknowledgement. A command wired directly to the `.ts` is not a shim: with Node.js downgraded after setup it fails with Node.js's own non-zero status and no `{}`, until setup is re-run on Node.js 24 or later (spec 0243 R30). Setup checks the floor only when it runs, and below it writes no direct form. Evidence: the capability `mempalace-transcript-node-24-0` in `ci/ci-capabilities.yml`. Recovery: install Node.js 24 or later and re-run setup.
+- [GAP] Windows Antigravity CLI checkout path the transcript command cannot carry (rows 8b, 37b, 37f; spec 0247 R20,
+  R33) — on Windows the Antigravity CLI hooks surface receives the guarded form
+  `set NoDefaultCurrentDirectoryInExePath=1&& node <abs>/hooks/mempalace-transcript.ts antigravity-cli Stop`, whose path
+  must stay unquoted because `cmd.exe` does not group a double-quoted argument. A checkout path holding whitespace or
+  one of `& | < > ^ % ( )` therefore cannot be wired. `hookCommandLine` in `scripts/lib/hook-command.ts` refuses it with
+  a diagnostic naming the character and the path. `scripts/hook-wiring.ts transcript render antigravity` then prints an
+  `ERROR: <diagnostic>` line on standard error and leaves the transcript handler out of the rendered manifest, so setup
+  writes no transcript command for that CLI and reports session recording as not activated. An installed transcript
+  command is left as it is. Evidence: the refusal branch of `hookCommandLine` (`CMD_UNSAFE`, applied when the measured
+  interpreter is `cmd.exe`) and its transcript-render test `scripts/tests/hook-transcript-render.test.ts`. It is the
+  same refusal, for the same reason, as the usage-capture and worktree-guard entries above, applied to a third hook.
+  Claude Code, Gemini CLI and Copilot CLI keep the path in double quotes, which their interpreters group (row 37b), so a
+  path with a space works for them. macOS and Linux are unaffected. Recovery: move the checkout to a path without the
+  refused character and re-run setup.
+- [GAP] Checkout paths no CLI's transcript command can carry (row 8b; spec 0247 R20, R33; spec 0243 R17) — a checkout
+  path holding `"`, `$`, a backtick, a carriage return or a newline is refused by `hookCommandLine` for every CLI on
+  every OS, and so is a backslash left in a POSIX path. Gemini CLI and Copilot CLI on Windows also refuse the
+  typographic double quotes `“ ” „`, which PowerShell reads as quotes. The result is the one of the entry above:
+  no transcript command is written for that CLI, and setup says why. Evidence: the same refusal branch of
+  `hookCommandLine` and `scripts/tests/hook-transcript-render.test.ts`. Recovery: move the checkout.
+- [GAP] The transcript hook cannot run without Node.js 24 when it fires (row 8b; spec 0247 R2, R27, R34) — on every
+  CLI and OS, `hooks/mempalace-transcript.ts` needs Node.js 24 or later at firing time. A command still wired to the
+  retired `.sh` shim (removed in #1344) records nothing on such a machine, and the setup rewrite re-points it;
+  Antigravity CLI still reads its acknowledgement. A command wired directly to the `.ts` is not a shim: with Node.js
+  downgraded after setup it fails with Node.js's own non-zero status and no `{}`, until setup is re-run on Node.js 24 or
+  later (spec 0243 R30). Setup checks the floor only when it runs, and below it writes no direct form. Evidence: the
+  capability `mempalace-transcript-node-24-0` in `ci/ci-capabilities.yml`. Recovery: install Node.js 24 or later and
+  re-run setup.
 
 <!-- Validation backend gaps (spec 0080) -->
 
-- [GAP-confirmation] Internal-backend structured interactive prompt on Gemini / Copilot / Antigravity CLI (row 27b) — `AskUserQuestion` is confirmed on Claude Code; a structured interactive-prompt equivalent that avoids a bare prose question is unverified on the other three CLIs. Evidence to be gathered at DEV; downgrade to a hard [GAP] if none exists. The gate SHALL NOT silently degrade to a prose question (spec 0037).
-- [GAP] Illustration image display for the `plannotator` backend (row 27) — the illustration option (spec 0080 R14) renders only when a browser image surface is available. Unlike the per-CLI gaps above, this is **not** a cross-CLI asymmetry: Plannotator renders the artifact as HTML in a browser it launches itself, so image display is a function of browser availability, uniform across all four CLIs (spec 0080 OQ4). On the `internal` backend there is no image surface on any CLI, and illustration is silently ignored (R14). Recorded as a documented uniform limitation — like row 7g (MemPalace wake-up) — so it is not mistaken for a per-CLI parity gap.
+- [GAP-confirmation] Internal-backend structured interactive prompt on Gemini / Copilot / Antigravity CLI (row 27b) —
+  `AskUserQuestion` is confirmed on Claude Code; a structured interactive-prompt equivalent that avoids a bare prose
+  question is unverified on the other three CLIs. Evidence to be gathered at DEV; downgrade to a hard [GAP] if none
+  exists. The gate SHALL NOT silently degrade to a prose question (spec 0037).
+- [GAP] Illustration image display for the `plannotator` backend (row 27) — the illustration option (spec 0080 R14)
+  renders only when a browser image surface is available. Unlike the per-CLI gaps above, this is **not** a cross-CLI
+  asymmetry: Plannotator renders the artifact as HTML in a browser it launches itself, so image display is a function of
+  browser availability, uniform across all four CLIs (spec 0080 OQ4). On the `internal` backend there is no image
+  surface on any CLI, and illustration is silently ignored (R14). Recorded as a documented uniform limitation — like
+  row 7g (MemPalace wake-up) — so it is not mistaken for a per-CLI parity gap.
 
 <!-- Solo-merge classifier gap (spec 0102) -->
 
-- [GAP-confirmation] Solo-maintainer self-merge classifier block — Claude Code's auto-mode permission classifier can deny a `gh pr merge` invocation when the merging identity equals the pull-request author (confirmed on Claude Code: the denial text itself names "the Claude Code auto mode classifier"). Whether Gemini CLI, GitHub Copilot CLI, or Antigravity CLI exposes an equivalent classifier is **unverified and out of scope** for spec 0102 — no negative is asserted about those three. This is an external CLI runtime behaviour with no CrewRig source-of-truth artifact behind it, hence a *Parity gaps* note rather than a feature-matrix row. The reactive workaround (self-retry once → hand the merge to the user, no laundering to a sibling agent) and the two optional prevention paths are documented in `AGENTS.md` → *Branching Strategy* → *On Claude Code CLI — solo-maintainer self-merge block*.
+- [GAP-confirmation] Solo-maintainer self-merge classifier block — Claude Code's auto-mode permission classifier can
+  deny a `gh pr merge` invocation when the merging identity equals the pull-request author (confirmed on Claude Code:
+  the denial text itself names "the Claude Code auto mode classifier"). Whether Gemini CLI, GitHub Copilot CLI, or
+  Antigravity CLI exposes an equivalent classifier is **unverified and out of scope** for spec 0102 — no negative is
+  asserted about those three. This is an external CLI runtime behaviour with no CrewRig source-of-truth artifact behind
+  it, hence a *Parity gaps* note rather than a feature-matrix row. The reactive workaround (self-retry once → hand the
+  merge to the user, no laundering to a sibling agent) and the two optional prevention paths are documented in
+  `AGENTS.md` → *Branching Strategy* → *On Claude Code CLI — solo-maintainer self-merge block*.
 
 <!-- TaskCreate coordination-primitive gap (spec 0221, issue #1267) -->
 
-- [GAP-confirmation] Claude Code `TaskCreate` coordination primitive — `AGENTS.md` → *Agent Team Protocol* and `docs/agent-team-protocol.md` (per spec 0092) name `TaskCreate` as a Claude Code coordination primitive used for tracking. This session's `ToolSearch` for `TaskCreate` — and separately for the keywords `task` and `create tracking` — returned no matching tool against the current Claude Code harness build, while `TaskStop`, `TaskCreate`'s lifecycle counterpart, is confirmed present and loadable. `TaskStop` existing without `TaskCreate` is corroborating evidence this is a genuine capability gap in the current build rather than a session-specific fluke or a discovery-instrument artifact. This is an external CLI runtime behaviour with no CrewRig source-of-truth artifact behind it, hence a *Parity gaps* note rather than a feature-matrix row; unlike most gaps above, no cross-CLI asymmetry is asserted — no claim is made about Gemini CLI, GitHub Copilot CLI, or Antigravity CLI. `AGENTS.md` and `docs/agent-team-protocol.md` now describe `TaskCreate` as used for tracking only when the harness exposes it, with its absence not constituting a protocol violation or a basis for a REVIEW pass `tech`-class finding. Recorded as `[GAP-confirmation]` rather than a hard `[GAP]` because a future Claude Code harness release could expose the tool; re-verify via `ToolSearch` before citing this entry as still current.
+- [GAP-confirmation] Claude Code `TaskCreate` coordination primitive — `AGENTS.md` → *Agent Team Protocol* and
+  `docs/agent-team-protocol.md` (per spec 0092) name `TaskCreate` as a Claude Code coordination primitive used for
+  tracking. This session's `ToolSearch` for `TaskCreate` — and separately for the keywords `task` and
+  `create tracking` — returned no matching tool against the current Claude Code harness build, while `TaskStop`,
+  `TaskCreate`'s lifecycle counterpart, is confirmed present and loadable. `TaskStop` existing without `TaskCreate` is
+  corroborating evidence this is a genuine capability gap in the current build rather than a session-specific fluke or a
+  discovery-instrument artifact. This is an external CLI runtime behaviour with no CrewRig source-of-truth artifact
+  behind it, hence a *Parity gaps* note rather than a feature-matrix row; unlike most gaps above, no cross-CLI asymmetry
+  is asserted — no claim is made about Gemini CLI, GitHub Copilot CLI, or Antigravity CLI. `AGENTS.md` and
+  `docs/agent-team-protocol.md` now describe `TaskCreate` as used for tracking only when the harness exposes it, with
+  its absence not constituting a protocol violation or a basis for a REVIEW pass `tech`-class finding. Recorded as
+  `[GAP-confirmation]` rather than a hard `[GAP]` because a future Claude Code harness release could expose the tool;
+  re-verify via `ToolSearch` before citing this entry as still current.
 
 <!-- Ticket-ownership forge gaps (spec 0244) -->
 
-- [GAP-confirmation] Ticket-pickup check on GitLab (row 38) — three mechanics come from the GitLab API reference, not a live run: the assignment system-note grammar (`assigned to @a` / `unassigned @b` / `assigned to @b and unassigned @a`), the absence of notes for assignees set at creation (the tool assumes none and seeds a synthetic creation change), and `PUT assignee_ids` with one element on the Free tier. GitLab also has no assignee resource-event API, so the history is parsed from notes; any other system note mentioning "assign" makes the check exit `2`, except notes that quote user-chosen text (title, description, milestone, label, commit, branch and mention notes), which are ignored. Legacy or alternative forms such as `reassigned to @b` or `removed assignee` are therefore deliberately fail-closed (exit `2`) until #1397 confirms which forms supported GitLab versions emit. Verify on a gitlab.com sandbox project per the #1387 plan, step 8, tracked by #1397; downgrade to a hard `[GAP]` with GitLab failing closed if any of the three does not hold (spec 0244 R12).
-- [GAP-confirmation] Ticket-pickup check on Gitea (row 38) — the timeline entry `type` value, the assignee-change event grouping of a `PATCH`, and the presence of the dedicated `POST`/`DELETE …/assignees` endpoints — detected from the server version against an assumed first release, 1.27.0 — come from the Gitea v1.24 source and the published API description, and the pinning of every call to the resolved remote with `tea api --remote <name>` comes from the tea 0.16 documentation; none has been exercised in a live run. Verify on gitea.com per the #1387 plan, step 8, tracked by #1397; downgrade to a hard `[GAP]` with Gitea failing closed if any does not hold (spec 0244 R12). On servers without the dedicated endpoints, a lost-update race between a stale read and an add-only `PATCH` is an accepted limit (`docs/ticket-ownership.md` → *Accepted limits*).
+- [GAP-confirmation] Ticket-pickup check on GitLab (row 38) — three mechanics come from the GitLab API reference, not
+  a live run: the assignment system-note grammar (`assigned to @a` / `unassigned @b` /
+  `assigned to @b and unassigned @a`), the absence of notes for assignees set at creation (the tool assumes none and
+  seeds a synthetic creation change), and `PUT assignee_ids` with one element on the Free tier. GitLab also has no
+  assignee resource-event API, so the history is parsed from notes; any other system note mentioning "assign" makes the
+  check exit `2`, except notes that quote user-chosen text (title, description, milestone, label, commit, branch and
+  mention notes), which are ignored. Legacy or alternative forms such as `reassigned to @b` or `removed assignee` are
+  therefore deliberately fail-closed (exit `2`) until #1397 confirms which forms supported GitLab versions emit. Verify
+  on a gitlab.com sandbox project per the #1387 plan, step 8, tracked by #1397; downgrade to a hard `[GAP]` with GitLab
+  failing closed if any of the three does not hold (spec 0244 R12).
+- [GAP-confirmation] Ticket-pickup check on Gitea (row 38) — the timeline entry `type` value, the assignee-change
+  event grouping of a `PATCH`, and the presence of the dedicated `POST`/`DELETE …/assignees` endpoints — detected
+  from the server version against an assumed first release, 1.27.0 — come from the Gitea v1.24 source and the
+  published API description, and the pinning of every call to the resolved remote with `tea api --remote <name>` comes
+  from the tea 0.16 documentation; none has been exercised in a live run. Verify on gitea.com per the #1387 plan, step
+  8, tracked by #1397; downgrade to a hard `[GAP]` with Gitea failing closed if any does not hold (spec 0244 R12). On
+  servers without the dedicated endpoints, a lost-update race between a stale read and an add-only `PATCH` is an
+  accepted limit (`docs/ticket-ownership.md` → *Accepted limits*).
 <!-- MemPalace session-start check gaps (spec 0246, issue #1410) -->
 
-- [GAP] Session-check user channel on Copilot CLI (row 8e) — the warning reaches the model only, through top-level `additionalContext`, and the model relays it; R13 is the agent-side complement. Evidence: (1) the [GitHub Copilot hooks reference](https://docs.github.com/en/copilot/reference/hooks-reference) → *sessionStart*: "Only additionalContext is consumed for sessionStart (command and HTTP variants)", and `systemMessage` appears nowhere in that reference, on any event; (2) an empirical reproduction on Copilot CLI 1.0.90 ([issue #1410](https://github.com/crewrig/crewrig/issues/1410#issuecomment-5950885519)): a probe emitting `systemMessage`, `hookSpecificOutput.additionalContext` and `additionalContext` with distinct markers showed no marker on stderr or in any JSONL event, and only the `additionalContext` marker reached the model. An interactive-UI check by the owner is pending; if it shows the `systemMessage` marker, this gap closes and `SESSION_CHECK_CHANNELS.copilot.user` is set.
-- [GAP-confirmation] Session-check user channel on Antigravity CLI (row 8e) — unconfirmed, pending [#1472](https://github.com/crewrig/crewrig/issues/1472). The check emits only the model channel, `injectSteps[].ephemeralMessage`, so the warning reaches the user only when the model relays it; R13 is the agent-side complement. The prose hooks documentation embedded in `agy` 1.2.14 (*`PreInvocation` Contract*) lists three step types, `toolCall`, `userMessage` and `ephemeralMessage`, none of them a user-interface field. The binary's compiled output schema, however, has eight step types, and two of them might reach the user: `system_message` and `error_message.user_message`. The prose documentation is therefore not the complete output schema, and it does not prove a user channel absent. The binary also contains an undocumented `SessionStart` hook (`CallSessionStartHook`). The check does not use it. [#1472](https://github.com/crewrig/crewrig/issues/1472) probes both step types and that hook live; until then no user field is emitted. Documented alternatives already rejected: a `userMessage` step would insert the warning as if the operator had typed it; `PreToolUse`'s `reason` ("Explanation shown to the user/agent") requires a `decision`, and `allow` auto-approves the tool call while `ask`, `force_ask` and `deny` interrupt it, against R9; `Stop`'s `reason` is injected only with `decision: "continue"`, which blocks the stop, also against R9.
-- [GAP-confirmation] Session-check model channel on Gemini CLI (row 8e) — `hookSpecificOutput.additionalContext` is documented ([Gemini CLI hooks reference](https://geminicli.com/docs/hooks/reference/) → *SessionStart*: "Injected as the first turn in history") but not live-verified. Gemini CLI 0.28.2 fires the hook before authentication, so the user channel (`systemMessage`) and the millisecond timeout were verified live, but the probe account then fails with `IneligibleTierError … UNSUPPORTED_CLIENT` and no model turn is possible ([issue #1410](https://github.com/crewrig/crewrig/issues/1410#issuecomment-5950885519)). The field ships at its documented value, on the evidence of the hooks reference shipped in Gemini CLI 0.28.2 (spec 0246 delta-02 R7). The live confirmation is tracked in [#1472](https://github.com/crewrig/crewrig/issues/1472): re-run the probe with API-key or Vertex authentication; if the marker does not reach the model, set `SESSION_CHECK_CHANNELS.gemini.model` to `null` (R7 fallback) and turn this entry into a [GAP].
-- [GAP-confirmation] Session-check evidence on Antigravity CLI is documentation-only (row 8e) — no Antigravity account was available, so no live `agy` probe ran. Under spec 0246 delta-02 R7 and R8 (owner ruling), the hooks documentation embedded in `agy` 1.2.14 is the evidence for every Antigravity cell of row 8e: `conversationId` among the *Common Input Fields* of every payload (the throttle key), `injectSteps[].ephemeralMessage` as the `PreInvocation` output, and `timeout` in seconds. Only the suppressed-path cost was measured, outside `agy`. Earlier live evidence disagrees on one point: on `agy` 1.0.16, `conversationId` was observed on `Stop` only (row 8, Exercise B; spec 0116 delta-03). If `PreInvocation` lacks it, the throttle falls back to the 30-minute window, whose measured p95 (85.6 ms) is also within the R8 bound. The live confirmation is tracked in [#1472](https://github.com/crewrig/crewrig/issues/1472): it settles the payload key, the model channel, and whether a user channel exists.
-- [GAP] Session check on platforms other than macOS and Linux (rows 8e, 10) — setup registers no check there on any CLI, and removes an entry an earlier run left (spec 0246 delta-01 R11 *Platform*). Evidence: on Windows, Gemini CLI and Copilot CLI run hook commands under PowerShell 5.1 and Antigravity CLI under `cmd.exe` (row 37, measured), so the POSIX hook command would fail at every session start, against R9; and no daemon supervisor is installed there, so the check would stay silent anyway (R6). Uniform across the four CLIs; R13 covers the agent side.
+- [GAP] Session-check user channel on Copilot CLI (row 8e) — the warning reaches the model only, through top-level
+  `additionalContext`, and the model relays it; R13 is the agent-side complement. Evidence: (1) the [GitHub Copilot
+  hooks reference](https://docs.github.com/en/copilot/reference/hooks-reference) → *sessionStart*: "Only
+  additionalContext is consumed for sessionStart (command and HTTP variants)", and `systemMessage` appears nowhere in
+  that reference, on any event; (2) an empirical reproduction on Copilot CLI 1.0.90 ([issue #1410](https://github.com/crewrig/crewrig/issues/1410#issuecomment-5950885519)):
+  a probe emitting `systemMessage`, `hookSpecificOutput.additionalContext` and `additionalContext` with distinct markers
+  showed no marker on stderr or in any JSONL event, and only the `additionalContext` marker reached the model. An
+  interactive-UI check by the owner is pending; if it shows the `systemMessage` marker, this gap closes and
+  `SESSION_CHECK_CHANNELS.copilot.user` is set.
+- [GAP-confirmation] Session-check user channel on Antigravity CLI (row 8e) — unconfirmed, pending
+  [#1472](https://github.com/crewrig/crewrig/issues/1472). The check emits only the model channel,
+  `injectSteps[].ephemeralMessage`, so the warning reaches the user only when the model relays it; R13 is the agent-side
+  complement. The prose hooks documentation embedded in `agy` 1.2.14 (*`PreInvocation` Contract*) lists three step
+  types, `toolCall`, `userMessage` and `ephemeralMessage`, none of them a user-interface field. The binary's compiled
+  output schema, however, has eight step types, and two of them might reach the user: `system_message` and
+  `error_message.user_message`. The prose documentation is therefore not the complete output schema, and it does not
+  prove a user channel absent. The binary also contains an undocumented `SessionStart` hook (`CallSessionStartHook`).
+  The check does not use it. [#1472](https://github.com/crewrig/crewrig/issues/1472) probes both step types and that
+  hook live; until then no user field is emitted. Documented alternatives already rejected: a `userMessage` step would
+  insert the warning as if the operator had typed it; `PreToolUse`'s `reason` ("Explanation shown to the user/agent")
+  requires a `decision`, and `allow` auto-approves the tool call while `ask`, `force_ask` and `deny` interrupt it,
+  against R9; `Stop`'s `reason` is injected only with `decision: "continue"`, which blocks the stop, also against R9.
+- [GAP-confirmation] Session-check model channel on Gemini CLI (row 8e) — `hookSpecificOutput.additionalContext` is
+  documented ([Gemini CLI hooks reference](https://geminicli.com/docs/hooks/reference/) → *SessionStart*: "Injected as
+  the first turn in history") but not live-verified. Gemini CLI 0.28.2 fires the hook before authentication, so the user
+  channel (`systemMessage`) and the millisecond timeout were verified live, but the probe account then fails with
+  `IneligibleTierError … UNSUPPORTED_CLIENT` and no model turn is possible ([issue #1410](https://github.com/crewrig/crewrig/issues/1410#issuecomment-5950885519)).
+  The field ships at its documented value, on the evidence of the hooks reference shipped in Gemini CLI 0.28.2 (spec
+  0246 delta-02 R7). The live confirmation is tracked in [#1472](https://github.com/crewrig/crewrig/issues/1472): re-run
+  the probe with API-key or Vertex authentication; if the marker does not reach the model, set
+  `SESSION_CHECK_CHANNELS.gemini.model` to `null` (R7 fallback) and turn this entry into a [GAP].
+- [GAP-confirmation] Session-check evidence on Antigravity CLI is documentation-only (row 8e) — no Antigravity account
+  was available, so no live `agy` probe ran. Under spec 0246 delta-02 R7 and R8 (owner ruling), the hooks documentation
+  embedded in `agy` 1.2.14 is the evidence for every Antigravity cell of row 8e: `conversationId` among the *Common
+  Input Fields* of every payload (the throttle key), `injectSteps[].ephemeralMessage` as the `PreInvocation` output, and
+  `timeout` in seconds. Only the suppressed-path cost was measured, outside `agy`. Earlier live evidence disagrees on
+  one point: on `agy` 1.0.16, `conversationId` was observed on `Stop` only (row 8, Exercise B; spec 0116 delta-03). If
+  `PreInvocation` lacks it, the throttle falls back to the 30-minute window, whose measured p95 (85.6 ms) is also within
+  the R8 bound. The live confirmation is tracked in [#1472](https://github.com/crewrig/crewrig/issues/1472): it settles
+  the payload key, the model channel, and whether a user channel exists.
+- [GAP] Session check on platforms other than macOS and Linux (rows 8e, 10) — setup registers no check there on any
+  CLI, and removes an entry an earlier run left (spec 0246 delta-01 R11 *Platform*). Evidence: on Windows, Gemini CLI
+  and Copilot CLI run hook commands under PowerShell 5.1 and Antigravity CLI under `cmd.exe` (row 37, measured), so the
+  POSIX hook command would fail at every session start, against R9; and no daemon supervisor is installed there, so the
+  check would stay silent anyway (R6). Uniform across the four CLIs; R13 covers the agent side.
 
-- **[GAP] Skill preload from an agent definition (row 43, spec 0269).** Gemini CLI has no such field: its local-agent frontmatter schema is strict and lists no `skills` key (evidence in row 43). Copilot CLI and Antigravity CLI are undetermined, so the "read it once at the start" instruction stays everywhere.
+- **[GAP] Skill preload from an agent definition (row 43, spec 0269).** Gemini CLI has no such field: its local-agent
+  frontmatter schema is strict and lists no `skills` key (evidence in row 43). Copilot CLI and Antigravity CLI are
+  undetermined, so the "read it once at the start" instruction stays everywhere.
 
-- **[GAP] Gemini CLI subagent usage attribution is channel-3 only (row 44, spec 0271 R11).** A Gemini CLI subagent record carries its own session id and an `unknown` project root, so the orchestrator's session declaration does not cover it; it is attributed through the worktree/branch channel from the capturing process's cwd. Evidence and fixtures in row 44. Not an asymmetry of the keep-one-call kind: it fails only when the subagent runs outside a ticket worktree or branch, which the Pre-Edit Guard forbids for edits.
+- **[GAP] Gemini CLI subagent usage attribution is channel-3 only (row 44, spec 0271 R11).** A Gemini CLI subagent
+  record carries its own session id and an `unknown` project root, so the orchestrator's session declaration does not
+  cover it; it is attributed through the worktree/branch channel from the capturing process's cwd. Evidence and fixtures
+  in row 44. Not an asymmetry of the keep-one-call kind: it fails only when the subagent runs outside a ticket worktree
+  or branch, which the Pre-Edit Guard forbids for edits.
 
 ## Adding a new CLI
 

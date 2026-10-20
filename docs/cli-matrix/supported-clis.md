@@ -11,12 +11,15 @@
   - Plugin install dir: `~/.gemini/extensions/`
   - Notes: Extension-based loading. Settings live in `~/.gemini/settings.json`.
 - **Copilot CLI**
-  - Config root: **Split**: `.github/copilot/` (settings + hooks) + `.github/skills/` (skills) + `.github/agents/` (agents)
+  - Config root: **Split**: `.github/copilot/` (settings + hooks) + `.github/skills/` (skills) + `.github/agents/`
+    (agents)
   - Entry point file: `.github/copilot-instructions.md` (re-exports `AGENTS.md`)
   - Plugin install dir: In-place via `.github/`
-  - Notes: Open Agent Skills standard. No single config root by design — Copilot reads each sibling path independently. `@copilot` mentions on issues / PRs trigger the coding agent natively.
+  - Notes: Open Agent Skills standard. No single config root by design — Copilot reads each sibling path
+    independently. `@copilot` mentions on issues / PRs trigger the coding agent natively.
 - **Antigravity CLI**
   - Config root: `~/.gemini/antigravity-cli/`
   - Entry point file: `.agents/ANTIGRAVITY.md`
   - Plugin install dir: `~/.gemini/config/plugins/`
-  - Notes: Plugin-based loading via `agy plugin install`. Workspace entry point is `.agents/ANTIGRAVITY.md`; user-level config lives under `~/.gemini/antigravity-cli/`. (spec 0052)
+  - Notes: Plugin-based loading via `agy plugin install`. Workspace entry point is `.agents/ANTIGRAVITY.md`; user-level
+    config lives under `~/.gemini/antigravity-cli/`. (spec 0052)
