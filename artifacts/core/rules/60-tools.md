@@ -176,9 +176,9 @@ host CLI's deferred-tool search — or if the sweep's first MemPalace call
 fails because the server cannot be reached, tell the user explicitly, before
 any task work, that shared memory is unavailable for this session and that
 the handoff lookup, the checkpoint, and the final flush will not happen, and
-point at `task mempalace:status`. Never skip the sweep silently and never act
-as if it had run. Once you have signalled, continue with the task unless the user says
-otherwise. This rule binds the orchestrator only and mirrors the *Explicit signal — never silent* step of *Retrieving the
+point at `task mempalace:status`. Never skip silently or act as if it had run.
+A deferred tool counts as available: load it and run the sweep. Once you have
+signalled, continue unless the user says otherwise. This binds the orchestrator only and mirrors the *Explicit signal — never silent* step of *Retrieving the
 system-context store*.
 
 1. **Compute `<project-name>`** (see *Project name derivation* above).
@@ -193,8 +193,8 @@ system-context store*.
    )
    ```
 
-   Wing+room scoped, immune to transcripts noise. This is the canonical
-   cross-tool task discovery path.
+   Wing+room scoped, immune to transcripts noise; the canonical task
+   discovery path.
 
    Apply the `visible_to` filter client-side: ignore any returned entry
    whose `visible_to` field contains neither `*` nor your agent name.
