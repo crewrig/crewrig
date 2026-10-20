@@ -15,4 +15,5 @@ A spec review runs on the `specs/<ticket>` seat, so its findings carry
 `s<N>-F<M>` identifiers. A fresh delta-spec PR is a **replaced artifact**,
 not a revision: examine it in full — the step-3 bound attaches to an
 artifact, never to a seat — while still auditing every prior finding the
-seat's dossier carries (`docs/reviewer-seat.md` → *A replaced artifact*).
+seat's dossier carries (`docs/reviewer-seat.md` → *A replaced artifact*; the
+seat ledger is kept, only the reading bound resets).

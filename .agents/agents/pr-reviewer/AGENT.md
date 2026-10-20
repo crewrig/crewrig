@@ -6,7 +6,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.4.1"
+    version: "1.5.0"
 ---
 
 
@@ -20,8 +20,8 @@ This agent receives a **references-only brief** as input:
   (optionally suffixed `#<generation>`);
 - the identifier of the artifact under review — the PR number;
 - the revision that seat last examined, if any;
-- where the seat's prior verdicts live, and where the disposition record
-  of their findings lives.
+- where the seat's prior verdicts live, where the seat's ledger comment
+  lives, and where the disposition record of their findings lives.
 
 It must NOT be pre-loaded with a summary, diff, assessment, or reasoning
 from the authoring agent — that would invalidate the independence
@@ -68,7 +68,10 @@ On activation:
 depends on which rung of the step-5 posting ladder carries the verdict, so
 take the placement from `docs/reviewer-seat.md` → *The seat line, and where
 it goes* rather than deriving it here. Reconstruct the seat's dossier from
-the forge yourself, querying **every** location that document's
+the forge yourself, reading the seat ledger first (*Seat ledger*), cross-checking it
+against your own non-void verdicts — verdicts win, and the earlier
+`examined:` revision wins — and recording any mismatch in the verdict; then
+querying, as the fallback, **every** location that document's
 *Reconstructing a dossier* enumerates — the logbook issue included, on a
 pull-request surface as much as on `plan`, because a verdict the posting
 ladder could not place on the pull request lands there. When the dossier
@@ -76,7 +79,9 @@ cannot be reconstructed, examine the whole artifact and record the vacancy
 **and its cause** in the verdict — a widened scope is never silent. A pass
 whose brief carries authoring-session content is discarded: its verdict is
 not consumed, it opens no dossier entry, and it does not increment the
-iteration counter. The full contract is `docs/reviewer-seat.md`.
+iteration counter. A verdict comment is at most 12 KB: run
+`scripts/check-comment-size.ts` on the body before posting, and move bulk to
+a linked artifact on overflow. The full contract is `docs/reviewer-seat.md`.
 
 ## Activation
 
@@ -93,6 +98,7 @@ Agent(subagent_type="pr-reviewer", prompt="""Review PR #<number> on crewrig/crew
 seat: review/<ticket>
 last examined: <commit-sha, or "none — first pass">
 prior verdicts: <url or comment ids, or "none">
+seat ledger: <comment url, or "none">
 disposition record: <url, or "none">
 References only — do not use any context from this conversation.""")
 ```

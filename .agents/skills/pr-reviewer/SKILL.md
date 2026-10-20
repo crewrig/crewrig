@@ -7,7 +7,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.11.1"
+    version: "1.12.0"
 ---
 
 
@@ -53,7 +53,8 @@ Read `references/step-5-compose.md`.
 
 ### 6. Post the review
 
-Read `references/step-6-post.md`.
+Read `references/step-6-post.md`. Before posting, run
+`scripts/check-comment-size.ts` on the verdict body (12 KB budget).
 
 ## Cross-cutting: assert only a fresh observation
 

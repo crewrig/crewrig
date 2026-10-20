@@ -10,7 +10,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.3.2"
+    version: "1.3.3"
 claude:
   allowed-tools:
     - Read
@@ -209,12 +209,16 @@ onward — reads a bounded scope. The contract is
 **As plan reviewer** — the `plan/<ticket>` seat. The `seat:` line goes
 immediately after the `### Verdict: …` line (`docs/plan-format.md` →
 *Header conventions*). From pass two the mandatory reading is bounded to
-the plan revision's delta, the prior findings' dispositions, and every
+the plan revision's delta, the seat's ledger (read first, verdicts
+authoritative; `docs/reviewer-seat.md` → *Seat ledger*), the prior findings' dispositions, and every
 surface that delta reaches. Nothing else changes on this surface: the
 `v<N>-F<M>` identifiers and the *Finding Traceability Audit* that
 `docs/plan-review-protocol.md` already mandates are exactly what the seat
 contract's identifier, disposition-record and audit obligations resolve
-to here — there is no second scheme and no second record.
+to here — there is no second scheme and no second record. Plan `v2` and later are
+posted as deltas with a cumulative traceability table, and a plan or verdict
+comment stays within 12 KB (`docs/plan-format.md` → *Delta revisions*,
+*Comment size budget*; run `scripts/check-comment-size.ts` before posting).
 
 **As spec reviewer in the SPECS stage** — the `specs/<ticket>` seat. The
 verdict lands on a pull request, where the placement depends on which rung

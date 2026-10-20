@@ -12,7 +12,10 @@ deriving it here.
 verdict's first section**, before any new finding. It states, per finding
 identifier in the seat's dossier, whether this pass accepts the recorded
 disposition. A prior finding this pass judges unaddressed **prevents an
-approving verdict**. When the seat is vacant, that section instead records
+approving verdict**. A mismatch between the seat ledger and the seat's
+verdicts, or an `examined:` revision later than the latest verdict's, is
+recorded here, with the cause. The verdict body stays within 12 KB
+(`scripts/check-comment-size.ts`); bulk moves to a linked artifact. When the seat is vacant, that section instead records
 the vacancy and its cause.
 
 Then five sections, in this order:
