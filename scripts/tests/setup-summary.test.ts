@@ -173,7 +173,7 @@ describe("summary step", () => {
     test(`${cli}: reproduces the default-answers golden tail`, async () => {
       const tail = goldenTail(cli);
       const { spawn } = populate(cli, tail);
-      const result = await run(build(cli), setup(true, 915), { spawn });
+      const result = await run(build(cli), setup(true, 913), { spawn });
       assert.equal(result.status, 0);
       // The leading blank is this step's, except after Antigravity's system-context-file step.
       const lead = cli === "antigravity" ? "" : "\n";

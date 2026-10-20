@@ -74,7 +74,7 @@ Migrating components left at the superseded placement...
   MemPalace session check registered in ~/.gemini/config/hooks.json
 
 Generating <HOME>/.gemini/config/AGENTS.md...
-  Generated: <HOME>/.gemini/config/AGENTS.md (853 lines)
+  Generated: <HOME>/.gemini/config/AGENTS.md (851 lines)
 
 ====================================
   Setup complete
@@ -92,7 +92,7 @@ Active context files:
   <HOME>/.gemini/antigravity-cli/65_TOOLS.md
 
 System context file (Antigravity runtime):
-  <HOME>/.gemini/config/AGENTS.md (853 lines)
+  <HOME>/.gemini/config/AGENTS.md (851 lines)
 
 MCP servers (from mcp_config.json):
   - mempalace
