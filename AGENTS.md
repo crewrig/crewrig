@@ -11,29 +11,23 @@ GitHub Copilot CLI, and Antigravity CLI. Its five pillars are described in
 
 ## Session Bootstrap
 
-**Before any work begins**, the agent SHALL run the complete deterministic
+**Before any work begins**, the orchestrator SHALL run the complete deterministic
 session-start sweep defined in
 `artifacts/core/rules/60-tools.md` → *Memory Activation Protocol → Session Start*
-(all six steps, in order). The project-specific parameter for step 3 is
+(all five steps, in order). The project-specific parameter for step 2 is
 `wing="crewrig"`, `room="task-handoff"`.
 
-Skipping the sweep is a process violation equivalent to missing a lifecycle
+For the orchestrator, skipping the sweep is a process violation equivalent to missing a lifecycle
 stage. A REVIEW pass that audits a session where the sweep was omitted SHALL
 emit a `class: tech` finding citing this section.
 
-**Reviewer-seat exemption.** A seated pass — an agent instantiated per
-[`docs/reviewer-seat.md`](docs/reviewer-seat.md) → *Instantiating a seated
-pass*, occupying the `specs`, `plan`, or `review` surface, on any pass
-ordinal of that seat — skips step 3 (cross-tool handoff lookup) and step 6
-(mandatory checkpoint write) of the sweep above, and still runs steps 1, 2,
-4, and 5 unchanged. The preceding paragraph's "process violation" rule and
-its accompanying `class: tech` finding do NOT apply to a seated pass's
-correctly-reasoned skip of steps 3 and 6 — see
-[`docs/reviewer-seat.md`](docs/reviewer-seat.md) → *Session Bootstrap for a
-seated pass* for the full rationale. Every other role — the orchestrator, a
-`developer` pass, an `architect` pass acting outside a seated review,
-`pr-logbook`, etc. — remains fully bound by the unmodified six-step sweep,
-with no exemption.
+**Subagents.** A subagent — any agent instantiated by another agent with a
+brief, a seated pass included — skips the sweep entirely and writes no handoff
+drawer or diary entry; it reports its outcome and the orchestrator writes them
+once. Skipping is NOT a process violation and yields no finding of any class. A
+non-seat subagent's brief carries the `handoff_key` and drawer id
+([`docs/agent-team-protocol.md`](docs/agent-team-protocol.md)); a seated pass's
+brief carries neither ([`docs/reviewer-seat.md`](docs/reviewer-seat.md)).
 
 Additionally, before opening any new ticket worktree, perform the additive,
 non-destructive session-start worktree-backlog surfacing in
