@@ -64,8 +64,10 @@ the first column today (`1`, `2`, `3`, `4`, `4b`, `4c`, ... `37e`, `37f`, `44`).
    after the `crewrig-doc` marker: the H1 stays on line 1 and the marker on line
    3, as today, because the docs-index extractor reads the first line containing
    `crewrig-doc:` after the first level-1 heading (`scripts/lib/docs-index/extract.ts`);
-   the generated-file comment follows the marker on line 5. The marker value is
-   unchanged.
+   the generated-file comment follows the marker on line 5. The generator emits
+   that comment itself, as the second part after `intro.md`'s H1 and marker
+   (intro.md carries only the H1, the marker and the lead paragraph), joined by
+   the blank-line rule of requirement 4. The marker value is unchanged.
 6. The generator SHALL have two modes: write (default) and `--check`. `--check`
    SHALL exit non-zero, and print a hint naming the first differing line and
    the command that regenerates, when the checked-in file differs from the
