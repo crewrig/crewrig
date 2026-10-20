@@ -21,7 +21,7 @@ context: <key facts needed to resume>
 Resuming a task — `mempalace_update_drawer` on the existing drawer
 (preserves `drawer_id` and KG links). The new content replaces the old.
 **The checkpoint write is mandatory the moment a `[TASK:ongoing]` drawer
-is found at session start (see *Session Start* step 6) — it is not
+is found at session start (see *Session Start* step 5) — it is not
 something to defer until "real work" begins.**
 
 ```text
