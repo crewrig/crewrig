@@ -1,7 +1,8 @@
 ---
 id: "0226"
 slug: reviewer-seat-bootstrap-exemption
-status: approved
+status: superseded
+superseded-by: "0271"
 complexity: small
 interaction-mode: AUTO
 related-issue: 1264

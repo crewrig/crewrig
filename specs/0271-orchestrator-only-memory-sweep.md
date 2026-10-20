@@ -1,7 +1,7 @@
 ---
 id: "0271"
 slug: orchestrator-only-memory-sweep
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 1728

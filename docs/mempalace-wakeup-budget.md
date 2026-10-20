@@ -14,7 +14,7 @@ approximation (the true ratio varies by tokenizer and content).
 | Sweep component | Payload | ≈ tokens (@ ~4 B/tok) | Cap |
 |---|---|---|---|
 | Core sweep (the five numbered steps): scoped `[TASK:ongoing]` search + `diary_read(last_n≤5)` + one `kg_query` + conditional checkpoint write | documented estimate (see issue #415) | — | ~8 KB (~2,000 tok) |
-| Optional store mirror: the 5 × `~/.crewrig/system-context/*.md` files, verbatim | 16,315 B | ~4,079 | ~16 KB (~4,000 tok) |
+| Optional store mirror: the 5 × `~/.crewrig/system-context/*.md` files, verbatim | 16,319 B | ~4,079 | ~16 KB (~4,000 tok) |
 | **Total wake-up (with mirror)** | | | **~24 KB (~6,000 tok)** |
 
 **Overflow rule.** If the budget would be exceeded, shed the optional
