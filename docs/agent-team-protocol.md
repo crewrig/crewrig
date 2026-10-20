@@ -58,6 +58,14 @@ for tracking only: its `description` should be a one-liner (e.g.
 `"Implement feature X — full brief in Agent prompt"`), not a duplicate of
 the Agent prompt. Never write the same brief in both places.
 
+**Handoff reference rule**: Every non-seat `Agent` spawn brief carries the
+`handoff_key` (bare decimal ticket number) and the handoff drawer id (the
+`drawer_id` of the `[TASK:ongoing]` drawer found by sweep step 2; omit when
+none exists). The subagent never runs the sweep, MAY make one
+`mempalace_get_drawer` call when its task needs it, and reports its outcome in
+its final report; the orchestrator writes the handoff drawer and the diary
+entry once.
+
 **Verified-claim rule**: Technical assertions embedded in a developer
 brief (package names, install paths, command flags, file locations,
 schema fields, API shapes) MUST be either (a) sourced from the
@@ -330,7 +338,8 @@ The contract in full, including the seat line every verdict carries and
 the bounded reading that applies from a seat's second pass onward, is
 [`docs/reviewer-seat.md`](reviewer-seat.md). It changes no template's
 composition and no role's surface; it changes how a pass is briefed and
-what its verdict must say.
+what its verdict must say. A seated pass's brief carries neither the
+`handoff_key` nor the drawer id.
 
 ### Step 0 — `spec-author` (every non-trivial template)
 
