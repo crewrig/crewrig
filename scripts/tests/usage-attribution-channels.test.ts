@@ -199,7 +199,8 @@ describe("usage attribution channels (R25)", () => {
     let scratch = "";
     const fx = (label: string) => path.join(FIXTURES_DIR, ...label.split("/"));
     const identity = (dir: string, n: number) =>
-      (readRecord(dir, n) as { identity: { sessionId: string; agentId: string | null } }).identity;
+      (readRecord(dir, n) as unknown as { identity: { sessionId: string; agentId: string | null } })
+        .identity;
 
     function derived(cli: string, input: string[], tag: string): string {
       const outDir = path.join(scratch, tag);
@@ -247,11 +248,7 @@ describe("usage attribution channels (R25)", () => {
       () => {
         const db = path.join(scratch, "copilot.sqlite");
         materializeDb(fx("copilot-cli/assistant-usage-events"), db, mkTemp("usage-attr-cp-home-"));
-        const dir = derived(
-          "copilot-cli",
-          [db, "--home", mkTemp("usage-attr-cp-copy-")],
-          "cp",
-        );
+        const dir = derived("copilot-cli", [db, "--home", mkTemp("usage-attr-cp-copy-")], "cp");
         const sub = identity(dir, 1);
         assert.equal(sub.agentId, "agent-fixture-77");
         assert.equal(sub.sessionId, identity(dir, 0).sessionId);
