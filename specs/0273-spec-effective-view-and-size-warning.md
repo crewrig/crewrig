@@ -1,7 +1,7 @@
 ---
 id: "0273"
 slug: spec-effective-view-and-size-warning
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1730
@@ -39,18 +39,15 @@ Sizes are bytes as reported by `wc -c`. A **delta** of spec `<id>` is a file
    delta files in the order applied, and the cumulative `version` read from the
    highest-numbered delta (the base `version` when there is none).
 4. The document SHALL then contain the body of the base spec (everything after
-   its frontmatter), unmodified, followed by one section per delta in ascending
-   delta number, each headed `Delta NN` and carrying that delta's ADDED, MODIFIED
-   and REMOVED text verbatim and in that order. Delta sections are never merged
-   out of order.
-5. Quoted items of a MODIFIED or REMOVED section SHALL be resolved by exact
-   match only: when the quoted original text, after collapsing whitespace, occurs
-   exactly once in the base body or in the text of an earlier delta section, the
-   view SHALL append the marker `[modified by delta-NN]` or `[removed by
-   delta-NN]` to that occurrence. When it occurs zero times or more than once,
-   the view SHALL list it under a final heading `Unresolved delta items` with
-   its delta number and kind, and SHALL NOT guess. The view SHALL NOT rewrite or
-   delete base text.
+   its frontmatter) byte-for-byte unmodified, followed by one section per delta
+   in ascending delta number, each headed `Delta NN` and carrying that delta's
+   ADDED, MODIFIED and REMOVED text verbatim and in that order. The view SHALL
+   NOT parse, match, mark, rewrite or delete any quoted item: it performs no
+   resolution of MODIFIED or REMOVED text, and it SHALL NOT emit any marker or
+   any section other than the header, the base body and the delta sections.
+5. A reader determines the effective text of a requirement by reading the base
+   body and then the delta sections in order; the later delta prevails, per the
+   delta-spec cumulative rule, which this command only presents and never applies.
 6. For an id with no spec file, the command SHALL print an error naming the id
    on stderr, nothing on stdout, and exit with a non-zero code. For a spec with
    no delta, it SHALL print the header and the base body and exit 0, the header
@@ -58,10 +55,11 @@ Sizes are bytes as reported by `wc -c`. A **delta** of spec `<id>` is a file
 7. The output SHALL be deterministic: the same files produce byte-identical
    output, with no timestamp and no absolute path.
 8. The spec linter (`scripts/lib/spec-linter.js`) SHALL emit a line beginning
-   `[WARN]` for each spec or delta file under `specs/` larger than 40960 bytes,
-   naming the file and its size in bytes. The warning SHALL NOT change the exit
+   `[WARN]` for each spec or delta file it visits larger than 40960 bytes,
+   naming the file and its size in bytes. This holds in every linter mode: full
+   scan, path-scoped run (files passed as arguments) and base-branch checks. The warning SHALL NOT change the exit
    code or the error count: a run that passes without it still passes with it.
-9. The warning SHALL apply to every file regardless of age, including the
+9. The warning SHALL apply to every visited file regardless of age, including the
    existing `specs/0263-setup-service-tests-typescript.md` and
    `specs/0265-build-checks-tests-typescript.md`, and SHALL NOT fail the run
    for them. This spec SHALL NOT edit, split or exempt those two files.
@@ -87,17 +85,11 @@ Given a spec `0002` with `delta-01` and `delta-02`
 When  `task spec:view -- 0002` runs
 Then  stdout holds the header, the base body, `Delta 01` then `Delta 02`, the cumulative version of `delta-02`, and no file has changed
 
-**Scenario:** A modified requirement is found
+**Scenario:** Deltas are presented verbatim
 
-Given a delta whose MODIFIED section quotes a requirement line that occurs once in the base body
+Given a delta whose MODIFIED section quotes a requirement and gives its replacement
 When  the view is rendered
-Then  that base line ends with `[modified by delta-NN]` and the replacement text appears in the `Delta NN` section
-
-**Scenario:** A quote cannot be resolved
-
-Given a REMOVED item whose quoted text occurs nowhere in the base or earlier deltas
-When  the view is rendered
-Then  it appears under `Unresolved delta items` with its delta number and nothing in the base text is altered
+Then  the base body is byte-identical to the base file body, the `Delta NN` section holds the MODIFIED text verbatim, and no marker or `Unresolved` section appears
 
 **Scenario:** Unknown id
 
@@ -123,6 +115,12 @@ Given specs 0263 and 0265 on the branch
 When  `task spec:lint` runs
 Then  each is named in a `[WARN]` line and the exit code is unchanged
 
+**Scenario:** Path-scoped run warns
+
+Given a spec file of 40961 bytes passed as an argument to the linter
+When  `task spec:lint -- <file>` runs
+Then  the `[WARN]` line is emitted and the exit code is 0
+
 **Scenario:** Exactly 40 KB
 
 Given a spec file of exactly 40960 bytes
@@ -134,9 +132,10 @@ Then  no size warning is emitted
 - Splitting, shrinking or exempting specs 0263 and 0265, or any other existing spec.
 - Making the size warning a failure, or a configurable threshold.
 - Editing, rewriting or generating spec files from the effective view; the view is never normative.
+- Resolving, marking or applying MODIFIED and REMOVED items inside the view; no quote syntax is parsed.
 - Slimming `docs/cli-matrix*` and the other work packages of epic #1724 (WP4a, WP4c and the rest).
 
 ## Open questions
 
-- Decision (AUTO): MODIFIED and REMOVED quotes are resolved by exact unique match and otherwise listed as unresolved, rather than parsed heuristically, to keep the view deterministic and honest about what it cannot resolve.
+- Decision (AUTO): the view does no quote resolution or marking, because delta quote syntax is not uniform (seat findings v1-F1 to v1-F3); it presents base and deltas in order and the cumulative rule alone decides what prevails.
 - Decision (AUTO): the threshold is 40960 bytes, the epic's proposal, and a file of exactly 40960 bytes does not warn.
