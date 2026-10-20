@@ -262,7 +262,7 @@ describe("usage attribution channels (R25)", () => {
       },
     );
 
-    test("R11 gemini-cli subagent session differs: parent declaration misses, worktree channel hits", () => {
+    test("R11 gemini-cli subagent session differs: only the worktree channel hits", () => {
       const dir = derived(
         "gemini-cli",
         [path.join(fx("gemini-cli/subagent-jsonl"), "chats", "main.jsonl")],
