@@ -1,7 +1,7 @@
 ---
 id: "0271"
 slug: orchestrator-only-memory-sweep
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1728
@@ -31,7 +31,9 @@ any agent instantiated by another agent through a delegation primitive with a
 brief, a seated reviewer pass included; the **orchestrator** is the main session
 that owns the ticket. An agent is a subagent exactly when its brief was supplied
 by another agent; an agent the user starts directly, including one invoked for a
-review, is an orchestrator for the purposes of this spec and runs the sweep.
+review, is an orchestrator for the purposes of this spec and runs the sweep; when it
+owns no ticket, the scoped handoff lookup simply finds nothing to resume and no
+checkpoint is written.
 
 1. Only the orchestrator SHALL run the session-start sweep. A subagent SHALL
    skip it entirely, including the "memory unavailable" signal that the sweep
@@ -79,7 +81,7 @@ review, is an orchestrator for the purposes of this spec and runs the sweep.
    `tests/e2e/9.3-cross-tool-continuity.md`, `artifacts/core/system-context/`
    and the *Memory Activation Protocol* in `artifacts/core/rules/60-tools.md`.
    The criterion is a search, not a list: after the change, a search of every
-   tracked file outside `specs/` for a six-step sweep, a numbered sweep step
+   tracked file outside `specs/` (for instance `git grep -n -i -E 'six-step|six steps|steps? 3 and 6|step 3 \(cross-tool' -- . ':!specs'` and `git grep -n 'mempalace_status' -- . ':!specs'`, with every remaining hit explained) for a six-step sweep, a numbered sweep step
    that names `mempalace_status`, or the seated-pass exemption of steps 3 and 6
    returns no match, and the implementation records the commands and their empty
    output in the logbook.
