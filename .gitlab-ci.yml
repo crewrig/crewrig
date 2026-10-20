@@ -969,7 +969,7 @@ packaging-modules-ts:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tar-writer.test.ts scripts/tests/docs-index.test.ts scripts/tests/build-docs-index-entry.test.ts scripts/tests/packaging-file-size.test.ts scripts/tests/packaging-release-package.test.ts scripts/tests/packaging-release-package-cli.test.ts scripts/tests/packaging-spawn-tiers.test.ts scripts/tests/packaging-entries.test.ts scripts/tests/release-sync-manifests.test.ts scripts/tests/packaging-release-golden-portable.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tar-writer.test.ts scripts/tests/docs-index.test.ts scripts/tests/docs-index-walk.test.ts scripts/tests/build-docs-index-entry.test.ts scripts/tests/packaging-file-size.test.ts scripts/tests/packaging-release-package.test.ts scripts/tests/packaging-release-package-cli.test.ts scripts/tests/packaging-spawn-tiers.test.ts scripts/tests/packaging-entries.test.ts scripts/tests/release-sync-manifests.test.ts scripts/tests/packaging-release-golden-portable.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -981,6 +981,7 @@ packaging-modules-ts:
         - "scripts/lib/node-floor-guard.js"
         - "scripts/tests/tar-writer.test.ts"
         - "scripts/tests/docs-index.test.ts"
+        - "scripts/tests/docs-index-walk.test.ts"
         - "scripts/tests/build-docs-index-entry.test.ts"
         - "scripts/tests/lib/docs-index-entry-tree.ts"
         - "scripts/tests/packaging-file-size.test.ts"
@@ -1026,6 +1027,7 @@ packaging-modules-ts:
         - "scripts/lib/node-floor-guard.js"
         - "scripts/tests/tar-writer.test.ts"
         - "scripts/tests/docs-index.test.ts"
+        - "scripts/tests/docs-index-walk.test.ts"
         - "scripts/tests/build-docs-index-entry.test.ts"
         - "scripts/tests/lib/docs-index-entry-tree.ts"
         - "scripts/tests/packaging-file-size.test.ts"
@@ -1591,6 +1593,7 @@ cli-matrix-fresh:
   script:
     - "node scripts/lib/node-floor-guard.js"
     - "task cli-matrix:check"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-cli-matrix.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -1598,6 +1601,7 @@ cli-matrix-fresh:
         - "docs/cli-matrix/**"
         - "scripts/build-cli-matrix.ts"
         - "scripts/lib/build-cli-matrix/**"
+        - "scripts/tests/build-cli-matrix.test.ts"
         - "scripts/lib/node-floor-guard.js"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
@@ -1605,6 +1609,7 @@ cli-matrix-fresh:
         - "docs/cli-matrix/**"
         - "scripts/build-cli-matrix.ts"
         - "scripts/lib/build-cli-matrix/**"
+        - "scripts/tests/build-cli-matrix.test.ts"
         - "scripts/lib/node-floor-guard.js"
 
 figure-labels:

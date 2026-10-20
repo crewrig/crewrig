@@ -1102,6 +1102,7 @@ capabilities:
           - "scripts/lib/node-floor-guard.js"
           - "scripts/tests/tar-writer.test.ts"
           - "scripts/tests/docs-index.test.ts"
+          - "scripts/tests/docs-index-walk.test.ts"
           - "scripts/tests/build-docs-index-entry.test.ts"
           - "scripts/tests/lib/docs-index-entry-tree.ts"
           - "scripts/tests/packaging-file-size.test.ts"
@@ -1148,6 +1149,7 @@ capabilities:
           - "scripts/lib/node-floor-guard.js"
           - "scripts/tests/tar-writer.test.ts"
           - "scripts/tests/docs-index.test.ts"
+          - "scripts/tests/docs-index-walk.test.ts"
           - "scripts/tests/build-docs-index-entry.test.ts"
           - "scripts/tests/lib/docs-index-entry-tree.ts"
           - "scripts/tests/packaging-file-size.test.ts"
@@ -1189,7 +1191,7 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tar-writer.test.ts scripts/tests/docs-index.test.ts scripts/tests/build-docs-index-entry.test.ts scripts/tests/packaging-file-size.test.ts scripts/tests/packaging-release-package.test.ts scripts/tests/packaging-release-package-cli.test.ts scripts/tests/packaging-spawn-tiers.test.ts scripts/tests/packaging-entries.test.ts scripts/tests/release-sync-manifests.test.ts scripts/tests/packaging-release-golden-portable.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tar-writer.test.ts scripts/tests/docs-index.test.ts scripts/tests/docs-index-walk.test.ts scripts/tests/build-docs-index-entry.test.ts scripts/tests/packaging-file-size.test.ts scripts/tests/packaging-release-package.test.ts scripts/tests/packaging-release-package-cli.test.ts scripts/tests/packaging-spawn-tiers.test.ts scripts/tests/packaging-entries.test.ts scripts/tests/release-sync-manifests.test.ts scripts/tests/packaging-release-golden-portable.test.ts
 
   # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components).
   # The production dependencies are installed first, the floor guard runs, then
@@ -2069,6 +2071,7 @@ capabilities:
           - "docs/cli-matrix/**"
           - "scripts/build-cli-matrix.ts"
           - "scripts/lib/build-cli-matrix/**"
+          - "scripts/tests/build-cli-matrix.test.ts"
           - "scripts/lib/node-floor-guard.js"
       - on: push
         branches: [main, "release/**"]
@@ -2077,6 +2080,7 @@ capabilities:
           - "docs/cli-matrix/**"
           - "scripts/build-cli-matrix.ts"
           - "scripts/lib/build-cli-matrix/**"
+          - "scripts/tests/build-cli-matrix.test.ts"
           - "scripts/lib/node-floor-guard.js"
     portability: portable
     changeset-gated: true
@@ -2086,6 +2090,7 @@ capabilities:
     command:
       - node scripts/lib/node-floor-guard.js
       - task cli-matrix:check
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-cli-matrix.test.ts
 
   - id: figure-labels
     name: "Check figure labels with OCR"
