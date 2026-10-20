@@ -623,7 +623,12 @@ function run() {
         // Spec 0273 R8-R10: non-failing size warning for every visited file.
         // Placed after the exclusion guard (a skipped file is not visited) and
         // never touching totalErrors or the exit code.
-        const sizeBytes = fs.statSync(file).size;
+        let sizeBytes = 0;
+        try {
+            sizeBytes = fs.statSync(file).size;
+        } catch (e) {
+            // An unreadable file is lintFile()'s to report; the warning is advisory.
+        }
         if (sizeBytes > SPEC_SIZE_WARN_BYTES) {
             console.error(`[WARN] ${file} is ${sizeBytes} bytes, above the ${SPEC_SIZE_WARN_BYTES}-byte spec size threshold; see docs/spec-format.md -> Splitting an oversized spec.`);
         }
