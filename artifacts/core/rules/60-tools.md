@@ -162,13 +162,13 @@ storage, a temporal knowledge graph, semantic search, and an agent diary.
 
 ### Memory Activation Protocol
 
-Follow this protocol at every session:
+Follow this protocol at every session. Subagents skip the sweep (see
+*Subagents* below).
 
-#### 1. Session Start — Deterministic status-first sweep
+#### 1. Session Start — Deterministic orchestrator-only sweep
 
-Before starting any work, perform an ordered sweep designed to be
-deterministic — independent of BM25 weights, cosine thresholds, or
-semantic similarity heuristics:
+Before any work, the orchestrator (the session that owns the ticket, or an
+agent the user started directly) performs this ordered, deterministic sweep:
 
 **Memory unavailable — say so, never skip silently.** If no `mempalace_*`
 tool is available — neither directly callable nor discoverable through the
@@ -177,19 +177,13 @@ fails because the server cannot be reached, tell the user explicitly, before
 any task work, that shared memory is unavailable for this session and that
 the handoff lookup, the checkpoint, and the final flush will not happen, and
 point at `task mempalace:status`. Never skip the sweep silently and never act
-as if it had run. A deferred tool counts as available: load it and run the
-sweep. Once you have signalled, continue with the task unless the user says
-otherwise. This rule binds every role, seated reviewer passes included, and
-mirrors the *Explicit signal — never silent* step of *Retrieving the
+as if it had run. Once you have signalled, continue with the task unless the user says
+otherwise. This rule binds the orchestrator only and mirrors the *Explicit signal — never silent* step of *Retrieving the
 system-context store*.
 
 1. **Compute `<project-name>`** (see *Project name derivation* above).
 
-2. **`mempalace_status`** — enumerate the wings present. Note the
-   exclusion list: any wing whose name starts with `transcripts` is
-   high-volume raw archive and is EXCLUDED from semantic searches.
-
-3. **Cross-tool handoff lookup** — the primary resume mechanism:
+2. **Cross-tool handoff lookup** — the primary resume mechanism:
 
    ```text
    mempalace_search(
@@ -199,20 +193,20 @@ system-context store*.
    )
    ```
 
-   Wing+room scoped, immune to transcripts noise, signal-dense by
-   design. This is the canonical cross-tool task discovery path.
+   Wing+room scoped, immune to transcripts noise. This is the canonical
+   cross-tool task discovery path.
 
    Apply the `visible_to` filter client-side: ignore any returned entry
    whose `visible_to` field contains neither `*` nor your agent name.
 
-4. **Per-agent provenance** — your own reasoning trace, not
+3. **Per-agent provenance** — your own reasoning trace, not
    cross-tool discovery: `mempalace_diary_read(agent_name="<your-name>",
    last_n=N)`. Used only to recover your own recent thought process.
 
-5. **Knowledge Graph** — `mempalace_kg_query` for facts about the
+4. **Knowledge Graph** — `mempalace_kg_query` for facts about the
    current project.
 
-6. **If step 3 returned a `[TASK:ongoing]` drawer for this project**
+5. **If step 2 returned a `[TASK:ongoing]` drawer for this project**
    (i.e., a sibling agent's open work or a previous session of yours):
    **immediately persist a `[TASK:checkpoint]` payload to that drawer
    via `mempalace_update_drawer` BEFORE doing any actual task work.**
@@ -240,14 +234,18 @@ system-context store*.
 `docs/mempalace-sweep-rationale.md`. The steps above are normative.
 
 **Optional — System-context store mirror (MemPalace only).** An opportunistic
-enhancement layered on the six-step sweep above, not a required part of it: when
-`mempalace_status` reports the service reachable, mirror each
+enhancement layered on the sweep above, not a required part of it: attempted
+only after the first scoped sweep call has succeeded, mirror each
 `~/.crewrig/system-context/*.md` file into a drawer (`wing="system-context"`,
 `room="store"`) via `mempalace_add_drawer` / `mempalace_update_drawer` with the
 file's verbatim bytes, when the drawer is missing or stale. This backs the
 MemPalace path of the store retrieval protocol (see *Retrieving the
-system-context store*). When MemPalace is absent, skip silently — the direct
+system-context store*). Otherwise skip silently — the direct
 file read remains the default and no rule becomes unreachable.
+
+**Subagents.** No sweep call. A non-seat subagent MAY make one
+`mempalace_get_drawer` call with the `handoff_key` and drawer id its brief
+carries; a seated pass gets neither. Rules: `AGENTS.md` → *Session Bootstrap*.
 
 **Wake-up budget.** The optional store-mirror step is shed first when the
 budget would be exceeded and is never a core sweep step. Layered wake-up is
@@ -270,7 +268,7 @@ As you work, persist continuously:
 
 #### 3. Session End — Final Flush
 
-Before ending:
+Orchestrator only, before ending (a subagent reports its outcome instead):
 
 - **Update the cross-tool handoff drawer** in
   `wing="<project-name>", room="task-handoff"`:
