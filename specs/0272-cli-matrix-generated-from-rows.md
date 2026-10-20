@@ -31,10 +31,11 @@ the first column today (`1`, `2`, `3`, `4`, `4b`, `4c`, ... `37e`, `37f`, `44`).
 
 1. `docs/cli-matrix/` SHALL hold the source of truth. Each feature row SHALL
    have one Markdown file `docs/cli-matrix/rows/<id>.md` rendering the row as a
-   level-3 heading carrying the id and the feature name, followed by one bullet
+   level-1 heading carrying the id and the feature name (`# 4b — title`),
+   followed by one bullet
    per field: *Source of truth*, then one bullet per CLI column in the order
    Claude Code, Gemini CLI, Copilot CLI, Antigravity CLI.
-2. The other parts of today's file SHALL be separate source files with these fixed names under `docs/cli-matrix/`, which together with the rows are the complete input of the generator: `intro.md` (the H1 `# CLI Support Matrix`, the `crewrig-doc` marker line and the opening prose, up to the `## Supported CLIs` heading), `supported-clis.md` (that heading and one bullet per CLI, replacing its table), `feature-matrix.md` (the `## Feature matrix` heading and its lead sentence "One row per integration point. ..."; it holds no row), `notes.md` (the prose notes that follow the feature table, up to `## Parity gaps`), `parity-gaps.md` (the `## Parity gaps` heading, its preamble, and one list item per gap), and `adding-a-cli.md` (the `## Adding a new CLI` section to the end of the file).
+2. The other parts of today's file SHALL be separate source files with these fixed names under `docs/cli-matrix/`, which together with the rows are the complete input of the generator: `intro.md` (the H1 `# CLI Support Matrix`, the `crewrig-doc` marker line and the opening prose, up to the `## Supported CLIs` heading), `supported-clis.md` (that heading and one bullet per CLI, replacing its table), `feature-matrix.md` (the `## Feature matrix` heading and its lead sentence "One row per integration point. ..."; it holds no row), `notes.md` (the prose notes that follow the feature table, up to `## Parity gaps`), `parity-gaps.md` (the `## Parity gaps` heading, its preamble, and one list item per gap), and `adding-a-cli.md` (the `## Adding a new CLI` section to the end of the file). Every one of these files except `intro.md`, which already starts with the H1, and every row file SHALL start with a level-1 heading line, so that the repository markdownlint rule MD041 passes on each source with its default configuration; no markdownlint ignore, override or exclusion SHALL be added for `docs/cli-matrix/**`. The generator SHALL emit that first heading demoted by a fixed per-part offset, and every deeper heading inside the part by the same offset: row files +2 (`# 4b — title` becomes `### 4b — title`), and `supported-clis.md`, `feature-matrix.md`, `parity-gaps.md` and `adding-a-cli.md` +1 (so their level-1 line is emitted as `##`, matching today's headings). `notes.md` has no heading in today's file: its level-1 line is a source-only title that the generator consumes without emitting it, the one exception to the offset rule.
 
 3. Every cell SHALL be hard-wrapped on whitespace so that no physical line of
    any source file or of the generated file exceeds 1,024 bytes; the target is
@@ -106,7 +107,8 @@ the first column today (`1`, `2`, `3`, `4`, `4b`, `4c`, ... `37e`, `37f`, `44`).
 12. A verification procedure, recorded in the logbook with its output, SHALL
     show for every row and every cell that the whitespace-normalised text in
     `docs/cli-matrix.md` at the base commit, with `\|` unescaped to `|` first, equals the whitespace-normalised text
-    of the matching bullet in the new source, for the *Supported CLIs*
+    of the matching bullet in the new source (headings compared after applying
+    the offsets of requirement 2, the source-only title of `notes.md` excluded), for the *Supported CLIs*
     cells, for each *Parity gaps* item, and for the prose notes. Every
     `[GAP...]` entry and every `[measured: ...]` token present at the base commit
     SHALL be present afterwards, with the same count. No rule, cell or gap SHALL
@@ -159,8 +161,10 @@ the first column today (`1`, `2`, `3`, `4`, `4b`, `4c`, ... `37e`, `37f`, `44`).
       `.github/workflows/claude.yml`, `.github/workflows/gemini.yml`;
     - a parity gap: any addition, removal or change of a `Parity gaps` item;
     - a CLI-prefixed entry of `Taskfile.yml` or `.gitignore`.
-    The plan stage SHALL confirm this list by grepping the repository and SHALL
-    record any path found that belongs to one of the five classes and is missing.
+    The list is confirmed at DEV time: the plan stage fixes the grep command
+    and the implementation runs it over the repository, pastes its output in the
+    logbook, and adds any path found that belongs to one of the six classes and
+    is missing.
 18. The obligation sentence SHALL read that the contributor edits the affected
     row file under `docs/cli-matrix/` and runs `task cli-matrix:build`, never
     editing `docs/cli-matrix.md` by hand. The *Gap-acceptance evidence rule*,
@@ -269,7 +273,7 @@ Then  the URL stays on one line, still far under 1,024 bytes, and the whitespace
 ## Open questions
 
 - [AUTO-PARKED] Whether the Windows checkout (`core.autocrlf`) rewrites the generated file: requirement 7 makes the generator independent of input line endings, but a `.gitattributes` `eol=lf` entry for `docs/cli-matrix*` may be needed so `--check` is stable on Windows; the plan stage tests it on a Windows runner.
-- [AUTO-PARKED] The exact set of paths in requirement 17 is derived from today's tree; the plan stage greps for per-CLI emitters and deploy scripts added since and adjusts the list, keeping the five classes fixed.
+- [AUTO-PARKED] The exact set of paths in requirement 17 is derived from today's tree; the DEV stage greps for per-CLI emitters and deploy scripts added since and adjusts the list, keeping the six classes fixed.
 - [AUTO-PARKED] Whether other documents or skills quote a row by a table-style anchor: requirement 15 says to update them, the plan stage lists the hits of `git grep -n 'cli-matrix.md#'`.
 - Decision (AUTO): row order comes from an explicit manifest, not a sort, because the current order is not a natural sort and has a duplicate id.
 - Decision (AUTO): rejected alternative, one YAML file per row rendered into the existing table: a Markdown table row cannot be split across physical lines, so the 1 KB line cap would be unreachable, and the reading experience for the long cells would not improve.
