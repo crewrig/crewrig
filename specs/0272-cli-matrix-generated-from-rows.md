@@ -1,7 +1,7 @@
 ---
 id: "0272"
 slug: cli-matrix-generated-from-rows
-status: draft
+status: approved
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1729
@@ -34,30 +34,38 @@ the first column today (`1`, `2`, `3`, `4`, `4b`, `4c`, ... `37e`, `37f`, `44`).
    level-3 heading carrying the id and the feature name, followed by one bullet
    per field: *Source of truth*, then one bullet per CLI column in the order
    Claude Code, Gemini CLI, Copilot CLI, Antigravity CLI.
-2. The other parts of today's file SHALL be separate source files under
-   `docs/cli-matrix/`: the introduction, the *Supported CLIs* section (one bullet
-   per CLI, replacing its table), the prose notes that follow the feature table,
-   *Parity gaps* (one list item per gap), and *Adding a new CLI*.
+2. The other parts of today's file SHALL be separate source files with these fixed names under `docs/cli-matrix/`, which together with the rows are the complete input of the generator: `intro.md` (the H1 `# CLI Support Matrix`, the `crewrig-doc` marker line and the opening prose, up to the `## Supported CLIs` heading), `supported-clis.md` (that heading and one bullet per CLI, replacing its table), `feature-matrix.md` (the `## Feature matrix` heading and its lead sentence "One row per integration point. ..."; it holds no row), `notes.md` (the prose notes that follow the feature table, up to `## Parity gaps`), `parity-gaps.md` (the `## Parity gaps` heading, its preamble, and one list item per gap), and `adding-a-cli.md` (the `## Adding a new CLI` section to the end of the file).
+
 3. Every cell SHALL be hard-wrapped on whitespace so that no physical line of
    any source file or of the generated file exceeds 1,024 bytes; the target is
    120 columns wherever whitespace allows, and an unbreakable token such as a
    URL MAY exceed 120 columns but SHALL NOT approach 1,024 bytes. A *Parity
    gaps* item SHALL wrap with indented continuation lines.
 4. Row order SHALL be set by an explicit ordered manifest,
-   `docs/cli-matrix/rows/order.txt`, one row file basename per line, and not by
-   a sort. Justification: today's order is not a natural sort of the ids, and
-   the id `7g` appears on two rows (MemPalace layered wake-up, and custom
-   root-CA delegation, spec 0084). The two rows SHALL be kept as distinct row
-   files, the second renamed `7g-2.md` (its heading keeps the id `7g`), so that
-   the generated order and ids are byte-identical to today's. The generator
-   SHALL fail when a row file is absent from the manifest or a manifest line
-   has no file.
+   `docs/cli-matrix/order.txt`, one source basename per line, and not by a sort.
+   The manifest lists, in this fixed assembly order: `intro.md`,
+   `supported-clis.md`, `feature-matrix.md`, every row file in today's row order,
+   `notes.md`, `parity-gaps.md`, `adding-a-cli.md`. Justification: today's row
+   order is not a natural sort of the ids, and the id `7g` appears on two rows
+   (MemPalace layered wake-up, and custom root-CA delegation, spec 0084). The
+   two rows SHALL be kept as distinct row files, the second named `7g-2.md` (its
+   heading keeps the id `7g`), so that the generated order and ids are
+   byte-identical to today's. The generator SHALL join the parts with exactly one
+   blank line, and SHALL fail when a file under `docs/cli-matrix/` or
+   `docs/cli-matrix/rows/` is absent from the manifest or a manifest line has no
+   file. The valid row ids of requirement 8 are the headings of the row files so
+   listed.
 
 5. `scripts/build-cli-matrix.ts` SHALL assemble `docs/cli-matrix.md` from the
    source files, running under the Node 24 type-stripping floor like its sibling
    scripts, with no dependency beyond Node's standard library. The generated file
-   SHALL open with an HTML comment stating it is generated and MUST NOT be
-   edited by hand, and naming the source directory and the build command.
+   SHALL carry an HTML comment stating it is generated and MUST NOT be edited by
+   hand, naming the source directory and the build command. Its position SHALL be
+   after the `crewrig-doc` marker: the H1 stays on line 1 and the marker on line
+   3, as today, because the docs-index extractor reads the first line containing
+   `crewrig-doc:` after the first level-1 heading (`scripts/lib/docs-index/extract.ts`);
+   the generated-file comment follows the marker on line 5. The marker value is
+   unchanged.
 6. The generator SHALL have two modes: write (default) and `--check`. `--check`
    SHALL exit non-zero, and print a hint naming the first differing line and
    the command that regenerates, when the checked-in file differs from the
@@ -86,11 +94,14 @@ the first column today (`1`, `2`, `3`, `4`, `4b`, `4c`, ... `37e`, `37f`, `44`).
 
 11. The content SHALL move in two separate commits. The first SHALL place every
     cell verbatim, unwrapped, in its source file, with the generator already
-    reproducing today's `docs/cli-matrix.md` modulo the table-to-bullet change.
-    The second SHALL only wrap lines and change no word.
+    reproducing today's `docs/cli-matrix.md` modulo the table-to-bullet change;
+    "verbatim" means verbatim after table-cell unescaping, each `\|` of a table
+    cell becoming `|` in the bullet (nine occurrences at the base commit). The
+    second SHALL only wrap lines and change no word.
+
 12. A verification procedure, recorded in the logbook with its output, SHALL
     show for every row and every cell that the whitespace-normalised text in
-    `docs/cli-matrix.md` at the base commit equals the whitespace-normalised text
+    `docs/cli-matrix.md` at the base commit, with `\|` unescaped to `|` first, equals the whitespace-normalised text
     of the matching bullet in the new source, for the *Supported CLIs*
     cells, for each *Parity gaps* item, and for the prose notes. Every
     `[GAP...]` entry and every `[measured: ...]` token present at the base commit
@@ -121,20 +132,20 @@ the first column today (`1`, `2`, `3`, `4`, `4b`, `4c`, ... `37e`, `37f`, `44`).
     files SHALL carry whatever publication marker `docs/publication-contract.md`
     requires, source fragments being unpublished.
 
-17. `AGENTS.md` (*CLI Matrix Maintenance*) and `docs/cli-matrix-maintenance.md`
-    SHALL define the trigger surface identically as the set of CLI integration
-    points, and SHALL stop listing `artifacts/**`, the generic `scripts/*`
-    globs and `CLAUDE.md`/`GEMINI.md` as triggers. A pull request SHALL update
+17. `docs/cli-matrix-maintenance.md` SHALL own the trigger surface and define it
+    in full, as the set of CLI integration points, and neither it nor `AGENTS.md`
+    SHALL list `artifacts/**`, the generic `scripts/*`
+    globs and `CLAUDE.md`/`GEMINI.md` as triggers. `AGENTS.md` SHALL carry only a pointer to that document and a one-line summary of the classes below, not the path list. A pull request SHALL update
     the matrix only when its diff touches one of:
     - a deploy target, meaning where setup, install, link or import scripts place
-      files for a CLI: `scripts/setup-*-interactive.ts`,
+      files for a CLI: `scripts/setup-*-interactive.ts`, `scripts/setup-playwright-mcp.ts`,
       `scripts/install-*.ts`, `scripts/import-*-history.ts`,
       `scripts/manage-*-component.ts`, `scripts/manage-workspace-component.ts`,
       `scripts/lib/install/**`, `scripts/lib/manage/**`,
       `scripts/lib/link-or-copy*.ts`;
-    - hook wiring: `hooks/*-hooks.json`, `scripts/lib/hook-command.ts`,
-      `scripts/lib/hook-config.ts`, `scripts/lib/hook-descriptor.ts`,
-      `scripts/lib/hook-guard-manifest.ts`, `scripts/lib/hook-antigravity*.ts`;
+    - hook wiring: `hooks/*-hooks.json`, `scripts/lib/hook-*.ts` (today `hook-command`, `-config`, `-descriptor`,
+      `-guard-manifest`, `-antigravity*`, `-transcript-*`, `-registry`, `-rewrite`,
+      `-statusline`, `-recognition`) and `scripts/lib/transcript-hook-rewrite.ts`;
     - CLI-specific build output: `scripts/build-components.ts` and
       `scripts/lib/build-components/**` where a per-CLI emitter changes, plus
       `scripts/build-claude-plugin.ts`, `scripts/build-copilot-plugin.ts`,
@@ -153,7 +164,9 @@ the first column today (`1`, `2`, `3`, `4`, `4b`, `4c`, ... `37e`, `37f`, `44`).
     rule* SHALL keep their present meaning, wording changes being limited to the
     trigger list and to naming the new file locations.
 19. The `AGENTS.md` summary of the matrix section SHALL shrink to a pointer to
-    `docs/cli-matrix-maintenance.md` plus the critical rule. `AGENTS.md` is
+    `docs/cli-matrix-maintenance.md` plus a one-line summary of the trigger classes
+    and the critical rule. The *Core-paths manifest co-maintenance* paragraph
+    that follows it SHALL stay untouched. `AGENTS.md` is
     17,027 bytes today with a threshold of 19,100 in
     `scripts/check-agents-size.ts`; the diff SHALL NOT increase its size, SHALL
     NOT raise the threshold, and SHALL change nothing in `AGENTS.md` outside the
