@@ -1,7 +1,7 @@
 ---
 id: "0274"
 slug: dedupe-split-lifecycle-docs
-status: draft
+status: approved
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1731
@@ -29,12 +29,17 @@ Sizes are bytes as reported by `wc -c`. The **index** is
 under `docs/agent-team-protocol/`. A **stub** is a heading plus a one-line
 pointer to the role-file location of the same text.
 
-1. The role files SHALL be `orchestrator.md` (the *When this applies* section,
-   the CLI-primitive and briefing rules, *Solo work prohibition*, *Standard
-   Team Templates*, *Step 0*, *Team sizing by complexity*, *Team Shutdown*),
-   `team-communication.md` (*Team Communication*, Rules 1 to 7),
+1. The role files SHALL be `orchestrator.md` (the introduction, *When this
+   applies*, the CLI-primitive and briefing sections, *Solo work prohibition*
+   and *Team Shutdown*; 11,293 bytes measured on `main`), `templates.md`
+   (*Standard Team Templates* with *Seated review passes*, *Step 0* and
+   Templates 1 to 3, and *Team sizing by complexity*; 10,955 bytes measured),
+   `team-communication.md` (*Team Communication*, Rules 1 to 7; 14,219 bytes measured),
    `worktree-isolation.md` (*Worktree Isolation*, including *Session-boundary
-   worktree hygiene*) and `built-components.md` (*Built Components*). The plan
+   worktree hygiene*; 18,332 bytes measured) and `built-components.md`
+   (*Built Components*; 1,204 bytes measured). The sizes are of the text
+   assigned to each file on `main`, so the verbatim move already satisfies
+   requirement 4. The plan
    stage MAY refine the file boundaries; it SHALL NOT change requirements 2 to
    10.
 2. The index SHALL be at most 6,144 bytes and SHALL contain the introduction, a
@@ -49,10 +54,29 @@ pointer to the role-file location of the same text.
    `docs/ticket-ownership.md`, `docs/host-safety-check.md`,
    `docs/adr/0018-forge-assignment-ownership.md`, `docs/cli-matrix.md` and the
    named forms such as *Worktree Isolation → Session-boundary worktree hygiene*
-   and *Team Communication → Rule 1*. The `check-markdown-links` check SHALL
-   pass and SHALL fail on a deliberately broken anchor into a role file.
-4. Each role file SHALL be smaller than 20,480 bytes and SHALL give each
-   section a stable explicit anchor that does not depend on the heading text.
+   and *Team Communication → Rule 1* (cited by Templates 1 to 3). It also covers
+   `artifacts/core/skills/pr-logbook/SKILL.md`,
+   `artifacts/core/skills/pr-reviewer/references/assert-fresh-observation.md`,
+   their compiled copies under `.claude/`, `.gemini/`, `.github/` and `.agents/`,
+   and `scripts/lib/worktree-claim/gate.ts` with its golden
+   `scripts/tests/fixtures/worktree-claim/golden/matrix.json`. These
+   artifact sources, compiled copies, script and golden are NOT edited: they
+   keep resolving through the index, which is why the index keeps a stub for
+   every original heading. The current `scripts/check-markdown-links.ts`
+   validates file existence only, not `#anchors`. The change SHALL therefore add
+   an automated anchor-resolution test that, for every `docs/agent-team-protocol.md#...`
+   link and every `*Section → Subsection*` named form found in the tracked files
+   listed here, proves the heading or explicit anchor exists in the index or in
+   the role file it points to, and that fails on a deliberately broken anchor.
+   The existing file-existence check is also kept green.
+4. Each role file SHALL be smaller than 20,480 bytes, anchors included, at
+   the move commit and at the trim commit, and SHALL give each section a stable
+   explicit anchor that does not depend on the heading text. Rules 1 to 7 of
+   *Team Communication* are bold paragraphs, not headings: `team-communication.md`
+   SHALL give each of them an explicit anchor (`<a id="rule-1"></a>` through
+   `rule-7`), and the index SHALL carry, under its *Team Communication* stub, a
+   list of the seven rule names each linking to its anchor, so that
+   *Team Communication → Rule 1* still resolves by name and by anchor.
 5. The text SHALL first be moved verbatim, in one commit that changes no
    sentence, and only afterwards deduplicated and trimmed, in a separate commit.
 6. A mechanical check SHALL prove that no content was lost: every non-heading
@@ -134,9 +158,16 @@ pointer to the role-file location of the same text.
 
 Given a document that links to `docs/agent-team-protocol.md` with the anchor of
 *Session-boundary worktree hygiene*
-When `check-markdown-links` runs after the change
+When the anchor-resolution test and `check-markdown-links` run after the change
 Then the link resolves to the stub in the index, which points to the text in
 `worktree-isolation.md`, and the check passes.
+
+**Scenario:** A Team Communication rule resolves by name
+
+Given a template cites *Team Communication → Rule 1*
+When the anchor-resolution test runs after the change
+Then the index lists *Rule 1* linking to `rule-1` in `team-communication.md`,
+and the anchor exists there.
 
 **Scenario:** A brief cites a role anchor
 
