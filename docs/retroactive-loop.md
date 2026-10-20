@@ -39,6 +39,8 @@ Non-blocking findings MAY be routed to a persistent findings ledger rather than 
 
 **Ledger shape and ownership.** The project maintains exactly one findings ledger: a pinned GitHub issue titled `📋 Findings ledger — deferred non-blocking findings` carrying the `deferred-findings-ledger` label. It serves as the single sink for all ledger-routed findings and SHALL never be closed. Each entry records the source PR number, source ticket number, finding class, a one-line summary, date routed, and the routing actor.
 
+**Not reused for seat ledgers.** This project ledger is not reused as a reviewer-seat ledger. It is one project-wide, never-closed sink for non-blocking deferred findings across tickets, written by append. The seat ledger ([`docs/reviewer-seat.md`](reviewer-seat.md) → *Seat ledger*) is per ticket and per surface, holds blocking findings too, and is edited in place. A seat finding with status `ledger` carries the entry of this ledger in its `<ref>`, so the *Journalling* line and the seat line stay consistent.
+
 **Journalling.** The orchestrator SHALL journal every ledger-route disposition on the active logbook issue (one line per finding: finding ref, disposition `ledger`, actor).
 
 **Drain protocol.** The project maintainer triggers a drain pass by posting a `DRAIN` comment on the ledger issue. Each open entry is evaluated as:

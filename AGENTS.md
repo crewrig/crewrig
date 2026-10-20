@@ -270,7 +270,7 @@ full experience of agents on the project is recorded for future reference.
 
 See [`docs/logbook-issues.md`](docs/logbook-issues.md) for the three
 rules governing logbooks: Rule A (a feature issue IS its own logbook),
-Rule B (update incrementally, not at the end), and Rule C (close immediately
+Rule B (one comment per stage transition, never batched at the end), and Rule C (close immediately
 after merge).
 
 ## Forge Access

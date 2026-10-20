@@ -112,6 +112,10 @@ seat's own verdict comments on the spec pull request, on the logbook
 issue, or on the implementation pull request. No new file, no new store,
 and no memory service is introduced to hold it.
 
+From the second pass a seat reads its dossier through its **seat ledger**
+(*Seat ledger* below), not by re-reading every verdict; the verdicts remain
+the authoritative record.
+
 That prohibition scopes to the **dossier**: the store of a seat's prior
 verdicts, their findings, and their dispositions. This page holds no
 dossier content — no verdict, no finding identifier, no disposition — so
@@ -123,6 +127,10 @@ follows; the record a seat accumulates stays on the forge.
 The dossier is reconstructible from the forge alone. The seat line is
 what makes the existing artifacts enumerable, so an orchestrator session
 that did not spawn the earlier passes can still assemble the dossier.
+
+**The seat ledger is the first read path** (*Seat ledger* below); the
+verdict query that follows is the **fallback**, and the rebuild source when
+the ledger is missing or disagrees with the verdicts.
 
 **The three admissible locations are not partitioned by surface.** A
 `review`- or `specs`-surface verdict can land on the logbook issue as
@@ -205,6 +213,9 @@ identity, or a permission refusal — the record described under
 reconstructing pass consults it before counting passes. Either way the
 discriminator is a forge artifact.
 
+**A voided pass leaves the ledger too.** In the same step that voids a
+verdict, the orchestrator removes that pass's findings from the seat ledger.
+
 **Voiding is not a generation.** A void verdict does not open a successor
 seat: the seat is unchanged and one of its passes is void. Generations
 replace a seat (*Retirement and generation*); they do not invalidate a
@@ -218,6 +229,70 @@ verdict followed by an addendum or continuation comment on the same
 pass), those entries belong to that single pass and SHALL NOT inflate the
 pass ordinal for subsequent passes.
 
+## Seat ledger
+
+Each seat `<surface>/<ticket>[#<generation>]` keeps exactly one **ledger
+comment** on the logbook issue, edited in place with
+`gh api -X PATCH repos/<owner>/<repo>/issues/comments/<id>`. It is
+discoverable by the same style of query as the seat line. Its shape:
+
+```text
+ledger: <surface>/<ticket>[#<generation>]
+examined: <revision>
+rev: <n>
+- <id> | <class> | <blocking> | <status> | <revision> | <ref>
+```
+
+- `examined:` is the plan ordinal (or the head commit on a pull-request
+  surface); `rev:` is a counter incremented on every edit.
+- One finding per following line. `<id>` is the per-surface identifier
+  unchanged (`v<N>-F<M>`, `s<N>-F<M>`, `i<N>-F<M>`, with sub-finding
+  suffixes); `<class>` is `tech`, `arch` or `spec`; `<blocking>` is `yes` or
+  `no`; `<status>` is `open`, `addressed`, `superseded`, `withdrawn` or
+  `ledger`; `<revision>` is the revision the finding was raised against;
+  `<ref>` is free text with no `|` (the addressing commit or revision, the
+  withdrawal reason, or for `ledger` the project ledger entry). Any other
+  line is malformed.
+- Each generation owns its own ledger (the marker carries `#<generation>`).
+  A replaced artifact resets the reading bound, not the ledger.
+
+**Reading.** From pass 2 a seat reads its ledger plus the diff since the
+revision named by `examined:`, instead of the comment history. Verdict
+comments keep being posted with their `seat:` line as the immutable audit
+trail; a ledger line is never the only record of a verdict's findings.
+
+**Verdicts are authoritative.** Before relying on the ledger, the pass
+cross-checks it against its own verdicts (those carrying its seat line and
+not voided). If the ledger disagrees (a finding missing or a status
+regressed, as after a failed PATCH or a verdict not yet applied), the pass
+rebuilds the ledger from the verdicts and records the mismatch in its
+verdict. The pass also verifies `examined:` against the revision named in
+its own latest non-void verdict; on mismatch it uses the **earlier** of the
+two revisions and records the cause. A reading pass holds no remembered
+`rev:` and compares none.
+
+**Rebuilding.** A rebuild recovers each finding (id, class, blocking,
+revision) as `open` from the verdicts; dispositions (`addressed`,
+`superseded`, `withdrawn`, `ledger`) are an explicit input taken from
+*Prior-finding disposition* on the `specs` and `review` surfaces and from the
+plan's `### Finding traceability` table on the `plan` surface. A rebuilt
+ledger starts at `rev: 1`.
+
+**Writers.** The seat pass reports its new findings in its verdict; the
+orchestrator applies them, and the dispositions of *Prior-finding
+disposition*, to the ledger. No other actor edits it. The model is a single
+writer (the orchestrator) with sequential passes per seat; concurrent
+writers are unsupported, as the forge offers no compare-and-swap. After each
+PATCH the writer re-reads the comment and verifies `rev:` and content; a
+detected `rev:` regress triggers the rebuild above. `rev:` is a detection
+aid, not a lock.
+
+**Not the project ledger.** The seat ledger is distinct from the project's
+deferred-findings ledger ([`docs/retroactive-loop.md`](retroactive-loop.md)
+→ *Ledger shape and ownership*), which is project-wide, append-written and
+never closed. A seat finding with status `ledger` carries the project ledger
+entry in `<ref>`, consistent with the *Journalling* line.
+
 ## Instantiating a seated pass
 
 The brief that instantiates a seated pass carries **references only**:
@@ -226,6 +301,7 @@ The brief that instantiates a seated pass carries **references only**:
 - the identifier of the artifact under review;
 - the revision identifier the seat last examined;
 - the location of the seat's prior verdicts;
+- the location of the seat's ledger comment (by reference only);
 - the location of the disposition record described under *Prior-finding
   disposition*.
 
@@ -408,13 +484,16 @@ When the artifact a seat reviews is replaced rather than revised — a fresh
 delta-spec pull request on the `specs` surface — the seat examines the new
 artifact **in full**, and its dossier still carries every prior finding
 for the audit above. A replaced artifact resets the reading bound; it does
-not reset the dossier.
+not reset the dossier or the ledger.
 
 ## Vacant seat
 
-A seat is **vacant** when its dossier cannot be reconstructed: its prior
-verdicts are absent, they carry no seat line because the ticket predates
+A seat is **vacant** when its dossier cannot be reconstructed: no ledger
+and no verdicts exist, they carry no seat line because the ticket predates
 this contract, or the forge is unreachable.
+
+A seat with no ledger but with verdicts carrying its seat line is **not**
+vacant: the ledger is rebuilt once from the verdicts (*Seat ledger*).
 
 A pass on a vacant seat runs as a full examination of the whole artifact,
 and its verdict records the vacancy **and its cause**. A widened scope is
@@ -431,7 +510,8 @@ The orchestrator may retire a seat and open a successor at the next
 generation number, and records the retirement **and its cause** on the
 logbook issue. The successor:
 
-- inherits the retired seat's dossier for the prior-finding audit;
+- inherits the retired seat's dossier for the prior-finding audit, and opens
+  its own ledger (marker `ledger: <surface>/<ticket>#<generation>`);
 - examines the artifact in full on its first pass.
 
 A retired seat posts no further verdict.

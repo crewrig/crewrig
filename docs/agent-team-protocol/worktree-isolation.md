@@ -103,7 +103,7 @@ Before pushing, always rebase the worktree branch against the upstream main to a
 git fetch crewrig && git rebase crewrig/main
 ```
 
-If the rebase raises conflicts, resolve them, then `git rebase --continue`. Log the conflict on the issue logbook before resuming (Rule B).
+If the rebase raises conflicts, resolve them, then `git rebase --continue`. Record the conflict as a bullet in the next logbook transition comment (Rule B).
 
 Once the PR is merged and the linked logbook issue closed (see *Logbook Issues → Rule C* in AGENTS.md), clean up the worktree and its branch in this **exact order**:
 
@@ -122,7 +122,7 @@ git branch -D <branch-name>
 gh issue close <issue-number> --reason completed
 ```
 
-Any obstacle encountered during the worktree lifecycle — merge conflicts, CI failures, friction declarations, scope changes, rebases that resolve conflicts — must be logged on the issue logbook before resuming work. See **Rule B** in AGENTS.md for the full trigger list.
+Any obstacle encountered during the worktree lifecycle — merge conflicts, CI failures, friction declarations, scope changes, rebases that resolve conflicts — is recorded as a bullet in the next logbook transition comment (a DEV checkpoint comment when a hand-off or repeated CI failure comes first). See **Rule B** in `docs/logbook-issues.md` for the bullet kinds.
 
 <a id="session-boundary-worktree-hygiene"></a>
 

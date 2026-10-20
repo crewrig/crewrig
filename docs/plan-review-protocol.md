@@ -67,6 +67,14 @@ done
 grep -c '^| v[0-9]* | v[0-9]*-F[0-9]*' <plan-comment>
 ```
 
+**Delta plans and cumulative traceability.** A revised plan `v2` or later is
+posted as a delta ([`docs/plan-format.md`](plan-format.md) → *Delta
+revisions*), but its traceability table remains cumulative and complete, so
+the invariant and the two commands above are unchanged and apply to a delta
+as to a full plan. The Finding Traceability Audit is likewise unchanged.
+Plan and verdict comments are held to the 12 KB budget of
+[`docs/plan-format.md`](plan-format.md) → *Comment size budget*.
+
 **Finding class taxonomy.** Every plan-review finding SHALL carry
 exactly one `class:` field whose value drives the loop target:
 

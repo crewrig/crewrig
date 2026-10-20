@@ -175,9 +175,31 @@ them.
 Once a plan comment is validated (by the reviewer in autonomous
 modes or by the user in `FULL` / `INTERMEDIATE` mode), it SHALL NOT
 be edited or deleted (R9). Subsequent revisions are posted as **new
-comments** with the revision header above, citing the trigger.
+comments** with the revision header above, citing the trigger, in the delta
+form of *Delta revisions* below.
 Silent edits of a validated plan break the audit trail the
 retroactive review loop relies on and are prohibited.
+
+## Delta revisions
+
+Plan `v2` and later SHALL be posted as a **delta** against the previous
+version: only the changed sections, plus a link to the full previous
+version's comment, with each unchanged section named as "unchanged from
+v(N-1)". A delta plan is **not self-contained** except through that link.
+The `### Finding traceability` table is **cumulative and complete in every
+plan version, delta included**, so the countable invariant in
+[`docs/plan-review-protocol.md`](plan-review-protocol.md) holds unchanged.
+
+## Comment size budget
+
+A plan comment (and a verdict comment) SHALL be at most **12 KB** (12,288
+bytes, UTF-8). Rationale: well under a fifth of the forge's 65,536-character
+comment limit, enough for a full plan or verdict, so a comment above it is
+carrying bulk that belongs elsewhere. The author runs
+`scripts/check-comment-size.ts` on the comment body before posting. On
+overflow the author cuts the comment under budget by moving bulk (long
+evidence, command output) to a linked artifact (the PR description or a file
+in the diff) and keeping a reference; continuation comments are not used.
 
 ## Worked example
 

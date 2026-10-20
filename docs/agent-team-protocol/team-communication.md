@@ -150,7 +150,7 @@ reconciliation.
 the mutable text body of a pull request, of an issue, or of a comment on
 either, and has exactly one writer at any instant. Publishing a **new**
 comment creates a new artifact whose writer is its author, leaving the
-incremental-logbook practice of `AGENTS.md` → *Logbook Issues → Rule B*
+transition-comment logbook practice of `AGENTS.md` → *Logbook Issues → Rule B*
 untouched: only editing an already-published body or comment is governed.
 
 **The writer is a role on a ticket, not an agent instance.** Writership
