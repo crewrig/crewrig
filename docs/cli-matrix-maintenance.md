@@ -4,20 +4,43 @@
 
 <!-- crewrig-doc: published=false -->
 
-`docs/cli-matrix.md` is the source of truth for every CLI-specific
-integration point. It MUST stay in lockstep with the code.
+`docs/cli-matrix.md` is the published, generated view of every CLI-specific
+integration point; its sources are one file per row under
+`docs/cli-matrix/rows/<id>.md` plus the fragments beside them. It MUST stay in
+lockstep with the code. Never edit `docs/cli-matrix.md` by hand.
 
-**Trigger surface.** A change is CLI-specific when it touches any of:
-`.claude/**`, `.gemini/**`, `artifacts/**`, `extensions/**`,
-`hooks/*-transcript-hooks.json`, `config/claude/**`, `config/gemini/**`,
-`scripts/build-components.ts`, `scripts/build-components.ts`, `scripts/lib/build-components/**`, any `scripts/{build,install,setup,import,manage}-*.{sh,ts}`, `scripts/lib/{link-or-copy*.ts,manage/**,install/**}`,
-`.github/workflows/claude.yml` or `.github/workflows/gemini.yml`,
-the top-level entry-point files (`CLAUDE.md`, `GEMINI.md`), or a
-CLI-prefixed entry in `Taskfile.yml` / `.gitignore`.
+**Trigger surface.** A change is CLI-specific when its diff touches one of
+the following CLI integration points (generic `scripts/*` globs, `artifacts/**`
+and the entry-point files `CLAUDE.md` / `GEMINI.md` are not triggers by
+themselves):
 
-**Obligation.** Any PR that modifies the trigger surface MUST consult
-`docs/cli-matrix.md` and update it in the same diff — new row, edited
-cell, or refreshed `Parity gaps` entry. Drift is a parity bug.
+- **Deploy target** (where setup, install, link or import scripts place files
+  for a CLI): `scripts/setup-*-interactive.ts`, `scripts/setup-playwright-mcp.ts`,
+  `scripts/link-extensions.ts`, `scripts/lib/setup/**` (it holds the per-CLI
+  setup deploy logic), `scripts/lib/packaging/sync-manifests*.ts`,
+  `scripts/install-*.ts`, `scripts/import-*-history.ts`,
+  `scripts/manage-*-component.ts`, `scripts/manage-workspace-component.ts`,
+  `scripts/lib/install/**`, `scripts/lib/manage/**`,
+  `scripts/lib/link-or-copy*.ts`.
+- **Hook wiring**: `hooks/*-hooks.json`, `hooks/*.ts` (the hook entry points),
+  `scripts/lib/hook-*.ts`, `scripts/lib/transcript-hook-rewrite.ts`,
+  `scripts/lib/transcript-recognition.ts`.
+- **CLI-specific build output**: `scripts/build-components.ts` and
+  `scripts/lib/build-components/**` where a per-CLI emitter changes, plus
+  `scripts/build-claude-plugin.ts`, `scripts/build-copilot-plugin.ts`,
+  `scripts/build-antigravity-extension.ts`, `scripts/build-extension.ts`.
+- **CLI roots and settings**: `.claude/**`, `.gemini/**`, `config/claude/**`,
+  `config/gemini/**`, `config/copilot/**`, `extensions/**`,
+  `.github/workflows/claude.yml`, `.github/workflows/copilot.yml`.
+- **Parity gap**: any addition, removal or change of a `Parity gaps` item.
+- **CLI-prefixed entry** of `Taskfile.yml` or `.gitignore`.
+
+**Obligation.** Any PR that modifies the trigger surface MUST update the
+matrix in the same diff: edit the affected row source file under
+`docs/cli-matrix/rows/<id>.md` (or the relevant fragment), run
+`task cli-matrix:build`, and commit the regenerated `docs/cli-matrix.md`. To
+read one row, run `task cli-matrix:row -- <id>`; do not open the whole
+generated file. Drift is a parity bug.
 
 **Parity check.** When adding or modifying a feature for one CLI,
 verify every other supported CLI. The default is **implement

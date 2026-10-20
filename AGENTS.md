@@ -182,12 +182,7 @@ ships without a version bump.
 
 See [`docs/cli-matrix-maintenance.md`](docs/cli-matrix-maintenance.md) for the full protocol governing CLI-specific integration points, parity checks, gap-acceptance evidence, and the symmetric-script rule.
 
-**Summary:** Any PR touching `.claude/**`, `.gemini/**`, `artifacts/**`, `extensions/**`,
-`hooks/*-transcript-hooks.json`, `config/claude/**`, `config/gemini/**`,
-`scripts/build-components.ts`, `scripts/lib/build-components/**`, any `scripts/{build,install,setup,import,manage}-*.{sh,ts}`, `scripts/lib/{link-or-copy*.ts,manage/**,install/**}`,
-`.github/workflows/claude.yml` or `.github/workflows/gemini.yml`,
-`CLAUDE.md`, `GEMINI.md`, or CLI-prefixed `Taskfile.yml` entries MUST consult and update
-`docs/cli-matrix.md` in the same diff.
+**Summary:** A PR touching a CLI integration point (deploy target, hook wiring, CLI-specific build output, CLI roots and settings, parity gap, CLI-prefixed `Taskfile.yml`/`.gitignore` entry) MUST update the matrix row source under `docs/cli-matrix/rows/` and rebuild `docs/cli-matrix.md` in the same diff.
 
 **Core-paths manifest co-maintenance.** Any PR that adds, removes, or reclassifies a
 core-layer path in `docs/layers.md` MUST update `.crewrig/core-paths.txt` in the same diff.
