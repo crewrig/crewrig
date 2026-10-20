@@ -34,8 +34,11 @@ guarantee. It is work package WP5 of the epic #1724 (sections 3, 4 and 6).
    inline architectural corrections) SHALL be retained as the list of **bullet
    kinds** a transition comment records, one bullet per event (a rebase bullet
    still summarises conflict and resolution). Only **a blocker that needs a user
-   decision** is posted immediately, before work resumes. Rules A and C are
-   unchanged.
+   decision** is posted immediately, before work resumes. A **DEV-stage
+   checkpoint comment** is also posted, with the bullets accumulated so far,
+   before any hand-off to the user and when a CI-failure cycle repeats (a second
+   consecutive red run on the same ticket), so a long DEV stage never holds
+   unrecorded events across a session end. Rules A and C are unchanged.
 
 3. **R-B1.** Each seat `<surface>/<ticket>[#<generation>]` SHALL keep exactly one
    **ledger comment** on the logbook issue, edited in place with
@@ -58,11 +61,23 @@ guarantee. It is work package WP5 of the epic #1724 (sections 3, 4 and 6).
    revision named by `examined:`, instead of the comment history. Verdict
    comments keep being posted with their `seat:` line as the immutable audit
    trail, and a ledger line is never the only record of a verdict's findings.
+   **Verdicts are authoritative.** Before relying on the ledger, the pass SHALL
+   cross-check it against its own verdicts (those carrying its seat line and not
+   voided). If the ledger disagrees (a finding missing, a status regressed, or
+   `rev:` lower than previously seen, as after a failed PATCH or a verdict not yet
+   applied), the pass rebuilds the ledger from the verdicts and records the
+   mismatch in its verdict. The pass SHALL also verify `examined:` against the
+   revision named in its own latest non-void verdict; on mismatch it uses the
+   **earlier** of the two revisions (the scope is never narrower than the verdict
+   trail supports) and records the cause.
 6. **R-B4.** Writers: the seat pass reports its new findings in its verdict, and
    the orchestrator applies them and the dispositions of *Prior-finding
-   disposition* to the ledger; no other actor edits it. Before each PATCH the
-   writer SHALL re-read the comment and abort if `rev:` differs from the value it
-   read, then retry from the fresh content (last-writer guard).
+   disposition* to the ledger; no other actor edits it. The model is a **single
+   writer (the orchestrator) with sequential passes per seat**; concurrent
+   writers are unsupported, as the forge offers no compare-and-swap. `rev:` is a
+   detection aid, not a lock: after each PATCH the writer re-reads the comment to
+   verify `rev:` and content, and a detected `rev:` regress triggers the rebuild
+   from verdicts of R-B3.
 7. **R-B5.** `docs/reviewer-seat.md` SHALL be reconciled: the dossier's three
    kinds of content are read through the ledger; *Reconstructing a dossier*
    gains the ledger as the first read path and keeps the verdict query as the
@@ -97,14 +112,23 @@ guarantee. It is work package WP5 of the epic #1724 (sections 3, 4 and 6).
     plan is not self-contained except through its link.
 
 11. **R-E1.** A plan comment or verdict comment SHALL be at most 12 KB (12,288
-    bytes, UTF-8) in docs and in the citing skills.
+    bytes, UTF-8) in docs and in the citing skills. Rationale: it is under a fifth of the
+    forge's 65,536-character comment limit, enough for a full plan or verdict yet
+    well below the largest comments the epic section 2.4 evidence shows (24.7 KB
+    and 40.9 KB), so a comment that exceeds it is carrying bulk that belongs
+    elsewhere.
 12. **R-E2.** A new `scripts/check-comment-size.ts` (no existing plan or verdict
     format check measures size; verified by listing `scripts/`) SHALL accept a
     file path or stdin, print `OK: <n> bytes (budget: 12288 bytes)` or an error,
     and exit non-zero over budget or on an unreadable input. It follows the
     shape of `scripts/check-agents-size.ts` with its logic in a `scripts/lib/`
     module, a unit test, a `task` target, and a CI job wired as the sibling
-    size checks are (including the paths filter and a `*-ci-wiring` test).
+    size checks are (including the paths filter and a `*-ci-wiring` test). The
+    check is an **author-side tool**: the plan and verdict authoring steps in the
+    skills run it on the comment body before posting. CI cannot read forge
+    comments, so the CI job only runs the unit test and checks the script against
+    committed fixture and sample files (one under, one over budget); it is not a
+    gate on forge content.
 13. **R-E3.** Overflow behaviour: the author SHALL cut the comment under budget
     by moving bulk (long evidence, command output) to a linked artifact (PR
     description or file in the diff) and keeping a reference. No continuation
@@ -119,7 +143,8 @@ guarantee. It is work package WP5 of the epic #1724 (sections 3, 4 and 6).
     status) that a full read of its verdict fixtures yields. Cases: nominal
     multi-pass, malformed line, duplicate id (rejected), voided pass, missing
     ledger with verdicts (rebuild once), missing ledger and no verdicts
-    (vacant), and the three id schemes. This replaces a live multi-pass ticket
+    (vacant), ledger-versus-verdict mismatch (verdicts win), wrong `examined:`
+    (earlier revision wins), and the three id schemes. This replaces a live multi-pass ticket
     as proof.
 
 16. **R-G1.** Components that restate Rule B, the dossier read path, plan
@@ -141,11 +166,15 @@ guarantee. It is work package WP5 of the epic #1724 (sections 3, 4 and 6).
     bounded scope from pass 2, user approval before merge. All four CLIs behave
     alike, and setup goldens and the CLI matrix are rebuilt if affected.
 19. **R-H2.** The implementation SHALL record a before/after measure on this
-    issue's logbook: comment count and total bytes of a synthetic
-    standard-ticket transcript fixture (stage transitions, two plan versions,
-    three seated passes, five obstacles) under the old rules and the new rules.
-    Target: at least 50% fewer logbook-and-dossier bytes, against the epic
-    section 2.4 evidence. A live ticket is not required.
+    issue's logbook: comment count and total bytes of a fixture
+    derived from the real forge data of a closed ticket (#1410, the ticket behind
+    the epic section 2.4 comment counts): the old-rules transcript is the real
+    comment set, and the new-rules transcript is produced from it by a
+    mechanical, committed transformation (merge obstacle comments into stage
+    transition comments, collapse seat verdicts' dossier reads into a ledger,
+    turn plan v2 and later into deltas). Target: at least 50% fewer
+    logbook-and-dossier bytes. The transformation and its input are committed so
+    the figure is reproducible; a live ticket is not required.
 
 ## Scenarios
 
@@ -169,6 +198,14 @@ Then it exits non-zero; at 12,288 bytes it exits 0.
 Given a `v2` delta plan whose traceability table is cumulative
 When the `grep -c` row count of `docs/plan-review-protocol.md` runs on it
 Then the count equals the findings raised across prior review comments.
+
+**Scenario:** Ledger disagrees with verdicts
+
+Given a seat whose ledger disagrees with its verdicts, or whose `examined:`
+is later than its latest verdict's revision
+When a pass is instantiated
+Then it rebuilds the ledger from the verdicts, uses the earlier revision, and
+records the mismatch.
 
 **Scenario:** Ledger lost, verdicts present
 
@@ -207,5 +244,10 @@ Then all pass.
 - Overflow moves bulk to a linked artifact, no continuation comments (R-E3).
 - The deferred-findings ledger is not reused (R-C1), with `ledger` status as the
   bridge.
-- `rev:` counter chosen as the concurrency guard (R-B4), as forge comment edits
-  have no native compare-and-swap.
+- `rev:` is a detection aid, not a lock (R-B4): single writer, sequential passes,
+  rebuild from verdicts on regress; verdicts win on any disagreement (R-B3).
+- `examined:` is verified against the pass's own last verdict, earlier revision
+  wins (R-B3).
+- DEV-stage checkpoint comment before user hand-off and on a repeated CI-failure
+  cycle (R-A2).
+- Economy measured on a mechanical transformation of real #1410 data (R-H2).
