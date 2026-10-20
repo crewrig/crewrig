@@ -1575,6 +1575,9 @@ jobs:
               - 'tests/e2e/**'
               - 'scripts/e2e/**'
               - 'docs/cli-matrix.md'
+              - 'docs/cli-matrix/**'
+              - 'scripts/build-cli-matrix.ts'
+              - 'scripts/lib/build-cli-matrix/**'
               - 'docker/e2e/.versions.lock'
               - '.gitignore'
       - name: Install yq v4.44.3
@@ -3251,6 +3254,37 @@ jobs:
       - name: Setup entries proof
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-setup-proof.ts
 
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  cli-matrix-fresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            cli-matrix-fresh:
+              - 'docs/cli-matrix.md'
+              - 'docs/cli-matrix/**'
+              - 'scripts/build-cli-matrix.ts'
+              - 'scripts/lib/build-cli-matrix/**'
+              - 'scripts/lib/node-floor-guard.js'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.cli-matrix-fresh == 'true'
+        with:
+          node-version: 24
+      - name: Install Task
+        if: steps.filter.outputs.cli-matrix-fresh == 'true'
+        run: sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+      - name: Floor guard accepts Node.js 24
+        if: steps.filter.outputs.cli-matrix-fresh == 'true'
+        run: node scripts/lib/node-floor-guard.js
+      - name: Check CLI matrix freshness
+        if: steps.filter.outputs.cli-matrix-fresh == 'true'
+        run: task cli-matrix:check
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

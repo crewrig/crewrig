@@ -7,6 +7,9 @@ import fs from "node:fs";
 
 import { compareBytes } from "./render.ts";
 
+// Generator sources of docs/cli-matrix.md (spec 0272): not pages. Exact repo-relative equality.
+const SKIPPED_DIR = "docs/cli-matrix";
+
 function collect(dir: string, rel: string, out: string[]): void {
   let entries: fs.Dirent[];
   try {
@@ -16,8 +19,9 @@ function collect(dir: string, rel: string, out: string[]): void {
   }
   for (const entry of entries) {
     const childRel = `${rel}/${entry.name}`;
-    if (entry.isDirectory()) collect(`${dir}/${entry.name}`, childRel, out);
-    else if (entry.isFile() && entry.name.endsWith(".md")) out.push(childRel);
+    if (entry.isDirectory()) {
+      if (childRel !== SKIPPED_DIR) collect(`${dir}/${entry.name}`, childRel, out);
+    } else if (entry.isFile() && entry.name.endsWith(".md")) out.push(childRel);
   }
 }
 

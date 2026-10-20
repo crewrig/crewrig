@@ -49,7 +49,7 @@ refuse to proceed.
 
 | Path | Description |
 |---|---|
-| `docs/` | All normative and reference documentation, including ADRs, format specs, and this file. The `docs/org/` subtree is carved out as overlay (spec 0020) — see the Overlay layer. |
+| `docs/` | All normative and reference documentation, including ADRs, format specs, and this file. `docs/cli-matrix/` holds the per-row source files from which `docs/cli-matrix.md` is generated (spec 0272). The `docs/org/` subtree is carved out as overlay (spec 0020) — see the Overlay layer. |
 | `docs/index.json` | Generated public-documentation manifest (spec 0027). Core/`strict`, committed, and consumed by the separate site repository — see *Documentation publication contract* below. |
 | `specs/` | Immutable specification history. Spec **content** is append-only; existing files are not edited after merge except for lifecycle-metadata transitions (`status`, `superseded-by`) and meaning-preserving editorial edits (orthography, typo fixes) — see [`docs/spec-format.md`](spec-format.md). The `specs/org/` subtree is carved out as overlay (spec 0020) — see the Overlay layer. |
 

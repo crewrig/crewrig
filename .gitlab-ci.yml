@@ -1584,6 +1584,29 @@ docs-index:
         - "scripts/tests/lib/docs-index-entry-tree.ts"
         - "docs/**"
 
+cli-matrix-fresh:
+  image: node:24
+  before_script:
+    - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+  script:
+    - "node scripts/lib/node-floor-guard.js"
+    - "task cli-matrix:check"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "docs/cli-matrix.md"
+        - "docs/cli-matrix/**"
+        - "scripts/build-cli-matrix.ts"
+        - "scripts/lib/build-cli-matrix/**"
+        - "scripts/lib/node-floor-guard.js"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "docs/cli-matrix.md"
+        - "docs/cli-matrix/**"
+        - "scripts/build-cli-matrix.ts"
+        - "scripts/lib/build-cli-matrix/**"
+        - "scripts/lib/node-floor-guard.js"
+
 figure-labels:
   image: node:24
   before_script:
@@ -1908,6 +1931,9 @@ e2e:
         - "tests/e2e/**"
         - "scripts/e2e/**"
         - "docs/cli-matrix.md"
+        - "docs/cli-matrix/**"
+        - "scripts/build-cli-matrix.ts"
+        - "scripts/lib/build-cli-matrix/**"
         - "docker/e2e/.versions.lock"
         - ".gitignore"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -1918,6 +1944,9 @@ e2e:
         - "tests/e2e/**"
         - "scripts/e2e/**"
         - "docs/cli-matrix.md"
+        - "docs/cli-matrix/**"
+        - "scripts/build-cli-matrix.ts"
+        - "scripts/lib/build-cli-matrix/**"
         - "docker/e2e/.versions.lock"
         - ".gitignore"
     - when: manual
@@ -3001,6 +3030,9 @@ usage-capture:
         - "scripts/tests/usage-capture-*"
         - "scripts/tests/lib/usage-capture-*"
         - "docs/cli-matrix.md"
+        - "docs/cli-matrix/**"
+        - "scripts/build-cli-matrix.ts"
+        - "scripts/lib/build-cli-matrix/**"
         - "package.json"
         - "package-lock.json"
         - "scripts/setup-*-interactive.ts"
@@ -3048,6 +3080,9 @@ usage-capture:
         - "scripts/tests/usage-capture-*"
         - "scripts/tests/lib/usage-capture-*"
         - "docs/cli-matrix.md"
+        - "docs/cli-matrix/**"
+        - "scripts/build-cli-matrix.ts"
+        - "scripts/lib/build-cli-matrix/**"
         - "package.json"
         - "package-lock.json"
         - "scripts/setup-*-interactive.ts"

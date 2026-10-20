@@ -2059,6 +2059,34 @@ capabilities:
       - node scripts/build-docs-index.ts --check
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-docs-index-entry.test.ts
 
+  - id: cli-matrix-fresh
+    name: "Check the CLI matrix is regenerated"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "docs/cli-matrix.md"
+          - "docs/cli-matrix/**"
+          - "scripts/build-cli-matrix.ts"
+          - "scripts/lib/build-cli-matrix/**"
+          - "scripts/lib/node-floor-guard.js"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "docs/cli-matrix.md"
+          - "docs/cli-matrix/**"
+          - "scripts/build-cli-matrix.ts"
+          - "scripts/lib/build-cli-matrix/**"
+          - "scripts/lib/node-floor-guard.js"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - node scripts/lib/node-floor-guard.js
+      - task cli-matrix:check
+
   - id: figure-labels
     name: "Check figure labels with OCR"
     trigger:
@@ -2399,6 +2427,9 @@ capabilities:
           - "tests/e2e/**"
           - "scripts/e2e/**"
           - "docs/cli-matrix.md"
+          - "docs/cli-matrix/**"
+          - "scripts/build-cli-matrix.ts"
+          - "scripts/lib/build-cli-matrix/**"
           - "docker/e2e/.versions.lock"
           - ".gitignore"
       - on: push
@@ -2410,6 +2441,9 @@ capabilities:
           - "tests/e2e/**"
           - "scripts/e2e/**"
           - "docs/cli-matrix.md"
+          - "docs/cli-matrix/**"
+          - "scripts/build-cli-matrix.ts"
+          - "scripts/lib/build-cli-matrix/**"
           - "docker/e2e/.versions.lock"
           - ".gitignore"
       - on: manual
@@ -3882,6 +3916,9 @@ capabilities:
           - "scripts/tests/usage-capture-*"
           - "scripts/tests/lib/usage-capture-*"
           - "docs/cli-matrix.md"
+          - "docs/cli-matrix/**"
+          - "scripts/build-cli-matrix.ts"
+          - "scripts/lib/build-cli-matrix/**"
           - "package.json"
           - "package-lock.json"
           - "scripts/setup-*-interactive.ts"
@@ -3930,6 +3967,9 @@ capabilities:
           - "scripts/tests/usage-capture-*"
           - "scripts/tests/lib/usage-capture-*"
           - "docs/cli-matrix.md"
+          - "docs/cli-matrix/**"
+          - "scripts/build-cli-matrix.ts"
+          - "scripts/lib/build-cli-matrix/**"
           - "package.json"
           - "package-lock.json"
           - "scripts/setup-*-interactive.ts"
