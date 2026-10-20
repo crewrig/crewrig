@@ -470,3 +470,21 @@ invoked via `task spec:lint` and enforced in CI on every pull request via the
   other value is a lint error.
 - Status invariants are verified per the transition rules described above
   (governed by Spec 0109 and Spec 0168).
+- A spec or delta file larger than 40960 bytes draws a `[WARN]` line naming
+  the file and its size. The warning never fails the run; see
+  *Splitting an oversized spec* below.
+
+## Splitting an oversized spec
+
+A spec above 40 KB (40960 bytes) is split into sub-specs. Each sub-spec is its
+own spec with its own id and its own ticket, and the parent links to it from an
+Out of scope or Requirements line.
+
+A delta is not a way to split. A delta amends a spec and adds to its size, and
+the deltas of a split spec still follow the delta-spec cumulative rule.
+
+To read a spec together with its deltas as one document, run
+`task spec:view -- <id>` (the id may be given with or without zero padding).
+The view is read-only and never normative: it prints the base body, then each
+delta verbatim in ascending order, and the later delta prevails per the
+cumulative rule.

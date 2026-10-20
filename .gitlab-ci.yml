@@ -2581,6 +2581,24 @@ derive-spec-status:
         - "scripts/lib/ts-scope.ts"
         - "scripts/tests/derive-spec-status.test.ts"
 
+spec-view:
+  image: node:24
+  script:
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-view.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/spec-view.ts"
+        - "scripts/lib/spec-view.ts"
+        - "scripts/lib/ts-scope.ts"
+        - "scripts/tests/spec-view.test.ts"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/spec-view.ts"
+        - "scripts/lib/spec-view.ts"
+        - "scripts/lib/ts-scope.ts"
+        - "scripts/tests/spec-view.test.ts"
+
 node-floor-guard:
   image: node:20
   script:

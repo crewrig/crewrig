@@ -581,6 +581,19 @@ tasks:
     desc: "Run the merged-spec status derivation suite, as CI does (spec 0109 delta-04)"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/derive-spec-status.test.ts
 
+  # Spec 0273: read-only effective view of a spec and its deltas, e.g.
+  #   task spec:view -- 273
+  spec:view:
+    desc: "Print a spec and its deltas as one read-only Markdown document (spec 0273)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/spec-view.ts {{.CLI_ARGS}}
+
+  # Spec 0273: the exact CI command of the `spec-view` capability.
+  test-spec-view:
+    desc: "Run the spec effective view suite, as CI does (spec 0273)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-view.test.ts
+
   fix-markdown:
     desc: Auto-fix Markdown formatting issues
     preconditions:

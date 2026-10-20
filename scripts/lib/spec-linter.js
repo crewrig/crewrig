@@ -25,6 +25,8 @@ function requireLintDependency(moduleName) {
 const yaml = requireLintDependency('js-yaml');
 const semver = requireLintDependency('semver');
 
+// Spec 0273 R8: a spec or delta file larger than this many bytes draws a warning.
+const SPEC_SIZE_WARN_BYTES = 40960;
 const STATUS_ENUM = ['draft', 'approved', 'implemented', 'archived', 'superseded'];
 const COMPLEXITY_ENUM = ['trivial', 'small', 'standard', 'large'];
 const INTERACTION_MODE_ENUM = ['FULL', 'INTERMEDIATE', 'MINIMAL', 'AUTO'];
@@ -618,6 +620,13 @@ function run() {
     const fileResults = [];
     for (const file of uniqueFiles) {
         if (isExcludedSpecPath(file, manifestEntries)) continue;
+        // Spec 0273 R8-R10: non-failing size warning for every visited file.
+        // Placed after the exclusion guard (a skipped file is not visited) and
+        // never touching totalErrors or the exit code.
+        const sizeBytes = fs.statSync(file).size;
+        if (sizeBytes > SPEC_SIZE_WARN_BYTES) {
+            console.error(`[WARN] ${file} is ${sizeBytes} bytes, above the ${SPEC_SIZE_WARN_BYTES}-byte spec size threshold; see docs/spec-format.md -> Splitting an oversized spec.`);
+        }
         const { hasErrors, errors, id, isDelta, status, relatedIssue } = lintFile(file);
         fileResults.push({ file, id, isDelta, status, relatedIssue });
         if (hasErrors) {

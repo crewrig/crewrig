@@ -1,7 +1,7 @@
 ---
 id: "0273"
 slug: spec-effective-view-and-size-warning
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 1730

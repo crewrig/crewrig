@@ -3285,6 +3285,30 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/derive-spec-status.test.ts
 
+  # Spec 0273: the read-only effective view of a spec and its deltas.
+  - id: spec-view
+    name: "Spec effective view (spec 0273)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/spec-view.ts"
+          - "scripts/lib/spec-view.ts"
+          - "scripts/lib/ts-scope.ts"
+          - "scripts/tests/spec-view.test.ts"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/spec-view.ts"
+          - "scripts/lib/spec-view.ts"
+          - "scripts/lib/ts-scope.ts"
+          - "scripts/tests/spec-view.test.ts"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-view.test.ts
+
   # Spec 0240 R3: the floor guard's failure path, proven on a Node.js release
   # that cannot strip types. Each command is plain POSIX so the job needs no
   # TypeScript; the grep tokens are the guard's stable diagnostic contract
