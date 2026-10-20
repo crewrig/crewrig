@@ -74,6 +74,8 @@ When the framework's own session-start protocol establishes or resumes a task-ha
 
 This channel carries the lowest priority and is consulted only when channels 1, 2 and 3 are all absent.
 
+Since spec 0271 the usage-declaration duty falls on the orchestrator only. A subagent runs no `usage-task set` on Claude Code, because its records carry the parent session identifier and the parent's session-scoped declaration covers them; `docs/cli-matrix.md` row 44 records the other CLIs. The sweep obligations of spec 0208 R3 and R4 are amended by spec 0271 R8 in this respect only; spec 0208 itself is not superseded.
+
 ## The declaration record
 
 A session's declaration record is a JSON file that holds:
@@ -297,9 +299,9 @@ A task or asset with zero `uncaptured` records reports that count as zero, never
 
 ## Session-start protocol recording
 
-When the framework's own session-start protocol establishes or resumes a task-handoff drawer, it records the drawer's own task-handoff key with a declaration record named `protocol` (R3). This write happens before any task work in the session begins, establishing channel 4 as a fallback for records captured later in that session.
+When the framework's own session-start protocol establishes or resumes a task-handoff drawer, it records the drawer's own task-handoff key with a declaration record named `protocol` (R3). This write is made by the orchestrator, before any task work in the session begins, establishing channel 4 as a fallback for records captured later in that session.
 
-The session-start protocol documentation — `artifacts/core/rules/60-tools.md` → *Memory Activation Protocol* → *Session Start — Deterministic status-first sweep* and `~/.crewrig/system-context/long-running-task-convention.md` — now names requirement 3's recording step explicitly (R4).
+The session-start protocol documentation — `artifacts/core/rules/60-tools.md` → *Memory Activation Protocol* → *Session Start — Deterministic orchestrator-only sweep* and `~/.crewrig/system-context/long-running-task-convention.md` — now names requirement 3's recording step explicitly (R4).
 
 ## Prune
 
