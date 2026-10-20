@@ -39,7 +39,7 @@ number, the review surface), where the surface is exactly one of:
 
 | Surface | Artifact reviewed | Occupied by |
 |---|---|---|
-| `specs` | the spec pull request, and every delta-spec pull request of the same ticket | per `docs/agent-team-protocol.md` → *Spec-reviewer obligation* |
+| `specs` | the spec pull request, and every delta-spec pull request of the same ticket | per `docs/agent-team-protocol/templates.md` → *Spec-reviewer obligation* |
 | `plan` | the plan comment on the logbook issue | per `docs/plan-review-protocol.md` → *Review rule* |
 | `review` | the implementation pull request | per `docs/retroactive-loop.md` → *REVIEW launch trigger* |
 
@@ -464,7 +464,7 @@ that touched one of them would be a defect rather than an improvement:
   ([`docs/plan-review-protocol.md`](plan-review-protocol.md)).
 - Which role occupies which review surface, and the composition of the
   teams that produce the artifact under review
-  ([`docs/agent-team-protocol.md`](agent-team-protocol.md)).
+  ([`docs/agent-team-protocol/templates.md`](agent-team-protocol/templates.md#team-sizing-by-complexity)).
 - Reviewer memory that spans tickets. A seat is scoped to one ticket and
   one surface; nothing accumulates across tickets.
 

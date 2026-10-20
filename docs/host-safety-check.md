@@ -10,7 +10,7 @@
 [`specs/0267-test-harness-host-safety.md`](../specs/0267-test-harness-host-safety.md).
 The instruction that binds every spawned role lives in a single place, the
 *Host-safety* clause of
-[`docs/agent-team-protocol.md`](agent-team-protocol.md); this page links to it
+[`docs/agent-team-protocol/worktree-isolation.md`](agent-team-protocol/worktree-isolation.md#worktree-isolation); this page links to it
 and does not restate it.
 
 ## What it checks

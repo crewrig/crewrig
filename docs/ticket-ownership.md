@@ -294,7 +294,7 @@ sessions of the **same** contributor on one ticket stay governed by the
 existing machine-scoped guards — spec-id reservation
 ([`specs/0112-spec-id-reservation.md`](../specs/0112-spec-id-reservation.md))
 and the worktree claim of
-[`docs/agent-team-protocol.md`](agent-team-protocol.md) — which this
+[`docs/agent-team-protocol/worktree-isolation.md`](agent-team-protocol/worktree-isolation.md) — which this
 convention neither replaces nor weakens. The pickup check returns `0` to
 every session of the owner.
 
