@@ -31,7 +31,7 @@ the first column today (`1`, `2`, `3`, `4`, `4b`, `4c`, ... `37e`, `37f`, `44`).
 
 1. `docs/cli-matrix/` SHALL hold the source of truth. Each feature row SHALL
    have one Markdown file `docs/cli-matrix/rows/<id>.md` rendering the row as a
-   level-1 heading carrying the id and the feature name (`# 4b — title`),
+   level-1 heading carrying the id and the feature name (`# 4b — title`, the separator being an em dash, U+2014, in every row heading),
    followed by one bullet
    per field: *Source of truth*, then one bullet per CLI column in the order
    Claude Code, Gemini CLI, Copilot CLI, Antigravity CLI.
@@ -102,7 +102,10 @@ the first column today (`1`, `2`, `3`, `4`, `4b`, `4c`, ... `37e`, `37f`, `44`).
     reproducing today's `docs/cli-matrix.md` modulo the table-to-bullet change;
     "verbatim" means verbatim after table-cell unescaping, each `\|` of a table
     cell becoming `|` in the bullet (nine occurrences at the base commit). The
-    second SHALL only wrap lines and change no word.
+    second SHALL only wrap lines and change no word. Source files carry links
+    relative to their own location so that `scripts/check-markdown-links.ts`
+    passes on them; the generator SHALL rewrite those links to the `docs/`-relative
+    form so that the generated file reproduces today's links byte for byte.
 
 12. A verification procedure, recorded in the logbook with its output, SHALL
     show for every row and every cell that the whitespace-normalised text in
@@ -145,11 +148,16 @@ the first column today (`1`, `2`, `3`, `4`, `4b`, `4c`, ... `37e`, `37f`, `44`).
     the matrix only when its diff touches one of:
     - a deploy target, meaning where setup, install, link or import scripts place
       files for a CLI: `scripts/setup-*-interactive.ts`, `scripts/setup-playwright-mcp.ts`,
+      `scripts/link-extensions.ts`, `scripts/lib/setup/**` (80 tracked files, counted
+      with `git ls-files`; included on purpose because it holds the per-CLI setup
+      deploy logic),
+      `scripts/lib/packaging/sync-manifests*.ts`,
       `scripts/install-*.ts`, `scripts/import-*-history.ts`,
       `scripts/manage-*-component.ts`, `scripts/manage-workspace-component.ts`,
       `scripts/lib/install/**`, `scripts/lib/manage/**`,
       `scripts/lib/link-or-copy*.ts`;
-    - hook wiring: `hooks/*-hooks.json`, `scripts/lib/hook-*.ts` (today `hook-command`, `-config`, `-descriptor`,
+    - hook wiring: `hooks/*-hooks.json`, `hooks/*.ts` (the hook entry points), `scripts/lib/transcript-recognition.ts`,
+      `scripts/lib/hook-*.ts` (today `hook-command`, `-config`, `-descriptor`,
       `-guard-manifest`, `-antigravity*`, `-transcript-*`, `-registry`, `-rewrite`,
       `-statusline`, `-recognition`) and `scripts/lib/transcript-hook-rewrite.ts`;
     - CLI-specific build output: `scripts/build-components.ts` and
@@ -158,7 +166,7 @@ the first column today (`1`, `2`, `3`, `4`, `4b`, `4c`, ... `37e`, `37f`, `44`).
       `scripts/build-antigravity-extension.ts`, `scripts/build-extension.ts`;
     - CLI roots and settings: `.claude/**`, `.gemini/**`, `config/claude/**`,
       `config/gemini/**`, `config/copilot/**`, `extensions/**`,
-      `.github/workflows/claude.yml`, `.github/workflows/gemini.yml`;
+      `.github/workflows/claude.yml`, `.github/workflows/copilot.yml`;
     - a parity gap: any addition, removal or change of a `Parity gaps` item;
     - a CLI-prefixed entry of `Taskfile.yml` or `.gitignore`.
     The list is confirmed at DEV time: the plan stage fixes the grep command
