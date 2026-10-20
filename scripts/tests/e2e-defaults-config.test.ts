@@ -116,7 +116,15 @@ describe("scenarios parity with docs/cli-matrix.md", () => {
     "05-copilot-model-routing",
     "06-agent-surface-consumption",
   ];
-  const matrix = (): string[] => fs.readFileSync(MATRIX, "utf8").split(/\r?\n/);
+  /** Logical lines: a wrapped bullet (indented continuation lines) is folded back into one. */
+  const matrix = (): string[] => {
+    const out: string[] = [];
+    for (const l of fs.readFileSync(MATRIX, "utf8").split(/\r?\n/)) {
+      if (/^\s+\S/.test(l) && out.length > 0) out[out.length - 1] += ` ${l.trim()}`;
+      else out.push(l);
+    }
+    return out;
+  };
 
   it("both sources exist", () => {
     assert.ok(fs.existsSync(MATRIX));
@@ -141,16 +149,19 @@ describe("scenarios parity with docs/cli-matrix.md", () => {
   }
 
   it("the cross-tool-memory copilot gap is documented", () => {
-    const lines = matrix();
-    const near = lines.some(
-      (l, i) =>
-        l.includes("02-cross-tool-memory") &&
-        [lines[i - 1], l, lines[i + 1]].some((x) => /copilot/i.test(x ?? "")),
-    );
-    assert.ok(near, "no 'copilot' line within 1 line of '02-cross-tool-memory'");
+    // Each matrix row is one `### ` section; the old single table line is now that whole section.
+    const sections = matrix()
+      .join("\n")
+      .split(/\n(?=### )/)
+      .filter((x) => x.includes("02-cross-tool-memory"));
+    assert.ok(sections.length > 0, "no row section mentions '02-cross-tool-memory'");
     assert.ok(
-      lines.some((l) => /02-cross-tool-memory|cross-tool memory/.test(l) && /gap/i.test(l)),
-      "no 'GAP' marker on a line mentioning the scenario",
+      sections.some((x) => /copilot/i.test(x)),
+      "no 'copilot' mention within the row of '02-cross-tool-memory'",
+    );
+    assert.ok(
+      sections.some((x) => /gap/i.test(x)),
+      "no 'GAP' marker within the row mentioning the scenario",
     );
   });
 });

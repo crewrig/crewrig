@@ -15,8 +15,10 @@ export type Part = { name: string; path: string; offset: number; prefix: string;
 
 /** Describe a manifest entry: where it lives, its heading offset and its link prefix. */
 export function partOf(sourceDir: string, name: string): Part {
-  if (name === "intro.md") return { name, path: join(sourceDir, name), offset: 0, prefix: "../", isRow: false };
-  if (FIXED.has(name)) return { name, path: join(sourceDir, name), offset: 1, prefix: "../", isRow: false };
+  if (name === "intro.md")
+    return { name, path: join(sourceDir, name), offset: 0, prefix: "../", isRow: false };
+  if (FIXED.has(name))
+    return { name, path: join(sourceDir, name), offset: 1, prefix: "../", isRow: false };
   return { name, path: join(sourceDir, "rows", name), offset: 2, prefix: "../../", isRow: true };
 }
 
@@ -39,7 +41,9 @@ export function readManifest(sourceDir: string): Part[] {
   const lead = names.slice(0, LEADING.length);
   const trail = names.slice(names.length - TRAILING.length);
   if (lead.join() !== LEADING.join() || trail.join() !== TRAILING.join()) {
-    throw new Error(`order.txt: must start with ${LEADING.join(", ")} and end with ${TRAILING.join(", ")}`);
+    throw new Error(
+      `order.txt: must start with ${LEADING.join(", ")} and end with ${TRAILING.join(", ")}`,
+    );
   }
   const parts = names.map((n) => partOf(sourceDir, n));
   for (const p of parts) {

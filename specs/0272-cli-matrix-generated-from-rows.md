@@ -1,7 +1,7 @@
 ---
 id: "0272"
 slug: cli-matrix-generated-from-rows
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1729

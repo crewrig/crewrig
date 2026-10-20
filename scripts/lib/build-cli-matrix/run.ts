@@ -26,10 +26,11 @@ function firstDifference(a: string, b: string): number {
 function printRow(id: string): number {
   const rows = readManifest(SOURCE_DIR).filter((p) => p.isRow);
   const byBase = rows.find((p) => p.name === `${id}.md`);
-  const hit =
-    byBase ?? rows.find((p) => rowHeadingId(readFileSync(p.path, "utf8"), p.name) === id);
+  const hit = byBase ?? rows.find((p) => rowHeadingId(readFileSync(p.path, "utf8"), p.name) === id);
   if (!hit) {
-    process.stderr.write(`Unknown row id "${id}". Valid ids: ${rows.map((p) => p.name.replace(/\.md$/, "")).join(" ")}\n`);
+    process.stderr.write(
+      `Unknown row id "${id}". Valid ids: ${rows.map((p) => p.name.replace(/\.md$/, "")).join(" ")}\n`,
+    );
     return 1;
   }
   process.stdout.write(readFileSync(hit.path, "utf8"));

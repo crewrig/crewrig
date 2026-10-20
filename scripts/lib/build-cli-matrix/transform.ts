@@ -16,9 +16,14 @@ function mapOutsideFences(text: string, visit: (line: string) => string): string
     .map((line) => {
       const m = FENCE.exec(line);
       if (fence === null) {
-        if (m) fence = m[1]![0]!;
+        if (m) fence = m[1]!;
         else return visit(line);
-      } else if (m && m[1]![0] === fence) {
+      } else if (
+        m &&
+        m[1]![0] === fence[0] &&
+        m[1]!.length >= fence.length &&
+        /^\s*$/.test(line.slice(m[0].length))
+      ) {
         fence = null;
       }
       return line;

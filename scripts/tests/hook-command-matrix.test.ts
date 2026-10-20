@@ -21,6 +21,7 @@ import { MEASURED_SURFACES, type MeasuredSurface } from "../lib/hook-command.ts"
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const MATRIX = fs.readFileSync(path.join(REPO, "docs", "cli-matrix.md"), "utf8");
+const ROWS_DIR = path.join(REPO, "docs", "cli-matrix", "rows");
 
 /** The guarded-form fields of spec 0243 delta-03 R31, read loosely so the guard
  * reports a missing field as a divergence rather than failing to load. */
@@ -144,8 +145,13 @@ function guardFailures(
   return failures;
 }
 
-const LINES = MATRIX.split("\n");
-const rowOf = (id: string): string | undefined => LINES.find((l) => l.startsWith(`| ${id} |`));
+/** Fold every whitespace run to one space, so a hard wrap never splits a token. */
+const fold = (text: string): string => text.replace(/\s+/g, " ").trim();
+/** A row's source file with whitespace folded. */
+const rowOf = (id: string): string | undefined => {
+  const file = path.join(ROWS_DIR, `${id}.md`);
+  return fs.existsSync(file) ? fold(fs.readFileSync(file, "utf8")) : undefined;
+};
 const entryOf = (surface: "statusline" | "hooks"): GuardedEntry | undefined =>
   MEASURED_SURFACES.find(
     (m) => m.cli === "antigravity" && m.surface === surface && m.os === "win32",
@@ -264,7 +270,9 @@ describe("rows 37e and 37f state their caveats in prose (R31, R33, R35, R36)", (
   });
 
   test("the parity gap names both surfaces, rows 37e/37f, #1392 and the PATH residual (R17, R36)", () => {
-    const gap = LINES.find((l) => l.startsWith("- [GAP] Windows checkout paths"));
+    const gap = fold(MATRIX)
+      .split(/ (?=- \[(?:GAP|ACCEPTED|[A-Z]+)[\] ])/)
+      .find((l) => l.startsWith("- [GAP] Windows checkout paths"));
     assert.ok(gap, "the [GAP] Windows checkout paths entry is missing");
     const missing = ["row 37e", "row 37f", "#1392", "statusLine.command", "hooks", "PATH"].filter(
       (n) => !gap.includes(n),
@@ -312,6 +320,14 @@ describe("the parser and the guard fail on each divergence (the guard is itself 
     ] as const) {
       assert.ok(has(guardFailures("37f", row, good), error), `${error}: ${row}`);
     }
+  });
+
+  test("a token wrapped across lines parses once whitespace is folded", () => {
+    const wrapped = ok
+      .replace("; quoting=", ";\n  quoting=")
+      .replace("; caveats=", ";\n    caveats=");
+    assert.ok(has(guardFailures("37f", wrapped, good), "malformed pair"), "unfolded must fail");
+    assert.deepEqual(guardFailures("37f", fold(wrapped), good), []);
   });
 
   test("row present, entry absent (and the reverse)", () => {

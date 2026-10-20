@@ -20,7 +20,8 @@ function normalise(raw: string): string {
 function withComment(intro: string): string {
   const lines = intro.split("\n");
   const at = lines.findIndex((l) => l.includes("crewrig-doc:"));
-  if (at === -1 || lines[at + 1] !== "") throw new Error("intro.md: expected a blank line after the crewrig-doc marker");
+  if (at === -1 || lines[at + 1] !== "")
+    throw new Error("intro.md: expected a blank line after the crewrig-doc marker");
   lines.splice(at + 2, 0, GENERATED_COMMENT, "");
   return lines.join("\n");
 }

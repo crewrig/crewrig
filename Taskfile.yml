@@ -668,6 +668,25 @@ tasks:
     desc: "Check the compiled .claude/agents/ tree holds only flat <name>.md files (local mirror of the CI guard, spec 0201)"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-claude-agent-layout.ts
 
+  cli-matrix:build:
+    desc: "Regenerate docs/cli-matrix.md from docs/cli-matrix/ (spec 0272)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/build-cli-matrix.ts
+
+  cli-matrix:check:
+    desc: "Fail when docs/cli-matrix.md is stale against docs/cli-matrix/ (local mirror of the CI guard, spec 0272)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/build-cli-matrix.ts --check
+
+  cli-matrix:row:
+    desc: "Print one CLI-matrix row source. Usage: task cli-matrix:row -- <id>"
+    silent: true
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/build-cli-matrix.ts row {{.CLI_ARGS}}
+
   skill:check:
     desc: "Verify built skill (+ optional agent) mirrors for one component across .claude/, .gemini/, .github/. Usage: task skill:check NAME=<skill-name>"
     silent: true
