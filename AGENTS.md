@@ -26,13 +26,13 @@ brief, a seated pass included — skips the sweep entirely and writes no handoff
 drawer or diary entry; it reports its outcome and the orchestrator writes them
 once. Skipping is NOT a process violation and yields no finding of any class. A
 non-seat subagent's brief carries the `handoff_key` and drawer id
-([`docs/agent-team-protocol.md`](docs/agent-team-protocol.md)); a seated pass's
+([`orchestrator.md`](docs/agent-team-protocol/orchestrator.md)); a seated pass's
 brief carries neither ([`docs/reviewer-seat.md`](docs/reviewer-seat.md)).
 
 Additionally, before opening any new ticket worktree, perform the additive,
 non-destructive session-start worktree-backlog surfacing in
-[`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) → *Worktree
-Isolation* → *Session-boundary worktree hygiene* — it reports already-merged
+[`worktree-isolation.md`](docs/agent-team-protocol/worktree-isolation.md#session-boundary-worktree-hygiene)
+→ *Session-boundary worktree hygiene* — it reports already-merged
 worktrees but removes nothing.
 
 ## Lifecycle
@@ -203,8 +203,8 @@ See [`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) for the full pr
 - **Coordination primitives on Claude Code CLI.** Claude Code runs a single implicit session team — there is no team to create. Use `Agent` (always with an explicit `subagent_type`) to delegate work to a specialist, and `SendMessage` for all cross-agent communication — these two primitives are confirmed present on Claude Code and mandatory, not optional. `TaskCreate` (one task per role; self-contained brief in the `Agent` prompt) tracks that delegation when the harness exposes it; it is confirmed absent from the current Claude Code harness's tool surface (`docs/cli-matrix.md` → *Parity gaps*, issue #1267), and that absence is not a protocol violation to work around — proceed with `Agent` and `SendMessage` alone.
 - **Worktree isolation.** Before the `Agent` spawn that opens the ticket — and before any `TaskCreate` call too, when the harness exposes it — create a dedicated git worktree. All team edits happen inside `.worktrees/<ticket-id>/`. The main working directory is read-only for the duration.
 - **Anti-permission-laundering.** Never re-execute a subagent's denied action in the parent session. Subagent permission denials are treated as user-authored rejections and MUST be surfaced to the user for decision.
-- **Whole-tree git ops.** `git reset --hard`, `git stash`, `git clean` require an exclusive claim + empty `git status`. See [`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) → *Worktree Isolation*.
-- **Built components.** Any commit touching `artifacts/` MUST also run the build and stage the regenerated outputs in the same commit: `node scripts/lib/node-floor-guard.js`, then `node scripts/build-components.ts` as a separate step (Node.js 24 floor; `js-yaml` comes from the setup dependency step; see [`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) → *Built Components*).
+- **Whole-tree git ops.** `git reset --hard`, `git stash`, `git clean` require an exclusive claim + empty `git status`. See [`worktree-isolation.md`](docs/agent-team-protocol/worktree-isolation.md).
+- **Built components.** Any commit touching `artifacts/` MUST also run the build and stage the regenerated outputs in the same commit: `node scripts/lib/node-floor-guard.js`, then `node scripts/build-components.ts` as a separate step (Node.js 24 floor; `js-yaml` comes from the setup dependency step; see [`built-components.md`](docs/agent-team-protocol/built-components.md)).
 - **Complexity tier.** Read the spec frontmatter `complexity` field at ticket pickup: `trivial` = inline, `small` = developer + pr-logbook + pr-reviewer, `standard` = full Template 1/2/3, `large` = architect-led sub-spec decomposition.
 - **Idle notification non-completion.** `idle_notification` events indicate thread status at event emission time and are NOT request completion signals; never abandon subagents on an idle event while a request is pending.
 
