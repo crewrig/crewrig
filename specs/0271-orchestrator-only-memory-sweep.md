@@ -29,7 +29,9 @@ Activation Protocol → Session Start*; the bootstrap rule is `AGENTS.md` →
 *Session Bootstrap*. Sizes are bytes as reported by `wc -c`. A **subagent** is
 any agent instantiated by another agent through a delegation primitive with a
 brief, a seated reviewer pass included; the **orchestrator** is the main session
-that owns the ticket.
+that owns the ticket. An agent is a subagent exactly when its brief was supplied
+by another agent; an agent the user starts directly, including one invoked for a
+review, is an orchestrator for the purposes of this spec and runs the sweep.
 
 1. Only the orchestrator SHALL run the session-start sweep. A subagent SHALL
    skip it entirely, including the "memory unavailable" signal that the sweep
@@ -66,16 +68,21 @@ that owns the ticket.
    steps 1, 2, 4 and 5) SHALL be removed from `AGENTS.md` and
    `docs/reviewer-seat.md`. The frontmatter of spec 0226 SHALL be set to
    `status: superseded` with `superseded-by: "0271"` as a metadata-only edit.
-   The same SHALL be done, for the sweep obligations of spec 0208 only, by
-   stating in this spec's implementation that spec 0208's usage-declaration
+   The implementation pull request, not the spec-PR, SHALL carry that edit. For
+   the sweep obligations of spec 0208 only, `docs/usage-attribution.md` →
+   *Channel 4: Session-start protocol* SHALL state that the usage-declaration
    duty now falls on the orchestrator; spec 0208 itself is not superseded,
    because the format admits `superseded-by` for a whole spec only.
 9. Every document that cites sweep step numbers or the six-step shape SHALL be
-   updated in the same change: `AGENTS.md`, `docs/reviewer-seat.md`,
-   `docs/mempalace-wakeup-budget.md`, and the *Memory Activation Protocol* in
-   `artifacts/core/rules/60-tools.md`. No document outside `specs/` SHALL
-   still describe a six-step sweep or a step run by `mempalace_status`
-   afterwards.
+   updated in the same change, among them `AGENTS.md`, `docs/reviewer-seat.md`,
+   `docs/mempalace-wakeup-budget.md`, `docs/usage-attribution.md`,
+   `tests/e2e/9.3-cross-tool-continuity.md`, `artifacts/core/system-context/`
+   and the *Memory Activation Protocol* in `artifacts/core/rules/60-tools.md`.
+   The criterion is a search, not a list: after the change, a search of every
+   tracked file outside `specs/` for a six-step sweep, a numbered sweep step
+   that names `mempalace_status`, or the seated-pass exemption of steps 3 and 6
+   returns no match, and the implementation records the commands and their empty
+   output in the logbook.
 10. A subagent SHALL NOT run the usage declaration (`usage-task set`) unless
     requirement 11 shows that its CLI needs it. The change SHALL include an
     automated test, or recorded evidence, that on Claude Code a subagent usage
