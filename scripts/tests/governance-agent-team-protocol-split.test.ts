@@ -63,6 +63,60 @@ const EXCEPTIONS: readonly ParagraphException[] = [
   },
 ];
 
+// Baseline paragraphs deliberately reworded by a later spec. The frozen baseline is never edited:
+// a paragraph whose first 60 characters match `prefix` is accepted when the baseline text is found
+// OR when the baseline text with `from` replaced by `to` (link targets in repo-root form) is found
+// the same number of times in the index plus role files. `from` must occur once in that paragraph.
+interface Amendment {
+  readonly prefix: string;
+  readonly from: string;
+  readonly to: string;
+  readonly requirement: string;
+}
+const AMENDMENTS: readonly Amendment[] = [
+  // Spec 0275 R-A1: Rule B is one comment per stage transition, no longer one comment per event.
+  {
+    prefix: "If the rebase raises conflicts, resolve them, then `git reba",
+    from: "Log the conflict on the issue logbook before resuming (Rule B).",
+    to: "Record the conflict as a bullet in the next logbook transition comment (Rule B).",
+    requirement: "0275 R-A1",
+  },
+  // Spec 0275 R-A1, R-A2: obstacles are bullets of the next transition comment (or DEV checkpoint).
+  {
+    prefix: "Any obstacle encountered during the worktree lifecycle — mer",
+    from: "must be logged on the issue logbook before resuming work. See **Rule B** in AGENTS.md for the full trigger list.",
+    to: "is recorded as a bullet in the next logbook transition comment (a DEV checkpoint comment when a hand-off or repeated CI failure comes first). See **Rule B** in `docs/logbook-issues.md` for the bullet kinds.",
+    requirement: "0275 R-A1, R-A2",
+  },
+  // Spec 0275 R-A1: Rule 6 names the transition-comment logbook practice, not the incremental one.
+  {
+    prefix: "**Rule 6 — Single writer per forge artifact.** A **forge ar",
+    from: "incremental-logbook practice",
+    to: "transition-comment logbook practice",
+    requirement: "0275 R-A1",
+  },
+  // Spec 0275 R-B4: shutdown step 4 gains the orchestrator-is-sole-ledger-writer sentence.
+  {
+    prefix: '1. `SendMessage({to: "<teammate>", message: {type: "shutdown_r',
+    from: "(see *Logbook Issues → Rule B* in AGENTS.md).",
+    to: "(see *Logbook Issues → Rule B* in AGENTS.md). The orchestrator is the single writer of every seat ledger comment ([`docs/reviewer-seat.md`](docs/reviewer-seat.md) → *Seat ledger*).",
+    requirement: "0275 R-B4",
+  },
+];
+
+/** The paragraph as amended, or undefined when the baseline paragraph carries no amendment. */
+export function amended(p: string): string | undefined {
+  const a = AMENDMENTS.find((x) => p.startsWith(x.prefix));
+  if (!a) return undefined;
+  const parts = p.split(a.from);
+  assert.equal(
+    parts.length,
+    2,
+    `amendment (${a.requirement}) 'from' must occur once in its paragraph`,
+  );
+  return parts.join(a.to);
+}
+
 // Baseline sentences carrying MUST / SHALL that a later commit may move; each names the
 // canonical location that keeps the obligation.
 interface ObligationException {
@@ -159,7 +213,8 @@ export function checkContent(root: string): string[] {
   for (const [p, count] of tally(base)) {
     const exc = EXCEPTIONS.find((e) => p.startsWith(e.prefix) || p.slice(0, 60) === e.prefix);
     const want = exc ? exc.remaining : count;
-    const have = out.get(p) ?? 0;
+    const alt = amended(p);
+    const have = (out.get(p) ?? 0) + (alt === undefined ? 0 : (out.get(alt) ?? 0));
     if (have !== want) {
       failures.push(`paragraph x${have} (want x${want}): ${JSON.stringify(p.slice(0, 80))}`);
     }
@@ -369,6 +424,31 @@ describe("agent-team-protocol split guards (spec 0274)", () => {
       failures.some((x) => x.startsWith("paragraph x0")),
       failures.join("\n"),
     );
+  });
+
+  test("amendments apply to exactly one baseline paragraph each", () => {
+    const base = paragraphs(read(REPO, BASELINE), INDEX);
+    for (const a of AMENDMENTS) {
+      assert.equal(base.filter((p) => p.startsWith(a.prefix)).length, 1, a.prefix);
+      assert.notEqual(amended(base.find((p) => p.startsWith(a.prefix)) as string), undefined);
+    }
+  });
+
+  test("mutation: an amended paragraph reverted to neither form is caught", () => {
+    for (const a of AMENDMENTS) {
+      const failures = withMutation((root) => {
+        for (const rel of ROLE_FILES) {
+          const f = path.join(root, rel);
+          const t = fs.readFileSync(f, "utf8");
+          const tail = a.to.slice(-20); // link targets differ in role files, so mutate the tail
+          if (t.includes(tail)) fs.writeFileSync(f, t.replace(tail, "REWORDED WITHOUT AMENDMENT"));
+        }
+      });
+      assert.ok(
+        failures.some((x) => x.startsWith("paragraph x0")),
+        `${a.requirement}: ${failures.join("\n")}`,
+      );
+    }
   });
 
   test("mutation: a trimmed MUST sentence is caught", () => {
