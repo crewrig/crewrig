@@ -1,7 +1,7 @@
 ---
 id: "0275"
 slug: logbook-seat-dossier-economy
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1732
