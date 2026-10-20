@@ -1,0 +1,16 @@
+{
+  "parseError": "duplicate id",
+  "state": "rebuilt",
+  "examined": "v1",
+  "mismatches": [
+    "ledger-unparsable"
+  ],
+  "findings": [
+    [
+      "v1-F1",
+      "tech",
+      true,
+      "open"
+    ]
+  ]
+}

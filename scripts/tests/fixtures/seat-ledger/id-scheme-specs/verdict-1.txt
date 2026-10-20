@@ -1,0 +1,18 @@
+## SPECS review
+### Verdict: REQUEST CHANGES
+seat: specs/900
+
+examined: 2ab30b3
+
+Body of the review, elided.
+
+**Finding 1 (s1-F1)**
+
+class: spec
+Description of s1-F1.
+
+**Finding 2 (s1-F2)**
+
+class: tech
+blocking: no
+Description of s1-F2.

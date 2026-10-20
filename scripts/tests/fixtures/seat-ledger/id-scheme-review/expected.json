@@ -1,0 +1,14 @@
+{
+  "state": "ledger",
+  "examined": "4db1c2e",
+  "mismatches": [],
+  "findings": [
+    [
+      "i1-F1",
+      "tech",
+      true,
+      "superseded"
+    ]
+  ],
+  "seat": "review/900"
+}

@@ -1,0 +1,25 @@
+{
+  "state": "rebuilt",
+  "examined": "v2",
+  "mismatches": [],
+  "findings": [
+    [
+      "v1-F1",
+      "tech",
+      true,
+      "addressed"
+    ],
+    [
+      "v1-F2",
+      "tech",
+      false,
+      "open"
+    ],
+    [
+      "v2-F1",
+      "spec",
+      true,
+      "open"
+    ]
+  ]
+}

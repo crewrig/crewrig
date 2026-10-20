@@ -1,0 +1,15 @@
+{
+  "state": "rebuilt",
+  "examined": "v1",
+  "mismatches": [
+    "extra-finding"
+  ],
+  "findings": [
+    [
+      "v1-F1",
+      "tech",
+      true,
+      "open"
+    ]
+  ]
+}

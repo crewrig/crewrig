@@ -1,0 +1,10 @@
+## PLAN review of v2
+### Verdict: REQUEST CHANGES
+seat: plan/900 — VOID (discarded)
+
+Body of the review, elided.
+
+**Finding 1 (v2-F1)**
+
+class: arch
+Description of v2-F1.

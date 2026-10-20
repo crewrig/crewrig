@@ -363,6 +363,15 @@ jobs:
               - 'scripts/tests/lib/governance-*'
               - 'scripts/tests/check-agents-size.test.ts'
               - 'scripts/tests/check-rules-size.test.ts'
+              - 'scripts/tests/check-comment-size*'
+              - 'scripts/tests/seat-ledger.test.ts'
+              - 'scripts/tests/economy-measure.test.ts'
+              - 'scripts/tests/fixtures/comment-size/**'
+              - 'scripts/tests/fixtures/seat-ledger/**'
+              - 'scripts/tests/fixtures/economy-1410/**'
+              - 'scripts/lib/seat-ledger*.ts'
+              - 'scripts/lib/economy-transform.ts'
+              - 'scripts/economy-*.ts'
               - 'docs/**'
               - 'AGENTS.md'
               - 'scripts/tests/fixtures/agent-team-protocol/**'
@@ -379,7 +388,7 @@ jobs:
         run: node scripts/lib/node-floor-guard.js
       - name: Test the governance checks
         if: steps.filter.outputs.governance-checks-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts scripts/tests/check-comment-size.test.ts scripts/tests/seat-ledger.test.ts scripts/tests/economy-measure.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -3497,6 +3506,23 @@ jobs:
           node-version: 24
       - name: Check always-loaded core rules size
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-rules-size.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0275 R-E2: author-side size tool; CI only checks the script against committed fixtures, never forge content.
+  check-comment-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check the comment size tool accepts the under-budget fixture
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-comment-size.ts scripts/tests/fixtures/comment-size/under.txt
+      - name: Check the comment size tool rejects the over-budget fixture
+        run: "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-comment-size.ts scripts/tests/fixtures/comment-size/over.txt"
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

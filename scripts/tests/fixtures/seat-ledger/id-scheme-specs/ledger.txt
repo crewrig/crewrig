@@ -1,0 +1,6 @@
+ledger: specs/900
+examined: 18b4a08
+rev: 3
+- s1-F1 | spec | yes | addressed | 2ab30b3 | 18b4a08
+- s1-F2 | tech | no | withdrawn | 2ab30b3 | reviewer withdrew
+- s2-F1a | tech | yes | open | 18b4a08 | -

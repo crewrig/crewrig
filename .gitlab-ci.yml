@@ -1069,7 +1069,7 @@ governance-checks-ts:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts scripts/tests/check-comment-size.test.ts scripts/tests/seat-ledger.test.ts scripts/tests/economy-measure.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -1080,6 +1080,15 @@ governance-checks-ts:
         - "scripts/tests/lib/governance-*"
         - "scripts/tests/check-agents-size.test.ts"
         - "scripts/tests/check-rules-size.test.ts"
+        - "scripts/tests/check-comment-size*"
+        - "scripts/tests/seat-ledger.test.ts"
+        - "scripts/tests/economy-measure.test.ts"
+        - "scripts/tests/fixtures/comment-size/**"
+        - "scripts/tests/fixtures/seat-ledger/**"
+        - "scripts/tests/fixtures/economy-1410/**"
+        - "scripts/lib/seat-ledger*.ts"
+        - "scripts/lib/economy-transform.ts"
+        - "scripts/economy-*.ts"
         - "docs/**"
         - "AGENTS.md"
         - "scripts/tests/fixtures/agent-team-protocol/**"
@@ -1092,6 +1101,15 @@ governance-checks-ts:
         - "scripts/tests/lib/governance-*"
         - "scripts/tests/check-agents-size.test.ts"
         - "scripts/tests/check-rules-size.test.ts"
+        - "scripts/tests/check-comment-size*"
+        - "scripts/tests/seat-ledger.test.ts"
+        - "scripts/tests/economy-measure.test.ts"
+        - "scripts/tests/fixtures/comment-size/**"
+        - "scripts/tests/fixtures/seat-ledger/**"
+        - "scripts/tests/fixtures/economy-1410/**"
+        - "scripts/lib/seat-ledger*.ts"
+        - "scripts/lib/economy-transform.ts"
+        - "scripts/economy-*.ts"
         - "docs/**"
         - "AGENTS.md"
         - "scripts/tests/fixtures/agent-team-protocol/**"
@@ -2855,6 +2873,15 @@ check-agents-size:
   image: node:24
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-agents-size.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
+check-comment-size:
+  image: node:24
+  script:
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-comment-size.ts scripts/tests/fixtures/comment-size/under.txt"
+    - "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-comment-size.ts scripts/tests/fixtures/comment-size/over.txt"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'

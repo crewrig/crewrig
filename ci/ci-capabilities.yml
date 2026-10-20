@@ -1429,6 +1429,15 @@ capabilities:
           - "scripts/tests/lib/governance-*"
           - "scripts/tests/check-agents-size.test.ts"
           - "scripts/tests/check-rules-size.test.ts"
+          - "scripts/tests/check-comment-size*"
+          - "scripts/tests/seat-ledger.test.ts"
+          - "scripts/tests/economy-measure.test.ts"
+          - "scripts/tests/fixtures/comment-size/**"
+          - "scripts/tests/fixtures/seat-ledger/**"
+          - "scripts/tests/fixtures/economy-1410/**"
+          - "scripts/lib/seat-ledger*.ts"
+          - "scripts/lib/economy-transform.ts"
+          - "scripts/economy-*.ts"
           - "docs/**"
           - "AGENTS.md"
           - "scripts/tests/fixtures/agent-team-protocol/**"
@@ -1442,6 +1451,15 @@ capabilities:
           - "scripts/tests/lib/governance-*"
           - "scripts/tests/check-agents-size.test.ts"
           - "scripts/tests/check-rules-size.test.ts"
+          - "scripts/tests/check-comment-size*"
+          - "scripts/tests/seat-ledger.test.ts"
+          - "scripts/tests/economy-measure.test.ts"
+          - "scripts/tests/fixtures/comment-size/**"
+          - "scripts/tests/fixtures/seat-ledger/**"
+          - "scripts/tests/fixtures/economy-1410/**"
+          - "scripts/lib/seat-ledger*.ts"
+          - "scripts/lib/economy-transform.ts"
+          - "scripts/economy-*.ts"
           - "docs/**"
           - "AGENTS.md"
           - "scripts/tests/fixtures/agent-team-protocol/**"
@@ -1451,7 +1469,7 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts scripts/tests/check-comment-size.test.ts scripts/tests/seat-ledger.test.ts scripts/tests/economy-measure.test.ts
 
   # Spec 0259 R26-R28 (ticket #1338), PR P0: the governance checks from PowerShell. The production
   # dependencies are installed first, the floor guard runs, then every
@@ -3704,6 +3722,20 @@ capabilities:
       runtime: node@24
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-agents-size.ts
+
+  - id: check-comment-size
+    name: "Check the plan and verdict comment size tool against its fixtures"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-comment-size.ts scripts/tests/fixtures/comment-size/under.txt
+      - "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-comment-size.ts scripts/tests/fixtures/comment-size/over.txt"
 
   - id: check-rules-size
     name: "Check always-loaded core rules size"

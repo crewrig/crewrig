@@ -1,0 +1,25 @@
+{
+  "state": "ledger",
+  "examined": "18b4a08",
+  "mismatches": [],
+  "findings": [
+    [
+      "s1-F1",
+      "spec",
+      true,
+      "addressed"
+    ],
+    [
+      "s1-F2",
+      "tech",
+      false,
+      "withdrawn"
+    ],
+    [
+      "s2-F1a",
+      "tech",
+      true,
+      "open"
+    ]
+  ]
+}

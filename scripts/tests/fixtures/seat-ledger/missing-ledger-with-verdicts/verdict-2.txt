@@ -1,0 +1,10 @@
+## PLAN review of v2
+### Verdict: REQUEST CHANGES
+seat: plan/900
+
+Body of the review, elided.
+
+**Finding 1 (v2-F1)**
+
+class: spec
+Description of v2-F1.

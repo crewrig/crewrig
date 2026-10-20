@@ -1,0 +1,12 @@
+[
+  {
+    "id": "s1-F1",
+    "status": "addressed",
+    "ref": "18b4a08"
+  },
+  {
+    "id": "s1-F2",
+    "status": "withdrawn",
+    "ref": "reviewer withdrew"
+  }
+]

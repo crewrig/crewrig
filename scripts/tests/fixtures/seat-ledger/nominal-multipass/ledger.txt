@@ -1,0 +1,6 @@
+ledger: plan/900
+examined: v3
+rev: 4
+- v1-F1 | tech | yes | addressed | v1 | v2
+- v1-F2 | arch | no | ledger | v1 | ledger#961-7
+- v2-F1 | spec | yes | addressed | v2 | v3

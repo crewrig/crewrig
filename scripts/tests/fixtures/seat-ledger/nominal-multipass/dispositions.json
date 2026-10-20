@@ -1,0 +1,17 @@
+[
+  {
+    "id": "v1-F1",
+    "status": "addressed",
+    "ref": "v2"
+  },
+  {
+    "id": "v1-F2",
+    "status": "ledger",
+    "ref": "ledger#961-7"
+  },
+  {
+    "id": "v2-F1",
+    "status": "addressed",
+    "ref": "v3"
+  }
+]
