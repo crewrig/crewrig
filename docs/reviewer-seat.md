@@ -326,6 +326,19 @@ Its verdict is not consumed, it is not entered in the dossier, and it
 does not increment the iteration counter. The orchestrator re-instantiates
 the pass with a conforming brief.
 
+**The orchestrator SHALL run `scripts/check-seat-brief.ts` on every
+seated-pass brief before the spawn, and SHALL NOT spawn on a non-zero exit**
+(`task check-seat-brief -- <file>`, or the brief on stdin;
+`--template <specs|plan|review>` prints a conforming skeleton). The linter
+checks form only: it accepts a closed set of `key: value` lines, each value
+exactly one reference, and reports one `BREACH <rule>` line per violation
+with rules `unknown-key`, `missing-key`, `duplicate-key`, `value-length`,
+`value-pattern`, `non-kv-line`, `diff-content` and `vocabulary`; a fenced
+block yields one `diff-content` report, not one per line. It cannot prove a
+brief is semantically clean, so a conforming result is necessary, not
+sufficient, and the orchestrator remains responsible for intent. Voiding a
+discarded pass per *What counts as a dossier entry* is unchanged.
+
 The discarded verdict is normally already posted by the time the brief is
 judged, so the orchestrator voids it on the forge per *What counts as a
 dossier entry*. Left unvoided it is byte-indistinguishable from a consumed

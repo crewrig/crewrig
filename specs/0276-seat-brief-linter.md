@@ -1,7 +1,7 @@
 ---
 id: "0276"
 slug: seat-brief-linter
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 1754

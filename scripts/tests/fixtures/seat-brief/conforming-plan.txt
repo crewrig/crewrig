@@ -1,0 +1,6 @@
+seat: plan/1754
+artifact: PR #1760
+examined: reconstruct from the dossier
+prior-verdicts: issue #1760
+disposition: issuecomment-4412
+ledger: issuecomment-4413

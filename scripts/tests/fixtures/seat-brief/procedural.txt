@@ -1,0 +1,10 @@
+seat: review/1754
+
+artifact: PR #1760
+examined: 08a3963b
+prior-verdicts: issue #1760
+disposition: issuecomment-4412
+home: /tmp/seat-home
+diary-agent-name: pr-reviewer
+time-budget: 10 minutes
+pass-scope: full (owner request)

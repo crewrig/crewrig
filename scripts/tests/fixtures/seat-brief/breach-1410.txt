@@ -1,0 +1,11 @@
+seat: review/1410
+artifact: PR #1410
+examined: none
+prior-verdicts: none
+disposition: none
+
+Background: this PR adds the economy rules so that agents stop wasting tokens.
+
+Please check in particular:
+- the delta between v1 and v2
+- anything that was superseded by the new rule

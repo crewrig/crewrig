@@ -364,9 +364,11 @@ jobs:
               - 'scripts/tests/check-agents-size.test.ts'
               - 'scripts/tests/check-rules-size.test.ts'
               - 'scripts/tests/check-comment-size*'
+              - 'scripts/tests/check-seat-brief*'
               - 'scripts/tests/seat-ledger.test.ts'
               - 'scripts/tests/economy-measure.test.ts'
               - 'scripts/tests/fixtures/comment-size/**'
+              - 'scripts/tests/fixtures/seat-brief/**'
               - 'scripts/tests/fixtures/seat-ledger/**'
               - 'scripts/tests/fixtures/economy-1410/**'
               - 'scripts/lib/seat-ledger*.ts'
@@ -388,7 +390,7 @@ jobs:
         run: node scripts/lib/node-floor-guard.js
       - name: Test the governance checks
         if: steps.filter.outputs.governance-checks-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts scripts/tests/check-comment-size.test.ts scripts/tests/seat-ledger.test.ts scripts/tests/economy-measure.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts scripts/tests/check-comment-size.test.ts scripts/tests/check-comment-size-ci-wiring.test.ts scripts/tests/check-seat-brief.test.ts scripts/tests/check-seat-brief-ci-wiring.test.ts scripts/tests/seat-ledger.test.ts scripts/tests/economy-measure.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -3523,6 +3525,35 @@ jobs:
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-comment-size.ts scripts/tests/fixtures/comment-size/under.txt
       - name: Check the comment size tool rejects the over-budget fixture
         run: "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-comment-size.ts scripts/tests/fixtures/comment-size/over.txt"
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0276 R10-R11: author-side brief linter; CI only checks the script against committed fixtures, never a live brief.
+  check-seat-brief:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            check-seat-brief:
+              - 'scripts/check-seat-brief.ts'
+              - 'scripts/lib/governance/seat-brief.ts'
+              - 'scripts/lib/governance/report.ts'
+              - 'scripts/tests/check-seat-brief*'
+              - 'scripts/tests/fixtures/seat-brief/**'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.check-seat-brief == 'true'
+        with:
+          node-version: 24
+      - name: Check the seat brief linter accepts the conforming fixture
+        if: steps.filter.outputs.check-seat-brief == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-seat-brief.ts scripts/tests/fixtures/seat-brief/conforming-review.txt
+      - name: Check the seat brief linter rejects the breaching fixture
+        if: steps.filter.outputs.check-seat-brief == 'true'
+        run: "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-seat-brief.ts scripts/tests/fixtures/seat-brief/breach-1410.txt"
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

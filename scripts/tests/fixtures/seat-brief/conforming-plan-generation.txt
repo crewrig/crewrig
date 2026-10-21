@@ -1,0 +1,5 @@
+seat: plan/1754#2
+artifact: https://github.com/example/repo/issues/1754
+examined: v2
+prior-verdicts: issuecomment-4412
+disposition: plan finding traceability table

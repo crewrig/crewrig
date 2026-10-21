@@ -1069,7 +1069,7 @@ governance-checks-ts:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts scripts/tests/check-comment-size.test.ts scripts/tests/seat-ledger.test.ts scripts/tests/economy-measure.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts scripts/tests/check-comment-size.test.ts scripts/tests/check-comment-size-ci-wiring.test.ts scripts/tests/check-seat-brief.test.ts scripts/tests/check-seat-brief-ci-wiring.test.ts scripts/tests/seat-ledger.test.ts scripts/tests/economy-measure.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -1081,9 +1081,11 @@ governance-checks-ts:
         - "scripts/tests/check-agents-size.test.ts"
         - "scripts/tests/check-rules-size.test.ts"
         - "scripts/tests/check-comment-size*"
+        - "scripts/tests/check-seat-brief*"
         - "scripts/tests/seat-ledger.test.ts"
         - "scripts/tests/economy-measure.test.ts"
         - "scripts/tests/fixtures/comment-size/**"
+        - "scripts/tests/fixtures/seat-brief/**"
         - "scripts/tests/fixtures/seat-ledger/**"
         - "scripts/tests/fixtures/economy-1410/**"
         - "scripts/lib/seat-ledger*.ts"
@@ -1102,9 +1104,11 @@ governance-checks-ts:
         - "scripts/tests/check-agents-size.test.ts"
         - "scripts/tests/check-rules-size.test.ts"
         - "scripts/tests/check-comment-size*"
+        - "scripts/tests/check-seat-brief*"
         - "scripts/tests/seat-ledger.test.ts"
         - "scripts/tests/economy-measure.test.ts"
         - "scripts/tests/fixtures/comment-size/**"
+        - "scripts/tests/fixtures/seat-brief/**"
         - "scripts/tests/fixtures/seat-ledger/**"
         - "scripts/tests/fixtures/economy-1410/**"
         - "scripts/lib/seat-ledger*.ts"
@@ -2885,6 +2889,27 @@ check-comment-size:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
+check-seat-brief:
+  image: node:24
+  script:
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-seat-brief.ts scripts/tests/fixtures/seat-brief/conforming-review.txt"
+    - "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-seat-brief.ts scripts/tests/fixtures/seat-brief/breach-1410.txt"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-seat-brief.ts"
+        - "scripts/lib/governance/seat-brief.ts"
+        - "scripts/lib/governance/report.ts"
+        - "scripts/tests/check-seat-brief*"
+        - "scripts/tests/fixtures/seat-brief/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-seat-brief.ts"
+        - "scripts/lib/governance/seat-brief.ts"
+        - "scripts/lib/governance/report.ts"
+        - "scripts/tests/check-seat-brief*"
+        - "scripts/tests/fixtures/seat-brief/**"
 
 check-rules-size:
   image: node:24

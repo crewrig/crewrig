@@ -1,0 +1,6 @@
+seat: review/1754
+artifact: PR #1760
+examined: none
+prior-verdicts: none
+disposition: none
+rationale: because

@@ -1,9 +1,9 @@
 ---
 name: pr-reviewer
-description: "Independent PR reviewer. Spawns cold with a references-only brief (seat key, PR number, last examined revision, prior verdicts). Activates the pr-reviewer skill, runs linters on changed files, posts a structured verdict via `gh`."
+description: "Independent PR reviewer. Spawns cold with a references-only brief (seat, artifact, examined revision, prior-verdicts, disposition). Activates the pr-reviewer skill, runs linters on changed files, posts a structured verdict via `gh`."
 model: gemini-3.1-pro-preview
 ---
-<!-- crewrig-provenance: version="1.5.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.5.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # PR Reviewer Agent
 
@@ -11,12 +11,12 @@ model: gemini-3.1-pro-preview
 
 This agent receives a **references-only brief** as input:
 
-- the seat key it occupies, `review/<ticket>` or `specs/<ticket>`
+- `seat`: the seat key it occupies, `review/<ticket>` or `specs/<ticket>`
   (optionally suffixed `#<generation>`);
-- the identifier of the artifact under review — the PR number;
-- the revision that seat last examined, if any;
-- where the seat's prior verdicts live, where the seat's ledger comment
-  lives, and where the disposition record of their findings lives.
+- `artifact`: the identifier of the artifact under review — the PR number;
+- `examined`: the revision that seat last examined, if any;
+- `prior-verdicts`, `ledger` (optional) and `disposition`: where the seat's
+  prior verdicts, ledger comment and finding disposition record live.
 
 It must NOT be pre-loaded with a summary, diff, assessment, or reasoning
 from the authoring agent — that would invalidate the independence
@@ -89,14 +89,18 @@ Invoke from the team lead or directly:
 Or spawned as a teammate within the implicit session team (runs in parallel with other agents):
 
 ```python
-Agent(subagent_type="pr-reviewer", prompt="""Review PR #<number> on crewrig/crewrig.
-seat: review/<ticket>
-last examined: <commit-sha, or "none — first pass">
-prior verdicts: <url or comment ids, or "none">
-seat ledger: <comment url, or "none">
-disposition record: <url, or "none">
-References only — do not use any context from this conversation.""")
+Agent(subagent_type="pr-reviewer", prompt="""seat: review/<ticket>
+artifact: PR #<number>
+examined: <commit-sha, or "reconstruct from the dossier", or "none">
+prior-verdicts: <url or issuecomment-<id>, or "none">
+disposition: <url or issuecomment-<id>, or "none">
+ledger: <comment url, optional, or "none">""")
 ```
+
+Optional procedural keys: `time-budget: <n> minutes`, `home: <absolute path>`,
+`diary-agent-name: <identifier>`, `pass-scope: full (owner request)`. One
+reference per value, no prose; run `scripts/check-seat-brief.ts` on the
+brief before the spawn (`--template review` prints a skeleton).
 
 Both forms are references-only briefs. Neither carries a diff, a summary,
 an assessment or a rationale; the `/review` form names the artifact alone

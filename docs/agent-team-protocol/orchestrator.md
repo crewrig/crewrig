@@ -55,6 +55,11 @@ none exists). The subagent never runs the sweep, MAY make one
 its final report; the orchestrator writes the handoff drawer and the diary
 entry once.
 
+**Seat brief lint rule**: The orchestrator SHALL run
+`scripts/check-seat-brief.ts` on every seated-pass brief before the spawn and
+SHALL NOT spawn on a non-zero exit (form check only; see
+`docs/reviewer-seat.md` → *Instantiating a seated pass*).
+
 **Role-file citation rule**: A spawn brief cites
 `docs/agent-team-protocol/<role-file>.md#<anchor>` for the role it spawns,
 using the table in [`docs/agent-team-protocol.md`](../agent-team-protocol.md),
