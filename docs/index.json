@@ -316,6 +316,11 @@
           "title": "ADR 0019 — Windows per-user daemon service as a Task Scheduler task",
           "path": "docs/adr/0019-windows-per-user-service-task-scheduler.md",
           "nav_order": 190
+        },
+        {
+          "title": "ADR 0020 — Risk-proportional lifecycle ceremony",
+          "path": "docs/adr/0020-risk-proportional-ceremony.md",
+          "nav_order": 200
         }
       ]
     }
