@@ -270,10 +270,10 @@ the spec PR) validates the tier.
 
 | Tier | Team for DEV | PLAN-revision cap | Notes |
 |---|---|---|---|
-| **trivial** | inline (orchestrator only) | 1 | No team spawn, no worktree, no logbook (the issue itself suffices). Reserved for single-file edits with no test surface. |
-| **small** | `developer` + `pr-logbook` + `pr-reviewer` | 1 | Worktree required. No architect, no tester. |
-| **standard** | Templates 1 / 2 / 3 from `AGENTS.md` → *Agent Team Protocol* | 2 | Current default. |
-| **large** | `architect`-led decomposition into sub-specs, then one standard team per sub-spec | 5 | Each sub-spec gets its own spec PR (chained via the delta mechanism). |
+| **trivial** | inline (orchestrator only) | 1 | No team spawn, no worktree, no logbook (the issue itself suffices). Reserved for single-file edits with no test surface. Cold plan review: not applicable (unchanged). |
+| **small** | `developer` + `pr-logbook` + `pr-reviewer` | 1 | Worktree required. No architect, no tester. Cold plan review: not applicable (unchanged). |
+| **standard** | Templates 1 / 2 / 3 from `AGENTS.md` → *Agent Team Protocol* | 2 | Current default. Cold plan review: conditional, decided by `scripts/check-plan-review.ts` (spec 0277). |
+| **large** | `architect`-led decomposition into sub-specs, then one standard team per sub-spec | 5 | Each sub-spec gets its own spec PR (chained via the delta mechanism). Cold plan review: always. |
 
 Normative rules:
 
@@ -288,6 +288,10 @@ Normative rules:
    for those numbers; `docs/plan-review-protocol.md` defines the halt
    semantics applied when a ticket's cap would be exceeded (R3–R4 of
    spec 0138).
+5. Whether the cold plan review runs at each tier is stated in the Notes
+   column; the conditional rule is defined in
+   `docs/plan-review-protocol.md` → *Conditional review*. The cap column
+   stays the single source of truth for revision numbers.
 
 These clauses bound the plan's size and the loop's length; they remove no item from the reviewer's checklist at any tier.
 

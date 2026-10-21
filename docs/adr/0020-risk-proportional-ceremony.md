@@ -3,7 +3,7 @@
 <!-- crewrig-doc: section=architecture-adr nav_order=200 published=true title="ADR 0020 — Risk-proportional lifecycle ceremony" -->
 
 **Status:** Proposed (issue #1733, epic #1724 WP6). Amends
-[ADR-0010](0010-spec-plan-review-lifecycle.md).
+[ADR-0010](0010-spec-plan-review-lifecycle.md). Option b shipped as spec 0277 with N=3.
 
 ## Context
 

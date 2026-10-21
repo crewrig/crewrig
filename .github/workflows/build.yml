@@ -365,10 +365,12 @@ jobs:
               - 'scripts/tests/check-rules-size.test.ts'
               - 'scripts/tests/check-comment-size*'
               - 'scripts/tests/check-seat-brief*'
+              - 'scripts/tests/check-plan-review*'
               - 'scripts/tests/seat-ledger.test.ts'
               - 'scripts/tests/economy-measure.test.ts'
               - 'scripts/tests/fixtures/comment-size/**'
               - 'scripts/tests/fixtures/seat-brief/**'
+              - 'scripts/tests/fixtures/plan-review/**'
               - 'scripts/tests/fixtures/seat-ledger/**'
               - 'scripts/tests/fixtures/economy-1410/**'
               - 'scripts/lib/seat-ledger*.ts'
@@ -390,7 +392,7 @@ jobs:
         run: node scripts/lib/node-floor-guard.js
       - name: Test the governance checks
         if: steps.filter.outputs.governance-checks-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts scripts/tests/check-comment-size.test.ts scripts/tests/check-comment-size-ci-wiring.test.ts scripts/tests/check-seat-brief.test.ts scripts/tests/check-seat-brief-ci-wiring.test.ts scripts/tests/seat-ledger.test.ts scripts/tests/economy-measure.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts scripts/tests/check-comment-size.test.ts scripts/tests/check-comment-size-ci-wiring.test.ts scripts/tests/check-seat-brief.test.ts scripts/tests/check-seat-brief-ci-wiring.test.ts scripts/tests/check-plan-review.test.ts scripts/tests/check-plan-review-ci-wiring.test.ts scripts/tests/check-plan-review-gate.test.ts scripts/tests/seat-ledger.test.ts scripts/tests/economy-measure.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -3554,6 +3556,36 @@ jobs:
       - name: Check the seat brief linter rejects the breaching fixture
         if: steps.filter.outputs.check-seat-brief == 'true'
         run: "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-seat-brief.ts scripts/tests/fixtures/seat-brief/breach-1410.txt"
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0277 R19-R20: author-side plan review gate; CI only checks the script against committed fixtures, never a live plan.
+  check-plan-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            check-plan-review:
+              - 'scripts/check-plan-review.ts'
+              - 'scripts/lib/governance/plan-review-gate.ts'
+              - '.crewrig/plan-components.txt'
+              - '.crewrig/shared-contract-paths.txt'
+              - 'scripts/tests/check-plan-review*'
+              - 'scripts/tests/fixtures/plan-review/**'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.check-plan-review == 'true'
+        with:
+          node-version: 24
+      - name: Check the plan review gate skips the small standard fixture
+        if: steps.filter.outputs.check-plan-review == 'true'
+        run: "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-plan-review.ts scripts/tests/fixtures/plan-review/skip-spec.md scripts/tests/fixtures/plan-review/skip-plan.md | grep -qx 'plan-review: skipped'"
+      - name: Check the plan review gate requires the review for the shared-contract fixture
+        if: steps.filter.outputs.check-plan-review == 'true'
+        run: "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-plan-review.ts scripts/tests/fixtures/plan-review/skip-spec.md scripts/tests/fixtures/plan-review/required-plan.md | grep -qx 'plan-review: required'"
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

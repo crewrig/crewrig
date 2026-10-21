@@ -1,7 +1,7 @@
 ---
 id: "0277"
 slug: conditional-plan-review
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1757

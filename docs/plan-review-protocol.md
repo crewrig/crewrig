@@ -9,8 +9,9 @@
 Team Templates*); no new specialist role is introduced. The same
 `architect` invocation that runs the PLAN stage owns the comment.
 
-**Review rule.** The plan SHALL be reviewed by a **second
-`architect`** spawned cold — no authoring context, no prior session
+**Review rule.** At the `large` tier, and at the `standard` tier whenever
+the *Conditional review* script below does not yield `skipped`, the plan
+SHALL be reviewed by a **second `architect`** spawned cold — no authoring context, no prior session
 state — to preserve independence. Every pass of that review is
 attributed to the `plan/<ticket>` seat, whose verdicts carry a `seat:`
 line and whose second and later passes read a bounded scope; which role
@@ -24,6 +25,67 @@ When the orchestrator and the reviewer share the same GitHub
 identity, the shared-identity workaround from *Standard Team
 Templates → Template 1* applies (post the verdict as a regular
 comment).
+
+**Conditional review.** At the `standard` tier the cold review above is
+conditional, and the condition is decided by a deterministic script, never
+by the plan author's judgement (spec 0277, option b of
+[ADR-0020](adr/0020-risk-proportional-ceremony.md)).
+
+- **Command.** The orchestrator runs
+  `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-plan-review.ts <spec-path> [<plan-path>|-] [--prior-review]`
+  (or `task check-plan-review -- <args>`), with the plan comment body from a
+  file or stdin. Line 1 of stdout is exactly one of `plan-review: required`,
+  `plan-review: skipped` or `plan-review: not-applicable`, followed by
+  `reason:` lines. The script exits 0 for all three decisions and 2 on a
+  usage error or an unreadable input. It is a plain `node` script with no
+  CLI-specific path and runs identically on all four CLIs.
+- **Tier gate.** `skipped` is reachable only at `standard`. `large` always
+  yields `required`. `trivial` and `small` yield `not-applicable` and keep
+  the protocol unchanged. An absent, unparsable or unknown tier yields
+  `required`.
+- **Skip condition.** At `standard`, `skipped` requires a component count N
+  of at most 3 (the threshold is one named constant in
+  `scripts/lib/governance/plan-review-gate.ts`) AND no shared-contract hit.
+  N is the set union of the components declared on the plan's `Components:`
+  line (`docs/plan-format.md` → *Blast radius*) and the components derived
+  from every repo path named in the plan's `### Steps`, resolved through
+  `.crewrig/plan-components.txt`. The `Components:` line lists component
+  names as they appear in `.crewrig/plan-components.txt`; a declared name
+  absent from the manifest counts as its own component. Under-declaring
+  therefore never lowers N. A shared-contract hit is any repo path named in
+  the plan's `### Steps` or the spec's `## Requirements` that matches an
+  entry of `.crewrig/shared-contract-paths.txt`, whatever the verb that
+  introduces it; a path cited read-only still counts, since over-triggering
+  only pushes toward `required`.
+- **Fail closed.** Any ambiguity yields `required` with the ambiguity named
+  in a `reason:` line: a missing or empty `Components:` line, an absent tier,
+  a missing, unreadable, empty or malformed manifest, a plan with no
+  `### Steps` section, or a `standard` plan whose Steps name no repo path. An
+  unreadable spec or plan is a usage error (exit 2), not a decision.
+- **Reasons.** The `reason:` lines state the tier, the declared count, the
+  derived count, N against the threshold, and the matched shared-contract
+  paths (or `none`), in stable text that can be diffed.
+- **Sticky once reviewed.** The decision is recomputed for every plan
+  version, but once any plan review verdict exists on the ticket (a comment
+  carrying a `seat: plan/<ticket>` line), the review stays mandatory for
+  every later revision. The orchestrator SHALL then pass `--prior-review`,
+  and the script prints `plan-review: required` with a reason naming the
+  flag. A REVIEW-stage `arch` finding on a ticket that skipped plan review
+  routes back to PLAN ([`docs/retroactive-loop.md`](retroactive-loop.md)),
+  and the revised plan is then cold-reviewed; this is the rollback signal.
+- **Floor, not ceiling.** The orchestrator MAY run the plan review when the
+  script says `skipped`; the script never forbids a review.
+- **Skip record.** The script output SHALL be posted verbatim in the PLAN
+  logbook comment. A skip with no recorded script output is a process
+  violation, and a REVIEW pass that finds it SHALL emit a `class: tech`
+  finding. The REVIEW pass SHALL also re-run the script on the posted plan
+  comment and the spec, and a mismatch with the recorded output is a
+  `class: tech` finding.
+- **Unchanged controls.** The user plan-validation gate (below), the
+  PLAN-revision cap semantics (a skipped review consumes zero revisions) and
+  the cold `pr-reviewer` on every PR are unchanged.
+- **Scope.** The script runs author-side at PLAN time; CI proves it against
+  committed fixtures only and is not a gate on live plans.
 
 **Reviewer-minted identifiers.** Every finding emitted by a PLAN review
 pass SHALL carry a reviewer-minted identifier in the format `v<N>-F<M>`
@@ -112,7 +174,7 @@ folds, message-crossing splits, and reviews returned for retagging — a
 malformed verdict per `docs/plan-format.md` → *Finding tag schema* and
 `docs/retroactive-loop.md` → *Class tagging discipline* — do not count as
 revisions (R5 of spec 0138). A plan approved on its first cold review
-consumes zero revisions.
+consumes zero revisions, and so does a plan whose review was skipped.
 
 When a plan review routes an iteration out to the SPECS stage for
 delta-spec authoring (via a `class: spec` finding), the resulting approved

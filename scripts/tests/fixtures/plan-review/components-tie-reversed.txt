@@ -1,0 +1,2 @@
+docs/*b second-comp
+docs/a* first-comp

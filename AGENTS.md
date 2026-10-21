@@ -224,7 +224,7 @@ The PLAN stage emits one logbook-issue comment whose format lives in
 ([`specs/0004-plan-format-and-review.md`](specs/0004-plan-format-and-review.md)).
 
 See [`docs/plan-review-protocol.md`](docs/plan-review-protocol.md) for
-the authoring rule, the cold second-`architect` review rule, reviewer-minted IDs (`v<N>-F<M>`), prior-finding audits, the
+the authoring rule, the conditional cold second-`architect` review rule (decided by `scripts/check-plan-review.ts` at the standard tier), reviewer-minted IDs (`v<N>-F<M>`), prior-finding audits, the
 finding-class taxonomy (`tech` / `arch` / `spec`), the
 REQUEST-CHANGES-blocks-DEV rule, and the per-tier PLAN-loop cap.
 

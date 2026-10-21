@@ -1,0 +1,29 @@
+# plan-components.txt — maps a repo path prefix to a component name (spec 0277 R7).
+# Format: `<prefix> <component>`, whitespace-separated, one pair per line, `#` comments.
+# A `*` in a prefix is a non-empty run within one path segment; a single `*` in the
+# component name is replaced by the text that the prefix `*` matched.
+# Longest literal prefix wins (the `*` characters do not count); a tie goes to the first line.
+# A path with no matching prefix maps to its first path segment.
+scripts/lib/governance/ governance-libs
+scripts/ scripts
+docs/adr/ adr
+docs/agent-team-protocol/ agent-team-protocol
+docs/cli-matrix/ cli-matrix
+docs/ docs
+specs/ specs
+ci/ ci
+.github/workflows/ ci
+.gitlab-ci.yml ci
+.crewrig/ crewrig-manifests
+# Skills: the source root and the four compiled mirrors resolve to one component.
+artifacts/core/skills/*/ skill:*
+.claude/skills/*/ skill:*
+.gemini/skills/*/ skill:*
+.github/skills/*/ skill:*
+.agents/skills/*/ skill:*
+# Agents: directory layout (source, .agents) and flat-file layout (.claude, .gemini, .github).
+artifacts/core/agents/*/ agent:*
+.agents/agents/*/ agent:*
+.claude/agents/*.md agent:*
+.gemini/agents/*.md agent:*
+.github/agents/*.md agent:*

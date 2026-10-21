@@ -128,6 +128,12 @@ the two surfaces SHALL stay in lockstep when either is amended.
 | `arch` | PLAN | `architect` (PLAN-author) → on revalidation, DEV team re-runs from start of the matching template (per `AGENTS.md` → *Standard Team Templates*) | none |
 | `spec` | SPECS | `spec-author` in delta-spec mode → spec-PR review → on merge, PLAN re-runs (fresh `architect`), then DEV team re-runs | new delta-spec PR (per spec 0003 → *Delta-spec cumulative rule*) |
 
+An `arch` finding at REVIEW on a `standard` ticket whose plan review was
+skipped (`docs/plan-review-protocol.md` → *Conditional review*) routes back
+to PLAN like any other, and the revised plan is then cold-reviewed: the
+orchestrator passes `--prior-review` or runs the review directly. This is
+the rollback signal of spec 0277.
+
 The re-spawn columns are minimums. Every re-spawn SHALL apply the
 `security` rule from `AGENTS.md` → *Standard Team Templates →
 Security rule* if the touched surface qualifies; the engine does not

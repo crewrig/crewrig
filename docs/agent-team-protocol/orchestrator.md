@@ -116,6 +116,18 @@ can never force a spawn's model by itself, and this statement exists so
 a session on a non-default provider is not directed into the silent-
 failure mode this rule exists to prevent.
 
+### Conditional plan review
+
+At the `standard` tier the cold plan review is a conditional template step.
+Before spawning the second `architect`, run
+`node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-plan-review.ts <spec-path> <plan-path>`
+(or `task check-plan-review -- <args>`), post its output verbatim in the
+PLAN logbook comment, and pass `--prior-review` once any comment carrying a
+`seat: plan/<ticket>` line exists on the logbook issue. `required` means the
+review runs; `skipped` means it does not, though you MAY run it anyway.
+Rule: [`docs/plan-review-protocol.md`](../plan-review-protocol.md) →
+*Conditional review*.
+
 <a id="no-coordination-surface"></a>
 
 ## On CLIs with no multi-agent coordination surface (e.g. Gemini CLI)

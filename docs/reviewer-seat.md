@@ -40,7 +40,7 @@ number, the review surface), where the surface is exactly one of:
 | Surface | Artifact reviewed | Occupied by |
 |---|---|---|
 | `specs` | the spec pull request, and every delta-spec pull request of the same ticket | per `docs/agent-team-protocol/templates.md` → *Spec-reviewer obligation* |
-| `plan` | the plan comment on the logbook issue | per `docs/plan-review-protocol.md` → *Review rule* |
+| `plan` | the plan comment on the logbook issue | per `docs/plan-review-protocol.md` → *Review rule*; at `standard` the first review may be skipped (see *Vacant seat*) |
 | `review` | the implementation pull request | per `docs/retroactive-loop.md` → *REVIEW launch trigger* |
 
 A ticket holds at most one live seat per surface. Which role occupies
@@ -504,6 +504,12 @@ not reset the dossier or the ledger.
 A seat is **vacant** when its dossier cannot be reconstructed: no ledger
 and no verdicts exist, they carry no seat line because the ticket predates
 this contract, or the forge is unreachable.
+
+A first plan review at plan version `v2` or later, after a skipped `v1`
+(`docs/plan-review-protocol.md` → *Conditional review*), is also a vacant
+seat: no verdict exists to reconstruct. Its stated cause is "skipped, no
+prior review", which is not an error, and the pass runs as a full
+examination of the whole plan.
 
 A seat with no ledger but with verdicts carrying its seat line is **not**
 vacant: the ledger is rebuilt once from the verdicts (*Seat ledger*).

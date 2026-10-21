@@ -43,6 +43,14 @@ composition and no role's surface; it changes how a pass is briefed and
 what its verdict must say. A seated pass's brief carries neither the
 `handoff_key` nor the drawer id.
 
+The `plan` surface review is a conditional step at the `standard` tier:
+the orchestrator runs `scripts/check-plan-review.ts`, posts its output
+verbatim in the PLAN comment, and spawns the cold second `architect` only
+when it prints `plan-review: required`, passing `--prior-review` once a
+`seat: plan/<ticket>` comment exists
+([`docs/plan-review-protocol.md`](../plan-review-protocol.md) →
+*Conditional review*).
+
 <a id="step-0-spec-author"></a>
 
 ### Step 0 — `spec-author` (every non-trivial template)

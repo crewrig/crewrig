@@ -1431,10 +1431,12 @@ capabilities:
           - "scripts/tests/check-rules-size.test.ts"
           - "scripts/tests/check-comment-size*"
           - "scripts/tests/check-seat-brief*"
+          - "scripts/tests/check-plan-review*"
           - "scripts/tests/seat-ledger.test.ts"
           - "scripts/tests/economy-measure.test.ts"
           - "scripts/tests/fixtures/comment-size/**"
           - "scripts/tests/fixtures/seat-brief/**"
+          - "scripts/tests/fixtures/plan-review/**"
           - "scripts/tests/fixtures/seat-ledger/**"
           - "scripts/tests/fixtures/economy-1410/**"
           - "scripts/lib/seat-ledger*.ts"
@@ -1455,10 +1457,12 @@ capabilities:
           - "scripts/tests/check-rules-size.test.ts"
           - "scripts/tests/check-comment-size*"
           - "scripts/tests/check-seat-brief*"
+          - "scripts/tests/check-plan-review*"
           - "scripts/tests/seat-ledger.test.ts"
           - "scripts/tests/economy-measure.test.ts"
           - "scripts/tests/fixtures/comment-size/**"
           - "scripts/tests/fixtures/seat-brief/**"
+          - "scripts/tests/fixtures/plan-review/**"
           - "scripts/tests/fixtures/seat-ledger/**"
           - "scripts/tests/fixtures/economy-1410/**"
           - "scripts/lib/seat-ledger*.ts"
@@ -1473,7 +1477,7 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts scripts/tests/check-comment-size.test.ts scripts/tests/check-comment-size-ci-wiring.test.ts scripts/tests/check-seat-brief.test.ts scripts/tests/check-seat-brief-ci-wiring.test.ts scripts/tests/seat-ledger.test.ts scripts/tests/economy-measure.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts scripts/tests/check-comment-size.test.ts scripts/tests/check-comment-size-ci-wiring.test.ts scripts/tests/check-seat-brief.test.ts scripts/tests/check-seat-brief-ci-wiring.test.ts scripts/tests/check-plan-review.test.ts scripts/tests/check-plan-review-ci-wiring.test.ts scripts/tests/check-plan-review-gate.test.ts scripts/tests/seat-ledger.test.ts scripts/tests/economy-measure.test.ts
 
   # Spec 0259 R26-R28 (ticket #1338), PR P0: the governance checks from PowerShell. The production
   # dependencies are installed first, the floor guard runs, then every
@@ -3767,6 +3771,35 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-seat-brief.ts scripts/tests/fixtures/seat-brief/conforming-review.txt
       - "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-seat-brief.ts scripts/tests/fixtures/seat-brief/breach-1410.txt"
+
+  - id: check-plan-review
+    name: "Check the plan review gate against its fixtures"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-plan-review.ts"
+          - "scripts/lib/governance/plan-review-gate.ts"
+          - ".crewrig/plan-components.txt"
+          - ".crewrig/shared-contract-paths.txt"
+          - "scripts/tests/check-plan-review*"
+          - "scripts/tests/fixtures/plan-review/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-plan-review.ts"
+          - "scripts/lib/governance/plan-review-gate.ts"
+          - ".crewrig/plan-components.txt"
+          - ".crewrig/shared-contract-paths.txt"
+          - "scripts/tests/check-plan-review*"
+          - "scripts/tests/fixtures/plan-review/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+    command:
+      - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-plan-review.ts scripts/tests/fixtures/plan-review/skip-spec.md scripts/tests/fixtures/plan-review/skip-plan.md | grep -qx 'plan-review: skipped'"
+      - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-plan-review.ts scripts/tests/fixtures/plan-review/skip-spec.md scripts/tests/fixtures/plan-review/required-plan.md | grep -qx 'plan-review: required'"
 
   - id: check-rules-size
     name: "Check always-loaded core rules size"

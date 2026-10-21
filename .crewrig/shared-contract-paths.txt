@@ -1,0 +1,16 @@
+# shared-contract-paths.txt — paths whose change forces a cold plan review (spec 0277 R8).
+# One glob or prefix per line, `#` comments. An entry ending in `/` is a prefix; `*` stays
+# within one segment, `**` crosses segments. Matched against the plan Steps and spec
+# Requirements path tokens.
+AGENTS.md
+docs/spec-format.md
+docs/plan-format.md
+docs/reviewer-seat.md
+docs/plan-review-protocol.md
+docs/retroactive-loop.md
+docs/adr/
+docs/cli-matrix/rows/
+.crewrig/core-paths.txt
+ci/ci-capabilities.yml
+artifacts/core/rules/
+scripts/lib/governance/

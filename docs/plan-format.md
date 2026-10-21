@@ -78,6 +78,15 @@ category is genuinely empty for the ticket, state so explicitly
 (`Build outputs: none.`) rather than omitting the bullet — silence
 reads as oversight.
 
+Blast radius also carries a **`Components:`** bullet — a comma-separated
+list of component names as they appear in `.crewrig/plan-components.txt`.
+It is mandatory at `standard` and `large` tiers and is read by
+`scripts/check-plan-review.ts`, which decides whether the cold plan review
+runs ([`docs/plan-review-protocol.md`](plan-review-protocol.md) →
+*Conditional review*). When that script ran, its output (the
+`plan-review:` decision line and its `reason:` lines) is posted verbatim in
+the plan comment as the skip record.
+
 **4. `### Alternatives considered and rejected`** — at least one
 alternative, each followed by a one-line rationale. The purpose is to
 surface the design space the author traversed; a plan with zero
@@ -112,7 +121,8 @@ mandatory:
   strategy` MAY be omitted; when present, they SHALL keep the format
   defined above.
 - At `standard` and `large` tiers, all five sections remain mandatory
-  (R1 of spec 0138).
+  (R1 of spec 0138), and the `Components:` bullet of `### Blast radius` is
+  mandatory (spec 0277).
 
 These clauses bound the plan's size and the loop's length; they remove no item from the reviewer's checklist at any tier.
 

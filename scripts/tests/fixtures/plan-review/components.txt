@@ -1,0 +1,17 @@
+# fixture copy of the component manifest grammar (spec 0277 R7)
+scripts/lib/governance/ governance-libs
+scripts/ scripts
+docs/adr/ adr
+docs/ docs
+specs/ specs
+ci/ ci
+artifacts/core/skills/*/ skill:*
+.claude/skills/*/ skill:*
+.gemini/skills/*/ skill:*
+.github/skills/*/ skill:*
+.agents/skills/*/ skill:*
+artifacts/core/agents/*/ agent:*
+.agents/agents/*/ agent:*
+.claude/agents/*.md agent:*
+.gemini/agents/*.md agent:*
+.github/agents/*.md agent:*
