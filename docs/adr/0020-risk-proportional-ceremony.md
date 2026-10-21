@@ -44,7 +44,7 @@ after WP4/WP5 shifted them.
 ### b. No mandatory second cold architect at standard tier — ADOPT
 
 - Today: `docs/plan-review-protocol.md:12` requires a second `architect`, spawned cold, for every plan. The PLAN-revision cap is 2 at standard and 1 at small (ADR-0010 tier table).
-- Change: standard-tier plans keep the cold plan review only when the plan touches more than N components (N is a child-spec decision; assumption — verify, 3 is a starting candidate) or when the spec touches a shared contract. Large tier keeps it unconditionally.
+- Change: standard-tier plans keep the cold plan review only when the plan touches more than N components (N is a child-spec decision; assumption — verify, 3 is a starting candidate) or when the spec touches a shared contract. The child spec MUST make both tests deterministic: N counted by a script from the plan's declared component list, and "shared contract" decided by a path-based manifest, not by author judgement. Large tier keeps it unconditionally.
 - Trade-off: an architecture defect can reach DEV. The backstop is real: REVIEW `arch` findings route back to PLAN (`docs/retroactive-loop.md` → loop targets), and the cold `pr-reviewer` on every PR is untouched.
 - Rejected alternatives: drop it at all tiers (large work is exactly where design defects are costly); replace it with a self-review checklist (not independent).
 - Invariants: 4.1.1 is about the PR reviewer, not the plan reviewer, so it holds. Q2 and Q3 must show it.
@@ -76,7 +76,7 @@ after WP4/WP5 shifted them.
 ### c. Terminate on zero blocking findings — REJECT
 
 - Today: termination already requires every non-blocking finding to be disposed as ledger or dismiss, with auto-ledger outside FULL (`docs/retroactive-loop.md` → *Termination*, condition 4; findings ledger described near the top of the same file). The `deferred-findings-ledger` issue already exists.
-- Verdict: non-blocking findings already do not loop outside FULL; adopting (c) as written would only remove the FULL-mode user triage, which spec 0166 R20 keeps on purpose. The residual is wording: `AGENTS.md` says the loop ends only when a pass "produces zero findings", which misreads the rule. Fix the sentence in a documentation-only change, not a child spec.
+- Verdict: non-blocking findings already do not loop outside FULL; adopting (c) as written would only remove the FULL-mode user triage, which spec 0166 R20 keeps on purpose. The residual is wording, in two places: `AGENTS.md` and `docs/retroactive-loop.md` (line 28) both say the loop ends only when a pass "produces zero findings", which misreads the rule. Fix the sentence in a documentation-only change, not a child spec.
 - Rejected alternative: terminate on APPROVE alone (leaves non-blocking findings undisposed, which is the debt this option feared).
 
 ### e. Tier de-escalation — REJECT
