@@ -18,7 +18,9 @@ export function driveTask(
   stdin: string,
 ): Out {
   if (HAS_TASK) {
-    const args = ["-d", t.root, `REPO_DIR=${t.root}`, name];
+    // Task applies CLI overrides of root vars only to root tasks, so REPO_DIR comes from PWD,
+    // which runIn sets to the fixture root.
+    const args = ["-d", t.root, name];
     if (vars.TYPE !== undefined) args.push(`TYPE=${vars.TYPE}`);
     if (vars.NAME !== undefined) args.push(`NAME=${vars.NAME}`);
     return runIn(t, "task", args, home, stdin);

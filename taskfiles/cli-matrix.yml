@@ -1,0 +1,21 @@
+version: '3.39'
+
+tasks:
+  build:
+    desc: "Regenerate docs/cli-matrix.md from docs/cli-matrix/ (spec 0272)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/build-cli-matrix.ts
+
+  check:
+    desc: "Fail when docs/cli-matrix.md is stale against docs/cli-matrix/ (local mirror of the CI guard, spec 0272)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/build-cli-matrix.ts --check
+
+  row:
+    desc: "Print one CLI-matrix row source. Usage: task cli-matrix:row -- <id>"
+    silent: true
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/build-cli-matrix.ts row {{.CLI_ARGS}}

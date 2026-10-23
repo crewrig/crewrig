@@ -1,0 +1,76 @@
+version: '3.39'
+
+tasks:
+  setup-gemini-interactive:
+    desc: Interactive setup with team/expertise/level selection
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/setup-gemini-interactive.ts
+
+  setup-antigravity-interactive:
+    desc: Interactive Antigravity CLI setup with team/expertise/level selection
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/setup-antigravity-interactive.ts
+
+  install-mempalace:
+    desc: Install or upgrade MemPalace at the pinned version (>=3.6.0,<3.7)
+    preconditions:
+      - sh: pipx --version
+        msg: "pipx is required. Install with: brew install pipx (macOS) or apt-get install pipx (Linux)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/tls-exec.ts pipx install --force 'mempalace>=3.6.0,<3.7'
+
+  # Spec 0245: the opt-in Playwright MCP registration, routed through the
+  # spec 0084 trust wrapper on every CLI. Run it from the checkout you keep.
+  setup:playwright-mcp:
+    desc: "Register the Playwright MCP server (opt-in) in Claude Code, Gemini CLI, GitHub Copilot CLI and Antigravity CLI, routed through scripts/tls-exec.ts; converges a legacy or relocated entry, leaves a customised one untouched (spec 0245). Requires Node.js >= 24; run it from the checkout you keep. Idempotent."
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/setup-playwright-mcp.ts
+
+  # Spec 0245: the exact CI command of the `playwright-mcp` capability.
+  test-playwright-mcp:
+    desc: "Run the Playwright MCP registration suites (model, JSONC scanner, config reader), as CI does (spec 0245)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/playwright-mcp.test.ts scripts/tests/jsonc.test.ts scripts/tests/hook-config.test.ts
+
+  install-deps:
+    desc: Install npm dependencies for all extensions
+    cmd: npm install
+
+  # --- Claude Code tasks ---
+  setup-claude-interactive:
+    desc: Interactive Claude Code setup with team/expertise/level selection (copy by default)
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/setup-claude-interactive.ts
+
+  import-claude-history:
+    desc: Backfill MemPalace with pre-existing Claude Code transcripts from ~/.claude/projects (idempotent)
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/import-claude-history.ts {{.CLI_ARGS}}
+
+  import-gemini-history:
+    desc: Backfill MemPalace with pre-existing Gemini CLI transcripts from ~/.gemini/tmp (idempotent)
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/import-gemini-history.ts {{.CLI_ARGS}}
+
+  import-antigravity-history:
+    desc: Backfill MemPalace with pre-existing Antigravity CLI transcripts from ~/.gemini/antigravity-cli/history.jsonl (idempotent)
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/import-antigravity-history.ts {{.CLI_ARGS}}
+
+  # --- GitHub Copilot CLI tasks ---
+  setup-copilot-interactive:
+    desc: Interactive GitHub Copilot CLI setup (workspace settings + optional transcript hooks)
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/setup-copilot-interactive.ts
+
+  import-copilot-history:
+    desc: Backfill MemPalace with pre-existing GitHub Copilot CLI transcripts from ~/.copilot/session-state (idempotent)
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/import-copilot-history.ts {{.CLI_ARGS}}

@@ -21,7 +21,10 @@ export function scratchEnv(home: string): Record<string, string> {
   return env;
 }
 
-/** Run `cmd args` in the fixture root with a scratch home and optional stdin. */
+/**
+ * Run `cmd args` in the fixture root with a scratch home and optional stdin. PWD is set to the
+ * fixture root as a real shell would (spawnSync `cwd` does not update the inherited PWD).
+ */
 export function runIn(
   t: FixtureTree,
   cmd: string,
@@ -31,7 +34,7 @@ export function runIn(
 ): Out {
   const r = spawnSync(cmd, [...args], {
     cwd: t.root,
-    env: scratchEnv(home),
+    env: { ...scratchEnv(home), PWD: t.root },
     encoding: "utf8",
     input: stdin,
   });

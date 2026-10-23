@@ -1,0 +1,44 @@
+version: '3.39'
+
+tasks:
+  build-components-copilot:
+    desc: "Build community components for GitHub Copilot CLI only (Node.js 24)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-components.ts --target copilot
+
+  build-components-antigravity:
+    desc: "Build community components for Antigravity CLI only (Node.js 24)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-components.ts --target antigravity
+
+  # --- Community component build ---
+  build-components:
+    desc: "Build all community components for Gemini CLI, Claude Code, and GitHub Copilot CLI (Node.js 24)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-components.ts --target all
+
+  build-components-gemini:
+    desc: "Build community components for Gemini CLI only (Node.js 24)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-components.ts --target gemini
+
+  build-components-claude:
+    desc: "Build community components for Claude Code only (Node.js 24)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-components.ts --target claude
+
+  check-components:
+    desc: "Check that generated community components match source (drift detection) and run the assembly verification test (Node.js 24)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/build-components.ts --target all --check
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-assembly-routing.test.ts
+
+  test-components:
+    desc: Test the build-components canonical_repo validator
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-canonical-repo.test.ts

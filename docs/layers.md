@@ -38,6 +38,7 @@ refuse to proceed.
 | `CONTRIBUTING.md` | Contribution guide. |
 | `DEVELOPMENT.md` | Local development setup guide. |
 | `Taskfile.yml` | Task runner definitions. |
+| `taskfiles/` | Domain-scoped Taskfiles included by `Taskfile.yml`. |
 | `.gitignore` | Repository-wide ignore rules. |
 | `.gitattributes` | Line-ending and diff attributes. |
 | `.markdownlintrc` | Markdown lint configuration. |

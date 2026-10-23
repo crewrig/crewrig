@@ -1,0 +1,4 @@
+version: '3.39'
+
+# Reserved for WP-B (#1763): CI-facing tasks will land here.
+tasks: {}

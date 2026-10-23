@@ -1,0 +1,34 @@
+version: '3.39'
+
+tasks:
+  # Spec 0240 R13-R14: local entry points for the runtime-foundations suites
+  # (the exact CI command of the `runtime-foundations` capability) and a
+  # passthrough to the timing-budget harness, e.g.
+  #   task timing-budget -- --runs 10 --budget-ms 750 -- scripts/lib/node-floor-guard.js
+  test-runtime-foundations:
+    desc: "Run the floor guard, dependency-step and shared-module suites, as CI does (spec 0240)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
+
+  # Spec 0237: the exact CI command of the `windows-hook-probe` capability.
+  test-windows-hook-probe:
+    desc: "Run the Windows hook command-line parsing probe's suite, as CI does (spec 0237)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/probe-windows-hook-parsing.test.ts
+
+  # Spec 0244: the exact CI command of the `ticket-pickup` capability.
+  test-ticket-pickup:
+    desc: "Run the ticket-pickup check's suites (model, fake-forge end to end, interleavings), as CI does (spec 0244)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts
+
+  timing-budget:
+    desc: "Time a Node.js script against a budget (spec 0240 R13); pass the harness arguments after --"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts {{.CLI_ARGS}}
+
+  # Spec 0109 delta-04: the exact CI command of the `derive-spec-status` capability.
+  test-derive-spec-status:
+    desc: "Run the merged-spec status derivation suite, as CI does (spec 0109 delta-04)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/derive-spec-status.test.ts
+
+  # Spec 0273: the exact CI command of the `spec-view` capability.
+  test-spec-view:
+    desc: "Run the spec effective view suite, as CI does (spec 0273)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-view.test.ts

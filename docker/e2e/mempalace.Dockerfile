@@ -7,7 +7,7 @@
 # /home/agent/.mempalace. The sidecar is invoked on demand for assertions
 # (`mempalace status`, search queries) and teardown reporting.
 #
-# Pin matches the `install-mempalace` task in Taskfile.yml.
+# Pin matches the `install-mempalace` task in taskfiles/setup.yml.
 FROM crewrig/e2e-base:latest
 
 ARG MEMPALACE_VERSION=">=3.6.0,<3.7"

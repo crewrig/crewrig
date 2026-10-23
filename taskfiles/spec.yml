@@ -1,0 +1,24 @@
+version: '3.39'
+
+tasks:
+  lint:
+    desc: "Lint spec files for format compliance (markdown + custom semantic rules)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/lib/spec-linter.js {{.CLI_ARGS}}
+
+  # Spec 0109 delta-04 R23: the status a merged spec or delta-spec truly
+  # carries on a branch, from reachability and the merged-PR record, e.g.
+  #   task spec:derive-status -- --branch HEAD --scope draft-deltas --check
+  # Exit codes: 0 clean or applied, 1 candidates remain (--check), 2 wiring.
+  derive-status:
+    desc: "Derive merged spec and delta-spec statuses from evidence (spec 0109 delta-04 R23)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/derive-spec-status.ts {{.CLI_ARGS}}
+
+  # Spec 0273: read-only effective view of a spec and its deltas, e.g.
+  #   task spec:view -- 273
+  view:
+    desc: "Print a spec and its deltas as one read-only Markdown document (spec 0273)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/spec-view.ts {{.CLI_ARGS}}

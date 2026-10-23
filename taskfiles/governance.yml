@@ -1,0 +1,74 @@
+version: '3.39'
+
+tasks:
+  # Spec 0244: the ticket-pickup ownership check. Run it before any branch,
+  # spec id or worktree for a ticket and stop on any non-zero exit, e.g.
+  #   task ticket-pickup -- --issue 1387
+  # Exit codes: 0 proceed, 1 usage, 2 cannot determine, 3 owned by another,
+  # 4 undecidable, 5 self-assignment not recorded (docs/ticket-ownership.md).
+  ticket-pickup:
+    desc: "Check who owns a ticket and claim it if free, before any authoring action (spec 0244)"
+    cmds:
+      - node scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ticket-pickup.ts {{.CLI_ARGS}}
+
+  check-skill-versions:
+    desc: "Enforce provenance.version bump on changed skill/agent sources (local mirror of the CI guard)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-skill-versions.ts
+
+  check-description-length:
+    desc: "Fail when a skill or agent description exceeds 300 characters (spec 0269 R11)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-description-length.ts
+
+  check-comment-size:
+    desc: "Fail when a plan or verdict comment body exceeds 12288 bytes (spec 0275 R-E2). Author-side: task check-comment-size -- <file> (or pipe the body on stdin)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-comment-size.ts {{.CLI_ARGS}}
+
+  check-seat-brief:
+    desc: "Fail when a seated-pass brief breaches the references-only form (spec 0276). Orchestrator-side, before the spawn: task check-seat-brief -- <file> (or pipe the brief on stdin; --template <specs|plan|review> prints a skeleton)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-seat-brief.ts {{.CLI_ARGS}}
+
+  check-plan-review:
+    desc: "Decide whether a plan needs the cold second-architect review (spec 0277). Orchestrator-side at PLAN time: task check-plan-review -- <spec> [<plan>|-] [--prior-review] (plan on stdin when absent)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-plan-review.ts {{.CLI_ARGS}}
+
+  check-feedback-routing:
+    desc: "Enforce upstream-tier feedback routing to canonical (local mirror of the CI guard, spec 0030)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-feedback-routing.ts
+
+  check-extension-provenance:
+    desc: "Enforce extension skill/agent provenance carrier presence + routing (local mirror of the CI guard, spec 0043)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-extension-provenance.ts
+
+  check-extension-version-bump:
+    desc: "Enforce carrier-version bump on modified extension skill/agent sources (local mirror of the CI guard, spec 0044)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-extension-version-bump.ts
+
+  check-extension-manifest-version:
+    desc: "Enforce a single authoritative version across an extension's manifests (local mirror of the CI guard, spec 0044)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-extension-manifest-version.ts
+
+  check-model-mappings:
+    desc: "Check model-mapping conformance against docs/model-mapping-format.md (local mirror of the CI guard, spec 0197)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-model-mappings.ts
+
+  check-agent-profiles:
+    desc: "Check agent capability-profile conformance against spec 0195 (local mirror of the CI guard, spec 0198)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-agent-profiles.ts
+
+  check-taskfile-commands:
+    desc: "Check Taskfile.yml names no POSIX-only command, modulo the owned exemption list (local mirror of the CI guard, spec 0266 R13)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-taskfile-commands.ts
+
+  check-metadata-keys:
+    desc: "Check the metadata: closed key set on artifacts/core/** and artifacts/library/** (local mirror of the CI guard, spec 0200)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-component-metadata-keys.ts
+
+  check-claude-agent-layout:
+    desc: "Check the compiled .claude/agents/ tree holds only flat <name>.md files (local mirror of the CI guard, spec 0201)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-claude-agent-layout.ts
+
+  skill:check:
+    desc: "Verify built skill (+ optional agent) mirrors for one component across .claude/, .gemini/, .github/. Usage: task skill:check NAME=<skill-name>"
+    silent: true
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-skill-mirrors.ts "{{.NAME}}"

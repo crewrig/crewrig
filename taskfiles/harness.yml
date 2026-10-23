@@ -1,0 +1,20 @@
+version: '3.39'
+
+tasks:
+  # --- Transcript Management ---
+  prune-transcripts:
+    desc: "Prune old transcripts from MemPalace (task prune-transcripts -- --days 30 [--apply])"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/prune-transcripts.ts {{.CLI_ARGS}}
+
+  # --- Harness Feedback Loop ---
+  harness-curate:
+    desc: "Run the Harness Curator (task harness-curate -- [--apply | --from-stdin])"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/artifacts/library/skills/harness-curator/scripts/curate.ts {{.CLI_ARGS}}
+
+  test-harness-curate:
+    desc: "Smoke-test the Harness Curator against the bundled fixture"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/harness-curator-curate-fixture.test.ts scripts/tests/harness-curator-curate-units.test.ts scripts/tests/harness-curator-apply-dry-run.test.ts scripts/tests/harness-curator-apply-units.test.ts scripts/tests/harness-curator-setup-schedule.test.ts scripts/tests/harness-curator-real-palace.test.ts
