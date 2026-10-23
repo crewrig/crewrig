@@ -180,6 +180,67 @@ Running `/<skill-name>` inside a Claude Code session also confirms that a skill 
 
 For iterative development, prefer the `--plugin-dir` flag documented in the [Link Mode](#link-mode) section — it skips the marketplace step.
 
+## Taskfile layout
+
+Task 3.39 or later is required: the root includes the domain files with the
+`flatten:` option, which Task introduced in 3.39. Every Taskfile declares
+`version: '3.39'`, so an older Task fails loudly (`Schema version (3.39.0) is
+greater than the current version of Task`) instead of silently renaming the
+flattened tasks (spec 0278).
+
+The root `Taskfile.yml` holds only the `default` task, the global vars and the
+`includes`. Every other task lives in one domain file under `taskfiles/`, split
+by area and never by CLI so the four CLIs stay side by side:
+
+| File | Holds |
+|---|---|
+| `setup.yml` | `setup-<cli>-interactive`, `install-mempalace`, `install-deps`, `import-*-history`, Playwright MCP setup |
+| `mempalace.yml` | `mempalace:*` daemon lifecycle and diagnostics |
+| `usage.yml` | `usage:*` usage-ledger tasks and dashboard |
+| `extensions.yml` | `install-*`, `link-*`, `unlink-*`, packaging, extension scaffolding and plugin builds |
+| `components.yml` | `build-components*`, `check-components`, `test-components` |
+| `lint.yml` | markdown and TypeScript lint, typecheck, format, ratchet, host safety |
+| `spec.yml` | `spec:*` spec lint, status derivation and viewer |
+| `governance.yml` | `check-*` governance checks, `skill:check`, `ticket-pickup` |
+| `tests.yml` | runtime-foundations, ticket-pickup and spec test suites, `timing-budget` |
+| `harness.yml` | `harness-curate`, `test-harness-curate`, `prune-transcripts` |
+| `e2e.yml` | `e2e:*` Docker images, auth flow and runner |
+| `cli-matrix.yml` | `cli-matrix:*` build, check and row viewer |
+| `ci.yml` | reserved for the CI tasks of #1763 |
+
+Prefixed groups (`mempalace:`, `usage:`, `e2e:`, `spec:`, `cli-matrix:`) are
+include namespaces; every other file is flattened, so its tasks keep their
+unprefixed global names.
+
+**Adding a task.** Put it in the domain file that matches its area. A new file
+must be added to the root `includes` (flattened unless it is a namespace) and
+declare `version: '3.39'`.
+
+**Referencing tasks.**
+
+- Inside a namespaced file, `deps:` entries and `- task:` calls are
+  namespace-relative (`build:base`, not `e2e:build:base`); a leading `:`
+  anchors at the root namespace (`:install-deps`).
+- Inside a flattened file, use the full global name.
+- A shell `task <name>` inside a `cmd:` text always uses the full global name.
+
+**Working directory and variables.** Every task runs from the repository root,
+including when `task` is started from a subdirectory. Build repository paths
+with `{{.REPO_DIR}}`, never `{{.TASKFILE_DIR}}`: in an included file
+`TASKFILE_DIR` is the `taskfiles/` directory. `REPO_DIR` derives from
+`{{.PWD}}`, so run `task` from the repository directory, or set `PWD`
+instead. A command-line override of a root var, such as
+`task REPO_DIR=/x <task>`, only reaches root tasks, not tasks of included
+files.
+
+**Guard.** `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON
+scripts/check-taskfile-tree.ts` checks that every `taskfiles/*.yml` file is
+included, the root holds only `default`, the version string is uniform, no
+included file builds a repository path from `TASKFILE_DIR`, every `deps:` and
+`- task:` reference resolves, and the loader sees the same names as
+`task --list-all --json`. CI runs it; #1763 adds the matching Task entry,
+`ci:check-taskfile-tree`.
+
 ## TypeScript toolchain and ratchet
 
 New code is TypeScript, run directly from its `.ts` source by Node's

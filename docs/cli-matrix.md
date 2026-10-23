@@ -525,7 +525,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   (Windows is out of scope of spec 0084).
 - **Source of truth:** `scripts/tls-exec.ts` (the Node.js wrapper that replaced `scripts/lib/tls-exec.sh` and
   `tls-delegation.sh`, retired in #1344), `scripts/lib/setup/tls-detect.ts`, `scripts/lib/setup/tls-offer.ts`,
-  `scripts/tls-exec.ts`, `scripts/lib/tls-env.ts`, `scripts/setup-*-interactive.ts`, `Taskfile.yml`
+  `scripts/tls-exec.ts`, `scripts/lib/tls-env.ts`, `scripts/setup-*-interactive.ts`, `taskfiles/setup.yml`
   (`install-mempalace`, `setup:playwright-mcp`), `scripts/setup-playwright-mcp.ts`, `scripts/lib/playwright-mcp.ts`,
   `docs/runbooks/custom-ca-tls-trust.md`
 - **Claude Code:** ✅ offer in `setup-claude-interactive.ts`; MCP via
@@ -1210,7 +1210,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `import-*-history` and `prune-transcripts` tasks likewise run `node scripts/<name>.ts` behind the floor-guard step,
   with the `.sh` kept as forwarding shim and no `fzf` precondition, spec 0253; the `create-extension` task runs
   `node scripts/create-extension.ts` behind the floor-guard step with no `fzf` precondition, spec 0258)
-- **Source of truth:** `Taskfile.yml`
+- **Source of truth:** `taskfiles/*.yml` (`setup.yml`, `extensions.yml`, `components.yml`, `usage.yml`, `e2e.yml`, ...), included by the thin root `Taskfile.yml`
 - **Claude Code:** ✅ `setup-claude-interactive` (floor guard, then the TypeScript entry, two steps; spec 0256),
   `install-claude-workspace`, `link-claude-workspace`, `install-claude-component`, `link-claude-component`,
   `build-claude-plugin`, `install-claude-plugin`, `import-claude-history`, `build-components-claude`
@@ -1361,7 +1361,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 
 ### 21 — e2e dedicated-account auth flow
 
-- **Source of truth:** `scripts/e2e/auth-<cli>.ts` (the `.sh` forwarding shim was removed), `Taskfile.yml` →
+- **Source of truth:** `scripts/e2e/auth-<cli>.ts` (the `.sh` forwarding shim was removed), `taskfiles/e2e.yml` →
   `e2e:auth:*`, ADR 0002
 - **Claude Code:** ✅ `scripts/e2e/auth-claude.ts` — interactive `claude /login` in `crewrig/e2e-claude:latest`,
   persists `~/.crewrig-e2e/claude/{.credentials.json,.claude.json}` (RW one-shot, RO at scenario time)
@@ -2654,7 +2654,7 @@ the feature matrix above — leaving one unchecked produces a parity gap.
 12. [ ] Add or extend a component-management script for the CLI.
 13. [ ] If the CLI requires a build step before install, add `scripts/build-<cli>-plugin.ts` (or equivalent).
 14. [ ] If a separate install step is required, add `scripts/install-<cli>-plugin.ts`.
-15. [ ] Register `--target <cli>` invocations in `Taskfile.yml`, plus `setup-`, `import-`, `install-`, `link-`, and `build-components-` task entries.
+15. [ ] Register `--target <cli>` invocations and the `setup-`, `import-`, `install-`, `link-`, and `build-components-` task entries in the matching `taskfiles/*.yml` domain files (`setup.yml`, `extensions.yml`, `components.yml`, ...; these groups are flattened, so keep their unprefixed names). Add the file to the root `includes` only if you create a new one (see `DEVELOPMENT.md` → *Taskfile layout*).
 16. [ ] Add a per-CLI extension manifest convention to `extension-skeleton/` and update `extensions/core/hello-world/` with an example.
 17. [ ] Add a CI workflow `.github/workflows/<cli>.yml` if the CLI offers an automation entry point.
 18. [ ] Update prose references in `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, and `DEVELOPMENT.md`.

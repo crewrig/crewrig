@@ -33,7 +33,7 @@ themselves):
   `config/gemini/**`, `config/copilot/**`, `extensions/**`,
   `.github/workflows/claude.yml`, `.github/workflows/copilot.yml`.
 - **Parity gap**: any addition, removal or change of a `Parity gaps` item.
-- **CLI-prefixed entry** of `Taskfile.yml` or `.gitignore`.
+- **CLI-prefixed entry** of a `taskfiles/*.yml` domain file or `.gitignore`.
 
 **Obligation.** Any PR that modifies the trigger surface MUST update the
 matrix in the same diff: edit the affected row source file under
@@ -101,7 +101,7 @@ authoritative:
   branch in `scripts/manage-workspace-component.ts` if that script
   already serves multiple CLIs)
 - `scripts/build-components.ts` `--target <cli>` branch (`scripts/build-components.ts` forwards to it)
-- Every `Taskfile.yml` entry whose name carries a CLI prefix
+- Every task entry in `taskfiles/*.yml` whose name carries a CLI prefix
 
 Deferring any of the above to a follow-up ticket requires **explicit
 prior user authorization** captured in the PR or its linked logbook

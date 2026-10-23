@@ -22,7 +22,7 @@ the feature matrix above — leaving one unchecked produces a parity gap.
 12. [ ] Add or extend a component-management script for the CLI.
 13. [ ] If the CLI requires a build step before install, add `scripts/build-<cli>-plugin.ts` (or equivalent).
 14. [ ] If a separate install step is required, add `scripts/install-<cli>-plugin.ts`.
-15. [ ] Register `--target <cli>` invocations in `Taskfile.yml`, plus `setup-`, `import-`, `install-`, `link-`, and `build-components-` task entries.
+15. [ ] Register `--target <cli>` invocations and the `setup-`, `import-`, `install-`, `link-`, and `build-components-` task entries in the matching `taskfiles/*.yml` domain files (`setup.yml`, `extensions.yml`, `components.yml`, ...; these groups are flattened, so keep their unprefixed names). Add the file to the root `includes` only if you create a new one (see `DEVELOPMENT.md` → *Taskfile layout*).
 16. [ ] Add a per-CLI extension manifest convention to `extension-skeleton/` and update `extensions/core/hello-world/` with an example.
 17. [ ] Add a CI workflow `.github/workflows/<cli>.yml` if the CLI offers an automation entry point.
 18. [ ] Update prose references in `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, and `DEVELOPMENT.md`.

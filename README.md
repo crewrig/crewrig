@@ -234,7 +234,7 @@ harness loop:
 | [Claude Code](https://claude.ai/code) | `npm i -g @anthropic-ai/claude-code` | same | same |
 | [GitHub Copilot CLI](https://docs.github.com/copilot/github-copilot-in-the-cli) | `npm i -g @github/copilot` | same | same |
 | [Antigravity CLI](https://antigravity.google) | See [Antigravity install](https://antigravity.google) (`agy`) | same | same |
-| [Task](https://taskfile.dev/) | `brew install go-task` | `sh -c "$(curl -ssL https://taskfile.dev/install.sh)"` | `choco install go-task` or `scoop install task` |
+| [Task](https://taskfile.dev/) (3.39 or later, see note below) | `brew install go-task` | `sh -c "$(curl -ssL https://taskfile.dev/install.sh)"` | `choco install go-task` or `scoop install task` |
 | [fzf](https://github.com/junegunn/fzf) | `brew install fzf` | `sudo apt install fzf` | `choco install fzf` or `scoop install fzf` |
 | [uv](https://github.com/astral-sh/uv) | `brew install uv` | `curl -LsSf https://astral.sh/uv/install.sh \| sh` | `powershell -c "irm https://astral.sh/uv/install.ps1 \| iex"` |
 | [yq](https://github.com/mikefarah/yq) | `brew install yq` | `sudo snap install yq` | `choco install yq` |
@@ -250,6 +250,12 @@ harness loop:
 > and run on Windows without a Bash-compatible shell. The scripts that remain
 > shell scripts still need one
 > ([Git Bash](https://gitforwindows.org/), [WSL](https://learn.microsoft.com/en-us/windows/wsl/install), or [MSYS2](https://www.msys2.org/)).
+>
+> **Task note:** Task 3.39 or later is required. The tasks live in domain
+> files under `taskfiles/` that the root `Taskfile.yml` includes with the
+> `flatten:` option, which Task introduced in 3.39. Every Taskfile declares
+> `version: '3.39'`, so an older Task fails loudly instead of silently renaming
+> tasks.
 
 ## Quick Start
 
@@ -519,7 +525,8 @@ scripts/
     ├── governance-suite-skill-versions-base.test.ts  # Tests for check-skill-versions (base-ref cases)
     └── (frontmatter-fence tests are node --test files: build-components-frontmatter-fence.test.ts)
 
-Taskfile.yml                          # Task runner configuration
+Taskfile.yml                          # Task runner root (default task, global vars, includes)
+taskfiles/                            # Domain Taskfiles included by the root (setup, extensions, lint, e2e, ...)
 AGENTS.md                             # Agent working rules
 CLAUDE.md                             # Claude Code entry point (@AGENTS.md)
 CONTRIBUTING.md                       # Contribution guide
