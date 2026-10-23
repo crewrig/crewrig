@@ -475,6 +475,7 @@ capabilities:
           - "Taskfile.yml"
           - "taskfiles/**"
           - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/taskfile-tree-parse.ts"
           - "scripts/lib/governance/taskfile-tree-guard.ts"
       - on: push
         branches: [main, "release/**"]
@@ -490,6 +491,7 @@ capabilities:
           - "Taskfile.yml"
           - "taskfiles/**"
           - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/taskfile-tree-parse.ts"
           - "scripts/lib/governance/taskfile-tree-guard.ts"
     portability: portable
     requires:
@@ -1649,6 +1651,7 @@ capabilities:
           - "Taskfile.yml"
           - "taskfiles/**"
           - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/taskfile-tree-parse.ts"
           - "scripts/lib/governance/taskfile-tree-guard.ts"
           - "extensions/**"
           - "artifacts/**"
@@ -1703,6 +1706,7 @@ capabilities:
           - "Taskfile.yml"
           - "taskfiles/**"
           - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/taskfile-tree-parse.ts"
           - "scripts/lib/governance/taskfile-tree-guard.ts"
           - "extensions/**"
           - "artifacts/**"
@@ -2925,6 +2929,7 @@ capabilities:
           - "Taskfile.yml"
           - "taskfiles/**"
           - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/taskfile-tree-parse.ts"
           - "scripts/lib/governance/taskfile-tree-guard.ts"
           - "scripts/check-taskfile-commands.ts"
           - "scripts/lib/taskfile-command*.ts"
@@ -2939,6 +2944,7 @@ capabilities:
           - "Taskfile.yml"
           - "taskfiles/**"
           - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/taskfile-tree-parse.ts"
           - "scripts/lib/governance/taskfile-tree-guard.ts"
           - "scripts/check-taskfile-commands.ts"
           - "scripts/lib/taskfile-command*.ts"
@@ -2982,7 +2988,7 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-tree.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts
 
   - id: markdown-links
     name: "Check relative Markdown link integrity"
@@ -3416,6 +3422,7 @@ capabilities:
           - "Taskfile.yml"
           - "taskfiles/**"
           - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/taskfile-tree-parse.ts"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -3426,6 +3433,7 @@ capabilities:
           - "Taskfile.yml"
           - "taskfiles/**"
           - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/taskfile-tree-parse.ts"
     portability: portable
     requires:
       runtime: node@24

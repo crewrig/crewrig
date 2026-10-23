@@ -13,6 +13,7 @@ on:
       - "Taskfile.yml"
       - "taskfiles/**"
       - "scripts/lib/taskfile-tree.ts"
+      - "scripts/lib/taskfile-tree-parse.ts"
   push:
     branches: [main, "release/**"]
     paths:
@@ -23,6 +24,7 @@ on:
       - "Taskfile.yml"
       - "taskfiles/**"
       - "scripts/lib/taskfile-tree.ts"
+      - "scripts/lib/taskfile-tree-parse.ts"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

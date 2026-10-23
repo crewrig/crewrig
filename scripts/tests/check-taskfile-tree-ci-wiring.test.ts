@@ -20,7 +20,8 @@ const NODE = "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON";
 const GUARD = `${NODE} scripts/check-taskfile-tree.ts`;
 const SUITES = [
   "scripts/tests/taskfile-tree.test.ts",
-  "scripts/tests/check-taskfile-tree.test.ts",
+  "scripts/tests/check-taskfile-tree-layout.test.ts",
+  "scripts/tests/check-taskfile-tree-contract.test.ts",
   "scripts/tests/taskfile-tree-references.test.ts",
   "scripts/tests/check-taskfile-tree-ci-wiring.test.ts",
 ];
@@ -28,6 +29,7 @@ const TREE_PATHS = [ROOT, "taskfiles/**", "scripts/**"];
 const COMPANIONS = [
   "taskfiles/**",
   "scripts/lib/taskfile-tree.ts",
+  "scripts/lib/taskfile-tree-parse.ts",
   "scripts/lib/governance/taskfile-tree-guard.ts",
 ];
 const LISTING_JOBS = ["skill-scripts-ts", "extension-render", "check-taskfile-commands"];
@@ -140,7 +142,12 @@ function assertCapabilities(text: string): void {
   // spec-view reads the whole tree through the loader: it reruns on the tree and the loader only.
   const sv = listing.find((c) => c.id === "spec-view");
   for (const t of sv?.trigger ?? [])
-    for (const p of [ROOT, "taskfiles/**", "scripts/lib/taskfile-tree.ts"])
+    for (const p of [
+      ROOT,
+      "taskfiles/**",
+      "scripts/lib/taskfile-tree.ts",
+      "scripts/lib/taskfile-tree-parse.ts",
+    ])
       assert.ok((t.paths ?? []).includes(p), `spec-view ${t.on} paths has ${p}`);
 }
 
@@ -195,7 +202,7 @@ describe("check-taskfile-tree CI wiring", () => {
     const wf = read(".github", "workflows", "spec-view.yml");
     assert.ok(INSTALL.test(wf), "installs dependencies");
     assert.equal(wf.split(`- "${ROOT}"`).length - 1, 2);
-    for (const p of COMPANIONS.slice(0, 2))
+    for (const p of COMPANIONS.slice(0, 3))
       assert.equal(wf.split(`- "${p}"`).length - 1, 2, `both filters have ${p}`);
   });
 

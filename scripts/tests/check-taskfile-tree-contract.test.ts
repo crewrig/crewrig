@@ -1,178 +1,27 @@
-// Tests for scripts/check-taskfile-tree.ts and scripts/lib/governance/taskfile-tree-guard.ts
-// (spec 0278 R13, R14, R15). Every tree is staged programmatically in a mkdtemp directory; the live
-// repository tree is never read. The guard cannot pass on the monolithic root (check c), so only
-// split-shaped fixtures are exercised.
+// Tests for scripts/check-taskfile-tree.ts and scripts/lib/governance/taskfile-tree-guard.ts,
+// part 2: checks (e)-(g), the CLI contract and the R14 comparison with `task --list-all --json`
+// (spec 0278 R13, R14, R15). Part 1 is check-taskfile-tree-layout.test.ts.
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { after, describe, it } from "node:test";
-import { ROOT_READER_ALLOW, checkTaskfileTree } from "../lib/governance/taskfile-tree-guard.ts";
+import { checkTaskfileTree } from "../lib/governance/taskfile-tree-guard.ts";
+import {
+  E2E,
+  LINT,
+  ROOT,
+  ROOT_NAME,
+  cleanup,
+  cli,
+  findings,
+  hasTask,
+  split,
+  stage,
+  tempDir,
+} from "./lib/taskfile-tree-guard-fixtures.ts";
 
-const guard = path.resolve(import.meta.dirname, "..", "check-taskfile-tree.ts");
-const roots: string[] = [];
-const hasTask = spawnSync("task", ["--version"], { encoding: "utf8" }).error === undefined;
+after(cleanup);
 
-after(() => {
-  for (const root of roots) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-const ROOT = `version: '3.39'
-vars:
-  REPO_DIR: '{{.PWD}}'
-includes:
-  e2e: ./taskfiles/e2e.yml
-  lint:
-    taskfile: ./taskfiles/lint.yml
-    flatten: true
-tasks:
-  default:
-    cmds:
-      - task --list
-`;
-
-const E2E = `version: '3.39'
-tasks:
-  build:base:
-    cmds:
-      - echo base
-  build:
-    deps: [build:base]
-    cmds:
-      - task: build:base
-      - task: ":hello"
-`;
-
-const LINT = `version: '3.39'
-tasks:
-  hello:
-    cmds:
-      - echo hello
-  gate:
-    deps: ["e2e:build:base"]
-    cmds:
-      - echo gate
-`;
-
-type Tree = Record<string, string>;
-
-function split(): Tree {
-  return {
-    "Taskfile.yml": ROOT,
-    "taskfiles/e2e.yml": E2E,
-    "taskfiles/lint.yml": LINT,
-    "scripts/tests/ok.test.ts": 'export const answer = "no root reader here";\n',
-  };
-}
-
-function stage(tree: Tree): string {
-  const root = mkdtempSync(path.join(tmpdir(), "taskfile-tree-guard-"));
-  roots.push(root);
-  for (const [rel, text] of Object.entries(tree)) {
-    mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
-    writeFileSync(path.join(root, rel), text);
-  }
-  return root;
-}
-
-function findings(tree: Tree): string[] {
-  return checkTaskfileTree(stage(tree), { compareWithTask: false }).findings;
-}
-
-function cli(root: string, env: Record<string, string> = {}) {
-  return spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", guard], {
-    encoding: "utf8",
-    env: { ...process.env, ...env, CREWRIG_REPO_DIR: root },
-  });
-}
-
-describe("check-taskfile-tree checks (a)-(g)", () => {
-  it("passes a clean split-shaped tree", () => {
-    assert.deepEqual(findings(split()), []);
-  });
-
-  it("(a) fails an unincluded taskfiles/foo.yml", () => {
-    const out = findings({ ...split(), "taskfiles/foo.yml": `version: '3.39'\ntasks: {}\n` });
-    assert.deepEqual(out, ["taskfiles/foo.yml is not reachable from the root includes"]);
-  });
-
-  it("(b) fails a test source under scripts/tests/ reading the root file", () => {
-    const out = findings({
-      ...split(),
-      "scripts/tests/reader.test.ts": 'readFileSync(path.join(repo, "Taskfile.yml"), "utf8");\n',
-    });
-    assert.equal(out.length, 1);
-    assert.match(
-      out[0] ?? "",
-      /^scripts\/tests\/reader\.test\.ts:1: reads the root Taskfile directly/,
-    );
-  });
-
-  it("(b) matches the single-quote and backtick forms", () => {
-    const out = findings({
-      ...split(),
-      "scripts/a.ts": "read('Taskfile.yml');\n",
-      "scripts/b.js": "read(`Taskfile.yml`);\n",
-    });
-    assert.deepEqual(
-      out.map((f) => f.split(":")[0]),
-      ["scripts/a.ts", "scripts/b.js"],
-    );
-  });
-
-  it("(b) skips comment lines and unquoted mentions", () => {
-    const out = findings({
-      ...split(),
-      "scripts/c.ts": [
-        '// reads "Taskfile.yml" in a comment',
-        '/* "Taskfile.yml" */',
-        ' * "Taskfile.yml" in a block comment',
-        "const note = Taskfile.yml.length;",
-        "",
-      ].join("\n"),
-    });
-    assert.deepEqual(out, []);
-  });
-
-  it("(b) honours the allow-list, every entry with a reason", () => {
-    const allowed = [...ROOT_READER_ALLOW.keys()];
-    assert.ok(allowed.length > 0);
-    for (const [file, reason] of ROOT_READER_ALLOW) {
-      assert.match(reason, /\S/, file);
-    }
-    const tree = split();
-    for (const file of allowed) {
-      tree[file] = 'const root = "Taskfile.yml";\n';
-    }
-    assert.deepEqual(findings(tree), []);
-  });
-
-  it("(c) fails a task other than default in the root", () => {
-    const out = findings({
-      ...split(),
-      "Taskfile.yml": `${ROOT}  stray:\n    cmds:\n      - echo stray\n`,
-    });
-    assert.deepEqual(out, [
-      "Taskfile.yml defines task 'stray'; the root may only define 'default'",
-    ]);
-  });
-
-  it("(d) fails a version string differing from '3.39'", () => {
-    const out = findings({ ...split(), "taskfiles/lint.yml": LINT.replace("'3.39'", "'3.38'") });
-    assert.deepEqual(out, ["taskfiles/lint.yml: version '3.38' differs from '3.39'"]);
-  });
-
-  it("(d) fails an unquoted 3.39 float and a root version '3'", () => {
-    const float = findings({ ...split(), "taskfiles/lint.yml": LINT.replace("'3.39'", "3.39") });
-    assert.deepEqual(float, ["taskfiles/lint.yml: version 3.39 (number) differs from '3.39'"]);
-    const root = findings({ ...split(), "Taskfile.yml": ROOT.replace("'3.39'", "'3'") });
-    assert.deepEqual(root, ["Taskfile.yml: version '3' differs from '3.39'"]);
-  });
-
+describe("check-taskfile-tree checks (e)-(g)", () => {
   it("(e) fails TASKFILE_DIR in an included file but not in comments", () => {
     const used = LINT.replace("echo hello", "cat {{.TASKFILE_DIR}}/x");
     assert.deepEqual(findings({ ...split(), "taskfiles/lint.yml": used }), [
@@ -220,20 +69,11 @@ describe("check-taskfile-tree checks (a)-(g)", () => {
   it("(g) fails dir:, excludes: and aliases: on an include", () => {
     for (const key of ["dir: .", "excludes: [hello]", "aliases: [l]"]) {
       const root = ROOT.replace("    flatten: true\n", `    flatten: true\n    ${key}\n`);
-      const out = findings({ ...split(), "Taskfile.yml": root });
+      const out = findings({ ...split(), [ROOT_NAME]: root });
       assert.deepEqual(out, [
         `Taskfile.yml: include 'lint' uses '${key.split(":")[0]}:' (not allowed, R7/R9)`,
       ]);
     }
-  });
-
-  it("reports every finding, not just the first", () => {
-    const out = findings({
-      ...split(),
-      "taskfiles/foo.yml": `version: '3.39'\ntasks: {}\n`,
-      "taskfiles/lint.yml": LINT.replace("'3.39'", "'3'"),
-    });
-    assert.equal(out.length, 2);
   });
 });
 
@@ -277,8 +117,7 @@ describe("check-taskfile-tree CLI contract", () => {
 
 describe("check-taskfile-tree R14 comparison with task --list-all --json", () => {
   it("prints an explicit NOTICE and still runs the other checks when task is absent", () => {
-    const emptyBin = mkdtempSync(path.join(tmpdir(), "taskfile-tree-nopath-"));
-    roots.push(emptyBin);
+    const emptyBin = tempDir("taskfile-tree-nopath-");
     const clean = cli(stage(split()), { PATH: emptyBin });
     assert.equal(clean.status, 0, clean.stderr);
     assert.match(

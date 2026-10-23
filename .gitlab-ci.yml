@@ -411,6 +411,7 @@ skill-scripts-ts:
         - "Taskfile.yml"
         - "taskfiles/**"
         - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/taskfile-tree-parse.ts"
         - "scripts/lib/governance/taskfile-tree-guard.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
@@ -425,6 +426,7 @@ skill-scripts-ts:
         - "Taskfile.yml"
         - "taskfiles/**"
         - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/taskfile-tree-parse.ts"
         - "scripts/lib/governance/taskfile-tree-guard.ts"
 
 install-ts:
@@ -1205,6 +1207,7 @@ extension-render:
         - "Taskfile.yml"
         - "taskfiles/**"
         - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/taskfile-tree-parse.ts"
         - "scripts/lib/governance/taskfile-tree-guard.ts"
         - "extensions/**"
         - "artifacts/**"
@@ -1258,6 +1261,7 @@ extension-render:
         - "Taskfile.yml"
         - "taskfiles/**"
         - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/taskfile-tree-parse.ts"
         - "scripts/lib/governance/taskfile-tree-guard.ts"
         - "extensions/**"
         - "artifacts/**"
@@ -2367,6 +2371,7 @@ check-taskfile-commands:
         - "Taskfile.yml"
         - "taskfiles/**"
         - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/taskfile-tree-parse.ts"
         - "scripts/lib/governance/taskfile-tree-guard.ts"
         - "scripts/check-taskfile-commands.ts"
         - "scripts/lib/taskfile-command*.ts"
@@ -2380,6 +2385,7 @@ check-taskfile-commands:
         - "Taskfile.yml"
         - "taskfiles/**"
         - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/taskfile-tree-parse.ts"
         - "scripts/lib/governance/taskfile-tree-guard.ts"
         - "scripts/check-taskfile-commands.ts"
         - "scripts/lib/taskfile-command*.ts"
@@ -2396,7 +2402,7 @@ check-taskfile-tree:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-tree.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -2700,6 +2706,7 @@ spec-view:
         - "Taskfile.yml"
         - "taskfiles/**"
         - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/taskfile-tree-parse.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "scripts/spec-view.ts"
@@ -2709,6 +2716,7 @@ spec-view:
         - "Taskfile.yml"
         - "taskfiles/**"
         - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/taskfile-tree-parse.ts"
 
 node-floor-guard:
   image: node:20

@@ -24,14 +24,20 @@ export const TASKFILE_VERSION = "3.39";
 
 /** Files under scripts/ that may name the root Taskfile literally, each with its reason (check b). */
 export const ROOT_READER_ALLOW: ReadonlyMap<string, string> = new Map([
-  ["scripts/lib/taskfile-tree.ts", "the loader names the root file it starts from"],
+  [
+    "scripts/lib/taskfile-tree-parse.ts",
+    "the parser names the root file a directory include resolves to",
+  ],
   ["scripts/lib/governance/taskfile-tree-guard.ts", "the guard names the root file it checks"],
   [
     "scripts/tests/check-taskfile-commands.test.ts",
     "writes its own root Taskfile into a mkdtemp fixture tree",
   ],
   ["scripts/tests/taskfile-tree.test.ts", "builds fixture roots for the loader"],
-  ["scripts/tests/check-taskfile-tree.test.ts", "builds split-shaped fixture roots for the guard"],
+  [
+    "scripts/tests/check-taskfile-tree-layout.test.ts",
+    "builds split-shaped fixture roots for the guard",
+  ],
   [
     "scripts/tests/taskfile-tree-references.test.ts",
     "stages a root Taskfile in a mkdtemp tree and runs it through task",
