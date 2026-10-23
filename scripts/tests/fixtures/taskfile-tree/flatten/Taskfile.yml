@@ -1,0 +1,11 @@
+version: '3.39'
+
+includes:
+  e2e: ./e2e.yml
+  flat:
+    taskfile: ./flat.yml
+    flatten: true
+
+tasks:
+  default:
+    cmd: echo root

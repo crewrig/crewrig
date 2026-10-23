@@ -1,0 +1,15 @@
+version: '3.39'
+
+includes:
+  shared:
+    taskfile: ./shared.yml
+    flatten: true
+
+tasks:
+  base:
+    cmd: echo base
+  test:
+    deps: [base]
+    cmds:
+      - task: base
+      - task: ":hello"

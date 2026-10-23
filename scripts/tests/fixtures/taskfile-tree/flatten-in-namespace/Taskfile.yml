@@ -1,0 +1,8 @@
+version: '3.39'
+
+includes:
+  e2e: ./e2e.yml
+
+tasks:
+  hello:
+    cmd: echo hello

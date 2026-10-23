@@ -1,0 +1,15 @@
+version: '3.39'
+
+tasks:
+  # Leading comment of alpha.
+  alpha:
+    desc: First
+    cmds:
+      - echo one
+      - cmd: echo two
+      - task: beta
+
+  # Leading comment of beta.
+  beta:
+    cmd: echo beta
+    deps: [alpha]

@@ -1,0 +1,8 @@
+version: '3.39'
+
+includes:
+  b: ./b.yml
+
+tasks:
+  mid:
+    cmd: echo mid

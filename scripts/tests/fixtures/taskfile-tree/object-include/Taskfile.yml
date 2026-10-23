@@ -1,0 +1,16 @@
+version: '3.39'
+
+includes:
+  sub:
+    taskfile: ./sub
+  skipped:
+    taskfile: ./not-there.yml
+    optional: true
+  tuned:
+    taskfile: ./tuned.yml
+    dir: ./elsewhere
+    excludes: [gone]
+
+tasks:
+  default:
+    cmd: echo root

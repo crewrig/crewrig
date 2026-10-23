@@ -1,0 +1,518 @@
+[
+  {
+    "name": "build-antigravity-extension",
+    "desc": "Build an Antigravity CLI plugin from an extension (task build-antigravity-extension EXT=hello-world)"
+  },
+  {
+    "name": "build-claude-plugin",
+    "desc": "Build a Claude Code plugin from an extension (task build-claude-plugin EXT=hello-world)"
+  },
+  {
+    "name": "build-components",
+    "desc": "Build all community components for Gemini CLI, Claude Code, and GitHub Copilot CLI (Node.js 24)"
+  },
+  {
+    "name": "build-components-antigravity",
+    "desc": "Build community components for Antigravity CLI only (Node.js 24)"
+  },
+  {
+    "name": "build-components-claude",
+    "desc": "Build community components for Claude Code only (Node.js 24)"
+  },
+  {
+    "name": "build-components-copilot",
+    "desc": "Build community components for GitHub Copilot CLI only (Node.js 24)"
+  },
+  {
+    "name": "build-components-gemini",
+    "desc": "Build community components for Gemini CLI only (Node.js 24)"
+  },
+  {
+    "name": "build-copilot-plugin",
+    "desc": "Build a Copilot CLI plugin from an extension (task build-copilot-plugin EXT=hello-world)"
+  },
+  {
+    "name": "check-agent-profiles",
+    "desc": "Check agent capability-profile conformance against spec 0195 (local mirror of the CI guard, spec 0198)"
+  },
+  {
+    "name": "check-claude-agent-layout",
+    "desc": "Check the compiled .claude/agents/ tree holds only flat <name>.md files (local mirror of the CI guard, spec 0201)"
+  },
+  {
+    "name": "check-comment-size",
+    "desc": "Fail when a plan or verdict comment body exceeds 12288 bytes (spec 0275 R-E2). Author-side: task check-comment-size -- <file> (or pipe the body on stdin)"
+  },
+  {
+    "name": "check-components",
+    "desc": "Check that generated community components match source (drift detection) and run the assembly verification test (Node.js 24)"
+  },
+  {
+    "name": "check-description-length",
+    "desc": "Fail when a skill or agent description exceeds 300 characters (spec 0269 R11)"
+  },
+  {
+    "name": "check-extension-manifest-version",
+    "desc": "Enforce a single authoritative version across an extension's manifests (local mirror of the CI guard, spec 0044)"
+  },
+  {
+    "name": "check-extension-provenance",
+    "desc": "Enforce extension skill/agent provenance carrier presence + routing (local mirror of the CI guard, spec 0043)"
+  },
+  {
+    "name": "check-extension-version-bump",
+    "desc": "Enforce carrier-version bump on modified extension skill/agent sources (local mirror of the CI guard, spec 0044)"
+  },
+  {
+    "name": "check-feedback-routing",
+    "desc": "Enforce upstream-tier feedback routing to canonical (local mirror of the CI guard, spec 0030)"
+  },
+  {
+    "name": "check-metadata-keys",
+    "desc": "Check the metadata: closed key set on artifacts/core/** and artifacts/library/** (local mirror of the CI guard, spec 0200)"
+  },
+  {
+    "name": "check-model-mappings",
+    "desc": "Check model-mapping conformance against docs/model-mapping-format.md (local mirror of the CI guard, spec 0197)"
+  },
+  {
+    "name": "check-plan-review",
+    "desc": "Decide whether a plan needs the cold second-architect review (spec 0277). Orchestrator-side at PLAN time: task check-plan-review -- <spec> [<plan>|-] [--prior-review] (plan on stdin when absent)"
+  },
+  {
+    "name": "check-seat-brief",
+    "desc": "Fail when a seated-pass brief breaches the references-only form (spec 0276). Orchestrator-side, before the spawn: task check-seat-brief -- <file> (or pipe the brief on stdin; --template <specs|plan|review> prints a skeleton)"
+  },
+  {
+    "name": "check-skill-versions",
+    "desc": "Enforce provenance.version bump on changed skill/agent sources (local mirror of the CI guard)"
+  },
+  {
+    "name": "check-taskfile-commands",
+    "desc": "Check Taskfile.yml names no POSIX-only command, modulo the owned exemption list (local mirror of the CI guard, spec 0266 R13)"
+  },
+  {
+    "name": "cli-matrix:build",
+    "desc": "Regenerate docs/cli-matrix.md from docs/cli-matrix/ (spec 0272)"
+  },
+  {
+    "name": "cli-matrix:check",
+    "desc": "Fail when docs/cli-matrix.md is stale against docs/cli-matrix/ (local mirror of the CI guard, spec 0272)"
+  },
+  {
+    "name": "cli-matrix:row",
+    "desc": "Print one CLI-matrix row source. Usage: task cli-matrix:row -- <id>"
+  },
+  {
+    "name": "create-extension",
+    "desc": "Scaffold a new extension from skeleton (task create-extension NAME=my-ext)"
+  },
+  {
+    "name": "default",
+    "desc": ""
+  },
+  {
+    "name": "e2e:auth:claude",
+    "desc": "Interactive Claude Code login → ~/.crewrig-e2e/claude/ (RW one-shot, RO at scenario time)."
+  },
+  {
+    "name": "e2e:auth:copilot",
+    "desc": "Guidance for Copilot CLI auth via PAT (env-var COPILOT_GITHUB_TOKEN). Runs a sanity check if the token is already set."
+  },
+  {
+    "name": "e2e:auth:gemini",
+    "desc": "Interactive Gemini CLI login → ~/.crewrig-e2e/gemini/ (RW one-shot, RO at scenario time)."
+  },
+  {
+    "name": "e2e:auth:ollama",
+    "desc": "Interactive Ollama Cloud signin → ~/.crewrig-e2e/ollama/ (RW one-shot, RO at scenario time). Required only when local.toml routes Copilot through Ollama Cloud."
+  },
+  {
+    "name": "e2e:build",
+    "desc": "Build all e2e images (base + claude + gemini + copilot + mempalace) and refresh .versions.lock."
+  },
+  {
+    "name": "e2e:build:base",
+    "desc": "Build the shared e2e base image (crewrig/e2e-base:latest)."
+  },
+  {
+    "name": "e2e:build:claude",
+    "desc": "Build the Claude Code e2e image (crewrig/e2e-claude:latest)."
+  },
+  {
+    "name": "e2e:build:copilot",
+    "desc": "Build the GitHub Copilot CLI e2e image (crewrig/e2e-copilot:latest)."
+  },
+  {
+    "name": "e2e:build:gemini",
+    "desc": "Build the Gemini CLI e2e image (crewrig/e2e-gemini:latest)."
+  },
+  {
+    "name": "e2e:build:mempalace",
+    "desc": "Build the MemPalace sidecar e2e image (crewrig/e2e-mempalace:latest)."
+  },
+  {
+    "name": "e2e:lock",
+    "desc": "Capture resolved CLI/tool versions from the built images into docker/e2e/.versions.lock."
+  },
+  {
+    "name": "e2e:report",
+    "desc": "Aggregate TAP results into a parity matrix (console + markdown)"
+  },
+  {
+    "name": "e2e:test",
+    "desc": "Run all e2e scenarios across all configured CLIs (TAP report)."
+  },
+  {
+    "name": "e2e:test:cli",
+    "desc": "Run all scenarios against one CLI. Usage: task e2e:test:cli -- <claude|gemini|copilot>"
+  },
+  {
+    "name": "e2e:test:scenario",
+    "desc": "Run one scenario across all configured CLIs. Usage: task e2e:test:scenario -- <scenario-name>"
+  },
+  {
+    "name": "erasable-ts",
+    "desc": "Reject TypeScript syntax Node type stripping cannot erase (spec 0238 R5)"
+  },
+  {
+    "name": "fix-markdown",
+    "desc": "Auto-fix Markdown formatting issues"
+  },
+  {
+    "name": "format-ts",
+    "desc": "Check TypeScript formatting with Oxfmt (spec 0238 R8)"
+  },
+  {
+    "name": "format-ts:fix",
+    "desc": "Rewrite every tracked TypeScript source with Oxfmt (local convenience, not a CI mirror)"
+  },
+  {
+    "name": "harness-curate",
+    "desc": "Run the Harness Curator (task harness-curate -- [--apply | --from-stdin])"
+  },
+  {
+    "name": "host-safety",
+    "desc": "Run the test-harness host-safety check, as CI does (spec 0267)"
+  },
+  {
+    "name": "import-antigravity-history",
+    "desc": "Backfill MemPalace with pre-existing Antigravity CLI transcripts from ~/.gemini/antigravity-cli/history.jsonl (idempotent)"
+  },
+  {
+    "name": "import-claude-history",
+    "desc": "Backfill MemPalace with pre-existing Claude Code transcripts from ~/.claude/projects (idempotent)"
+  },
+  {
+    "name": "import-copilot-history",
+    "desc": "Backfill MemPalace with pre-existing GitHub Copilot CLI transcripts from ~/.copilot/session-state (idempotent)"
+  },
+  {
+    "name": "import-gemini-history",
+    "desc": "Backfill MemPalace with pre-existing Gemini CLI transcripts from ~/.gemini/tmp (idempotent)"
+  },
+  {
+    "name": "install-antigravity-component",
+    "desc": "Install a single Antigravity CLI component (task install-antigravity-component TYPE=antigravity-skills NAME=my-skill)"
+  },
+  {
+    "name": "install-antigravity-extension",
+    "desc": "Build and install an Antigravity CLI plugin from an extension (requires agy in PATH; task install-antigravity-extension EXT=hello-world)"
+  },
+  {
+    "name": "install-claude-component",
+    "desc": "Install a single Claude Code component (task install-claude-component TYPE=claude-skills NAME=my-skill)"
+  },
+  {
+    "name": "install-claude-plugin",
+    "desc": "Install a Claude Code plugin (task install-claude-plugin EXT=hello-world)"
+  },
+  {
+    "name": "install-claude-workspace",
+    "desc": "Install all artifacts Claude Code components (copy mode)"
+  },
+  {
+    "name": "install-component",
+    "desc": "Install a single component (task install-component TYPE=skills NAME=my-skill)"
+  },
+  {
+    "name": "install-copilot-component",
+    "desc": "Install a Copilot component (task install-copilot-component TYPE=skills NAME=my-skill)"
+  },
+  {
+    "name": "install-copilot-plugin",
+    "desc": "Build and install a Copilot CLI plugin from an extension (requires copilot in PATH; task install-copilot-plugin EXT=hello-world)"
+  },
+  {
+    "name": "install-deps",
+    "desc": "Install npm dependencies for all extensions"
+  },
+  {
+    "name": "install-extension",
+    "desc": "Deprecated: Install a single extension to Gemini CLI (use install-gemini-extension or install-extension-all)"
+  },
+  {
+    "name": "install-extension-all",
+    "desc": "Install a single extension across all present CLIs (task install-extension-all EXT=hello-world)"
+  },
+  {
+    "name": "install-extensions",
+    "desc": "Deprecated: Install all extensions to Gemini CLI (use install-gemini-extensions)"
+  },
+  {
+    "name": "install-gemini-extension",
+    "desc": "Install a single extension to Gemini CLI (task install-gemini-extension EXT=hello-world)"
+  },
+  {
+    "name": "install-gemini-extensions",
+    "desc": "Install all extensions to Gemini CLI (copy mode)"
+  },
+  {
+    "name": "install-mempalace",
+    "desc": "Install or upgrade MemPalace at the pinned version (>=3.6.0,<3.7)"
+  },
+  {
+    "name": "install-workspace",
+    "desc": "Install all artifacts components (copy mode)"
+  },
+  {
+    "name": "link-antigravity-component",
+    "desc": "Link a single Antigravity CLI component (task link-antigravity-component TYPE=antigravity-skills NAME=my-skill)"
+  },
+  {
+    "name": "link-claude-component",
+    "desc": "Link a single Claude Code component (task link-claude-component TYPE=claude-skills NAME=my-skill)"
+  },
+  {
+    "name": "link-claude-workspace",
+    "desc": "Link all artifacts Claude Code components (symlink mode — dev only)"
+  },
+  {
+    "name": "link-component",
+    "desc": "Link a single component (task link-component TYPE=skills NAME=my-skill)"
+  },
+  {
+    "name": "link-copilot-component",
+    "desc": "Link a Copilot component (task link-copilot-component TYPE=skills NAME=my-skill)"
+  },
+  {
+    "name": "link-extensions",
+    "desc": "Deprecated: Link all extensions to Gemini CLI (use link-gemini-extensions)"
+  },
+  {
+    "name": "link-gemini-extension-build",
+    "desc": "Debugging path (not an install path): symlink one extension's rendered build directory into Gemini CLI (task link-gemini-extension-build EXT=hello-world)"
+  },
+  {
+    "name": "link-gemini-extensions",
+    "desc": "Debugging path (not an install path): symlink every extension's rendered build directory into Gemini CLI"
+  },
+  {
+    "name": "link-workspace",
+    "desc": "Link all artifacts components (symlink mode, for development)"
+  },
+  {
+    "name": "lint-bootstrap",
+    "desc": "Install every dependency the spec, Markdown and TypeScript linters need (js-yaml, semver, markdownlint-cli, typescript, oxlint, oxfmt)"
+  },
+  {
+    "name": "lint-markdown",
+    "desc": "Check all Markdown files for lint compliance"
+  },
+  {
+    "name": "lint-ts",
+    "desc": "Run every TypeScript check CI runs: type-check, erasable syntax, Oxlint, Oxfmt (spec 0238 R4-R8)"
+  },
+  {
+    "name": "mempalace:doctor",
+    "desc": "Report which MemPalace will actually answer on this machine — resolved path, interpreter and version behind every MemPalace command and every CLI's memory-server registration. Exits non-zero on divergence (spec 0108)."
+  },
+  {
+    "name": "mempalace:repair",
+    "desc": "Repair the residue left by an interrupted MemPalace switch (spec 0165): an assistant whose configuration does not parse as JSON, or whose mempalace registration matches neither the http nor the stdio shape. With no flag, reports each affected assistant, its config path, whether a timestamped backup exists, and the available actions. The repair verbs need the separator (task mempalace:repair -- [--restore-backup | --reset-none]): --restore-backup restores the most recent usable backup, --reset-none removes the mempalace registration. Restores recognisability only — never registers anyone for http, never places the bearer token in argv."
+  },
+  {
+    "name": "mempalace:rotate-token",
+    "desc": "Rotate the shared MemPalace MCP HTTP daemon bearer token (spec 0176). Mints a new token, replaces the daemon process, purges stale backups, and re-registers every assistant."
+  },
+  {
+    "name": "mempalace:status",
+    "desc": "Report the shared MemPalace MCP HTTP daemon: whether it is serving, whether authentication is actually enforced, whether the installed launcher has drifted from the repository, and which arrangement each assistant is configured for."
+  },
+  {
+    "name": "mempalace:stop",
+    "desc": "Restart the shared MemPalace MCP HTTP daemon. Under the supervisor a stop IS a restart request — to end the daemon, use mempalace:uninstall-daemon."
+  },
+  {
+    "name": "mempalace:switch-http",
+    "desc": "Switch every supported assistant on this machine to the shared MemPalace MCP HTTP daemon, so concurrent sessions all write to shared memory (spec 0113). All-or-nothing: if one assistant cannot be switched, none is."
+  },
+  {
+    "name": "mempalace:uninstall-daemon",
+    "desc": "End the shared MemPalace MCP HTTP daemon and remove its supervisor unit. Run this BEFORE reverting the ticket that introduced it — the launcher lives outside the repository, so a revert alone would leave a unit that keeps autostarting."
+  },
+  {
+    "name": "migrate-extension",
+    "desc": "Convert an extension source tree from the retired declaration shape to the current one (task migrate-extension EXT=my-ext, spec 0183)"
+  },
+  {
+    "name": "oxlint-ts",
+    "desc": "Run Oxlint type-aware strict typing and the max-lines warning (spec 0238 R6-R7)"
+  },
+  {
+    "name": "package",
+    "desc": "Package all extensions to dist/"
+  },
+  {
+    "name": "package-extension",
+    "desc": "Package a single extension (task package-extension EXT=hello-world)"
+  },
+  {
+    "name": "prune-transcripts",
+    "desc": "Prune old transcripts from MemPalace (task prune-transcripts -- --days 30 [--apply])"
+  },
+  {
+    "name": "ratchet",
+    "desc": "Run the shell / JavaScript / Python footprint ratchet, as CI does (spec 0238 R1-R3)"
+  },
+  {
+    "name": "setup-antigravity-interactive",
+    "desc": "Interactive Antigravity CLI setup with team/expertise/level selection"
+  },
+  {
+    "name": "setup-claude-interactive",
+    "desc": "Interactive Claude Code setup with team/expertise/level selection (copy by default)"
+  },
+  {
+    "name": "setup-copilot-interactive",
+    "desc": "Interactive GitHub Copilot CLI setup (workspace settings + optional transcript hooks)"
+  },
+  {
+    "name": "setup-gemini-interactive",
+    "desc": "Interactive setup with team/expertise/level selection"
+  },
+  {
+    "name": "setup:playwright-mcp",
+    "desc": "Register the Playwright MCP server (opt-in) in Claude Code, Gemini CLI, GitHub Copilot CLI and Antigravity CLI, routed through scripts/tls-exec.ts; converges a legacy or relocated entry, leaves a customised one untouched (spec 0245). Requires Node.js >= 24; run it from the checkout you keep. Idempotent."
+  },
+  {
+    "name": "skill:check",
+    "desc": "Verify built skill (+ optional agent) mirrors for one component across .claude/, .gemini/, .github/. Usage: task skill:check NAME=<skill-name>"
+  },
+  {
+    "name": "spec:derive-status",
+    "desc": "Derive merged spec and delta-spec statuses from evidence (spec 0109 delta-04 R23)"
+  },
+  {
+    "name": "spec:lint",
+    "desc": "Lint spec files for format compliance (markdown + custom semantic rules)"
+  },
+  {
+    "name": "spec:view",
+    "desc": "Print a spec and its deltas as one read-only Markdown document (spec 0273)"
+  },
+  {
+    "name": "test-components",
+    "desc": "Test the build-components canonical_repo validator"
+  },
+  {
+    "name": "test-derive-spec-status",
+    "desc": "Run the merged-spec status derivation suite, as CI does (spec 0109 delta-04)"
+  },
+  {
+    "name": "test-harness-curate",
+    "desc": "Smoke-test the Harness Curator against the bundled fixture"
+  },
+  {
+    "name": "test-playwright-mcp",
+    "desc": "Run the Playwright MCP registration suites (model, JSONC scanner, config reader), as CI does (spec 0245)"
+  },
+  {
+    "name": "test-runtime-foundations",
+    "desc": "Run the floor guard, dependency-step and shared-module suites, as CI does (spec 0240)"
+  },
+  {
+    "name": "test-spec-view",
+    "desc": "Run the spec effective view suite, as CI does (spec 0273)"
+  },
+  {
+    "name": "test-ticket-pickup",
+    "desc": "Run the ticket-pickup check's suites (model, fake-forge end to end, interleavings), as CI does (spec 0244)"
+  },
+  {
+    "name": "test-windows-hook-probe",
+    "desc": "Run the Windows hook command-line parsing probe's suite, as CI does (spec 0237)"
+  },
+  {
+    "name": "ticket-pickup",
+    "desc": "Check who owns a ticket and claim it if free, before any authoring action (spec 0244)"
+  },
+  {
+    "name": "timing-budget",
+    "desc": "Time a Node.js script against a budget (spec 0240 R13); pass the harness arguments after --"
+  },
+  {
+    "name": "typecheck-ts",
+    "desc": "Type-check every tracked TypeScript source in strict mode (spec 0238 R4)"
+  },
+  {
+    "name": "unlink-component",
+    "desc": "Remove a component from ~/.gemini (task unlink-component TYPE=skills NAME=my-skill)"
+  },
+  {
+    "name": "unlink-extensions",
+    "desc": "Deprecated: Remove all installed extensions from Gemini CLI (use unlink-gemini-extensions)"
+  },
+  {
+    "name": "unlink-gemini-extensions",
+    "desc": "Remove all installed extensions from Gemini CLI"
+  },
+  {
+    "name": "usage:attribute",
+    "desc": "Append to, list, or inspect the append-only attribution ledger (spec 0208). Usage: task usage:attribute -- add (--session <id> | --agent <id> --parent <id> | --period <YYYY-MM>) (--task-key <key> | --asset <kind>:<ref>) --reason <text> | list | explain --record <id> --cli <cli> --period <YYYY-MM>"
+  },
+  {
+    "name": "usage:backfill",
+    "desc": "Replay usage-record capture for Claude Code, Gemini CLI and Copilot CLI against history already on this machine (idempotent; pass --reset-cursors to re-derive from scratch, spec 0206)"
+  },
+  {
+    "name": "usage:dashboard",
+    "desc": "Generate the usage dashboard as one self-contained, offline HTML file (spec 0210 form A) at <root>/dashboard/usage-dashboard.html. Reference figures, never an invoice. Usage: task usage:dashboard -- [--session <id> | --agent <id> --parent <id> | --task-key <key> | --asset <kind>:<ref> | --cli <cli>] [--from <YYYY-MM-DD>] [--to <YYYY-MM-DD>] [--period <YYYY-MM>] [--model <id>] [--bucket day|week|month] [--currency <ISO4217>] [--as-of-today] [--out <path>]"
+  },
+  {
+    "name": "usage:dashboard:report",
+    "desc": "Print the usage dashboard as a plain-text report, or its view model as JSON (spec 0210 form C). Usage: task usage:dashboard:report -- [same filters as usage:dashboard] [--as-of-today] [--json]"
+  },
+  {
+    "name": "usage:dashboard:serve",
+    "desc": "Serve the live usage dashboard on 127.0.0.1 only, in the foreground (spec 0210 form B); stop it with Ctrl-C or its Stop action. Writes nothing. Usage: task usage:dashboard:serve -- [--port <n>] (default 41920; filters are request parameters, e.g. /?period=2026-09)"
+  },
+  {
+    "name": "usage:drain",
+    "desc": "One-shot, unbounded drain of the usage-capture spool into the usage-record journal (spec 0207 R-L). Pays the first-drain cost once, at a time the operator chooses."
+  },
+  {
+    "name": "usage:inventory",
+    "desc": "Inventory (and, on request, purge) usage-record drawers directly in MemPalace's usage-records room, independent of the local usage root, journal, or mirror markers (spec 0239). Usage: task usage:inventory -- [list] [--wing <name>[,<name>...]] [--cli <cli>] [--period <YYYY-MM>] [--json] | delete [same filters] [--commit [--confirm-count <N>]]"
+  },
+  {
+    "name": "usage:mirror",
+    "desc": "Run the MemPalace catch-up for pending usage-record mirror markers (spec 0207). Usage: task usage:mirror -- [--reconcile]"
+  },
+  {
+    "name": "usage:price",
+    "desc": "Compute comparative reference prices for usage records against a pinned LiteLLM snapshot (spec 0209). Never an invoice. Usage: task usage:price -- --period <YYYY-MM> [--cli <cli>] [--currency <ISO4217>] [--as-of-today] [--rollup] | --refresh-pricelist [--sha <sha>] | --refresh-fx [--fx-mirror frankfurter] | --cross-check <modelId>"
+  },
+  {
+    "name": "usage:prune",
+    "desc": "Remove a period's usage-record journal entries and mirrored drawers together (spec 0207). Never automatic. Usage: task usage:prune -- <cli> <YYYY-MM> [--force | --unprune]"
+  },
+  {
+    "name": "usage:query",
+    "desc": "Read usage records by session, agent+parent, period, task-handoff key, or external asset reference (spec 0207/0208). JSONL output. Usage: task usage:query -- --session <id> | --period <YYYY-MM> [--cli <cli>] | --task-key <key> [--rollup [--combined]] | ..."
+  },
+  {
+    "name": "usage:task",
+    "desc": "Write, read, or clear the current session's usage-attribution declaration record (spec 0208). Usage: task usage:task -- set --channel explicit|protocol [--task-key <key>] [--asset <kind>:<ref>] | show | clear"
+  }
+]

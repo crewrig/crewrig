@@ -1,0 +1,5 @@
+version: '3.39'
+
+tasks:
+  inner:
+    cmd: echo inner

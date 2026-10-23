@@ -1,0 +1,10 @@
+version: '3.39'
+
+tasks:
+  go:
+    deps: ["e2e:base"]
+    cmd: echo go
+  "setup:thing":
+    cmd: echo thing
+  last:
+    cmd: echo last

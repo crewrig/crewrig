@@ -1,0 +1,6 @@
+version: '3.39'
+
+tasks:
+  helper:
+    deps: [base]
+    cmd: echo helper
