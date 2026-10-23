@@ -41,14 +41,15 @@ that fails.
 This delta states the union rule, provisions the tools on both engines, and adds a mechanical
 guard on the pull-request path so that a gated capability that gains a tool, or a gated
 command that starts calling one, cannot reach `main` without the exhaustive run being told.
+The command-level half of that guarantee already exists: validity rule 6 of `check-ci-parity`
+fails a capability whose command invokes `yq`, `jq`, `task` or `markdownlint` without
+declaring it. Combined with the union rule below, a gated command that invokes `task` forces
+its own capability to declare `task`, which forces `changeset-coverage` to declare it.
 
 ### Vocabulary
 
 - **Gated union.** The set of tool names that appear in the `requires.tools` of at least one
   capability with `changeset-gated: true` in `ci/ci-capabilities.yml`, read at check time.
-- **Recipe list.** The set of tool names for which `scripts/lib/build-ci/tools.ts` carries a
-  GitLab install recipe (today `yq`, `jq`, `task`, `markdownlint-cli`, `tesseract`,
-  `python3`). It is the closed list of tools the pipeline knows how to provision.
 - **Coverage-tools guard.** The test introduced by requirement 28.
 
 ### Requirements
@@ -74,41 +75,37 @@ command that starts calling one, cannot reach `main` without the exhaustive run 
   run SHALL NOT continue against the missing tool and report a pass because the check
   skipped itself. This delta does not change `scripts/check-figure-labels.ts`; it removes
   the condition (tesseract absent) that triggers its skip in the exhaustive run.
-- **R28.** A **coverage-tools guard** SHALL run on every pull request and every push to
-  `main` and `release/**`, with **no `paths:` filter**, so that it cannot be skipped by the
-  mechanism it polices (the reasoning of requirement 11 of delta-01). It SHALL fail when:
-  - **(a)** the gated union contains a tool that is absent from the `requires.tools` of
-    `changeset-coverage` (requirement 25), or
-  - **(b)** a command of a changeset-gated capability invokes a tool of the recipe list as a
-    command word, and `changeset-coverage` does not declare that tool in `requires.tools`.
-    A tool name counts as invoked when it is the first word of a command, or the first word
-    after `|`, `;`, `&&`, `||`, `$(` or `(`. A mention as an argument, a path component or
-    inside a quoted string does not count. A tool that a runtime declared by
-    `changeset-coverage` already provides is satisfied without a `requires.tools` entry:
-    `python3` is provided by a `python@*` runtime (the `mempalace` command
-    `python3 -m pip install` relies on it).
+- **R28.** A **coverage-tools guard** SHALL run on every pull request targeting `main` or
+  `release/**` and every push to `main` and `release/**`, with **no `paths:` filter**, so
+  that it cannot be skipped by the mechanism it polices (the reasoning of requirement 11 of
+  delta-01). It SHALL fail when the gated union contains a tool that is absent from the
+  `requires.tools` of `changeset-coverage` (requirement 25). A tool that a runtime declared
+  by `changeset-coverage` already provides is satisfied without a `requires.tools` entry:
+  `python3` is provided by a `python@*` runtime, the same exemption `check-ci-parity` applies
+  to the GitHub install step. A gated **command** that invokes a tool is covered
+  transitively: validity rule 6 of `check-ci-parity` requires its own capability to declare
+  the tool, and this requirement then requires `changeset-coverage` to declare it. The guard
+  SHALL NOT define a second, different notion of "invokes a tool".
 - **R29.** The guard SHALL read `ci/ci-capabilities.yml` **at check time** and SHALL NOT
-  embed a copy of the gated union, of the capability list, or of any command. The recipe
-  list of requirement (b) SHALL be derived from `scripts/lib/build-ci/tools.ts` (the
-  module exposes the key set of its recipe table read-only; no second list is written), so
-  a tool gains guard coverage in the same change that gives it an install recipe.
+  embed a copy of the gated union, of the capability list, or of any command or tool list.
 - **R30.** Each finding line of the guard SHALL name **the capability** and **the missing
   tool**, in the form
   `ci-changeset-coverage-tools: <capability-id> needs <tool> but changeset-coverage does not require it`
-  (rule (a): `<capability-id>` is the gated capability that declares the tool; rule (b):
-  the gated capability whose command invokes it). The guard SHALL exit non-zero when it
-  prints at least one finding, and SHALL exit zero and print the number of gated
-  capabilities and tools evaluated when it prints none.
+  (`<capability-id>` is the gated capability that declares the tool). The guard SHALL exit
+  non-zero when it prints at least one finding, and SHALL exit zero and print the number of
+  gated capabilities and tools evaluated when it prints none.
 - **R31.** The guard SHALL be a new test file,
   `scripts/tests/ci-changeset-coverage-tools.test.ts`, run by the existing capability
-  `changeset-coverage-test` of `ci/ci-capabilities.yml` (extending its `command` list). That
-  capability already runs on every pull request and every push, is never path-filtered and is
-  not changeset-gated (requirement 23 of delta-01), so **no new job and no new capability**
-  is introduced, on either engine. `.gitlab-ci.yml` SHALL be regenerated, not edited.
-  The test SHALL include a fixture-driven case per scenario below, each built from a
-  temporary copy of a reference document, never by mutating the real
-  `ci/ci-capabilities.yml`.
-- **R32.** The merge of the implementation pull request SHALL be preceded by a green
+  `changeset-coverage-test`. That capability already runs on every pull request to `main` or
+  `release/**` and every push, is never path-filtered and is not changeset-gated
+  (requirement 23 of delta-01), so **no new job and no new capability** is introduced, on
+  either engine. The command is added to the `command` list of the capability in
+  `ci/ci-capabilities.yml`, to the matching hand-written job `changeset-coverage-test` of
+  `.github/workflows/build.yml` (one step per declared command, so that `check-ci-parity`
+  keeps the engines in agreement, requirement 9 of the parent), and `.gitlab-ci.yml` SHALL be
+  regenerated, not edited. The test SHALL include a fixture-driven case per scenario below,
+  each built from a temporary copy of a reference document, never by mutating the real
+  `ci/ci-capabilities.yml`. - **R32.** The merge of the implementation pull request SHALL be preceded by a green
   `workflow_dispatch` run of the **Exhaustive Run** workflow on the implementation branch,
   linked in the pull request body. If that run reveals any failure other than the missing
   tools of requirements 25 and 26 (a pre-existing red check that the run had been masking),
@@ -131,14 +128,23 @@ command that starts calling one, cannot reach `main` without the exhaustive run 
   node test of the same family. A new job costs a runner on both engines for a seconds-long
   check.
 - **A text assertion on `changeset-coverage.yml`** (fail when an install step is missing for a
-  declared tool). **Rejected for this delta**: it would duplicate the install recipes in a
-  second place, and the hand-written GitHub workflow is the surface that the `task ci:<id>`
-  migration of epic #1761 replaces. Requirement 32's dispatch run is the proof for the GitHub
-  side until then.
-- **Deriving the tool set from the commands alone** (drop requirement 28(a)). Rejected: the
-  `requires.tools` declaration is what the GitLab generator installs, so the union rule is
-  the one that provisions, and (b) is only the safety net for a command that uses a tool its
-  own capability forgot to declare.
+  declared tool). **Not needed**: `check-ci-parity` already fails when a declared
+  `requires.tools` entry (other than `jq`, `git`, `diff`) has no install step in the GitHub job
+  attributed to the capability, and it attributes `changeset-coverage.yml`. Once requirement
+  25 lands, the GitHub install steps of requirement 26 are mechanically enforced; the dispatch
+  run of requirement 32 proves the run itself, not the presence of the steps.
+- **Extending `check-ci-parity` with the union rule** (a new validity rule instead of a new
+  test). Considered: it would keep one reader of the reference and reuse the existing
+  fixtures. **Rejected for this delta**: `check-ci-parity` polices drift between the reference
+  and each engine's pipeline, while the union rule is a consistency rule between two
+  capabilities of the reference itself; a ten-line test with its own fixtures keeps the
+  regression scenarios readable and leaves the parity harness untouched. The implementer MAY
+  revisit this in the plan if the harness turns out to be the cheaper home, since the
+  observable contract (requirements 28 to 30) is unchanged.
+- **A second, command-level rule** (a gated command invoking `task` must be matched by
+  `changeset-coverage`). **Rejected**: validity rule 6 of `check-ci-parity` already ties every
+  command to its capability's declared tools, so a second definition of "invokes a tool"
+  would only add a grammar to maintain; the union rule closes the chain.
 
 ### Scenarios
 
@@ -161,7 +167,6 @@ And the log does not contain `[SKIP] tesseract is not installed`
 **Scenario:** the guard passes on a consistent reference
 
 Given a reference in which `changeset-coverage` declares every tool of the gated union
-And no gated command invokes an undeclared tool of the recipe list
 When the coverage-tools guard runs
 Then it exits zero
 And it prints the number of gated capabilities and tools evaluated
@@ -183,23 +188,17 @@ And `changeset-coverage` does not declare `tesseract`
 When the coverage-tools guard runs against it
 Then it fails and names that capability and `tesseract`
 
-**Scenario:** a gated command calls a tool its capability did not declare
+**Scenario:** a gated command that invokes `task` is covered transitively
 
 Given a copy of the reference in which a changeset-gated capability has the command
-`task docs:build` and no `task` in its own `requires.tools`
-And `changeset-coverage` does not declare `task`
+`task docs:build`, declares `task` in its own `requires.tools`, and `changeset-coverage` does
+not declare `task`
 When the coverage-tools guard runs against it
 Then it fails and names that capability and `task`
 
-**Scenario:** a tool name used as an argument is not an invocation
-
-Given a gated command `echo "run task later"` or `cat docs/task.md`
-When the coverage-tools guard runs
-Then it reports no finding for `task`
-
 **Scenario:** a tool provided by a declared runtime needs no `requires.tools` entry
 
-Given a changeset-gated command `python3 -m pip install --quiet packaging`
+Given a changeset-gated capability that declares `python3` in `requires.tools`
 And `changeset-coverage` declares the runtime `python@3.12` and no `python3` in `requires.tools`
 When the coverage-tools guard runs
 Then it reports no finding for `python3`
@@ -213,7 +212,7 @@ And neither result depends on any list embedded in the guard
 
 **Scenario:** the guard cannot be skipped
 
-Given a pull request that changes only `docs/`
+Given a pull request targeting `main` that changes only `docs/`
 When the pipeline runs on either engine
 Then `changeset-coverage-test` runs, and with it the coverage-tools guard
 
