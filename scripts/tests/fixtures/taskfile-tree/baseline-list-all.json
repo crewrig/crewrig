@@ -92,6 +92,110 @@
     "desc": "Check Taskfile.yml names no POSIX-only command, modulo the owned exemption list (local mirror of the CI guard, spec 0266 R13)"
   },
   {
+    "name": "ci:check-agents-size",
+    "desc": "Fail when the AGENTS.md size budget is exceeded (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-ci-parity",
+    "desc": "Check the CI reference, workflow and GitLab outputs agree (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-comment-size",
+    "desc": "Check the comment-size guard on its under and over fixtures (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-description-length",
+    "desc": "Fail when a skill or agent description exceeds the length cap (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-rules-size",
+    "desc": "Fail when the rules size budget is exceeded (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-skill-versions",
+    "desc": "Enforce the provenance version bump on changed skill and agent sources (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-taskfile-commands",
+    "desc": "Check the Taskfile tree names no POSIX-only command, then run its self-tests (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-taskfile-tree",
+    "desc": "Check the Taskfile tree layout and contract, then run its self-tests (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:cli-matrix-fresh",
+    "desc": "Check docs/cli-matrix.md is fresh and run its builder test (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:component-drift",
+    "desc": "Check built components match their sources and run the assembly tests (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:docs-index",
+    "desc": "Check docs/index.json is fresh and run its entry test (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:frontmatter",
+    "desc": "Run the frontmatter, skill-version, routing, install-scope and tier-resolution suites (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:gitlab-ci-check",
+    "desc": "Check .gitlab-ci.yml is fresh against the CI reference (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:hooks-install",
+    "desc": "Enable the native pre-push hook for this clone by setting core.hooksPath to .githooks (spec 0279 R15)"
+  },
+  {
+    "name": "ci:hooks-status",
+    "desc": "Report whether the native pre-push hook is enabled for this clone (spec 0279 R15)"
+  },
+  {
+    "name": "ci:hooks-uninstall",
+    "desc": "Disable the native pre-push hook by unsetting core.hooksPath for this clone (spec 0279 R15)"
+  },
+  {
+    "name": "ci:host-safety",
+    "desc": "Run the host-safety self-tests then the host-safety check (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:lint-markdown",
+    "desc": "Lint every Markdown file (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:lint-specs",
+    "desc": "Run the spec-linter self-tests then the spec linter (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:lint-typescript",
+    "desc": "Run the TypeScript lint self-tests then every TypeScript check (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:markdown-links",
+    "desc": "Run the Markdown link suite tests (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:path-ownership",
+    "desc": "Run the path-ownership and stray-scan wiring checks with their self-tests (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:pre-push",
+    "desc": "Run the fast subset of the CI checks the pushed changeset can affect, concurrently (spec 0279). Usage: task ci:pre-push [-- <wrapper args>]"
+  },
+  {
+    "name": "ci:ratchet",
+    "desc": "Run the footprint ratchet self-tests then the ratchet (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:repository-scan",
+    "desc": "Scan the repository for machine paths, broken Markdown links and core-path drift (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:test-wiring",
+    "desc": "Check every test is wired into CI and run the wiring and stray checks with their self-tests (pre-push mirror of the CI job)"
+  },
+  {
     "name": "cli-matrix:build",
     "desc": "Regenerate docs/cli-matrix.md from docs/cli-matrix/ (spec 0272)"
   },

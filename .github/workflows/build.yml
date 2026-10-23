@@ -2167,7 +2167,7 @@ jobs:
         # agents, context, README) stays linted (spec 0042). artifacts/*/commands/*.md
         # are the same kind of pivot command source at the artifacts tier (spec
         # 0191) — same rationale, same exclusion.
-        run: markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore communication --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md'
+        run: markdownlint "**/*.md" --ignore node_modules --ignore '**/node_modules/**' --ignore extension-skeleton --ignore communication --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md'
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

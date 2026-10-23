@@ -39,6 +39,7 @@ refuse to proceed.
 | `DEVELOPMENT.md` | Local development setup guide. |
 | `Taskfile.yml` | Task runner definitions. |
 | `taskfiles/` | Domain-scoped Taskfiles included by `Taskfile.yml`. |
+| `.githooks/` | Versioned native git hooks (the pre-push guard). Ships with `taskfiles/ci.yml` and stays inert until a developer enables it (`task ci:hooks-install`). |
 | `.gitignore` | Repository-wide ignore rules. |
 | `.gitattributes` | Line-ending and diff attributes. |
 | `.markdownlintrc` | Markdown lint configuration. |

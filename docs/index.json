@@ -205,6 +205,11 @@
           "title": "GitLab release publishing",
           "path": "docs/gitlab-release-publishing.md",
           "nav_order": 150
+        },
+        {
+          "title": "Pre-push guard",
+          "path": "docs/pre-push-guard.md",
+          "nav_order": 160
         }
       ]
     },

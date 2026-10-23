@@ -3103,7 +3103,7 @@ capabilities:
       runtime: node@22
     command:
       - npm install -g markdownlint-cli
-      - markdownlint "**/*.md" --ignore node_modules --ignore extension-skeleton --ignore communication --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md'
+      - markdownlint "**/*.md" --ignore node_modules --ignore '**/node_modules/**' --ignore extension-skeleton --ignore communication --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md'
 
   # Spec 0238 R1-R3, R13: the shell / JavaScript / Python footprint ratchet.
   # No `paths:` filter and not changeset-gated: any change may add a shell

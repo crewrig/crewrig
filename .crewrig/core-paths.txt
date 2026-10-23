@@ -46,6 +46,7 @@ LICENSE	strict
 README.md	adopt-on-edit
 Taskfile.yml	strict
 taskfiles	strict
+.githooks	strict
 .gitattributes	strict
 .gitignore	strict
 .markdownlintrc	strict

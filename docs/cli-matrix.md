@@ -2078,6 +2078,22 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Copilot CLI:** ✅ parent session declaration covers the sub-agent row (same `session_id`)
 - **Antigravity CLI:** ✅ parent session declaration covers it (`session-cumulative`, no separate subagent record)
 
+### 45 — Pre-push guard (native git hook)
+
+- **Feature:** Pre-push guard (spec 0279, ticket #1763) — an opt-in native git hook, `.githooks/pre-push`, that runs the
+  changeset-selected fast tier of the CI checks through `task ci:pre-push` before `git push` sends anything. It is
+  enabled per clone with `task ci:hooks-install` (local `core.hooksPath` only; repository setup never enables it) and is
+  documented in [`docs/pre-push-guard.md`](pre-push-guard.md). The hook is plain git, so the four CLIs are
+  symmetric: Claude Code, Gemini CLI, Copilot CLI and Antigravity CLI all trigger it whenever they run `git push`, with
+  no per-CLI wiring, script or hook file. **Decision:** no CLI integration point exists for it, so no row cell carries a
+  CLI-specific mechanism and no asymmetry is introduced. **Escape hatch:** `git push --no-verify` skips the hook; CI stays
+  authoritative and the hook is a convenience, not a gate. Floors: Node 24 and Task 3.39.
+- **Source of truth:** `.githooks/pre-push`, `scripts/ci-pre-push.ts`, `taskfiles/ci.yml`
+- **Claude Code:** ✅ native `git push` runs the hook; no CLI wiring
+- **Gemini CLI:** ✅ native `git push` runs the hook; no CLI wiring
+- **Copilot CLI:** ✅ native `git push` runs the hook; no CLI wiring
+- **Antigravity CLI:** ✅ native `git push` runs the hook; no CLI wiring
+
 > **Cross-reference — CI-engine × capability axis (spec 0047, ADR-0012).** The
 > CI-engine × CI-capability axis is a *different* axis from the CLI × feature
 > matrix above and is self-documented by its own source of truth:

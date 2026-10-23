@@ -206,7 +206,7 @@ by area and never by CLI so the four CLIs stay side by side:
 | `harness.yml` | `harness-curate`, `test-harness-curate`, `prune-transcripts` |
 | `e2e.yml` | `e2e:*` Docker images, auth flow and runner |
 | `cli-matrix.yml` | `cli-matrix:*` build, check and row viewer |
-| `ci.yml` | reserved for the CI tasks of #1763 |
+| `ci.yml` | `ci:*` tasks: one `ci:<id>` per CI capability, `ci:pre-push` and `ci:hooks-*` (spec 0279) |
 
 Prefixed groups (`mempalace:`, `usage:`, `e2e:`, `spec:`, `cli-matrix:`) are
 include namespaces; every other file is flattened, so its tasks keep their
@@ -240,6 +240,23 @@ included file builds a repository path from `TASKFILE_DIR`, every `deps:` and
 `- task:` reference resolves, and the loader sees the same names as
 `task --list-all --json`. CI runs it; #1763 adds the matching Task entry,
 `ci:check-taskfile-tree`.
+
+## Pre-push guard
+
+An opt-in native git hook runs the fast tier of the CI checks on your
+changeset before `git push` sends it. It is off until you enable it, once per
+clone, and it never replaces CI:
+
+```sh
+task ci:hooks-install     # local git config only: core.hooksPath = .githooks
+task ci:hooks-status
+task ci:hooks-uninstall
+```
+
+`git push --no-verify` skips it. It needs Node 24 and Task 3.39, and a
+worktree needs `node_modules` (`task lint-bootstrap`). Selection, the 60 s
+budget, worktrees and how to add a `ci:<id>` task:
+[`docs/pre-push-guard.md`](docs/pre-push-guard.md).
 
 ## TypeScript toolchain and ratchet
 
