@@ -7,6 +7,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { loadTaskfileTree } from "../../lib/taskfile-tree.ts";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..", "..");
 const SKILL = "artifacts/library/skills/harness-curator";
@@ -19,6 +20,10 @@ export interface Caller {
   /** Substrings that MUST be present: the new spelling of each script the file names. */
   readonly required: readonly string[];
 }
+
+// The Taskfile that DEFINES the curator entry (the root while monolithic, an included file after).
+const CURATE_TASKFILE = loadTaskfileTree(REPO).byName.get("harness-curate")?.file;
+if (CURATE_TASKFILE === undefined) throw new Error("Taskfile task harness-curate not found");
 
 export const CALLERS: readonly Caller[] = [
   {
@@ -47,7 +52,7 @@ export const CALLERS: readonly Caller[] = [
   },
   { file: "artifacts/FORMAT.md", required: ["scripts/curate.ts"] },
   { file: "README.md", required: [`${SKILL}/scripts/schedule-curator.ts`] },
-  { file: "Taskfile.yml", required: [`${SKILL}/scripts/curate.ts`] },
+  { file: CURATE_TASKFILE, required: [`${SKILL}/scripts/curate.ts`] },
 ];
 
 /** The retired spellings of the three scripts: `<name>.sh`. */

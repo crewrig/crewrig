@@ -4,6 +4,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
+import { taskfilePaths } from "../lib/taskfile-tree.ts";
+import { repoRoot } from "../lib/ts-scope.ts";
 import { ALLOWED, retired, scannedFiles, sweep } from "./lib/callers-sweep.ts";
 
 describe("callers sweep: the whole repository", () => {
@@ -15,7 +17,7 @@ describe("callers sweep: the whole repository", () => {
     const files = scannedFiles();
     for (const needed of [
       "README.md",
-      "Taskfile.yml",
+      ...taskfilePaths(repoRoot()),
       "artifacts/core/agents/ci-debugger/AGENT.md",
     ])
       assert.ok(files.includes(needed), `${needed} is scanned`);

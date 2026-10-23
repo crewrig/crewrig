@@ -12,7 +12,7 @@ import { describe, it } from "node:test";
 import { REPO } from "./lib/build-fixture-tree.ts";
 import { realHomeGuard } from "./lib/real-home-guard.ts";
 import { box, envFile, envOf, run } from "./lib/tls-entry-run.ts";
-import { yamlLib } from "./lib/yaml-lib.ts";
+import { loadTaskfileTree } from "../lib/taskfile-tree.ts";
 
 function topLevel(home: string): string[] {
   return fs.readdirSync(home).sort();
@@ -69,10 +69,10 @@ describe("tls-delegation contract (spec 0084)", () => {
 
 describe("Taskfile install-mempalace (R2, R8)", () => {
   it("runs pipx through scripts/tls-exec.ts", () => {
-    const doc = yamlLib.load(fs.readFileSync(path.join(REPO, "Taskfile.yml"), "utf8")) as {
-      tasks: Record<string, { cmd?: unknown } | undefined>;
-    };
-    const cmd = doc.tasks["install-mempalace"]?.cmd;
+    const definition = loadTaskfileTree(REPO).byName.get("install-mempalace")?.definition as
+      | { cmd?: unknown }
+      | undefined;
+    const cmd = definition?.cmd;
     assert.equal(typeof cmd, "string", "task install-mempalace has no cmd");
     assert.ok(
       /^node (--disable-warning=\S+ )?\{\{\.REPO_DIR\}\}\/scripts\/tls-exec\.ts pipx install /.test(

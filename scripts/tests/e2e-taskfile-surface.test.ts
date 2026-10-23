@@ -1,19 +1,20 @@
-// e2e-taskfile-surface.test.ts — the e2e entries of Taskfile.yml (spec 0261 R19). Migrated from
+// e2e-taskfile-surface.test.ts — the e2e entries of the Taskfile tree (spec 0261 R19). Migrated from
 // test-e2e-taskfile.sh, test-e2e-runner-taskfile.sh and test-e2e-auth-taskfile.sh. The static
 // reads run everywhere; the `task --list` checks skip when the go-task binary is absent.
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
+import { loadTaskfileTree, taskCmds } from "../lib/taskfile-tree.ts";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
-const TASKFILE = fs.readFileSync(path.join(REPO, "Taskfile.yml"), "utf8");
-const TLINES = TASKFILE.split(/\r?\n/);
+const TREE = loadTaskfileTree(REPO);
 
-const declared = (entry: string): boolean =>
-  TLINES.some((l) => new RegExp(`^\\s+${entry}:\\s*$`).test(l));
+/** Whether the tree defines a task with this effective name (`e2e:build:base`). */
+const declared = (entry: string): boolean => TREE.byName.has(entry);
+/** The raw definition of a task, serialised so a substring check stays structural (no YAML text). */
+const defText = (name: string): string => JSON.stringify(TREE.byName.get(name)?.definition ?? null);
 const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** `task --list` output, or null when go-task is not installed. */
@@ -23,22 +24,6 @@ const taskList = (): string | null => {
   return `${r.stdout}${r.stderr}`;
 };
 const NO_TASK = "go-task binary not on PATH";
-
-/** The YAML block of a task key, down to the next two-space-indented task entry. */
-const block = (key: string): string[] => {
-  const out: string[] = [];
-  let capture = false;
-  for (const l of TLINES) {
-    if (new RegExp(`^\\s+${esc(key)}$`).test(l)) {
-      capture = true;
-      out.push(l);
-      continue;
-    }
-    if (capture && /^ {2}[a-zA-Z][a-zA-Z0-9:_-]*:$/.test(l)) capture = false;
-    if (capture) out.push(l);
-  }
-  return out;
-};
 
 describe("e2e build and lock entries (issue #76)", () => {
   const ENTRIES = [
@@ -52,14 +37,13 @@ describe("e2e build and lock entries (issue #76)", () => {
   ];
   for (const e of ENTRIES) {
     it(`declares ${e}`, () => {
-      assert.ok(TLINES.some((l) => new RegExp(`^  ${esc(e)}:\\s*$`).test(l)));
+      assert.ok(declared(e), e);
     });
   }
   it("per-CLI build targets reference E2E_IMG_PREFIX and E2E_DOCKER_DIR", () => {
-    const start = TLINES.findIndex((l) => /^ {2}e2e:build:base:/.test(l));
-    assert.ok(start >= 0);
-    const end = TLINES.findIndex((l, i) => i >= start && /^ {2}e2e:lock:/.test(l));
-    const text = TLINES.slice(start, end < 0 ? undefined : end + 1).join("\n");
+    const text = ENTRIES.filter((e) => e !== "e2e:build")
+      .map(defText)
+      .join("\n");
     assert.ok(text.includes("{{.E2E_IMG_PREFIX}}"));
     assert.ok(text.includes("{{.E2E_DOCKER_DIR}}"));
   });
@@ -75,7 +59,7 @@ describe("e2e runner entries (issue #78)", () => {
   const NAMES = ["e2e:test", "e2e:test:scenario", "e2e:test:cli"];
   for (const n of NAMES) {
     it(`declares ${n}`, () => {
-      assert.ok(declared(esc(n)));
+      assert.ok(declared(n), n);
     });
   }
   it("task --list shows each with a non-empty description", (t) => {
@@ -84,12 +68,11 @@ describe("e2e runner entries (issue #78)", () => {
     for (const n of NAMES) assert.match(out, new RegExp(`^\\* ${esc(n)}:\\s+\\S`, "m"), n);
   });
   it("references {{.CLI_ARGS}}", () => {
-    assert.ok(TASKFILE.includes("{{.CLI_ARGS}}"));
+    assert.ok(TREE.tasks.some((t) => JSON.stringify(t.definition).includes("{{.CLI_ARGS}}")));
   });
   it("e2e:test invokes tests/e2e/run.sh or run.ts", () => {
-    const i = TLINES.findIndex((l) => /^\s+e2e:test:\s*$/.test(l));
-    assert.ok(i >= 0);
-    const text = TLINES.slice(i, i + 4).join("\n");
+    assert.ok(declared("e2e:test"));
+    const text = taskCmds(TREE, "e2e:test").join("\n");
     assert.match(text, /(bash .*tests\/e2e\/run\.sh|node .*tests\/e2e\/run\.ts)/);
   });
 });
@@ -98,7 +81,7 @@ describe("e2e auth entries", () => {
   const NAMES = ["e2e:auth:claude", "e2e:auth:gemini", "e2e:auth:copilot"];
   for (const n of NAMES) {
     it(`declares ${n}`, () => {
-      assert.ok(declared(esc(n)));
+      assert.ok(declared(n), n);
     });
   }
   it("task --list enumerates each with a non-empty desc", (t) => {
@@ -113,7 +96,7 @@ describe("e2e auth entries", () => {
   });
   for (const cli of ["claude", "gemini"]) {
     it(`e2e:auth:${cli} references an image precondition`, () => {
-      const text = block(`e2e:auth:${cli}:`).join("\n");
+      const text = defText(`e2e:auth:${cli}`);
       assert.match(text, new RegExp(`docker image inspect|e2e:build:${cli}`));
     });
   }

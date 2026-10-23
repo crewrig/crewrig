@@ -164,6 +164,61 @@ describe("check-taskfile-commands", () => {
     rmSync(path.join(root, "Taskfile.yml"));
     assert.equal(run(root).status, 2);
   });
+
+  it("exits 2 with a stderr message when an included file is unreadable", () => {
+    const root = makeRoot("version: '3'\nincludes:\n  x: ./taskfiles/x.yml\n", { exemptions: [] });
+    const res = run(root);
+    assert.equal(res.status, 2);
+    assert.match(res.stderr, /unreadable: taskfiles\/x\.yml/);
+  });
+});
+
+describe("check-taskfile-commands over a split tree (spec 0278 R15)", () => {
+  const splitRoot = (lint: string, usage: string, exemptions: unknown = { exemptions: [] }) => {
+    const root = makeRoot(
+      [
+        "version: '3'",
+        "includes:",
+        "  lint:",
+        "    taskfile: ./taskfiles/lint.yml",
+        "    flatten: true",
+        "  usage: ./taskfiles/usage.yml",
+        "",
+      ].join("\n"),
+      exemptions,
+    );
+    mkdirSync(path.join(root, "taskfiles"), { recursive: true });
+    writeFileSync(path.join(root, "taskfiles", "lint.yml"), lint);
+    writeFileSync(path.join(root, "taskfiles", "usage.yml"), usage);
+    return root;
+  };
+  const clean = "version: '3'\ntasks:\n  price:\n    cmd: node x.ts\n";
+
+  it("passes a clean split-shaped tree", () => {
+    const res = run(splitRoot(clean, clean));
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stdout, /OK \(0 exemption\(s\)\)/);
+  });
+
+  it("fails a jq planted in a flattened included file and names the task and command", () => {
+    const planted = "version: '3'\ntasks:\n  lint-md:\n    cmd: jq . a.json\n";
+    const res = run(splitRoot(planted, clean));
+    assert.equal(res.status, 1);
+    assert.match(res.stderr, /task 'lint-md' uses forbidden command 'jq'/);
+  });
+
+  it("fails a jq planted in a namespaced included file under its effective name", () => {
+    const planted = "version: '3'\ntasks:\n  price:\n    cmds:\n      - jq . a.json\n";
+    const res = run(splitRoot(clean, planted));
+    assert.equal(res.status, 1);
+    assert.match(res.stderr, /task 'usage:price' uses forbidden command 'jq'/);
+  });
+
+  it("matches an exemption written with the effective name", () => {
+    const planted = "version: '3'\ntasks:\n  price:\n    cmd: jq . a.json\n";
+    const res = run(splitRoot(clean, planted, { exemptions: [entry("usage:price", "jq")] }));
+    assert.equal(res.status, 0, res.stderr);
+  });
 });
 
 describe("check-skill-mirrors (the node replacement of the skill:check task)", () => {

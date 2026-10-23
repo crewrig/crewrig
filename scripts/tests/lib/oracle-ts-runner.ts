@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { taskfilePaths } from "../../lib/taskfile-tree.ts";
 import { productionClosure, REPO } from "./build-fixture-tree.ts";
 
 export interface Mutation {
@@ -38,8 +39,16 @@ export function track(dir: string): string {
 export function stageTemplate(): string {
   const root = track(fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "oracle-mut-"))));
   fs.cpSync(path.join(REPO, "scripts"), path.join(root, "scripts"), { recursive: true });
-  for (const f of ["package.json", "package-lock.json", "Taskfile.yml", "crewrig.config.toml"]) {
-    if (fs.existsSync(path.join(REPO, f))) fs.copyFileSync(path.join(REPO, f), path.join(root, f));
+  for (const f of [
+    "package.json",
+    "package-lock.json",
+    ...taskfilePaths(REPO),
+    "crewrig.config.toml",
+  ]) {
+    if (fs.existsSync(path.join(REPO, f))) {
+      fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true });
+      fs.copyFileSync(path.join(REPO, f), path.join(root, f));
+    }
   }
   fs.mkdirSync(path.join(root, ".git"));
   for (const name of productionClosure()) {

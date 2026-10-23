@@ -1,4 +1,4 @@
-// check-taskfile-commands.ts — Taskfile.yml names no POSIX-only command (spec 0266 R13).
+// check-taskfile-commands.ts — the Taskfile tree (root and every included file) names no POSIX-only command (spec 0266 R13).
 //
 // Usage: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-commands.ts
 // Override the repository root with CREWRIG_REPO_DIR (default: the parent of scripts/).
@@ -12,8 +12,8 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { load } from "js-yaml";
-import { findForbidden } from "./lib/taskfile-commands.ts";
+import { findForbiddenInTree } from "./lib/taskfile-commands.ts";
+import { loadTaskfileTree, TaskfileTreeError } from "./lib/taskfile-tree.ts";
 import { parseExemptions } from "./lib/taskfile-command-exemption-file.ts";
 
 const envDir = process.env["CREWRIG_REPO_DIR"];
@@ -29,13 +29,25 @@ function read(file: string): string | undefined {
   }
 }
 
-const taskfile = read("Taskfile.yml");
+function loadTree(): ReturnType<typeof loadTaskfileTree> | undefined {
+  try {
+    return loadTaskfileTree(repoDir);
+  } catch (err) {
+    if (err instanceof TaskfileTreeError) {
+      process.stderr.write(`check-taskfile-commands: ${err.message}\n`);
+      return undefined;
+    }
+    throw err;
+  }
+}
+
+const tree = loadTree();
 const exemptionText = read("scripts/lib/taskfile-command-exemptions.json");
-if (taskfile === undefined || exemptionText === undefined) {
+if (tree === undefined || exemptionText === undefined) {
   process.exitCode = 2;
 } else {
   const { entries, problems } = parseExemptions(exemptionText);
-  const found = findForbidden(load(taskfile));
+  const found = findForbiddenInTree(tree);
   const key = (task: string, command: string): string => `${task}\u0000${command}`;
   const exempt = new Set(entries.map((e) => key(e.task, e.command)));
   const used = new Set(found.map((f) => key(f.task, f.command)));

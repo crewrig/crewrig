@@ -11,7 +11,7 @@ import path from "node:path";
 import { after, describe, it } from "node:test";
 
 import { REPO } from "./lib/build-fixture-tree.ts";
-import { yamlLib } from "./lib/yaml-lib.ts";
+import { loadTaskfileTree } from "../lib/taskfile-tree.ts";
 
 const POSIX = process.platform !== "win32";
 const roots: string[] = [];
@@ -71,9 +71,10 @@ describe(
   },
 );
 
-describe("Taskfile.yml umbrella-installer declarations", () => {
-  const text = fs.readFileSync(path.join(REPO, "Taskfile.yml"), "utf8");
-  const doc = yamlLib.load(text) as { tasks: Record<string, unknown> };
+describe("Taskfile tree umbrella-installer declarations", () => {
+  const tree = loadTaskfileTree(REPO);
+  // The deprecation notices are echoed text, so the check serialises every task definition.
+  const text = tree.tasks.map((t) => JSON.stringify(t.definition)).join("\n");
 
   it("declares the six extension tasks", () => {
     for (const name of [
@@ -84,7 +85,7 @@ describe("Taskfile.yml umbrella-installer declarations", () => {
       "unlink-gemini-extensions",
       "install-extension-all",
     ]) {
-      assert.ok(Object.keys(doc.tasks).includes(name), `missing task ${name}`);
+      assert.ok(tree.byName.has(name), `missing task ${name}`);
     }
   });
 

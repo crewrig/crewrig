@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { loadTaskfileTree, taskCmds } from "../lib/taskfile-tree.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CLI = path.join(REPO, "scripts", "spec-view.ts");
@@ -129,10 +130,11 @@ describe("spec view (spec 0273)", () => {
   });
 
   test("Taskfile entry runs the floor guard then the script", () => {
-    const tf = readFileSync(path.join(REPO, "Taskfile.yml"), "utf8");
-    const m = /^ {2}spec:view:\n([\s\S]*?)\n\n/m.exec(tf);
-    assert.ok(m, "spec:view entry missing");
-    assert.ok(m[1].indexOf("node-floor-guard.js") < m[1].indexOf("scripts/spec-view.ts"));
-    assert.match(m[1], /\{\{\.CLI_ARGS\}\}/);
+    const cmds = taskCmds(loadTaskfileTree(REPO), "spec:view");
+    assert.ok(cmds.length > 0, "spec:view entry missing");
+    const guard = cmds.findIndex((c) => c.includes("node-floor-guard.js"));
+    const script = cmds.findIndex((c) => c.includes("scripts/spec-view.ts"));
+    assert.ok(guard >= 0 && guard < script);
+    assert.match(cmds[script] ?? "", /\{\{\.CLI_ARGS\}\}/);
   });
 });

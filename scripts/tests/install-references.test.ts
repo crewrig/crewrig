@@ -14,6 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
+import { taskfilePaths } from "../lib/taskfile-tree.ts";
 import { git, repoRoot, trackedFiles } from "../lib/ts-scope.ts";
 
 const NAMES = [
@@ -38,7 +39,7 @@ const BASH_RUN = new RegExp(`\\bbash\\s+\\S*scripts/(${NAMES.join("|")})\\.sh\\b
 const CI_CONFIGS = [
   "ci/ci-capabilities.yml",
   ".gitlab-ci.yml",
-  "Taskfile.yml",
+  ...taskfilePaths(repoRoot()),
   ".github/workflows/build.yml",
 ];
 

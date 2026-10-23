@@ -7,6 +7,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { describe, test } from "node:test";
+import { loadTaskfileTree, taskCmds } from "../lib/taskfile-tree.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
 import {
   both,
@@ -20,7 +21,7 @@ import {
   seedSkill,
 } from "./lib/tier-fixtures.ts";
 import { runIn } from "./lib/tier-landing.ts";
-import { driveTask, taskfileCmds } from "./lib/tier-taskfile.ts";
+import { driveTask } from "./lib/tier-taskfile.ts";
 
 const skip =
   process.platform === "win32" ? "the entries run Bash-era scripts and POSIX paths" : false;
@@ -151,7 +152,7 @@ describe("tier resolution: task entry points (R19)", { skip }, () => {
 
   for (const e of ENTRIES) {
     test(`${e.task} drives ${e.script} and delivers`, () => {
-      const cmds = taskfileCmds(t.resolve("Taskfile.yml"), e.task);
+      const cmds = taskCmds(loadTaskfileTree(t.root), e.task);
       assert.ok(cmds.length > 0, `${e.task}: no such entry point (or it declares no command)`);
       assert.ok(
         cmds.some((c) => c.includes(`${e.script}.sh`) || c.includes(`${e.script}.ts`)),

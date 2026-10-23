@@ -1,9 +1,11 @@
-// taskfile-commands.ts — find POSIX-only commands in Taskfile.yml (spec 0266 R13).
+// taskfile-commands.ts — find POSIX-only commands in the Taskfile tree (spec 0266 R13, spec 0278 R11).
 //
 // A Taskfile entry must run on Windows, so a task may name node, npm, npx, git, the forge CLIs
 // (gh, glab, tea), the four AI CLIs (claude, gemini, copilot, agy), pipx or python (the MemPalace
 // exception), docker and task. Docker stays allowed on purpose: the end-to-end harness already
 // spawns it and has no Windows-hostile wrapper. Everything below is flagged.
+
+import type { TaskfileTree } from "./taskfile-tree.ts";
 
 export const FORBIDDEN_UTILITIES: readonly string[] = [
   "bash",
@@ -166,6 +168,30 @@ export function findForbidden(doc: unknown): Finding[] {
       if (!seen.has(key)) {
         seen.add(key);
         out.push({ task, command });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * The same findings over a whole Taskfile tree: each task is reported under its EFFECTIVE name
+ * (namespace prefix included), so exemption entries keep matching after a split. Top-level vars of
+ * every file are reported as "(top-level vars)".
+ */
+export function findForbiddenInTree(tree: TaskfileTree): Finding[] {
+  const seen = new Set<string>();
+  const out: Finding[] = [];
+  for (const node of tree.nodes) {
+    for (const { task, text } of extractTaskCommands(node.doc)) {
+      const effective =
+        node.namespace === "" || task === "(top-level vars)" ? task : `${node.namespace}:${task}`;
+      for (const command of forbiddenIn(text)) {
+        const key = `${effective}\u0000${command}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          out.push({ task: effective, command });
+        }
       }
     }
   }

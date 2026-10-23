@@ -9,6 +9,7 @@ import path from "node:path";
 import { after, describe, it } from "node:test";
 
 import { report } from "../../tests/e2e/lib/report.ts";
+import { loadTaskfileTree } from "../lib/taskfile-tree.ts";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "e2e-report-"));
@@ -74,9 +75,8 @@ describe("e2e report aggregator", () => {
     assert.ok(md.length >= 1);
   });
 
-  it("Taskfile.yml carries an e2e:report task", () => {
-    const text = fs.readFileSync(path.join(REPO, "Taskfile.yml"), "utf8");
-    assert.match(text, /^\s*e2e:report\s*:/m);
+  it("the Taskfile tree carries an e2e:report task", () => {
+    assert.ok(loadTaskfileTree(REPO).byName.has("e2e:report"));
   });
 
   it("tests/e2e/README.md is non-empty and mentions Prerequisites", () => {

@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { before, describe, test } from "node:test";
+import { taskfilePaths } from "../lib/taskfile-tree.ts";
 import {
   AGY_CMD,
   CLAUDE_CMD,
@@ -40,7 +41,7 @@ describe("tier resolution: landing zones and reports", { skip }, () => {
         { encoding: "utf8" },
       );
     git("init");
-    git("add", "scripts", "Taskfile.yml", ".gitignore", "artifacts");
+    git("add", "scripts", ...taskfilePaths(t.root), ".gitignore", "artifacts");
     if (t.exists("crewrig.config.toml")) git("add", "crewrig.config.toml");
     assert.equal(git("commit", "-m", "fixture").status, 0);
     assert.equal(build(t, "copilot").status, 0);

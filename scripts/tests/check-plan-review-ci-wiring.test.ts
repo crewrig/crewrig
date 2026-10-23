@@ -10,6 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
+import { loadTaskfileTree, taskCmds, type TaskfileTree } from "../lib/taskfile-tree.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
@@ -88,16 +89,17 @@ function assertGitlab(text: string): void {
   for (const t of TESTS) assert.ok(gov.includes(t), `governance-checks-ts runs ${t}`);
 }
 
-function assertTaskfile(text: string): void {
-  assert.ok(/^ {2}check-plan-review:\n/m.test(text), "Taskfile target");
-  assert.ok(text.includes(`${NODE} {{.REPO_DIR}}/${SCRIPT}`));
+function assertTaskfile(tree: TaskfileTree): void {
+  assert.ok(tree.byName.has("check-plan-review"), "Taskfile target");
+  const want = `${NODE} {{.REPO_DIR}}/${SCRIPT}`;
+  assert.ok(taskCmds(tree, "check-plan-review").some((c) => c.includes(want)));
 }
 
 describe("check-plan-review CI wiring", () => {
   test("ci/ci-capabilities.yml", () => assertCapabilities(read("ci", "ci-capabilities.yml")));
   test("GitHub workflow", () => assertGithub(read(".github", "workflows", "build.yml")));
   test("GitLab pipeline", () => assertGitlab(read(".gitlab-ci.yml")));
-  test("Taskfile target", () => assertTaskfile(read("Taskfile.yml")));
+  test("Taskfile target", () => assertTaskfile(loadTaskfileTree(REPO)));
 
   test("mutation: a job that never expects a skip is rejected", () => {
     assert.throws(() =>

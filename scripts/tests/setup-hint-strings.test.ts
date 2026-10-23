@@ -11,6 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
+import { loadTaskfileTree } from "../lib/taskfile-tree.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
 
 const CLIS = ["claude", "gemini", "copilot", "antigravity"];
@@ -31,8 +32,7 @@ describe("the setup hints still name the setup entries", () => {
     assert.ok(
       read("scripts/lib/require-dependency.ts").includes("(e.g. task setup-claude-interactive)"),
     );
-    const taskfile = read("Taskfile.yml");
-    assert.match(taskfile, /^ {2}setup-claude-interactive:$/m);
+    assert.ok(loadTaskfileTree(REPO).byName.has("setup-claude-interactive"));
   });
 
   test("the MemPalace repair hints name the setup entry path", () => {

@@ -10,7 +10,9 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { after, describe, test } from "node:test";
+import { loadTaskfileTree } from "../lib/taskfile-tree.ts";
 import {
+  ENTRY,
   R19,
   rewriteEntry,
   TASKFILE_MUTANTS,
@@ -162,7 +164,10 @@ describe("install oracle mutation", { skip: !hasBash }, () => {
     const taskfile = ["scripts/tests/tier-resolution-taskfile.test.ts"];
     const prepare = (mutant: (typeof TASKFILE_MUTANTS)[number] | null) => {
       const dir = stageCopy(template, null);
-      const file = path.join(dir, "Taskfile.yml");
+      // The entry is rewritten in the file of the copy that DEFINES it (root or an included file).
+      const defining = loadTaskfileTree(dir).byName.get(ENTRY)?.file;
+      if (defining === undefined) throw new Error(`Taskfile entry ${ENTRY} not found`);
+      const file = path.join(dir, defining);
       fs.writeFileSync(file, rewriteEntry(fs.readFileSync(file, "utf8"), mutant));
       return dir;
     };

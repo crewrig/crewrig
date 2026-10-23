@@ -4,6 +4,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { taskfilePaths } from "../../lib/taskfile-tree.ts";
 import { createFixtureTree, REPO, type FixtureTree } from "./build-fixture-tree.ts";
 
 export const COLLISION_REPORT_RE = /claimed by more than one component|Every source presenting it/;
@@ -22,10 +23,13 @@ export interface Out {
 
 export const both = (o: Out): string => `${o.stdout}${o.stderr}`;
 
-/** A throwaway repository: scripts copy, closure, Taskfile, config, ignore file, empty artifacts. */
+/** A throwaway repository: scripts copy, closure, Taskfile tree, config, ignore file, empty artifacts. */
 export function newRepo(): FixtureTree {
   const t = createFixtureTree();
-  fs.copyFileSync(path.join(REPO, "Taskfile.yml"), t.resolve("Taskfile.yml"));
+  for (const rel of taskfilePaths(REPO)) {
+    fs.mkdirSync(path.dirname(t.resolve(rel)), { recursive: true });
+    fs.copyFileSync(path.join(REPO, rel), t.resolve(rel));
+  }
   const cfg = path.join(REPO, "crewrig.config.toml");
   if (fs.existsSync(cfg)) fs.copyFileSync(cfg, t.resolve("crewrig.config.toml"));
   t.write(".gitignore", "dist/\ncli-home*/\npackage.json\nnode_modules/\n");
