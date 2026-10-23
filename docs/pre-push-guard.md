@@ -49,6 +49,27 @@ deterministic, needs no container, network or secret, and runs in at most 30 s
 alone. The target is 60 s of wall-clock on a typical change (at most 20 files);
 the wrapper prints a warning, without failing, when a run exceeds it.
 
+### Measured cost
+
+The target is met only on an idle machine with at least 8 cores. The exact CI
+commands of a capability include the checkers' own self-test suites, which makes
+the fast tier CPU-bound: about 200 to 300 CPU-seconds for the whole tier. Measured
+on 2026-10-24 on a 10-core Mac, `ci:pre-push` run on a branch of 16 changed files:
+
+| Condition | Tasks | Wall-clock | CPU time |
+|---|---|---|---|
+| Idle machine | 21 | 29 s | 205 s |
+| Light contention (load average about 10 on 10 cores) | 21 | 44 s | 276 s |
+| Heavy contention (load average 47 to 60, other agents running) | 21 | 135 s | 311 s |
+| `node:24` Linux container, host under heavy contention | 20 | 121 s | 889 s |
+
+Capabilities measured alone on the Mac: `lint-specs` 23 s, `path-ownership` 23 s,
+`frontmatter` 27 s, every other one 9 s or less. Splitting each checker's
+self-tests from the check, in capabilities of their own with their own `paths:`
+filters, is planned work (WP-C of epic #1761) and removes most of that cost. Until
+then, push with `git push --no-verify` when the machine is busy; CI stays
+authoritative.
+
 ### Choosing the base
 
 The default base is `origin/main`. Override it with
