@@ -9,7 +9,6 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import { runTasks, taskEnv } from "../lib/ci-pre-push/run.ts";
 import {
-  addSelfRemote,
   commitAll,
   gitEnv,
   git as gitIn,
@@ -18,7 +17,6 @@ import {
   writeRel,
 } from "./lib/governance-git-fixture.ts";
 import { makeSandbox, REPO } from "./lib/governance-sandbox.ts";
-import { gitFixture, renderSpec, runLinter } from "./lib/spec-linter-fixtures.ts";
 
 const POSIX = { skip: process.platform === "win32" };
 const HOOK = path.join(REPO, ".githooks", "pre-push");
@@ -201,6 +199,11 @@ describe("draft signal confined to ci:lint-specs (R12)", () => {
       undefined,
     );
     assert.equal(taskEnv("lint-markdown", opts)["BASE_REF"], "origin/main");
+    const bin = path.join("/repo", "node_modules", ".bin");
+    assert.equal(
+      taskEnv("lint-markdown", { ...opts, cwd: "/repo", env: { PATH: "/usr/bin" } })["PATH"],
+      `${bin}${path.delimiter}/usr/bin`,
+    );
     assert.equal(taskEnv("lint-markdown", { ...opts, baseRef: null })["BASE_REF"], undefined);
   });
 
@@ -223,43 +226,5 @@ describe("draft signal confined to ci:lint-specs (R12)", () => {
     assert.equal(call("lint-markdown").draft, null);
     assert.deepEqual(call("lint-specs").argv, ["ci:lint-specs"]);
     assert.equal(call("lint-markdown").base, "origin/main");
-  });
-
-  const specFixture = (draftFile: string): ReturnType<typeof gitFixture> => {
-    const fx = gitFixture({
-      remote: false,
-      files: {
-        "specs/0200-ok.md": renderSpec({
-          id: "0200",
-          slug: "ok",
-          status: "implemented",
-          extraFm: "interaction-mode: INTERMEDIATE",
-        }),
-      },
-    });
-    gitIn(fx.root, ["checkout", "-q", "-b", "spec/0300-new-draft"]);
-    fx.put("specs/0300-new-draft.md", draftFile);
-    commitAll(fx.root, "change");
-    return fx;
-  };
-
-  const lintWith = (fx: ReturnType<typeof gitFixture>): ReturnType<typeof runLinter> =>
-    runLinter(fx.root, ["specs"], {
-      env: {
-        ...taskEnv("lint-specs", { cwd: fx.root, env: {} }),
-        BASE_REF: "main",
-        BRANCH_NAME: "spec/0300-new-draft",
-      },
-    });
-
-  it("lets a draft-status spec through the real spec linter under that env", () => {
-    const r = lintWith(specFixture(renderSpec({ id: "0300", slug: "new-draft" })));
-    assert.equal(r.status, 0, r.output);
-  });
-
-  it("still fails a spec with a missing required frontmatter field under that env", () => {
-    const broken = renderSpec({ id: "0300", slug: "new-draft" }).replace(/^slug: .*\n/m, "");
-    const r = lintWith(specFixture(broken));
-    assert.equal(r.status, 1, r.output);
   });
 });

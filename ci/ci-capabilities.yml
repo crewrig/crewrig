@@ -3042,7 +3042,7 @@ capabilities:
       tools: [task]
     command:
       - npm ci
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-pre-push-replay.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-pre-push-replay.test.ts scripts/tests/ci-pre-push-draft-lint.test.ts
 
   - id: markdown-links
     name: "Check relative Markdown link integrity"

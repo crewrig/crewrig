@@ -9,6 +9,7 @@
 
 import { spawn } from "node:child_process";
 import os from "node:os";
+import path from "node:path";
 
 export const BUDGET_SECONDS = 60;
 export const DRAFT_TASK = "lint-specs";
@@ -42,6 +43,13 @@ export function taskEnv(id: string, opts: RunOptions): NodeJS.ProcessEnv {
   // Task derives REPO_DIR from $PWD: a stale PWD (a push started from a subdirectory) would aim the
   // task at the wrong tree.
   env["PWD"] = opts.cwd;
+  // CI installs markdownlint-cli globally; a development checkout has it only in node_modules/.bin
+  // after `task lint-bootstrap`, so that directory goes first on PATH (the key is `Path` on Windows).
+  const pathKey = Object.keys(env).find((k) => k.toLowerCase() === "path") ?? "PATH";
+  const bin = path.join(opts.cwd, "node_modules", ".bin");
+  env[pathKey] = [bin, env[pathKey] ?? process.env[pathKey]]
+    .filter((v) => v !== undefined && v !== "")
+    .join(path.delimiter);
   if (opts.baseRef !== undefined && opts.baseRef !== null) env["BASE_REF"] = opts.baseRef;
   if (id === DRAFT_TASK) env["CREWRIG_PR_DRAFT"] = "true";
   return env;
