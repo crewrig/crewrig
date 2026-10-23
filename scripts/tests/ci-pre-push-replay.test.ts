@@ -35,6 +35,24 @@ interface Row {
   readonly todo?: string;
 }
 
+/**
+ * A row detects only when the checker's own finding is in the output. A missing tool (markdownlint,
+ * oxfmt, oxlint, tsc, js-yaml) also exits non-zero, so it must never count: exit 127 and the
+ * not-found messages fail the row outright, whatever the marker says.
+ */
+const MISSING_TOOL =
+  /executable file not found|command not found|is not installed|ERR_MODULE_NOT_FOUND/;
+function assertDetected(row: Row, status: number | null, out: string): void {
+  assert.notEqual(
+    status,
+    127,
+    `ci:${row.id} exited 127, a missing tool is not a detection:\n${out}`,
+  );
+  assert.doesNotMatch(out, MISSING_TOOL, `ci:${row.id} ran with a missing tool:\n${out}`);
+  assert.notEqual(status, 0, `expected ci:${row.id} to fail:\n${out}`);
+  assert.match(out, row.marker, `class marker ${row.marker} missing:\n${out}`);
+}
+
 const append = (copy: string, rel: string, text: string): void => {
   const file = path.join(copy, rel);
   fs.writeFileSync(file, `${fs.readFileSync(file, "utf8")}${text}`);
@@ -61,7 +79,7 @@ const ROWS: readonly Row[] = [
   {
     name: "Markdown lint rule violation",
     id: "lint-markdown",
-    marker: /MD0\d\d/,
+    marker: /docs\/replay-lint\.md:\d+(?::\d+)? error MD\d{3}\//,
     mutate: (copy) =>
       writeRel(copy, "docs/replay-lint.md", "#Heading without a space\n\n\n\ntext\n"),
   },
@@ -70,7 +88,7 @@ const ROWS: readonly Row[] = [
     // link check of CI (check-markdown-links.ts) runs in `repository-scan`, which is what blocks.
     name: "broken relative Markdown link",
     id: "repository-scan",
-    marker: /does-not-exist-replay/,
+    marker: /FAIL: docs\/replay-links\.md:3: .*does-not-exist-replay\.md.*does not exist/,
     mutate: (copy) =>
       writeRel(
         copy,
@@ -83,7 +101,7 @@ const ROWS: readonly Row[] = [
     // CI surface and in no exemption is an orphan. The allowlist entry keeps `ratchet` quiet.
     name: "test not wired in CI",
     id: "test-wiring",
-    marker: /test-replay-unwired\.sh/,
+    marker: /FAILED: .*run in no CI workflow[\s\S]*- scripts\/tests\/test-replay-unwired\.sh/,
     mutate: (copy) => {
       writeRel(copy, "scripts/tests/test-replay-unwired.sh", "#!/usr/bin/env bash\nexit 0\n");
       append(copy, "ci/shell-allowlist.txt", "scripts/tests/test-replay-unwired.sh\n");
@@ -112,13 +130,14 @@ const ROWS: readonly Row[] = [
   {
     name: "unowned tracked file",
     id: "path-ownership",
-    marker: /replay-unowned/,
+    marker: /path-ownership: unowned: replay-unowned\/file\.txt: /,
     mutate: (copy) => writeRel(copy, "replay-unowned/file.txt", "no capability owns this\n"),
   },
   {
     name: "TypeScript format and typing",
     id: "lint-typescript",
-    marker: /replay-bad\.ts/,
+    marker:
+      /typecheck: TS2322: scripts\/replay-bad\.ts:1: |lint-typescript: format: scripts\/replay-bad\.ts: /,
     mutate: (copy) =>
       writeRel(
         copy,
@@ -226,9 +245,7 @@ describe("ci:pre-push replays the failure classes of the last 60 failed build.ym
       });
       const out = `${res.stdout}\n${res.stderr}`;
       failed.set(row.id, { status: res.status, out });
-      assert.notEqual(res.status, 0, `expected ci:${row.id} to fail:\n${out}`);
-      assert.match(out, row.marker, `class marker ${row.marker} missing:\n${out}`);
-      assert.doesNotMatch(out, /command not found/, out);
+      assertDetected(row, res.status, out);
     });
   }
 
