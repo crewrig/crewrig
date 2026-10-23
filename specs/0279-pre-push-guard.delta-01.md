@@ -27,20 +27,24 @@ and every other requirement of the base spec are unchanged.
   `frontmatter` 27 s, because their CI commands run the checkers' own self-test
   suites in addition to the check (R3); all 19 other capabilities of the initial
   list take 0 to 9 s. `ci:pre-push` end to end on the development changeset
-  takes 29 s for 21 tasks, against the unchanged 60 s total budget. With a 20 s
+  takes 29 s for 21 of the 22 capabilities (including `frontmatter`), against
+  the unchanged 60 s total budget. These figures are the snapshot that motivates
+  the amendment, not normative values: timings depend on the machine and its
+  load (R9 and R17(b) keep the re-measurement). With a 20 s
   cap, the admission rule of R9 would drop `lint-specs` (the first failure class
   of #1761, required by R12), `path-ownership` (the static net R17a relies on)
   and `frontmatter`. With the 30 s cap of the MODIFIED R9 below, all three are
   admitted; in particular `frontmatter` is admitted. `ci/pre-push-tier.json`
-  SHALL record these measured values (23, 23 and 27) and the measured values of
-  the other capabilities.
+  SHALL record a measured value for every capability of the tier list, as R9
+  already requires; the figures above are the snapshot that motivates the
+  amendment, not values the file must reproduce.
 
 ### Acceptance
 
 The budget test of R9 bounds each recorded value of `ci/pre-push-tier.json` at
-30 s (a value above 30 fails it), and `ci/pre-push-tier.json` records the
-measured values stated in R9a. The existing sum bound and the missing-time check
-of R9 are unchanged.
+30 s (a value above 30 fails it), and `ci/pre-push-tier.json` records a measured
+value for every capability of the tier list. The existing sum bound and the
+missing-time check of R9 are unchanged.
 
 ### Alternatives considered
 
