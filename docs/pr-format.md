@@ -32,6 +32,13 @@ This section is intended for AI agents that will analyze the PR.
 Be explicit about what was added, modified, or removed and why.>
 ```
 
+## Spec-PRs open as Draft PRs
+
+A spec-PR or delta spec-PR is opened as a Draft PR/MR (`gh pr create --draft`,
+`glab mr create --draft`) while the spec is `status: draft`, then marked ready
+after the approval flip. See
+[`spec-pr-workflow.md`](spec-pr-workflow.md) → *Draft-PR procedure*.
+
 ## Continuous Integration directives
 
 GitHub concatenates all branch commit bodies into the default squash commit

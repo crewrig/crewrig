@@ -76,7 +76,10 @@ the artifact merged to `main` is the identical, unchanged artifact the
 content-approval already approved. The lifecycle-metadata transition
 (`status: draft` to `status: approved` and `interaction-mode`) mandated by `docs/spec-format.md` is
 explicitly NOT a content change (which covers the spec body and non-status frontmatter) and does NOT forfeit this
-merge-authorization discharge. This discharge is deliberately narrow —
+merge-authorization discharge. The same holds for the ready transition
+(`gh pr ready`, `glab mr update --ready`) that follows the status flip: it is
+lifecycle metadata, not a content change (`docs/spec-pr-workflow.md` →
+*Draft-PR procedure*). This discharge is deliberately narrow —
 it is not a general waiver of the gate. It does **not** apply in `AUTO`,
 where no SPECS-stage content-approval gate runs to discharge it, so the
 merge-authorization request there still fires and remains the sole approval

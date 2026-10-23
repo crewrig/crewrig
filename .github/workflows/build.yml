@@ -2,6 +2,9 @@ name: Build & Validate
 
 on:
   pull_request:
+    # Spec 0168 delta-01 R11: the draft/ready transitions must re-run the
+    # workflow so R1 is enforced in full after a spec-PR is marked ready.
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     branches: [main, "release/**"]
   push:
     branches: [main, "release/**"]
@@ -3339,6 +3342,11 @@ jobs:
           # empty value hands the linter back to its own default derivation
           # (first `crewrig|origin` remote + /main).
           BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || '' }}
+          # Spec 0168 delta-01 R9/R11: map the PR's draft state onto the one
+          # engine-neutral input the linter reads. Only the exact string
+          # 'true' skips R1; a non-draft PR (false) and a push (no PR context)
+          # both yield the empty string, so R1 stays enforced.
+          CREWRIG_PR_DRAFT: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'true' || '' }}
         # Read the log line, not the exit code, to tell an unresolvable-base
         # wiring fault from a lint finding: the linter distinguishes them (exit 2
         # vs 1), but Task collapses any non-zero status into its own 201, so only

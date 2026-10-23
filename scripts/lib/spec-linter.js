@@ -733,6 +733,13 @@ function run() {
         // A pull request introducing a new specification or delta-spec file (or modifying one)
         // SHALL NOT pass CI if it carries `status: draft`.
         // It must carry `status: approved` (with `interaction-mode`) before merging to main.
+        //
+        // Spec 0168 delta-01 R7/R8: when the CI engine reports the change as a
+        // Draft PR/MR through CREWRIG_PR_DRAFT (the exact string 'true' only;
+        // fail-closed on TRUE, 1, empty or absent), this block alone is
+        // skipped and a [NOTICE] names the tolerated files. Every other check
+        // (per-file rules, id collision, spec 0109 base check, R2) is untouched.
+        const prDraft = process.env.CREWRIG_PR_DRAFT === 'true';
         if (baseContext.changed !== null) {
             const newDraftOffenders = fileResults.filter(({ file, status }) =>
                 status === 'draft' &&
@@ -740,14 +747,23 @@ function run() {
                 !baseContext.basePaths.has(baseContext.relPathByFile.get(file))
             );
             if (newDraftOffenders.length > 0) {
-                console.error(`\n[FAIL] Specs or delta-specs added or modified by this change carry 'status: draft' (spec 0168 R1, spec 0109 delta-04 R19):`);
-                for (const { file } of newDraftOffenders) {
-                    console.error(`  - ${file}`);
+                if (prDraft) {
+                    console.error(`\n[NOTICE] Specs or delta-specs added or modified by this change carry 'status: draft'; tolerated because the change is a Draft PR/MR (spec 0168 delta-01 R8):`);
+                    for (const { file } of newDraftOffenders) {
+                        console.error(`  - ${file}`);
+                    }
+                    console.error(`  Mark the PR/MR ready only after 'status: approved' is set; the run after`);
+                    console.error(`  the ready transition enforces spec 0168 R1 in full.`);
+                } else {
+                    console.error(`\n[FAIL] Specs or delta-specs added or modified by this change carry 'status: draft' (spec 0168 R1, spec 0109 delta-04 R19):`);
+                    for (const { file } of newDraftOffenders) {
+                        console.error(`  - ${file}`);
+                    }
+                    console.error(`  A specification must be approved before merging to the base branch.`);
+                    console.error(`  Transition 'status: draft' to 'status: approved' and declare 'interaction-mode'`);
+                    console.error(`  in the frontmatter once review approval is secured.`);
+                    totalErrors++;
                 }
-                console.error(`  A specification must be approved before merging to the base branch.`);
-                console.error(`  Transition 'status: draft' to 'status: approved' and declare 'interaction-mode'`);
-                console.error(`  in the frontmatter once review approval is secured.`);
-                totalErrors++;
             }
         }
 

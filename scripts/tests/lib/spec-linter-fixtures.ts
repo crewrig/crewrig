@@ -130,6 +130,7 @@ export function lintEnv(
   for (const k of [
     "CI",
     "BASE_REF",
+    "CREWRIG_PR_DRAFT",
     "BRANCH_NAME",
     "GITHUB_HEAD_REF",
     "GITHUB_REF_NAME",

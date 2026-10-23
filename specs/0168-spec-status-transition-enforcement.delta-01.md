@@ -1,7 +1,7 @@
 ---
 id: "0168"
 slug: spec-status-transition-enforcement
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1762

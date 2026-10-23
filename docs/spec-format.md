@@ -239,6 +239,11 @@ and [`specs/0168-spec-status-transition-enforcement.md`](../specs/0168-spec-stat
   `interaction-mode`) before merging to `main`. This is the CI counterpart of
   the refusal `scripts/merge-spec-pr.ts` applies locally, so a spec-PR merged
   by a direct `gh pr merge` is still caught before the merge.
+  A **Draft PR/MR** is tolerated: when `CREWRIG_PR_DRAFT` is exactly `true`,
+  only this check is skipped, with a `[NOTICE]` (spec 0168 delta-01 R7-R8). The
+  PR must then be marked ready and merged on a run created after that
+  transition; see
+  [`spec-pr-workflow.md`](spec-pr-workflow.md) → *Draft-PR procedure*.
 - **Implementation PRs (`(feat|fix|refactor|perf|chore)/<NNNN>-*`):** CI fails
   (`[FAIL]`) on every spec and delta-spec the branch's ticket implements that
   does not yet record `status: implemented`. See *The implementation-PR check*
@@ -363,6 +368,12 @@ because the spec-PR squash-merges, so both routes collapse to the same single
 commit on `main` carrying `status: approved`; a new commit needs only a plain
 `git push`, whereas an amend would force `git push --force-with-lease` and
 risk clobbering a concurrent reviewer or CI push on the shared branch.
+
+The spec-PR is opened as a Draft PR/MR; after the `git push`, mark it ready
+(`gh pr ready`, `glab mr update --ready`), wait for the run created by that
+ready transition, and only then run `node scripts/merge-spec-pr.ts`, which
+refuses a PR still in draft. Details and per-forge caveats:
+[`spec-pr-workflow.md`](spec-pr-workflow.md) → *Draft-PR procedure*.
 
 A delta spec-PR follows the same mechanic unchanged. On
 `spec/<NNNN>-<slug>-delta-<NN>`, after the approval event, a new commit sets

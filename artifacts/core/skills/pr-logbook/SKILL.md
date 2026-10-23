@@ -11,7 +11,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.3.4"
+    version: "1.3.5"
 claude:
   allowed-tools:
     - Read
@@ -153,6 +153,10 @@ merges, on the implementation feature branch:
 The spec-author skill writes `status: draft` on first write and records
 `draft` → `approved` in the spec-PR; this step is the `implemented` half of
 the same in-commit mechanic.
+
+A spec-PR or delta spec-PR is opened as a Draft PR/MR and marked ready after
+the `approved` flip is pushed; merge only on the run created by the ready
+transition (`docs/spec-pr-workflow.md` → *Draft-PR procedure*).
 
 ### 6. Pre-push sanity checks
 

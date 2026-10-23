@@ -4,7 +4,7 @@
 // Standard library only, plus git and `gh` as the only spawned tools.
 //
 // Usage: runMergeSpecPr(args) — `args` are passed through to `gh pr merge --squash`.
-// Exit codes: 1 on a draft spec; otherwise the exit status of git or `gh`.
+// Exit codes: 1 on a draft spec or a draft PR; otherwise the exit status of git or `gh`.
 // Finding-line format: not applicable.
 
 import { spawnSync } from "node:child_process";
@@ -24,6 +24,33 @@ function delegate(args: readonly string[]): number {
     return 127;
   }
   return res.status ?? 1;
+}
+
+/**
+ * True only when `gh pr view` reports the PR as a draft (output exactly `true`).
+ * Fail-open: any `gh` failure or other output returns false and the merge goes on,
+ * since GitHub itself still refuses to merge a draft (spec 0168 delta-01 R15 is a
+ * clearer message, not a safety measure). The PR is `args[0]` when it is not a flag,
+ * else the current branch's PR. `--repo`/`-R <repo>` (or `--repo=<repo>`) is forwarded;
+ * other merge flags are not, and a PR given by flag-first argv is looked up by branch.
+ */
+function prIsDraft(args: readonly string[]): boolean {
+  const view = ["pr", "view"];
+  if (args[0] !== undefined && !args[0].startsWith("-")) view.push(args[0]);
+  for (let i = 0; i < args.length; i += 1) {
+    const a = args[i] as string;
+    if ((a === "--repo" || a === "-R") && args[i + 1] !== undefined) {
+      view.push("--repo", args[i + 1] as string);
+    } else if (a.startsWith("--repo=")) {
+      view.push(a);
+    }
+  }
+  const res = spawnSync("gh", [...view, "--json", "isDraft", "--jq", ".isDraft"], {
+    stdio: ["ignore", "pipe", "ignore"],
+    shell: false,
+  });
+  if (res.error !== undefined || res.status !== 0) return false;
+  return res.stdout.toString("utf8").trim() === "true";
 }
 
 /** Map `spec/<slug>` to the spec file stem: `-delta-N` becomes `.delta-N`. */
@@ -79,6 +106,13 @@ export function runMergeSpecPr(args: readonly string[]): number {
   if (status === "draft") {
     fatal(`ERROR: Spec file ${specFile} has 'status: draft' in its frontmatter.`);
     fatal("       A draft spec cannot be merged. Please approve it first.");
+    return 1;
+  }
+
+  if (prIsDraft(args)) {
+    fatal("ERROR: This pull request is still a draft.");
+    fatal("       Mark it ready first: `gh pr ready` (GitLab: `glab mr update --ready`),");
+    fatal("       wait for the post-ready CI run, then merge.");
     return 1;
   }
 

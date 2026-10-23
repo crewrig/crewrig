@@ -228,6 +228,61 @@ loop iteration is defined in the *Retroactive review loop* section
 below — a `spec`-class finding produces a new delta-spec PR before
 the implementation-PR is retried.
 
+## Draft-PR procedure
+
+Contract: `specs/0168-spec-status-transition-enforcement.delta-01.md`
+(R7-R16). A spec-PR or delta spec-PR is opened as a **Draft PR/MR** while the
+spec is `status: draft`, so the spec linter tolerates the draft status until
+approval. The procedure is identical on every CLI.
+
+1. **Open as draft:** `gh pr create --draft` (GitHub) or
+   `glab mr create --draft` (GitLab).
+2. After the approval event, in order: (a) commit the flip to
+   `status: approved` with `interaction-mode` as a new commit; (b) `git push`;
+   (c) mark ready with `gh pr ready` or `glab mr update --ready`; (d) wait
+   for the CI run created by the ready transition to be green; (e) only then
+   merge (`node scripts/merge-spec-pr.ts`).
+
+**The signal.** `scripts/lib/spec-linter.js` reads `CREWRIG_PR_DRAFT`. Only the
+exact value `true` skips requirement 1 of spec 0168 (the `newDraftOffenders`
+check), with a non-failing `[NOTICE]` naming each tolerated file. Absent,
+empty, `false` or any other value leaves it enforced. Every other check runs
+unchanged. GitHub sets the variable from `github.event.pull_request.draft`;
+`build.yml` re-runs on `ready_for_review` and `converted_to_draft`.
+
+**GitHub residual.** A re-run replays the original event payload, so a re-run
+of a run created while the PR was draft keeps `CREWRIG_PR_DRAFT=true` and can
+end green after the PR was marked ready. Step (d) therefore uses the run
+created by the ready transition, never a re-run of a draft-era run.
+
+**GitLab.** `CI_MERGE_REQUEST_DRAFT` (introduced in GitLab 17.10, the minimum
+for this feature; an older instance leaves the variable undefined, which means
+not draft) maps onto `CREWRIG_PR_DRAFT` in `ci/ci-capabilities.yml`. The
+variable is fixed at pipeline creation, and marking an MR ready is not
+documented to create a pipeline, so the head pipeline may be a stale
+draft-era one (R12). Step (d) requires a fresh merge-request pipeline: create
+it with the merge-request pipeline creation API, using a single mechanism:
+
+```sh
+glab api --method POST projects/:id/merge_requests/<iid>/pipelines
+```
+
+Sources: `https://docs.gitlab.com/api/merge_requests/` (create merge request
+pipeline) and `https://docs.gitlab.com/ci/variables/predefined_variables/`
+(`CI_MERGE_REQUEST_DRAFT`). The endpoint and the 17.10 claim match those pages
+but are documented, not live-verified against a GitLab instance.
+
+**Gitea.** To our knowledge `tea pulls create` offers no `--draft` flag, so the
+Draft path is documented as unavailable there and requirement 1 applies
+unchanged: the spec must already be `approved` when the PR opens. No WIP-title
+heuristic is used.
+
+**Merge wrapper.** `scripts/merge-spec-pr.ts` refuses a PR that is still a draft
+(`gh pr view --json isDraft`), naming the readiness step. It fails open if
+`gh` fails, GitHub itself refuses to merge a draft PR, and the wrapper does not
+check that the run post-dates the ready transition (R15 timestamp check not
+implemented): step (d) is procedural.
+
 ## Worktree pointer
 
 The *Worktree Isolation* rule (see *Agent Team Protocol → Worktree

@@ -95,6 +95,19 @@ function run(entry: string, work: string, home: string, bin: string): Run {
   });
 }
 
+/**
+ * A stub `gh` dispatching on `$2`: `view` runs `viewBody` (the isDraft answer); `merge` logs its
+ * argv to `log` and exits 7.
+ */
+function stubGh(bin: string, log: string, viewBody: string): void {
+  const gh = path.join(bin, "gh");
+  fs.writeFileSync(
+    gh,
+    `#!/bin/sh\ncase "$2" in\n  view) ${viewBody} ;;\n  merge) for a in "$@"; do printf '%s\\n' "$a" >> "${log}"; done; exit 7 ;;\nesac\n`,
+  );
+  fs.chmodSync(gh, 0o755);
+}
+
 describe("windows model-ci-tooling: merge-spec-pr", () => {
   it("refuses a draft spec with the two ERROR lines and status 1", () => {
     withBox((root, work, bin) => {
@@ -115,16 +128,36 @@ describe("windows model-ci-tooling: merge-spec-pr", () => {
     withBox((root, work, bin) => {
       specRepo(work, "approved");
       const log = path.join(root, "gh-argv.log");
-      const gh = path.join(bin, "gh");
-      fs.writeFileSync(
-        gh,
-        `#!/bin/sh\nfor a in "$@"; do printf '%s\\n' "$a" >> "${log}"; done\nexit 7\n`,
-      );
-      fs.chmodSync(gh, 0o755);
+      stubGh(bin, log, "printf 'false\\n'");
       const r = run("merge-spec-pr approved", work, root, bin);
       expectStatus(r, 7);
       assert.equal(fs.readFileSync(log, "utf8"), "pr\nmerge\n--squash\n", why(r, "gh argv"));
       assert.match(r.out, /Spec file specs\/0999-x\.md is not draft\. Delegating to gh pr merge\./);
+    });
+  });
+
+  it("refuses a draft PR naming the readiness step, never invoking merge", { skip: WIN }, () => {
+    withBox((root, work, bin) => {
+      specRepo(work, "approved");
+      const log = path.join(root, "gh-argv.log");
+      stubGh(bin, log, "printf 'true\\n'");
+      const r = run("merge-spec-pr draft-pr", work, root, bin);
+      expectStatus(r, 1);
+      assert.match(r.err, /still a draft/, why(r, "draft PR diagnostic"));
+      assert.match(r.err, /gh pr ready/, why(r, "readiness step"));
+      assert.match(r.err, /glab mr update --ready/, why(r, "GitLab readiness step"));
+      assert.equal(fs.existsSync(log), false, why(r, "merge never invoked"));
+    });
+  });
+
+  it("fails open when gh pr view fails: merge is still invoked", { skip: WIN }, () => {
+    withBox((root, work, bin) => {
+      specRepo(work, "approved");
+      const log = path.join(root, "gh-argv.log");
+      stubGh(bin, log, "exit 1");
+      const r = run("merge-spec-pr view-fails", work, root, bin);
+      expectStatus(r, 7);
+      assert.equal(fs.readFileSync(log, "utf8"), "pr\nmerge\n--squash\n", why(r, "gh argv"));
     });
   });
 });

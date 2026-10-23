@@ -137,6 +137,12 @@ feature branch, folded into the implementation PR's own squash commit
 (`docs/spec-format.md` → *Recording a status transition*). This skill SHALL
 NOT open a separate, post-merge, metadata-only PR to record `implemented`.
 
+The spec-PR is opened as a Draft PR/MR (`gh pr create --draft`,
+`glab mr create --draft`). After the approval flip is committed and pushed,
+mark it ready (`gh pr ready`, `glab mr update --ready`), wait for the CI run
+created by that ready transition, and only then merge. Procedure and per-forge
+caveats: `docs/spec-pr-workflow.md` → *Draft-PR procedure*.
+
 ### Body sections
 
 All five mandatory sections per `docs/spec-format.md` → *Mandatory body

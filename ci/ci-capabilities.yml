@@ -3581,6 +3581,11 @@ capabilities:
       history-depth: full
     env:
       BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+      # Spec 0168 delta-01 R10: GitLab 17.10+ sets this to "true" when the merge
+      # request is a draft (docs.gitlab.com, predefined variables; the page
+      # documents only the "true" value). Any other value, including unset or
+      # empty, leaves R1 enforced: the linter skips only on the exact "true".
+      CREWRIG_PR_DRAFT: "$CI_MERGE_REQUEST_DRAFT"
     command:
       - npm install
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-linter-*.test.ts
