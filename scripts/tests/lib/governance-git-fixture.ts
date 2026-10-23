@@ -83,5 +83,7 @@ export function runIn(
   extraEnv: Readonly<Record<string, string | undefined>> = {},
   args: readonly string[] = [],
 ): RunResult {
-  return runEntry(entry, { cwd, args, env: gitEnv(extraEnv) });
+  // runEntry re-applies process.env under this env, so an ambient BASE_REF (the pre-push wrapper
+  // exports one, spec 0279 R8e) must be cleared explicitly or it leaks back into the child.
+  return runEntry(entry, { cwd, args, env: { BASE_REF: undefined, ...gitEnv(extraEnv) } });
 }

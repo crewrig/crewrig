@@ -14,7 +14,8 @@ tasks:
         msg: "Run: task lint-bootstrap"
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-taskfile-tree.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/taskfile-tree.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-layout.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-contract.test.ts {{.REPO_DIR}}/scripts/tests/taskfile-tree-references.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-ci-wiring.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-ci-pre-push-parity.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/taskfile-tree.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-layout.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-contract.test.ts {{.REPO_DIR}}/scripts/tests/taskfile-tree-references.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-ci-wiring.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-parity.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-select.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-refs.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-hook.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-hooks-config.test.ts
   check-taskfile-commands:
     desc: Check the Taskfile tree names no POSIX-only command, then run its self-tests (pre-push mirror of the CI job)
     preconditions:

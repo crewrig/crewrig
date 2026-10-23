@@ -39,6 +39,9 @@ export interface RunOptions {
 export function taskEnv(id: string, opts: RunOptions): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...(opts.env ?? process.env) };
   delete env["CREWRIG_PR_DRAFT"];
+  // Task derives REPO_DIR from $PWD: a stale PWD (a push started from a subdirectory) would aim the
+  // task at the wrong tree.
+  env["PWD"] = opts.cwd;
   if (opts.baseRef !== undefined && opts.baseRef !== null) env["BASE_REF"] = opts.baseRef;
   if (id === DRAFT_TASK) env["CREWRIG_PR_DRAFT"] = "true";
   return env;

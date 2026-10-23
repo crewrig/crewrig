@@ -1881,6 +1881,9 @@ jobs:
               - 'Taskfile.yml'
               - 'taskfiles/**'
               - 'scripts/**'
+              - 'ci/ci-capabilities.yml'
+              - 'ci/pre-push-tier.json'
+              - '.githooks/**'
       - uses: actions/setup-node@v4
         if: steps.filter.outputs.check-taskfile-tree == 'true'
         with:
@@ -1894,9 +1897,50 @@ jobs:
       - name: Check Taskfile Tree
         if: steps.filter.outputs.check-taskfile-tree == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-tree.ts
+      - name: Check CI Pre-Push Parity
+        if: steps.filter.outputs.check-taskfile-tree == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ci-pre-push-parity.ts
       - name: Test Check Taskfile Tree
         if: steps.filter.outputs.check-taskfile-tree == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+  ci-pre-push-replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            ci-pre-push-replay:
+              - 'scripts/**'
+              - 'taskfiles/**'
+              - 'ci/**'
+              - '.githooks/**'
+              - '.markdownlintrc'
+              - '.oxfmtrc.json'
+              - '.oxlintrc.json'
+              - 'tsconfig.json'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'docs/**'
+              - 'specs/**'
+              - 'artifacts/**'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.ci-pre-push-replay == 'true'
+        with:
+          node-version: 24
+      - name: Install dependencies
+        if: steps.filter.outputs.ci-pre-push-replay == 'true'
+        run: npm ci
+      - name: Install Task
+        if: steps.filter.outputs.ci-pre-push-replay == 'true'
+        run: sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+      - name: Test Pre-Push Replay
+        if: steps.filter.outputs.ci-pre-push-replay == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-pre-push-replay.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

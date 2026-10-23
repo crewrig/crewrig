@@ -27,7 +27,7 @@ const [remote = '', url = ''] = process.argv.slice(2);
 const run = spawnSync('task', ['ci:pre-push', '--', remote, url], {
   cwd,
   stdio: ['ignore', 'inherit', 'inherit'],
-  env: { ...process.env, CREWRIG_PRE_PUSH_REFS: refs },
+  env: { ...process.env, PWD: cwd, CREWRIG_PRE_PUSH_REFS: refs },
 });
 if (run.error?.code === 'ENOENT') {
   process.stderr.write('pre-push: task is not on PATH: install Task >= 3.39 (https://taskfile.dev/installation/) and Node.js >= 24, or push with --no-verify.\n');

@@ -2402,18 +2402,64 @@ check-taskfile-tree:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-tree.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ci-pre-push-parity.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "Taskfile.yml"
         - "taskfiles/**"
         - "scripts/**"
+        - "ci/ci-capabilities.yml"
+        - "ci/pre-push-tier.json"
+        - ".githooks/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "Taskfile.yml"
         - "taskfiles/**"
         - "scripts/**"
+        - "ci/ci-capabilities.yml"
+        - "ci/pre-push-tier.json"
+        - ".githooks/**"
+
+ci-pre-push-replay:
+  image: node:24
+  before_script:
+    - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+  script:
+    - "npm ci"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-pre-push-replay.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/**"
+        - "taskfiles/**"
+        - "ci/**"
+        - ".githooks/**"
+        - ".markdownlintrc"
+        - ".oxfmtrc.json"
+        - ".oxlintrc.json"
+        - "tsconfig.json"
+        - "package.json"
+        - "package-lock.json"
+        - "docs/**"
+        - "specs/**"
+        - "artifacts/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/**"
+        - "taskfiles/**"
+        - "ci/**"
+        - ".githooks/**"
+        - ".markdownlintrc"
+        - ".oxfmtrc.json"
+        - ".oxlintrc.json"
+        - "tsconfig.json"
+        - "package.json"
+        - "package-lock.json"
+        - "docs/**"
+        - "specs/**"
+        - "artifacts/**"
 
 markdown-links:
   image: node:24

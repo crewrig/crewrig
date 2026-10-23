@@ -45,7 +45,7 @@ On `git push`, `.githooks/pre-push` resolves the checkout it runs in and calls
 
 The fast tier is the list in `ci/pre-push-tier.json`, a map from capability id
 to its measured time in seconds. A capability is admitted only if it is
-deterministic, needs no container, network or secret, and runs in at most 20 s
+deterministic, needs no container, network or secret, and runs in at most 30 s
 alone. The target is 60 s of wall-clock on a typical change (at most 20 files);
 the wrapper prints a warning, without failing, when a run exceeds it.
 
@@ -121,7 +121,7 @@ capability's command**, so the hook and CI cannot drift:
   (expands task calls, strips `{{.REPO_DIR}}/` and `{{.CLI_ARGS}}`, drops
   provisioning) and fails when they differ.
 - To put the new task in the fast tier, measure it alone, keep it at or under
-  20 s, and add its id and time to `ci/pre-push-tier.json`.
+  30 s, and add its id and time to `ci/pre-push-tier.json`.
 
 See [`docs/ci-reference-format.md`](ci-reference-format.md) for the capability
 file format and [`DEVELOPMENT.md`](../DEVELOPMENT.md) for the Taskfile layout.
