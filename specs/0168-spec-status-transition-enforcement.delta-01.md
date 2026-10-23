@@ -2,7 +2,7 @@
 id: "0168"
 slug: spec-status-transition-enforcement
 status: draft
-complexity: small
+complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1762
 version: 1.1.0
@@ -44,9 +44,10 @@ guarantee of requirement 1 is unchanged because a Draft PR/MR cannot be merged.
     SHALL declare `CREWRIG_PR_DRAFT` in its `env:` block, next to `BASE_REF`,
     mapped from the predefined variable `CI_MERGE_REQUEST_DRAFT` (available in
     GitLab 17.10 and later, per the GitLab CI/CD documentation of predefined
-    variables and `workflow:rules`, to be re-checked at plan time; that is the minimum supported version for this
-    feature, and an older instance leaves the variable undefined, which
-    R7 treats as not draft). `.gitlab-ci.yml` SHALL be regenerated
+    variables and `workflow:rules`; the version is to be re-checked at plan
+    time). GitLab 17.10 is the minimum supported version for this feature, and
+    an older instance leaves the variable undefined, which
+    R7 treats as not draft. `.gitlab-ci.yml` SHALL be regenerated
     with `node scripts/build-ci.ts` so the generated job carries the mapping,
     and `scripts/check-ci-parity.ts` (specs 0047, 0049) SHALL stay green.
 - **R11. Re-trigger on readiness.** The `pull_request` trigger of
@@ -201,11 +202,14 @@ And the merge waits for the run created by the ready transition.
 
 ### Complexity
 
-`small` is retained. The behaviour change is one skipped block in one linter
-function plus one environment mapping per engine; the documentation edits
-follow mechanically from it. Per `docs/agent-team-protocol/templates.md` the
-`small` tier adds a `tester` between `developer` and `pr-logbook` when the
-change carries a test surface, which R17 does.
+`standard`. The change is not one skipped block: it spans the linter, two CI
+engines (the `build.yml` signal mapping and trigger types, and the
+`ci/ci-capabilities.yml` mapping with the regenerated `.gitlab-ci.yml`), new
+comparison logic in `scripts/merge-spec-pr.ts`, about six documents, two to
+three skill sources with a component rebuild, and a new test matrix.
+`docs/adr/0010-spec-plan-review-lifecycle.md` (*Complexity tiers and team
+sizing*) is the governing source and excludes an `architect` and a `tester`
+from `small`; this change needs both, so it takes the full Template team.
 
 ### Out of scope
 
