@@ -3413,6 +3413,9 @@ capabilities:
           - "scripts/lib/spec-view.ts"
           - "scripts/lib/ts-scope.ts"
           - "scripts/tests/spec-view.test.ts"
+          - "Taskfile.yml"
+          - "taskfiles/**"
+          - "scripts/lib/taskfile-tree.ts"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -3420,10 +3423,14 @@ capabilities:
           - "scripts/lib/spec-view.ts"
           - "scripts/lib/ts-scope.ts"
           - "scripts/tests/spec-view.test.ts"
+          - "Taskfile.yml"
+          - "taskfiles/**"
+          - "scripts/lib/taskfile-tree.ts"
     portability: portable
     requires:
       runtime: node@24
     command:
+      - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-view.test.ts
 
   # Spec 0240 R3: the floor guard's failure path, proven on a Node.js release

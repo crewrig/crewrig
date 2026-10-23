@@ -33,6 +33,67 @@ const COMPANIONS = [
 const LISTING_JOBS = ["skill-scripts-ts", "extension-render", "check-taskfile-commands"];
 const read = (...p: string[]): string => fs.readFileSync(path.join(REPO, ...p), "utf8");
 
+// Install-step audit: a test that reaches the Taskfile loader pulls js-yaml, so every CI job that
+// runs one must install dependencies first. The importer set is computed, one level transitively.
+const SEEDS = [
+  "taskfile-tree.ts",
+  "tier-taskfile.ts",
+  "tier-fixtures.ts",
+  "oracle-ts-runner.ts",
+  "harness-curator-callers.ts",
+  "taskfile-commands.ts",
+];
+const INSTALL = /\bnpm (ci|install)\b/;
+
+function listTs(dir: string): string[] {
+  return fs
+    .readdirSync(path.join(REPO, dir), { recursive: true, encoding: "utf8" })
+    .filter((f) => f.endsWith(".ts") && !f.split(path.sep).includes("node_modules"))
+    .map((f) => path.posix.join(dir, f.split(path.sep).join("/")));
+}
+
+function loaderImporterTests(): string[] {
+  const sources = listTs("scripts");
+  const text = new Map(sources.map((f) => [f, read(...f.split("/"))]));
+  const mentions = (body: string, names: string[]): boolean => names.some((n) => body.includes(n));
+  const helpers = new Set(SEEDS);
+  for (const [f, body] of text)
+    if (!f.endsWith(".test.ts") && mentions(body, SEEDS)) helpers.add(path.posix.basename(f));
+  return sources.filter(
+    (f) =>
+      f.startsWith("scripts/tests/") &&
+      f.endsWith(".test.ts") &&
+      mentions(text.get(f) ?? "", [...helpers]),
+  );
+}
+
+function globToRegExp(glob: string): RegExp {
+  const esc = glob.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*");
+  return new RegExp(`^${esc}$`);
+}
+
+function assertInstallBeforeLoaderTests(caps: Cap[], importers: string[]): void {
+  assert.ok(
+    importers.includes("scripts/tests/spec-view.test.ts"),
+    "the importer scan finds spec-view",
+  );
+  let checked = 0;
+  for (const c of caps) {
+    const cmd = (c.command ?? []).join("\n");
+    const tokens = cmd.match(/scripts\/tests\/[^\s"']+\.test\.ts/g) ?? [];
+    const runs = importers.filter((t) =>
+      tokens.some((tok) => (tok.includes("*") ? globToRegExp(tok).test(t) : tok === t)),
+    );
+    if (runs.length === 0) continue;
+    checked += 1;
+    assert.ok(
+      INSTALL.test(cmd),
+      `${c.id} runs ${runs[0]} (a loader importer) without an install step`,
+    );
+  }
+  assert.ok(checked >= 5, "the audit covers the jobs that run loader importers");
+}
+
 function jobBlock(text: string, header: RegExp, gitlab = false): string {
   const m = header.exec(text);
   assert.ok(m, `job ${header} present`);
@@ -69,13 +130,18 @@ function assertCapabilities(text: string): void {
   const listing = caps.filter(
     (c) => c.id !== ID && (c.trigger ?? []).some((t) => (t.paths ?? []).includes(ROOT)),
   );
-  assert.deepEqual(listing.map((c) => c.id).sort(), [...LISTING_JOBS].sort());
+  assert.deepEqual(listing.map((c) => c.id).sort(), [...LISTING_JOBS, "spec-view"].sort());
   assert.ok(listing.length >= 3, "the jobs that list the root Taskfile are found");
-  for (const c of listing)
+  for (const c of listing.filter((l) => l.id !== "spec-view"))
     for (const t of c.trigger ?? [])
       if ((t.paths ?? []).includes(ROOT))
         for (const p of COMPANIONS)
           assert.ok((t.paths ?? []).includes(p), `${c.id} ${t.on} paths has ${p}`);
+  // spec-view reads the whole tree through the loader: it reruns on the tree and the loader only.
+  const sv = listing.find((c) => c.id === "spec-view");
+  for (const t of sv?.trigger ?? [])
+    for (const p of [ROOT, "taskfiles/**", "scripts/lib/taskfile-tree.ts"])
+      assert.ok((t.paths ?? []).includes(p), `spec-view ${t.on} paths has ${p}`);
 }
 
 function assertGithub(text: string): void {
@@ -111,6 +177,27 @@ describe("check-taskfile-tree CI wiring", () => {
   test("ci/ci-capabilities.yml", () => assertCapabilities(read("ci", "ci-capabilities.yml")));
   test("GitHub workflow", () => assertGithub(read(".github", "workflows", "build.yml")));
   test("GitLab pipeline", () => assertGitlab(read(".gitlab-ci.yml")));
+
+  test("every job running a loader-importing test installs dependencies first", () => {
+    const caps = (yamlLib.load(read("ci", "ci-capabilities.yml")) as { capabilities: Cap[] })
+      .capabilities;
+    assertInstallBeforeLoaderTests(caps, loaderImporterTests());
+  });
+  test("mutation: spec-view without its install command is rejected", () => {
+    const caps = (yamlLib.load(read("ci", "ci-capabilities.yml")) as { capabilities: Cap[] })
+      .capabilities;
+    const sv = caps.find((c) => c.id === "spec-view");
+    assert.ok(sv?.command);
+    sv.command = sv.command.filter((c) => !INSTALL.test(c));
+    assert.throws(() => assertInstallBeforeLoaderTests(caps, loaderImporterTests()), /spec-view/);
+  });
+  test("spec-view workflow installs dependencies and carries the tree filters", () => {
+    const wf = read(".github", "workflows", "spec-view.yml");
+    assert.ok(INSTALL.test(wf), "installs dependencies");
+    assert.equal(wf.split(`- "${ROOT}"`).length - 1, 2);
+    for (const p of COMPANIONS.slice(0, 2))
+      assert.equal(wf.split(`- "${p}"`).length - 1, 2, `both filters have ${p}`);
+  });
 
   test("mutation: a job that does not run the guard is rejected", () => {
     assert.throws(() =>

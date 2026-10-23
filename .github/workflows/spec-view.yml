@@ -10,6 +10,9 @@ on:
       - "scripts/lib/spec-view.ts"
       - "scripts/lib/ts-scope.ts"
       - "scripts/tests/spec-view.test.ts"
+      - "Taskfile.yml"
+      - "taskfiles/**"
+      - "scripts/lib/taskfile-tree.ts"
   push:
     branches: [main, "release/**"]
     paths:
@@ -17,6 +20,9 @@ on:
       - "scripts/lib/spec-view.ts"
       - "scripts/lib/ts-scope.ts"
       - "scripts/tests/spec-view.test.ts"
+      - "Taskfile.yml"
+      - "taskfiles/**"
+      - "scripts/lib/taskfile-tree.ts"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -35,6 +41,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
 
       - name: Test the spec effective view
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-view.test.ts
