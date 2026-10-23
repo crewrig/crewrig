@@ -324,6 +324,9 @@ jobs:
               - 'artifacts/**'
               - 'README.md'
               - 'Taskfile.yml'
+              - 'taskfiles/**'
+              - 'scripts/lib/taskfile-tree.ts'
+              - 'scripts/lib/governance/taskfile-tree-guard.ts'
       - uses: actions/setup-node@v4
         if: steps.filter.outputs.skill-scripts-ts == 'true'
         with:
@@ -1020,6 +1023,9 @@ jobs:
               - 'scripts/tests/lib/extension-sandbox.ts'
               - 'scripts/tests/lib/extension-render-conformance.ts'
               - 'Taskfile.yml'
+              - 'taskfiles/**'
+              - 'scripts/lib/taskfile-tree.ts'
+              - 'scripts/lib/governance/taskfile-tree-guard.ts'
               - 'extensions/**'
               - 'artifacts/**'
               - 'scripts/lib/extension-targets.json'
@@ -1834,6 +1840,9 @@ jobs:
           filters: |
             check-taskfile-commands:
               - 'Taskfile.yml'
+              - 'taskfiles/**'
+              - 'scripts/lib/taskfile-tree.ts'
+              - 'scripts/lib/governance/taskfile-tree-guard.ts'
               - 'scripts/check-taskfile-commands.ts'
               - 'scripts/lib/taskfile-command*.ts'
               - 'scripts/lib/taskfile-command-exemptions.json'
@@ -1854,6 +1863,37 @@ jobs:
       - name: Test Check Taskfile Commands
         if: steps.filter.outputs.check-taskfile-commands == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-taskfile-commands.test.ts scripts/tests/check-tool-binaries.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+  check-taskfile-tree:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            check-taskfile-tree:
+              - 'Taskfile.yml'
+              - 'taskfiles/**'
+              - 'scripts/**'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.check-taskfile-tree == 'true'
+        with:
+          node-version: 24
+      - name: Install production dependencies
+        if: steps.filter.outputs.check-taskfile-tree == 'true'
+        run: npm ci --omit=dev --workspaces=false
+      - name: Install Task
+        if: steps.filter.outputs.check-taskfile-tree == 'true'
+        run: sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+      - name: Check Taskfile Tree
+        if: steps.filter.outputs.check-taskfile-tree == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-tree.ts
+      - name: Test Check Taskfile Tree
+        if: steps.filter.outputs.check-taskfile-tree == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

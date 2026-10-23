@@ -409,6 +409,9 @@ skill-scripts-ts:
         - "artifacts/**"
         - "README.md"
         - "Taskfile.yml"
+        - "taskfiles/**"
+        - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/governance/taskfile-tree-guard.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "artifacts/**/skills/*/scripts/**"
@@ -420,6 +423,9 @@ skill-scripts-ts:
         - "artifacts/**"
         - "README.md"
         - "Taskfile.yml"
+        - "taskfiles/**"
+        - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/governance/taskfile-tree-guard.ts"
 
 install-ts:
   image: node:24
@@ -1197,6 +1203,9 @@ extension-render:
         - "scripts/tests/lib/extension-sandbox.ts"
         - "scripts/tests/lib/extension-render-conformance.ts"
         - "Taskfile.yml"
+        - "taskfiles/**"
+        - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/governance/taskfile-tree-guard.ts"
         - "extensions/**"
         - "artifacts/**"
         - "scripts/lib/extension-targets.json"
@@ -1247,6 +1256,9 @@ extension-render:
         - "scripts/tests/lib/extension-sandbox.ts"
         - "scripts/tests/lib/extension-render-conformance.ts"
         - "Taskfile.yml"
+        - "taskfiles/**"
+        - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/governance/taskfile-tree-guard.ts"
         - "extensions/**"
         - "artifacts/**"
         - "scripts/lib/extension-targets.json"
@@ -2353,6 +2365,9 @@ check-taskfile-commands:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "Taskfile.yml"
+        - "taskfiles/**"
+        - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/governance/taskfile-tree-guard.ts"
         - "scripts/check-taskfile-commands.ts"
         - "scripts/lib/taskfile-command*.ts"
         - "scripts/lib/taskfile-command-exemptions.json"
@@ -2363,6 +2378,9 @@ check-taskfile-commands:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes:
         - "Taskfile.yml"
+        - "taskfiles/**"
+        - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/governance/taskfile-tree-guard.ts"
         - "scripts/check-taskfile-commands.ts"
         - "scripts/lib/taskfile-command*.ts"
         - "scripts/lib/taskfile-command-exemptions.json"
@@ -2370,6 +2388,26 @@ check-taskfile-commands:
         - "scripts/check-tool-binaries.ts"
         - "scripts/lib/tool-binaries.ts"
         - "scripts/tests/check-tool-binaries.test.ts"
+
+check-taskfile-tree:
+  image: node:24
+  before_script:
+    - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-tree.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "Taskfile.yml"
+        - "taskfiles/**"
+        - "scripts/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "Taskfile.yml"
+        - "taskfiles/**"
+        - "scripts/**"
 
 markdown-links:
   image: node:24

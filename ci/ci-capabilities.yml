@@ -473,6 +473,9 @@ capabilities:
           - "artifacts/**"
           - "README.md"
           - "Taskfile.yml"
+          - "taskfiles/**"
+          - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/governance/taskfile-tree-guard.ts"
       - on: push
         branches: [main, "release/**"]
         paths:
@@ -485,6 +488,9 @@ capabilities:
           - "artifacts/**"
           - "README.md"
           - "Taskfile.yml"
+          - "taskfiles/**"
+          - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/governance/taskfile-tree-guard.ts"
     portability: portable
     requires:
       runtime: node@24
@@ -1641,6 +1647,9 @@ capabilities:
           - "scripts/tests/lib/extension-sandbox.ts"
           - "scripts/tests/lib/extension-render-conformance.ts"
           - "Taskfile.yml"
+          - "taskfiles/**"
+          - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/governance/taskfile-tree-guard.ts"
           - "extensions/**"
           - "artifacts/**"
           - "scripts/lib/extension-targets.json"
@@ -1692,6 +1701,9 @@ capabilities:
           - "scripts/tests/lib/extension-sandbox.ts"
           - "scripts/tests/lib/extension-render-conformance.ts"
           - "Taskfile.yml"
+          - "taskfiles/**"
+          - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/governance/taskfile-tree-guard.ts"
           - "extensions/**"
           - "artifacts/**"
           - "scripts/lib/extension-targets.json"
@@ -2905,12 +2917,15 @@ capabilities:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-claude-agent-layout.ts
 
   - id: check-taskfile-commands
-    name: "Check Taskfile.yml names no POSIX-only command and run the tool-binary check suites"
+    name: "Check the Taskfile tree names no POSIX-only command and run the tool-binary check suites"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
         paths:
           - "Taskfile.yml"
+          - "taskfiles/**"
+          - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/governance/taskfile-tree-guard.ts"
           - "scripts/check-taskfile-commands.ts"
           - "scripts/lib/taskfile-command*.ts"
           - "scripts/lib/taskfile-command-exemptions.json"
@@ -2922,6 +2937,9 @@ capabilities:
         branches: [main, "release/**"]
         paths:
           - "Taskfile.yml"
+          - "taskfiles/**"
+          - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/governance/taskfile-tree-guard.ts"
           - "scripts/check-taskfile-commands.ts"
           - "scripts/lib/taskfile-command*.ts"
           - "scripts/lib/taskfile-command-exemptions.json"
@@ -2937,6 +2955,34 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-commands.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-taskfile-commands.test.ts scripts/tests/check-tool-binaries.test.ts
+
+  # The tree guard's check (b) scans every scripts/**/*.{ts,js} source for a
+  # raw read of the root Taskfile, so this job triggers on the whole scripts/**
+  # surface plus the Taskfile tree itself (spec 0278 R16, plan delta D6).
+  - id: check-taskfile-tree
+    name: "Check the Taskfile tree guard and run its loader, reference and CI-wiring suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "Taskfile.yml"
+          - "taskfiles/**"
+          - "scripts/**"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "Taskfile.yml"
+          - "taskfiles/**"
+          - "scripts/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-tree.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts
 
   - id: markdown-links
     name: "Check relative Markdown link integrity"
