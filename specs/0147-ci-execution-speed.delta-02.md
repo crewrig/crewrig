@@ -81,10 +81,13 @@ its own capability to declare `task`, which forces `changeset-coverage` to decla
   delta-01). It SHALL fail when the gated union contains a tool that is absent from the
   `requires.tools` of `changeset-coverage` (requirement 25). A tool that a runtime declared
   by `changeset-coverage` already provides is satisfied without a `requires.tools` entry:
-  `python3` is provided by a `python@*` runtime, the same exemption `check-ci-parity` applies
-  to the GitHub install step. A gated **command** that invokes a tool is covered
-  transitively: validity rule 6 of `check-ci-parity` requires its own capability to declare
-  the tool, and this requirement then requires `changeset-coverage` to declare it. The guard
+  `python3` is provided by a `python@*` runtime, the analogous exemption `check-ci-parity` applies
+  to the GitHub install step. A gated **command** that invokes `yq`, `jq`, `task` or
+  `markdownlint` is covered transitively: validity rule 6 of `check-ci-parity` requires its
+  own capability to declare the tool, and this requirement then requires `changeset-coverage`
+  to declare it. A tool outside that probe list (for example `tesseract`) is covered only
+  through the `requires.tools` of the capability that uses it, which is the contract of the
+  reference. The guard
   SHALL NOT define a second, different notion of "invokes a tool".
 - **R29.** The guard SHALL read `ci/ci-capabilities.yml` **at check time** and SHALL NOT
   embed a copy of the gated union, of the capability list, or of any command or tool list.
@@ -105,7 +108,8 @@ its own capability to declare `task`, which forces `changeset-coverage` to decla
   keeps the engines in agreement, requirement 9 of the parent), and `.gitlab-ci.yml` SHALL be
   regenerated, not edited. The test SHALL include a fixture-driven case per scenario below,
   each built from a temporary copy of a reference document, never by mutating the real
-  `ci/ci-capabilities.yml`. - **R32.** The merge of the implementation pull request SHALL be preceded by a green
+  `ci/ci-capabilities.yml`.
+- **R32.** The merge of the implementation pull request SHALL be preceded by a green
   `workflow_dispatch` run of the **Exhaustive Run** workflow on the implementation branch,
   linked in the pull request body. If that run reveals any failure other than the missing
   tools of requirements 25 and 26 (a pre-existing red check that the run had been masking),
@@ -135,10 +139,10 @@ its own capability to declare `task`, which forces `changeset-coverage` to decla
   run of requirement 32 proves the run itself, not the presence of the steps.
 - **Extending `check-ci-parity` with the union rule** (a new validity rule instead of a new
   test). Considered: it would keep one reader of the reference and reuse the existing
-  fixtures. **Rejected for this delta**: `check-ci-parity` polices drift between the reference
-  and each engine's pipeline, while the union rule is a consistency rule between two
-  capabilities of the reference itself; a ten-line test with its own fixtures keeps the
-  regression scenarios readable and leaves the parity harness untouched. The implementer MAY
+  fixtures. **Not chosen for this delta**: `check-ci-parity` already hosts reference-validity
+  rules (validity rule 6 is the same kind of consistency rule), so it is a legitimate home.
+  A small dedicated test with its own fixtures keeps the regression scenarios readable and
+  leaves the parity harness, which two other tickets edit, untouched. The implementer MAY
   revisit this in the plan if the harness turns out to be the cheaper home, since the
   observable contract (requirements 28 to 30) is unchanged.
 - **A second, command-level rule** (a gated command invoking `task` must be matched by
