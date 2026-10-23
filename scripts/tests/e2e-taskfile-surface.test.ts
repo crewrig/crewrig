@@ -19,7 +19,7 @@ const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** `task --list` output, or null when go-task is not installed. */
 const taskList = (): string | null => {
-  const r = spawnSync("task", ["--list"], { cwd: REPO, encoding: "utf8" });
+  const r = spawnSync("task", ["--list", "--color=false"], { cwd: REPO, encoding: "utf8" });
   if (r.error !== undefined) return null;
   return `${r.stdout}${r.stderr}`;
 };
