@@ -182,6 +182,25 @@ describe("ci-pre-push wrapper without node_modules", () => {
     assert.match(r.stderr, /run task lint-bootstrap/);
     assert.doesNotMatch(r.stdout + r.stderr, /command not found|ERR_MODULE_NOT_FOUND/);
   });
+
+  it("treats a git remote named `hooks` as a push, not as the hooks subcommand", POSIX, () => {
+    const dir = newRepo();
+    fs.mkdirSync(path.join(dir, "scripts"));
+    fs.copyFileSync(WRAPPER, path.join(dir, "scripts", "ci-pre-push.ts"));
+    const lib = path.join(dir, "scripts", "lib", "ci-pre-push");
+    fs.mkdirSync(lib, { recursive: true });
+    for (const f of ["hooks.ts", "select.ts", "run.ts"])
+      fs.copyFileSync(path.join(REPO, "scripts", "lib", "ci-pre-push", f), path.join(lib, f));
+    const entry = path.join(dir, "scripts", "ci-pre-push.ts");
+    // Push mode reaches the node_modules check; the subcommand mode would print its usage line.
+    const push = runIn(entry, dir, {}, ["--", "hooks", "https://example.invalid/r.git"]);
+    assert.notEqual(push.status, 0);
+    assert.match(push.stderr, /run task lint-bootstrap/);
+    assert.doesNotMatch(push.stdout + push.stderr, /usage: ci-pre-push hooks/);
+    const sub = runIn(entry, dir, {}, ["hooks", "bogus"]);
+    assert.notEqual(sub.status, 0);
+    assert.match(sub.stdout + sub.stderr, /lint-bootstrap|usage/);
+  });
 });
 
 describe("draft signal confined to ci:lint-specs (R12)", () => {

@@ -33,7 +33,9 @@ function gitOut(args: readonly string[]): string {
 
 async function main(argv: readonly string[]): Promise<number> {
   const args = argv[0] === "--" ? argv.slice(1) : [...argv];
-  if (args[0] === "hooks") {
+  // A git remote may be named `hooks` and the hook passes the remote first: only a known
+  // subcommand in second position selects the `hooks` mode, anything else is a push.
+  if (args[0] === "hooks" && ["install", "uninstall", "status"].includes(args[1] ?? "")) {
     const { runHooksCommand } = await import("./lib/ci-pre-push/hooks.ts");
     const r = runHooksCommand(args[1], process.cwd());
     if (r.out !== "") say(r.out);

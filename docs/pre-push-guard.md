@@ -74,8 +74,8 @@ authoritative.
 
 The default base is `origin/main`. Override it with
 `CREWRIG_PRE_PUSH_BASE=<ref>`. When the base cannot be resolved locally the
-wrapper prints a notice and runs every always-run and path-matching
-capability; it never runs `git fetch` or any other network command.
+wrapper prints a notice and runs every capability of the fast tier; it never
+runs `git fetch` or any other network command.
 
 ### Draft pull requests and spec 0168 R1
 
