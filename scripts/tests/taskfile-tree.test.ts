@@ -78,7 +78,11 @@ describe("taskfile tree loader: include forms", () => {
   });
 
   it("exposes the file list through taskfilePaths", () => {
-    assert.deepEqual(taskfilePaths(path.join(fixtures, "nested")), ["Taskfile.yml", "a.yml", "b.yml"]);
+    assert.deepEqual(taskfilePaths(path.join(fixtures, "nested")), [
+      "Taskfile.yml",
+      "a.yml",
+      "b.yml",
+    ]);
   });
 });
 
@@ -117,7 +121,10 @@ describe("taskfile tree loader: per-task view", () => {
     assert.ok(alpha.includes("- task: beta"));
     assert.ok(!alpha.includes("beta:"));
     assert.ok(!alpha.includes("Leading comment"));
-    assert.equal(tree.byName.get("lib:beta")?.source, "  beta:\n    cmd: echo beta\n    deps: [alpha]");
+    assert.equal(
+      tree.byName.get("lib:beta")?.source,
+      "  beta:\n    cmd: echo beta\n    deps: [alpha]",
+    );
   });
 
   it("slices a quoted key and the last task of a file", () => {
@@ -170,10 +177,7 @@ describe("taskfile tree loader: live repository", () => {
 
   it("reports exactly the baseline name set", () => {
     assert.equal(baseline.length, 129);
-    assert.deepEqual(
-      [...tree.byName.keys()].sort(),
-      baseline.map((b) => b.name).sort(),
-    );
+    assert.deepEqual([...tree.byName.keys()].sort(), baseline.map((b) => b.name).sort());
   });
 
   it("has no duplicate effective name", () => {

@@ -106,7 +106,10 @@ describe("check-taskfile-tree checks (a)-(g)", () => {
       "scripts/tests/reader.test.ts": 'readFileSync(path.join(repo, "Taskfile.yml"), "utf8");\n',
     });
     assert.equal(out.length, 1);
-    assert.match(out[0] ?? "", /^scripts\/tests\/reader\.test\.ts:1: reads the root Taskfile directly/);
+    assert.match(
+      out[0] ?? "",
+      /^scripts\/tests\/reader\.test\.ts:1: reads the root Taskfile directly/,
+    );
   });
 
   it("(b) matches the single-quote and backtick forms", () => {
@@ -153,7 +156,9 @@ describe("check-taskfile-tree checks (a)-(g)", () => {
       ...split(),
       "Taskfile.yml": `${ROOT}  stray:\n    cmds:\n      - echo stray\n`,
     });
-    assert.deepEqual(out, ["Taskfile.yml defines task 'stray'; the root may only define 'default'"]);
+    assert.deepEqual(out, [
+      "Taskfile.yml defines task 'stray'; the root may only define 'default'",
+    ]);
   });
 
   it("(d) fails a version string differing from '3.39'", () => {
@@ -178,11 +183,17 @@ describe("check-taskfile-tree checks (a)-(g)", () => {
   });
 
   it("(f) fails a dangling deps entry and a dangling task call", () => {
-    const dep = findings({ ...split(), "taskfiles/lint.yml": LINT.replace("e2e:build:base", "e2e:nope") });
+    const dep = findings({
+      ...split(),
+      "taskfiles/lint.yml": LINT.replace("e2e:build:base", "e2e:nope"),
+    });
     assert.deepEqual(dep, [
       "taskfiles/lint.yml: task 'gate' references 'e2e:nope' which resolves to 'e2e:nope' (no such task)",
     ]);
-    const call = findings({ ...split(), "taskfiles/e2e.yml": E2E.replace("task: build:base", "task: gone") });
+    const call = findings({
+      ...split(),
+      "taskfiles/e2e.yml": E2E.replace("task: build:base", "task: gone"),
+    });
     assert.deepEqual(call, [
       "taskfiles/e2e.yml: task 'e2e:build' references 'gone' which resolves to 'e2e:gone' (no such task)",
     ]);
@@ -208,10 +219,7 @@ describe("check-taskfile-tree checks (a)-(g)", () => {
 
   it("(g) fails dir:, excludes: and aliases: on an include", () => {
     for (const key of ["dir: .", "excludes: [hello]", "aliases: [l]"]) {
-      const root = ROOT.replace(
-        "    flatten: true\n",
-        `    flatten: true\n    ${key}\n`,
-      );
+      const root = ROOT.replace("    flatten: true\n", `    flatten: true\n    ${key}\n`);
       const out = findings({ ...split(), "Taskfile.yml": root });
       assert.deepEqual(out, [
         `Taskfile.yml: include 'lint' uses '${key.split(":")[0]}:' (not allowed, R7/R9)`,
@@ -254,7 +262,10 @@ describe("check-taskfile-tree CLI contract", () => {
     delete tree["taskfiles/lint.yml"];
     const result = cli(stage(tree));
     assert.equal(result.status, 2);
-    assert.match(result.stderr, /^check-taskfile-tree: cannot load the tree: unreadable: taskfiles\/lint\.yml/);
+    assert.match(
+      result.stderr,
+      /^check-taskfile-tree: cannot load the tree: unreadable: taskfiles\/lint\.yml/,
+    );
   });
 
   it("exits 2 on an unparsable file", () => {
@@ -299,7 +310,10 @@ describe("check-taskfile-tree R14 comparison with task --list-all --json", () =>
       t.skip("task binary not found; R14 mismatch not exercised here");
       return;
     }
-    const hidden = LINT.replace("tasks:\n", "tasks:\n  hidden:\n    internal: true\n    cmds:\n      - echo hidden\n");
+    const hidden = LINT.replace(
+      "tasks:\n",
+      "tasks:\n  hidden:\n    internal: true\n    cmds:\n      - echo hidden\n",
+    );
     const result = checkTaskfileTree(stage({ ...split(), "taskfiles/lint.yml": hidden }));
     assert.deepEqual(result.findings, [
       "task 'hidden' is loaded from the tree but not listed by Task (R14)",

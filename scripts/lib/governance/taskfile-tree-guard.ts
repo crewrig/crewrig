@@ -123,7 +123,9 @@ function checkRootReaders(repoDir: string, findings: string[]): void {
 }
 
 function describeVersion(version: unknown): string {
-  return typeof version === "string" ? `'${version}'` : `${JSON.stringify(version) ?? "undefined"} (${typeof version})`;
+  return typeof version === "string"
+    ? `'${version}'`
+    : `${JSON.stringify(version) ?? "undefined"} (${typeof version})`;
 }
 
 function taskRefs(definition: unknown): string[] {
@@ -197,9 +199,7 @@ function compareWithTaskBinary(
   if (run.error !== undefined) {
     const code = (run.error as NodeJS.ErrnoException).code;
     if (code === "ENOENT") {
-      notices.push(
-        "task binary not found; loader-vs-Task name comparison (spec 0278 R14) SKIPPED",
-      );
+      notices.push("task binary not found; loader-vs-Task name comparison (spec 0278 R14) SKIPPED");
     } else {
       findings.push(`cannot run 'task --list-all --json': ${run.error.message}`);
     }
@@ -272,7 +272,9 @@ export function checkTaskfileTree(repoDir: string, options: GuardOptions = {}): 
       }
     }
     for (const include of node.includes) {
-      for (const key of include.extraKeys.filter((k) => ["dir", "excludes", "aliases"].includes(k))) {
+      for (const key of include.extraKeys.filter((k) =>
+        ["dir", "excludes", "aliases"].includes(k),
+      )) {
         findings.push(`${node.file}: include '${include.key}' uses '${key}:' (not allowed, R7/R9)`);
       }
     }

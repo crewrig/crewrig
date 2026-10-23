@@ -82,11 +82,19 @@ function runTask(name: string) {
 
 describe("task reference resolution through the real task binary", () => {
   const cases: [string, string, string[]][] = [
-    ["namespace-relative deps", "e2e:via-dep-relative", ["MARK-e2e-base", "MARK-relative-dep-done"]],
+    [
+      "namespace-relative deps",
+      "e2e:via-dep-relative",
+      ["MARK-e2e-base", "MARK-relative-dep-done"],
+    ],
     ["namespace-relative task call", "e2e:via-call-relative", ["MARK-e2e-base"]],
     ["root-anchored deps", "e2e:via-dep-root", ["MARK-hello", "MARK-root-dep-done"]],
     ["root-anchored task call", "e2e:via-call-root", ["MARK-hello"]],
-    ["flattened task depending on a namespaced one", "via-flat", ["MARK-e2e-base", "MARK-flat-done"]],
+    [
+      "flattened task depending on a namespaced one",
+      "via-flat",
+      ["MARK-e2e-base", "MARK-flat-done"],
+    ],
   ];
   for (const [label, name, markers] of cases) {
     it(`${label}: ${name} exits 0 and prints the dependency marker`, (t) => {

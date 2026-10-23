@@ -103,7 +103,9 @@ function sliceTaskSource(text: string, localName: string): string {
   if (tasksAt < 0) {
     return "";
   }
-  const keyPattern = new RegExp(`^(\\s+)(?:${escapeRegExp(localName)}|"${escapeRegExp(localName)}"|'${escapeRegExp(localName)}'):(?:\\s|$)`);
+  const keyPattern = new RegExp(
+    `^(\\s+)(?:${escapeRegExp(localName)}|"${escapeRegExp(localName)}"|'${escapeRegExp(localName)}'):(?:\\s|$)`,
+  );
   let indent = -1;
   let start = -1;
   let end = lines.length;
@@ -175,10 +177,16 @@ function parseIncludes(
       target = value["taskfile"];
       flatten = value["flatten"] === true;
       optional = value["optional"] === true;
-      extraKeys = Object.keys(value).filter((k) => !["taskfile", "flatten", "optional"].includes(k));
+      extraKeys = Object.keys(value).filter(
+        (k) => !["taskfile", "flatten", "optional"].includes(k),
+      );
     }
     if (typeof target !== "string" || target === "") {
-      throw new TaskfileTreeError("invalid-include", fromRel, `include '${key}' has no taskfile path`);
+      throw new TaskfileTreeError(
+        "invalid-include",
+        fromRel,
+        `include '${key}' has no taskfile path`,
+      );
     }
     let abs = path.resolve(path.dirname(fromAbs), target);
     if (isDirectory(abs)) {
@@ -199,19 +207,31 @@ function parseIncludes(
 function loadNode(state: LoadState, abs: string, namespace: string, stack: string[]): void {
   const rel = toPosix(path.relative(state.repoDir, abs));
   if (stack.includes(abs)) {
-    throw new TaskfileTreeError("cycle", rel, `include cycle: ${[...stack, abs].map((p) => toPosix(path.relative(state.repoDir, p))).join(" -> ")}`);
+    throw new TaskfileTreeError(
+      "cycle",
+      rel,
+      `include cycle: ${[...stack, abs].map((p) => toPosix(path.relative(state.repoDir, p))).join(" -> ")}`,
+    );
   }
   let text: string;
   try {
     text = readFileSync(abs, "utf8");
   } catch (err) {
-    throw new TaskfileTreeError("unreadable", rel, err instanceof Error ? err.message : String(err));
+    throw new TaskfileTreeError(
+      "unreadable",
+      rel,
+      err instanceof Error ? err.message : String(err),
+    );
   }
   let doc: unknown;
   try {
     doc = load(text);
   } catch (err) {
-    throw new TaskfileTreeError("unparsable", rel, err instanceof Error ? err.message : String(err));
+    throw new TaskfileTreeError(
+      "unparsable",
+      rel,
+      err instanceof Error ? err.message : String(err),
+    );
   }
   if (!isRecord(doc)) {
     throw new TaskfileTreeError("unparsable", rel, "the document is not a mapping");
