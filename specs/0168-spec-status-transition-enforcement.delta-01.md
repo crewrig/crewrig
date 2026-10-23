@@ -43,7 +43,8 @@ guarantee of requirement 1 is unchanged because a Draft PR/MR cannot be merged.
 - **R10. GitLab mapping.** The `lint-specs` capability in `ci/ci-capabilities.yml`
     SHALL declare `CREWRIG_PR_DRAFT` in its `env:` block, next to `BASE_REF`,
     mapped from the predefined variable `CI_MERGE_REQUEST_DRAFT` (available in
-    GitLab 17.10 and later; that is the minimum supported version for this
+    GitLab 17.10 and later, per the GitLab CI/CD documentation of predefined
+    variables and `workflow:rules`, to be re-checked at plan time; that is the minimum supported version for this
     feature, and an older instance leaves the variable undefined, which
     R7 treats as not draft). `.gitlab-ci.yml` SHALL be regenerated
     with `node scripts/build-ci.ts` so the generated job carries the mapping,
@@ -65,19 +66,31 @@ guarantee of requirement 1 is unchanged because a Draft PR/MR cannot be merged.
     after marking an MR ready and before merging it, and SHALL NOT rely on the
     stale head pipeline. (Verification of the engine behaviour is open question
     1.)
-- **R13. Merge safety.** A Draft PR/MR cannot be merged on either forge. The only
-    way to merge is to mark the PR/MR ready, which on the head SHA runs (or, on
-    GitLab, is followed by) a CI run with the signal cleared and requirement 1
-    enforced. A non-draft PR/MR carrying a `draft` spec therefore still fails
-    CI, and the merge guarantee of requirement 1 is preserved.
+- **R13. Merge safety, stated per forge.** A Draft PR/MR cannot be merged on
+    either forge, so the only way to merge is to mark it ready. The guarantee of
+    requirement 1 then holds as follows, and this requirement claims no more:
+  - *Mechanical, GitHub.* A `build.yml` run created by a `ready_for_review`
+    event, or by any later event on a ready PR, carries
+    `github.event.pull_request.draft` equal to `false`, so requirement 1 is
+    enforced on that run. A non-draft PR carrying a `draft` spec fails it.
+  - *Residual, GitHub.* A run replays the event payload that created it, so a
+    re-run of a run created while the PR was draft keeps
+    `CREWRIG_PR_DRAFT=true` and can end green on the head SHA after the PR was
+    marked ready. The merge step SHALL therefore rely only on a run created
+    after the ready transition (R14(d)), and `scripts/merge-spec-pr.ts` SHOULD
+    verify it where the forge exposes both timestamps (R15).
+  - *Procedural, GitLab.* The variable is fixed at pipeline creation and R12
+    applies: enforcement of requirement 1 on a ready MR rests on the fresh
+    pipeline that R14(d) requires, not on a mechanism of the engine.
 - **R14. Spec-PR procedure.** Every procedure that opens a spec-PR or delta
     spec-PR SHALL open it as a Draft PR/MR while the spec is `status: draft`
     (`gh pr create --draft`, `glab mr create --draft`). After the approval
     event the procedure SHALL, in order: (a) commit the flip to
     `status: approved` with `interaction-mode`; (b) `git push`; (c) mark the
     PR/MR ready (`gh pr ready`, `glab mr update --ready`); (d) wait for the
-    re-triggered CI (on GitLab, after triggering a fresh MR pipeline per
-    R12) to be green; (e) only then merge. The documentation SHALL
+    CI run created by the ready transition (on GitLab, a fresh MR pipeline per
+    R12) to be green, and never accept a re-run of a run created while the PR/MR
+    was draft; (e) only then merge. The documentation SHALL
     name the Gitea equivalent if one exists, and otherwise state that the
     Draft-PR path is unavailable there and requirement 1 applies unchanged
     (open question 2).
@@ -85,8 +98,10 @@ guarantee of requirement 1 is unchanged because a Draft PR/MR cannot be merged.
     message naming the readiness step, a PR that is still a Draft PR
     (`gh pr view --json isDraft`). This is not a safety measure, since GitHub
     already refuses to merge a draft PR (R13); it replaces an opaque
-    forge error with the missing procedural step. The existing refusal of a
-    `draft` spec file is unchanged.
+    forge error with the missing procedural step. Where the forge exposes both
+    the ready transition time and the creation time of the head SHA's CI run,
+    the wrapper SHOULD also refuse a run that predates the transition (R13,
+    residual). The existing refusal of a `draft` spec file is unchanged.
 - **R16. Documentation and CLI symmetry.** The procedure change SHALL be documented
     identically for Claude Code, Gemini CLI, Copilot CLI and Antigravity, with
     no CLI-specific behaviour. It touches: `docs/spec-pr-workflow.md`,
@@ -174,6 +189,24 @@ And CREWRIG_PR_DRAFT is empty in its lint-specs job
 And the run is green because the spec carries status: approved.
 ```
 
+**Scenario:** Re-running a draft-era run does not satisfy the merge step
+
+```text
+Given a GitHub spec-PR whose run was created while the PR was a Draft PR
+And the PR has since been marked ready after the flip to status: approved
+When the draft-era run is re-run and ends green
+Then the merge procedure does not accept it
+And the merge waits for the run created by the ready transition.
+```
+
+### Complexity
+
+`small` is retained. The behaviour change is one skipped block in one linter
+function plus one environment mapping per engine; the documentation edits
+follow mechanically from it. Per `docs/agent-team-protocol/templates.md` the
+`small` tier adds a `tester` between `developer` and `pr-logbook` when the
+change carries a test surface, which R17 does.
+
 ### Out of scope
 
 - Editing `Taskfile.yml`.
@@ -212,7 +245,7 @@ Replacement:
 >    specification file (`specs/<NNNN>-<slug>.md`) or operating on a `spec/<NNNN>-*`
 >    branch SHALL NOT pass CI if the introduced or modified specification carries
 >    `status: draft`, except while the pull request is a Draft PR/MR, signalled
->    per requirements 7 to 8 of delta-01. The spec file MUST carry
+>    per requirements R7 to R11 and R14 of delta-01. The spec file MUST carry
 >    `status: approved` (and its mandatory `interaction-mode` field) before the
 >    pull request is marked ready and merged to `main`.
 
