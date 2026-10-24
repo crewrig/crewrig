@@ -2688,6 +2688,84 @@ check-taskfile-tree-selftest:
         - ".github/workflows/build.yml"
         - "ci/ci-capabilities.yml"
 
+check-task-provisioning:
+  image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-task-provisioning.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - ".github/actions/setup-task/**"
+        - "ci/task-pin.json"
+        - ".github/workflows/**"
+        - ".gitlab-ci.yml"
+        - "ci/**"
+        - "taskfiles/ci.yml"
+        - "scripts/check-task-provisioning.ts"
+        - "scripts/lib/task-provisioning/**"
+        - "scripts/lib/build-ci/**"
+        - "scripts/lib/ci-parity/**"
+        - "scripts/lib/taskfile-tree*.ts"
+        - "scripts/lib/glob-engine.ts"
+        - "scripts/tests/check-task-provisioning.test.ts"
+        - "scripts/tests/task-pin-provisioning.test.ts"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - ".github/actions/setup-task/**"
+        - "ci/task-pin.json"
+        - ".github/workflows/**"
+        - ".gitlab-ci.yml"
+        - "ci/**"
+        - "taskfiles/ci.yml"
+        - "scripts/check-task-provisioning.ts"
+        - "scripts/lib/task-provisioning/**"
+        - "scripts/lib/build-ci/**"
+        - "scripts/lib/ci-parity/**"
+        - "scripts/lib/taskfile-tree*.ts"
+        - "scripts/lib/glob-engine.ts"
+        - "scripts/tests/check-task-provisioning.test.ts"
+        - "scripts/tests/task-pin-provisioning.test.ts"
+
+check-task-provisioning-selftest:
+  image: node:24
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-task-provisioning.test.ts scripts/tests/task-pin-provisioning.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - ".github/actions/setup-task/**"
+        - "ci/task-pin.json"
+        - "scripts/check-task-provisioning.ts"
+        - "scripts/lib/task-provisioning/**"
+        - "scripts/lib/build-ci/**"
+        - "scripts/lib/ci-parity/**"
+        - "scripts/tests/check-task-provisioning.test.ts"
+        - "scripts/tests/task-pin-provisioning.test.ts"
+        - "taskfiles/ci.yml"
+        - "ci/ci-capabilities.yml"
+        - ".github/workflows/build.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - ".github/actions/setup-task/**"
+        - "ci/task-pin.json"
+        - "scripts/check-task-provisioning.ts"
+        - "scripts/lib/task-provisioning/**"
+        - "scripts/lib/build-ci/**"
+        - "scripts/lib/ci-parity/**"
+        - "scripts/tests/check-task-provisioning.test.ts"
+        - "scripts/tests/task-pin-provisioning.test.ts"
+        - "taskfiles/ci.yml"
+        - "ci/ci-capabilities.yml"
+        - ".github/workflows/build.yml"
+
 ci-pre-push-replay:
   image: node:24
   before_script:

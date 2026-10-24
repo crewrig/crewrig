@@ -2086,6 +2086,77 @@ jobs:
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
+  check-task-provisioning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            check-task-provisioning:
+              - '.github/actions/setup-task/**'
+              - 'ci/task-pin.json'
+              - '.github/workflows/**'
+              - '.gitlab-ci.yml'
+              - 'ci/**'
+              - 'taskfiles/ci.yml'
+              - 'scripts/check-task-provisioning.ts'
+              - 'scripts/lib/task-provisioning/**'
+              - 'scripts/lib/build-ci/**'
+              - 'scripts/lib/ci-parity/**'
+              - 'scripts/lib/taskfile-tree*.ts'
+              - 'scripts/lib/glob-engine.ts'
+              - 'scripts/tests/check-task-provisioning.test.ts'
+              - 'scripts/tests/task-pin-provisioning.test.ts'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.check-task-provisioning == 'true'
+        with:
+          node-version: 24
+      - name: Install production dependencies
+        if: steps.filter.outputs.check-task-provisioning == 'true'
+        run: npm ci --omit=dev --workspaces=false
+      - uses: ./.github/actions/setup-task
+        if: steps.filter.outputs.check-task-provisioning == 'true'
+      - name: Check Task provisioning
+        if: steps.filter.outputs.check-task-provisioning == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-task-provisioning.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+  check-task-provisioning-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            check-task-provisioning-selftest:
+              - '.github/actions/setup-task/**'
+              - 'ci/task-pin.json'
+              - 'scripts/check-task-provisioning.ts'
+              - 'scripts/lib/task-provisioning/**'
+              - 'scripts/lib/build-ci/**'
+              - 'scripts/lib/ci-parity/**'
+              - 'scripts/tests/check-task-provisioning.test.ts'
+              - 'scripts/tests/task-pin-provisioning.test.ts'
+              - 'taskfiles/ci.yml'
+              - 'ci/ci-capabilities.yml'
+              - '.github/workflows/build.yml'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.check-task-provisioning-selftest == 'true'
+        with:
+          node-version: 24
+      - name: Install production dependencies
+        if: steps.filter.outputs.check-task-provisioning-selftest == 'true'
+        run: npm ci --omit=dev --workspaces=false
+      - name: Run the self-tests
+        if: steps.filter.outputs.check-task-provisioning-selftest == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-task-provisioning.test.ts scripts/tests/task-pin-provisioning.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
   ci-pre-push-replay:
     runs-on: ubuntu-latest
     steps:

@@ -1,7 +1,7 @@
 ---
 id: "0282"
 slug: verified-task-provisioning
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1779

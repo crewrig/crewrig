@@ -784,6 +784,26 @@ checker implements against them.
    undeclared tool produces no `before_script` line for it, and the generator
    fails closed when asked to translate a requirement it has no mapping for.
 
+## Task provisioning and the pin
+
+Every CI job that needs `task` gets it from one pinned release, `ci/task-pin.json` (spec 0282). The
+file is pretty-printed JSON, one key per line: `version` and `sha256` (one hex checksum per
+platform). It has three carriers and no others: the file itself, the generated `.gitlab-ci.yml`
+(rendered by `scripts/build-ci.ts` from the pin) and the composite action
+`.github/actions/setup-task/action.yml`, which reads the pin at run time and holds neither the
+checksum nor the version. The archive is verified against the pinned SHA-256 before it is
+unpacked, and a `task --version` check ends the install; Windows jobs fail closed until slice 3
+(#1780) adds a Windows archive.
+
+To bump the pin by hand: pick the release, copy the `task_linux_amd64.tar.gz` line of its
+`task_checksums.txt`, download the archive and confirm the same value with `sha256sum`, edit
+`ci/task-pin.json` (the version must stay at or above the `version:` floor of the root
+`Taskfile.yml`), then run `node scripts/build-ci.ts` and commit the regenerated
+`.gitlab-ci.yml`. The `check-task-provisioning` job installs the pinned Task end to end on both
+engines for any pin or action change, so a wrong checksum fails there; no Renovate manager is
+configured because it cannot compute the checksum. `scripts/check-task-provisioning.ts` enforces
+all of this.
+
 ## Adding a further engine
 
 A new continuous-integration engine is supported by describing **only** its

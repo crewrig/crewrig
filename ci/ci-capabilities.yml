@@ -3282,6 +3282,91 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-env-scrub.test.ts scripts/tests/git-env-helpers.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts
 
+  - id: check-task-provisioning
+    name: "Check that Task is provisioned from the pinned, verified release on both engines"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - ".github/actions/setup-task/**"
+          - "ci/task-pin.json"
+          - ".github/workflows/**"
+          - ".gitlab-ci.yml"
+          - "ci/**"
+          - "taskfiles/ci.yml"
+          - "scripts/check-task-provisioning.ts"
+          - "scripts/lib/task-provisioning/**"
+          - "scripts/lib/build-ci/**"
+          - "scripts/lib/ci-parity/**"
+          - "scripts/lib/taskfile-tree*.ts"
+          - "scripts/lib/glob-engine.ts"
+          - "scripts/tests/check-task-provisioning.test.ts"
+          - "scripts/tests/task-pin-provisioning.test.ts"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - ".github/actions/setup-task/**"
+          - "ci/task-pin.json"
+          - ".github/workflows/**"
+          - ".gitlab-ci.yml"
+          - "ci/**"
+          - "taskfiles/ci.yml"
+          - "scripts/check-task-provisioning.ts"
+          - "scripts/lib/task-provisioning/**"
+          - "scripts/lib/build-ci/**"
+          - "scripts/lib/ci-parity/**"
+          - "scripts/lib/taskfile-tree*.ts"
+          - "scripts/lib/glob-engine.ts"
+          - "scripts/tests/check-task-provisioning.test.ts"
+          - "scripts/tests/task-pin-provisioning.test.ts"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-task-provisioning.ts
+
+  - id: check-task-provisioning-selftest
+    name: "Self-test the Task provisioning guard and the pinned action"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - ".github/actions/setup-task/**"
+          - "ci/task-pin.json"
+          - "scripts/check-task-provisioning.ts"
+          - "scripts/lib/task-provisioning/**"
+          - "scripts/lib/build-ci/**"
+          - "scripts/lib/ci-parity/**"
+          - "scripts/tests/check-task-provisioning.test.ts"
+          - "scripts/tests/task-pin-provisioning.test.ts"
+          - "taskfiles/ci.yml"
+          - "ci/ci-capabilities.yml"
+          - ".github/workflows/build.yml"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - ".github/actions/setup-task/**"
+          - "ci/task-pin.json"
+          - "scripts/check-task-provisioning.ts"
+          - "scripts/lib/task-provisioning/**"
+          - "scripts/lib/build-ci/**"
+          - "scripts/lib/ci-parity/**"
+          - "scripts/tests/check-task-provisioning.test.ts"
+          - "scripts/tests/task-pin-provisioning.test.ts"
+          - "taskfiles/ci.yml"
+          - "ci/ci-capabilities.yml"
+          - ".github/workflows/build.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-task-provisioning.test.ts scripts/tests/task-pin-provisioning.test.ts
+
   # Replay of the pre-push wrapper end to end (spec 0279 R16, plan v2-F1/F5).
   # CI-only: it has no `ci:` task, is not fast-tier and is not changeset-gated
   # (the nightly exhaustive run installs no `task` binary). The paths filter
