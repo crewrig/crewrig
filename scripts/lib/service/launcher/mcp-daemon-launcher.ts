@@ -11,6 +11,9 @@
 // bundle.ts, which lists it and rewrites the entry's imports):
 //   launcher-child.ts, launcher-token.ts, launcher-wait.ts       (scripts/lib/service/launcher/)
 //   mempalace-registration.ts, session-check-throttle.ts          (scripts/lib/)
+//   mempalace-http-wrapper.py, mempalace_pin.py, mempalace-pin.json (scripts/lib/;
+//     data files, spec 0252 delta-05 — the wrapper runs from here, never from
+//     CREWRIG_REPO_DIR, which stays baked for hint text only)
 // This repository copy imports by repository-relative path so it typechecks in
 // place; the installer rewrites each import specifier of THIS file to
 // `./service-lib/<basename>`, so the installed copy has no import reaching
@@ -21,12 +24,13 @@
 // through the child's environment only; (c) fail closed on a missing, empty,
 // ill-shaped or short token, before anything else is done; (d) the idle
 // watchdog defaults to off; (e) refuse fast on a taken port; (f) wait for
-// ChromaDB on a deadline, then export its endpoint; (g) a missing wrapper is a
-// diagnosed failure; (h) the spec 0172 stdio warning; (i) hand off to the
+// ChromaDB on a deadline, then export its endpoint; (g) a missing installed
+// wrapper is a diagnosed failure; (h) the spec 0172 stdio warning; (i) hand off to the
 // wrapper as a child with inherited streams. Every log and die line keeps its
 // shell format.
 
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -121,11 +125,21 @@ async function main(): Promise<void> {
   exportChromaEnv(env, CHROMA_HOST, CHROMA_PORT);
 
   // 3. Hand off, as a child: a Node.js process cannot replace itself.
-  const wrapper = path.join(CREWRIG_REPO_DIR, "scripts", "lib", "mempalace-http-wrapper.py");
-  if (!fs.existsSync(wrapper) || !fs.statSync(wrapper).isFile()) {
+  const wrapper = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "service-lib",
+    "mempalace-http-wrapper.py",
+  );
+  let wrapperOk = false;
+  try {
+    wrapperOk = fs.statSync(wrapper).isFile();
+  } catch {
+    wrapperOk = false;
+  }
+  if (!wrapperOk) {
     die(`wrapper not found: ${wrapper}
-       The launcher lives outside the repository but the wrapper does not; a
-       moved or removed checkout breaks this path. Re-run the setup script.`);
+       The installed MCP daemon is incomplete. Re-run the setup script or
+       \`node scripts/switch-mempalace-http.ts\` to reinstall it.`);
   }
   warnStdio(home);
   log(`starting MemPalace MCP HTTP daemon on ${MCP_HOST}:${MCP_PORT}/mcp`);

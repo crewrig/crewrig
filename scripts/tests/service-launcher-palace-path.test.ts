@@ -14,6 +14,7 @@ import path from "node:path";
 import { after, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { derivedTokenPath } from "../lib/service/launcher/launcher-token.ts";
+import { writePythonShim } from "./lib/supervisor-stand-in.ts";
 import { installLauncherProgram, installedPaths } from "../lib/service/program-install.ts";
 import { materialiseChromaUnit } from "../lib/setup/chroma-unit.ts";
 
@@ -86,9 +87,8 @@ async function runLauncher(name: string, palace: string, ambient?: string): Prom
   await new Promise<void>((r) => free.close(() => r()));
   const repoDir = path.join(root, `${name}-repo`);
   const dump = path.join(root, `${name}-dump`);
-  mkdirSync(path.join(repoDir, "scripts", "lib"), { recursive: true });
-  writeFileSync(
-    path.join(repoDir, "scripts", "lib", "mempalace-http-wrapper.py"),
+  const shim = writePythonShim(
+    path.join(root, name, ".crewrig", "service-lib"),
     `"use strict";\nrequire("node:fs").writeFileSync(${JSON.stringify(dump)}, ` +
       `process.env.MEMPALACE_PALACE_PATH === undefined ? "<unset>" : process.env.MEMPALACE_PALACE_PATH);\n`,
   );
@@ -96,7 +96,7 @@ async function runLauncher(name: string, palace: string, ambient?: string): Prom
     repoDir,
     port: String(mcpPort),
     chromaPort: String((chroma.address() as net.AddressInfo).port),
-    python: process.execPath,
+    python: shim,
   });
   const tokenFile = path.join(root, `${name}-token`);
   writeFileSync(tokenFile, "t".repeat(40));

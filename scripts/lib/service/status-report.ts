@@ -10,6 +10,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { reportArrangements } from "./assistant-arrangement.ts";
 import { runManager } from "./exec.ts";
+import { LAUNCHER_PYTHON_FILES } from "./launcher/bundle.ts";
 import { launcherSourceSha } from "./program-install.ts";
 import { recordForm } from "./launcher-record.ts";
 import { taskPathOf } from "./names.ts";
@@ -105,6 +106,39 @@ export function launcherSection(o: DriftOptions): 0 | 1 {
       write(`            built from ${recorded}, repository now ${current}`);
       write("            Re-run setup to refresh it.");
       rc = 1;
+    }
+  }
+  if (program !== null && existsSync(program)) {
+    const serviceLib = path.join(path.dirname(program), "service-lib");
+    const missing = LAUNCHER_PYTHON_FILES.map((f) => path.basename(f)).filter(
+      (f) => !existsSync(path.join(serviceLib, f)),
+    );
+    if (missing.length > 0) {
+      write(`  launcher: ${launcher} *** BUNDLE INCOMPLETE ***`);
+      write(`            ${serviceLib} lacks: ${missing.join(", ")}`);
+      write("            Re-run setup or: node scripts/switch-mempalace-http.ts");
+      rc = 1;
+    }
+  }
+  let programText = "";
+  try {
+    programText = program !== null ? readFileSync(program, "utf8") : text;
+  } catch {
+    programText = "";
+  }
+  const baked = /(?:^|\n)const CREWRIG_REPO_DIR: string = ("(?:[^"\\\n]|\\.)*");/.exec(
+    programText,
+  )?.[1];
+  if (baked !== undefined) {
+    let bakedDir = "";
+    try {
+      bakedDir = JSON.parse(baked) as string;
+    } catch {
+      bakedDir = "";
+    }
+    if (bakedDir !== "" && !existsSync(bakedDir)) {
+      write(`  note:     the checkout baked into the launcher (${bakedDir}) no longer exists;`);
+      write("            the daemon no longer depends on it.");
     }
   }
   const interpreter = definitionInterpreter(o.platform, o.names, o.home);

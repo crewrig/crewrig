@@ -31,6 +31,22 @@ if (mode === "ignoreterm") process.on("SIGTERM", () => {});
 setInterval(() => {}, 1000);
 `;
 
+/**
+ * Stand-in for the interpreter (spec 0252 delta-05): the installed wrapper is
+ * `service-lib/mempalace-http-wrapper.py`, which Node cannot execute under a
+ * `type: module` tree, so the "python" is a POSIX shim that `exec`s Node on a
+ * CommonJS stand-in file. Writes the stub wrapper too (existence is checked).
+ */
+export function writePythonShim(serviceLib: string, daemonSource: string): string {
+  fs.mkdirSync(serviceLib, { recursive: true });
+  fs.writeFileSync(path.join(serviceLib, "mempalace-http-wrapper.py"), "# stand-in\n");
+  const daemon = path.join(path.dirname(serviceLib), "standin-daemon.cjs");
+  fs.writeFileSync(daemon, daemonSource);
+  const shim = path.join(path.dirname(serviceLib), "fake-python.sh");
+  fs.writeFileSync(shim, `#!/bin/sh\nexec "${process.execPath}" "${daemon}"\n`, { mode: 0o755 });
+  return shim;
+}
+
 export interface Substitutions {
   readonly repoDir: string;
   readonly host: string;
@@ -58,7 +74,10 @@ export function renderPrograms(dir: string, s: Substitutions): Installed {
     __MCP_PORT__: s.port,
     __CHROMA_HOST__: s.chromaHost,
     __CHROMA_PORT__: s.chromaPort,
-    __MEMPALACE_PYTHON__: s.python,
+    __MEMPALACE_PYTHON__:
+      s.python === process.execPath && process.platform !== "win32"
+        ? writePythonShim(path.join(dir, "service-lib"), FIXTURE_DAEMON)
+        : s.python,
     __MEMPALACE_PALACE_PATH__: "",
     __LAUNCHER_SOURCE_SHA__: "0".repeat(64),
   };
@@ -72,9 +91,6 @@ export function renderPrograms(dir: string, s: Substitutions): Installed {
     fs.writeFileSync(target, text, { mode: 0o755 });
     return target;
   };
-  const wrapperDir = path.join(s.repoDir, "scripts", "lib");
-  fs.mkdirSync(wrapperDir, { recursive: true });
-  fs.writeFileSync(path.join(wrapperDir, "mempalace-http-wrapper.py"), FIXTURE_DAEMON);
   return {
     launcher: render("mcp-daemon-launcher.ts", "mcp-daemon-launcher.ts"),
     trustWrapper: render("trust-wrapper.ts", "tls-exec.ts"),

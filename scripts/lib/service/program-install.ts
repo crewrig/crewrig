@@ -6,7 +6,8 @@
 //   - the endpoint record at the legacy record path (launcher-record.ts),
 //   - the trust wrapper at MEMPALACE_TLS_EXEC_PATH with `.sh` replaced by `.ts`,
 //   - a `service-lib/` beside each program holding exactly the bundle files that
-//     program imports, copied verbatim (launcher/bundle.ts).
+//     program imports, copied verbatim (launcher/bundle.ts); the launcher's
+//     `service-lib/` also holds the wrapper's three Python data files (delta-05).
 // Every file is staged under a random sibling name and renamed into place.
 // Uninstall follows the definitions: the launcher and its record go with the MCP
 // definition, the wrapper with the ChromaDB definition, and the bundle files of a
@@ -26,7 +27,12 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { LAUNCHER_BUNDLE, SERVICE_LIB_FILES, TRUST_WRAPPER_BUNDLE } from "./launcher/bundle.ts";
+import {
+  LAUNCHER_BUNDLE,
+  LAUNCHER_PYTHON_FILES,
+  SERVICE_LIB_FILES,
+  TRUST_WRAPPER_BUNDLE,
+} from "./launcher/bundle.ts";
 import { flatName, rewriteEntryImports } from "./launcher/bundle.ts";
 import { programPathFor, renderRecord } from "./launcher-record.ts";
 import type { DaemonKind, EnvLike } from "./names.ts";
@@ -73,10 +79,15 @@ export interface ProgramOptions {
   readonly libDir?: string;
 }
 
-/** SHA-256 of the launcher entry source, the trust wrapper source, then the bundle files. */
+/** SHA-256 of the launcher entry source, the trust wrapper source, then the bundle files, then the launcher's Python data files. */
 export function launcherSourceSha(libDir: string = REPO_LIB_DIR): string {
   const hash = createHash("sha256");
-  for (const file of [LAUNCHER_ENTRY, WRAPPER_ENTRY, ...SERVICE_LIB_FILES]) {
+  for (const file of [
+    LAUNCHER_ENTRY,
+    WRAPPER_ENTRY,
+    ...SERVICE_LIB_FILES,
+    ...LAUNCHER_PYTHON_FILES,
+  ]) {
     hash.update(readFileSync(path.join(libDir, file)));
   }
   return hash.digest("hex");
@@ -137,7 +148,7 @@ export function installLauncherProgram(opts: ProgramOptions & LauncherConstants)
     sourceSha: sha,
     program: opts.paths.launcher,
   });
-  copyBundle(LAUNCHER_BUNDLE, opts.paths.launcher, libDir);
+  copyBundle([...LAUNCHER_BUNDLE, ...LAUNCHER_PYTHON_FILES], opts.paths.launcher, libDir);
   writeStaged(opts.paths.launcher, text, 0o755);
   writeStaged(opts.paths.record, record, 0o755);
   return sha;
@@ -152,7 +163,7 @@ export function installTrustWrapperProgram(opts: ProgramOptions): void {
 }
 
 const BUNDLE_OF: Record<DaemonKind, readonly string[]> = {
-  mcp: LAUNCHER_BUNDLE,
+  mcp: [...LAUNCHER_BUNDLE, ...LAUNCHER_PYTHON_FILES],
   chroma: TRUST_WRAPPER_BUNDLE,
 };
 

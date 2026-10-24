@@ -4,27 +4,35 @@
 // uninstall rules in both orders.
 
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  chmodSync,
   cpSync,
   existsSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
   statSync,
   writeFileSync,
 } from "node:fs";
+import http from "node:http";
+import net from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { parseLauncher } from "../lib/mempalace-registration.ts";
 import {
   LAUNCHER_BUNDLE,
+  LAUNCHER_PYTHON_FILES,
   SERVICE_LIB_FILES,
   TRUST_WRAPPER_BUNDLE,
 } from "../lib/service/launcher/bundle.ts";
 import { parseRecord, recordForm } from "../lib/service/launcher-record.ts";
+import { launcherSection } from "../lib/service/status-report.ts";
+import { serviceNames } from "../lib/service/names.ts";
 import {
   LAUNCHER_ENTRY,
   REPO_LIB_DIR,
@@ -50,6 +58,7 @@ function fresh(): { home: string; paths: ReturnType<typeof installedPaths> } {
   return { home, paths: installedPaths(home, {}) };
 }
 
+const LAUNCHER_FILES = [...LAUNCHER_BUNDLE, ...LAUNCHER_PYTHON_FILES];
 const names = (dir: string): string[] => (existsSync(dir) ? readdirSync(dir).sort() : []);
 const flat = (files: readonly string[]): string[] => files.map((f) => path.basename(f)).sort();
 
@@ -81,7 +90,7 @@ test("installing the launcher alone writes the launcher, its record and its own 
     "mcp-daemon-launcher.ts",
     "service-lib",
   ]);
-  assert.deepEqual(names(path.join(home, ".crewrig", "service-lib")), flat(LAUNCHER_BUNDLE));
+  assert.deepEqual(names(path.join(home, ".crewrig", "service-lib")), flat(LAUNCHER_FILES));
   assert.equal(existsSync(paths.wrapper), false);
   const text = readFileSync(paths.launcher, "utf8");
   assert.match(text, /from "\.\/service-lib\/launcher-child\.ts"/);
@@ -110,7 +119,10 @@ test("bundle files are copied verbatim", () => {
       readFileSync(path.join(REPO_LIB_DIR, file), "utf8"),
     );
   }
-  assert.deepEqual(names(path.join(home, ".crewrig", "service-lib")), flat(SERVICE_LIB_FILES));
+  assert.deepEqual(
+    names(path.join(home, ".crewrig", "service-lib")),
+    flat([...SERVICE_LIB_FILES, ...LAUNCHER_PYTHON_FILES]),
+  );
   rmSync(home, { recursive: true });
 });
 
@@ -123,7 +135,7 @@ test("override paths get their own service-lib beside each program", () => {
   const paths = installedPaths(home, env);
   installLauncherProgram({ paths, ...CONSTANTS });
   installTrustWrapperProgram({ paths });
-  assert.deepEqual(names(path.join(home, "a", "service-lib")), flat(LAUNCHER_BUNDLE));
+  assert.deepEqual(names(path.join(home, "a", "service-lib")), flat(LAUNCHER_FILES));
   assert.deepEqual(names(path.join(home, "b", "service-lib")), flat(TRUST_WRAPPER_BUNDLE));
   assert.equal(existsSync(path.join(home, ".crewrig")), false);
   uninstallPrograms("mcp", paths, ["chroma"]);
@@ -159,7 +171,7 @@ test("uninstall ChromaDB first: the wrapper goes, the launcher's bundle stays, t
   uninstallPrograms("chroma", paths, ["mcp"]);
   assert.equal(existsSync(paths.wrapper), false);
   assert.equal(existsSync(paths.launcher), true);
-  assert.deepEqual(names(lib), flat(LAUNCHER_BUNDLE));
+  assert.deepEqual(names(lib), flat(LAUNCHER_FILES));
   uninstallPrograms("mcp", paths, []);
   assert.equal(existsSync(paths.launcher), false);
   assert.equal(existsSync(paths.record), false);
@@ -178,9 +190,14 @@ test("uninstall leaves a foreign file in service-lib and is idempotent", () => {
   rmSync(home, { recursive: true });
 });
 
-test("the hash covers the launcher entry, the wrapper, then the bundle in order", () => {
+test("the hash covers the launcher entry, the wrapper, the bundle, then the Python data files in order", () => {
   const expected = createHash("sha256");
-  for (const f of [LAUNCHER_ENTRY, "service/launcher/trust-wrapper.ts", ...SERVICE_LIB_FILES]) {
+  for (const f of [
+    LAUNCHER_ENTRY,
+    "service/launcher/trust-wrapper.ts",
+    ...SERVICE_LIB_FILES,
+    ...LAUNCHER_PYTHON_FILES,
+  ]) {
     expected.update(readFileSync(path.join(REPO_LIB_DIR, f)));
   }
   assert.equal(launcherSourceSha(), expected.digest("hex"));

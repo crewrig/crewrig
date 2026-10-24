@@ -150,7 +150,8 @@ def _refuse(found, source, bounds, comparator, extra="", remedy=None):
         default_remedy = (
             "re-run the framework setup from a complete checkout "
             "(scripts/setup-<cli>-interactive.ts), so the pin and the guard "
-            "module are both present under scripts/lib/"
+            "module are both present beside this wrapper (scripts/lib/ in a checkout, "
+            "service-lib/ once installed)"
         )
     else:
         supported_range = ">={0},<{1}".format(*bounds)

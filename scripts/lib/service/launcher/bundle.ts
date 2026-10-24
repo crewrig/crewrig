@@ -25,6 +25,18 @@ export const TRUST_WRAPPER_BUNDLE: readonly string[] = [
   "tls-env-quote.ts",
 ];
 
+/**
+ * Python data files the launcher's wrapper needs beside it (spec 0252 delta-05,
+ * requirement 10). Repository paths relative to `scripts/lib/`, copied verbatim
+ * into the same flat `service-lib/`. NOT TypeScript bundle members: no entry
+ * imports them, so the import-closure test does not list them.
+ */
+export const LAUNCHER_PYTHON_FILES: readonly string[] = [
+  "mempalace-http-wrapper.py",
+  "mempalace_pin.py",
+  "mempalace-pin.json",
+];
+
 /** Every bundled file once, in a fixed order. */
 export const SERVICE_LIB_FILES: readonly string[] = [
   ...new Set([...LAUNCHER_BUNDLE, ...TRUST_WRAPPER_BUNDLE]),
