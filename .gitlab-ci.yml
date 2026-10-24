@@ -2532,13 +2532,55 @@ path-ownership:
   image: node:24
   script:
     - "npm ci"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-path-ownership.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-path-ownership.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-cache-guard-scan.test.ts scripts/tests/check-stray-scan-wiring.test.ts scripts/tests/ci-node-test-arguments.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-stray-scan-wiring.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
+path-ownership-selftest:
+  image: node:24
+  script:
+    - "npm ci"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-path-ownership.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-cache-guard-scan.test.ts scripts/tests/check-stray-scan-wiring.test.ts scripts/tests/ci-node-test-arguments.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-path-ownership.ts"
+        - "scripts/check-stray-scan-wiring.ts"
+        - "scripts/lib/path-ownership.ts"
+        - "scripts/lib/glob-engine.ts"
+        - "scripts/ci-cache-guard.ts"
+        - "scripts/lib/ci-cache-guard/**"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/tests/check-path-ownership.test.ts"
+        - "scripts/tests/ci-cache-guard-scan.test.ts"
+        - "scripts/tests/check-stray-scan-wiring.test.ts"
+        - "scripts/tests/ci-node-test-arguments.test.ts"
+        - "package.json"
+        - "package-lock.json"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-path-ownership.ts"
+        - "scripts/check-stray-scan-wiring.ts"
+        - "scripts/lib/path-ownership.ts"
+        - "scripts/lib/glob-engine.ts"
+        - "scripts/ci-cache-guard.ts"
+        - "scripts/lib/ci-cache-guard/**"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/tests/check-path-ownership.test.ts"
+        - "scripts/tests/ci-cache-guard-scan.test.ts"
+        - "scripts/tests/check-stray-scan-wiring.test.ts"
+        - "scripts/tests/ci-node-test-arguments.test.ts"
+        - "package.json"
+        - "package-lock.json"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
 
 lint-markdown:
   image: node:22
@@ -2555,11 +2597,32 @@ ratchet:
     GIT_DEPTH: "0"
     BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
   script:
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-ratchet.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ratchet.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
+ratchet-selftest:
+  image: node:24
+  script:
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-ratchet.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-ratchet.ts"
+        - "scripts/lib/ratchet-lists.ts"
+        - "scripts/tests/check-ratchet.test.ts"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-ratchet.ts"
+        - "scripts/lib/ratchet-lists.ts"
+        - "scripts/tests/check-ratchet.test.ts"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
 
 host-safety:
   image: node:24
@@ -2568,22 +2631,98 @@ host-safety:
     BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
   script:
     - "npm ci"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-host-safety.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-host-safety.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
+host-safety-selftest:
+  image: node:24
+  script:
+    - "npm ci"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-host-safety.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-host-safety.ts"
+        - "scripts/lib/host-safety/**"
+        - "scripts/tests/check-host-safety.test.ts"
+        - "scripts/tests/lib/host-safety-fixtures.ts"
+        - "package.json"
+        - "package-lock.json"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-host-safety.ts"
+        - "scripts/lib/host-safety/**"
+        - "scripts/tests/check-host-safety.test.ts"
+        - "scripts/tests/lib/host-safety-fixtures.ts"
+        - "package.json"
+        - "package-lock.json"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+
 lint-typescript:
+  image: node:24
+  script:
+    - "npm ci"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
+lint-typescript-selftest:
   image: node:24
   script:
     - "npm ci"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-erasable-syntax.test.ts scripts/tests/lint-typescript.test.ts scripts/tests/check-typescript.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-built-trees.test.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-typescript.ts"
+        - "scripts/lib/erasable-syntax.ts"
+        - "scripts/lib/erasable-probe.ts"
+        - "scripts/lib/ts-scope.ts"
+        - "scripts/build-components.ts"
+        - "scripts/tests/check-erasable-syntax.test.ts"
+        - "scripts/tests/lint-typescript.test.ts"
+        - "scripts/tests/check-typescript.test.ts"
+        - "scripts/tests/build-components-built-trees.test.ts"
+        - "scripts/tests/fixtures/build-components/**"
+        - "artifacts/core/skills/pr-reviewer/scripts/lint-typescript.ts"
+        - ".oxfmtrc.json"
+        - ".oxlintrc.json"
+        - "tsconfig.json"
+        - "package.json"
+        - "package-lock.json"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-typescript.ts"
+        - "scripts/lib/erasable-syntax.ts"
+        - "scripts/lib/erasable-probe.ts"
+        - "scripts/lib/ts-scope.ts"
+        - "scripts/build-components.ts"
+        - "scripts/tests/check-erasable-syntax.test.ts"
+        - "scripts/tests/lint-typescript.test.ts"
+        - "scripts/tests/check-typescript.test.ts"
+        - "scripts/tests/build-components-built-trees.test.ts"
+        - "scripts/tests/fixtures/build-components/**"
+        - "artifacts/core/skills/pr-reviewer/scripts/lint-typescript.ts"
+        - ".oxfmtrc.json"
+        - ".oxlintrc.json"
+        - "tsconfig.json"
+        - "package.json"
+        - "package-lock.json"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
 
 runtime-foundations:
   image: node:24
@@ -2902,11 +3041,47 @@ lint-specs:
     - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
   script:
     - "npm install"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-linter-*.test.ts"
     - "task spec:lint"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
+lint-specs-selftest:
+  image: node:24
+  script:
+    - "npm install"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-linter-*.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/lib/spec-linter.js"
+        - "scripts/tests/spec-linter-*.test.ts"
+        - "scripts/tests/lib/spec-linter-fixtures.ts"
+        - "scripts/tests/lib/spec-linter-lifecycle.ts"
+        - "scripts/tests/lib/yaml-lib.ts"
+        - "docs/spec-format.md"
+        - ".crewrig/core-paths.txt"
+        - ".markdownlintrc"
+        - "scripts/ci-cache-guard.ts"
+        - "scripts/lib/ci-cache-guard/**"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/lib/spec-linter.js"
+        - "scripts/tests/spec-linter-*.test.ts"
+        - "scripts/tests/lib/spec-linter-fixtures.ts"
+        - "scripts/tests/lib/spec-linter-lifecycle.ts"
+        - "scripts/tests/lib/yaml-lib.ts"
+        - "docs/spec-format.md"
+        - ".crewrig/core-paths.txt"
+        - ".markdownlintrc"
+        - "scripts/ci-cache-guard.ts"
+        - "scripts/lib/ci-cache-guard/**"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
 
 test-harness-curate:
   image: node:24

@@ -3140,10 +3140,58 @@ capabilities:
       runtime: node@24
     command:
       - npm ci
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-path-ownership.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-path-ownership.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-cache-guard-scan.test.ts scripts/tests/check-stray-scan-wiring.test.ts scripts/tests/ci-node-test-arguments.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-stray-scan-wiring.ts
+
+  - id: path-ownership-selftest
+    name: "Self-test the path-ownership and stray-scan wiring checks"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-path-ownership.ts"
+          - "scripts/check-stray-scan-wiring.ts"
+          - "scripts/lib/path-ownership.ts"
+          - "scripts/lib/glob-engine.ts"
+          - "scripts/ci-cache-guard.ts"
+          - "scripts/lib/ci-cache-guard/**"
+          - "scripts/lib/node-floor-guard.js"
+          - "scripts/tests/check-path-ownership.test.ts"
+          - "scripts/tests/ci-cache-guard-scan.test.ts"
+          - "scripts/tests/check-stray-scan-wiring.test.ts"
+          - "scripts/tests/ci-node-test-arguments.test.ts"
+          - "package.json"
+          - "package-lock.json"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-path-ownership.ts"
+          - "scripts/check-stray-scan-wiring.ts"
+          - "scripts/lib/path-ownership.ts"
+          - "scripts/lib/glob-engine.ts"
+          - "scripts/ci-cache-guard.ts"
+          - "scripts/lib/ci-cache-guard/**"
+          - "scripts/lib/node-floor-guard.js"
+          - "scripts/tests/check-path-ownership.test.ts"
+          - "scripts/tests/ci-cache-guard-scan.test.ts"
+          - "scripts/tests/check-stray-scan-wiring.test.ts"
+          - "scripts/tests/ci-node-test-arguments.test.ts"
+          - "package.json"
+          - "package-lock.json"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+    command:
+      - npm ci
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-path-ownership.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-cache-guard-scan.test.ts scripts/tests/check-stray-scan-wiring.test.ts scripts/tests/ci-node-test-arguments.test.ts
 
   - id: lint-markdown
     name: "Lint Markdown files"
@@ -3178,8 +3226,35 @@ capabilities:
     env:
       BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-ratchet.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ratchet.ts
+
+  - id: ratchet-selftest
+    name: "Self-test the footprint ratchet"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-ratchet.ts"
+          - "scripts/lib/ratchet-lists.ts"
+          - "scripts/tests/check-ratchet.test.ts"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-ratchet.ts"
+          - "scripts/lib/ratchet-lists.ts"
+          - "scripts/tests/check-ratchet.test.ts"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-ratchet.test.ts
 
   # Spec 0267 R12, R13, R16-R19: the test-harness host-safety check. No
   # `paths:` filter: any scripts/** change can add a destructive call. Its
@@ -3201,8 +3276,42 @@ capabilities:
       BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
     command:
       - npm ci
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-host-safety.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-host-safety.ts
+
+  - id: host-safety-selftest
+    name: "Self-test the host-safety check"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-host-safety.ts"
+          - "scripts/lib/host-safety/**"
+          - "scripts/tests/check-host-safety.test.ts"
+          - "scripts/tests/lib/host-safety-fixtures.ts"
+          - "package.json"
+          - "package-lock.json"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-host-safety.ts"
+          - "scripts/lib/host-safety/**"
+          - "scripts/tests/check-host-safety.test.ts"
+          - "scripts/tests/lib/host-safety-fixtures.ts"
+          - "package.json"
+          - "package-lock.json"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+    command:
+      - npm ci
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-host-safety.test.ts
 
   # Spec 0238 R4-R8, R12, R13: type-check, erasable syntax, Oxlint type-aware
   # strict typing (max-lines as a non-blocking warning) and Oxfmt check mode
@@ -3221,9 +3330,63 @@ capabilities:
       runtime: node@24
     command:
       - npm ci
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts
+
+  - id: lint-typescript-selftest
+    name: "Self-test the TypeScript checks"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-typescript.ts"
+          - "scripts/lib/erasable-syntax.ts"
+          - "scripts/lib/erasable-probe.ts"
+          - "scripts/lib/ts-scope.ts"
+          - "scripts/build-components.ts"
+          - "scripts/tests/check-erasable-syntax.test.ts"
+          - "scripts/tests/lint-typescript.test.ts"
+          - "scripts/tests/check-typescript.test.ts"
+          - "scripts/tests/build-components-built-trees.test.ts"
+          - "scripts/tests/fixtures/build-components/**"
+          - "artifacts/core/skills/pr-reviewer/scripts/lint-typescript.ts"
+          - ".oxfmtrc.json"
+          - ".oxlintrc.json"
+          - "tsconfig.json"
+          - "package.json"
+          - "package-lock.json"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-typescript.ts"
+          - "scripts/lib/erasable-syntax.ts"
+          - "scripts/lib/erasable-probe.ts"
+          - "scripts/lib/ts-scope.ts"
+          - "scripts/build-components.ts"
+          - "scripts/tests/check-erasable-syntax.test.ts"
+          - "scripts/tests/lint-typescript.test.ts"
+          - "scripts/tests/check-typescript.test.ts"
+          - "scripts/tests/build-components-built-trees.test.ts"
+          - "scripts/tests/fixtures/build-components/**"
+          - "artifacts/core/skills/pr-reviewer/scripts/lint-typescript.ts"
+          - ".oxfmtrc.json"
+          - ".oxlintrc.json"
+          - "tsconfig.json"
+          - "package.json"
+          - "package-lock.json"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+    command:
+      - npm ci
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-erasable-syntax.test.ts scripts/tests/lint-typescript.test.ts scripts/tests/check-typescript.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-built-trees.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts
 
   # Spec 0240 R4-R11, R13, R16: the Node.js floor guard, the production-
   # dependency step and the shared scripts/lib/ TypeScript modules, verified by
@@ -3704,8 +3867,50 @@ capabilities:
       CREWRIG_PR_DRAFT: "$CI_MERGE_REQUEST_DRAFT"
     command:
       - npm install
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-linter-*.test.ts
       - task spec:lint
+
+  - id: lint-specs-selftest
+    name: "Self-test the spec linter"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/spec-linter.js"
+          - "scripts/tests/spec-linter-*.test.ts"
+          - "scripts/tests/lib/spec-linter-fixtures.ts"
+          - "scripts/tests/lib/spec-linter-lifecycle.ts"
+          - "scripts/tests/lib/yaml-lib.ts"
+          - "docs/spec-format.md"
+          - ".crewrig/core-paths.txt"
+          - ".markdownlintrc"
+          - "scripts/ci-cache-guard.ts"
+          - "scripts/lib/ci-cache-guard/**"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/lib/spec-linter.js"
+          - "scripts/tests/spec-linter-*.test.ts"
+          - "scripts/tests/lib/spec-linter-fixtures.ts"
+          - "scripts/tests/lib/spec-linter-lifecycle.ts"
+          - "scripts/tests/lib/yaml-lib.ts"
+          - "docs/spec-format.md"
+          - ".crewrig/core-paths.txt"
+          - ".markdownlintrc"
+          - "scripts/ci-cache-guard.ts"
+          - "scripts/lib/ci-cache-guard/**"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+    command:
+      - npm install
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-linter-*.test.ts
 
   - id: test-harness-curate
     name: "Smoke-test the harness curator"

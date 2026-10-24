@@ -25,13 +25,19 @@ tasks:
       - task: :check-taskfile-commands
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-taskfile-commands.test.ts {{.REPO_DIR}}/scripts/tests/check-tool-binaries.test.ts
   lint-specs:
-    desc: Run the spec-linter self-tests then the spec linter (pre-push mirror of the CI job)
+    desc: Lint the spec files (pre-push mirror of the CI job)
+    preconditions:
+      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - task: :spec:lint
+  lint-specs-selftest:
+    desc: Run the spec-linter self-tests (pre-push mirror of the CI job)
     preconditions:
       - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
         msg: "Run: task lint-bootstrap"
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/spec-linter-*.test.ts
-      - task: :spec:lint
   lint-markdown:
     desc: Lint every Markdown file (pre-push mirror of the CI job)
     preconditions:
@@ -50,37 +56,58 @@ tasks:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-markdown-links.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-core-paths.ts
   lint-typescript:
-    desc: Run the TypeScript lint self-tests then every TypeScript check (pre-push mirror of the CI job)
+    desc: Run every TypeScript check (pre-push mirror of the CI job)
+    preconditions:
+      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts tsc oxlint oxfmt
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - task: :lint-ts
+  lint-typescript-selftest:
+    desc: Run the TypeScript lint self-tests (pre-push mirror of the CI job)
     preconditions:
       - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts tsc oxlint oxfmt
         msg: "Run: task lint-bootstrap"
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-erasable-syntax.test.ts {{.REPO_DIR}}/scripts/tests/lint-typescript.test.ts {{.REPO_DIR}}/scripts/tests/check-typescript.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-built-trees.test.ts
-      - task: :lint-ts
   ratchet:
-    desc: Run the footprint ratchet self-tests then the ratchet (pre-push mirror of the CI job)
+    desc: Run the footprint ratchet (pre-push mirror of the CI job)
+    cmds:
+      - task: :ratchet
+  ratchet-selftest:
+    desc: Run the footprint ratchet self-tests (pre-push mirror of the CI job)
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-ratchet.test.ts
-      - task: :ratchet
   host-safety:
-    desc: Run the host-safety self-tests then the host-safety check (pre-push mirror of the CI job)
+    desc: Run the host-safety check (pre-push mirror of the CI job)
+    preconditions:
+      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts tsc
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - task: :host-safety
+  host-safety-selftest:
+    desc: Run the host-safety self-tests (pre-push mirror of the CI job)
     preconditions:
       - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts tsc
         msg: "Run: task lint-bootstrap"
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-host-safety.test.ts
-      - task: :host-safety
   path-ownership:
-    desc: Run the path-ownership and stray-scan wiring checks with their self-tests (pre-push mirror of the CI job)
+    desc: Run the path-ownership and stray-scan wiring checks (pre-push mirror of the CI job)
+    preconditions:
+      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts tsc
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-path-ownership.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-stray-scan-wiring.ts
+  path-ownership-selftest:
+    desc: Run the path-ownership and stray-scan wiring self-tests (pre-push mirror of the CI job)
     preconditions:
       - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts tsc
         msg: "Run: task lint-bootstrap"
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-path-ownership.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-path-ownership.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-cache-guard-scan.test.ts {{.REPO_DIR}}/scripts/tests/check-stray-scan-wiring.test.ts {{.REPO_DIR}}/scripts/tests/ci-node-test-arguments.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-stray-scan-wiring.ts
   check-skill-versions:
     desc: Enforce the provenance version bump on changed skill and agent sources (pre-push mirror of the CI job)
     cmds:

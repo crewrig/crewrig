@@ -2176,17 +2176,54 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Test the path-ownership check
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-path-ownership.test.ts
-
       - name: Check path ownership
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-path-ownership.ts
 
-      - name: Test the stray-scan guard and its wiring check
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-cache-guard-scan.test.ts scripts/tests/check-stray-scan-wiring.test.ts scripts/tests/ci-node-test-arguments.test.ts
-
       - name: Check stray-scan wiring
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-stray-scan-wiring.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  path-ownership-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            path-ownership-selftest:
+              - 'scripts/check-path-ownership.ts'
+              - 'scripts/check-stray-scan-wiring.ts'
+              - 'scripts/lib/path-ownership.ts'
+              - 'scripts/lib/glob-engine.ts'
+              - 'scripts/ci-cache-guard.ts'
+              - 'scripts/lib/ci-cache-guard/**'
+              - 'scripts/lib/node-floor-guard.js'
+              - 'scripts/tests/check-path-ownership.test.ts'
+              - 'scripts/tests/ci-cache-guard-scan.test.ts'
+              - 'scripts/tests/check-stray-scan-wiring.test.ts'
+              - 'scripts/tests/ci-node-test-arguments.test.ts'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'taskfiles/ci.yml'
+              - '.github/workflows/build.yml'
+              - 'ci/ci-capabilities.yml'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.path-ownership-selftest == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        if: steps.filter.outputs.path-ownership-selftest == 'true'
+        run: npm ci
+      - name: Test the path-ownership check
+        if: steps.filter.outputs.path-ownership-selftest == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-path-ownership.test.ts
+      - name: Test the stray-scan guard and its wiring check
+        if: steps.filter.outputs.path-ownership-selftest == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-cache-guard-scan.test.ts scripts/tests/check-stray-scan-wiring.test.ts scripts/tests/ci-node-test-arguments.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -2229,9 +2266,6 @@ jobs:
         with:
           node-version: 24
 
-      - name: Test the ratchet
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-ratchet.test.ts
-
       - name: Run the ratchet
         env:
           # The list-growth and Python arms diff against the PR's target
@@ -2239,6 +2273,32 @@ jobs:
           # default derivation (first `crewrig|origin` remote + /main).
           BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || '' }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ratchet.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  ratchet-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            ratchet-selftest:
+              - 'scripts/check-ratchet.ts'
+              - 'scripts/lib/ratchet-lists.ts'
+              - 'scripts/tests/check-ratchet.test.ts'
+              - 'taskfiles/ci.yml'
+              - '.github/workflows/build.yml'
+              - 'ci/ci-capabilities.yml'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.ratchet-selftest == 'true'
+        with:
+          node-version: 24
+      - name: Test the ratchet
+        if: steps.filter.outputs.ratchet-selftest == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-ratchet.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -2261,9 +2321,6 @@ jobs:
       - name: Install the TypeScript toolchain
         run: npm ci
 
-      - name: Test the host-safety check
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-host-safety.test.ts
-
       - name: Run the host-safety check
         env:
           # The allowlist growth arm diffs against the PR's target branch. On
@@ -2271,6 +2328,39 @@ jobs:
           # derivation (first `crewrig|origin` remote + /main).
           BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || '' }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-host-safety.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  host-safety-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            host-safety-selftest:
+              - 'scripts/check-host-safety.ts'
+              - 'scripts/lib/host-safety/**'
+              - 'scripts/tests/check-host-safety.test.ts'
+              - 'scripts/tests/lib/host-safety-fixtures.ts'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'taskfiles/ci.yml'
+              - '.github/workflows/build.yml'
+              - 'ci/ci-capabilities.yml'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.host-safety-selftest == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        if: steps.filter.outputs.host-safety-selftest == 'true'
+        run: npm ci
+      - name: Test the host-safety check
+        if: steps.filter.outputs.host-safety-selftest == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-host-safety.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -2290,16 +2380,54 @@ jobs:
       - name: Install the TypeScript toolchain
         run: npm ci
 
-      - name: Test the TypeScript checks
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-erasable-syntax.test.ts scripts/tests/lint-typescript.test.ts scripts/tests/check-typescript.test.ts
-
-      # Spec 0250 R30: needs Oxlint, Oxfmt and tsc, so it runs here, not in the
-      # production-install `build-components-ts` job.
-      - name: Test that built copies stay outside the toolchain
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-built-trees.test.ts
-
       - name: Check TypeScript sources
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  lint-typescript-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            lint-typescript-selftest:
+              - 'scripts/check-typescript.ts'
+              - 'scripts/lib/erasable-syntax.ts'
+              - 'scripts/lib/erasable-probe.ts'
+              - 'scripts/lib/ts-scope.ts'
+              - 'scripts/build-components.ts'
+              - 'scripts/tests/check-erasable-syntax.test.ts'
+              - 'scripts/tests/lint-typescript.test.ts'
+              - 'scripts/tests/check-typescript.test.ts'
+              - 'scripts/tests/build-components-built-trees.test.ts'
+              - 'scripts/tests/fixtures/build-components/**'
+              - 'artifacts/core/skills/pr-reviewer/scripts/lint-typescript.ts'
+              - '.oxfmtrc.json'
+              - '.oxlintrc.json'
+              - 'tsconfig.json'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'taskfiles/ci.yml'
+              - '.github/workflows/build.yml'
+              - 'ci/ci-capabilities.yml'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.lint-typescript-selftest == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        if: steps.filter.outputs.lint-typescript-selftest == 'true'
+        run: npm ci
+      - name: Test the TypeScript checks
+        if: steps.filter.outputs.lint-typescript-selftest == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-erasable-syntax.test.ts scripts/tests/lint-typescript.test.ts scripts/tests/check-typescript.test.ts
+      - name: Test that built copies stay outside the toolchain
+        if: steps.filter.outputs.lint-typescript-selftest == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-built-trees.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -3417,13 +3545,6 @@ jobs:
       - name: Install Task
         run: sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 
-      # Runs before the corpus lint so a broken linter is diagnosed by its own
-      # suite rather than reported only as a corpus failure. This job is where
-      # the suite belongs: it provisions the npm-installed node_modules the
-      # suite needs, which the hermetic check-components job does not.
-      - name: Test spec linter regression
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-linter-*.test.ts
-
       - name: Lint specs
         env:
           # The base-branch `status: draft` check (spec 0109 R2) compares against
@@ -3446,6 +3567,43 @@ jobs:
         # pass/fail, so bypassing the wrapper would cost symmetry and buy no
         # observable distinction.
         run: task spec:lint
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  lint-specs-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            lint-specs-selftest:
+              - 'scripts/lib/spec-linter.js'
+              - 'scripts/tests/spec-linter-*.test.ts'
+              - 'scripts/tests/lib/spec-linter-fixtures.ts'
+              - 'scripts/tests/lib/spec-linter-lifecycle.ts'
+              - 'scripts/tests/lib/yaml-lib.ts'
+              - 'docs/spec-format.md'
+              - '.crewrig/core-paths.txt'
+              - '.markdownlintrc'
+              - 'scripts/ci-cache-guard.ts'
+              - 'scripts/lib/ci-cache-guard/**'
+              - 'taskfiles/ci.yml'
+              - '.github/workflows/build.yml'
+              - 'ci/ci-capabilities.yml'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.lint-specs-selftest == 'true'
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        if: steps.filter.outputs.lint-specs-selftest == 'true'
+        run: npm install
+      - name: Test spec linter regression
+        if: steps.filter.outputs.lint-specs-selftest == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-linter-*.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
