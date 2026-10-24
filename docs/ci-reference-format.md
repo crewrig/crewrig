@@ -886,8 +886,11 @@ vocabulary are the stable contract; each engine is one mapping over them.
 A migrated GitHub job is a checkout plus `uses: ./.github/actions/ci-job`. The job key is the
 capability id and the `id` input MUST equal it (spec 0049 delta-02 R27a, checked by
 `scripts/check-ci-parity.ts`). Inputs: `id` (required), `node` (default 24), `install` (`ci`,
-`install`, `omit-dev`, `none`; default `ci`), `task` (default true), `cache` (default false),
-`yq` (default empty: none), `apt` (default empty: none) and `python` (default empty: none).
+`install`, `omit-dev`, `none`; default `omit-dev`), `task` (default true), `cache` (default false),
+`yq` (default empty: none), `apt` (default empty: none), `python` (default empty: none) and `gate`
+(default true). `gate: false` skips the path gate and the production install that only feeds it, and
+the action still decides to run; the parity guard fails it for a capability that has `paths:`
+(spec 0285 R7). With `gate: false` and `install: omit-dev` the install runs once.
 
 The `yq` input is a version key of `ci/yq-pin.json` (a flat map of version to the sha256 of
 `yq_linux_amd64`; today `4.44.3` and `4.54.1`). The step runs before `setup-task`, only when the gate
