@@ -10,6 +10,7 @@ import path from "node:path";
 import { describe, test } from "node:test";
 
 import { parseJson } from "../lib/extension/json-ordered.ts";
+import type { JsonValue } from "../lib/extension/types.ts";
 import { MCP_RESERVED_NAMES, orgMcpToNative } from "../lib/org-mcp.ts";
 import { REPO } from "./lib/worktree-fixtures.ts";
 
@@ -29,20 +30,19 @@ function strings(value: unknown, into: string[] = []): string[] {
 // template reads to {}, a customised one must stay well-formed (spec 0091, issue #1499).
 const CLIS = ["claude", "gemini", "copilot", "antigravity"];
 
-function declaredServers(parsed: unknown): Record<string, unknown> {
-  const servers = (parsed as { mcpServers?: unknown }).mcpServers ?? {};
-  assert.ok(
-    servers !== null && typeof servers === "object" && !Array.isArray(servers),
-    ".mcpServers must be an object",
-  );
-  return servers as Record<string, unknown>;
+function declaredServers(): Map<string, JsonValue> {
+  const doc = parseJson(fs.readFileSync(SHIPPED, "utf8"), "mcp-servers.org.json");
+  const servers: JsonValue | undefined = doc instanceof Map ? doc.get("mcpServers") : undefined;
+  if (servers === undefined) return new Map<string, JsonValue>();
+  assert.ok(servers instanceof Map, ".mcpServers must be an object");
+  return servers;
 }
 
 describe("the shipped mcp-servers.org.json is a well-formed org channel (R9)", () => {
   test("the file exists (spec 0091 back-fill); empty template or valid org declarations", () => {
     assert.ok(fs.existsSync(SHIPPED), "shipped mcp-servers.org.json missing");
-    const servers = declaredServers(JSON.parse(fs.readFileSync(SHIPPED, "utf8")));
-    const names = Object.keys(servers);
+    const servers = declaredServers();
+    const names = [...servers.keys()];
     // Pristine upstream template: nothing declared. A customised file: every entry must translate
     // for all four CLIs and none may shadow a framework-reserved server.
     assert.deepEqual(
@@ -51,11 +51,8 @@ describe("the shipped mcp-servers.org.json is a well-formed org channel (R9)", (
       "an org declaration must not reuse a framework-reserved name",
     );
     if (names.length === 0) return;
-    const neutral = parseJson(fs.readFileSync(SHIPPED, "utf8"), "mcp-servers.org.json");
-    const manifest = neutral instanceof Map ? neutral.get("mcpServers") : undefined;
-    assert.ok(manifest !== undefined);
     for (const cli of CLIS) {
-      assert.deepEqual([...orgMcpToNative(cli, manifest).keys()].sort(), [...names].sort(), cli);
+      assert.deepEqual([...orgMcpToNative(cli, servers).keys()].sort(), [...names].sort(), cli);
     }
   });
   test("no string anywhere in it looks like a literal bearer credential", () => {
