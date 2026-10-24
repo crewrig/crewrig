@@ -68,6 +68,7 @@ function sandbox(m: Mutation, mutate: boolean): string {
   const scriptDir = `artifacts/core/skills/${skill}/scripts`;
   const tracked = [
     "scripts/tests/lib",
+    "scripts/lib/git-env.ts", // imported by the shared helpers of scripts/tests/lib (spec 0279 R21)
     "scripts/tests/skill-scripts-oracle.test.ts",
     `scripts/tests/fixtures/skill-scripts/${m.script}`,
     `${scriptDir}/${name}.ts`,

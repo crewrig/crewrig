@@ -2066,6 +2066,8 @@ jobs:
               - 'scripts/tests/check-taskfile-tree-*.test.ts'
               - 'scripts/tests/ci-pre-push-*.test.ts'
               - 'scripts/tests/ci-selftest-split.test.ts'
+              - 'scripts/tests/git-env-helpers.test.ts'
+              - 'scripts/lib/git-env.ts'
               - 'scripts/tests/lib/**'
               - 'taskfiles/ci.yml'
               - '.github/workflows/build.yml'
@@ -2082,7 +2084,7 @@ jobs:
         run: npm ci --omit=dev --workspaces=false
       - name: Run the self-tests
         if: steps.filter.outputs.check-taskfile-tree-selftest == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-env-scrub.test.ts scripts/tests/git-env-helpers.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

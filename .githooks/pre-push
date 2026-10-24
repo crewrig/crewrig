@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // CrewRig pre-push guard (spec 0279 R14): a thin bootstrap, all logic lives in scripts/ci-pre-push.ts.
 // Skip it with `git push --no-verify`; CI stays authoritative.
+// R21: the child gets no GIT_* variable (git exports GIT_DIR to a hook); the toplevel runs before the scrub.
 if (typeof process.getBuiltinModule !== 'function') {
   process.stderr.write('pre-push: this hook requires Node.js >= 24 (the CrewRig floor).\n');
   process.exit(1);
@@ -24,10 +25,12 @@ try {
   refs = '';
 }
 const [remote = '', url = ''] = process.argv.slice(2);
+const gitVar = process.platform === 'win32' ? /^GIT_/i : /^GIT_/;
+const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !gitVar.test(name)));
 const run = spawnSync('task', ['ci:pre-push', '--', remote, url], {
   cwd,
   stdio: ['ignore', 'inherit', 'inherit'],
-  env: { ...process.env, PWD: cwd, CREWRIG_PRE_PUSH_REFS: refs },
+  env: { ...env, PWD: cwd, CREWRIG_PRE_PUSH_REFS: refs },
 });
 if (run.error?.code === 'ENOENT') {
   process.stderr.write('pre-push: task is not on PATH: install Task >= 3.39 (https://taskfile.dev/installation/) and Node.js >= 24, or push with --no-verify.\n');

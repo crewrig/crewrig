@@ -10,6 +10,7 @@
 import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
+import { scrubGitEnv } from "../git-env.ts";
 
 export const BUDGET_SECONDS = 60;
 export const DRAFT_TASK = "lint-specs";
@@ -38,7 +39,8 @@ export interface RunOptions {
 
 /** Environment of one task: BASE_REF for all, CREWRIG_PR_DRAFT=true for `lint-specs` only. */
 export function taskEnv(id: string, opts: RunOptions): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...(opts.env ?? process.env) };
+  // Git exports GIT_DIR to a hook; no GIT_* variable may reach a task (spec 0279 R21).
+  const env: NodeJS.ProcessEnv = scrubGitEnv(opts.env ?? process.env);
   delete env["CREWRIG_PR_DRAFT"];
   // Task derives REPO_DIR from $PWD: a stale PWD (a push started from a subdirectory) would aim the
   // task at the wrong tree.
