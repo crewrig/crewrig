@@ -1,7 +1,7 @@
 // Spec 0168 delta-01 (R9, R10, R11, R17): the engine-to-linter mapping of the Draft-PR signal,
 // asserted over the committed CI files. Read-only: nothing is created, written or removed.
 // GitHub: the workflow must re-run on the draft/ready transitions and map the PR draft flag onto
-// CREWRIG_PR_DRAFT in the `lint-specs` job's "Lint specs" step. GitLab: the generated
+// CREWRIG_PR_DRAFT in the `lint-specs` job env (the job runs the ci-job action). GitLab: the generated
 // `lint-specs` job maps CI_MERGE_REQUEST_DRAFT onto the same variable.
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -34,13 +34,10 @@ describe("Draft-PR signal CI mapping (spec 0168 delta-01 R9-R11)", () => {
     ]);
   });
 
-  test("GitHub: the lint-specs 'Lint specs' step maps github.event.pull_request.draft", T, () => {
+  test("GitHub: the lint-specs job env maps github.event.pull_request.draft", T, () => {
     const wf = load(".github/workflows/build.yml");
     const job = obj(obj(wf["jobs"], "jobs")["lint-specs"], "jobs.lint-specs");
-    const steps = job["steps"] as Doc[];
-    const step = steps.find((s) => s["name"] === "Lint specs");
-    assert.ok(step, "no 'Lint specs' step in lint-specs");
-    const expr = obj(step["env"], "step env")["CREWRIG_PR_DRAFT"];
+    const expr = obj(job["env"], "job env")["CREWRIG_PR_DRAFT"];
     assert.equal(typeof expr, "string");
     assert.ok(
       (expr as string).includes("github.event.pull_request.draft"),
