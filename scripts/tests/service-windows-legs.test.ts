@@ -71,7 +71,7 @@ async function restartLeg(kind: DaemonKind, how: "kill" | "exit0"): Promise<void
     measure(
       `restart kind=${kind} how=${how} restartedAfterMs=${Date.now() - t0} newPid=${again.pid}`,
     );
-    assert.notEqual(again.pid, first.pid);
+    assert.notEqual(again.instance, first.instance);
   } finally {
     assert.equal(backend.uninstall(c.names).ok, true);
     await disposeChain(c);

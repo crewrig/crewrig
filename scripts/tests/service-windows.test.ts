@@ -124,7 +124,7 @@ async function lifecycle(kind: DaemonKind): Promise<void> {
     clearState(c);
     assert.equal(backend.start(c.names).ok, true);
     const second = await waitFor("daemon restarted by start", () => readState(c), 60_000);
-    assert.notEqual(second.pid, first.pid);
+    assert.notEqual(second.instance, first.instance);
     assert.equal(snap(c).state, 4);
   } finally {
     const gone = backend.uninstall(c.names);

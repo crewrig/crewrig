@@ -35,13 +35,14 @@ import {
 } from "../../lib/service/windows-task-xml.ts";
 
 // The stand-in daemon: `<node> <script> ... --port <n>`. Control file `exit0`
-// makes it exit 0 on request.
+// makes it exit 0 on request. `instance` is a fresh id per start: Windows reuses a process id within
+// a minute, so a restart is told from the previous run by `instance`, never by `pid`.
 const DAEMON = `const http = require("http"), fs = require("fs"), path = require("path");
 const dir = __STATE_DIR__;
 const state = path.join(dir, "state.json"), ctl = path.join(dir, "exit0");
 const a = process.argv, port = Number(a[a.indexOf("--port") + 1]);
 const srv = http.createServer((q, r) => { r.statusCode = q.url === "/healthz" || q.url === "/api/v2/heartbeat" ? 200 : 404; r.end("ok"); });
-srv.listen(port, "127.0.0.1", () => fs.writeFileSync(state, JSON.stringify({ pid: process.pid, ppid: process.ppid, port })));
+srv.listen(port, "127.0.0.1", () => fs.writeFileSync(state, JSON.stringify({ pid: process.pid, ppid: process.ppid, port, instance: require("crypto").randomUUID() })));
 setInterval(() => { if (fs.existsSync(ctl)) { fs.rmSync(ctl); process.exit(0); } }, 200);
 `;
 
@@ -203,6 +204,7 @@ export interface DaemonState {
   pid: number;
   ppid: number;
   port: number;
+  instance: string;
 }
 
 export function readState(c: StandInChain): DaemonState | null {
