@@ -116,6 +116,14 @@
     "desc": "Enforce the provenance version bump on changed skill and agent sources (pre-push mirror of the CI job)"
   },
   {
+    "name": "ci:check-task-provisioning",
+    "desc": "Check the pinned Task provisioning (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-task-provisioning-selftest",
+    "desc": "Run the Task provisioning self-tests (pre-push mirror of the CI job)"
+  },
+  {
     "name": "ci:check-taskfile-commands",
     "desc": "Check the Taskfile tree names no POSIX-only command (pre-push mirror of the CI job)"
   },

@@ -28,6 +28,8 @@
   "ci:check-description-length": "taskfiles/ci.yml",
   "ci:check-rules-size": "taskfiles/ci.yml",
   "ci:check-skill-versions": "taskfiles/ci.yml",
+  "ci:check-task-provisioning": "taskfiles/ci.yml",
+  "ci:check-task-provisioning-selftest": "taskfiles/ci.yml",
   "ci:check-taskfile-commands": "taskfiles/ci.yml",
   "ci:check-taskfile-commands-selftest": "taskfiles/ci.yml",
   "ci:check-taskfile-tree": "taskfiles/ci.yml",
