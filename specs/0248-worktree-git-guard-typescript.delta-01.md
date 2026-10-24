@@ -1,7 +1,7 @@
 ---
 id: "0248"
 slug: worktree-git-guard-typescript
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1489
