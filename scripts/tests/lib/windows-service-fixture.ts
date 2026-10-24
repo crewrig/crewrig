@@ -122,11 +122,7 @@ export async function makeChain(
     stateDir = repoDir;
     const palace = path.join(dir, "palace");
     fs.mkdirSync(palace, { recursive: true });
-    fs.mkdirSync(path.join(repoDir, "scripts", "lib"), { recursive: true });
-    fs.writeFileSync(
-      path.join(repoDir, "scripts", "lib", "mempalace-http-wrapper.py"),
-      DAEMON.replace("__STATE_DIR__", JSON.stringify(repoDir)),
-    );
+    fs.mkdirSync(repoDir, { recursive: true });
     // The launcher reads MEMPALACE_MCP_TOKEN_FILE, which a task cannot inherit; the
     // palace constant makes it derive this path, with the real derivation.
     tokenFile = derivedTokenPath(palace, os.homedir());
@@ -144,6 +140,12 @@ export async function makeChain(
       python: process.execPath,
       palacePath: palace,
     });
+    // Spec 0252 delta-05: the launcher runs the wrapper installed beside it, so the
+    // stand-in daemon replaces the installed copy (after the install wrote the real one).
+    fs.writeFileSync(
+      path.join(path.dirname(paths.launcher), "service-lib", "mempalace-http-wrapper.py"),
+      DAEMON.replace("__STATE_DIR__", JSON.stringify(repoDir)),
+    );
     chain = mcpChain(process.execPath, paths.launcher);
   } else {
     const chroma = path.join(dir, "chroma.cjs");

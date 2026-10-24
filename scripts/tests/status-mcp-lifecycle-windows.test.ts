@@ -46,7 +46,7 @@ describe("status-mcp-server and uninstall-mcp-daemon against the installed MCP t
       // same-user listener holds, with no task behind it.
       const other = await makeChain("mcp", root, id, "squat");
       fs.writeFileSync(
-        path.join(c.stateDir, "scripts", "lib", "mempalace-http-wrapper.py"),
+        path.join(path.dirname(c.program), "service-lib", "mempalace-http-wrapper.py"),
         DAEMON_401.replace("__STATE_DIR__", JSON.stringify(c.stateDir)),
       );
       const backend = createBackend({ programPathOf: () => c.program });
