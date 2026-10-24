@@ -1,7 +1,7 @@
 ---
 id: "0264"
 slug: windows-timing-budget-calibration
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1776
