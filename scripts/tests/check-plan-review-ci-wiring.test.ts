@@ -18,6 +18,7 @@ import {
   resolveCapabilityCommands,
 } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
+import { gatePaths } from "./lib/capability-path-scan.ts";
 
 const ID = "check-plan-review";
 const SCRIPT = "scripts/check-plan-review.ts";
@@ -91,7 +92,7 @@ function assertGithub(
   const gov = jobBlock(text, /\n {2}governance-checks-ts:\n/);
   for (const t of TESTS) assert.ok(govCmds.join(" ").includes(t), `governance-checks-ts runs ${t}`);
   for (const p of ["scripts/tests/fixtures/plan-review/**", "scripts/tests/check-plan-review*"])
-    assert.ok(gov.includes(`'${p}'`), `filter has ${p}`);
+    assert.ok(gatePaths("governance-checks-ts").includes(p), `paths have ${p}`);
 }
 
 function assertGitlab(

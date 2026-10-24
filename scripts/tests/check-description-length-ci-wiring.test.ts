@@ -19,6 +19,7 @@ import {
   resolveCapabilityCommands,
 } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
+import { gatePaths } from "./lib/capability-path-scan.ts";
 
 interface Capability {
   readonly id: string;
@@ -94,10 +95,10 @@ function assertJob(job: string): void {
   assert.equal(inputs.install, "omit-dev", "production install before the check");
   assert.equal(inputs.task ?? "true", "true", "runs task ci:<id> (the ci-job default)");
   for (const dir of [".claude", ".gemini", ".github", ".agents"]) {
-    assert.ok(job.includes(`'${dir}/skills/**'`), `${dir}/skills in the filter`);
-    assert.ok(job.includes(`'${dir}/agents/**'`), `${dir}/agents in the filter`);
+    assert.ok(gatePaths(ID).includes(`${dir}/skills/**`), `${dir}/skills in the filter`);
+    assert.ok(gatePaths(ID).includes(`${dir}/agents/**`), `${dir}/agents in the filter`);
   }
-  assert.ok(job.includes("'artifacts/**'"));
+  assert.ok(gatePaths(ID).includes("artifacts/**"));
 }
 
 describe("check-description-length CI wiring", () => {

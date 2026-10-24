@@ -13,6 +13,7 @@ import { loadTaskfileTree, taskCmds, type TaskfileTree } from "../lib/taskfile-t
 import { REPO } from "./lib/build-fixture-tree.ts";
 import { ciTaskCommands, resolveCapabilityCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
+import { gatePaths } from "./lib/capability-path-scan.ts";
 
 const ID = "check-comment-size";
 const SCRIPT = "scripts/check-comment-size.ts";
@@ -71,7 +72,7 @@ function assertGithub(
     "scripts/tests/fixtures/economy-1410/**",
     "scripts/lib/seat-ledger*.ts",
   ])
-    assert.ok(gov.includes(`'${p}'`), `filter has ${p}`);
+    assert.ok(gatePaths("governance-checks-ts").includes(p), `paths have ${p}`);
 }
 
 function assertGitlab(

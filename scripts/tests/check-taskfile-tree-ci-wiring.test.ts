@@ -16,6 +16,7 @@ import { parse } from "../lib/yq-accessors/index.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
 import { resolveCapabilityCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
+import { gatePaths } from "./lib/capability-path-scan.ts";
 
 const ID = "check-taskfile-tree";
 const ROOT = ["Task", "file.yml"].join("");
@@ -189,12 +190,12 @@ function assertGithub(text: string): void {
   assert.ok(job.includes(`id: ${ID}\n`), "ci-job id is the capability id");
   const self = jobBlock(text, new RegExp(`\\n  ${ID}-selftest:\\n`));
   assert.ok(self.includes(`id: ${ID}-selftest\n`), "self-test job passes its id");
-  for (const p of TREE_PATHS) assert.ok(job.includes(`'${p}'`), `filter has ${p}`);
+  for (const p of TREE_PATHS) assert.ok(gatePaths(ID).includes(p), `paths have ${p}`);
   // R17: every job that lists the root Taskfile also lists the companions.
   for (const id of LISTING_JOBS) {
     const block = jobBlock(text, new RegExp(`\\n  ${id}:\\n`));
-    assert.ok(block.includes(`'${ROOT}'`), `${id} filters list the root Taskfile`);
-    for (const p of COMPANIONS) assert.ok(block.includes(`'${p}'`), `${id} filter has ${p}`);
+    assert.ok(gatePaths(id).includes(ROOT), `${id} paths list the root Taskfile`);
+    for (const p of COMPANIONS) assert.ok(gatePaths(id).includes(p), `${id} paths have ${p}`);
   }
 }
 
