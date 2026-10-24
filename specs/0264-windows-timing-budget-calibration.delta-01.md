@@ -29,8 +29,8 @@ parent states no longer applies: this delta-spec and its implementation target `
     presence and the floor, not the derived value.
 19. **CI line ratchet.** The implementation PR SHALL bump the pin of the CI line ratchet
     in `scripts/tests/ci-shrink-report.test.ts` (`PIN`, currently 8631) by exactly the
-    number of lines the PR adds to the ratcheted CI surfaces, SHALL keep the total under
-    the floor of 8880, and SHALL state the reason for the bump in the PR body.
+    number of lines the PR adds to the ratcheted CI surfaces, SHALL keep the total at or
+    under the floor of 8880, and SHALL state the reason for the bump in the PR body.
 20. **GitLab parity unaffected.** The Windows jobs are `portability: specific`
     (GitHub-only), so neither the job limits nor the confirmation run change any GitLab
     surface, and the implementation PR SHALL say so.
@@ -56,6 +56,20 @@ Then the step exits 1 and the same re-measure line shows both numbers
 Given a run over the ceiling
 When the confirmation run exits with a status other than `--expect-exit`
 Then the step exits 1
+
+**Scenario:** A confirmation run that hangs is killed and fails
+
+Given a ceiling run and a hook that then never exits
+When the confirmation run reaches the wall-clock limit of `max(10 s, 5 x budget)`
+Then the run is killed, the step exits 1, and the failure line names the script, the
+case, the budget and the run index
+
+**Scenario:** A confirmed outlier still counts toward the tolerance
+
+Given 10 runs where run 2 is over the ceiling with a confirmation run within the budget,
+and run 7 is 40 ms over the budget
+When the default tolerance of 1 applies
+Then two runs are over the budget, the step exits 1, and both are printed
 
 **Scenario:** A job without a limit is caught
 
@@ -90,11 +104,25 @@ Replacement:
    (requirement 1a), and requirement 4 applies to it unchanged (label `tolerated` when
    K covers it). Whatever K is, including `--tolerate` values above 1, a hang
    reproduces on the confirmation run and still fails; a one-off runner stall does not.
-   The confirmation run is bounded by the hook's own 5 s daemon timeout.
+   The harness SHALL bound every run, the confirmation run included, with a wall-clock
+   limit of `max(10 s, 5 x budget)`: a run killed by that limit has no exit status, so
+   it fails requirement 1(c) and prints the failure line of requirement 4. A hang
+   therefore costs at most two bounded runs, whatever the hook.
    Visibility: the harness SHALL print both measurements on one line,
    `timing-budget: <script>[ [case <label>]] ceiling run re-measured: <t1> ms then <t2> ms (run <i>/<N>)`,
    for every re-measured run, whatever the outcome. Requirement 1(b) is read
    accordingly: a run over the ceiling fails the step only through this requirement.
+
+Relation to the parent's rejected alternative "Retry the whole step once" and to its
+Out of scope item "Retrying a failed job or step in CI", both unchanged. The confirmation
+run is neither: it starts no job and no step, adds at most one measurement of a
+millisecond-scale command, and only for a run over three times the budget. The parent
+rejected the step retry for three reasons: it doubles Windows minutes on every red, it
+samples the same heavy-tailed distribution, and "passes on the second try" masks
+regressions. Here the cost is one extra spawn on a lone outlier; the confirmation run
+does not erase the outlier, which still counts toward K (requirement 1a); and a
+regression, which shifts the whole distribution, makes the second-worst run cross the
+budget and fails the step whatever the confirmation run measures (requirement 5).
 
 Evidence. Run 40027615389, job `windows-mempalace-transcript`, case
 `d-nothing-listening`: run 2 of 10 measured 2954.9 ms while the step total was about 5 s,
@@ -105,7 +133,8 @@ timing failure exists in the last 150 `build.yml` runs.
 
 ### Requirement 5 (real regressions still fail)
 
-Requirement 5 is unchanged: a change that slows a hook shifts the whole distribution, and
+Requirement 5 is unchanged in text; this heading only records that it is read together with
+requirement 3 as modified. A change that slows a hook shifts the whole distribution, and
 a distribution in which every run is 1.5 times the budget still fails the step, because
 the second-worst run crosses the budget (requirement 1a). The scenarios above add the two
 cases the confirmation run distinguishes: a lone stall that does not reproduce passes, and
@@ -161,13 +190,13 @@ Replacement:
 
 ## REMOVED
 
-The following sentence of requirement 15 of the parent is deleted, and the Out of scope
-item that mirrors it no longer applies to `windows-latest` jobs:
+The following sentence of requirement 15 of the parent is deleted:
 
 > A job that declares none keeps GitHub's default, and this spec adds none.
->
-> Adding a `timeout-minutes` to a job that has none, and the 10x rule for job limits on
-> non-Windows jobs.
+
+The parent's Out of scope items about job limits are untouched for jobs that do not run on
+`windows-latest`; for `windows-latest` jobs they no longer apply, since requirement 15
+now adds a limit to each.
 
 The 10x rule is not retained for any job. Jobs that do not run on `windows-latest` keep
 their present limits, or none, and this delta-spec does not touch them.
