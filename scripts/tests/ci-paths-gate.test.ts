@@ -32,6 +32,7 @@ test("no base and missing before fail open with a reason", async () => {
 });
 test("schedule and no paths are always true; unsupported glob throws", async () => {
   assert.equal((await decide("x", "schedule", "", G)).changed, true);
+  assert.equal((await decide("x", "workflow_dispatch", "", G)).changed, true);
   assert.equal((await decide("x", "pull_request", "", {}, ok("z"))).changed, true);
   await assert.rejects(decide("x", "pull_request", "", { "pull-request": ["a/{b,c}"] }, ok("z")));
 });

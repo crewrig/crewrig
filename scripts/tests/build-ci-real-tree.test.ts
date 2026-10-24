@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
+import { ciTaskCommands } from "./lib/ci-task-commands.ts";
 import { jobText, REPO, runBuildCi, topLevelKeys } from "./lib/ci-reference-fixtures.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
@@ -110,7 +111,10 @@ describe("build-ci real tree (group R)", () => {
     ["F2e", "setup-transcript-claude.test.ts", "cache-guard unwraps to the declared command"],
   ] as const) {
     it(`${label}: ${why}`, () => {
-      assert.ok(parity.includes(text), `mempalace job lacks ${text}`);
+      // The declared command is `task ci:mempalace` since the migration: the suites the
+      // cache-guard unwraps to live in the task body (spec 0283 R1).
+      const haystack = label === "F2e" ? ciTaskCommands("mempalace").join("\n") : parity;
+      assert.ok(haystack.includes(text), `mempalace job lacks ${text}`);
     });
   }
 });

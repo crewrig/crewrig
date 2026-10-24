@@ -1214,46 +1214,14 @@ jobs:
               - 'scripts/tests/lib/print-setup-declarations.ts'
               - 'scripts/tests/fixtures/setup-golden/**'
               - 'scripts/tests/fixtures/setup-declarations/**'
-      - name: Install yq
-        if: steps.filter.outputs.mempalace == 'true'
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
-          echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
-          sudo chmod +x /usr/local/bin/yq
-      - uses: actions/setup-python@v5
-        if: steps.filter.outputs.mempalace == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          python-version: "3.12"
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.mempalace == 'true'
-        with:
-          node-version: 24
-      - name: Install production dependencies
-        if: steps.filter.outputs.mempalace == 'true'
-        run: npm ci --omit=dev --workspaces=false
-      - uses: actions/cache@v4
-        if: steps.filter.outputs.mempalace == 'true'
-        with:
-          path: .ci-cache
-          key: ${{ hashFiles('scripts/tests/mempalace-doctor-*.test.ts', 'scripts/tests/mempalace-runtime-guard-*.test.ts', 'scripts/tests/mempalace-pin-*.test.ts', 'scripts/tests/mempalace-version-range.test.ts', 'scripts/tests/lib/doctor-machine.ts', 'scripts/tests/lib/doctor-wrappers.ts', 'scripts/tests/lib/mempalace-guard-fixture.ts', 'scripts/tests/lib/mempalace-pin-rig.ts', 'scripts/tests/lib/mempalace-range-scan.ts', 'scripts/tests/fixtures/mempalace-pin/**', 'scripts/tests/mempalace-http-client-reuse.test.ts', 'scripts/tests/system-context-store.test.ts', 'scripts/tests/setup-transcript-antigravity-*.test.ts', 'scripts/tests/mempalace-transcript-antigravity-payload.test.ts', 'scripts/tests/lib/antigravity-transcript-rig.ts', 'scripts/tests/setup-transcript-*.test.ts', 'scripts/tests/lib/transcript-manifest-rig.ts', 'scripts/tests/antigravity-manage-sandbox.test.ts', 'scripts/tests/antigravity-tier-twin.test.ts', 'scripts/tests/lib/antigravity-fixtures.ts', 'scripts/tests/lib/worktree-fixtures.ts', 'scripts/tests/lib/install-sandbox.ts', 'scripts/tests/e2e-probes-antigravity-discovery.test.ts',   'hooks/worktree-git-guard.ts', 'hooks/mempalace-transcript.ts', 'scripts/tests/fixtures/mempalace-transcript/**', 'scripts/worktree-claim.ts', 'scripts/tests/lib/print-manage-declarations.ts', 'scripts/lib/**', 'artifacts/library/skills/mempalace/**', 'artifacts/library/skills/harness-report/**', 'config/copilot/*.json.template', 'scripts/ci-cache-guard.ts', 'scripts/setup-*-interactive.ts', 'scripts/tests/setup-retarget-*.test.ts', 'scripts/tests/lib/setup-*.ts', 'scripts/tests/lib/build-fixture-tree.ts', 'scripts/tests/lib/hermetic-env.ts', 'scripts/tests/lib/real-home-guard.ts', 'scripts/tests/lib/print-setup-declarations.ts', 'scripts/tests/fixtures/setup-golden/**', 'scripts/tests/fixtures/setup-declarations/**') }}
-      - name: Test Mempalace HTTP Client Reuse
-        if: steps.filter.outputs.mempalace == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-http-client-reuse.test.ts
-      - name: Test Setup Transcripts (TypeScript)
-        if: steps.filter.outputs.mempalace == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/tests/mempalace-doctor-*.test.ts,scripts/tests/mempalace-runtime-guard-*.test.ts,scripts/tests/mempalace-pin-*.test.ts,scripts/tests/mempalace-version-range.test.ts,scripts/tests/lib/doctor-machine.ts,scripts/tests/lib/doctor-wrappers.ts,scripts/tests/lib/mempalace-guard-fixture.ts,scripts/tests/lib/mempalace-pin-rig.ts,scripts/tests/lib/mempalace-range-scan.ts,scripts/tests/fixtures/mempalace-pin/**,scripts/tests/system-context-store.test.ts,scripts/tests/setup-transcript-antigravity-*.test.ts,scripts/tests/mempalace-transcript-antigravity-payload.test.ts,scripts/tests/lib/antigravity-transcript-rig.ts,scripts/tests/setup-transcript-*.test.ts,scripts/tests/lib/transcript-manifest-rig.ts,scripts/tests/antigravity-manage-sandbox.test.ts,scripts/tests/antigravity-tier-twin.test.ts,scripts/tests/lib/antigravity-fixtures.ts,scripts/tests/lib/worktree-fixtures.ts,scripts/tests/lib/install-sandbox.ts,scripts/tests/e2e-probes-antigravity-discovery.test.ts,hooks/worktree-git-guard.ts,hooks/mempalace-transcript.ts,scripts/tests/fixtures/mempalace-transcript/**,scripts/worktree-claim.ts,scripts/tests/lib/print-manage-declarations.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.ts,scripts/setup-*-interactive.ts,scripts/tests/setup-retarget-*.test.ts,scripts/tests/lib/setup-*.ts,scripts/tests/lib/build-fixture-tree.ts,scripts/tests/lib/hermetic-env.ts,scripts/tests/lib/real-home-guard.ts,scripts/tests/lib/print-setup-declarations.ts,scripts/tests/fixtures/setup-golden/**,scripts/tests/fixtures/setup-declarations/**" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-transcript-claude.test.ts scripts/tests/setup-transcript-gemini.test.ts scripts/tests/setup-transcript-copilot.test.ts scripts/tests/setup-transcript-antigravity-manifest.test.ts scripts/tests/setup-transcript-antigravity-statusline.test.ts scripts/tests/mempalace-transcript-antigravity-payload.test.ts
-      - name: Python3  M Pip Install   Quiet Packaging
-        if: steps.filter.outputs.mempalace == 'true'
-        run: python3 -m pip install --quiet packaging
-      - name: Test Mempalace Pin, Runtime Guard, Doctor and Version Range (TypeScript)
-        if: steps.filter.outputs.mempalace == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/tests/mempalace-doctor-*.test.ts,scripts/tests/mempalace-runtime-guard-*.test.ts,scripts/tests/mempalace-pin-*.test.ts,scripts/tests/mempalace-version-range.test.ts,scripts/tests/lib/doctor-machine.ts,scripts/tests/lib/doctor-wrappers.ts,scripts/tests/lib/mempalace-guard-fixture.ts,scripts/tests/lib/mempalace-pin-rig.ts,scripts/tests/lib/mempalace-range-scan.ts,scripts/tests/fixtures/mempalace-pin/**,scripts/tests/system-context-store.test.ts,scripts/tests/setup-transcript-antigravity-*.test.ts,scripts/tests/mempalace-transcript-antigravity-payload.test.ts,scripts/tests/lib/antigravity-transcript-rig.ts,scripts/tests/setup-transcript-*.test.ts,scripts/tests/lib/transcript-manifest-rig.ts,scripts/tests/antigravity-manage-sandbox.test.ts,scripts/tests/antigravity-tier-twin.test.ts,scripts/tests/lib/antigravity-fixtures.ts,scripts/tests/lib/worktree-fixtures.ts,scripts/tests/lib/install-sandbox.ts,scripts/tests/e2e-probes-antigravity-discovery.test.ts,hooks/worktree-git-guard.ts,hooks/mempalace-transcript.ts,scripts/tests/fixtures/mempalace-transcript/**,scripts/worktree-claim.ts,scripts/tests/lib/print-manage-declarations.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.ts,scripts/setup-*-interactive.ts,scripts/tests/setup-retarget-*.test.ts,scripts/tests/lib/setup-*.ts,scripts/tests/lib/build-fixture-tree.ts,scripts/tests/lib/hermetic-env.ts,scripts/tests/lib/real-home-guard.ts,scripts/tests/lib/print-setup-declarations.ts,scripts/tests/fixtures/setup-golden/**,scripts/tests/fixtures/setup-declarations/**" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-pin-read.test.ts scripts/tests/mempalace-pin-compare.test.ts scripts/tests/mempalace-pin-corpus.test.ts scripts/tests/mempalace-runtime-guard-refusal.test.ts scripts/tests/mempalace-runtime-guard-paths.test.ts scripts/tests/mempalace-doctor-divergence.test.ts scripts/tests/mempalace-doctor-report.test.ts scripts/tests/mempalace-doctor-launch.test.ts scripts/tests/mempalace-doctor-shell-wrappers.test.ts scripts/tests/mempalace-version-range.test.ts
-      - name: Test Antigravity Component Install and System Context Store (TypeScript)
-        if: steps.filter.outputs.mempalace == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/tests/mempalace-doctor-*.test.ts,scripts/tests/mempalace-runtime-guard-*.test.ts,scripts/tests/mempalace-pin-*.test.ts,scripts/tests/mempalace-version-range.test.ts,scripts/tests/lib/doctor-machine.ts,scripts/tests/lib/doctor-wrappers.ts,scripts/tests/lib/mempalace-guard-fixture.ts,scripts/tests/lib/mempalace-pin-rig.ts,scripts/tests/lib/mempalace-range-scan.ts,scripts/tests/fixtures/mempalace-pin/**,scripts/tests/system-context-store.test.ts,scripts/tests/setup-transcript-antigravity-*.test.ts,scripts/tests/mempalace-transcript-antigravity-payload.test.ts,scripts/tests/lib/antigravity-transcript-rig.ts,scripts/tests/setup-transcript-*.test.ts,scripts/tests/lib/transcript-manifest-rig.ts,scripts/tests/antigravity-manage-sandbox.test.ts,scripts/tests/antigravity-tier-twin.test.ts,scripts/tests/lib/antigravity-fixtures.ts,scripts/tests/lib/worktree-fixtures.ts,scripts/tests/lib/install-sandbox.ts,scripts/tests/e2e-probes-antigravity-discovery.test.ts,hooks/worktree-git-guard.ts,hooks/mempalace-transcript.ts,scripts/tests/fixtures/mempalace-transcript/**,scripts/worktree-claim.ts,scripts/tests/lib/print-manage-declarations.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.ts,scripts/setup-*-interactive.ts,scripts/tests/setup-retarget-*.test.ts,scripts/tests/lib/setup-*.ts,scripts/tests/lib/build-fixture-tree.ts,scripts/tests/lib/hermetic-env.ts,scripts/tests/lib/real-home-guard.ts,scripts/tests/lib/print-setup-declarations.ts,scripts/tests/fixtures/setup-golden/**,scripts/tests/fixtures/setup-declarations/**" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-manage-sandbox.test.ts scripts/tests/antigravity-tier-twin.test.ts scripts/tests/system-context-store.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: mempalace
+          install: omit-dev
+          yq: "4.54.1"
+          python: "3.12"
+          cache: true
+          shadow-filter: ${{ steps.filter.outputs.mempalace }}
 
   test-wiring:
     runs-on: ubuntu-latest
@@ -1336,31 +1304,14 @@ jobs:
               - 'config/launchd/**'
               - 'config/systemd/**'
               - 'config/windows/**'
-      - name: Install yq
-        if: steps.filter.outputs.chroma-mcp == 'true'
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
-          echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
-          sudo chmod +x /usr/local/bin/yq
-      - uses: actions/setup-python@v5
-        if: steps.filter.outputs.chroma-mcp == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          python-version: "3.12"
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.chroma-mcp == 'true'
-        with:
-          node-version: 24
-      - uses: actions/cache@v4
-        if: steps.filter.outputs.chroma-mcp == 'true'
-        with:
-          path: .ci-cache
-          key: ${{ hashFiles('scripts/tests/chroma-wrapper-source.test.ts', 'scripts/tests/chroma-wrapper-live.test.ts', 'scripts/tests/chroma-fd-limits.test.ts', 'scripts/tests/mcp-daemon-*.test.ts', 'scripts/tests/lib/mcp-daemon-rig.ts', 'scripts/tests/service-launcher-palace-path.test.ts', 'scripts/tests/repair-restore-modes.test.ts', 'scripts/tests/repair-report-handoff.test.ts', 'scripts/tests/lib/repair-rig.ts', 'scripts/tests/switch-rotate-token.test.ts', 'scripts/worktree-claim.ts', 'hooks/worktree-git-guard.ts', 'scripts/lib/**', 'config/launchd/**', 'config/systemd/**', 'config/windows/**', 'scripts/ci-cache-guard.ts') }}
-      - name: Test Chroma, MCP Daemon and Repair (TypeScript)
-        if: steps.filter.outputs.chroma-mcp == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/tests/chroma-wrapper-source.test.ts,scripts/tests/chroma-wrapper-live.test.ts,scripts/tests/chroma-fd-limits.test.ts,scripts/tests/mcp-daemon-*.test.ts,scripts/tests/lib/mcp-daemon-rig.ts,scripts/tests/service-launcher-palace-path.test.ts,scripts/tests/repair-restore-modes.test.ts,scripts/tests/repair-report-handoff.test.ts,scripts/tests/lib/repair-rig.ts,scripts/tests/switch-rotate-token.test.ts,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/lib/**,config/launchd/**,config/systemd/**,config/windows/**,scripts/ci-cache-guard.ts" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/chroma-wrapper-source.test.ts scripts/tests/chroma-wrapper-live.test.ts scripts/tests/chroma-fd-limits.test.ts scripts/tests/mcp-daemon-static-guards.test.ts scripts/tests/mcp-daemon-status.test.ts scripts/tests/repair-restore-modes.test.ts scripts/tests/repair-report-handoff.test.ts scripts/tests/switch-rotate-token.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: chroma-mcp
+          install: omit-dev
+          yq: "4.54.1"
+          python: "3.12"
+          cache: true
+          shadow-filter: ${{ steps.filter.outputs.chroma-mcp }}
 
   e2e:
     runs-on: ubuntu-latest
@@ -1382,32 +1333,13 @@ jobs:
               - 'scripts/lib/build-cli-matrix/**'
               - 'docker/e2e/.versions.lock'
               - '.gitignore'
-      - name: Install yq v4.44.3
-        if: steps.filter.outputs.e2e == 'true'
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
-          echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
-          sudo chmod +x /usr/local/bin/yq
-      - uses: actions/setup-python@v5
-        if: steps.filter.outputs.e2e == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          python-version: "3.12"
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        with:
-          node-version: 24
-      - name: Install the production dependencies
-        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: npm ci --omit=dev --workspaces=false
-      - name: Floor guard accepts Node.js 24
-        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: node scripts/lib/node-floor-guard.js
-      - name: Test E2E Docker Stand-in And Oracle
-        if: steps.filter.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/e2e-docker-standin.test.ts scripts/tests/e2e-oracle-scenarios.test.ts scripts/tests/e2e-oracle-libs.test.ts scripts/tests/e2e-oracle-judge.test.ts scripts/tests/e2e-libs-differential.test.ts scripts/tests/e2e-auth-differential.test.ts scripts/tests/e2e-capture-differential.test.ts scripts/tests/e2e-toml-subset.test.ts scripts/tests/e2e-judge-differential.test.ts scripts/tests/e2e-runner-differential.test.ts scripts/tests/e2e-scenario-06-differential.test.ts scripts/tests/e2e-probe-hooks-blackbox.test.ts scripts/tests/e2e-probe-mcp-token-blackbox.test.ts scripts/tests/e2e-usage-headless.test.ts scripts/tests/e2e-defaults-config.test.ts scripts/tests/e2e-docs-lock.test.ts scripts/tests/e2e-taskfile-surface.test.ts scripts/tests/e2e-docker-images.test.ts scripts/tests/e2e-assert-lib.test.ts scripts/tests/e2e-auth-common.test.ts scripts/tests/e2e-auth-ready.test.ts scripts/tests/e2e-llm-judge-lib-oauth.test.ts scripts/tests/e2e-llm-judge-lib-ollama.test.ts scripts/tests/e2e-llm-judge-lib-quorum.test.ts scripts/tests/e2e-report.test.ts scripts/tests/e2e-structural-lib.test.ts scripts/tests/e2e-toml-merge.test.ts scripts/tests/e2e-auth-mounts.test.ts scripts/tests/e2e-auth-scripts.test.ts scripts/tests/e2e-runner-delegation.test.ts scripts/tests/e2e-runner.test.ts scripts/tests/e2e-scenarios-structure.test.ts scripts/tests/e2e-probes-antigravity-discovery.test.ts scripts/tests/e2e-probes-publisher.test.ts scripts/tests/e2e-literal-capture.test.ts scripts/tests/e2e-literal-publisher.test.ts scripts/tests/e2e-literal-publisher-edge.test.ts scripts/tests/e2e-probes-resolvers.test.ts scripts/tests/e2e-probes-scenarios.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: e2e
+          install: omit-dev
+          yq: "4.44.3"
+          python: "3.12"
+          shadow-filter: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.e2e }}
 
   setup:
     runs-on: ubuntu-latest

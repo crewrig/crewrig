@@ -1,7 +1,9 @@
 // Replaces scripts/tests/test-check-ci-parity.sh (stray-scan wiring SC1-SC3, spec 0170 delta-01 R16).
 // The parity unwrap strips only the generated cache layer, never the `--stray-scan` wrapper.
 // Selectors (P3): `release-notes` / `monorepo-release-notes-real-engine` (bare, release-notes.yml)
-// and `chroma-mcp` / `chroma-wrapper-source` (layered, build.yml).
+// and `chroma-mcp` / `chroma-wrapper-source` (layered, build.yml). No real job keeps the layered
+// inline shape since the `task ci:<id>` migration, so `inlineChroma` rebuilds it from the real
+// task body inside the mkdtemp fixture copy (the real tree is never touched).
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -17,6 +19,7 @@ import {
   runCheck,
   type YMap,
 } from "./lib/ci-parity-fixture.ts";
+import { ciTaskCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
 const SCAN_PREFIX =
@@ -45,8 +48,55 @@ function load(file: string): YMap {
   return map(yamlLib.load(fs.readFileSync(file, "utf8")), file);
 }
 
+/**
+ * Rewrites `chroma-mcp` in the fixture to its pre-migration inline shape: the capability declares the
+ * scanned suites command itself (taken from the real `ci:chroma-mcp` task body) and the GitHub job
+ * provisions by hand and wraps that command in the generated cache layer. The GitLab file is dropped
+ * because it was generated from the migrated capability.
+ */
+function inlineChroma(fx: string): void {
+  const body = ciTaskCommands("chroma-mcp");
+  const last = String(body[body.length - 1]);
+  const marker = "--stray-scan -- ";
+  const tests = last.slice(last.indexOf(marker) + marker.length);
+  const declared = `${SCAN_PREFIX}${tests}`;
+  let files: string[] = [];
+  const capFile = path.join(fx, "ci", "ci-capabilities.yml");
+  editYaml(capFile, (doc) => {
+    const c = capOf(doc, "chroma-mcp");
+    c["command"] = [declared];
+    const req = map(c["requires"]);
+    delete req["install"];
+    req["tools"] = list(req["tools"]).filter((x) => x !== "task");
+    files = list(map(c["cache"])["files"]).map(String);
+  });
+  fs.rmSync(path.join(fx, ".gitlab-ci.yml"), { force: true });
+  editYaml(BUILD_YML(fx), (doc) => {
+    const job = map(map(doc["jobs"])["chroma-mcp"]);
+    const kept = list(job["steps"]).filter(
+      (s) => !String(map(s)["uses"] ?? "").endsWith("/ci-job"),
+    );
+    const key = `\${{ hashFiles(${files.map((f) => `'${f}'`).join(", ")}) }}`;
+    const guard =
+      "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache " +
+      `--key-files "${files.join(",")}" --key-env "" -- ${declared}`;
+    job["steps"] = [
+      ...kept,
+      { uses: "actions/setup-python@v5", with: { "python-version": "3.12" } },
+      { uses: "actions/setup-node@v4", with: { "node-version": 24 } },
+      {
+        name: "Install yq",
+        run: "sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64",
+      },
+      { uses: "actions/cache@v4", with: { path: ".ci-cache", key } },
+      { name: "Test Chroma", run: guard },
+    ];
+  });
+}
+
 test("SC1: scanned steps, bare (release-notes) and inside a cache layer (chroma-mcp), pass", () => {
   const fx = makeFixture();
+  inlineChroma(fx);
   const wantBare = lastCommand(fx, "release-notes");
   const wantLayered = lastCommand(fx, "chroma-mcp");
   const gotBare = String(
@@ -91,6 +141,7 @@ test("SC2: a bare step missing the scan fails closed", () => {
 
 test("SC3: a layered step missing the scan fails closed", () => {
   const fx = makeFixture();
+  inlineChroma(fx);
   editYaml(BUILD_YML(fx), (doc) => {
     const s = stepOf(doc, "chroma-mcp", /stray-scan/);
     const inner =

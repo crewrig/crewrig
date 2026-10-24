@@ -159,12 +159,20 @@ test("S11: GHA env block divergence", () => {
 });
 
 test("C1: cache key inputs diverge from the reference cache.files", () => {
+  // mempalace is a `ci-job` job with `cache: true` (the action keys the cache from the capability,
+  // so nothing can diverge there). The mutation turns the keying back into a hand-written
+  // actions/cache step whose hashFiles key lists a file the reference does not.
   const fx = ghEdit((doc) => {
-    const s = steps(doc, "mempalace")
-      .map((x) => map(x))
-      .find((x) => x["uses"] === "actions/cache@v4");
-    assert.ok(s, "precondition: the mempalace job has an actions/cache@v4 step");
-    map(s["with"])["key"] = "${{ hashFiles('zz/cache-key-drift.txt') }}";
+    const all = steps(doc, "mempalace").map((x) => map(x));
+    const ciJob = all.find((x) => x["uses"] === "./.github/actions/ci-job");
+    assert.ok(ciJob, "precondition: the mempalace job calls ci-job");
+    const w = map(ciJob["with"]);
+    assert.equal(w["cache"], true, "precondition: the mempalace job keys its cache through ci-job");
+    delete w["cache"];
+    steps(doc, "mempalace").push({
+      uses: "actions/cache@v4",
+      with: { path: ".ci-cache", key: "${{ hashFiles('zz/cache-key-drift.txt') }}" },
+    });
   });
   fails(fx, "C1", ["capability 'mempalace' (github-actions)", "cache key inputs diverge"]);
 });

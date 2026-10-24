@@ -1721,7 +1721,8 @@ capabilities:
       # (mempalace-http-client-reuse.test.ts) — installed alongside the
       # image rather than replacing it (spec 0242, issue #1370).
       runtime: [python@3.12, node@24]
-      tools: [yq, jq]
+      tools: [yq, jq, task]
+      install: omit-dev
     cache:
       files:
         - "scripts/tests/mempalace-doctor-*.test.ts"
@@ -1768,21 +1769,7 @@ capabilities:
         - "scripts/tests/fixtures/setup-declarations/**"
       env: []
     command:
-      # The antigravity component-install suites run manage-antigravity-component.ts in a
-      # sandbox, which rebuilds the served overlay tiers and loads js-yaml.
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-http-client-reuse.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-transcript-claude.test.ts scripts/tests/setup-transcript-gemini.test.ts scripts/tests/setup-transcript-copilot.test.ts scripts/tests/setup-transcript-antigravity-manifest.test.ts scripts/tests/setup-transcript-antigravity-statusline.test.ts scripts/tests/mempalace-transcript-antigravity-payload.test.ts
-      # `packaging` is the spec-0108 launch guard's PRIMARY comparator and is the
-      # branch in force on every serving interpreter that carries it, so CI must
-      # exercise it against the real library rather than only against the degraded
-      # fallback. the mempalace-pin-*.test.ts files fail loudly when no interpreter here can
-      # import it — deliberately, so that a green pipeline means the primary
-      # comparator was actually tested. Not a runtime dependency of the guard: the
-      # wrapper still runs, and is still tested, where `packaging` is absent.
-      - python3 -m pip install --quiet packaging
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-pin-read.test.ts scripts/tests/mempalace-pin-compare.test.ts scripts/tests/mempalace-pin-corpus.test.ts scripts/tests/mempalace-runtime-guard-refusal.test.ts scripts/tests/mempalace-runtime-guard-paths.test.ts scripts/tests/mempalace-doctor-divergence.test.ts scripts/tests/mempalace-doctor-report.test.ts scripts/tests/mempalace-doctor-launch.test.ts scripts/tests/mempalace-doctor-shell-wrappers.test.ts scripts/tests/mempalace-version-range.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-manage-sandbox.test.ts scripts/tests/antigravity-tier-twin.test.ts scripts/tests/system-context-store.test.ts
+      - task ci:mempalace
 
   - id: test-wiring
     name: "Enforce test-wiring registration and suite syntax"
@@ -1878,7 +1865,8 @@ capabilities:
       # SECONDARY runtime: the worktree-claim.ts tool is the TypeScript
       # claim tool, and on a Node.js below 24 it exits 1 (spec 0248 R26, R36).
       runtime: [python@3.12, node@24]
-      tools: [yq]
+      tools: [yq, task]
+      install: omit-dev
     cache:
       files:
         - "scripts/tests/chroma-wrapper-source.test.ts"
@@ -1900,7 +1888,7 @@ capabilities:
         - "scripts/ci-cache-guard.ts"
       env: []
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/chroma-wrapper-source.test.ts scripts/tests/chroma-wrapper-live.test.ts scripts/tests/chroma-fd-limits.test.ts scripts/tests/mcp-daemon-static-guards.test.ts scripts/tests/mcp-daemon-status.test.ts scripts/tests/repair-restore-modes.test.ts scripts/tests/repair-report-handoff.test.ts scripts/tests/switch-rotate-token.test.ts
+      - task ci:chroma-mcp
 
   # e2e is the heaviest group; it stays enforced on push/PR (changeset-gated)
   # but is ALSO manually triggerable (spec 0147 R8) so a contributor can run it
@@ -1932,11 +1920,11 @@ capabilities:
       # python@3.12 stays the primary/image runtime; node@24 is a SECONDARY runtime for the
       # TypeScript oracle suites (spec 0261). jq is preinstalled on the GitHub runner.
       runtime: [python@3.12, node@24]
-      tools: [yq, jq]
+      tools: [yq, jq, task]
+      install: omit-dev
+      yq: "4.44.3"
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/e2e-docker-standin.test.ts scripts/tests/e2e-oracle-scenarios.test.ts scripts/tests/e2e-oracle-libs.test.ts scripts/tests/e2e-oracle-judge.test.ts scripts/tests/e2e-libs-differential.test.ts scripts/tests/e2e-auth-differential.test.ts scripts/tests/e2e-capture-differential.test.ts scripts/tests/e2e-toml-subset.test.ts scripts/tests/e2e-judge-differential.test.ts scripts/tests/e2e-runner-differential.test.ts scripts/tests/e2e-scenario-06-differential.test.ts scripts/tests/e2e-probe-hooks-blackbox.test.ts scripts/tests/e2e-probe-mcp-token-blackbox.test.ts scripts/tests/e2e-usage-headless.test.ts scripts/tests/e2e-defaults-config.test.ts scripts/tests/e2e-docs-lock.test.ts scripts/tests/e2e-taskfile-surface.test.ts scripts/tests/e2e-docker-images.test.ts scripts/tests/e2e-assert-lib.test.ts scripts/tests/e2e-auth-common.test.ts scripts/tests/e2e-auth-ready.test.ts scripts/tests/e2e-llm-judge-lib-oauth.test.ts scripts/tests/e2e-llm-judge-lib-ollama.test.ts scripts/tests/e2e-llm-judge-lib-quorum.test.ts scripts/tests/e2e-report.test.ts scripts/tests/e2e-structural-lib.test.ts scripts/tests/e2e-toml-merge.test.ts scripts/tests/e2e-auth-mounts.test.ts scripts/tests/e2e-auth-scripts.test.ts scripts/tests/e2e-runner-delegation.test.ts scripts/tests/e2e-runner.test.ts scripts/tests/e2e-scenarios-structure.test.ts scripts/tests/e2e-probes-antigravity-discovery.test.ts scripts/tests/e2e-probes-publisher.test.ts scripts/tests/e2e-literal-capture.test.ts scripts/tests/e2e-literal-publisher.test.ts scripts/tests/e2e-literal-publisher-edge.test.ts scripts/tests/e2e-probes-resolvers.test.ts scripts/tests/e2e-probes-scenarios.test.ts
+      - task ci:e2e
 
   - id: setup
     name: "Test setup helpers and validation backend"

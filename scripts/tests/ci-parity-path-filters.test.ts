@@ -145,7 +145,7 @@ test("FX12: unfiltered reference vs filtered job", () => {
 
 test("FX13: filtered reference vs deleted filter step", () => {
   const pr = block(
-    "chroma-mcp",
+    "check-description-length",
     "event 'pull_request'",
     "FX13: filtered reference vs unfiltered job (pull_request)",
   );
@@ -153,11 +153,11 @@ test("FX13: filtered reference vs deleted filter step", () => {
     pr,
     "ref",
     "FX13: pull_request block lists the reference paths",
-    refPaths("chroma-mcp", "pull-request"),
+    refPaths("check-description-length", "pull-request"),
   );
   expectSide(pr, "gh", "FX13: pull_request block GitHub-only list is empty", []);
   const push = block(
-    "chroma-mcp",
+    "check-description-length",
     "event 'push'",
     "FX13: filtered reference vs unfiltered job (push)",
   );
@@ -165,7 +165,7 @@ test("FX13: filtered reference vs deleted filter step", () => {
     push,
     "ref",
     "FX13: push block lists the reference paths",
-    refPaths("chroma-mcp", "push"),
+    refPaths("check-description-length", "push"),
   );
 });
 

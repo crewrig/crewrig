@@ -14,6 +14,7 @@ import { describe, test } from "node:test";
 import { readCapabilities } from "../lib/ci-parity/reference-read.ts";
 import { parse } from "../lib/yq-accessors/index.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
+import { resolveCapabilityCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
 const ID = "check-taskfile-tree";
@@ -83,7 +84,10 @@ function assertInstallBeforeLoaderTests(caps: Cap[], importers: string[]): void 
   );
   let checked = 0;
   for (const c of caps) {
-    const cmd = (c.command ?? []).join("\n");
+    // A migrated job runs `task ci:<id>`: read the task body, and count a declared
+    // `requires.install` (the ci-job action runs it) as the install step.
+    const cmd = resolveCapabilityCommands(c.command).join("\n");
+    const provisioned = c.requires?.install !== undefined && c.requires.install !== "none";
     const tokens = cmd.match(/scripts\/tests\/[^\s"']+\.test\.ts/g) ?? [];
     const runs = importers.filter((t) =>
       tokens.some((tok) => (tok.includes("*") ? globToRegExp(tok).test(t) : tok === t)),
@@ -91,7 +95,7 @@ function assertInstallBeforeLoaderTests(caps: Cap[], importers: string[]): void 
     if (runs.length === 0) continue;
     checked += 1;
     assert.ok(
-      INSTALL.test(cmd),
+      INSTALL.test(cmd) || provisioned,
       `${c.id} runs ${runs[0]} (a loader importer) without an install step`,
     );
   }
@@ -111,7 +115,7 @@ type Cap = {
   command?: string[];
   "changeset-gated"?: boolean;
   trigger?: { on: string; paths?: string[] }[];
-  requires?: { runtime?: string; tools?: string[] };
+  requires?: { runtime?: string | string[]; tools?: string[]; install?: string };
 };
 
 function assertCapabilities(text: string): void {

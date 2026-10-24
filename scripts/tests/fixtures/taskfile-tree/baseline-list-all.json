@@ -802,5 +802,17 @@
   {
     "name": "ci:figure-labels",
     "desc": "Check figure labels with OCR (needs tesseract-ocr on PATH)"
+  },
+  {
+    "name": "ci:mempalace",
+    "desc": "Run the mempalace CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:chroma-mcp",
+    "desc": "Run the chroma-mcp CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:e2e",
+    "desc": "Run the e2e CI capability (pre-push mirror of the CI job)"
   }
 ]

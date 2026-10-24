@@ -124,8 +124,21 @@ function reference(doc: YMap): void {
 function buildYml(doc: YMap): void {
   setFilters(doc, "docs-index", (t) => `${t}  - zz/a/**\n  - zz/b/**\n`); // FX2
   setFilters(doc, "frontmatter", (t) => `${t}  - "!zz/neg/**"\n`); // FX7
-  const chroma = jobOf(doc, "chroma-mcp"); // FX13: the filter step is deleted
-  chroma["steps"] = list(chroma["steps"]).filter((s) => !isFilter(s));
+  // FX13: the filter step is deleted. check-description-length is a `ci-job` job, where a job without a
+  // filter is the legitimate shape A, so the mutation also unrolls the `ci-job` step into its plain
+  // provisioning steps: a bare filterless GitHub job against a filtered reference, as FX13 always meant.
+  const bare = jobOf(doc, "check-description-length");
+  bare["steps"] = list(bare["steps"])
+    .filter((s) => !isFilter(s))
+    .flatMap((s) =>
+      String(map(s)["uses"] ?? "").endsWith("/ci-job")
+        ? [
+            { uses: "actions/setup-node@v4", with: { "node-version": 24 } },
+            { uses: "./.github/actions/setup-task" },
+            { run: "task ci:check-description-length" },
+          ]
+        : [s],
+    );
   list(jobOf(doc, "setup")["steps"]).push(newStep("filter2", "setup:\n  - zz/s/**\n")); // UX1
   setFilters(doc, "check-agent-profiles", (t) => `${t}other-filter:\n  - zz/o/**\n`); // UX2
   setFilters(doc, "check-metadata-keys", (t) => t.replace(/^check-metadata-keys:/, "other-name:")); // UX3
