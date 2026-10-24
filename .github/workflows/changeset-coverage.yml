@@ -27,12 +27,9 @@ jobs:
           echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
           sudo chmod +x /usr/local/bin/yq
       # Spec 0147 delta-02 R26, R27: every tool of the gated union is installed here, and a
-      # failed install fails the step. `sh -c "$(curl ...)"` exits 0 when curl fails, so the step
-      # ends with `task --version`.
-      - name: Install Task
-        run: |
-          sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
-          task --version
+      # failed install fails the step. Spec 0282: Task comes from the pinned, checksum-verified
+      # composite action, which ends with a failing `task --version` check.
+      - uses: ./.github/actions/setup-task
       - name: Install tesseract
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr
       - uses: actions/setup-python@v5

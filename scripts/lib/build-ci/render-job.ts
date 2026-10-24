@@ -7,6 +7,7 @@ import {
   runtimeToImage,
   secondaryRuntimeInstallLines,
   toolInstallLines,
+  type TaskPin,
   BuildCiError,
 } from "./tools.ts";
 
@@ -59,7 +60,7 @@ function emitRules(cap: Capability, id: string, out: string[]): void {
 }
 
 /** The lines of one job, starting with the blank separator. */
-export function emitJob(cap: Capability): string[] {
+export function emitJob(cap: Capability, pin: TaskPin): string[] {
   const id = cap.id;
   const runtimes = cap.runtimes;
   const nl = runtimes.indexOf("\n");
@@ -77,7 +78,7 @@ export function emitJob(cap: Capability): string[] {
 
   const before: string[] = [];
   for (const sr of nonEmptyLines(secondary)) before.push(...secondaryRuntimeInstallLines(sr));
-  for (const t of nonEmptyLines(cap.tools)) before.push(...toolInstallLines(t));
+  for (const t of nonEmptyLines(cap.tools)) before.push(...toolInstallLines(t, pin));
   if (before.length > 0) out.push("  before_script:", ...before.map((l) => `    - ${l}`));
 
   const cacheFiles = cap.cacheFiles;

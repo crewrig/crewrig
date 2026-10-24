@@ -161,7 +161,7 @@ function assertCapabilities(text: string): void {
 function assertGithub(text: string): void {
   const job = jobBlock(text, new RegExp(`\\n  ${ID}:\\n`));
   assert.ok(job.includes("node-version: 24"));
-  assert.ok(job.includes("taskfile.dev/install.sh"), "installs Task");
+  assert.ok(job.includes("uses: ./.github/actions/setup-task"), "installs Task via the action");
   assert.ok(job.includes(GUARD), "runs the guard");
   const self = jobBlock(text, new RegExp(`\\n  ${ID}-selftest:\\n`));
   for (const s of SUITES) assert.ok(self.includes(s), `runs ${s}`);
@@ -177,7 +177,7 @@ function assertGithub(text: string): void {
 function assertGitlab(text: string): void {
   const job = jobBlock(text, new RegExp(`\\n${ID}:\\n`), true);
   assert.ok(job.includes("image: node:24"));
-  assert.ok(job.includes("taskfile.dev/install.sh"), "installs Task");
+  assert.ok(job.includes("sha256sum -c"), "installs Task with a checksum check");
   assert.ok(job.includes(GUARD), "runs the guard");
   const self = jobBlock(text, new RegExp(`\\n${ID}-selftest:\\n`), true);
   for (const s of SUITES) assert.ok(self.includes(s), `runs ${s}`);

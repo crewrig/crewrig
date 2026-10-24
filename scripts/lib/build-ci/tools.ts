@@ -24,6 +24,45 @@ export function runtimeToImage(runtime: string): string {
 
 const APT = "apt-get update && apt-get install -y --no-install-recommends";
 
+/** The pinned Task release (ci/task-pin.json, spec 0282): the one source of both engines. */
+export interface TaskPin {
+  readonly version: string;
+  readonly sha256: Readonly<Record<string, string>>;
+}
+
+/** Parse the pin text; any missing or malformed field fails closed (spec 0282 R5). */
+export function parseTaskPin(text: string): TaskPin {
+  const bad = (why: string): never => {
+    throw new BuildCiError(`Error: ci/task-pin.json: ${why}.`);
+  };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return bad("not valid JSON");
+  }
+  const o = raw as { version?: unknown; sha256?: Record<string, unknown> } | null;
+  if (o === null || typeof o !== "object") return bad("not an object");
+  if (typeof o.version !== "string" || !/^\d+\.\d+\.\d+$/.test(o.version))
+    return bad("'version' must be x.y.z");
+  const sum = o.sha256?.["linux_amd64"];
+  if (typeof sum !== "string" || !/^[0-9a-f]{64}$/.test(sum))
+    return bad("'sha256.linux_amd64' must be 64 lowercase hex digits");
+  return { version: o.version, sha256: { linux_amd64: sum } };
+}
+
+/** The GitLab `task` recipe: pinned release, checksum-verified, then a failing version check. */
+export function taskRecipe(pin: TaskPin): readonly string[] {
+  const url = `https://github.com/go-task/task/releases/download/v${pin.version}/task_linux_amd64.tar.gz`;
+  return [
+    `${APT} curl ca-certificates`,
+    `curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz ${url}`,
+    `echo "${pin.sha256["linux_amd64"]}  /tmp/task.tar.gz" | sha256sum -c -`,
+    "tar -xzf /tmp/task.tar.gz -C /usr/local/bin task",
+    "task --version",
+  ];
+}
+
 const TOOLS: Readonly<Record<string, readonly string[]>> = {
   yq: [
     `${APT} wget ca-certificates`,
@@ -37,14 +76,14 @@ const TOOLS: Readonly<Record<string, readonly string[]>> = {
     'echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -',
     "chmod +x /usr/local/bin/jq",
   ],
-  task: ['sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin'],
   "markdownlint-cli": ["npm install -g markdownlint-cli"],
   tesseract: [`${APT} tesseract-ocr`],
   python3: [`${APT} python3`],
 };
 
 /** `tool_install_lines`: the before_script lines installing one `requires.tools` entry. */
-export function toolInstallLines(tool: string): readonly string[] {
+export function toolInstallLines(tool: string, pin: TaskPin): readonly string[] {
+  if (tool === "task") return taskRecipe(pin);
   if (Object.hasOwn(TOOLS, tool)) return TOOLS[tool] as readonly string[];
   throw new BuildCiError(
     `Error: unknown tool '${tool}' — no GitLab install recipe (delta-02 Scenario 2).`,

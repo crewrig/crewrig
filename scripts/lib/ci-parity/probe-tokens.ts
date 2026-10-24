@@ -20,7 +20,6 @@ export function installRecipeTool(c: string): string {
     return true;
   };
   if (has("yq_linux_amd64") || has("mikefarah/yq")) return "yq";
-  if (has("taskfile.dev")) return "task";
   if (has("markdownlint-cli")) return "markdownlint-cli";
   if (has("tesseract")) return "tesseract";
   if (has("python3")) return "python3";

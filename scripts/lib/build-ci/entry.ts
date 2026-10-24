@@ -8,14 +8,14 @@ import { checkDrift, type Outcome } from "./check.ts";
 import { portableCapabilities } from "./reference.ts";
 import { emitJob } from "./render-job.ts";
 import { HEADER, WORKFLOW } from "./render-yaml.ts";
-import { BuildCiError } from "./tools.ts";
+import { BuildCiError, parseTaskPin, type TaskPin } from "./tools.ts";
 
 /** The generated pipeline text for a reference document. */
-export function generate(referenceText: string): string {
+export function generate(referenceText: string, pin: TaskPin): string {
   const lines: string[] = [];
   for (const cap of portableCapabilities(referenceText)) {
     if (cap.id === "") continue;
-    lines.push(...emitJob(cap));
+    lines.push(...emitJob(cap, pin));
   }
   return HEADER + WORKFLOW + lines.map((l) => `${l}\n`).join("");
 }
@@ -29,7 +29,10 @@ export function run(argv: readonly string[], repoDir: string): Outcome {
   }
   let fresh: string;
   try {
-    fresh = generate(fs.readFileSync(reference, "utf8"));
+    const pinFile = path.join(repoDir, "ci", "task-pin.json");
+    if (!fs.existsSync(pinFile)) throw new BuildCiError(`Error: Task pin not found: ${pinFile}.`);
+    const pin = parseTaskPin(fs.readFileSync(pinFile, "utf8"));
+    fresh = generate(fs.readFileSync(reference, "utf8"), pin);
   } catch (e) {
     if (e instanceof BuildCiError) return { stdout: "", stderr: `${e.message}\n`, code: e.code };
     throw e;

@@ -1730,7 +1730,11 @@ docs-index-selftest:
 cli-matrix-fresh:
   image: node:24
   before_script:
-    - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
     - "node scripts/lib/node-floor-guard.js"
     - "task cli-matrix:check"
@@ -2590,7 +2594,11 @@ check-taskfile-commands-selftest:
 check-taskfile-tree:
   image: node:24
   before_script:
-    - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-tree.ts"
@@ -2616,7 +2624,11 @@ check-taskfile-tree:
 check-taskfile-tree-selftest:
   image: node:24
   before_script:
-    - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-env-scrub.test.ts scripts/tests/git-env-helpers.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts"
@@ -2679,7 +2691,11 @@ check-taskfile-tree-selftest:
 ci-pre-push-replay:
   image: node:24
   before_script:
-    - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
     - "npm ci"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-pre-push-replay.test.ts scripts/tests/ci-pre-push-draft-lint.test.ts"
@@ -2756,7 +2772,11 @@ changeset-coverage:
     - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
     - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
     - chmod +x /usr/local/bin/jq
-    - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
     - apt-get update && apt-get install -y --no-install-recommends tesseract-ocr
   script:
     - "npm ci --omit=dev --workspaces=false"
@@ -3292,7 +3312,11 @@ lint-specs:
     BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
     CREWRIG_PR_DRAFT: "$CI_MERGE_REQUEST_DRAFT"
   before_script:
-    - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
     - "npm install"
     - "task spec:lint"

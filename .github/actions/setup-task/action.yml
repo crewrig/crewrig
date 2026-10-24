@@ -1,0 +1,53 @@
+name: Set up Task
+description: >-
+  Installs the Task release pinned in ci/task-pin.json (spec 0282). The archive
+  is verified against the SHA-256 committed in the pin before it is unpacked;
+  a mismatch, a missing checksum, an unsupported platform (Windows included)
+  or a wrong `task --version` fails the step. The logic is inline on purpose:
+  the shell-allowlist ratchet forbids a new shell file. Call it after
+  `actions/checkout`, since it reads the pin from the checked-out tree.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -euo pipefail
+        pin_file="${TASK_PIN_FILE-ci/task-pin.json}"
+        install_dir="${TASK_INSTALL_DIR-/usr/local/bin}"
+        sudo_cmd="${TASK_SUDO-sudo}"
+        case "$(uname -s)/$(uname -m)" in
+          Linux/x86_64) platform="${TASK_PLATFORM-linux_amd64}" ;;
+          *) platform="${TASK_PLATFORM-$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)}" ;;
+        esac
+        version="$(sed -n 's/^ *"version": *"\([0-9.]*\)".*/\1/p' "${pin_file}")"
+        sum="$(sed -n 's/^ *"'"${platform}"'": *"\([0-9a-f]\{64\}\)".*/\1/p' "${pin_file}")"
+        if [ -z "${version}" ]; then
+          echo "::error title=setup-task::no version in ${pin_file}" >&2
+          exit 1
+        fi
+        if [ -z "${sum}" ]; then
+          echo "::error title=setup-task::no pinned checksum for Task ${version} on platform ${platform} in ${pin_file}" >&2
+          exit 1
+        fi
+        url="${TASK_ARCHIVE_URL-https://github.com/go-task/task/releases/download/v${version}/task_${platform}.tar.gz}"
+        work="$(mktemp -d)"
+        curl --fail --silent --show-error --location --retry 3 -o "${work}/task.tar.gz" "${url}"
+        if command -v sha256sum >/dev/null 2>&1; then
+          actual="$(sha256sum "${work}/task.tar.gz" | cut -d' ' -f1)"
+        else
+          actual="$(shasum -a 256 "${work}/task.tar.gz" | cut -d' ' -f1)"
+        fi
+        if [ "${actual}" != "${sum}" ]; then
+          echo "::error title=setup-task::checksum mismatch for Task ${version} on platform ${platform}: expected ${sum}, got ${actual}" >&2
+          exit 1
+        fi
+        tar -xzf "${work}/task.tar.gz" -C "${work}" task
+        ${sudo_cmd} install -d "${install_dir}"
+        ${sudo_cmd} install -m 0755 "${work}/task" "${install_dir}/task"
+        reported="$("${install_dir}/task" --version)"
+        want="$(printf '%s' "${version}" | sed 's/\./\\./g')"
+        if ! printf '%s\n' "${reported}" | grep -Eq "(^|[^0-9.])v?${want}([^0-9.]|\$)"; then
+          echo "::error title=setup-task::task --version reports '${reported}', expected ${version} on platform ${platform}" >&2
+          exit 1
+        fi
+        echo "${reported}"

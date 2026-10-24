@@ -107,6 +107,7 @@ export function checkGhaJob(
       if (step.uses.includes("/checkout@")) prov.fetch = step.fetchDepth;
       else if (step.uses.includes("/setup-node@")) prov.node = step.nodeVersion;
       else if (step.uses.includes("/setup-python@")) prov.python = step.pythonVersion;
+      else if (step.uses === "./.github/actions/setup-task") prov.tools.push("task");
       continue;
     }
     if (step.run === "" || step.run === "null") continue;
