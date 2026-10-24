@@ -171,5 +171,9 @@
   "usage:price": "taskfiles/usage.yml",
   "usage:prune": "taskfiles/usage.yml",
   "usage:query": "taskfiles/usage.yml",
-  "usage:task": "taskfiles/usage.yml"
+  "usage:task": "taskfiles/usage.yml",
+  "ci:build-components-ts": "taskfiles/ci.yml",
+  "ci:extension-builders-ts": "taskfiles/ci.yml",
+  "ci:skill-scripts-ts": "taskfiles/ci.yml",
+  "ci:model-ci-tooling-ts": "taskfiles/ci.yml"
 }

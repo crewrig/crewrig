@@ -1,7 +1,7 @@
 name: CI job
 description: >-
   The thin CI job body (spec 0283 R5/R6): setup-node, the runtime path gate,
-  setup-task, the dependency install, the Node floor guard, `task ci:<id>` and
+  setup-task, an optional pinned yq (ci/yq-pin.json), the dependency install, the Node floor guard, `task ci:<id>` and
   cancel-on-failure. Call it after `actions/checkout` with `fetch-depth: 2`.
   While `shadow-filter` is set the dorny filter stays authoritative and the
   gate only reports agreement. Logic is inline: the shell-allowlist ratchet
@@ -22,6 +22,11 @@ inputs:
   cache:
     description: Cache `.ci-cache` keyed by the ci-cache-guard content hash.
     default: "false"
+  yq:
+    description: >-
+      yq version to install (a key of ci/yq-pin.json; empty installs none). The binary is
+      downloaded, its sha256 verified against the pin, then installed to /usr/local/bin.
+    default: ""
   shadow-filter:
     description: Result of the dorny filter during the shadow window (empty once removed).
     default: ""
@@ -57,6 +62,34 @@ runs:
       run: |
         if [ -n "${SHADOW_FILTER}" ]; then run="${SHADOW_FILTER}"; else run="${GATE_CHANGED}"; fi
         echo "run=${run}" >> "${GITHUB_OUTPUT}"
+    - if: steps.decide.outputs.run == 'true' && inputs.yq != ''
+      shell: bash
+      env:
+        YQ_VERSION: ${{ inputs.yq }}
+      run: |
+        set -euo pipefail
+        pin_file="ci/yq-pin.json"
+        case "${YQ_VERSION}" in
+          [0-9]*.[0-9]*.[0-9]*) ;;
+          *)
+            echo "::error title=ci-job-yq::invalid yq version '${YQ_VERSION}'" >&2
+            exit 1
+            ;;
+        esac
+        sum="$(sed -n 's/^ *"'"${YQ_VERSION}"'": *"\([0-9a-f]\{64\}\)".*/\1/p' "${pin_file}")"
+        if [ -z "${sum}" ]; then
+          echo "::error title=ci-job-yq::no pinned checksum for yq ${YQ_VERSION} in ${pin_file}" >&2
+          exit 1
+        fi
+        work="$(mktemp -d)"
+        curl --fail --silent --show-error --location --retry 3 -o "${work}/yq" "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64"
+        actual="$(sha256sum "${work}/yq" | cut -d' ' -f1)"
+        if [ "${actual}" != "${sum}" ]; then
+          echo "::error title=ci-job-yq::checksum mismatch for yq ${YQ_VERSION}: expected ${sum}, got ${actual}" >&2
+          exit 1
+        fi
+        sudo install -m 0755 "${work}/yq" /usr/local/bin/yq
+        yq --version
     - if: steps.decide.outputs.run == 'true' && inputs.task == 'true'
       uses: ./.github/actions/setup-task
     - if: steps.decide.outputs.run == 'true' && inputs.install == 'ci'

@@ -15,7 +15,10 @@ const T = { timeout: 60_000 };
 
 type Doc = Record<string, unknown>;
 const load = (rel: string): Doc =>
-  yamlLib.load(fs.readFileSync(path.join(ROOT, rel), "utf8")) as Doc;
+  yamlLib.load(
+    // `!reference` is a GitLab-only tag js-yaml cannot resolve; the sequence under it is enough here.
+    fs.readFileSync(path.join(ROOT, rel), "utf8").replaceAll("!reference ", ""),
+  ) as Doc;
 const obj = (v: unknown, what: string): Doc => {
   assert.ok(v !== null && typeof v === "object" && !Array.isArray(v), `${what} is not a mapping`);
   return v as Doc;

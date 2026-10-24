@@ -36,7 +36,7 @@ import jsYaml from "js-yaml";
 // js-yaml ships no types here; this is the structural slice the reader uses.
 interface JsYaml {
   Type: new (tag: string, opts: object) => object;
-  FAILSAFE_SCHEMA: { extend(x: { implicit: object[] }): object };
+  FAILSAFE_SCHEMA: { extend(x: { implicit: object[]; explicit?: object[] }): object };
   load(
     text: string,
     opts: {
@@ -91,7 +91,14 @@ const plainScalar = new yaml.Type("tag:yaml.org,2002:str", {
   construct: (data: string) => new PlainScalar(data),
 });
 
-const SCHEMA = yaml.FAILSAFE_SCHEMA.extend({ implicit: [plainScalar] });
+// GitLab's `!reference [job, key]` is a tagged sequence: read it as the plain sequence
+// (the tag itself is not kept; consumers resolve a two-scalar sequence inside `before_script`).
+const reference = new yaml.Type("!reference", {
+  kind: "sequence",
+  construct: (data: unknown[]) => data,
+});
+
+const SCHEMA = yaml.FAILSAFE_SCHEMA.extend({ implicit: [plainScalar], explicit: [reference] });
 
 interface Frame {
   children: YqNode[];

@@ -30,6 +30,8 @@ export interface StepRecord {
   withNode: string;
   withCache: string;
   withInstall: string;
+  /** `with.yq` of a ci-job step: the pinned yq version, empty when none is installed. */
+  withYq: string;
 }
 
 export interface JobRecord {
@@ -84,6 +86,7 @@ function readStep(step: YqNode): StepRecord {
     withNode: text(at(withNode, ["node"]), "with.node"),
     withCache: text(at(withNode, ["cache"]), "with.cache"),
     withInstall: text(at(withNode, ["install"]), "with.install"),
+    withYq: text(at(withNode, ["yq"]), "with.yq"),
   };
 }
 

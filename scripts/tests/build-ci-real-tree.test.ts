@@ -74,7 +74,7 @@ describe("build-ci real tree (group R)", () => {
   });
 
   it("D: job count equals the portable capability count", () => {
-    const jobs = [...keys].filter((k) => !RESERVED.includes(k));
+    const jobs = [...keys].filter((k) => !RESERVED.includes(k) && !k.startsWith("."));
     assert.equal(jobs.length, idsOf("portable").length);
   });
 

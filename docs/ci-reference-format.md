@@ -860,10 +860,17 @@ vocabulary are the stable contract; each engine is one mapping over them.
 A migrated GitHub job is a checkout plus `uses: ./.github/actions/ci-job`. The job key is the
 capability id and the `id` input MUST equal it (spec 0049 delta-02 R27a, checked by
 `scripts/check-ci-parity.ts`). Inputs: `id` (required), `node` (default 24), `install` (`ci`,
-`install`, `omit-dev`, `none`; default `ci`), `task` (default true), `cache` (default false) and
-`shadow-filter` (default empty).
+`install`, `omit-dev`, `none`; default `ci`), `task` (default true), `cache` (default false),
+`yq` (default empty: none) and `shadow-filter` (default empty).
 
-Steps, in order: `setup-node`, the path gate (`scripts/ci-paths-gate.ts`), `setup-task` when
+The `yq` input is a version key of `ci/yq-pin.json` (a flat map of version to the sha256 of
+`yq_linux_amd64`; today `4.44.3` and `4.54.1`). The step runs before `setup-task`, only when the gate
+says run: it reads the pinned sha256, downloads the release binary, verifies the sha256 before
+installing it to `/usr/local/bin/yq`, and fails on an invalid version, a missing pin entry or a
+mismatch. A job using `yq: "<version>"` must declare `tools: [yq]`; the GitLab `yq` recipe
+(`scripts/lib/build-ci/tools.ts`) installs 4.54.1 and a test keeps its sha256 equal to the pin entry.
+
+Steps, in order: `setup-node`, the path gate (`scripts/ci-paths-gate.ts`), an optional pinned `yq`, `setup-task` when
 `task` is true, the dependency install, the Node floor guard when `node` is 24, the cache step when
 `cache` is true (key from `scripts/ci-cache-guard.ts --capability <id> --print-key`), `task ci:<id>`,
 and cancel-on-failure. Every step after the gate runs only when the decision is `true`, so a job

@@ -192,6 +192,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -240,32 +242,14 @@ jobs:
               - '.gemini/skills/**'
               - '.github/agents/**'
               - '.github/skills/**'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.build-components-ts == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-          cache: npm
-      - name: Install production dependencies
-        if: steps.filter.outputs.build-components-ts == 'true'
-        run: npm ci --omit=dev --workspaces=false
-      - name: Install yq
-        if: steps.filter.outputs.build-components-ts == 'true'
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
-          echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
-          sudo chmod +x /usr/local/bin/yq
-      - name: Floor guard accepts Node.js 24
-        if: steps.filter.outputs.build-components-ts == 'true'
-        run: node scripts/lib/node-floor-guard.js
-      - name: Write-path proof on Linux
-        if: steps.filter.outputs.build-components-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-build-proof.ts
-      - name: Test the TypeScript component-build core
-        if: steps.filter.outputs.build-components-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cleanup.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-conformance.test.ts scripts/tests/build-components-conformance-mutation.test.ts scripts/tests/build-components-conformance-org.test.ts scripts/tests/build-components-conformance-render.test.ts scripts/tests/build-components-conformance-root.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-names-e2e.test.ts scripts/tests/build-components-hardening-printed.test.ts scripts/tests/build-components-hardening-printed-values.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-hardening-yaml-e2e.test.ts scripts/tests/build-components-names.test.ts scripts/tests/build-components-output.test.ts scripts/tests/build-components-output-agents.test.ts scripts/tests/build-components-output-resources.test.ts scripts/tests/build-components-output-skills.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/build-components-shim.test.ts scripts/tests/build-components-ci-wiring.test.ts scripts/tests/build-components-references.test.ts scripts/tests/build-components-yaml-corpus.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts scripts/tests/build-sandbox.test.ts scripts/tests/repo-agent-frontmatter.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: build-components-ts
+          node: 24
+          install: omit-dev
+          task: true
+          yq: "4.54.1"
+          shadow-filter: ${{ steps.filter.outputs.build-components-ts }}
 
   # Spec 0254 R22, R27: the TypeScript extension and plugin builder suites, the golden proof and
   # the real-tree check.
@@ -273,6 +257,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -311,37 +297,14 @@ jobs:
               - 'extension-skeleton/**'
               - 'package.json'
               - 'package-lock.json'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.extension-builders-ts == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-          cache: npm
-      # Dev dependencies too: the scaffold toolchain test (spec 0258 requirement 26) runs tsc, Oxlint and
-      # Oxfmt on a scaffold and fails, rather than skips, when CI is set and one of them is absent.
-      - name: Install dependencies with the TypeScript toolchain
-        if: steps.filter.outputs.extension-builders-ts == 'true'
-        run: npm install --include=dev
-      - name: Install yq
-        if: steps.filter.outputs.extension-builders-ts == 'true'
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
-          echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
-          sudo chmod +x /usr/local/bin/yq
-      - name: Floor guard accepts Node.js 24
-        if: steps.filter.outputs.extension-builders-ts == 'true'
-        run: node scripts/lib/node-floor-guard.js
-      - name: Golden proof on Linux
-        if: steps.filter.outputs.extension-builders-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-extension-proof.ts
-      - name: Check the real extensions with the TypeScript entry
-        if: steps.filter.outputs.extension-builders-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check
-      - name: Test the TypeScript extension and plugin builders
-        if: steps.filter.outputs.extension-builders-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/create-extension-differential.test.ts scripts/tests/create-extension-prompt.test.ts scripts/tests/create-extension-skeleton-toolchain.test.ts scripts/tests/extension-args.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-check.test.ts scripts/tests/extension-cli.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-entry-ctx.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-file-size.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-golden.test.ts scripts/tests/extension-hooks-antigravity-guard.test.ts scripts/tests/extension-hooks-differential.test.ts scripts/tests/extension-hooks-entry-form.test.ts scripts/tests/extension-hooks-layouts.test.ts scripts/tests/extension-hook-static-reads.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-json.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-migrate.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-plugin-antigravity.test.ts scripts/tests/extension-plugin-claude.test.ts scripts/tests/extension-plugin-common.test.ts scripts/tests/extension-plugin-copilot.test.ts scripts/tests/extension-render-gemini.test.ts scripts/tests/extension-render-plugins.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-validate-all.test.ts scripts/tests/extension-validate.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: extension-builders-ts
+          node: 24
+          install: install
+          task: true
+          yq: "4.54.1"
+          shadow-filter: ${{ steps.filter.outputs.extension-builders-ts }}
 
   # Spec 0258 R27-R29 (ticket #1337), PR A: the skill-script oracle and its YAML leg. Linux only: the
   # goldens are Linux bytes. `jq` and `git` come with the runner image; `yq` is pinned to v4.44.3 (the
@@ -350,6 +313,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -368,29 +333,14 @@ jobs:
               - 'scripts/lib/taskfile-tree.ts'
               - 'scripts/lib/taskfile-tree-parse.ts'
               - 'scripts/lib/governance/taskfile-tree-guard.ts'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.skill-scripts-ts == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-          cache: npm
-      - name: Install production dependencies
-        if: steps.filter.outputs.skill-scripts-ts == 'true'
-        run: npm ci --omit=dev --workspaces=false
-      - name: Install yq v4.44.3
-        if: steps.filter.outputs.skill-scripts-ts == 'true'
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
-          echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
-          sudo chmod +x /usr/local/bin/yq
-      - name: Floor guard accepts Node.js 24
-        if: steps.filter.outputs.skill-scripts-ts == 'true'
-        run: node scripts/lib/node-floor-guard.js
-      - name: Test the skill-script oracle
-        if: steps.filter.outputs.skill-scripts-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/skill-scripts-oracle.test.ts scripts/tests/skill-scripts-yaml-leg.test.ts scripts/tests/skill-scripts-differential.test.ts scripts/tests/skill-scripts-layouts.test.ts scripts/tests/skill-scripts-copied-skill.test.ts scripts/tests/skill-scripts-mutation.test.ts scripts/tests/callers-sweep.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: skill-scripts-ts
+          node: 24
+          install: omit-dev
+          task: true
+          yq: "4.44.3"
+          shadow-filter: ${{ steps.filter.outputs.skill-scripts-ts }}
 
   # Spec 0259 R26-R28 (ticket #1338), PR P0: the governance-check suites.
   # Linux only. The shell oracle legs retired with the switch PR, so no jq or yq is installed.
@@ -443,6 +393,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -454,29 +406,14 @@ jobs:
               - 'scripts/tests/lib/scratch-remote.ts'
               - 'scripts/merge-spec-pr.*'
               - 'scripts/lib/governance/merge-spec-pr.ts'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.model-ci-tooling-ts == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-          cache: npm
-      - name: Install production dependencies
-        if: steps.filter.outputs.model-ci-tooling-ts == 'true'
-        run: npm ci --omit=dev --workspaces=false
-      - name: Install yq v4.44.3
-        if: steps.filter.outputs.model-ci-tooling-ts == 'true'
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
-          echo "a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7  /usr/local/bin/yq" | sha256sum -c -
-          sudo chmod +x /usr/local/bin/yq
-      - name: Floor guard accepts Node.js 24
-        if: steps.filter.outputs.model-ci-tooling-ts == 'true'
-        run: node scripts/lib/node-floor-guard.js
-      - name: Test the model CI tooling
-        if: steps.filter.outputs.model-ci-tooling-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/model-ci-tooling-*.test.ts'
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: model-ci-tooling-ts
+          node: 24
+          install: omit-dev
+          task: true
+          yq: "4.44.3"
+          shadow-filter: ${{ steps.filter.outputs.model-ci-tooling-ts }}
 
   # Spec 0255 (row F2), PR B: the dark link-or-copy, component twin and manage module suites.
   # Linux only: the conformance suites spawn `bash` and `jq`.
@@ -1295,6 +1232,7 @@ jobs:
               - '.github/actions/ci-job/action.yml'
               - 'scripts/tests/ci-paths-gate.test.ts'
               - 'scripts/tests/ci-parity-ci-job.test.ts'
+              - 'scripts/tests/ci-job-yq.test.ts'
               - 'scripts/tests/fixtures/ci-paths/**'
               - 'scripts/tests/lib/ci-parity-fixture.ts'
               - 'scripts/tests/lib/ci-parity-blocks.ts'
@@ -1306,6 +1244,7 @@ jobs:
               - 'scripts/tests/lib/ci-reference-fixtures.ts'
               - 'ci/ci-capabilities.yml'
               - 'ci/task-pin.json'
+              - 'ci/yq-pin.json'
               - '.gitlab-ci.yml'
               - '.github/workflows/build.yml'
               - 'docs/ci-reference-format.md'
@@ -1330,13 +1269,13 @@ jobs:
         if: steps.filter.outputs.ci-parity == 'true'
         with:
           path: .ci-cache
-          key: ${{ hashFiles('scripts/check-ci-parity.ts', 'scripts/build-ci.ts', 'scripts/ci-cache-guard.ts', 'scripts/ci-changeset-coverage.ts', 'scripts/tests/ci-parity-positive.test.ts', 'scripts/tests/ci-parity-fail-closed.test.ts', 'scripts/tests/ci-parity-stray-scan.test.ts', 'scripts/tests/ci-parity-path-filters.test.ts', 'scripts/tests/ci-parity-path-filters-undet.test.ts', 'scripts/tests/ci-effective-paths.test.ts', 'scripts/tests/ci-paths-equivalence.test.ts', 'scripts/ci-paths-gate.ts', 'scripts/lib/ci-paths-gate/**', '.github/actions/ci-job/action.yml', 'scripts/tests/ci-paths-gate.test.ts', 'scripts/tests/ci-parity-ci-job.test.ts', 'scripts/tests/fixtures/ci-paths/**', 'scripts/tests/lib/ci-parity-fixture.ts', 'scripts/tests/lib/ci-parity-blocks.ts', 'scripts/tests/lib/ci-parity-matrix.ts', 'scripts/tests/lib/yaml-lib.ts', 'scripts/tests/build-ci-real-tree.test.ts', 'scripts/tests/build-ci-synthetic.test.ts', 'scripts/tests/build-ci-synthetic-write.test.ts', 'scripts/tests/lib/ci-reference-fixtures.ts', 'ci/ci-capabilities.yml', 'ci/task-pin.json', '.gitlab-ci.yml', '.github/workflows/build.yml', 'docs/ci-reference-format.md') }}
+          key: ${{ hashFiles('scripts/check-ci-parity.ts', 'scripts/build-ci.ts', 'scripts/ci-cache-guard.ts', 'scripts/ci-changeset-coverage.ts', 'scripts/tests/ci-parity-positive.test.ts', 'scripts/tests/ci-parity-fail-closed.test.ts', 'scripts/tests/ci-parity-stray-scan.test.ts', 'scripts/tests/ci-parity-path-filters.test.ts', 'scripts/tests/ci-parity-path-filters-undet.test.ts', 'scripts/tests/ci-effective-paths.test.ts', 'scripts/tests/ci-paths-equivalence.test.ts', 'scripts/ci-paths-gate.ts', 'scripts/lib/ci-paths-gate/**', '.github/actions/ci-job/action.yml', 'scripts/tests/ci-paths-gate.test.ts', 'scripts/tests/ci-parity-ci-job.test.ts', 'scripts/tests/ci-job-yq.test.ts', 'scripts/tests/fixtures/ci-paths/**', 'scripts/tests/lib/ci-parity-fixture.ts', 'scripts/tests/lib/ci-parity-blocks.ts', 'scripts/tests/lib/ci-parity-matrix.ts', 'scripts/tests/lib/yaml-lib.ts', 'scripts/tests/build-ci-real-tree.test.ts', 'scripts/tests/build-ci-synthetic.test.ts', 'scripts/tests/build-ci-synthetic-write.test.ts', 'scripts/tests/lib/ci-reference-fixtures.ts', 'ci/ci-capabilities.yml', 'ci/task-pin.json', 'ci/yq-pin.json', '.gitlab-ci.yml', '.github/workflows/build.yml', 'docs/ci-reference-format.md') }}
       - name: Test Check Ci Parity
         if: steps.filter.outputs.ci-parity == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/check-ci-parity.ts,scripts/build-ci.ts,scripts/ci-cache-guard.ts,scripts/ci-changeset-coverage.ts,scripts/tests/ci-parity-positive.test.ts,scripts/tests/ci-parity-fail-closed.test.ts,scripts/tests/ci-parity-stray-scan.test.ts,scripts/tests/ci-parity-path-filters.test.ts,scripts/tests/ci-parity-path-filters-undet.test.ts,scripts/tests/ci-effective-paths.test.ts,scripts/tests/ci-paths-equivalence.test.ts,scripts/ci-paths-gate.ts,scripts/lib/ci-paths-gate/**,.github/actions/ci-job/action.yml,scripts/tests/ci-paths-gate.test.ts,scripts/tests/ci-parity-ci-job.test.ts,scripts/tests/fixtures/ci-paths/**,scripts/tests/lib/ci-parity-fixture.ts,scripts/tests/lib/ci-parity-blocks.ts,scripts/tests/lib/ci-parity-matrix.ts,scripts/tests/lib/yaml-lib.ts,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,ci/task-pin.json,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-parity-positive.test.ts scripts/tests/ci-parity-fail-closed.test.ts scripts/tests/ci-parity-stray-scan.test.ts scripts/tests/ci-parity-path-filters.test.ts scripts/tests/ci-parity-path-filters-undet.test.ts scripts/tests/ci-effective-paths.test.ts scripts/tests/ci-paths-equivalence.test.ts scripts/tests/ci-paths-gate.test.ts scripts/tests/ci-parity-ci-job.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/check-ci-parity.ts,scripts/build-ci.ts,scripts/ci-cache-guard.ts,scripts/ci-changeset-coverage.ts,scripts/tests/ci-parity-positive.test.ts,scripts/tests/ci-parity-fail-closed.test.ts,scripts/tests/ci-parity-stray-scan.test.ts,scripts/tests/ci-parity-path-filters.test.ts,scripts/tests/ci-parity-path-filters-undet.test.ts,scripts/tests/ci-effective-paths.test.ts,scripts/tests/ci-paths-equivalence.test.ts,scripts/ci-paths-gate.ts,scripts/lib/ci-paths-gate/**,.github/actions/ci-job/action.yml,scripts/tests/ci-paths-gate.test.ts,scripts/tests/ci-parity-ci-job.test.ts,scripts/tests/ci-job-yq.test.ts,scripts/tests/fixtures/ci-paths/**,scripts/tests/lib/ci-parity-fixture.ts,scripts/tests/lib/ci-parity-blocks.ts,scripts/tests/lib/ci-parity-matrix.ts,scripts/tests/lib/yaml-lib.ts,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,ci/task-pin.json,ci/yq-pin.json,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-parity-positive.test.ts scripts/tests/ci-parity-fail-closed.test.ts scripts/tests/ci-parity-stray-scan.test.ts scripts/tests/ci-parity-path-filters.test.ts scripts/tests/ci-parity-path-filters-undet.test.ts scripts/tests/ci-effective-paths.test.ts scripts/tests/ci-paths-equivalence.test.ts scripts/tests/ci-paths-gate.test.ts scripts/tests/ci-parity-ci-job.test.ts scripts/tests/ci-job-yq.test.ts
       - name: Test Build Ci
         if: steps.filter.outputs.ci-parity == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/check-ci-parity.ts,scripts/build-ci.ts,scripts/ci-cache-guard.ts,scripts/ci-changeset-coverage.ts,scripts/tests/ci-parity-positive.test.ts,scripts/tests/ci-parity-fail-closed.test.ts,scripts/tests/ci-parity-stray-scan.test.ts,scripts/tests/ci-parity-path-filters.test.ts,scripts/tests/ci-parity-path-filters-undet.test.ts,scripts/tests/ci-effective-paths.test.ts,scripts/tests/ci-paths-equivalence.test.ts,scripts/ci-paths-gate.ts,scripts/lib/ci-paths-gate/**,.github/actions/ci-job/action.yml,scripts/tests/ci-paths-gate.test.ts,scripts/tests/ci-parity-ci-job.test.ts,scripts/tests/fixtures/ci-paths/**,scripts/tests/lib/ci-parity-fixture.ts,scripts/tests/lib/ci-parity-blocks.ts,scripts/tests/lib/ci-parity-matrix.ts,scripts/tests/lib/yaml-lib.ts,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,ci/task-pin.json,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-ci-real-tree.test.ts scripts/tests/build-ci-synthetic.test.ts scripts/tests/build-ci-synthetic-write.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/check-ci-parity.ts,scripts/build-ci.ts,scripts/ci-cache-guard.ts,scripts/ci-changeset-coverage.ts,scripts/tests/ci-parity-positive.test.ts,scripts/tests/ci-parity-fail-closed.test.ts,scripts/tests/ci-parity-stray-scan.test.ts,scripts/tests/ci-parity-path-filters.test.ts,scripts/tests/ci-parity-path-filters-undet.test.ts,scripts/tests/ci-effective-paths.test.ts,scripts/tests/ci-paths-equivalence.test.ts,scripts/ci-paths-gate.ts,scripts/lib/ci-paths-gate/**,.github/actions/ci-job/action.yml,scripts/tests/ci-paths-gate.test.ts,scripts/tests/ci-parity-ci-job.test.ts,scripts/tests/ci-job-yq.test.ts,scripts/tests/fixtures/ci-paths/**,scripts/tests/lib/ci-parity-fixture.ts,scripts/tests/lib/ci-parity-blocks.ts,scripts/tests/lib/ci-parity-matrix.ts,scripts/tests/lib/yaml-lib.ts,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,ci/task-pin.json,ci/yq-pin.json,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-ci-real-tree.test.ts scripts/tests/build-ci-synthetic.test.ts scripts/tests/build-ci-synthetic-write.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure

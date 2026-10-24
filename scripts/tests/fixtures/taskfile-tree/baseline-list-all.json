@@ -92,6 +92,10 @@
     "desc": "Check Taskfile.yml names no POSIX-only command, modulo the owned exemption list (local mirror of the CI guard, spec 0266 R13)"
   },
   {
+    "name": "ci:build-components-ts",
+    "desc": "Run the build-components-ts CI capability (pre-push mirror of the CI job)"
+  },
+  {
     "name": "ci:check-agents-size",
     "desc": "Fail when the AGENTS.md size budget is exceeded (pre-push mirror of the CI job)"
   },
@@ -164,6 +168,10 @@
     "desc": "Run the docs index entry test (pre-push mirror of the CI job)"
   },
   {
+    "name": "ci:extension-builders-ts",
+    "desc": "Run the extension-builders-ts CI capability (pre-push mirror of the CI job)"
+  },
+  {
     "name": "ci:frontmatter",
     "desc": "Run the frontmatter, skill-version, routing, install-scope and tier-resolution suites (pre-push mirror of the CI job)"
   },
@@ -224,6 +232,10 @@
     "desc": "Run the Markdown link suite tests (pre-push mirror of the CI job)"
   },
   {
+    "name": "ci:model-ci-tooling-ts",
+    "desc": "Run the model-ci-tooling-ts CI capability (pre-push mirror of the CI job)"
+  },
+  {
     "name": "ci:packaging-modules-ts",
     "desc": "Run the packaging-modules-ts CI capability (pre-push mirror of the CI job)"
   },
@@ -258,6 +270,10 @@
   {
     "name": "ci:setup-modules-ts",
     "desc": "Run the setup-modules-ts CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:skill-scripts-ts",
+    "desc": "Run the skill-scripts-ts CI capability (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:test-wiring",

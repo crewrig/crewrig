@@ -272,12 +272,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
-      tools: [yq]
+      tools: [yq, task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-build-proof.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cleanup.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-conformance.test.ts scripts/tests/build-components-conformance-mutation.test.ts scripts/tests/build-components-conformance-org.test.ts scripts/tests/build-components-conformance-render.test.ts scripts/tests/build-components-conformance-root.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-names-e2e.test.ts scripts/tests/build-components-hardening-printed.test.ts scripts/tests/build-components-hardening-printed-values.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-hardening-yaml-e2e.test.ts scripts/tests/build-components-names.test.ts scripts/tests/build-components-output.test.ts scripts/tests/build-components-output-agents.test.ts scripts/tests/build-components-output-resources.test.ts scripts/tests/build-components-output-skills.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/build-components-shim.test.ts scripts/tests/build-components-ci-wiring.test.ts scripts/tests/build-components-references.test.ts scripts/tests/build-components-yaml-corpus.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts scripts/tests/build-sandbox.test.ts scripts/tests/repo-agent-frontmatter.test.ts
+      - task ci:build-components-ts
 
   # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
   # release, where type stripping still emits an ExperimentalWarning. No
@@ -350,13 +348,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
-      tools: [jq, yq]
+      tools: [jq, yq, task]
+      install: install
     command:
-      - npm install --include=dev
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-extension-proof.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/create-extension-differential.test.ts scripts/tests/create-extension-prompt.test.ts scripts/tests/create-extension-skeleton-toolchain.test.ts scripts/tests/extension-args.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-check.test.ts scripts/tests/extension-cli.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-entry-ctx.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-file-size.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-golden.test.ts scripts/tests/extension-hooks-antigravity-guard.test.ts scripts/tests/extension-hooks-differential.test.ts scripts/tests/extension-hooks-entry-form.test.ts scripts/tests/extension-hooks-layouts.test.ts scripts/tests/extension-hook-static-reads.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-json.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-migrate.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-plugin-antigravity.test.ts scripts/tests/extension-plugin-claude.test.ts scripts/tests/extension-plugin-common.test.ts scripts/tests/extension-plugin-copilot.test.ts scripts/tests/extension-render-gemini.test.ts scripts/tests/extension-render-plugins.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-validate-all.test.ts scripts/tests/extension-validate.test.ts
+      - task ci:extension-builders-ts
 
   # Spec 0254 R4: the extension entries print nothing on the oldest Node.js 24 release, where
   # type stripping still emits an ExperimentalWarning. No `paths:` filter, like
@@ -409,11 +404,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
-      tools: [jq, yq]
+      tools: [jq, yq, task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/skill-scripts-oracle.test.ts scripts/tests/skill-scripts-yaml-leg.test.ts scripts/tests/skill-scripts-differential.test.ts scripts/tests/skill-scripts-layouts.test.ts scripts/tests/skill-scripts-copied-skill.test.ts scripts/tests/skill-scripts-mutation.test.ts scripts/tests/callers-sweep.test.ts
+      - task ci:skill-scripts-ts
 
   # Spec 0255 (row F2 of epic #1231), PR B: the dark link-or-copy module, the component twins and
   # the manage modules, with their node:test suites. `bash` is spawned on purpose by the two twin
@@ -1181,11 +1175,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
-      tools: [jq, yq]
+      tools: [jq, yq, task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/model-ci-tooling-*.test.ts'
+      - task ci:model-ci-tooling-ts
 
   # Spec 0262 R21-R23 (ticket #1339): merge-spec-pr.ts from PowerShell. The production
   # dependencies are installed first, the floor guard runs, then every
@@ -1505,6 +1498,7 @@ capabilities:
       - ".github/actions/ci-job/action.yml"
       - "scripts/tests/ci-paths-gate.test.ts"
       - "scripts/tests/ci-parity-ci-job.test.ts"
+      - "scripts/tests/ci-job-yq.test.ts"
       - "scripts/tests/fixtures/ci-paths/**"
       - "scripts/tests/lib/ci-parity-fixture.ts"
       - "scripts/tests/lib/ci-parity-blocks.ts"
@@ -1516,6 +1510,7 @@ capabilities:
       - "scripts/tests/lib/ci-reference-fixtures.ts"
       - "ci/ci-capabilities.yml"
       - "ci/task-pin.json"
+      - "ci/yq-pin.json"
       - ".gitlab-ci.yml"
       - ".github/workflows/build.yml"
       - "docs/ci-reference-format.md"
@@ -1529,7 +1524,7 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-parity-positive.test.ts scripts/tests/ci-parity-fail-closed.test.ts scripts/tests/ci-parity-stray-scan.test.ts scripts/tests/ci-parity-path-filters.test.ts scripts/tests/ci-parity-path-filters-undet.test.ts scripts/tests/ci-effective-paths.test.ts scripts/tests/ci-paths-equivalence.test.ts scripts/tests/ci-paths-gate.test.ts scripts/tests/ci-parity-ci-job.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-parity-positive.test.ts scripts/tests/ci-parity-fail-closed.test.ts scripts/tests/ci-parity-stray-scan.test.ts scripts/tests/ci-parity-path-filters.test.ts scripts/tests/ci-parity-path-filters-undet.test.ts scripts/tests/ci-effective-paths.test.ts scripts/tests/ci-paths-equivalence.test.ts scripts/tests/ci-paths-gate.test.ts scripts/tests/ci-parity-ci-job.test.ts scripts/tests/ci-job-yq.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-ci-real-tree.test.ts scripts/tests/build-ci-synthetic.test.ts scripts/tests/build-ci-synthetic-write.test.ts
 
   - id: docs-index

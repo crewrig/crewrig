@@ -7,6 +7,7 @@ import {
   runtimeToImage,
   installLines,
   secondaryRuntimeInstallLines,
+  taskRecipe,
   toolInstallLines,
   type TaskPin,
   BuildCiError,
@@ -88,6 +89,15 @@ function emitRules(cap: Capability, id: string, out: string[], anchors: ListAnch
   }
 }
 
+/** The hidden job holding the pinned Task install once; every `task` job references it. */
+export const TASK_INSTALL_JOB = ".task-install";
+const TASK_REFERENCE = `!reference [${TASK_INSTALL_JOB}, script]`;
+
+/** The hidden job emitting the pinned Task install once (spec 0282), with its blank separator. */
+export function emitTaskInstallJob(pin: TaskPin): string[] {
+  return ["", `${TASK_INSTALL_JOB}:`, "  script:", ...taskRecipe(pin).map((l) => `    - ${l}`)];
+}
+
 /** The lines of one job, starting with the blank separator. */
 export function emitJob(cap: Capability, pin: TaskPin): string[] {
   const id = cap.id;
@@ -107,7 +117,8 @@ export function emitJob(cap: Capability, pin: TaskPin): string[] {
 
   const before: string[] = [];
   for (const sr of nonEmptyLines(secondary)) before.push(...secondaryRuntimeInstallLines(sr));
-  for (const t of nonEmptyLines(cap.tools)) before.push(...toolInstallLines(t, pin));
+  for (const t of nonEmptyLines(cap.tools))
+    before.push(...(t === "task" ? [TASK_REFERENCE] : toolInstallLines(t, pin)));
   before.push(...installLines(cap.install));
   if (before.length > 0) out.push("  before_script:", ...before.map((l) => `    - ${l}`));
 

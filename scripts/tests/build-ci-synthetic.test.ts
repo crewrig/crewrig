@@ -77,7 +77,10 @@ describe("build-ci synthetic (group S)", () => {
     const res = runBuildCi(root);
     assert.equal(res.status, 0, "K0 generate from the real reference succeeds");
     assert.equal(res.stderr, "");
-    const doc = yamlLib.load(fs.readFileSync(pipeline(root), "utf8"));
+    // The pipeline carries GitLab's `!reference` tag, unknown to js-yaml: read it as a sequence.
+    const doc = yamlLib.load(
+      fs.readFileSync(pipeline(root), "utf8").replaceAll("!reference [", "["),
+    );
     assert.equal(typeof doc, "object", "K1 parses as one YAML document");
     assert.notEqual(doc, null);
   });
@@ -115,25 +118,35 @@ describe("build-ci requires.install (spec 0283 R1)", () => {
     ].join("\n");
 
   const installJob = (text: string): string => text.slice(text.indexOf("\nalpha:"));
+  const hiddenJob = (text: string): string =>
+    text.slice(text.indexOf("\n.task-install:"), text.indexOf("\nalpha:"));
 
   it("a migrated capability generates image, pinned Task, npm ci and the task script", () => {
-    const out = installJob(
-      generate(
-        installCap(
-          "    requires:\n      runtime: node@24\n      tools: [task]\n      install: ci\n",
-          "      - task ci:alpha",
-        ),
-        INSTALL_PIN,
+    const full = generate(
+      installCap(
+        "    requires:\n      runtime: node@24\n      tools: [task]\n      install: ci\n",
+        "      - task ci:alpha",
       ),
+      INSTALL_PIN,
     );
+    const out = installJob(full);
     assert.match(out, /image: node:24/);
-    assert.match(out, /task --version/);
+    assert.match(hiddenJob(full), /sha256sum -c -[\s\S]*task --version/);
+    assert.equal(full.split("task_linux_amd64.tar.gz").length - 1, 1, "install emitted once");
     const lines = out.split("\n");
-    const taskAt = lines.findIndex((l) => l.includes("task --version"));
+    const taskAt = lines.findIndex((l) => l.includes("!reference [.task-install, script]"));
     const ciAt = lines.findIndex((l) => l.trim() === "- npm ci");
     const scriptAt = lines.findIndex((l) => l.trim() === "script:");
     assert.ok(taskAt > 0 && ciAt > taskAt && scriptAt > ciAt, out);
     assert.match(out, /script:\n {4}- "?task ci:alpha"?\n/);
+  });
+
+  it("no hidden Task job is emitted when no capability requires task", () => {
+    const out = generate(
+      installCap("    requires:\n      runtime: node@24\n", "      - echo hi"),
+      INSTALL_PIN,
+    );
+    assert.ok(!out.includes(".task-install"));
   });
 
   it("install values map to their provisioning line; none and omitted add nothing", () => {

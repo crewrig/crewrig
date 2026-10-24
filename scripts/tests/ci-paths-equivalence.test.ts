@@ -26,6 +26,8 @@ const ADDED = new Set([
   ".github/actions/ci-job/action.yml",
   "scripts/tests/ci-paths-gate.test.ts",
   "scripts/tests/ci-parity-ci-job.test.ts",
+  "scripts/tests/ci-job-yq.test.ts",
+  "ci/yq-pin.json",
 ]);
 const base = (id: string, l: string[]): string[] =>
   id === "ci-parity" ? l.filter((x) => !ADDED.has(x)) : l;

@@ -198,7 +198,14 @@ function assertGithub(text: string): void {
 function assertGitlab(text: string): void {
   const job = jobBlock(text, new RegExp(`\\n${ID}:\\n`), true);
   assert.ok(job.includes("image: node:24"));
-  assert.ok(job.includes("sha256sum -c"), "installs Task with a checksum check");
+  assert.ok(
+    job.includes("!reference [.task-install, script]"),
+    "installs Task via the shared hidden job",
+  );
+  assert.ok(
+    jobBlock(text, /\n\.task-install:\n/, true).includes("sha256sum -c"),
+    "the shared install carries a checksum check",
+  );
   assert.ok(job.includes(`"task ci:${ID}"`), "runs the migrated task");
   const self = jobBlock(text, new RegExp(`\\n${ID}-selftest:\\n`), true);
   assert.ok(self.includes(`"task ci:${ID}-selftest"`), "self-test runs the migrated task");

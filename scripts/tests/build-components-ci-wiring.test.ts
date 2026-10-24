@@ -277,7 +277,8 @@ describe("mutation check: each assertion goes red on a broken reference", () => 
     const cap = copy.capabilities.find((c) => c.id === "build-components-ts") as {
       command: string[];
     };
-    cap.command = cap.command.map((c) =>
+    // The capability is migrated: mutate the commands its task body runs, as a plain list.
+    cap.command = [...commandsOf(cap as unknown as Capability)].map((c) =>
       SUITE_COMMAND.test(c)
         ? c.replace(" scripts/tests/build-components-references.test.ts", "") +
           " scripts/tests/build-components-differential.test.ts"

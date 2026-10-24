@@ -6,13 +6,16 @@ import path from "node:path";
 
 import { checkDrift, type Outcome } from "./check.ts";
 import { portableCapabilities } from "./reference.ts";
-import { emitJob } from "./render-job.ts";
+import { emitJob, emitTaskInstallJob } from "./render-job.ts";
 import { HEADER, WORKFLOW } from "./render-yaml.ts";
 import { BuildCiError, parseTaskPin, type TaskPin } from "./tools.ts";
 
 /** The generated pipeline text for a reference document. */
 export function generate(referenceText: string, pin: TaskPin): string {
-  const lines: string[] = [];
+  const caps = portableCapabilities(referenceText).filter((c) => c.id !== "");
+  const lines: string[] = caps.some((c) => c.tools.split("\n").includes("task"))
+    ? emitTaskInstallJob(pin)
+    : [];
   for (const cap of portableCapabilities(referenceText)) {
     if (cap.id === "") continue;
     lines.push(...emitJob(cap, pin));

@@ -66,8 +66,12 @@ export function runBuildCi(root: string, args: readonly string[] = []): RunResul
 
 /** Top-level keys of a generated pipeline, via the real js-yaml. */
 export function topLevelKeys(pipelineText: string): string[] {
-  const doc = yamlLib.load(pipelineText);
-  return typeof doc === "object" && doc !== null ? Object.keys(doc) : [];
+  // Line-based: the generated pipeline carries GitLab's `!reference` tag, which the plain
+  // js-yaml schema rejects; top-level keys sit at column 0.
+  return pipelineText
+    .split("\n")
+    .map((l) => /^([^\s#:-][^:]*):(\s|$)/.exec(l)?.[1])
+    .filter((k): k is string => k !== undefined);
 }
 
 /** The raw text of one top-level job (from `<id>:` to the next top-level key). */

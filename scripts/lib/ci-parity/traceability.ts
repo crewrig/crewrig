@@ -100,6 +100,7 @@ function harvestGha(state: ParityState): void {
 }
 
 function noteGitlab(state: ParityState, jk: string, lc: string): void {
+  if (jk.startsWith(".")) return; // a hidden job is a template, never run (GitLab semantics)
   if (RESERVED.includes(jk)) {
     if (!lc.startsWith(PREFIX)) return;
     const cand = lc.slice(PREFIX.length);

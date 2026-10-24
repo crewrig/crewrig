@@ -115,6 +115,7 @@ export function checkGhaJob(
         // cancel-on-failure itself (spec 0283 R5, spec 0049 delta-02 R27).
         prov.node = step.withNode === "" ? "24" : step.withNode;
         if (step.withTask !== "false") prov.tools.push("task");
+        if (step.withYq !== "") prov.tools.push("yq");
         // `requires.install` (omitted = none) must equal the job's `install` input (the action's
         // own default is ci), so provisioning lives in exactly one declared place (spec 0283 R1).
         const want = c.install === "" ? "none" : c.install;

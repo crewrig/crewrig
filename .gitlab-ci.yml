@@ -20,6 +20,14 @@ workflow:
       when: never
     - if: '$CI_COMMIT_BRANCH'
 
+.task-install:
+  script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+
 build:
   image: node:22
   script:
@@ -182,11 +190,10 @@ build-components-ts:
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
     - echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
+    - !reference [.task-install, script]
+    - npm ci --omit=dev --workspaces=false
   script:
-    - "npm ci --omit=dev --workspaces=false"
-    - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-build-proof.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cleanup.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-conformance.test.ts scripts/tests/build-components-conformance-mutation.test.ts scripts/tests/build-components-conformance-org.test.ts scripts/tests/build-components-conformance-render.test.ts scripts/tests/build-components-conformance-root.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-names-e2e.test.ts scripts/tests/build-components-hardening-printed.test.ts scripts/tests/build-components-hardening-printed-values.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-hardening-yaml-e2e.test.ts scripts/tests/build-components-names.test.ts scripts/tests/build-components-output.test.ts scripts/tests/build-components-output-agents.test.ts scripts/tests/build-components-output-resources.test.ts scripts/tests/build-components-output-skills.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/build-components-shim.test.ts scripts/tests/build-components-ci-wiring.test.ts scripts/tests/build-components-references.test.ts scripts/tests/build-components-yaml-corpus.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts scripts/tests/build-sandbox.test.ts scripts/tests/repo-agent-frontmatter.test.ts"
+    - "task ci:build-components-ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &build-components-ts-changes-1
@@ -256,12 +263,10 @@ extension-builders-ts:
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
     - echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
+    - !reference [.task-install, script]
+    - npm install
   script:
-    - "npm install --include=dev"
-    - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/tests/lib/windows-extension-proof.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/create-extension-differential.test.ts scripts/tests/create-extension-prompt.test.ts scripts/tests/create-extension-skeleton-toolchain.test.ts scripts/tests/extension-args.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-check.test.ts scripts/tests/extension-cli.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-entry-ctx.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-file-size.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-golden.test.ts scripts/tests/extension-hooks-antigravity-guard.test.ts scripts/tests/extension-hooks-differential.test.ts scripts/tests/extension-hooks-entry-form.test.ts scripts/tests/extension-hooks-layouts.test.ts scripts/tests/extension-hook-static-reads.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-json.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-migrate.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-plugin-antigravity.test.ts scripts/tests/extension-plugin-claude.test.ts scripts/tests/extension-plugin-common.test.ts scripts/tests/extension-plugin-copilot.test.ts scripts/tests/extension-render-gemini.test.ts scripts/tests/extension-render-plugins.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-validate-all.test.ts scripts/tests/extension-validate.test.ts"
+    - "task ci:extension-builders-ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &extension-builders-ts-changes-1
@@ -321,10 +326,10 @@ skill-scripts-ts:
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
     - echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
+    - !reference [.task-install, script]
+    - npm ci --omit=dev --workspaces=false
   script:
-    - "npm ci --omit=dev --workspaces=false"
-    - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/skill-scripts-oracle.test.ts scripts/tests/skill-scripts-yaml-leg.test.ts scripts/tests/skill-scripts-differential.test.ts scripts/tests/skill-scripts-layouts.test.ts scripts/tests/skill-scripts-copied-skill.test.ts scripts/tests/skill-scripts-mutation.test.ts scripts/tests/callers-sweep.test.ts"
+    - "task ci:skill-scripts-ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &skill-scripts-ts-changes-1
@@ -351,11 +356,7 @@ install-ts:
     - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
     - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
     - chmod +x /usr/local/bin/jq
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci --omit=dev --workspaces=false
   script:
     - "task ci:install-ts"
@@ -530,11 +531,7 @@ setup-differential:
 setup-modules-ts:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci --omit=dev --workspaces=false
   script:
     - "task ci:setup-modules-ts"
@@ -663,11 +660,7 @@ setup-modules-ts:
 release-driver-modules-ts:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci --omit=dev --workspaces=false
   script:
     - "task ci:release-driver-modules-ts"
@@ -713,11 +706,7 @@ release-driver-modules-ts:
 packaging-modules-ts:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci --omit=dev --workspaces=false
   script:
     - "task ci:packaging-modules-ts"
@@ -774,11 +763,7 @@ packaging-modules-ts:
 governance-checks-ts:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci --omit=dev --workspaces=false
   script:
     - "task ci:governance-checks-ts"
@@ -822,10 +807,10 @@ model-ci-tooling-ts:
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
     - echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
+    - !reference [.task-install, script]
+    - npm ci --omit=dev --workspaces=false
   script:
-    - "npm ci --omit=dev --workspaces=false"
-    - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/model-ci-tooling-*.test.ts'"
+    - "task ci:model-ci-tooling-ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &model-ci-tooling-ts-changes-1
@@ -1075,6 +1060,7 @@ ci-parity:
         - ".github/actions/ci-job/action.yml"
         - "scripts/tests/ci-paths-gate.test.ts"
         - "scripts/tests/ci-parity-ci-job.test.ts"
+        - "scripts/tests/ci-job-yq.test.ts"
         - "scripts/tests/fixtures/ci-paths/**"
         - "scripts/tests/lib/ci-parity-fixture.ts"
         - "scripts/tests/lib/ci-parity-blocks.ts"
@@ -1086,6 +1072,7 @@ ci-parity:
         - "scripts/tests/lib/ci-reference-fixtures.ts"
         - "ci/ci-capabilities.yml"
         - "ci/task-pin.json"
+        - "ci/yq-pin.json"
         - ".gitlab-ci.yml"
         - ".github/workflows/build.yml"
         - "docs/ci-reference-format.md"
@@ -1094,8 +1081,8 @@ ci-parity:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.ts,scripts/build-ci.ts,scripts/ci-cache-guard.ts,scripts/ci-changeset-coverage.ts,scripts/tests/ci-parity-positive.test.ts,scripts/tests/ci-parity-fail-closed.test.ts,scripts/tests/ci-parity-stray-scan.test.ts,scripts/tests/ci-parity-path-filters.test.ts,scripts/tests/ci-parity-path-filters-undet.test.ts,scripts/tests/ci-effective-paths.test.ts,scripts/tests/ci-paths-equivalence.test.ts,scripts/ci-paths-gate.ts,scripts/lib/ci-paths-gate/**,.github/actions/ci-job/action.yml,scripts/tests/ci-paths-gate.test.ts,scripts/tests/ci-parity-ci-job.test.ts,scripts/tests/fixtures/ci-paths/**,scripts/tests/lib/ci-parity-fixture.ts,scripts/tests/lib/ci-parity-blocks.ts,scripts/tests/lib/ci-parity-matrix.ts,scripts/tests/lib/yaml-lib.ts,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,ci/task-pin.json,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-parity-positive.test.ts scripts/tests/ci-parity-fail-closed.test.ts scripts/tests/ci-parity-stray-scan.test.ts scripts/tests/ci-parity-path-filters.test.ts scripts/tests/ci-parity-path-filters-undet.test.ts scripts/tests/ci-effective-paths.test.ts scripts/tests/ci-paths-equivalence.test.ts scripts/tests/ci-paths-gate.test.ts scripts/tests/ci-parity-ci-job.test.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.ts,scripts/build-ci.ts,scripts/ci-cache-guard.ts,scripts/ci-changeset-coverage.ts,scripts/tests/ci-parity-positive.test.ts,scripts/tests/ci-parity-fail-closed.test.ts,scripts/tests/ci-parity-stray-scan.test.ts,scripts/tests/ci-parity-path-filters.test.ts,scripts/tests/ci-parity-path-filters-undet.test.ts,scripts/tests/ci-effective-paths.test.ts,scripts/tests/ci-paths-equivalence.test.ts,scripts/ci-paths-gate.ts,scripts/lib/ci-paths-gate/**,.github/actions/ci-job/action.yml,scripts/tests/ci-paths-gate.test.ts,scripts/tests/ci-parity-ci-job.test.ts,scripts/tests/fixtures/ci-paths/**,scripts/tests/lib/ci-parity-fixture.ts,scripts/tests/lib/ci-parity-blocks.ts,scripts/tests/lib/ci-parity-matrix.ts,scripts/tests/lib/yaml-lib.ts,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,ci/task-pin.json,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-ci-real-tree.test.ts scripts/tests/build-ci-synthetic.test.ts scripts/tests/build-ci-synthetic-write.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.ts,scripts/build-ci.ts,scripts/ci-cache-guard.ts,scripts/ci-changeset-coverage.ts,scripts/tests/ci-parity-positive.test.ts,scripts/tests/ci-parity-fail-closed.test.ts,scripts/tests/ci-parity-stray-scan.test.ts,scripts/tests/ci-parity-path-filters.test.ts,scripts/tests/ci-parity-path-filters-undet.test.ts,scripts/tests/ci-effective-paths.test.ts,scripts/tests/ci-paths-equivalence.test.ts,scripts/ci-paths-gate.ts,scripts/lib/ci-paths-gate/**,.github/actions/ci-job/action.yml,scripts/tests/ci-paths-gate.test.ts,scripts/tests/ci-parity-ci-job.test.ts,scripts/tests/ci-job-yq.test.ts,scripts/tests/fixtures/ci-paths/**,scripts/tests/lib/ci-parity-fixture.ts,scripts/tests/lib/ci-parity-blocks.ts,scripts/tests/lib/ci-parity-matrix.ts,scripts/tests/lib/yaml-lib.ts,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,ci/task-pin.json,ci/yq-pin.json,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-parity-positive.test.ts scripts/tests/ci-parity-fail-closed.test.ts scripts/tests/ci-parity-stray-scan.test.ts scripts/tests/ci-parity-path-filters.test.ts scripts/tests/ci-parity-path-filters-undet.test.ts scripts/tests/ci-effective-paths.test.ts scripts/tests/ci-paths-equivalence.test.ts scripts/tests/ci-paths-gate.test.ts scripts/tests/ci-parity-ci-job.test.ts scripts/tests/ci-job-yq.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.ts,scripts/build-ci.ts,scripts/ci-cache-guard.ts,scripts/ci-changeset-coverage.ts,scripts/tests/ci-parity-positive.test.ts,scripts/tests/ci-parity-fail-closed.test.ts,scripts/tests/ci-parity-stray-scan.test.ts,scripts/tests/ci-parity-path-filters.test.ts,scripts/tests/ci-parity-path-filters-undet.test.ts,scripts/tests/ci-effective-paths.test.ts,scripts/tests/ci-paths-equivalence.test.ts,scripts/ci-paths-gate.ts,scripts/lib/ci-paths-gate/**,.github/actions/ci-job/action.yml,scripts/tests/ci-paths-gate.test.ts,scripts/tests/ci-parity-ci-job.test.ts,scripts/tests/ci-job-yq.test.ts,scripts/tests/fixtures/ci-paths/**,scripts/tests/lib/ci-parity-fixture.ts,scripts/tests/lib/ci-parity-blocks.ts,scripts/tests/lib/ci-parity-matrix.ts,scripts/tests/lib/yaml-lib.ts,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,ci/task-pin.json,ci/yq-pin.json,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-ci-real-tree.test.ts scripts/tests/build-ci-synthetic.test.ts scripts/tests/build-ci-synthetic-write.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: *ci-parity-files-1
@@ -1174,11 +1161,7 @@ docs-index-selftest:
 cli-matrix-fresh:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
   script:
     - "task ci:cli-matrix-fresh"
   rules:
@@ -1196,11 +1179,7 @@ cli-matrix-fresh:
 cli-matrix-fresh-selftest:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
   script:
     - "task ci:cli-matrix-fresh-selftest"
   rules:
@@ -1354,11 +1333,7 @@ mempalace:
 test-wiring:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
   script:
     - "task ci:test-wiring"
   rules:
@@ -1385,11 +1360,7 @@ test-wiring:
 test-wiring-selftest:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
   script:
     - "task ci:test-wiring-selftest"
   rules:
@@ -1597,11 +1568,7 @@ misc:
 repository-scan:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
   script:
     - "task ci:repository-scan"
   rules:
@@ -1619,11 +1586,7 @@ frontmatter:
     - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
     - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
     - chmod +x /usr/local/bin/jq
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci --omit=dev --workspaces=false
   script:
     - "task ci:frontmatter"
@@ -1750,11 +1713,7 @@ check-claude-agent-layout:
 check-taskfile-commands:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci --omit=dev --workspaces=false
   script:
     - "task ci:check-taskfile-commands"
@@ -1779,11 +1738,7 @@ check-taskfile-commands:
 check-taskfile-commands-selftest:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci --omit=dev --workspaces=false
   script:
     - "task ci:check-taskfile-commands-selftest"
@@ -1810,11 +1765,7 @@ check-taskfile-commands-selftest:
 check-taskfile-tree:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci --omit=dev --workspaces=false
   script:
     - "task ci:check-taskfile-tree"
@@ -1833,11 +1784,7 @@ check-taskfile-tree:
 check-taskfile-tree-selftest:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci --omit=dev --workspaces=false
   script:
     - "task ci:check-taskfile-tree-selftest"
@@ -1875,11 +1822,7 @@ check-taskfile-tree-selftest:
 check-task-provisioning:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-task-provisioning.ts"
@@ -1928,11 +1871,7 @@ check-task-provisioning-selftest:
 ci-pre-push-replay:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
   script:
     - "npm ci"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-pre-push-replay.test.ts scripts/tests/ci-pre-push-draft-lint.test.ts"
@@ -1958,11 +1897,7 @@ ci-pre-push-replay:
 markdown-links:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
   script:
     - "task ci:markdown-links"
   rules:
@@ -1994,11 +1929,7 @@ changeset-coverage:
     - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
     - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
     - chmod +x /usr/local/bin/jq
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - apt-get update && apt-get install -y --no-install-recommends tesseract-ocr
   script:
     - "npm ci --omit=dev --workspaces=false"
@@ -2027,11 +1958,7 @@ changeset-coverage-test:
 path-ownership:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci
   script:
     - "task ci:path-ownership"
@@ -2042,11 +1969,7 @@ path-ownership:
 path-ownership-selftest:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci
   script:
     - "task ci:path-ownership-selftest"
@@ -2075,11 +1998,7 @@ path-ownership-selftest:
 lint-markdown:
   image: node:22
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci
   script:
     - "task ci:lint-markdown"
@@ -2093,11 +2012,7 @@ ratchet:
     GIT_DEPTH: "0"
     BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
   script:
     - "task ci:ratchet"
   rules:
@@ -2107,11 +2022,7 @@ ratchet:
 ratchet-selftest:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
   script:
     - "task ci:ratchet-selftest"
   rules:
@@ -2132,11 +2043,7 @@ host-safety:
     GIT_DEPTH: "0"
     BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci
   script:
     - "task ci:host-safety"
@@ -2147,11 +2054,7 @@ host-safety:
 host-safety-selftest:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci
   script:
     - "task ci:host-safety-selftest"
@@ -2173,11 +2076,7 @@ host-safety-selftest:
 lint-typescript:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci
   script:
     - "task ci:lint-typescript"
@@ -2188,11 +2087,7 @@ lint-typescript:
 lint-typescript-selftest:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci
   script:
     - "task ci:lint-typescript-selftest"
@@ -2458,11 +2353,7 @@ lint-specs:
     BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
     CREWRIG_PR_DRAFT: "$CI_MERGE_REQUEST_DRAFT"
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm install
   script:
     - "task ci:lint-specs"
@@ -2473,11 +2364,7 @@ lint-specs:
 lint-specs-selftest:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm install
   script:
     - "task ci:lint-specs-selftest"
@@ -2514,11 +2401,7 @@ check-skill-versions:
     GIT_DEPTH: "0"
     BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
   script:
     - "task ci:check-skill-versions"
   rules:
@@ -2527,11 +2410,7 @@ check-skill-versions:
 check-description-length:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci --omit=dev --workspaces=false
   script:
     - "task ci:check-description-length"
@@ -2579,11 +2458,7 @@ check-spec-id-reserved:
 check-agents-size:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
   script:
     - "task ci:check-agents-size"
   rules:
@@ -2593,11 +2468,7 @@ check-agents-size:
 check-comment-size:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
   script:
     - "task ci:check-comment-size"
   rules:
@@ -2640,11 +2511,7 @@ check-plan-review:
 check-rules-size:
   image: node:24
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
   script:
     - "task ci:check-rules-size"
   rules:
@@ -2990,11 +2857,7 @@ gitlab-ci-check:
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
     - echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci --omit=dev --workspaces=false
   script:
     - "task ci:gitlab-ci-check"
@@ -3009,11 +2872,7 @@ check-ci-parity:
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
     - echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
-    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
-    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
-    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
-    - task --version
+    - !reference [.task-install, script]
     - npm ci --omit=dev --workspaces=false
   script:
     - "task ci:check-ci-parity"
