@@ -1,7 +1,7 @@
 ---
 id: "0285"
 slug: shrink-ci-surfaces
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1782
