@@ -199,7 +199,7 @@ export function secondaryRuntimeInstallLines(runtime: string): readonly string[]
     ];
   }
   if (runtime.startsWith("python@")) {
-    if (!runtime.startsWith(`python@${DEBIAN_PYTHON}`))
+    if (runtime !== `python@${DEBIAN_PYTHON}` && !runtime.startsWith(`python@${DEBIAN_PYTHON}.`))
       throw new BuildCiError(
         `Error: secondary runtime '${runtime}' — the GitLab image provides Debian python ${DEBIAN_PYTHON}, no recipe for another version.`,
       );

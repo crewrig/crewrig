@@ -198,5 +198,6 @@ describe("build-ci GitLab secondary python (spec 0285 R5)", () => {
   it("accepts the Debian python version and rejects any other", () => {
     assert.equal(secondaryRuntimeInstallLines("python@3.11").length, 1);
     assert.throws(() => secondaryRuntimeInstallLines("python@3.12"), /Debian python 3\.11/);
+    assert.throws(() => secondaryRuntimeInstallLines("python@3.110"), /Debian python 3\.11/);
   });
 });
