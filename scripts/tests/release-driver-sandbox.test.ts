@@ -42,6 +42,9 @@ describe("release driver sandbox", () => {
     );
     assert.ok(fs.existsSync(path.join(sb.originBare, "HEAD")), "origin is a bare repository");
     assert.equal(sb.env({ GITHUB_ACTIONS: "true" })["GITHUB_ACTIONS"], "true");
+    const dir17 = fs.readdirSync(path.join(sb.root, ".git", "objects", "17")).length;
+    // eslint-disable-next-line no-console
+    console.log(`PROBE2 dir17=${dir17}`);
     sb.dispose();
     assert.equal(fs.existsSync(sb.root), false);
   });
