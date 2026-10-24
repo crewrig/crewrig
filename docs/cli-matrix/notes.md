@@ -48,7 +48,7 @@
 > parallel, changeset-gated capabilities in `ci/ci-capabilities.yml`, each with
 > its own `paths:` trigger filter and a `changeset-gated: true` marker. On both
 > engines a job runs only when a changed file matches its `paths:` set (GitLab
-> `changes:`; GitHub Actions `dorny/paths-filter` at the job level). Heavy
+> `changes:`; GitHub Actions the `ci-job` runtime path gate, spec 0283 R6). Heavy
 > groups (e.g. `e2e`) declare a `manual` trigger so they are `when: manual` /
 > `workflow_dispatch` on non-`main` runs while staying enforced on push to
 > `main`. Cached groups declare a `cache:` block (the key-derivation *need*:

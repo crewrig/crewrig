@@ -1,17 +1,14 @@
 // ci-paths-gate.ts — runtime path gate replacing dorny/paths-filter (spec 0283 R6).
 //
 // Usage: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-paths-gate.ts
-//          --capability <id> [--event <name>] [--before <sha>] [--filter-result true|false]
+//          --capability <id> [--event <name>] [--before <sha>]
 //   Defaults: --event $GITHUB_EVENT_NAME, --before $GATE_BEFORE. Reads ci/ci-capabilities.yml
 //   (REPO_DIR overrides the root). The diff is `git diff --name-only HEAD^1 HEAD` for
 //   pull_request and `<before> HEAD` for push; any failure fails open.
 // Output: `changed=true|false` appended to $GITHUB_OUTPUT (stdout when unset).
 // Exit: 0, 2 usage, unknown capability or unsupported glob (never silent).
-// Annotation formats (the contract for per-job counting):
+// Any event other than pull_request and push runs the job. Annotation format (countable):
 //   ::notice title=ci-paths-gate::<id>: failing open, <reason>
-//   shadow (with --filter-result):
-//   ::notice title=ci-paths-gate-shadow::<id> agree filter=<v> gate=<v>
-//   ::warning title=ci-paths-gate-shadow::<id> DISAGREE filter=<v> gate=<v>
 
 import fs from "node:fs";
 import path from "node:path";
@@ -30,15 +27,12 @@ async function main(argv: string[]): Promise<number> {
   for (let i = 0; i < argv.length; i += 2) {
     const k = argv[i] ?? "";
     const v = argv[i + 1];
-    if (!["--capability", "--event", "--before", "--filter-result"].includes(k) || v === undefined)
+    if (!["--capability", "--event", "--before"].includes(k) || v === undefined)
       return usage(`bad argument '${k}'`);
     opt[k] = v;
   }
   const id = opt["--capability"];
   if (id === undefined || id === "") return usage("--capability is required");
-  const filter = opt["--filter-result"];
-  if (filter !== undefined && filter !== "true" && filter !== "false")
-    return usage("--filter-result must be true or false");
   const event = opt["--event"] ?? process.env["GITHUB_EVENT_NAME"] ?? "";
   const before = opt["--before"] ?? process.env["GATE_BEFORE"] ?? "";
   const repo = process.env["REPO_DIR"] || path.resolve(import.meta.dirname, "..");
@@ -59,12 +53,6 @@ async function main(argv: string[]): Promise<number> {
   const out = process.env["GITHUB_OUTPUT"];
   if (out) fs.appendFileSync(out, line);
   else process.stdout.write(line);
-  if (filter !== undefined) {
-    const agree = filter === String(d.changed);
-    process.stdout.write(
-      `::${agree ? "notice" : "warning"} title=ci-paths-gate-shadow::${id} ${agree ? "agree" : "DISAGREE"} filter=${filter} gate=${d.changed}\n`,
-    );
-  }
   return 0;
 }
 

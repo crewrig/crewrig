@@ -62,10 +62,17 @@ const addPaths = (t: YMap, ...p: string[]) => void (t["paths"] = [...list(t["pat
 const jobOf = (doc: YMap, name: string): YMap => map(map(doc["jobs"])[name], `job ${name}`);
 const FILTER = /^dorny\/paths-filter@/;
 const isFilter = (s: unknown) => FILTER.test(String(map(s)["uses"] ?? ""));
+/** The filter step of a job; the dorny filters left build.yml (spec 0283 R9), so a missing one is re-created. */
 function filterStep(doc: YMap, name: string): YMap {
-  const found = list(jobOf(doc, name)["steps"]).find(isFilter);
-  if (found === undefined) throw new Error(`job ${name} has no paths-filter step`);
-  return map(found);
+  const job = jobOf(doc, name);
+  const found = list(job["steps"]).find(isFilter);
+  if (found !== undefined) return map(found);
+  const filters = `${name}:\n${refPaths(name, "pull-request")
+    .map((p) => `  - '${p}'\n`)
+    .join("")}`;
+  const [checkout, ...rest] = list(job["steps"]);
+  job["steps"] = [checkout, newStep("filter", filters), ...rest];
+  return filterStep(doc, name);
 }
 const filtersOf = (doc: YMap, name: string): string =>
   String(map(filterStep(doc, name)["with"])["filters"]);
@@ -122,6 +129,16 @@ function reference(doc: YMap): void {
 }
 
 function buildYml(doc: YMap): void {
+  // Jobs whose reference-side mutation (FX1, FX5, FX11, FX12, FX17, UX1) needs a baseline filter to face.
+  for (const j of [
+    "figure-labels",
+    "markdown-links",
+    "check-model-mappings",
+    "mempalace",
+    "extension-manifest",
+    "setup",
+  ])
+    filterStep(doc, j);
   setFilters(doc, "docs-index", (t) => `${t}  - zz/a/**\n  - zz/b/**\n`); // FX2
   setFilters(doc, "frontmatter", (t) => `${t}  - "!zz/neg/**"\n`); // FX7
   // FX13: the filter step is deleted. check-description-length is a `ci-job` job, where a job without a

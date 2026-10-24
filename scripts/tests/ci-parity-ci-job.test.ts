@@ -17,6 +17,7 @@ import {
   list,
   makeFixture,
   map,
+  refPaths,
   replaceOnce,
   runCheck,
 } from "./lib/ci-parity-fixture.ts";
@@ -24,6 +25,15 @@ import {
 const WF = ".github/workflows/build.yml";
 const DORNY =
   "      - uses: dorny/paths-filter@v3\n        id: filter\n        with:\n          filters: |\n            figure-labels:\n";
+const CHECKOUT =
+  "  figure-labels:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n";
+/** The dorny filter left build.yml (spec 0283 R9): re-create the one figure-labels carried, from the reference. */
+function addFilter(root: string): void {
+  const globs = refPaths("figure-labels", "pull-request")
+    .map((p) => `              - '${p}'\n`)
+    .join("");
+  replaceOnce(wf(root), CHECKOUT, `${CHECKOUT}${DORNY}${globs}`);
+}
 const ciStep = (id: string) =>
   `      - uses: ./.github/actions/ci-job\n        with:\n          id: ${id}\n`;
 const wf = (root: string) => path.join(root, WF);
@@ -41,6 +51,7 @@ const figureBlocks = (err: string) => err.split("\n").filter((l) => l.includes("
 test("shape C with the right id: no R27 finding, the filter stays compared", () => {
   const root = makeFixture();
   addCiJob(root, "figure-labels");
+  addFilter(root);
   const r = runCheck(root);
   assert.ok(!r.stderr.includes("R27"), r.stderr);
   assert.ok(!r.stderr.includes("path filters diverge on in-job filter"), r.stderr);
@@ -49,6 +60,7 @@ test("shape C with the right id: no R27 finding, the filter stays compared", () 
 test("shape C with an unequal filter still fails R14 (R29)", () => {
   const root = makeFixture();
   addCiJob(root, "figure-labels");
+  addFilter(root);
   replaceOnce(wf(root), DORNY, `${DORNY}              - 'zz/extra/**'\n`);
   const r = runCheck(root);
   assert.equal(r.status, 1);
@@ -70,10 +82,6 @@ test("id naming another capability fails R27a, naming the job and the capability
 test("shape A (no filter): no R27, no R17, no divergence report", () => {
   const root = makeFixture();
   addCiJob(root, "figure-labels");
-  const text = fs.readFileSync(wf(root), "utf8");
-  const start = text.indexOf(DORNY);
-  const end = text.indexOf("      - name: Install tesseract", start);
-  fs.writeFileSync(wf(root), text.slice(0, start) + text.slice(end));
   const r = runCheck(root);
   const mine = figureBlocks(r.stderr).filter((l) => /R17|R14|R27/.test(l));
   assert.deepEqual(mine, [], r.stderr);

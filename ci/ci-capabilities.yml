@@ -420,6 +420,8 @@ capabilities:
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
     paths:
       - "scripts/lib/link-or-copy*.ts"
       - "scripts/lib/component-roots.ts"
@@ -1557,14 +1559,13 @@ capabilities:
       - "scripts/tests/ci-parity-path-filters.test.ts"
       - "scripts/tests/ci-parity-path-filters-undet.test.ts"
       - "scripts/tests/ci-effective-paths.test.ts"
-      - "scripts/tests/ci-paths-equivalence.test.ts"
+      - "scripts/tests/ci-paths-push-trigger.test.ts"
       - "scripts/ci-paths-gate.ts"
       - "scripts/lib/ci-paths-gate/**"
       - ".github/actions/ci-job/action.yml"
       - "scripts/tests/ci-paths-gate.test.ts"
       - "scripts/tests/ci-parity-ci-job.test.ts"
       - "scripts/tests/ci-job-yq.test.ts"
-      - "scripts/tests/fixtures/ci-paths/**"
       - "scripts/tests/lib/ci-parity-fixture.ts"
       - "scripts/tests/lib/ci-parity-blocks.ts"
       - "scripts/tests/lib/ci-parity-matrix.ts"

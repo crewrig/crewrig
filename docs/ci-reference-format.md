@@ -291,8 +291,9 @@ A capability entry MAY declare a capability-level `paths:` list, next to
   one-shot `scripts/convert-ci-paths.ts`: a capability whose `pull-request` and `push`
   lists were identical carries one capability-level `paths:`; a capability whose two
   lists differ keeps trigger-level lists; `cache.files` was dropped only where equal
-  to the paths. `scripts/tests/ci-paths-equivalence.test.ts` proves the effective sets
-  are unchanged against a frozen pre-conversion snapshot.
+  to the paths. The conversion was proven equivalent against a frozen snapshot, since deleted
+  with the `dorny/paths-filter` removal. `scripts/tests/ci-paths-push-trigger.test.ts` keeps the
+  `pull-request` and `push` path sets of every `ci-job` job of `build.yml` identical.
 
 The GitLab generator emits a list that appears twice in one job (the two rules'
 `changes:` lists, or the cache key `files:` equal to them) once under a YAML
@@ -403,7 +404,7 @@ with exit `2`: any of `{ } [ ] ( ) ? +`, a leading `!`, `/` or `./`, and a
 or `[x]` in a `paths:` is therefore a loud failure and never a wrong answer.
 
 `?` and `+` are rejected because the engines do not agree on them:
-`picomatch` (the engine behind the `dorny/paths-filter` jobs) reads `?` as one
+`picomatch` (the engine behind the retired `dorny/paths-filter` jobs) reads `?` as one
 character, whereas GitHub's native workflow-level `on.pull_request.paths`
 matcher is recalled to give `?` (zero or one of the preceding character) and
 `+` (one or more) regex-like meaning. That recollection is an **assumption to
@@ -933,9 +934,5 @@ Template (the defaults carry the common case; set an input only when it differs,
           id: <capability-id>
 ```
 
-Shadow variant (while `dorny/paths-filter` is authoritative; no length cap): the same checkout, then
-the dorny step with `id: filter`, then `ci-job` with `shadow-filter: ${{ steps.filter.outputs.<id> }}`.
-The gate then only annotates `::notice title=ci-paths-gate-shadow::<id> agree ...` or
-`::warning title=ci-paths-gate-shadow::<id> DISAGREE ...`. Concern 6 treats a `ci-job` job with no
-filter as shape A (id and glob checks only) and one that still carries a filter as shape C (those
-checks plus the filter comparison).
+Events: the gate filters `pull_request` and `push` only. Any other event (a `workflow_dispatch`) runs the job, so a
+manual dispatch runs every job. Concern 6 treats a `ci-job` job with no filter as shape A (id and glob checks only).

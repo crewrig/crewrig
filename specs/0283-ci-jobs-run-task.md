@@ -1,7 +1,7 @@
 ---
 id: "0283"
 slug: ci-jobs-run-task
-status: approved
+status: implemented
 complexity: large
 interaction-mode: INTERMEDIATE
 related-issue: 1780

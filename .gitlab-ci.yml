@@ -369,7 +369,7 @@ install-ts:
     - "task ci:install-ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &install-ts-changes-1
         - "scripts/lib/link-or-copy*.ts"
         - "scripts/lib/component-roots.ts"
         - "scripts/lib/component-overlay.ts"
@@ -449,6 +449,8 @@ install-ts:
         - "scripts/tests/lib/windows-install-proof.ts"
         - "scripts/tests/lib/install-golden-*.ts"
         - "scripts/tests/fixtures/install-golden/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes: *install-ts-changes-1
 
 install-ts-node-24-0:
   image: node:24.0.0
@@ -1061,14 +1063,13 @@ ci-parity:
         - "scripts/tests/ci-parity-path-filters.test.ts"
         - "scripts/tests/ci-parity-path-filters-undet.test.ts"
         - "scripts/tests/ci-effective-paths.test.ts"
-        - "scripts/tests/ci-paths-equivalence.test.ts"
+        - "scripts/tests/ci-paths-push-trigger.test.ts"
         - "scripts/ci-paths-gate.ts"
         - "scripts/lib/ci-paths-gate/**"
         - ".github/actions/ci-job/action.yml"
         - "scripts/tests/ci-paths-gate.test.ts"
         - "scripts/tests/ci-parity-ci-job.test.ts"
         - "scripts/tests/ci-job-yq.test.ts"
-        - "scripts/tests/fixtures/ci-paths/**"
         - "scripts/tests/lib/ci-parity-fixture.ts"
         - "scripts/tests/lib/ci-parity-blocks.ts"
         - "scripts/tests/lib/ci-parity-matrix.ts"

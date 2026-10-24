@@ -1,3 +1,0 @@
-# Intended differences between a dorny/paths-filter list in .github/workflows/build.yml and the
-# effective path set of its capability (spec 0283 R3). One line per capability: <id>|<reason>.
-# Set comparison (order and duplicates ignored). Empty: the two agree for every filtered job.

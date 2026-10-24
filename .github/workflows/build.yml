@@ -47,99 +47,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            component-drift:
-              - 'scripts/build-components.ts'
-              - 'scripts/build-components.ts'
-              - 'scripts/tests/build-components-canonical-repo.test.ts'
-              - 'scripts/tests/agent-profile-*.test.ts'
-              - 'scripts/tests/lib/build-sandbox.ts'
-              - 'scripts/lib/**'
-              - 'artifacts/**'
-              - 'extensions/**'
-              - '.crewrig/core-paths.txt'
-              - 'docs/layers.md'
-              - 'docs/agent-profile-migration.md'
-              - 'model-mappings/**'
-              - '.agents/skills/**'
-              - '.claude/skills/**'
-              - '.gemini/skills/**'
-              - '.github/skills/**'
-              - '.gemini/commands/**'
-              - '.agents/agents/**'
-              - '.claude/agents/**'
-              - '.gemini/agents/**'
-              - '.github/agents/**'
-              - 'crewrig.config.toml'
-              - 'package.json'
-              - 'package-lock.json'
       - uses: ./.github/actions/ci-job
         with:
           id: component-drift
           install: omit-dev
           cache: true
-          shadow-filter: ${{ steps.filter.outputs.component-drift }}
 
   component-drift-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            component-drift-selftest:
-              - 'scripts/build-components.ts'
-              - 'scripts/lib/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'scripts/tests/build-assembly-routing.test.ts'
-              - 'scripts/tests/build-components-canonical-repo.test.ts'
-              - 'scripts/tests/lib/build-sandbox.ts'
-              - 'scripts/tests/lib/build-fixture-tree.ts'
-              - 'scripts/tests/fixtures/build-components/**'
-              - 'scripts/lib/node-floor-guard.js'
-              - 'taskfiles/ci.yml'
-              - '.github/workflows/build.yml'
-              - 'ci/ci-capabilities.yml'
       - uses: ./.github/actions/ci-job
         with:
           id: component-drift-selftest
           install: omit-dev
           cache: true
-          shadow-filter: ${{ steps.filter.outputs.component-drift-selftest }}
 
   agent-profile-migration:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            agent-profile-migration:
-              - 'scripts/build-components.ts'
-              - 'scripts/build-components.ts'
-              - 'scripts/tests/build-components-canonical-repo.test.ts'
-              - 'scripts/tests/agent-profile-*.test.ts'
-              - 'scripts/tests/lib/build-sandbox.ts'
-              - 'scripts/lib/**'
-              - 'artifacts/**'
-              - 'extensions/**'
-              - '.crewrig/core-paths.txt'
-              - 'docs/layers.md'
-              - 'docs/agent-profile-migration.md'
-              - 'model-mappings/**'
       - uses: ./.github/actions/ci-job
         with:
           id: agent-profile-migration
           install: omit-dev
           yq: "4.54.1"
           cache: true
-          shadow-filter: ${{ steps.filter.outputs.agent-profile-migration }}
 
   # Spec 0250 R27: production install (spec 0240 R4), floor guard, `--check` on the
   # real tree, the Linux run of the Windows proof script, then the named suites
@@ -148,60 +81,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            build-components-ts:
-              - 'scripts/build-components.*'
-              - 'scripts/lib/build-components/**'
-              - 'scripts/lib/render-command.ts'
-              - 'scripts/lib/component-resolve.ts'
-              - 'scripts/lib/model-resolve.ts'
-              - 'scripts/lib/yaml-text.ts'
-              - 'scripts/lib/escape-control.ts'
-              - 'scripts/lib/line-endings.ts'
-              - 'scripts/lib/paths.ts'
-              - 'scripts/lib/tmp-file.ts'
-              - 'scripts/lib/require-dependency.ts'
-              - 'scripts/lib/node-floor-guard.js'
-              - 'scripts/lib/model-resolve/**'
-              - 'scripts/tests/build-components-*.test.ts'
-              - 'scripts/tests/build-sandbox.test.ts'
-              - 'scripts/tests/repo-agent-frontmatter.test.ts'
-              - 'scripts/tests/lib/build-sandbox.ts'
-              - 'scripts/tests/yaml-text.test.ts'
-              - 'scripts/tests/render-command.test.ts'
-              - 'scripts/tests/component-resolve.test.ts'
-              - 'scripts/tests/model-resolve-*.test.ts'
-              - 'scripts/tests/lib/yaml-lib.ts'
-              - 'scripts/tests/lib/shell-resolve-harness.ts'
-              - 'scripts/tests/lib/mapping-fixtures.ts'
-              - 'scripts/tests/lib/build-fixture-tree.ts'
-              - 'scripts/tests/lib/windows-build-proof.ts'
-              - 'scripts/tests/lib/shim-env.ts'
-              - 'scripts/tests/fixtures/build-components/**'
-              - 'artifacts/**'
-              - 'model-mappings/**'
-              - 'tests/fixtures/**'
-              - 'crewrig.config.toml'
-              - 'package.json'
-              - 'package-lock.json'
-              - '.agents/agents/**'
-              - '.agents/skills/**'
-              - '.claude/agents/**'
-              - '.claude/skills/**'
-              - '.gemini/agents/**'
-              - '.gemini/commands/**'
-              - '.gemini/skills/**'
-              - '.github/agents/**'
-              - '.github/skills/**'
       - uses: ./.github/actions/ci-job
         with:
           id: build-components-ts
           install: omit-dev
           yq: "4.54.1"
-          shadow-filter: ${{ steps.filter.outputs.build-components-ts }}
 
   # Spec 0254 R22, R27: the TypeScript extension and plugin builder suites, the golden proof and
   # the real-tree check.
@@ -209,50 +93,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            extension-builders-ts:
-              - 'scripts/lib/extension/**'
-              - 'scripts/lib/org-mcp.ts'
-              - 'scripts/build-extension.*'
-              - 'scripts/build-claude-plugin.*'
-              - 'scripts/build-copilot-plugin.*'
-              - 'scripts/build-antigravity-extension.*'
-              - 'scripts/migrate-extension.*'
-              - 'scripts/lib/extension-*.json'
-              - 'scripts/lib/render-command.ts'
-              - 'scripts/lib/yaml-text.ts'
-              - 'scripts/lib/line-endings.ts'
-              - 'scripts/lib/paths.ts'
-              - 'scripts/lib/tmp-file.ts'
-              - 'scripts/lib/glob-engine.ts'
-              - 'scripts/lib/require-dependency.ts'
-              - 'scripts/lib/node-floor-guard.js'
-              - 'scripts/tests/extension-*.test.ts'
-              - 'scripts/tests/lib/extension-*.ts'
-              - 'scripts/tests/lib/shell-extension-harness.ts'
-              - 'scripts/tests/lib/plugin-ctx.ts'
-              - 'scripts/tests/lib/windows-extension-proof.ts'
-              - 'scripts/tests/lib/build-fixture-tree.ts'
-              - 'scripts/tests/fixtures/extension-golden/**'
-              - 'scripts/tests/fixtures/extension-hooks/**'
-              - 'scripts/create-extension.ts'
-              - 'scripts/lib/create-extension/**'
-              - 'scripts/tests/create-extension-*'
-              - 'scripts/tests/lib/create-extension-*'
-              - 'scripts/tests/fixtures/create-extension/**'
-              - 'extensions/**'
-              - 'extension-skeleton/**'
-              - 'package.json'
-              - 'package-lock.json'
       - uses: ./.github/actions/ci-job
         with:
           id: extension-builders-ts
           install: install
           yq: "4.54.1"
-          shadow-filter: ${{ steps.filter.outputs.extension-builders-ts }}
 
   # Spec 0258 R27-R29 (ticket #1337), PR A: the skill-script oracle and its YAML leg. Linux only: the
   # goldens are Linux bytes. `jq` and `git` come with the runner image; `yq` is pinned to v4.44.3 (the
@@ -261,30 +106,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            skill-scripts-ts:
-              - 'artifacts/**/skills/*/scripts/**'
-              - 'scripts/tests/skill-scripts-*'
-              - 'scripts/tests/lib/skill-scripts-*'
-              - 'scripts/tests/fixtures/skill-scripts/**'
-              - 'scripts/tests/callers-sweep.test.ts'
-              - 'scripts/tests/lib/callers-sweep.ts'
-              - 'artifacts/**'
-              - 'README.md'
-              - 'Taskfile.yml'
-              - 'taskfiles/**'
-              - 'scripts/lib/taskfile-tree.ts'
-              - 'scripts/lib/taskfile-tree-parse.ts'
-              - 'scripts/lib/governance/taskfile-tree-guard.ts'
       - uses: ./.github/actions/ci-job
         with:
           id: skill-scripts-ts
           install: omit-dev
           yq: "4.44.3"
-          shadow-filter: ${{ steps.filter.outputs.skill-scripts-ts }}
 
   # Spec 0259 R26-R28 (ticket #1338), PR P0: the governance-check suites.
   # Linux only. The shell oracle legs retired with the switch PR, so no jq or yq is installed.
@@ -292,39 +118,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            governance-checks-ts:
-              - 'scripts/check-*.ts'
-              - 'scripts/lib/governance/**'
-              - 'scripts/lib/sequence-matcher.ts'
-              - 'scripts/tests/governance-*'
-              - 'scripts/tests/lib/governance-*'
-              - 'scripts/tests/check-agents-size.test.ts'
-              - 'scripts/tests/check-rules-size.test.ts'
-              - 'scripts/tests/check-comment-size*'
-              - 'scripts/tests/check-seat-brief*'
-              - 'scripts/tests/check-plan-review*'
-              - 'scripts/tests/seat-ledger.test.ts'
-              - 'scripts/tests/economy-measure.test.ts'
-              - 'scripts/tests/fixtures/comment-size/**'
-              - 'scripts/tests/fixtures/seat-brief/**'
-              - 'scripts/tests/fixtures/plan-review/**'
-              - 'scripts/tests/fixtures/seat-ledger/**'
-              - 'scripts/tests/fixtures/economy-1410/**'
-              - 'scripts/lib/seat-ledger*.ts'
-              - 'scripts/lib/economy-transform.ts'
-              - 'scripts/economy-*.ts'
-              - 'docs/**'
-              - 'AGENTS.md'
-              - 'scripts/tests/fixtures/agent-team-protocol/**'
       - uses: ./.github/actions/ci-job
         with:
           id: governance-checks-ts
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.governance-checks-ts }}
 
   # Spec 0262 R21-R23 (ticket #1339): the model-CI-tooling suites and their shell differential legs.
   # Linux only. `jq` comes with the runner image; `yq` is pinned to v4.44.3 and its sha256 is checked.
@@ -333,23 +130,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            model-ci-tooling-ts:
-              - 'scripts/tests/model-ci-tooling-*'
-              - 'scripts/tests/lib/bash-suite-differential.ts'
-              - 'scripts/tests/lib/differential-*.ts'
-              - 'scripts/tests/lib/scratch-remote.ts'
-              - 'scripts/merge-spec-pr.*'
-              - 'scripts/lib/governance/merge-spec-pr.ts'
       - uses: ./.github/actions/ci-job
         with:
           id: model-ci-tooling-ts
           install: omit-dev
           yq: "4.44.3"
-          shadow-filter: ${{ steps.filter.outputs.model-ci-tooling-ts }}
 
   # Spec 0255 (row F2), PR B: the dark link-or-copy, component twin and manage module suites.
   # Linux only: the conformance suites spawn `bash` and `jq`.
@@ -357,95 +142,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            install-ts:
-              - 'scripts/lib/link-or-copy*.ts'
-              - 'scripts/lib/component-roots.ts'
-              - 'scripts/lib/component-overlay.ts'
-              - 'scripts/lib/component-install.ts'
-              - 'scripts/lib/component-resolve.ts'
-              - 'scripts/lib/antigravity-migrate.ts'
-              - 'scripts/lib/manage/**'
-              - 'scripts/lib/extension/**'
-              - 'scripts/lib/paths.ts'
-              - 'scripts/lib/tmp-file.ts'
-              - 'scripts/lib/mempalace-python.ts'
-              - 'scripts/lib/worktree-claim/**'
-              - 'scripts/lib/node-floor-guard.js'
-              - 'scripts/tests/antigravity-migrate.test.ts'
-              - 'scripts/tests/component-install.test.ts'
-              - 'scripts/tests/component-overlay.test.ts'
-              - 'scripts/tests/component-roots.test.ts'
-              - 'scripts/tests/component-twins-conformance-migrate.test.ts'
-              - 'scripts/tests/component-twins-conformance.test.ts'
-              - 'scripts/tests/install-oracle-mutation.test.ts'
-              - 'scripts/tests/antigravity-manage-sandbox.test.ts'
-              - 'scripts/tests/antigravity-tier-twin.test.ts'
-              - 'scripts/tests/lib/antigravity-fixtures.ts'
-              - 'scripts/tests/lib/worktree-fixtures.ts'
-              - 'scripts/tests/tier-resolution-*.test.ts'
-              - 'scripts/tests/lib/tier-fixtures.ts'
-              - 'scripts/tests/lib/tier-landing.ts'
-              - 'scripts/tests/lib/tier-taskfile.ts'
-              - 'scripts/tests/lib/component-twins-harness.ts'
-              - 'scripts/tests/lib/manage-main-run.ts'
-              - 'scripts/tests/lib/overlay-loop-box.ts'
-              - 'scripts/tests/lib/print-manage-declarations.ts'
-              - 'scripts/tests/link-or-copy-classify.test.ts'
-              - 'scripts/tests/link-or-copy-remove.test.ts'
-              - 'scripts/tests/link-or-copy-swap.test.ts'
-              - 'scripts/tests/link-or-copy.test.ts'
-              - 'scripts/tests/manage-confirm.test.ts'
-              - 'scripts/tests/manage-descriptors.test.ts'
-              - 'scripts/tests/manage-main.test.ts'
-              - 'scripts/tests/manage-mcp-claude.test.ts'
-              - 'scripts/tests/manage-mcp-json.test.ts'
-              - 'scripts/tests/manage-overlay-loop.test.ts'
-              - 'scripts/tests/manage-place.test.ts'
-              - 'scripts/tests/print-manage-declarations.test.ts'
-              - 'scripts/tests/tree-copy-dereferenced.test.ts'
-              - 'scripts/install-antigravity-extension.ts'
-              - 'scripts/install-claude-plugin.ts'
-              - 'scripts/install-copilot-plugin.ts'
-              - 'scripts/install-extension-all.ts'
-              - 'scripts/install-extension.ts'
-              - 'scripts/install-workspace.ts'
-              - 'scripts/manage-antigravity-component.ts'
-              - 'scripts/manage-claude-component.ts'
-              - 'scripts/manage-copilot-component.ts'
-              - 'scripts/manage-workspace-component.ts'
-              - 'scripts/link-extensions.ts'
-              - 'scripts/unlink-component.ts'
-              - 'scripts/unlink-extensions.ts'
-              - 'scripts/lib/install/**'
-              - 'scripts/tests/manage-entry.test.ts'
-              - 'scripts/tests/marketplace.test.ts'
-              - 'scripts/tests/antigravity-tokens.test.ts'
-              - 'scripts/tests/install-all.test.ts'
-              - 'scripts/tests/install-entry-form.test.ts'
-              - 'scripts/tests/install-file-size.test.ts'
-              - 'scripts/tests/install-extension-reentrancy.test.ts'
-              - 'scripts/tests/lib/install-sandbox.ts'
-              - 'scripts/tests/lib/build-fixture-tree.ts'
-              - 'scripts/tests/lib/oracle-taskfile-mutants.ts'
-              - 'scripts/tests/install-references.test.ts'
-              - 'scripts/tests/fixtures/install/**'
-              - 'scripts/tests/fixtures/manage-shell-facts/**'
-              - 'scripts/tests/install-golden.test.ts'
-              - 'scripts/tests/install-write-mode.test.ts'
-              - 'scripts/tests/windows-install-entries.test.ts'
-              - 'scripts/tests/lib/windows-proof-support.ts'
-              - 'scripts/tests/lib/windows-install-proof.ts'
-              - 'scripts/tests/lib/install-golden-*.ts'
-              - 'scripts/tests/fixtures/install-golden/**'
       - uses: ./.github/actions/ci-job
         with:
           id: install-ts
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.install-ts }}
 
   # Spec 0255 R3: the install, manage and link entries print nothing on the oldest Node.js 24 release.
   # No path filter, like `extension-builders-ts-node-24-0`.
@@ -470,40 +170,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            setup-oracle:
-              - 'scripts/**'
-              - 'config/**'
-              - 'hooks/**'
-              - 'artifacts/core/rules/**'
-              - 'artifacts/core/system-context/**'
-              - 'mcp-servers.org.json'
-              - 'AGENTS.org.md'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'scripts/tests/setup-sandbox.test.ts'
-              - 'scripts/tests/setup-stubs.test.ts'
-              - 'scripts/tests/setup-golden-harness.test.ts'
-              - 'scripts/tests/setup-golden-smoke.test.ts'
-              - 'scripts/tests/setup-golden-claude.test.ts'
-              - 'scripts/tests/setup-golden-gemini.test.ts'
-              - 'scripts/tests/setup-golden-copilot.test.ts'
-              - 'scripts/tests/setup-golden-antigravity.test.ts'
-              - 'scripts/tests/setup-prompt-inventory.test.ts'
-              - 'scripts/tests/setup-oracle-mutation.test.ts'
-              - 'scripts/tests/setup-golden-deviations.test.ts'
-              - 'scripts/tests/setup-entry-form.test.ts'
-              - 'scripts/tests/lib/setup-*.ts'
-              - 'scripts/tests/lib/real-home-guard.ts'
-              - 'scripts/tests/fixtures/setup-golden/**'
       - uses: ./.github/actions/ci-job
         with:
           id: setup-oracle
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.setup-oracle }}
 
   # Spec 0256 requirement 10 (ticket #1335), PR C: the shell-against-TypeScript parity proof, one shard
   # file per CLI, and the twin differential suites. Linux only; retired with the shell setups.
@@ -513,37 +183,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            setup-differential:
-              - 'scripts/**'
-              - 'config/**'
-              - 'hooks/**'
-              - 'artifacts/core/rules/**'
-              - 'artifacts/core/system-context/**'
-              - 'mcp-servers.org.json'
-              - 'AGENTS.org.md'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'scripts/tests/setup-differential.test.ts'
-              - 'scripts/tests/setup-differential-claude.test.ts'
-              - 'scripts/tests/setup-differential-gemini.test.ts'
-              - 'scripts/tests/setup-differential-copilot.test.ts'
-              - 'scripts/tests/setup-differential-antigravity.test.ts'
-              - 'scripts/tests/setup-twins-differential-usage.test.ts'
-              - 'scripts/tests/lib/setup-*.ts'
-              - 'scripts/tests/lib/real-home-guard.ts'
-              - 'scripts/tests/fixtures/setup-golden/**'
-              - 'scripts/tests/lib/setup-*.ts'
-              - 'scripts/tests/lib/real-home-guard.ts'
-              - 'scripts/tests/fixtures/setup-golden/**'
       - uses: ./.github/actions/ci-job
         with:
           id: setup-differential
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.setup-differential }}
 
   # Spec 0256 R40 (ticket #1335), PR B1: the portable unit suites of the TypeScript setup modules,
   # the TLS environment quoting and writer, and the confirm remainder. The POSIX-only suites skip
@@ -552,132 +195,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            setup-modules-ts:
-              - 'scripts/lib/setup/**'
-              - 'scripts/lib/tls-env.ts'
-              - 'scripts/lib/tls-env-quote.ts'
-              - 'scripts/lib/manage/confirm.ts'
-              - 'scripts/lib/service/launcher/bundle.ts'
-              - 'scripts/lib/link-or-copy*.ts'
-              - 'scripts/lib/extension/types.ts'
-              - 'scripts/setup-antigravity-interactive.ts'
-              - 'scripts/setup-claude-interactive.ts'
-              - 'scripts/setup-copilot-interactive.ts'
-              - 'scripts/setup-gemini-interactive.ts'
-              - 'scripts/lib/node-floor-guard.js'
-              - 'scripts/tests/setup-answers.test.ts'
-              - 'scripts/tests/setup-antigravity-hooks.test.ts'
-              - 'scripts/tests/setup-antigravity-statusline.test.ts'
-              - 'scripts/tests/setup-antigravity-tier.test.ts'
-              - 'scripts/tests/setup-backup.test.ts'
-              - 'scripts/tests/setup-backup-failure.test.ts'
-              - 'scripts/tests/setup-catalogue.test.ts'
-              - 'scripts/tests/setup-chroma-install.test.ts'
-              - 'scripts/tests/setup-chroma-install-win.test.ts'
-              - 'scripts/tests/setup-chroma-unit.test.ts'
-              - 'scripts/tests/setup-cli-claude-gemini.test.ts'
-              - 'scripts/tests/setup-cli-copilot-antigravity.test.ts'
-              - 'scripts/tests/setup-declarations.test.ts'
-              - 'scripts/tests/setup-deps.test.ts'
-              - 'scripts/tests/setup-ensure-http.test.ts'
-              - 'scripts/tests/setup-ensure-http-probes.test.ts'
-              - 'scripts/tests/setup-ensure-http-wiring.test.ts'
-              - 'scripts/tests/setup-file-size.test.ts'
-              - 'scripts/tests/setup-files.test.ts'
-              - 'scripts/tests/setup-flow.test.ts'
-              - 'scripts/tests/setup-flow-steps.test.ts'
-              - 'scripts/tests/setup-gemini-settings.test.ts'
-              - 'scripts/tests/setup-gemini-settings-rc.test.ts'
-              - 'scripts/tests/setup-gemini-settings-write.test.ts'
-              - 'scripts/tests/setup-golden-evidence.test.ts'
-              - 'scripts/tests/setup-hint-strings.test.ts'
-              - 'scripts/tests/setup-hooks-rewrite.test.ts'
-              - 'scripts/tests/setup-json-secure.test.ts'
-              - 'scripts/tests/setup-json-secure-failure.test.ts'
-              - 'scripts/tests/setup-lib-tls-entry.test.ts'
-              - 'scripts/tests/setup-lib-tls-entry-offer.test.ts'
-              - 'scripts/tests/setup-lib-usage-entry.test.ts'
-              - 'scripts/tests/setup-lib-usage-entry-form.test.ts'
-              - 'scripts/tests/setup-link-key.test.ts'
-              - 'scripts/tests/setup-lossless-callsites.test.ts'
-              - 'scripts/tests/setup-lossless-shim.test.ts'
-              - 'scripts/tests/setup-lossless-writers.test.ts'
-              - 'scripts/tests/setup-mcp-agy-step.test.ts'
-              - 'scripts/tests/setup-mcp-claude-flow.test.ts'
-              - 'scripts/tests/setup-mcp-claude-step.test.ts'
-              - 'scripts/tests/setup-mcp-copilot-step.test.ts'
-              - 'scripts/tests/setup-mcp-gemini-step.test.ts'
-              - 'scripts/tests/setup-mcp-json-writers.test.ts'
-              - 'scripts/tests/setup-mcp-json-writers-merge.test.ts'
-              - 'scripts/tests/setup-mempalace-callsite.test.ts'
-              - 'scripts/tests/setup-mempalace-detect.test.ts'
-              - 'scripts/tests/setup-mempalace-install-offer.test.ts'
-              - 'scripts/tests/setup-mempalace-stdio.test.ts'
-              - 'scripts/tests/setup-mempalace-version.test.ts'
-              - 'scripts/tests/setup-misc-paths.test.ts'
-              - 'scripts/tests/setup-no-posix-tool.test.ts'
-              - 'scripts/tests/setup-org-mcp-claude-argv.test.ts'
-              - 'scripts/tests/setup-org-mcp-fold.test.ts'
-              - 'scripts/tests/setup-prerequisites.test.ts'
-              - 'scripts/tests/setup-prompt.test.ts'
-              - 'scripts/tests/setup-prompt-integration.test.ts'
-              - 'scripts/tests/setup-prompt-table.test.ts'
-              - 'scripts/tests/setup-prompt-tty.test.ts'
-              - 'scripts/tests/setup-references.test.ts'
-              - 'scripts/tests/setup-session-recording.test.ts'
-              - 'scripts/tests/setup-session-recording-ownership.test.ts'
-              - 'scripts/tests/setup-stdlib-closure.test.ts'
-              - 'scripts/tests/setup-steps-agy.test.ts'
-              - 'scripts/tests/setup-steps-agy-channels.test.ts'
-              - 'scripts/tests/setup-steps-copilot.test.ts'
-              - 'scripts/tests/setup-steps-hooks.test.ts'
-              - 'scripts/tests/setup-steps-hooks-lossy.test.ts'
-              - 'scripts/tests/setup-steps-mcp.test.ts'
-              - 'scripts/tests/setup-steps-rules.test.ts'
-              - 'scripts/tests/setup-steps-rules-edge.test.ts'
-              - 'scripts/tests/setup-steps-tiers.test.ts'
-              - 'scripts/tests/setup-steps-usage.test.ts'
-              - 'scripts/tests/setup-store-guidance.test.ts'
-              - 'scripts/tests/setup-summary.test.ts'
-              - 'scripts/tests/setup-tier-build.test.ts'
-              - 'scripts/tests/setup-tier-install.test.ts'
-              - 'scripts/tests/setup-tls-detect.test.ts'
-              - 'scripts/tests/setup-tls-offer.test.ts'
-              - 'scripts/tests/setup-trust-wrapper.test.ts'
-              - 'scripts/tests/setup-trust-wrapper-install.test.ts'
-              - 'scripts/tests/setup-usage-capture.test.ts'
-              - 'scripts/tests/setup-usage-capture-keep.test.ts'
-              - 'scripts/tests/setup-usage-capture-rank.test.ts'
-              - 'scripts/tests/setup-usage-capture-state.test.ts'
-              - 'scripts/tests/setup-usage-capture-wire-path.test.ts'
-              - 'scripts/tests/setup-validation.test.ts'
-              - 'scripts/tests/tls-env-quote.test.ts'
-              - 'scripts/tests/tls-env-writer.test.ts'
-              - 'scripts/tests/manage-confirm-remainder.test.ts'
-              - 'scripts/tests/lib/setup-*.ts'
-              - 'scripts/usage-capture-optin.ts'
-              - 'scripts/tls-delegation.ts'
-              - 'scripts/tests/fixtures/setup-declarations/**'
-              - 'scripts/tests/lib/setup-declarations-consumers.ts'
-              - 'scripts/tests/lib/setup-declarations-facts.ts'
-              - 'scripts/tests/lib/print-setup-declarations.ts'
-              - 'scripts/tests/lib/tls-entry-run.ts'
-              - 'scripts/tests/lib/usage-entry-rig.ts'
-              - 'scripts/tests/lib/keep-differential.ts'
-              - 'scripts/tests/lib/usage-capture-rig.ts'
-              - 'scripts/tests/lib/mcp-writers-box.ts'
-              - 'scripts/tests/lib/tls-quote-measure.ts'
-              - 'scripts/tests/fixtures/setup-tls/**'
-              - 'scripts/tests/fixtures/setup-golden/**'
       - uses: ./.github/actions/ci-job
         with:
           id: setup-modules-ts
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.setup-modules-ts }}
 
   # Spec 0257 (row of epic #1231, ticket #1336), PR 4a: the TypeScript monorepo release driver
   # modules (refusals, forge, mode, branch, identity, credentials, classification, engine-log
@@ -686,49 +207,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            release-driver-modules-ts:
-              - 'scripts/lib/monorepo-release/**'
-              - 'scripts/lib/release-notes/**'
-              - 'scripts/lib/sync-from-upstream/git.ts'
-              - 'scripts/lib/paths.ts'
-              - 'scripts/lib/node-floor-guard.js'
-              - 'scripts/tests/monorepo-release-preflight.test.ts'
-              - 'scripts/tests/monorepo-release-credentials.test.ts'
-              - 'scripts/tests/monorepo-release-log-parse.test.ts'
-              - 'scripts/tests/monorepo-release-prepare-cmd.test.ts'
-              - 'scripts/tests/monorepo-release-config.test.ts'
-              - 'scripts/tests/lib/release-preflight-tables.ts'
-              - 'scripts/lib/packaging/digest.ts'
-              - 'scripts/lib/worktree-claim/**'
-              - 'scripts/lib/link-or-copy*.ts'
-              - 'scripts/lib/extension/tree-copy.ts'
-              - 'scripts/lib/extension/types.ts'
-              - 'scripts/tests/monorepo-release-process.test.ts'
-              - 'scripts/tests/monorepo-release-scratch.test.ts'
-              - 'scripts/tests/monorepo-release-mirror.test.ts'
-              - 'scripts/tests/monorepo-release-clone-modules.test.ts'
-              - 'scripts/tests/monorepo-release-flows-publish.test.ts'
-              - 'scripts/tests/monorepo-release-flows-rehearsal.test.ts'
-              - 'scripts/tests/monorepo-release-github.test.ts'
-              - 'scripts/tests/monorepo-release-github-sync.test.ts'
-              - 'scripts/tests/monorepo-release-main.test.ts'
-              - 'scripts/tests/monorepo-release-main-flow.test.ts'
-              - 'scripts/tests/monorepo-release-file-size.test.ts'
-              - 'scripts/tests/monorepo-release-extension-dirs.test.ts'
-              - 'scripts/tests/lib/release-flow-ctx.ts'
-              - 'scripts/tests/lib/release-github-fixture.ts'
-              - 'scripts/tests/lib/release-main-fixture.ts'
-              - 'scripts/tests/fixtures/release/**'
-              - 'scripts/monorepo-release.ts'
       - uses: ./.github/actions/ci-job
         with:
           id: release-driver-modules-ts
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.release-driver-modules-ts }}
 
   # Spec 0257 (ticket #1336), PRs 2 and 3: the deterministic tar.gz archive writer, the
   # documentation index and the release packaging modules. The release differential suite spawns
@@ -737,60 +219,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            packaging-modules-ts:
-              - 'scripts/lib/packaging/**'
-              - 'scripts/lib/docs-index/**'
-              - 'scripts/lib/paths.ts'
-              - 'scripts/lib/line-endings.ts'
-              - 'scripts/lib/tmp-file.ts'
-              - 'scripts/lib/node-floor-guard.js'
-              - 'scripts/tests/tar-writer.test.ts'
-              - 'scripts/tests/docs-index.test.ts'
-              - 'scripts/tests/docs-index-walk.test.ts'
-              - 'scripts/tests/build-docs-index-entry.test.ts'
-              - 'scripts/tests/lib/docs-index-entry-tree.ts'
-              - 'scripts/tests/packaging-file-size.test.ts'
-              - 'scripts/tests/lib/tar-reader.ts'
-              - 'scripts/tests/lib/docs-index-trees.ts'
-              - 'scripts/tests/lib/extension-trees.ts'
-              - 'scripts/build-extension.ts'
-              - 'scripts/lib/extension/**'
-              - 'scripts/lib/worktree-claim/**'
-              - 'scripts/lib/mempalace-python.ts'
-              - 'scripts/lib/render-command.ts'
-              - 'scripts/lib/yaml-text.ts'
-              - 'scripts/lib/require-dependency.ts'
-              - 'scripts/lib/extension-*.json'
-              - 'extension-skeleton/**'
-              - 'extensions/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'scripts/tests/packaging-release-package.test.ts'
-              - 'scripts/tests/packaging-release-package-cli.test.ts'
-              - 'scripts/tests/packaging-spawn-tiers.test.ts'
-              - 'scripts/tests/packaging-entries.test.ts'
-              - 'scripts/tests/release-sync-manifests.test.ts'
-              - 'scripts/tests/lib/release-sandbox.ts'
-              - 'scripts/tests/lib/build-fixture-tree.ts'
-              - 'scripts/build-docs-index.ts'
-              - 'scripts/package-extension.ts'
-              - 'scripts/package-extensions.ts'
-              - 'scripts/release-package-extension.ts'
-              - 'scripts/release-sync-manifests.ts'
-              - 'scripts/tests/packaging-release-golden-portable.test.ts'
-              - 'scripts/tests/fixtures/packaging-release/**'
-              - 'scripts/tests/lib/packaging-release-*.ts'
-              - 'scripts/tests/lib/golden-normalize.ts'
-              - 'scripts/tests/lib/release-driver-sandbox.ts'
       - uses: ./.github/actions/ci-job
         with:
           id: packaging-modules-ts
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.packaging-modules-ts }}
 
   # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
   # release. No path filter, like `mempalace-transcript-node-24-0`.
@@ -835,66 +267,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            extension-render:
-              - 'scripts/build-extension.ts'
-              - 'scripts/lib/extension/**'
-              - 'scripts/lib/org-mcp.ts'
-              - 'scripts/lib/node-floor-guard.js'
-              - 'scripts/lib/extension-percli-keys.json'
-              - 'scripts/lib/extension-generated-class.json'
-              - 'scripts/tests/build-extension-suite-render.test.ts'
-              - 'scripts/tests/build-extension-suite-check.test.ts'
-              - 'scripts/tests/build-extension-suite-hooks.test.ts'
-              - 'scripts/tests/build-extension-suite-context.test.ts'
-              - 'scripts/tests/build-extension-suite-scaffold.test.ts'
-              - 'scripts/tests/migrate-extension-entry.test.ts'
-              - 'scripts/tests/create-extension-combinations.test.ts'
-              - 'scripts/tests/create-extension-gap-derivation.test.ts'
-              - 'scripts/tests/extension-render-conformance.test.ts'
-              - 'scripts/tests/extension-render-conformance-checks.test.ts'
-              - 'scripts/tests/extension-sandbox.test.ts'
-              - 'scripts/tests/lib/extension-sandbox.ts'
-              - 'scripts/tests/lib/extension-render-conformance.ts'
-              - 'Taskfile.yml'
-              - 'taskfiles/**'
-              - 'scripts/lib/taskfile-tree.ts'
-              - 'scripts/lib/taskfile-tree-parse.ts'
-              - 'scripts/lib/governance/taskfile-tree-guard.ts'
-              - 'extensions/**'
-              - 'artifacts/**'
-              - 'scripts/lib/extension-targets.json'
-              - 'docs/extension-hook-events.md'
-              - 'extension-skeleton/**'
-              - 'scripts/build-claude-plugin.ts'
-              - 'scripts/build-copilot-plugin.ts'
-              - 'scripts/build-antigravity-extension.ts'
-              - 'scripts/install-extension.ts'
-              - 'scripts/install-antigravity-extension.ts'
-              - 'scripts/lib/link-or-copy*.ts'
-              - 'scripts/lib/manage/**'
-              - 'scripts/lib/install/**'
-              - 'scripts/lib/component-roots.ts'
-              - 'scripts/lib/component-overlay.ts'
-              - 'scripts/lib/component-install.ts'
-              - 'scripts/lib/antigravity-migrate.ts'
-              - 'scripts/lib/extension-legacy-shape.json'
-              - 'scripts/migrate-extension.ts'
-              - 'scripts/release-package-extension.ts'
-              - 'scripts/lib/packaging/**'
-              - 'scripts/check-extension-pivot.ts'
-              - 'scripts/lib/governance/**'
-              - 'scripts/check-extension-hook-map.ts'
-              - 'scripts/check-extension-hook-tokens.ts'
       - uses: ./.github/actions/ci-job
         with:
           id: extension-render
           install: omit-dev
           yq: "4.54.1"
-          shadow-filter: ${{ steps.filter.outputs.extension-render }}
 
   extension-provenance:
     runs-on: ubuntu-latest
@@ -902,23 +279,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            extension-provenance:
-              - 'scripts/tests/governance-suite-extension-provenance.test.ts'
-              - 'scripts/tests/governance-suite-extension-provenance-r4.test.ts'
-              - 'scripts/tests/lib/governance-*.ts'
-              - 'extensions/**'
-              - 'artifacts/**'
-              - 'scripts/check-extension-provenance.ts'
-              - 'scripts/lib/governance/**'
       - uses: ./.github/actions/ci-job
         with:
           id: extension-provenance
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.extension-provenance }}
 
   extension-manifest:
     runs-on: ubuntu-latest
@@ -926,25 +290,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            extension-manifest:
-              - 'scripts/tests/governance-suite-extension-version-bump.test.ts'
-              - 'scripts/tests/governance-suite-extension-version-bump-base.test.ts'
-              - 'scripts/tests/lib/governance-*.ts'
-              - 'extensions/**'
-              - 'artifacts/**'
-              - 'scripts/check-extension-version-bump.ts'
-              - 'scripts/lib/governance/**'
-              - 'scripts/check-extension-manifest-version.ts'
-              - 'scripts/lib/extension/**'
       - uses: ./.github/actions/ci-job
         with:
           id: extension-manifest
           install: none
-          shadow-filter: ${{ steps.filter.outputs.extension-manifest }}
 
   extension-install:
     runs-on: ubuntu-latest
@@ -952,58 +301,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            extension-install:
-              - 'scripts/tests/install-claude-plugin-marketplace.test.ts'
-              - 'scripts/tests/install-extension-all-real.test.ts'
-              - 'scripts/tests/lib/yaml-lib.ts'
-              - 'scripts/build-claude-plugin.ts'
-              - 'scripts/lib/extension/**'
-              - 'scripts/lib/org-mcp.ts'
-              - 'scripts/lib/node-floor-guard.js'
-              - 'scripts/tests/install-sandbox.test.ts'
-              - 'scripts/tests/install-workspace.test.ts'
-              - 'scripts/tests/unlink-component.test.ts'
-              - 'scripts/tests/unlink-extensions.test.ts'
-              - 'scripts/tests/install-extension.test.ts'
-              - 'scripts/tests/link-extensions.test.ts'
-              - 'scripts/tests/install-copilot-plugin.test.ts'
-              - 'scripts/tests/install-antigravity-extension.test.ts'
-              - 'scripts/tests/lib/install-sandbox.ts'
-              - 'scripts/tests/lib/hermetic-env.ts'
-              - 'scripts/tests/lib/build-fixture-tree.ts'
-              - 'scripts/tests/lib/worktree-fixtures.ts'
-              - 'scripts/install-extension-all.ts'
-              - 'scripts/install-extension.ts'
-              - 'scripts/install-claude-plugin.ts'
-              - 'scripts/install-copilot-plugin.ts'
-              - 'scripts/install-antigravity-extension.ts'
-              - 'scripts/install-workspace.ts'
-              - 'scripts/manage-claude-component.ts'
-              - 'scripts/manage-copilot-component.ts'
-              - 'scripts/manage-antigravity-component.ts'
-              - 'scripts/manage-workspace-component.ts'
-              - 'scripts/link-extensions.ts'
-              - 'scripts/unlink-extensions.ts'
-              - 'scripts/unlink-component.ts'
-              - 'scripts/lib/link-or-copy*.ts'
-              - 'scripts/lib/manage/**'
-              - 'scripts/lib/install/**'
-              - 'scripts/lib/component-roots.ts'
-              - 'scripts/lib/component-overlay.ts'
-              - 'scripts/lib/component-install.ts'
-              - 'scripts/lib/antigravity-migrate.ts'
-              - 'extensions/**'
-              - 'artifacts/**'
       - uses: ./.github/actions/ci-job
         with:
           id: extension-install
           install: omit-dev
           yq: "4.54.1"
-          shadow-filter: ${{ steps.filter.outputs.extension-install }}
 
   core-paths:
     runs-on: ubuntu-latest
@@ -1011,209 +313,57 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            core-paths:
-              - 'scripts/sync-from-upstream.ts'
-              - 'scripts/lib/sync-from-upstream/**'
-              - 'scripts/tests/sync-from-upstream-policies.test.ts'
-              - 'scripts/tests/sync-from-upstream-reconcile.test.ts'
-              - 'scripts/tests/sync-from-upstream-orphans.test.ts'
-              - 'scripts/tests/sync-from-upstream-dirty-report.test.ts'
-              - 'scripts/tests/sync-from-upstream-preserve.test.ts'
-              - 'scripts/tests/sync-from-upstream-signing.test.ts'
-              - 'scripts/tests/lib/sync-fixture.ts'
-              - 'scripts/tests/sync-from-upstream-self-update.test.ts'
-              - 'scripts/tests/lib/hermetic-env.ts'
-              - 'scripts/tests/fixtures/sync-from-upstream/**'
-              - '.crewrig/core-paths.txt'
-              - 'docs/layers.md'
-              - 'model-mappings/**'
-              - 'scripts/check-core-paths.ts'
-              - 'scripts/lib/governance/**'
       - uses: ./.github/actions/ci-job
         with:
           id: core-paths
           install: none
           yq: "4.54.1"
-          shadow-filter: ${{ steps.filter.outputs.core-paths }}
 
   ci-parity:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            ci-parity:
-              - 'scripts/check-ci-parity.ts'
-              - 'scripts/build-ci.ts'
-              - 'scripts/ci-cache-guard.ts'
-              - 'scripts/ci-changeset-coverage.ts'
-              - 'scripts/tests/ci-parity-positive.test.ts'
-              - 'scripts/tests/ci-parity-fail-closed.test.ts'
-              - 'scripts/tests/ci-parity-stray-scan.test.ts'
-              - 'scripts/tests/ci-parity-path-filters.test.ts'
-              - 'scripts/tests/ci-parity-path-filters-undet.test.ts'
-              - 'scripts/tests/ci-effective-paths.test.ts'
-              - 'scripts/tests/ci-paths-equivalence.test.ts'
-              - 'scripts/ci-paths-gate.ts'
-              - 'scripts/lib/ci-paths-gate/**'
-              - '.github/actions/ci-job/action.yml'
-              - 'scripts/tests/ci-paths-gate.test.ts'
-              - 'scripts/tests/ci-parity-ci-job.test.ts'
-              - 'scripts/tests/ci-job-yq.test.ts'
-              - 'scripts/tests/fixtures/ci-paths/**'
-              - 'scripts/tests/lib/ci-parity-fixture.ts'
-              - 'scripts/tests/lib/ci-parity-blocks.ts'
-              - 'scripts/tests/lib/ci-parity-matrix.ts'
-              - 'scripts/tests/lib/yaml-lib.ts'
-              - 'scripts/tests/build-ci-real-tree.test.ts'
-              - 'scripts/tests/build-ci-synthetic.test.ts'
-              - 'scripts/tests/build-ci-synthetic-write.test.ts'
-              - 'scripts/tests/lib/ci-reference-fixtures.ts'
-              - 'ci/ci-capabilities.yml'
-              - 'ci/task-pin.json'
-              - 'ci/yq-pin.json'
-              - '.gitlab-ci.yml'
-              - '.github/workflows/build.yml'
-              - 'docs/ci-reference-format.md'
       - uses: ./.github/actions/ci-job
         with:
           id: ci-parity
           install: omit-dev
           yq: "4.54.1"
           cache: true
-          shadow-filter: ${{ steps.filter.outputs.ci-parity }}
 
   docs-index:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            docs-index:
-              - 'scripts/build-docs-index.ts'
-              - 'scripts/lib/docs-index/**'
-              - 'scripts/lib/paths.ts'
-              - 'scripts/lib/line-endings.ts'
-              - 'scripts/lib/node-floor-guard.js'
-              - 'scripts/tests/build-docs-index-entry.test.ts'
-              - 'scripts/tests/lib/docs-index-entry-tree.ts'
-              - 'docs/**'
       - uses: ./.github/actions/ci-job
         with:
           id: docs-index
           install: omit-dev
           cache: true
-          shadow-filter: ${{ steps.filter.outputs.docs-index }}
 
   docs-index-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            docs-index-selftest:
-              - 'scripts/build-docs-index.ts'
-              - 'scripts/lib/docs-index/**'
-              - 'scripts/lib/paths.ts'
-              - 'scripts/lib/line-endings.ts'
-              - 'scripts/lib/node-floor-guard.js'
-              - 'scripts/tests/build-docs-index-entry.test.ts'
-              - 'scripts/tests/lib/docs-index-entry-tree.ts'
-              - 'scripts/tests/lib/worktree-fixtures.ts'
-              - 'taskfiles/ci.yml'
-              - '.github/workflows/build.yml'
-              - 'ci/ci-capabilities.yml'
       - uses: ./.github/actions/ci-job
         with:
           id: docs-index-selftest
           install: omit-dev
           cache: true
-          shadow-filter: ${{ steps.filter.outputs.docs-index-selftest }}
 
   figure-labels:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            figure-labels:
-              - 'scripts/tests/windows-governance-figure-labels.test.ts'
-              - 'scripts/tests/governance-suite-figure-labels.test.ts'
-              - 'docs/assets/**/*.png'
-              - 'docs/assets/**/*.prompt.md'
-              - 'scripts/check-figure-labels.ts'
-              - 'scripts/lib/governance/**'
-              - 'scripts/lib/sequence-matcher.ts'
       - uses: ./.github/actions/ci-job
         with:
           id: figure-labels
           install: none
           apt: tesseract-ocr
-          shadow-filter: ${{ steps.filter.outputs.figure-labels }}
 
   mempalace:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            mempalace:
-              - 'scripts/tests/mempalace-doctor-*.test.ts'
-              - 'scripts/tests/mempalace-runtime-guard-*.test.ts'
-              - 'scripts/tests/mempalace-pin-*.test.ts'
-              - 'scripts/tests/mempalace-version-range.test.ts'
-              - 'scripts/tests/lib/doctor-machine.ts'
-              - 'scripts/tests/lib/doctor-wrappers.ts'
-              - 'scripts/tests/lib/mempalace-guard-fixture.ts'
-              - 'scripts/tests/lib/mempalace-pin-rig.ts'
-              - 'scripts/tests/lib/mempalace-range-scan.ts'
-              - 'scripts/tests/fixtures/mempalace-pin/**'
-              - 'scripts/tests/mempalace-http-client-reuse.test.ts'
-              - 'scripts/tests/system-context-store.test.ts'
-              - 'scripts/tests/setup-transcript-antigravity-*.test.ts'
-              - 'scripts/tests/mempalace-transcript-antigravity-payload.test.ts'
-              - 'scripts/tests/lib/antigravity-transcript-rig.ts'
-              - 'scripts/tests/setup-transcript-*.test.ts'
-              - 'scripts/tests/lib/transcript-manifest-rig.ts'
-              - 'scripts/tests/antigravity-manage-sandbox.test.ts'
-              - 'scripts/tests/antigravity-tier-twin.test.ts'
-              - 'scripts/tests/lib/antigravity-fixtures.ts'
-              - 'scripts/tests/lib/worktree-fixtures.ts'
-              - 'scripts/tests/lib/install-sandbox.ts'
-              - 'scripts/tests/e2e-probes-antigravity-discovery.test.ts'
-              - 'hooks/worktree-git-guard.ts'
-              - 'hooks/mempalace-transcript.ts'
-              - 'scripts/tests/fixtures/mempalace-transcript/**'
-              - 'scripts/worktree-claim.ts'
-              - 'scripts/tests/lib/print-manage-declarations.ts'
-              - 'scripts/lib/**'
-              - 'artifacts/library/skills/mempalace/**'
-              - 'artifacts/library/skills/harness-report/**'
-              - 'config/copilot/*.json.template'
-              - 'scripts/manage-antigravity-component.ts'
-              - 'scripts/setup-*-interactive.ts'
-              - 'scripts/tests/setup-retarget-*.test.ts'
-              - 'scripts/tests/lib/setup-*.ts'
-              - 'scripts/tests/lib/build-fixture-tree.ts'
-              - 'scripts/tests/lib/hermetic-env.ts'
-              - 'scripts/tests/lib/real-home-guard.ts'
-              - 'scripts/tests/lib/print-setup-declarations.ts'
-              - 'scripts/tests/fixtures/setup-golden/**'
-              - 'scripts/tests/fixtures/setup-declarations/**'
       - uses: ./.github/actions/ci-job
         with:
           id: mempalace
@@ -1221,89 +371,29 @@ jobs:
           yq: "4.54.1"
           python: "3.12"
           cache: true
-          shadow-filter: ${{ steps.filter.outputs.mempalace }}
 
   test-wiring:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            test-wiring:
-              - 'scripts/tests/governance-check-test-wiring-cases.test.ts'
-              - 'scripts/tests/governance-check-test-strays-cases.test.ts'
-              - 'scripts/tests/**'
-              - 'hooks/worktree-git-guard.ts'
-              - 'hooks/mempalace-transcript.ts'
-              - 'scripts/worktree-claim.ts'
-              - 'scripts/lib/worktree-claim/**'
-              - 'scripts/lib/hook-*.ts'
-              - 'ci/test-wiring-exemptions.txt'
-              - '.github/workflows/*.yml'
-              - '.github/workflows/*.yaml'
-              - 'ci/ci-capabilities.yml'
-              - 'scripts/check-test-strays.ts'
-              - 'scripts/lib/governance/**'
-              - 'scripts/check-test-wiring.ts'
       - uses: ./.github/actions/ci-job
         with:
           id: test-wiring
           install: none
-          shadow-filter: ${{ steps.filter.outputs.test-wiring }}
 
   test-wiring-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            test-wiring-selftest:
-              - 'scripts/check-test-wiring.ts'
-              - 'scripts/check-test-strays.ts'
-              - 'scripts/lib/governance/**'
-              - 'scripts/tests/governance-check-test-wiring-cases.test.ts'
-              - 'scripts/tests/governance-check-test-strays-cases.test.ts'
-              - 'scripts/tests/lib/governance-*.ts'
-              - 'scripts/ci-cache-guard.ts'
-              - 'scripts/lib/ci-cache-guard/**'
-              - 'taskfiles/ci.yml'
-              - '.github/workflows/build.yml'
-              - 'ci/ci-capabilities.yml'
       - uses: ./.github/actions/ci-job
         with:
           id: test-wiring-selftest
           install: none
-          shadow-filter: ${{ steps.filter.outputs.test-wiring-selftest }}
 
   chroma-mcp:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            chroma-mcp:
-              - 'scripts/tests/chroma-wrapper-source.test.ts'
-              - 'scripts/tests/chroma-wrapper-live.test.ts'
-              - 'scripts/tests/chroma-fd-limits.test.ts'
-              - 'scripts/tests/mcp-daemon-*.test.ts'
-              - 'scripts/tests/lib/mcp-daemon-rig.ts'
-              - 'scripts/tests/service-launcher-palace-path.test.ts'
-              - 'scripts/tests/repair-restore-modes.test.ts'
-              - 'scripts/tests/repair-report-handoff.test.ts'
-              - 'scripts/tests/lib/repair-rig.ts'
-              - 'scripts/tests/switch-rotate-token.test.ts'
-              - 'scripts/worktree-claim.ts'
-              - 'hooks/worktree-git-guard.ts'
-              - 'scripts/lib/**'
-              - 'config/launchd/**'
-              - 'config/systemd/**'
-              - 'config/windows/**'
       - uses: ./.github/actions/ci-job
         with:
           id: chroma-mcp
@@ -1311,35 +401,17 @@ jobs:
           yq: "4.54.1"
           python: "3.12"
           cache: true
-          shadow-filter: ${{ steps.filter.outputs.chroma-mcp }}
 
   e2e:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            e2e:
-              - 'scripts/tests/e2e-*.test.ts'
-              - 'scripts/tests/lib/e2e-*.ts'
-              - 'scripts/tests/fixtures/e2e-oracle/**'
-              - 'tests/e2e/**'
-              - 'scripts/e2e/**'
-              - 'docs/cli-matrix.md'
-              - 'docs/cli-matrix/**'
-              - 'scripts/build-cli-matrix.ts'
-              - 'scripts/lib/build-cli-matrix/**'
-              - 'docker/e2e/.versions.lock'
-              - '.gitignore'
       - uses: ./.github/actions/ci-job
         with:
           id: e2e
           install: omit-dev
           yq: "4.44.3"
           python: "3.12"
-          shadow-filter: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.e2e }}
 
   setup:
     runs-on: ubuntu-latest
@@ -1347,42 +419,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            setup:
-              - 'scripts/tests/setup-common-*.test.ts'
-              - 'scripts/tests/setup-identity-flow.test.ts'
-              - 'scripts/tests/setup-legacy-gemini-md-declaration.test.ts'
-              - 'scripts/tests/setup-mcp-merge-policy.test.ts'
-              - 'scripts/tests/setup-org-mcp-wiring.test.ts'
-              - 'scripts/tests/setup-secrets-fold.test.ts'
-              - 'scripts/tests/setup-tier-staging-declared.test.ts'
-              - 'scripts/tests/tls-delegation-contract.test.ts'
-              - 'scripts/tests/lib/tls-entry-run.ts'
-              - 'scripts/tests/lib/yaml-lib.ts'
-              - 'scripts/tests/setup-gemini-settings-failure.test.ts'
-              - 'scripts/tests/setup-gemini-settings-jsonc.test.ts'
-              - 'scripts/tests/setup-gemini-settings-runs.test.ts'
-              - 'scripts/tests/setup-gemini-settings-seeds.test.ts'
-              - 'scripts/tests/lib/gemini-settings-rig.ts'
-              - 'scripts/tests/lib/worktree-fixtures.ts'
-              - 'scripts/setup-*-interactive.ts'
-              - 'scripts/tls-delegation.ts'
-              - 'scripts/usage-capture-optin.ts'
-              - 'scripts/lib/**'
-              - 'mcp-servers.org.json'
-              - 'scripts/setup-*-interactive.ts'
-              - 'scripts/tests/setup-retarget-*.test.ts'
-              - 'scripts/tests/lib/setup-*.ts'
-              - 'scripts/tests/lib/build-fixture-tree.ts'
-              - 'scripts/tests/lib/hermetic-env.ts'
-              - 'scripts/tests/lib/real-home-guard.ts'
-              - 'scripts/tests/lib/print-setup-declarations.ts'
-              - 'scripts/tests/fixtures/setup-golden/**'
-              - 'scripts/tests/fixtures/setup-declarations/**'
-              - 'scripts/tests/setup-flow-fixtures.ts'
       # The v1-F2 floor guard (spec 0243 R24) refuses to write the direct form on
       # a Node.js below 24, and ubuntu-latest defaults to 22 (#1391 CI).
       - uses: ./.github/actions/ci-job
@@ -1390,7 +426,6 @@ jobs:
           id: setup
           install: omit-dev
           yq: "4.54.1"
-          shadow-filter: ${{ steps.filter.outputs.setup }}
 
   check-model-mappings:
     runs-on: ubuntu-latest
@@ -1398,25 +433,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            check-model-mappings:
-              - 'model-mappings/**'
-              - 'docs/model-mapping-format.md'
-              - 'scripts/check-model-mappings.ts'
-              - 'scripts/tests/check-model-mappings-rejections.test.ts'
-              - 'scripts/tests/check-model-mappings-org.test.ts'
-              - 'scripts/tests/check-model-mappings-selection.test.ts'
-              - 'scripts/tests/check-model-mappings-committed.test.ts'
-              - 'scripts/tests/lib/model-mapping-fixtures.ts'
       - uses: ./.github/actions/ci-job
         with:
           id: check-model-mappings
           install: omit-dev
           yq: "4.54.1"
-          shadow-filter: ${{ steps.filter.outputs.check-model-mappings }}
 
   check-agent-profiles:
     runs-on: ubuntu-latest
@@ -1424,22 +445,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            check-agent-profiles:
-              - 'artifacts/**'
-              - 'scripts/check-agent-profiles.ts'
-              - 'scripts/tests/check-agent-profiles-rejections.test.ts'
-              - 'scripts/tests/check-agent-profiles-green.test.ts'
-              - 'scripts/tests/lib/agent-profile-fixtures.ts'
       - uses: ./.github/actions/ci-job
         with:
           id: check-agent-profiles
           install: omit-dev
           yq: "4.54.1"
-          shadow-filter: ${{ steps.filter.outputs.check-agent-profiles }}
 
   check-metadata-keys:
     runs-on: ubuntu-latest
@@ -1447,23 +457,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            check-metadata-keys:
-              - 'artifacts/**'
-              - 'scripts/check-component-metadata-keys.ts'
-              - 'scripts/lib/governance/**'
-              - 'scripts/lib/build-components/**'
-              - 'scripts/lib/render-command.ts'
-              - 'scripts/lib/yaml-text.ts'
-              - 'scripts/lib/require-dependency.ts'
       - uses: ./.github/actions/ci-job
         with:
           id: check-metadata-keys
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.check-metadata-keys }}
 
   check-claude-agent-layout:
     runs-on: ubuntu-latest
@@ -1471,139 +468,46 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            check-claude-agent-layout:
-              - '.claude/agents/**'
-              - 'scripts/build-components.ts'
-              - 'scripts/build-components.ts'
-              - 'scripts/lib/build-components/**'
-              - 'scripts/check-claude-agent-layout.ts'
-              - 'scripts/lib/governance/**'
       - uses: ./.github/actions/ci-job
         with:
           id: check-claude-agent-layout
           install: none
-          shadow-filter: ${{ steps.filter.outputs.check-claude-agent-layout }}
 
   check-taskfile-commands:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            check-taskfile-commands:
-              - 'Taskfile.yml'
-              - 'taskfiles/**'
-              - 'scripts/lib/taskfile-tree.ts'
-              - 'scripts/lib/taskfile-tree-parse.ts'
-              - 'scripts/lib/governance/taskfile-tree-guard.ts'
-              - 'scripts/check-taskfile-commands.ts'
-              - 'scripts/lib/taskfile-command*.ts'
-              - 'scripts/lib/taskfile-command-exemptions.json'
-              - 'scripts/tests/check-taskfile-commands.test.ts'
-              - 'scripts/check-tool-binaries.ts'
-              - 'scripts/lib/tool-binaries.ts'
-              - 'scripts/tests/check-tool-binaries.test.ts'
       - uses: ./.github/actions/ci-job
         with:
           id: check-taskfile-commands
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.check-taskfile-commands }}
 
   check-taskfile-commands-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            check-taskfile-commands-selftest:
-              - 'scripts/check-taskfile-commands.ts'
-              - 'scripts/lib/taskfile-command*.ts'
-              - 'scripts/lib/taskfile-command-exemptions.json'
-              - 'scripts/lib/taskfile-tree.ts'
-              - 'scripts/lib/taskfile-tree-parse.ts'
-              - 'scripts/check-tool-binaries.ts'
-              - 'scripts/lib/tool-binaries.ts'
-              - 'scripts/tests/check-taskfile-commands.test.ts'
-              - 'scripts/tests/check-tool-binaries.test.ts'
-              - 'scripts/ci-cache-guard.ts'
-              - 'scripts/lib/ci-cache-guard/**'
-              - 'taskfiles/ci.yml'
-              - '.github/workflows/build.yml'
-              - 'ci/ci-capabilities.yml'
       - uses: ./.github/actions/ci-job
         with:
           id: check-taskfile-commands-selftest
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.check-taskfile-commands-selftest }}
 
   check-taskfile-tree:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            check-taskfile-tree:
-              - 'Taskfile.yml'
-              - 'taskfiles/**'
-              - 'scripts/**'
-              - 'ci/ci-capabilities.yml'
-              - 'ci/pre-push-tier.json'
-              - '.githooks/**'
       - uses: ./.github/actions/ci-job
         with:
           id: check-taskfile-tree
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.check-taskfile-tree }}
 
   check-taskfile-tree-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            check-taskfile-tree-selftest:
-              - 'Taskfile.yml'
-              - 'taskfiles/**'
-              - 'ci/ci-capabilities.yml'
-              - 'ci/pre-push-tier.json'
-              - '.githooks/**'
-              - 'scripts/check-taskfile-tree.ts'
-              - 'scripts/check-ci-pre-push-parity.ts'
-              - 'scripts/ci-pre-push.ts'
-              - 'scripts/ci-cache-guard.ts'
-              - 'scripts/lib/ci-cache-guard/**'
-              - 'scripts/lib/taskfile-tree*.ts'
-              - 'scripts/lib/ci-pre-push/**'
-              - 'scripts/lib/ci-parity/**'
-              - 'scripts/lib/glob-engine.ts'
-              - 'scripts/lib/governance/**'
-              - 'scripts/tests/taskfile-tree*.test.ts'
-              - 'scripts/tests/check-taskfile-tree-*.test.ts'
-              - 'scripts/tests/ci-pre-push-*.test.ts'
-              - 'scripts/tests/ci-selftest-split.test.ts'
-              - 'scripts/tests/git-env-helpers.test.ts'
-              - 'scripts/lib/git-env.ts'
-              - 'scripts/tests/lib/**'
-              - 'taskfiles/ci.yml'
-              - '.github/workflows/build.yml'
-              - 'ci/ci-capabilities.yml'
       - uses: ./.github/actions/ci-job
         with:
           id: check-taskfile-tree-selftest
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.check-taskfile-tree-selftest }}
 
   check-task-provisioning:
     runs-on: ubuntu-latest
@@ -1611,30 +515,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            check-task-provisioning:
-              - '.github/actions/setup-task/**'
-              - 'ci/task-pin.json'
-              - '.github/workflows/**'
-              - '.gitlab-ci.yml'
-              - 'ci/**'
-              - 'taskfiles/ci.yml'
-              - 'scripts/check-task-provisioning.ts'
-              - 'scripts/lib/task-provisioning/**'
-              - 'scripts/lib/build-ci/**'
-              - 'scripts/lib/ci-parity/**'
-              - 'scripts/lib/taskfile-tree*.ts'
-              - 'scripts/lib/glob-engine.ts'
-              - 'scripts/tests/check-task-provisioning.test.ts'
-              - 'scripts/tests/task-pin-provisioning.test.ts'
       - uses: ./.github/actions/ci-job
         with:
           id: check-task-provisioning
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.check-task-provisioning }}
 
   check-task-provisioning-selftest:
     runs-on: ubuntu-latest
@@ -1642,27 +526,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            check-task-provisioning-selftest:
-              - '.github/actions/setup-task/**'
-              - 'ci/task-pin.json'
-              - 'scripts/check-task-provisioning.ts'
-              - 'scripts/lib/task-provisioning/**'
-              - 'scripts/lib/build-ci/**'
-              - 'scripts/lib/ci-parity/**'
-              - 'scripts/tests/check-task-provisioning.test.ts'
-              - 'scripts/tests/task-pin-provisioning.test.ts'
-              - 'taskfiles/ci.yml'
-              - 'ci/ci-capabilities.yml'
-              - '.github/workflows/build.yml'
       - uses: ./.github/actions/ci-job
         with:
           id: check-task-provisioning-selftest
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.check-task-provisioning-selftest }}
 
   ci-pre-push-replay:
     runs-on: ubuntu-latest
@@ -1670,28 +537,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            ci-pre-push-replay:
-              - 'scripts/**'
-              - 'taskfiles/**'
-              - 'ci/**'
-              - '.githooks/**'
-              - '.markdownlintrc'
-              - '.oxfmtrc.json'
-              - '.oxlintrc.json'
-              - 'tsconfig.json'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'docs/**'
-              - 'specs/**'
-              - 'artifacts/**'
       - uses: ./.github/actions/ci-job
         with:
           id: ci-pre-push-replay
-          shadow-filter: ${{ steps.filter.outputs.ci-pre-push-replay }}
 
   misc:
     runs-on: ubuntu-latest
@@ -1699,44 +547,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            misc:
-              - 'scripts/tests/governance-suite-no-machine-paths.test.ts'
-              - 'scripts/tests/lib/governance-*.ts'
-              - 'scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts'
-              - 'scripts/tests/lib/build-fixture-tree.ts'
-              - 'scripts/tests/reserve-spec-id-contract.test.ts'
-              - 'scripts/tests/reserve-spec-id-carrier-reuse.test.ts'
-              - 'scripts/tests/reserve-spec-id-races.test.ts'
-              - 'scripts/tests/check-spec-id-reserved-blocking.test.ts'
-              - 'scripts/tests/check-spec-id-reserved-mark.test.ts'
-              - 'scripts/tests/check-spec-id-reserved-origin.test.ts'
-              - 'scripts/tests/check-spec-id-reserved-degraded.test.ts'
-              - 'scripts/tests/check-spec-id-reserved-base-ref.test.ts'
-              - 'scripts/tests/lib/reserve-spec-id-fixture.ts'
-              - 'scripts/tests/lib/spec-id-fixture.ts'
-              - 'scripts/tests/lib/spec-id-constants.ts'
-              - 'scripts/tests/lib/scratch-remote.ts'
-              - 'scripts/tests/lib/differential-guard.ts'
-              - 'scripts/reserve-spec-id.ts'
-              - 'scripts/check-spec-id-reserved.ts'
-              - 'model-mappings/**'
-              - 'scripts/setup-gemini-interactive.ts'
-              - 'config/gemini/settings.json'
-              - 'scripts/lib/**'
-              - 'scripts/tests/lib/print-setup-declarations.ts'
-              - 'scripts/tests/lib/setup-declarations-*.ts'
-              - 'scripts/check-gemini-overlay-enrollment.ts'
-              - 'scripts/lib/governance/**'
-              - 'scripts/check-no-machine-paths.ts'
       - uses: ./.github/actions/ci-job
         with:
           id: misc
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.misc }}
   # Spec 0251 R1-R4: the repository-wide scans. No path filter (a catch-all
   # `**` would make path-ownership vacuous), not changeset-gated, no test
   # suite: they run on every pull request and push to main and release/**.
@@ -1753,76 +567,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            frontmatter:
-              - 'scripts/tests/build-components-frontmatter-fence.test.ts'
-              - 'scripts/tests/governance-suite-skill-versions.test.ts'
-              - 'scripts/tests/governance-suite-skill-versions-base.test.ts'
-              - 'scripts/tests/lib/governance-*.ts'
-              - 'scripts/tests/governance-suite-feedback-routing.test.ts'
-              - 'scripts/tests/build-assembly-routing.test.ts'
-              - 'scripts/tests/build-install-scope-*.test.ts'
-              - 'scripts/tests/tier-resolution-*.test.ts'
-              - 'scripts/tests/lib/tier-fixtures.ts'
-              - 'scripts/tests/lib/tier-landing.ts'
-              - 'scripts/tests/lib/tier-taskfile.ts'
-              - 'scripts/tests/pr-logbook-label-scope.test.ts'
-              - 'scripts/lib/**'
-              - 'scripts/tests/lib/print-manage-declarations.ts'
-              - 'artifacts/**'
-              - 'scripts/install-workspace.ts'
-              - 'scripts/manage-claude-component.ts'
-              - 'scripts/manage-copilot-component.ts'
-              - 'scripts/manage-antigravity-component.ts'
-              - 'scripts/manage-workspace-component.ts'
-              - 'scripts/setup-*-interactive.ts'
-              - 'scripts/tests/setup-retarget-*.test.ts'
-              - 'scripts/tests/lib/setup-*.ts'
-              - 'scripts/tests/lib/build-fixture-tree.ts'
-              - 'scripts/tests/lib/hermetic-env.ts'
-              - 'scripts/tests/lib/real-home-guard.ts'
-              - 'scripts/tests/lib/print-setup-declarations.ts'
-              - 'scripts/tests/fixtures/setup-golden/**'
-              - 'scripts/tests/fixtures/setup-declarations/**'
-              - 'scripts/check-skill-versions.ts'
-              - 'scripts/lib/governance/**'
-      - name: Install yq
-        if: steps.filter.outputs.frontmatter == 'true'
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
-          echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
-          sudo chmod +x /usr/local/bin/yq
       - uses: ./.github/actions/ci-job
         with:
           id: frontmatter
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.frontmatter }}
+          yq: "4.54.1"
 
   markdown-links:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            markdown-links:
-              - 'scripts/tests/governance-suite-markdown-links.test.ts'
-              - 'scripts/tests/lib/governance-*.ts'
-              - 'docs/**'
-              - 'README.md'
-              - 'AGENTS.md'
-              - '**/*.md'
-              - 'scripts/check-markdown-links.ts'
-              - 'scripts/lib/governance/**'
       - uses: ./.github/actions/ci-job
         with:
           id: markdown-links
           install: none
-          shadow-filter: ${{ steps.filter.outputs.markdown-links }}
   # Spec 0147 delta-01 R21, R23: the exhaustive run lives in its own scheduled
   # workflow (changeset-coverage.yml). Its script's regression test stays on the
   # pull-request path here, with no path filter, like `ratchet`.
@@ -1869,31 +627,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            path-ownership-selftest:
-              - 'scripts/check-path-ownership.ts'
-              - 'scripts/check-stray-scan-wiring.ts'
-              - 'scripts/lib/path-ownership.ts'
-              - 'scripts/lib/glob-engine.ts'
-              - 'scripts/ci-cache-guard.ts'
-              - 'scripts/lib/ci-cache-guard/**'
-              - 'scripts/lib/node-floor-guard.js'
-              - 'scripts/tests/check-path-ownership.test.ts'
-              - 'scripts/tests/ci-cache-guard-scan.test.ts'
-              - 'scripts/tests/check-stray-scan-wiring.test.ts'
-              - 'scripts/tests/ci-node-test-arguments.test.ts'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'taskfiles/ci.yml'
-              - '.github/workflows/build.yml'
-              - 'ci/ci-capabilities.yml'
       - uses: ./.github/actions/ci-job
         with:
           id: path-ownership-selftest
-          shadow-filter: ${{ steps.filter.outputs.path-ownership-selftest }}
 
   lint-markdown:
     runs-on: ubuntu-latest
@@ -1926,22 +662,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            ratchet-selftest:
-              - 'scripts/check-ratchet.ts'
-              - 'scripts/lib/ratchet-lists.ts'
-              - 'scripts/tests/check-ratchet.test.ts'
-              - 'taskfiles/ci.yml'
-              - '.github/workflows/build.yml'
-              - 'ci/ci-capabilities.yml'
       - uses: ./.github/actions/ci-job
         with:
           id: ratchet-selftest
           install: none
-          shadow-filter: ${{ steps.filter.outputs.ratchet-selftest }}
 
   # Spec 0267 R12, R13, R16-R19: test-harness host-safety check. No path
   # filter: any scripts/** change can add a destructive call. Full history for
@@ -1965,24 +689,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            host-safety-selftest:
-              - 'scripts/check-host-safety.ts'
-              - 'scripts/lib/host-safety/**'
-              - 'scripts/tests/check-host-safety.test.ts'
-              - 'scripts/tests/lib/host-safety-fixtures.ts'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'taskfiles/ci.yml'
-              - '.github/workflows/build.yml'
-              - 'ci/ci-capabilities.yml'
       - uses: ./.github/actions/ci-job
         with:
           id: host-safety-selftest
-          shadow-filter: ${{ steps.filter.outputs.host-safety-selftest }}
 
   # Spec 0238 R4-R8: TypeScript type-check, erasable syntax, Oxlint
   # type-aware strict typing and Oxfmt check mode. No path filter.
@@ -1998,34 +707,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            lint-typescript-selftest:
-              - 'scripts/check-typescript.ts'
-              - 'scripts/lib/erasable-syntax.ts'
-              - 'scripts/lib/erasable-probe.ts'
-              - 'scripts/lib/ts-scope.ts'
-              - 'scripts/build-components.ts'
-              - 'scripts/tests/check-erasable-syntax.test.ts'
-              - 'scripts/tests/lint-typescript.test.ts'
-              - 'scripts/tests/check-typescript.test.ts'
-              - 'scripts/tests/build-components-built-trees.test.ts'
-              - 'scripts/tests/fixtures/build-components/**'
-              - 'artifacts/core/skills/pr-reviewer/scripts/lint-typescript.ts'
-              - '.oxfmtrc.json'
-              - '.oxlintrc.json'
-              - 'tsconfig.json'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'taskfiles/ci.yml'
-              - '.github/workflows/build.yml'
-              - 'ci/ci-capabilities.yml'
       - uses: ./.github/actions/ci-job
         with:
           id: lint-typescript-selftest
-          shadow-filter: ${{ steps.filter.outputs.lint-typescript-selftest }}
 
   # Spec 0240 R4-R11, R13, R16: floor guard, production-dependency step and
   # shared scripts/lib/ TypeScript modules. No path filter, like `ratchet`.
@@ -2139,28 +823,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            worktree-guard:
-              - 'hooks/worktree-git-guard.ts'
-              - 'scripts/worktree-claim.ts'
-              - 'scripts/lib/worktree-claim/**'
-              - 'scripts/lib/hook-*.ts'
-              - 'scripts/lib/node-floor-guard.js'
-              - 'scripts/hook-wiring.ts'
-              - 'scripts/tests/worktree-*.test.ts'
-              - 'scripts/tests/lib/worktree-*.ts'
-              - 'scripts/tests/lib/spawn-spy.ts'
-              - 'scripts/tests/lib/windows-invocation.ts'
-              - 'scripts/tests/fixtures/worktree-claim/**'
-              - 'scripts/tests/fixtures/worktree-guard/**'
       - uses: ./.github/actions/ci-job
         with:
           id: worktree-guard
           install: none
-          shadow-filter: ${{ steps.filter.outputs.worktree-guard }}
 
   # Spec 0248 R10: the guard and claim entries print nothing on the oldest
   # Node.js 24 release, where type stripping still emits an ExperimentalWarning.
@@ -2188,34 +854,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            mempalace-transcript:
-              - 'hooks/mempalace-transcript.*'
-              - 'scripts/lib/mempalace-transcript/**'
-              - 'scripts/lib/tls-env.ts'
-              - 'scripts/lib/tls-env-quote.ts'
-              - 'scripts/lib/transcript-recognition.ts'
-              - 'scripts/lib/hook-*.ts'
-              - 'scripts/hook-wiring.ts'
-              - 'scripts/lib/usage-store/mcp.*'
-              - 'scripts/usage-capture-optin.ts'
-              - 'scripts/setup-*-interactive.ts'
-              - 'hooks/*-transcript-hooks.json'
-              - 'scripts/tests/mempalace-transcript-*.test.ts'
-              - 'scripts/tests/hook-transcript-*.test.ts'
-              - 'scripts/tests/lib/with-stub-daemon.ts'
-              - 'scripts/tests/lib/transcript-*.ts'
-              - 'scripts/tests/lib/spawn-spy.ts'
-              - 'scripts/tests/lib/windows-invocation.ts'
-              - 'scripts/tests/fixtures/mempalace-transcript/**'
       - uses: ./.github/actions/ci-job
         with:
           id: mempalace-transcript
           install: none
-          shadow-filter: ${{ steps.filter.outputs.mempalace-transcript }}
 
   # Spec 0247 R1: the transcript hook entry prints nothing on the oldest
   # Node.js 24 release, where type stripping still emits an ExperimentalWarning.
@@ -2458,44 +1100,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            cli-matrix-fresh:
-              - 'docs/cli-matrix.md'
-              - 'docs/cli-matrix/**'
-              - 'scripts/build-cli-matrix.ts'
-              - 'scripts/lib/build-cli-matrix/**'
-              - 'scripts/tests/build-cli-matrix.test.ts'
-              - 'scripts/lib/node-floor-guard.js'
       - uses: ./.github/actions/ci-job
         with:
           id: cli-matrix-fresh
           install: none
-          shadow-filter: ${{ steps.filter.outputs.cli-matrix-fresh }}
 
   cli-matrix-fresh-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            cli-matrix-fresh-selftest:
-              - 'scripts/build-cli-matrix.ts'
-              - 'scripts/lib/build-cli-matrix/**'
-              - 'scripts/tests/build-cli-matrix.test.ts'
-              - 'scripts/lib/node-floor-guard.js'
-              - 'taskfiles/ci.yml'
-              - '.github/workflows/build.yml'
-              - 'ci/ci-capabilities.yml'
       - uses: ./.github/actions/ci-job
         with:
           id: cli-matrix-fresh-selftest
           install: none
-          shadow-filter: ${{ steps.filter.outputs.cli-matrix-fresh-selftest }}
 
   lint-specs:
     runs-on: ubuntu-latest
@@ -2523,29 +1140,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            lint-specs-selftest:
-              - 'scripts/lib/spec-linter.js'
-              - 'scripts/tests/spec-linter-*.test.ts'
-              - 'scripts/tests/lib/spec-linter-fixtures.ts'
-              - 'scripts/tests/lib/spec-linter-lifecycle.ts'
-              - 'scripts/tests/lib/yaml-lib.ts'
-              - 'docs/spec-format.md'
-              - '.crewrig/core-paths.txt'
-              - '.markdownlintrc'
-              - 'scripts/ci-cache-guard.ts'
-              - 'scripts/lib/ci-cache-guard/**'
-              - 'taskfiles/ci.yml'
-              - '.github/workflows/build.yml'
-              - 'ci/ci-capabilities.yml'
       - uses: ./.github/actions/ci-job
         with:
           id: lint-specs-selftest
           install: install
-          shadow-filter: ${{ steps.filter.outputs.lint-specs-selftest }}
 
   test-harness-curate:
     runs-on: ubuntu-latest
@@ -2580,28 +1178,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            check-description-length:
-              - 'artifacts/**'
-              - '.claude/skills/**'
-              - '.claude/agents/**'
-              - '.gemini/skills/**'
-              - '.gemini/agents/**'
-              - '.github/skills/**'
-              - '.github/agents/**'
-              - '.agents/skills/**'
-              - '.agents/agents/**'
-              - 'scripts/check-description-length.ts'
-              - 'scripts/lib/governance/**'
-              - 'scripts/lib/require-dependency.ts'
       - uses: ./.github/actions/ci-job
         with:
           id: check-description-length
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.check-description-length }}
 
   check-extension-version-bump:
     runs-on: ubuntu-latest
@@ -2702,43 +1282,20 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            check-seat-brief:
-              - 'scripts/check-seat-brief.ts'
-              - 'scripts/lib/governance/seat-brief.ts'
-              - 'scripts/lib/governance/report.ts'
-              - 'scripts/tests/check-seat-brief*'
-              - 'scripts/tests/fixtures/seat-brief/**'
       - uses: ./.github/actions/ci-job
         with:
           id: check-seat-brief
           install: none
-          shadow-filter: ${{ steps.filter.outputs.check-seat-brief }}
 
   # Spec 0277 R19-R20: author-side plan review gate; CI only checks the script against committed fixtures, never a live plan.
   check-plan-review:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            check-plan-review:
-              - 'scripts/check-plan-review.ts'
-              - 'scripts/lib/governance/plan-review-gate.ts'
-              - '.crewrig/plan-components.txt'
-              - '.crewrig/shared-contract-paths.txt'
-              - 'scripts/tests/check-plan-review*'
-              - 'scripts/tests/fixtures/plan-review/**'
       - uses: ./.github/actions/ci-job
         with:
           id: check-plan-review
           install: omit-dev
-          shadow-filter: ${{ steps.filter.outputs.check-plan-review }}
 
   check-feedback-routing:
     runs-on: ubuntu-latest

@@ -1,7 +1,7 @@
 ---
 id: "0279"
 slug: pre-push-guard
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1780

@@ -73,24 +73,18 @@ const cli = (script: string, args: string[], cwd: string, env: Record<string, st
     { cwd, encoding: "utf8", env: { ...hermeticEnv(env), REPO_DIR: cwd } },
   );
 
-test("cli: shadow annotations, unsupported glob exit 2, schedule", () => {
+test("cli: any other event runs the job, unsupported glob exit 2, retired shadow flag", () => {
   const d = repo();
-  const a = cli(
+  for (const event of ["schedule", "workflow_dispatch"]) {
+    const a = cli("scripts/ci-paths-gate.ts", ["--capability", "demo", "--event", event], d);
+    assert.match(a.stdout, /changed=true/, event);
+  }
+  const b = cli(
     "scripts/ci-paths-gate.ts",
     ["--capability", "demo", "--event", "schedule", "--filter-result", "true"],
     d,
   );
-  assert.match(a.stdout, /changed=true/);
-  assert.match(a.stdout, /::notice title=ci-paths-gate-shadow::demo agree filter=true gate=true/);
-  const b = cli(
-    "scripts/ci-paths-gate.ts",
-    ["--capability", "demo", "--event", "schedule", "--filter-result", "false"],
-    d,
-  );
-  assert.match(
-    b.stdout,
-    /::warning title=ci-paths-gate-shadow::demo DISAGREE filter=false gate=true/,
-  );
+  assert.equal(b.status, 2);
   fs.writeFileSync(path.join(d, "ci/ci-capabilities.yml"), REF.replace('"a/**"', '"a/{b,c}"'));
   const c = cli("scripts/ci-paths-gate.ts", ["--capability", "demo", "--event", "pull_request"], d);
   assert.equal(c.status, 2);
@@ -120,8 +114,9 @@ test("cache guard: --print-key equals the --key-files hash and --capability reso
 
 test("ci-job action: inputs, step order, gated cancel step, no || true", () => {
   const t = fs.readFileSync(".github/actions/ci-job/action.yml", "utf8");
-  for (const i of ["id:", "node:", "install:", "task:", "cache:", "shadow-filter:"])
+  for (const i of ["id:", "node:", "install:", "task:", "cache:"])
     assert.ok(t.includes(`\n  ${i}`), i);
+  assert.ok(!t.includes("shadow"), "shadow mode is retired");
   const order = [
     "actions/setup-node",
     "ci-paths-gate.ts",
@@ -144,7 +139,7 @@ test("ci-job action: inputs, step order, gated cancel step, no || true", () => {
   );
   assert.match(
     t,
-    /run == 'true' && failure\(\)\n\s+uses: \.\/\.github\/actions\/cancel-on-failure/,
+    /changed == 'true' && failure\(\)\n\s+uses: \.\/\.github\/actions\/cancel-on-failure/,
   );
   assert.ok(!/\|\|\s*true/.test(t));
 });

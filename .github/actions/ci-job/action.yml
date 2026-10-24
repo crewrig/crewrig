@@ -3,9 +3,8 @@ description: >-
   The thin CI job body (spec 0283 R5/R6): a checkout deepening to two commits, setup-node, the runtime path gate,
   setup-task, an optional pinned yq (ci/yq-pin.json), the dependency install, the Node floor guard, `task ci:<id>` and
   cancel-on-failure. Call it after a plain `actions/checkout` (the default depth is deepened here).
-  While `shadow-filter` is set the dorny filter stays authoritative and the
-  gate only reports agreement. Logic is inline: the shell-allowlist ratchet
-  forbids a new shell file.
+  A job whose files do not match skips every step after the gate and reports success, so required checks stay
+  satisfiable. Logic is inline: the shell-allowlist ratchet forbids a new shell file.
 inputs:
   id:
     description: Capability id in ci/ci-capabilities.yml.
@@ -38,9 +37,6 @@ inputs:
       Python version (x.y, for example 3.12) provisioned with actions/setup-python before the task. Must equal
       the capability's secondary `runtime` entry `python@<version>`.
     default: ""
-  shadow-filter:
-    description: Result of the dorny filter during the shadow window (empty once removed).
-    default: ""
 runs:
   using: composite
   steps:
@@ -64,23 +60,8 @@ runs:
       env:
         GATE_BEFORE: ${{ github.event.before }}
         JOB_ID: ${{ inputs.id }}
-        SHADOW_FILTER: ${{ inputs.shadow-filter }}
-      run: |
-        args=(--capability "${JOB_ID}")
-        if [ -n "${SHADOW_FILTER}" ]; then args+=(--filter-result "${SHADOW_FILTER}"); fi
-        if ! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-paths-gate.ts "${args[@]}"; then
-          if [ -z "${SHADOW_FILTER}" ]; then exit 1; fi
-          echo "::warning title=ci-paths-gate-shadow::${JOB_ID} DISAGREE gate crashed, the dorny filter decides"
-        fi
-    - id: decide
-      shell: bash
-      env:
-        SHADOW_FILTER: ${{ inputs.shadow-filter }}
-        GATE_CHANGED: ${{ steps.gate.outputs.changed }}
-      run: |
-        if [ -n "${SHADOW_FILTER}" ]; then run="${SHADOW_FILTER}"; else run="${GATE_CHANGED}"; fi
-        echo "run=${run}" >> "${GITHUB_OUTPUT}"
-    - if: steps.decide.outputs.run == 'true' && inputs.yq != ''
+      run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-paths-gate.ts --capability "${JOB_ID}"
+    - if: steps.gate.outputs.changed == 'true' && inputs.yq != ''
       shell: bash
       env:
         YQ_VERSION: ${{ inputs.yq }}
@@ -105,7 +86,7 @@ runs:
         fi
         sudo install -m 0755 "${work}/yq" /usr/local/bin/yq
         yq --version
-    - if: steps.decide.outputs.run == 'true' && inputs.apt != ''
+    - if: steps.gate.outputs.changed == 'true' && inputs.apt != ''
       shell: bash
       env:
         APT_PACKAGES: ${{ inputs.apt }}
@@ -118,7 +99,7 @@ runs:
         read -r -a packages <<< "${APT_PACKAGES}"
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends "${packages[@]}"
-    - if: steps.decide.outputs.run == 'true' && inputs.python != ''
+    - if: steps.gate.outputs.changed == 'true' && inputs.python != ''
       shell: bash
       env:
         PYTHON_VERSION: ${{ inputs.python }}
@@ -128,43 +109,43 @@ runs:
           echo "::error title=ci-job-python::invalid python version '${PYTHON_VERSION}'" >&2
           exit 1
         fi
-    - if: steps.decide.outputs.run == 'true' && inputs.python != ''
+    - if: steps.gate.outputs.changed == 'true' && inputs.python != ''
       uses: actions/setup-python@v5
       with:
         python-version: ${{ inputs.python }}
-    - if: steps.decide.outputs.run == 'true' && inputs.task == 'true'
+    - if: steps.gate.outputs.changed == 'true' && inputs.task == 'true'
       uses: ./.github/actions/setup-task
-    - if: steps.decide.outputs.run == 'true' && inputs.install == 'ci'
+    - if: steps.gate.outputs.changed == 'true' && inputs.install == 'ci'
       shell: bash
       run: npm ci
-    - if: steps.decide.outputs.run == 'true' && inputs.install == 'install'
+    - if: steps.gate.outputs.changed == 'true' && inputs.install == 'install'
       shell: bash
       run: npm install
-    - if: steps.decide.outputs.run == 'true' && inputs.node == '24'
+    - if: steps.gate.outputs.changed == 'true' && inputs.node == '24'
       shell: bash
       run: node scripts/lib/node-floor-guard.js
     - id: cachekey
-      if: steps.decide.outputs.run == 'true' && inputs.cache == 'true'
+      if: steps.gate.outputs.changed == 'true' && inputs.cache == 'true'
       shell: bash
       env:
         JOB_ID: ${{ inputs.id }}
       run: echo "key=$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --capability "${JOB_ID}" --print-key)" >> "${GITHUB_OUTPUT}"
-    - if: steps.decide.outputs.run == 'true' && inputs.cache == 'true'
+    - if: steps.gate.outputs.changed == 'true' && inputs.cache == 'true'
       uses: actions/cache@v4
       with:
         path: .ci-cache
         key: ci-${{ inputs.id }}-${{ steps.cachekey.outputs.key }}
-    - if: steps.decide.outputs.run == 'true' && inputs.task == 'true' && runner.os != 'Windows'
+    - if: steps.gate.outputs.changed == 'true' && inputs.task == 'true' && runner.os != 'Windows'
       shell: bash
       env:
         JOB_ID: ${{ inputs.id }}
       run: task "ci:${JOB_ID}"
     # Windows: the task runs from pwsh, the runner's native environment (Git Bash would put its own
     # PATH and HOME in front of the proofs, which test that no POSIX layer is needed).
-    - if: steps.decide.outputs.run == 'true' && inputs.task == 'true' && runner.os == 'Windows'
+    - if: steps.gate.outputs.changed == 'true' && inputs.task == 'true' && runner.os == 'Windows'
       shell: pwsh
       env:
         JOB_ID: ${{ inputs.id }}
       run: task "ci:$env:JOB_ID"
-    - if: steps.decide.outputs.run == 'true' && failure()
+    - if: steps.gate.outputs.changed == 'true' && failure()
       uses: ./.github/actions/cancel-on-failure

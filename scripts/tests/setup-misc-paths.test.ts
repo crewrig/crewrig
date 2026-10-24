@@ -4,7 +4,7 @@
 // `scripts/tests/lib/print-setup-declarations.ts`; a change to any module that printer imports
 // (descriptors, facts, hook/extension/link-or-copy/manage/install/service helpers) can change the
 // declaration, so it must trigger the job. Layer 1: node:fs only, no yaml dependency, runs on every OS.
-// API: miscTriggerPaths(), githubMiscFilter(), globToRegExp(glob), uncovered(files, globs).
+// API: miscTriggerPaths(), globToRegExp(glob), uncovered(files, globs).
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -22,25 +22,6 @@ const read = (rel: string): string => fs.readFileSync(path.join(REPO, rel), "utf
 /** The `paths:` entries of each trigger of the `misc` capability, from a plain text scan. */
 export function miscTriggerPaths(): string[][] {
   return capabilityTriggerPaths(read("ci/ci-capabilities.yml"), "misc");
-}
-
-/** The globs of the `misc:` filter of the GitHub `misc` job (dorny/paths-filter), same plain scan. */
-export function githubMiscFilter(): string[] {
-  const lines = read(".github/workflows/build.yml").split("\n");
-  const job = lines.findIndex((l) => /^ {2}misc:\s*$/.test(l));
-  if (job < 0) return [];
-  const globs: string[] = [];
-  let inFilter = false;
-  for (const l of lines.slice(job + 1)) {
-    if (/^ {2}\S/.test(l)) break;
-    if (/^ {12}misc:\s*$/.test(l)) inFilter = true;
-    else if (inFilter) {
-      const m = /^ {14}- '([^']+)'\s*$/.exec(l);
-      if (m === null) break;
-      globs.push(m[1] ?? "");
-    }
-  }
-  return globs;
 }
 
 /** `**` crosses directories, `*` does not; every other character is literal. */
@@ -84,16 +65,11 @@ test("the printer closure and the misc trigger lists are non-empty (vacuity guar
     blocks.every((b) => b.length > 0),
     "an empty `paths:` block",
   );
-  assert.ok(githubMiscFilter().length > 0, "the GitHub `misc` filter is empty");
 });
 
 test("every module the declaration printer imports triggers the misc capability", () => {
   const files = closure();
   for (const patterns of miscTriggerPaths()) assert.deepEqual(uncovered(files, patterns), []);
-});
-
-test("the GitHub misc path filter covers the same closure", () => {
-  assert.deepEqual(uncovered(closure(), githubMiscFilter()), []);
 });
 
 test("self-test: a module outside the globs is caught, covered ones are not", () => {
