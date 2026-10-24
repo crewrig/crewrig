@@ -14,7 +14,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.12.1"
+    version: "1.13.0"
 claude:
   allowed-tools:
     - Read
@@ -122,6 +122,15 @@ state which condition of the step-3 bound returned that surface to scope.
 A finding on an unchanged surface with no such statement is treated as
 non-blocking and routed to the deferred-findings ledger — the iteration is
 not routed on its account.
+
+## Folded-bugs check
+
+On a bug-type issue (`docs/logbook-issues.md` → *Rule D*), check that: a
+`tech` finding describing a foldable bug cross-references its folded item
+(and vice versa); the PR body carries a `Folded bugs` entry; each resolved
+item has a regression test or written justification; and the item count and
+added-line caps, and the fold tests, are respected. A bug folded despite
+failing a fold test is a `class: tech` finding.
 
 ## Spec-review obligation — tier challenge
 

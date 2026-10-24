@@ -23,6 +23,7 @@ Every REVIEW finding SHALL be tagged with exactly one class. Class drives the lo
 
 Rules:
 
+- A `tech` finding describing a foldable bug is also tracked as a folded item — see *Folded bugs*.
 - The loop SHALL NOT change the logbook issue (Rule A still holds).
 
 **Termination.** The lifecycle terminates at MERGE iff a REVIEW pass verdict is APPROVE AND the pass surfaces zero findings of any class AND CI is green on the head commit reviewed.
@@ -325,6 +326,8 @@ On halt, the orchestrator SHALL:
    user is the only role that can decide the next move (abandon,
    re-scope, lift the cap, etc.).
 
+The summary also lists the folded items (see *Folded bugs*) with their status.
+
 The guardrail SHALL NOT auto-increment past the cap. The orchestrator
 stops the loop; the user resumes it (or terminates it) explicitly.
 
@@ -343,11 +346,30 @@ the lifecycle's interaction mode (spec 0005 R10):
 | **MINIMAL** | Same as INTERMEDIATE — the orchestrator SHALL route to the ledger by default; no user gate SHALL fire. |
 | **AUTO** | Same as MINIMAL — the orchestrator SHALL route to the ledger by default; no user gate SHALL fire. |
 
+On a bug-type issue, a non-blocking finding that meets the fold tests of
+*Folded bugs* is folded rather than sent to the ledger; one that fails them
+follows the table above unchanged.
+
 The asymmetry reflects the lifecycle's gating philosophy: only FULL
 keeps the user in the loop during REVIEW and gives the user the last
 word on scope; every other mode delegates scope to the engine and
 routes every signal through the matrix so that termination genuinely
 means "no work left", not "no work the engine bothered to do".
+
+## Folded bugs
+
+Spec 0286; the rule and fold tests live in `docs/logbook-issues.md` → *Rule D*.
+
+- **Findings.** A `tech` finding raised by a REVIEW pass keeps its route (loop
+  to DEV; matrix, class set and precedence unchanged). When it describes a bug
+  meeting the fold tests, the orchestrator also records it as a folded item
+  cross-referencing the finding identifier, so one defect is traceable on both
+  surfaces. Folding never changes the finding class, the logbook issue, or the
+  stage a finding routes to.
+- **Iterations.** Fixing a folded bug found before the first REVIEW pass
+  consumes no iteration. One found by a REVIEW pass is fixed inside the
+  iteration its finding already opened and counts under `iter:N`. The cap is
+  neither raised nor reset by folding.
 
 ## Worked example — PR #183 iteration 2
 
@@ -376,4 +398,5 @@ route today") rather than a literal record of label state.
 - Spec format and delta-spec convention — [`docs/spec-format.md`](spec-format.md).
 - Spec-PR workflow — [`specs/0003-spec-pr-workflow.md`](../specs/0003-spec-pr-workflow.md) and `AGENTS.md` → *Spec-PR workflow*.
 - Team Communication Rule 4 — `AGENTS.md` → *Agent Team Protocol → Team Communication*.
+- Folded bugs — [`docs/logbook-issues.md`](logbook-issues.md) → *Rule D* and [`specs/0286-fold-bugs-into-originating-issue.md`](../specs/0286-fold-bugs-into-originating-issue.md).
 - Reviewer seat contract — [`docs/reviewer-seat.md`](reviewer-seat.md) and [`specs/0166-stable-reviewer-seat.md`](../specs/0166-stable-reviewer-seat.md).

@@ -25,6 +25,9 @@ action.
   open to everyone.
 - **One assignee.** An issue carries at most one assignee (R4). Others
   contribute through comments, review suggestions, or commit co-authorship.
+- **Folding.** Bugs folded into an issue (spec 0286, `docs/logbook-issues.md`
+  → *Rule D*) inherit its single assignee; folding never bypasses the pickup
+  check, and nobody folds a bug into an issue someone else owns.
 - **Take before you author.** A contributor taking a free ticket becomes its
   assignee before the first authoring action (R3).
 

@@ -29,7 +29,10 @@ Include prerequisites, commands to run, and expected outcomes.>
 
 <A thorough, structured description of every change made in this PR.
 This section is intended for AI agents that will analyze the PR.
-Be explicit about what was added, modified, or removed and why.>
+Be explicit about what was added, modified, or removed and why.
+
+Folded bugs: <on a bug-type issue, list each folded item with its status
+(`docs/logbook-issues.md` → Rule D), or state not applicable.>>
 ```
 
 ## Spec-PRs open as Draft PRs

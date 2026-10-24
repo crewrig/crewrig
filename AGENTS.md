@@ -268,10 +268,10 @@ traces every obstacle encountered (with its resolution or avoidance
 strategy), every challenge faced, and every success or breakthrough, so the
 full experience of agents on the project is recorded for future reference.
 
-See [`docs/logbook-issues.md`](docs/logbook-issues.md) for the three
+See [`docs/logbook-issues.md`](docs/logbook-issues.md) for the four
 rules governing logbooks: Rule A (a feature issue IS its own logbook),
 Rule B (one comment per stage transition, never batched at the end), and Rule C (close immediately
-after merge).
+after merge). Rule D folds newly discovered related bugs into the originating bug issue.
 
 ## Forge Access
 

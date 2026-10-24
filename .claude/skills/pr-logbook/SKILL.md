@@ -11,7 +11,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.3.5"
+    version: "1.4.0"
 ---
 
 
@@ -70,6 +70,9 @@ golden path and at least one failure mode.>
 <Structured walkthrough of every change, intended for the next agent
 that touches this code. Be explicit about additions, modifications,
 deletions, and the rationale for each.>
+
+Folded bugs: <bug-type issue only: each folded item with its status, or
+"not applicable".>
 ```
 
 ### 4. Logbook entries
@@ -106,6 +109,13 @@ will read to avoid your mistakes. Optimize for that reader.
 
 **Lesson**: <the durable insight, in one sentence>
 ```
+
+**Folded bugs.** When the issue is bug-type and folds related bugs
+(`docs/logbook-issues.md` → *Rule D*), the next stage-transition comment
+carries one bullet per folded item (symptom, the step that exposed it,
+status), plus a bullet for the final sweep and one per bug filed elsewhere
+under the escape hatch. The PR body carries the `Folded bugs` entry; the
+closure comment lists each folded item with its resolution.
 
 Append, never rewrite. Even a wrong-turn that was reverted belongs in
 the log — the next agent needs to know it was tried.

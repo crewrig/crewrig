@@ -162,6 +162,9 @@ not a severity scale.
 
 The intent and design are correct; the realization is wrong.
 
+A foldable `tech` finding is also tracked under spec 0286 (see
+`docs/logbook-issues.md` → *Rule D*); routing is unchanged.
+
 - **Canonical example.** The spec says "retry transient HTTP errors
   up to 3 times with exponential backoff". The code retries once,
   with no backoff. Fix: rewrite the retry block in DEV. No design
