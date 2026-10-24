@@ -43,7 +43,10 @@ describe("release driver sandbox", () => {
     assert.ok(fs.existsSync(path.join(sb.originBare, "HEAD")), "origin is a bare repository");
     assert.equal(sb.env({ GITHUB_ACTIONS: "true" })["GITHUB_ACTIONS"], "true");
     sb.dispose();
-    assert.equal(fs.existsSync(sb.root), false);
+    const left = fs.existsSync(sb.root)
+      ? JSON.stringify(fs.readdirSync(sb.root, { recursive: true }).slice(0, 40))
+      : "gone";
+    assert.equal(fs.existsSync(sb.root), false, `PROBE root=${sb.root} left=${left}`);
   });
 
   it("never lets a GitHub publish run reach a non-loopback host", () => {
