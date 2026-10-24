@@ -104,6 +104,7 @@ function runAction(archive: Buffer | null, pin: string): { code: number; out: st
       TASK_INSTALL_DIR: path.join(dir, "bin"),
       TASK_SUDO: "",
       TASK_PLATFORM: "linux_amd64",
+      GITHUB_PATH: "",
     },
   });
   return { code: r.status ?? -1, out: `${r.stdout}${r.stderr}` };
@@ -207,6 +208,7 @@ test("action: the windows branch unpacks the zip through the unzip hook and chec
       TASK_SUDO: "",
       TASK_PLATFORM: "windows_amd64",
       TASK_UNZIP: hook,
+      GITHUB_PATH: "",
     },
   });
   assert.equal(r.status, 0, `${r.stdout}${r.stderr}`);

@@ -60,7 +60,9 @@ runs:
         fi
         ${sudo_cmd} install -d "${install_dir}"
         ${sudo_cmd} install -m 0755 "${work}/${bin}" "${install_dir}/${bin}"
-        if [ -n "${GITHUB_PATH-}" ] && [ "${ext}" = zip ]; then cygpath -w "${install_dir}" >> "${GITHUB_PATH}"; fi
+        if [ -n "${GITHUB_PATH-}" ] && [ "${ext}" = zip ]; then
+          { cygpath -w "${install_dir}" 2>/dev/null || printf '%s\n' "${install_dir}"; } >> "${GITHUB_PATH}"
+        fi
         reported="$("${install_dir}/${bin}" --version)"
         want="$(printf '%s' "${version}" | sed 's/\./\\./g')"
         if ! printf '%s\n' "${reported}" | grep -Eq "(^|[^0-9.])v?${want}([^0-9.]|\$)"; then
