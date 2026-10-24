@@ -881,6 +881,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-extension-builders
     portability: specific
     exception:
       engine: github-actions
@@ -910,6 +916,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-install-entries
     portability: specific
     exception:
       engine: github-actions
@@ -938,6 +950,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-packaging-entries
     portability: specific
     exception:
       engine: github-actions
@@ -965,6 +983,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-extension-hooks
     portability: specific
     exception:
       engine: github-actions
@@ -992,6 +1016,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-harness-curator
     portability: specific
     exception:
       engine: github-actions
@@ -1019,6 +1049,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-create-extension
     portability: specific
     exception:
       engine: github-actions
@@ -1046,6 +1082,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-skill-scripts
     portability: specific
     exception:
       engine: github-actions
@@ -1072,6 +1114,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-e2e-harness
     portability: specific
     exception:
       engine: github-actions
@@ -1139,6 +1187,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-governance-checks
     portability: specific
     exception:
       engine: github-actions
@@ -1191,6 +1245,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-model-ci-tooling
     portability: specific
     exception:
       engine: github-actions
@@ -1217,6 +1277,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-setup-units
     portability: specific
     exception:
       engine: github-actions
@@ -1243,6 +1309,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-setup-entries
     portability: specific
     exception:
       engine: github-actions
@@ -3973,6 +4045,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-node-floor-guard
     portability: specific
     exception:
       engine: github-actions
@@ -3997,6 +4075,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-service-task
     portability: specific
     exception:
       engine: github-actions
@@ -4020,6 +4104,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-chroma-trio
     portability: specific
     exception:
       engine: github-actions
@@ -4041,6 +4131,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-mcp-daemon
     portability: specific
     exception:
       engine: github-actions
@@ -4063,6 +4159,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-doctor-repair
     portability: specific
     exception:
       engine: github-actions
@@ -4090,6 +4192,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: ci
+    command:
+      - task ci:windows-usage-capture
     portability: specific
     exception:
       engine: github-actions
@@ -4117,6 +4225,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-usage-wrappers
     portability: specific
     exception:
       engine: github-actions
@@ -4146,6 +4260,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-worktree-git-guard
     portability: specific
     exception:
       engine: github-actions
@@ -4175,6 +4295,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-mempalace-transcript
     portability: specific
     exception:
       engine: github-actions
@@ -4211,6 +4337,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-build-components
     portability: specific
     exception:
       engine: github-actions
@@ -4238,6 +4370,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-sync-from-upstream
     portability: specific
     exception:
       engine: github-actions
@@ -4290,6 +4428,12 @@ capabilities:
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
+    requires:
+      runtime: [node@24, python@3.12]
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-history-import
     portability: specific
     exception:
       engine: github-actions

@@ -136,6 +136,11 @@ or a pull-request review comment that dispatches an assistant (e.g. the
 engine-specific, **never** portable, regardless of how its `trigger` is
 modeled.
 
+**Windows capabilities (spec 0283 R9).** The 24 `windows-*` capabilities stay `specific` (GitLab has
+no Windows runner) but carry `command: [task ci:<id>]` like every migrated capability: their GitHub
+job is a checkout plus `./.github/actions/ci-job` on `windows-latest`, and the task lives in
+`taskfiles/ci.yml`. `windows-hook-probe` keeps its own portable shape.
+
 ## Invocation command and execution requirements
 
 A `portable` capability is not merely *described* by the reference — its

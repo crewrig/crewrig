@@ -814,5 +814,101 @@
   {
     "name": "ci:e2e",
     "desc": "Run the e2e CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:windows-node-floor-guard",
+    "desc": "Windows proof of node floor guard (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-service-task",
+    "desc": "Windows proof of service task (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-chroma-trio",
+    "desc": "Windows proof of chroma trio (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-mcp-daemon",
+    "desc": "Windows proof of mcp daemon (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-doctor-repair",
+    "desc": "Windows proof of doctor repair (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-usage-capture",
+    "desc": "Windows proof of usage capture (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-usage-wrappers",
+    "desc": "Windows proof of usage wrappers (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-worktree-git-guard",
+    "desc": "Windows proof of worktree git guard (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-mempalace-transcript",
+    "desc": "Windows proof of mempalace transcript (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-sync-from-upstream",
+    "desc": "Windows proof of sync from upstream (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-history-import",
+    "desc": "Windows proof of history import (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-build-components",
+    "desc": "Windows proof of build components (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-extension-builders",
+    "desc": "Windows proof of extension builders (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-install-entries",
+    "desc": "Windows proof of install entries (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-packaging-entries",
+    "desc": "Windows proof of packaging entries (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-extension-hooks",
+    "desc": "Windows proof of extension hooks (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-harness-curator",
+    "desc": "Windows proof of harness curator (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-create-extension",
+    "desc": "Windows proof of create extension (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-skill-scripts",
+    "desc": "Windows proof of skill scripts (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-e2e-harness",
+    "desc": "Windows proof of e2e harness (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-governance-checks",
+    "desc": "Windows proof of governance checks (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-model-ci-tooling",
+    "desc": "Windows proof of model ci tooling (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-setup-units",
+    "desc": "Windows proof of setup units (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "ci:windows-setup-entries",
+    "desc": "Windows proof of setup entries (CI mirror of the windows-latest job)"
   }
 ]
