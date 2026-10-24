@@ -7,6 +7,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { assertInside } from "./differential-guard.ts";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 /** Fixed identity and dates, so parentless commits hash identically on both sides. */
 export const FIXED_GIT_ENV: Readonly<Record<string, string>> = {
@@ -20,12 +21,11 @@ export const FIXED_GIT_ENV: Readonly<Record<string, string>> = {
 
 export function git(cwd: string, args: string[], env: NodeJS.ProcessEnv = {}): string {
   const full: NodeJS.ProcessEnv = {
-    ...process.env,
+    ...scrubGitEnv(process.env),
     ...FIXED_GIT_ENV,
     GIT_CONFIG_NOSYSTEM: "1",
     ...env,
   };
-  for (const key of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"]) delete full[key];
   const res = spawnSync("git", args, { cwd, env: full, encoding: "utf8", maxBuffer: 1 << 28 });
   if (res.status !== 0) throw new Error(`git ${args.join(" ")} failed: ${res.stderr}`);
   return res.stdout;

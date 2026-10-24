@@ -29,6 +29,7 @@ import os from "node:os";
 import path from "node:path";
 import { after } from "node:test";
 import { fileURLToPath } from "node:url";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -126,7 +127,7 @@ export function manifestDir(content: string): string {
 export function lintEnv(
   extra: Readonly<Record<string, string | undefined>> = {},
 ): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env };
+  const env: NodeJS.ProcessEnv = scrubGitEnv(process.env);
   for (const k of [
     "CI",
     "BASE_REF",

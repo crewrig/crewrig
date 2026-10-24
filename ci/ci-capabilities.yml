@@ -3239,6 +3239,8 @@ capabilities:
           - "scripts/tests/check-taskfile-tree-*.test.ts"
           - "scripts/tests/ci-pre-push-*.test.ts"
           - "scripts/tests/ci-selftest-split.test.ts"
+          - "scripts/tests/git-env-helpers.test.ts"
+          - "scripts/lib/git-env.ts"
           - "scripts/tests/lib/**"
           - "taskfiles/ci.yml"
           - ".github/workflows/build.yml"
@@ -3265,6 +3267,8 @@ capabilities:
           - "scripts/tests/check-taskfile-tree-*.test.ts"
           - "scripts/tests/ci-pre-push-*.test.ts"
           - "scripts/tests/ci-selftest-split.test.ts"
+          - "scripts/tests/git-env-helpers.test.ts"
+          - "scripts/lib/git-env.ts"
           - "scripts/tests/lib/**"
           - "taskfiles/ci.yml"
           - ".github/workflows/build.yml"
@@ -3276,7 +3280,7 @@ capabilities:
       tools: [task]
     command:
       - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-env-scrub.test.ts scripts/tests/git-env-helpers.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts
 
   # Replay of the pre-push wrapper end to end (spec 0279 R16, plan v2-F1/F5).
   # CI-only: it has no `ci:` task, is not fast-tier and is not changeset-gated

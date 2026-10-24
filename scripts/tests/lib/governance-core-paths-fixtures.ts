@@ -18,6 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { makeSandbox, REPO, runEntry } from "./governance-sandbox.ts";
 import type { RunResult } from "./governance-sandbox.ts";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 const ENTRY = path.join(REPO, "scripts", "check-core-paths.ts");
 
@@ -27,11 +28,11 @@ function git(repo: string, args: readonly string[]): void {
 }
 
 /** An empty global git config inside the sandbox: no host configuration leaks in. */
-function gitEnv(repo: string): Record<string, string> {
+export function gitEnv(repo: string): Record<string, string> {
   const empty = path.join(path.dirname(repo), "empty-gitconfig");
   if (!fs.existsSync(empty)) fs.writeFileSync(empty, "");
   const env: Record<string, string> = {};
-  for (const [k, v] of Object.entries(process.env)) if (v !== undefined) env[k] = v;
+  for (const [k, v] of Object.entries(scrubGitEnv(process.env))) if (v !== undefined) env[k] = v;
   env.GIT_CONFIG_GLOBAL = empty;
   env.GIT_CONFIG_NOSYSTEM = "1";
   return env;

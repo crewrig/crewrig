@@ -11,6 +11,7 @@ import { afterEach, beforeEach } from "node:test";
 import { realDeps } from "../../lib/monorepo-release/flow-deps.ts";
 import type { FlowDeps } from "../../lib/monorepo-release/flow-deps.ts";
 import { main } from "../../lib/monorepo-release/main.ts";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 export type Env = Record<string, string | undefined>;
 
@@ -43,7 +44,11 @@ export function useCheckout(): void {
 /** A checkout on `branch` with one commit, so `git rev-parse --abbrev-ref HEAD` answers. */
 export function initRepo(branch: string): void {
   const git = (...args: string[]): void => {
-    const result = spawnSync("git", args, { cwd: checkout, encoding: "utf8" });
+    const result = spawnSync("git", args, {
+      cwd: checkout,
+      encoding: "utf8",
+      env: scrubGitEnv(process.env),
+    });
     assert.equal(result.status, 0, result.stderr);
   };
   git("init", "-q", "-b", branch);

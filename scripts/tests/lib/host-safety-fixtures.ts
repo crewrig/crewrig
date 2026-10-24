@@ -14,6 +14,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -118,9 +119,8 @@ export function runCheck(
   extraEnv: Readonly<Record<string, string>> = {},
   repoDir: string = fx?.root ?? REPO,
 ): CheckResult {
-  const env: NodeJS.ProcessEnv = { ...process.env };
-  for (const key of Object.keys(env))
-    if (key.startsWith("GIT_") || key === "BASE_REF") delete env[key];
+  const env: NodeJS.ProcessEnv = scrubGitEnv(process.env);
+  delete env.BASE_REF;
   env.CREWRIG_REPO_DIR = repoDir;
   if (fx !== null) {
     env.HOME = fx.home;

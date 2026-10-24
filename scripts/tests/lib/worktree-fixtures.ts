@@ -19,6 +19,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 export const GUARD_TS = path.join(REPO, "hooks", "worktree-git-guard.ts");
@@ -40,17 +41,8 @@ export interface Result {
 
 /** The parent's environment minus everything that would change how an entry runs. */
 export function cleanEnv(extra: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env };
-  for (const key of [
-    "NODE_OPTIONS",
-    "NODE_TEST_CONTEXT",
-    "CREWRIG_REPO_DIR",
-    "GIT_DIR",
-    "GIT_WORK_TREE",
-    "GIT_INDEX_FILE",
-    "GIT_COMMON_DIR",
-    "GIT_CEILING_DIRECTORIES",
-  ]) {
+  const env: NodeJS.ProcessEnv = scrubGitEnv(process.env);
+  for (const key of ["NODE_OPTIONS", "NODE_TEST_CONTEXT", "CREWRIG_REPO_DIR"]) {
     delete env[key];
   }
   for (const [key, value] of Object.entries(extra)) {

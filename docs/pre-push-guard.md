@@ -43,6 +43,10 @@ On `git push`, `.githooks/pre-push` resolves the checkout it runs in and calls
    `min(4, available cores)`. Each task's output is buffered and printed only on
    failure; a passing task prints one status line with its duration.
 
+The hook and the wrapper remove every `GIT_*` variable from the environment of
+the tasks (spec 0279 R21), because git exports `GIT_DIR` and other
+repository-location variables to a hook.
+
 The fast tier is the list in `ci/pre-push-tier.json`, a map from capability id
 to its measured time in seconds. A capability is admitted only if it is
 deterministic, needs no container, network or secret, and runs in at most 30 s
@@ -152,6 +156,30 @@ passes silently.
   network command.
 - A repository where `taskfiles/ci.yml` is absent (not a CrewRig checkout) is a
   no-op with a notice.
+
+## Known failure: a damaged shared git config
+
+Before this fix, git's `GIT_DIR` (the linked worktree's gitdir) reached the
+tasks. A test fixture that ran git in a temporary directory then acted on the
+real repository: it rewrote the shared `.git/config` (`core.bare = true`,
+`user.name = Test`, `user.email = test@example.com`, `commit.gpgsign = false`)
+and moved the worktree `HEAD`. After that, every git command failed with
+`fatal: this operation must be run in a work tree`. Spec 0279 R21 fixes it by
+scrubbing every `GIT_*` variable.
+
+To repair an already damaged checkout, run these commands in the damaged
+worktree:
+
+```sh
+git config --local core.bare false
+git config --local --unset user.name
+git config --local --unset user.email
+git config --local --unset commit.gpgsign
+git symbolic-ref HEAD refs/heads/<ticket-branch>
+```
+
+`core.hooksPath` stays as wanted (`task ci:hooks-status`). Afterwards,
+`git config --list --local` should show no `core.bare = true` and no `user.*`.
 
 ## Escape hatch
 

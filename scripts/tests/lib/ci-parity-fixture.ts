@@ -16,6 +16,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { yamlLib } from "./yaml-lib.ts";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 /** The checkout under test. */
 export const REPO: string = path.resolve(import.meta.dirname, "..", "..", "..");
@@ -59,7 +60,11 @@ export function makeFixture(): string {
 
 /** The child environment: no `CI`, no `NODE_TEST_CONTEXT`, `LC_ALL=C`, the fixture as repo. */
 export function childEnv(fixture: string): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env, LC_ALL: "C", CREWRIG_REPO_DIR: fixture };
+  const env: NodeJS.ProcessEnv = {
+    ...scrubGitEnv(process.env),
+    LC_ALL: "C",
+    CREWRIG_REPO_DIR: fixture,
+  };
   delete env["CI"];
   delete env["NODE_TEST_CONTEXT"];
   return env;

@@ -10,6 +10,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 export const ENTRY = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -44,7 +45,7 @@ export function createSyncRoot(prefix = "crewrig-sync-"): SyncRoot {
     "[user]\n\tname = Test\n\temail = test@example.com\n[commit]\n\tgpgsign = false\n[core]\n\tautocrlf = false\n",
   );
   const env: NodeJS.ProcessEnv = {
-    ...process.env,
+    ...scrubGitEnv(process.env),
     GIT_CONFIG_GLOBAL: globalConfig,
     GIT_CONFIG_NOSYSTEM: "1",
   };

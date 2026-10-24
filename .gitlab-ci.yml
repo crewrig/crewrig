@@ -2619,7 +2619,7 @@ check-taskfile-tree-selftest:
     - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
   script:
     - "npm ci --omit=dev --workspaces=false"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-env-scrub.test.ts scripts/tests/git-env-helpers.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -2642,6 +2642,8 @@ check-taskfile-tree-selftest:
         - "scripts/tests/check-taskfile-tree-*.test.ts"
         - "scripts/tests/ci-pre-push-*.test.ts"
         - "scripts/tests/ci-selftest-split.test.ts"
+        - "scripts/tests/git-env-helpers.test.ts"
+        - "scripts/lib/git-env.ts"
         - "scripts/tests/lib/**"
         - "taskfiles/ci.yml"
         - ".github/workflows/build.yml"
@@ -2667,6 +2669,8 @@ check-taskfile-tree-selftest:
         - "scripts/tests/check-taskfile-tree-*.test.ts"
         - "scripts/tests/ci-pre-push-*.test.ts"
         - "scripts/tests/ci-selftest-split.test.ts"
+        - "scripts/tests/git-env-helpers.test.ts"
+        - "scripts/lib/git-env.ts"
         - "scripts/tests/lib/**"
         - "taskfiles/ci.yml"
         - ".github/workflows/build.yml"

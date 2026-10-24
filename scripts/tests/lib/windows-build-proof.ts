@@ -26,6 +26,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const ENTRY = path.join(REPO, "scripts", "build-components.ts");
@@ -64,7 +65,7 @@ function entry(
   args: string[],
   repoDir?: string,
 ): { status: number | null; stdout: string; stderr: string } {
-  const env: NodeJS.ProcessEnv = { ...process.env };
+  const env: NodeJS.ProcessEnv = scrubGitEnv(process.env);
   delete env["REPO_DIR"];
   if (repoDir !== undefined) env["REPO_DIR"] = repoDir;
   const res = spawnSync(process.execPath, [ENTRY, ...args], {
@@ -90,7 +91,11 @@ function walk(root: string, dir: string, into: string[]): void {
 
 /** The committed files under the declared directories (`git ls-files`; a walk where git is absent). */
 function committedFiles(): string[] {
-  const res = spawnSync("git", ["ls-files", "-z", "--", ...DIRS], { cwd: REPO, encoding: "utf8" });
+  const res = spawnSync("git", ["ls-files", "-z", "--", ...DIRS], {
+    cwd: REPO,
+    encoding: "utf8",
+    env: scrubGitEnv(process.env),
+  });
   if (res.error === undefined && res.status === 0) {
     return res.stdout
       .split("\0")

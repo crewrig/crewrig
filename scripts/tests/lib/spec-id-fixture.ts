@@ -21,6 +21,7 @@ import {
   UNSECURED_MARK,
   renderSpec,
 } from "./spec-id-constants.ts";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 export { assertRemotesUnderScratch } from "./scratch-remote.ts";
 
@@ -88,9 +89,8 @@ export function childEnv(
   extra: Record<string, string> = {},
   ambient: NodeJS.ProcessEnv = process.env,
 ): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...ambient };
-  for (const key of [...CLEARED_VARS, "NODE_TEST_CONTEXT", "GIT_DIR", "GIT_WORK_TREE"])
-    delete env[key];
+  const env: NodeJS.ProcessEnv = scrubGitEnv(ambient);
+  for (const key of [...CLEARED_VARS, "NODE_TEST_CONTEXT"]) delete env[key];
   return {
     ...env,
     ...gitEnv(fx),

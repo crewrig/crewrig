@@ -22,6 +22,7 @@ export {
   selectionOf,
   writeFile,
 } from "./create-extension-sandbox.ts";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 export interface EntryResult {
   readonly status: number | null;
@@ -39,7 +40,7 @@ export function runEntry(
   env: Readonly<Record<string, string>> = {},
 ): EntryResult {
   const childEnv: NodeJS.ProcessEnv = {
-    ...process.env,
+    ...scrubGitEnv(process.env),
     ...env,
     LC_ALL: "C",
     GIT_CONFIG_NOSYSTEM: "1",
