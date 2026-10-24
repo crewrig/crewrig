@@ -122,15 +122,22 @@ function assertCapabilities(text: string): void {
   assert.deepEqual(cap.trigger?.map((t) => t.on).sort(), ["pull-request", "push"]);
   for (const t of cap.trigger ?? [])
     for (const p of TREE_PATHS) assert.ok((t.paths ?? []).includes(p), `${t.on} paths has ${p}`);
-  const cmds = (cap.command ?? []).join("\n");
-  assert.ok(cmds.includes(GUARD), "runs the guard");
+  assert.ok((cap.command ?? []).join("\n").includes(GUARD), "runs the guard");
+  // Spec 0281: the suites run in the `-selftest` sibling, under the same tree filters.
+  const self = caps.find((c) => c.id === `${ID}-selftest`);
+  assert.ok(self, `capability ${ID}-selftest`);
+  assert.ok((self.requires?.tools ?? []).includes("task"), "self-test requires the task tool");
+  const cmds = (self.command ?? []).join("\n");
   for (const s of SUITES) assert.ok(cmds.includes(s), `runs ${s}`);
   assert.ok(cmds.includes("ci-cache-guard.ts --stray-scan --"), "suites run under the cache guard");
 
   // R17: every job that lists the root Taskfile also lists the tree and its companions.
   // The tree job itself is covered by its scripts/** filter, so it is exempt.
   const listing = caps.filter(
-    (c) => c.id !== ID && (c.trigger ?? []).some((t) => (t.paths ?? []).includes(ROOT)),
+    (c) =>
+      c.id !== ID &&
+      c.id !== `${ID}-selftest` &&
+      (c.trigger ?? []).some((t) => (t.paths ?? []).includes(ROOT)),
   );
   assert.deepEqual(listing.map((c) => c.id).sort(), [...LISTING_JOBS, "spec-view"].sort());
   assert.ok(listing.length >= 3, "the jobs that list the root Taskfile are found");
@@ -156,7 +163,8 @@ function assertGithub(text: string): void {
   assert.ok(job.includes("node-version: 24"));
   assert.ok(job.includes("taskfile.dev/install.sh"), "installs Task");
   assert.ok(job.includes(GUARD), "runs the guard");
-  for (const s of SUITES) assert.ok(job.includes(s), `runs ${s}`);
+  const self = jobBlock(text, new RegExp(`\\n  ${ID}-selftest:\\n`));
+  for (const s of SUITES) assert.ok(self.includes(s), `runs ${s}`);
   for (const p of TREE_PATHS) assert.ok(job.includes(`'${p}'`), `filter has ${p}`);
   // R17: every job that lists the root Taskfile also lists the companions.
   for (const id of LISTING_JOBS) {
@@ -171,7 +179,8 @@ function assertGitlab(text: string): void {
   assert.ok(job.includes("image: node:24"));
   assert.ok(job.includes("taskfile.dev/install.sh"), "installs Task");
   assert.ok(job.includes(GUARD), "runs the guard");
-  for (const s of SUITES) assert.ok(job.includes(s), `runs ${s}`);
+  const self = jobBlock(text, new RegExp(`\\n${ID}-selftest:\\n`), true);
+  for (const s of SUITES) assert.ok(self.includes(s), `runs ${s}`);
   for (const p of TREE_PATHS) assert.ok(job.includes(`"${p}"`), `rules have ${p}`);
   for (const id of LISTING_JOBS) {
     const block = jobBlock(text, new RegExp(`\\n${id}:\\n`), true);

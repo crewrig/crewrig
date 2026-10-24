@@ -12,11 +12,13 @@ import { loadCapabilities, loadTier, selectFromChangeset } from "../lib/ci-pre-p
 import { makeSandbox, REPO, runEntry } from "./lib/governance-sandbox.ts";
 
 interface Cap {
+  env?: Record<string, string>;
+  cache?: { files: string[]; env: string[] };
   id: string;
   portability?: string;
   "changeset-gated"?: boolean;
   trigger: { on: string; branches?: string[]; paths?: string[] }[];
-  requires?: { runtime?: string };
+  requires?: { runtime?: string; tools?: string[]; "history-depth"?: string };
   command: string[];
 }
 
@@ -43,7 +45,15 @@ const PAIRS: Record<string, { source: string; test: string }> = {
     test: "scripts/tests/check-path-ownership.test.ts",
   },
 };
-const BATCH_A = Object.keys(PAIRS);
+const DATA: Record<string, string> = {
+  "docs-index": "docs/a.md",
+  "cli-matrix-fresh": "docs/cli-matrix.md",
+  "component-drift": "artifacts/x/y.md",
+  "test-wiring": "ci/test-wiring-exemptions.txt",
+  "check-taskfile-commands": "taskfiles/lint.yml",
+  "check-taskfile-tree": ".githooks/pre-push",
+};
+const BATCH_A = Object.keys(PAIRS); // every split pair, batches A and B
 const PROVISIONING = /^npm (ci|install)( |$)/;
 const FLOOR = /node-floor-guard\.js$/;
 const isTest = (c: string): boolean => / --test /.test(c);
@@ -69,6 +79,23 @@ describe("self-test split: structure (a, c)", () => {
       );
     });
 
+    it(`${st.id}: env, tools, history-depth and cache follow the R-fields rules`, () => {
+      const check = byId.get(id) as Cap;
+      assert.equal(st.env, undefined, "env stays with the check");
+      assert.equal(st.requires?.["history-depth"], undefined);
+      for (const tool of st.requires?.tools ?? [])
+        assert.ok(check.requires?.tools?.includes(tool), `tool ${tool} not on the check`);
+      assert.equal(st.cache === undefined, check.cache === undefined, "cache on both or neither");
+      if (st.cache !== undefined) {
+        const own = new Set(st.trigger[0]?.paths ?? []);
+        for (const f of st.cache.files)
+          assert.ok(
+            own.has(f) || f === "scripts/ci-cache-guard.ts",
+            `cache file ${f} outside paths`,
+          );
+      }
+    });
+
     it(`${st.id}: runtime, portability and branches equal the check's`, () => {
       const check = byId.get(id) as Cap;
       assert.equal(st.requires?.runtime, check.requires?.runtime);
@@ -89,7 +116,7 @@ describe("self-test split: selection (b)", () => {
   for (const id of BATCH_A) {
     const { source, test: testFile } = PAIRS[id] as { source: string; test: string };
     it(`${id}: data-only change selects the check, not the self-test`, () => {
-      const ids = select(["specs/0001-x.md"]);
+      const ids = select([DATA[id] ?? "specs/0001-x.md"]);
       assert.ok(ids.includes(id));
       assert.ok(!ids.includes(`${id}-selftest`));
     });
@@ -124,7 +151,7 @@ describe("self-test split: workflow and parity (d, e)", () => {
     for (const st of SELFTESTS) {
       const t = ci[st.id];
       assert.ok(t, `task ci:${st.id} missing`);
-      assert.ok(t.cmds.every((c) => typeof c === "string" && isTest(c)));
+      assert.ok(t.cmds.every((c) => typeof c === "string" && (isTest(c) || FLOOR.test(c))));
     }
   });
 

@@ -141,6 +141,63 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node scripts/lib/node-floor-guard.js
       - node scripts/build-components.ts --target all --check
+
+  - id: component-drift-selftest
+    name: "Self-test the component assembly routing and canonical-repo build"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-components.ts"
+          - "scripts/lib/**"
+          - "package.json"
+          - "package-lock.json"
+          - "scripts/tests/build-assembly-routing.test.ts"
+          - "scripts/tests/build-components-canonical-repo.test.ts"
+          - "scripts/tests/lib/build-sandbox.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/fixtures/build-components/**"
+          - "scripts/lib/node-floor-guard.js"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-components.ts"
+          - "scripts/lib/**"
+          - "package.json"
+          - "package-lock.json"
+          - "scripts/tests/build-assembly-routing.test.ts"
+          - "scripts/tests/build-components-canonical-repo.test.ts"
+          - "scripts/tests/lib/build-sandbox.ts"
+          - "scripts/tests/lib/build-fixture-tree.ts"
+          - "scripts/tests/fixtures/build-components/**"
+          - "scripts/lib/node-floor-guard.js"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+    cache:
+      files:
+        - "scripts/build-components.ts"
+        - "scripts/lib/**"
+        - "package.json"
+        - "package-lock.json"
+        - "scripts/tests/build-assembly-routing.test.ts"
+        - "scripts/tests/build-components-canonical-repo.test.ts"
+        - "scripts/tests/lib/build-sandbox.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/fixtures/build-components/**"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/ci-cache-guard.ts"
+      env: []
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-assembly-routing.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-canonical-repo.test.ts
 
@@ -2101,6 +2158,56 @@ capabilities:
     command:
       - node scripts/lib/node-floor-guard.js
       - node scripts/build-docs-index.ts --check
+
+  - id: docs-index-selftest
+    name: "Self-test the docs index builder"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-docs-index.ts"
+          - "scripts/lib/docs-index/**"
+          - "scripts/lib/paths.ts"
+          - "scripts/lib/line-endings.ts"
+          - "scripts/lib/node-floor-guard.js"
+          - "scripts/tests/build-docs-index-entry.test.ts"
+          - "scripts/tests/lib/docs-index-entry-tree.ts"
+          - "scripts/tests/lib/worktree-fixtures.ts"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-docs-index.ts"
+          - "scripts/lib/docs-index/**"
+          - "scripts/lib/paths.ts"
+          - "scripts/lib/line-endings.ts"
+          - "scripts/lib/node-floor-guard.js"
+          - "scripts/tests/build-docs-index-entry.test.ts"
+          - "scripts/tests/lib/docs-index-entry-tree.ts"
+          - "scripts/tests/lib/worktree-fixtures.ts"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+    cache:
+      files:
+        - "scripts/build-docs-index.ts"
+        - "scripts/lib/docs-index/**"
+        - "scripts/lib/paths.ts"
+        - "scripts/lib/line-endings.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/tests/build-docs-index-entry.test.ts"
+        - "scripts/tests/lib/docs-index-entry-tree.ts"
+        - "scripts/tests/lib/worktree-fixtures.ts"
+        - "scripts/ci-cache-guard.ts"
+      env: []
+    command:
+      - node scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-docs-index-entry.test.ts
 
   - id: cli-matrix-fresh
@@ -2132,6 +2239,36 @@ capabilities:
     command:
       - node scripts/lib/node-floor-guard.js
       - task cli-matrix:check
+
+  - id: cli-matrix-fresh-selftest
+    name: "Self-test the CLI matrix generator"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-cli-matrix.ts"
+          - "scripts/lib/build-cli-matrix/**"
+          - "scripts/tests/build-cli-matrix.test.ts"
+          - "scripts/lib/node-floor-guard.js"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/build-cli-matrix.ts"
+          - "scripts/lib/build-cli-matrix/**"
+          - "scripts/tests/build-cli-matrix.test.ts"
+          - "scripts/lib/node-floor-guard.js"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+    command:
+      - node scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-cli-matrix.test.ts
 
   - id: figure-labels
@@ -2382,8 +2519,45 @@ capabilities:
       runtime: node@24
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-wiring.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-wiring-cases.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-strays.ts
+
+  - id: test-wiring-selftest
+    name: "Self-test the test-wiring and test-strays guards"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-test-wiring.ts"
+          - "scripts/check-test-strays.ts"
+          - "scripts/lib/governance/**"
+          - "scripts/tests/governance-check-test-wiring-cases.test.ts"
+          - "scripts/tests/governance-check-test-strays-cases.test.ts"
+          - "scripts/tests/lib/governance-*.ts"
+          - "scripts/ci-cache-guard.ts"
+          - "scripts/lib/ci-cache-guard/**"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-test-wiring.ts"
+          - "scripts/check-test-strays.ts"
+          - "scripts/lib/governance/**"
+          - "scripts/tests/governance-check-test-wiring-cases.test.ts"
+          - "scripts/tests/governance-check-test-strays-cases.test.ts"
+          - "scripts/tests/lib/governance-*.ts"
+          - "scripts/ci-cache-guard.ts"
+          - "scripts/lib/ci-cache-guard/**"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-wiring-cases.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-strays-cases.test.ts
 
   - id: chroma-mcp
@@ -2960,6 +3134,50 @@ capabilities:
     command:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-commands.ts
+
+  - id: check-taskfile-commands-selftest
+    name: "Self-test the Taskfile command check and the tool-binary check"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-taskfile-commands.ts"
+          - "scripts/lib/taskfile-command*.ts"
+          - "scripts/lib/taskfile-command-exemptions.json"
+          - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/taskfile-tree-parse.ts"
+          - "scripts/check-tool-binaries.ts"
+          - "scripts/lib/tool-binaries.ts"
+          - "scripts/tests/check-taskfile-commands.test.ts"
+          - "scripts/tests/check-tool-binaries.test.ts"
+          - "scripts/ci-cache-guard.ts"
+          - "scripts/lib/ci-cache-guard/**"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/check-taskfile-commands.ts"
+          - "scripts/lib/taskfile-command*.ts"
+          - "scripts/lib/taskfile-command-exemptions.json"
+          - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/taskfile-tree-parse.ts"
+          - "scripts/check-tool-binaries.ts"
+          - "scripts/lib/tool-binaries.ts"
+          - "scripts/tests/check-taskfile-commands.test.ts"
+          - "scripts/tests/check-tool-binaries.test.ts"
+          - "scripts/ci-cache-guard.ts"
+          - "scripts/lib/ci-cache-guard/**"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+    command:
+      - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-taskfile-commands.test.ts scripts/tests/check-tool-binaries.test.ts
 
   # The tree guard's check (b) scans every scripts/**/*.{ts,js} source for a
@@ -2995,6 +3213,69 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-tree.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ci-pre-push-parity.ts
+
+  - id: check-taskfile-tree-selftest
+    name: "Self-test the Taskfile tree guard, loader, reference and CI-wiring suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "Taskfile.yml"
+          - "taskfiles/**"
+          - "ci/ci-capabilities.yml"
+          - "ci/pre-push-tier.json"
+          - ".githooks/**"
+          - "scripts/check-taskfile-tree.ts"
+          - "scripts/check-ci-pre-push-parity.ts"
+          - "scripts/ci-pre-push.ts"
+          - "scripts/ci-cache-guard.ts"
+          - "scripts/lib/ci-cache-guard/**"
+          - "scripts/lib/taskfile-tree*.ts"
+          - "scripts/lib/ci-pre-push/**"
+          - "scripts/lib/ci-parity/**"
+          - "scripts/lib/glob-engine.ts"
+          - "scripts/lib/governance/**"
+          - "scripts/tests/taskfile-tree*.test.ts"
+          - "scripts/tests/check-taskfile-tree-*.test.ts"
+          - "scripts/tests/ci-pre-push-*.test.ts"
+          - "scripts/tests/ci-selftest-split.test.ts"
+          - "scripts/tests/lib/**"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+      - on: push
+        branches: [main, "release/**"]
+        paths:
+          - "Taskfile.yml"
+          - "taskfiles/**"
+          - "ci/ci-capabilities.yml"
+          - "ci/pre-push-tier.json"
+          - ".githooks/**"
+          - "scripts/check-taskfile-tree.ts"
+          - "scripts/check-ci-pre-push-parity.ts"
+          - "scripts/ci-pre-push.ts"
+          - "scripts/ci-cache-guard.ts"
+          - "scripts/lib/ci-cache-guard/**"
+          - "scripts/lib/taskfile-tree*.ts"
+          - "scripts/lib/ci-pre-push/**"
+          - "scripts/lib/ci-parity/**"
+          - "scripts/lib/glob-engine.ts"
+          - "scripts/lib/governance/**"
+          - "scripts/tests/taskfile-tree*.test.ts"
+          - "scripts/tests/check-taskfile-tree-*.test.ts"
+          - "scripts/tests/ci-pre-push-*.test.ts"
+          - "scripts/tests/ci-selftest-split.test.ts"
+          - "scripts/tests/lib/**"
+          - "taskfiles/ci.yml"
+          - ".github/workflows/build.yml"
+          - "ci/ci-capabilities.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts
 
   # Replay of the pre-push wrapper end to end (spec 0279 R16, plan v2-F1/F5).

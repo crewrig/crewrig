@@ -117,23 +117,43 @@
   },
   {
     "name": "ci:check-taskfile-commands",
-    "desc": "Check the Taskfile tree names no POSIX-only command, then run its self-tests (pre-push mirror of the CI job)"
+    "desc": "Check the Taskfile tree names no POSIX-only command (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-taskfile-commands-selftest",
+    "desc": "Run the Taskfile command and tool-binary self-tests (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:check-taskfile-tree",
-    "desc": "Check the Taskfile tree layout and contract, then run its self-tests (pre-push mirror of the CI job)"
+    "desc": "Check the Taskfile tree layout and contract (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-taskfile-tree-selftest",
+    "desc": "Run the Taskfile tree self-tests (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:cli-matrix-fresh",
-    "desc": "Check docs/cli-matrix.md is fresh and run its builder test (pre-push mirror of the CI job)"
+    "desc": "Check docs/cli-matrix.md is fresh (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:cli-matrix-fresh-selftest",
+    "desc": "Run the CLI matrix builder test (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:component-drift",
-    "desc": "Check built components match their sources and run the assembly tests (pre-push mirror of the CI job)"
+    "desc": "Check built components match their sources (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:component-drift-selftest",
+    "desc": "Run the assembly and canonical-repo build tests (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:docs-index",
-    "desc": "Check docs/index.json is fresh and run its entry test (pre-push mirror of the CI job)"
+    "desc": "Check docs/index.json is fresh (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:docs-index-selftest",
+    "desc": "Run the docs index entry test (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:frontmatter",
@@ -157,7 +177,11 @@
   },
   {
     "name": "ci:host-safety",
-    "desc": "Run the host-safety self-tests then the host-safety check (pre-push mirror of the CI job)"
+    "desc": "Run the host-safety check (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:host-safety-selftest",
+    "desc": "Run the host-safety self-tests (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:lint-markdown",
@@ -165,11 +189,19 @@
   },
   {
     "name": "ci:lint-specs",
-    "desc": "Run the spec-linter self-tests then the spec linter (pre-push mirror of the CI job)"
+    "desc": "Lint the spec files (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:lint-specs-selftest",
+    "desc": "Run the spec-linter self-tests (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:lint-typescript",
-    "desc": "Run the TypeScript lint self-tests then every TypeScript check (pre-push mirror of the CI job)"
+    "desc": "Run every TypeScript check (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:lint-typescript-selftest",
+    "desc": "Run the TypeScript lint self-tests (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:markdown-links",
@@ -177,7 +209,11 @@
   },
   {
     "name": "ci:path-ownership",
-    "desc": "Run the path-ownership and stray-scan wiring checks with their self-tests (pre-push mirror of the CI job)"
+    "desc": "Run the path-ownership and stray-scan wiring checks (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:path-ownership-selftest",
+    "desc": "Run the path-ownership and stray-scan wiring self-tests (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:pre-push",
@@ -185,7 +221,11 @@
   },
   {
     "name": "ci:ratchet",
-    "desc": "Run the footprint ratchet self-tests then the ratchet (pre-push mirror of the CI job)"
+    "desc": "Run the footprint ratchet (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:ratchet-selftest",
+    "desc": "Run the footprint ratchet self-tests (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:repository-scan",
@@ -193,7 +233,11 @@
   },
   {
     "name": "ci:test-wiring",
-    "desc": "Check every test is wired into CI and run the wiring and stray checks with their self-tests (pre-push mirror of the CI job)"
+    "desc": "Check every test is wired into CI and no stray test exists (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:test-wiring-selftest",
+    "desc": "Run the test-wiring and test-strays guard self-tests (pre-push mirror of the CI job)"
   },
   {
     "name": "cli-matrix:build",

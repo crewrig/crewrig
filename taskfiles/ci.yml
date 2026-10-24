@@ -8,21 +8,33 @@ version: '3.39'
 
 tasks:
   check-taskfile-tree:
-    desc: Check the Taskfile tree layout and contract, then run its self-tests (pre-push mirror of the CI job)
+    desc: Check the Taskfile tree layout and contract (pre-push mirror of the CI job)
     preconditions:
       - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
         msg: "Run: task lint-bootstrap"
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-taskfile-tree.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-ci-pre-push-parity.ts
+  check-taskfile-tree-selftest:
+    desc: Run the Taskfile tree self-tests (pre-push mirror of the CI job)
+    preconditions:
+      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
+        msg: "Run: task lint-bootstrap"
+    cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/taskfile-tree.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-layout.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-contract.test.ts {{.REPO_DIR}}/scripts/tests/taskfile-tree-references.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-ci-wiring.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-parity.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-select.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-refs.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-hook.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-hooks-config.test.ts {{.REPO_DIR}}/scripts/tests/ci-selftest-split.test.ts
   check-taskfile-commands:
-    desc: Check the Taskfile tree names no POSIX-only command, then run its self-tests (pre-push mirror of the CI job)
+    desc: Check the Taskfile tree names no POSIX-only command (pre-push mirror of the CI job)
     preconditions:
       - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
         msg: "Run: task lint-bootstrap"
     cmds:
       - task: :check-taskfile-commands
+  check-taskfile-commands-selftest:
+    desc: Run the Taskfile command and tool-binary self-tests (pre-push mirror of the CI job)
+    preconditions:
+      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
+        msg: "Run: task lint-bootstrap"
+    cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-taskfile-commands.test.ts {{.REPO_DIR}}/scripts/tests/check-tool-binaries.test.ts
   lint-specs:
     desc: Lint the spec files (pre-push mirror of the CI job)
@@ -133,23 +145,34 @@ tasks:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-comment-size.ts {{.REPO_DIR}}/scripts/tests/fixtures/comment-size/under.txt
       - "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-comment-size.ts {{.REPO_DIR}}/scripts/tests/fixtures/comment-size/over.txt"
   docs-index:
-    desc: Check docs/index.json is fresh and run its entry test (pre-push mirror of the CI job)
+    desc: Check docs/index.json is fresh (pre-push mirror of the CI job)
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node {{.REPO_DIR}}/scripts/build-docs-index.ts --check
+  docs-index-selftest:
+    desc: Run the docs index entry test (pre-push mirror of the CI job)
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-docs-index-entry.test.ts
   cli-matrix-fresh:
-    desc: Check docs/cli-matrix.md is fresh and run its builder test (pre-push mirror of the CI job)
+    desc: Check docs/cli-matrix.md is fresh (pre-push mirror of the CI job)
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - task: :cli-matrix:check
+  cli-matrix-fresh-selftest:
+    desc: Run the CLI matrix builder test (pre-push mirror of the CI job)
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-cli-matrix.test.ts
   test-wiring:
-    desc: Check every test is wired into CI and run the wiring and stray checks with their self-tests (pre-push mirror of the CI job)
+    desc: Check every test is wired into CI and no stray test exists (pre-push mirror of the CI job)
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-test-wiring.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-check-test-wiring-cases.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-test-strays.ts
+  test-wiring-selftest:
+    desc: Run the test-wiring and test-strays guard self-tests (pre-push mirror of the CI job)
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-check-test-wiring-cases.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-check-test-strays-cases.test.ts
   check-ci-parity:
     desc: Check the CI reference, workflow and GitLab outputs agree (pre-push mirror of the CI job)
@@ -168,13 +191,20 @@ tasks:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/build-ci.ts --check
   component-drift:
-    desc: Check built components match their sources and run the assembly tests (pre-push mirror of the CI job)
+    desc: Check built components match their sources (pre-push mirror of the CI job)
     preconditions:
       - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
         msg: "Run: task lint-bootstrap"
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node {{.REPO_DIR}}/scripts/build-components.ts --target all --check
+  component-drift-selftest:
+    desc: Run the assembly and canonical-repo build tests (pre-push mirror of the CI job)
+    preconditions:
+      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-assembly-routing.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-canonical-repo.test.ts
   frontmatter:

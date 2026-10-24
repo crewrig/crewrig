@@ -63,8 +63,6 @@ component-drift:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/build-components.ts,scripts/build-components.ts,package.json,package-lock.json,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/agent-profile-*.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,.agents/agents/**,.claude/agents/**,.gemini/agents/**,.github/agents/**,crewrig.config.toml\" --key-env \"\" -- node scripts/build-components.ts --target all --check"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/build-components.ts,scripts/build-components.ts,package.json,package-lock.json,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/agent-profile-*.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,.agents/agents/**,.claude/agents/**,.gemini/agents/**,.github/agents/**,crewrig.config.toml\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-assembly-routing.test.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-canonical-repo.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -118,6 +116,61 @@ component-drift:
         - ".gemini/agents/**"
         - ".github/agents/**"
         - "crewrig.config.toml"
+
+component-drift-selftest:
+  image: node:24
+  cache:
+    key:
+      files:
+        - "scripts/build-components.ts"
+        - "scripts/lib/**"
+        - "package.json"
+        - "package-lock.json"
+        - "scripts/tests/build-assembly-routing.test.ts"
+        - "scripts/tests/build-components-canonical-repo.test.ts"
+        - "scripts/tests/lib/build-sandbox.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/fixtures/build-components/**"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/ci-cache-guard.ts"
+    paths:
+      - .ci-cache/
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node scripts/lib/node-floor-guard.js"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/build-components.ts,scripts/lib/**,package.json,package-lock.json,scripts/tests/build-assembly-routing.test.ts,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/tests/lib/build-fixture-tree.ts,scripts/tests/fixtures/build-components/**,scripts/lib/node-floor-guard.js,scripts/ci-cache-guard.ts\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-assembly-routing.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-canonical-repo.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-components.ts"
+        - "scripts/lib/**"
+        - "package.json"
+        - "package-lock.json"
+        - "scripts/tests/build-assembly-routing.test.ts"
+        - "scripts/tests/build-components-canonical-repo.test.ts"
+        - "scripts/tests/lib/build-sandbox.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/fixtures/build-components/**"
+        - "scripts/lib/node-floor-guard.js"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-components.ts"
+        - "scripts/lib/**"
+        - "package.json"
+        - "package-lock.json"
+        - "scripts/tests/build-assembly-routing.test.ts"
+        - "scripts/tests/build-components-canonical-repo.test.ts"
+        - "scripts/tests/lib/build-sandbox.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/fixtures/build-components/**"
+        - "scripts/lib/node-floor-guard.js"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
 
 agent-profile-migration:
   image: node:24
@@ -1605,7 +1658,6 @@ docs-index:
   script:
     - "node scripts/lib/node-floor-guard.js"
     - "node scripts/build-docs-index.ts --check"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/build-docs-index.ts,scripts/lib/docs-index/**,scripts/lib/paths.ts,scripts/lib/line-endings.ts,scripts/lib/node-floor-guard.js,scripts/tests/build-docs-index-entry.test.ts,scripts/tests/lib/docs-index-entry-tree.ts,docs/**,scripts/ci-cache-guard.ts\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-docs-index-entry.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -1628,6 +1680,53 @@ docs-index:
         - "scripts/tests/lib/docs-index-entry-tree.ts"
         - "docs/**"
 
+docs-index-selftest:
+  image: node:24
+  cache:
+    key:
+      files:
+        - "scripts/build-docs-index.ts"
+        - "scripts/lib/docs-index/**"
+        - "scripts/lib/paths.ts"
+        - "scripts/lib/line-endings.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/tests/build-docs-index-entry.test.ts"
+        - "scripts/tests/lib/docs-index-entry-tree.ts"
+        - "scripts/tests/lib/worktree-fixtures.ts"
+        - "scripts/ci-cache-guard.ts"
+    paths:
+      - .ci-cache/
+  script:
+    - "node scripts/lib/node-floor-guard.js"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/build-docs-index.ts,scripts/lib/docs-index/**,scripts/lib/paths.ts,scripts/lib/line-endings.ts,scripts/lib/node-floor-guard.js,scripts/tests/build-docs-index-entry.test.ts,scripts/tests/lib/docs-index-entry-tree.ts,scripts/tests/lib/worktree-fixtures.ts,scripts/ci-cache-guard.ts\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-docs-index-entry.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-docs-index.ts"
+        - "scripts/lib/docs-index/**"
+        - "scripts/lib/paths.ts"
+        - "scripts/lib/line-endings.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/tests/build-docs-index-entry.test.ts"
+        - "scripts/tests/lib/docs-index-entry-tree.ts"
+        - "scripts/tests/lib/worktree-fixtures.ts"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-docs-index.ts"
+        - "scripts/lib/docs-index/**"
+        - "scripts/lib/paths.ts"
+        - "scripts/lib/line-endings.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/tests/build-docs-index-entry.test.ts"
+        - "scripts/tests/lib/docs-index-entry-tree.ts"
+        - "scripts/tests/lib/worktree-fixtures.ts"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+
 cli-matrix-fresh:
   image: node:24
   before_script:
@@ -1635,7 +1734,6 @@ cli-matrix-fresh:
   script:
     - "node scripts/lib/node-floor-guard.js"
     - "task cli-matrix:check"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-cli-matrix.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -1653,6 +1751,31 @@ cli-matrix-fresh:
         - "scripts/lib/build-cli-matrix/**"
         - "scripts/tests/build-cli-matrix.test.ts"
         - "scripts/lib/node-floor-guard.js"
+
+cli-matrix-fresh-selftest:
+  image: node:24
+  script:
+    - "node scripts/lib/node-floor-guard.js"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-cli-matrix.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-cli-matrix.ts"
+        - "scripts/lib/build-cli-matrix/**"
+        - "scripts/tests/build-cli-matrix.test.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/build-cli-matrix.ts"
+        - "scripts/lib/build-cli-matrix/**"
+        - "scripts/tests/build-cli-matrix.test.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
 
 figure-labels:
   image: node:24
@@ -1842,9 +1965,7 @@ test-wiring:
   image: node:24
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-wiring.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-wiring-cases.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-strays.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-strays-cases.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -1879,6 +2000,39 @@ test-wiring:
         - "ci/test-wiring-exemptions.txt"
         - ".github/workflows/*.yml"
         - ".github/workflows/*.yaml"
+        - "ci/ci-capabilities.yml"
+
+test-wiring-selftest:
+  image: node:24
+  script:
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-wiring-cases.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-strays-cases.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-test-wiring.ts"
+        - "scripts/check-test-strays.ts"
+        - "scripts/lib/governance/**"
+        - "scripts/tests/governance-check-test-wiring-cases.test.ts"
+        - "scripts/tests/governance-check-test-strays-cases.test.ts"
+        - "scripts/tests/lib/governance-*.ts"
+        - "scripts/ci-cache-guard.ts"
+        - "scripts/lib/ci-cache-guard/**"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-test-wiring.ts"
+        - "scripts/check-test-strays.ts"
+        - "scripts/lib/governance/**"
+        - "scripts/tests/governance-check-test-wiring-cases.test.ts"
+        - "scripts/tests/governance-check-test-strays-cases.test.ts"
+        - "scripts/tests/lib/governance-*.ts"
+        - "scripts/ci-cache-guard.ts"
+        - "scripts/lib/ci-cache-guard/**"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
         - "ci/ci-capabilities.yml"
 
 chroma-mcp:
@@ -2364,7 +2518,6 @@ check-taskfile-commands:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-commands.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-taskfile-commands.test.ts scripts/tests/check-tool-binaries.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -2395,6 +2548,45 @@ check-taskfile-commands:
         - "scripts/lib/tool-binaries.ts"
         - "scripts/tests/check-tool-binaries.test.ts"
 
+check-taskfile-commands-selftest:
+  image: node:24
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-taskfile-commands.test.ts scripts/tests/check-tool-binaries.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-taskfile-commands.ts"
+        - "scripts/lib/taskfile-command*.ts"
+        - "scripts/lib/taskfile-command-exemptions.json"
+        - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/taskfile-tree-parse.ts"
+        - "scripts/check-tool-binaries.ts"
+        - "scripts/lib/tool-binaries.ts"
+        - "scripts/tests/check-taskfile-commands.test.ts"
+        - "scripts/tests/check-tool-binaries.test.ts"
+        - "scripts/ci-cache-guard.ts"
+        - "scripts/lib/ci-cache-guard/**"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-taskfile-commands.ts"
+        - "scripts/lib/taskfile-command*.ts"
+        - "scripts/lib/taskfile-command-exemptions.json"
+        - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/taskfile-tree-parse.ts"
+        - "scripts/check-tool-binaries.ts"
+        - "scripts/lib/tool-binaries.ts"
+        - "scripts/tests/check-taskfile-commands.test.ts"
+        - "scripts/tests/check-tool-binaries.test.ts"
+        - "scripts/ci-cache-guard.ts"
+        - "scripts/lib/ci-cache-guard/**"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+
 check-taskfile-tree:
   image: node:24
   before_script:
@@ -2403,7 +2595,6 @@ check-taskfile-tree:
     - "npm ci --omit=dev --workspaces=false"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-tree.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ci-pre-push-parity.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
@@ -2421,6 +2612,65 @@ check-taskfile-tree:
         - "ci/ci-capabilities.yml"
         - "ci/pre-push-tier.json"
         - ".githooks/**"
+
+check-taskfile-tree-selftest:
+  image: node:24
+  before_script:
+    - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "Taskfile.yml"
+        - "taskfiles/**"
+        - "ci/ci-capabilities.yml"
+        - "ci/pre-push-tier.json"
+        - ".githooks/**"
+        - "scripts/check-taskfile-tree.ts"
+        - "scripts/check-ci-pre-push-parity.ts"
+        - "scripts/ci-pre-push.ts"
+        - "scripts/ci-cache-guard.ts"
+        - "scripts/lib/ci-cache-guard/**"
+        - "scripts/lib/taskfile-tree*.ts"
+        - "scripts/lib/ci-pre-push/**"
+        - "scripts/lib/ci-parity/**"
+        - "scripts/lib/glob-engine.ts"
+        - "scripts/lib/governance/**"
+        - "scripts/tests/taskfile-tree*.test.ts"
+        - "scripts/tests/check-taskfile-tree-*.test.ts"
+        - "scripts/tests/ci-pre-push-*.test.ts"
+        - "scripts/tests/ci-selftest-split.test.ts"
+        - "scripts/tests/lib/**"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes:
+        - "Taskfile.yml"
+        - "taskfiles/**"
+        - "ci/ci-capabilities.yml"
+        - "ci/pre-push-tier.json"
+        - ".githooks/**"
+        - "scripts/check-taskfile-tree.ts"
+        - "scripts/check-ci-pre-push-parity.ts"
+        - "scripts/ci-pre-push.ts"
+        - "scripts/ci-cache-guard.ts"
+        - "scripts/lib/ci-cache-guard/**"
+        - "scripts/lib/taskfile-tree*.ts"
+        - "scripts/lib/ci-pre-push/**"
+        - "scripts/lib/ci-parity/**"
+        - "scripts/lib/glob-engine.ts"
+        - "scripts/lib/governance/**"
+        - "scripts/tests/taskfile-tree*.test.ts"
+        - "scripts/tests/check-taskfile-tree-*.test.ts"
+        - "scripts/tests/ci-pre-push-*.test.ts"
+        - "scripts/tests/ci-selftest-split.test.ts"
+        - "scripts/tests/lib/**"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
 
 ci-pre-push-replay:
   image: node:24

@@ -91,12 +91,52 @@ jobs:
       - name: Build Components
         if: steps.filter.outputs.component-drift == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/build-components.ts,scripts/build-components.ts,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/agent-profile-*.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,.agents/agents/**,.claude/agents/**,.gemini/agents/**,.github/agents/**,crewrig.config.toml,package.json,package-lock.json" --key-env "" -- node scripts/build-components.ts --target all --check
-      - name: Test Assembly Verification
-        if: steps.filter.outputs.component-drift == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/build-components.ts,scripts/build-components.ts,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/agent-profile-*.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,.agents/agents/**,.claude/agents/**,.gemini/agents/**,.github/agents/**,crewrig.config.toml,package.json,package-lock.json" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-assembly-routing.test.ts
-      - name: Test Build Components
-        if: steps.filter.outputs.component-drift == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/build-components.ts,scripts/build-components.ts,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/agent-profile-*.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,.agents/agents/**,.claude/agents/**,.gemini/agents/**,.github/agents/**,crewrig.config.toml,package.json,package-lock.json" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-canonical-repo.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+  component-drift-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            component-drift-selftest:
+              - 'scripts/build-components.ts'
+              - 'scripts/lib/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'scripts/tests/build-assembly-routing.test.ts'
+              - 'scripts/tests/build-components-canonical-repo.test.ts'
+              - 'scripts/tests/lib/build-sandbox.ts'
+              - 'scripts/tests/lib/build-fixture-tree.ts'
+              - 'scripts/tests/fixtures/build-components/**'
+              - 'scripts/lib/node-floor-guard.js'
+              - 'taskfiles/ci.yml'
+              - '.github/workflows/build.yml'
+              - 'ci/ci-capabilities.yml'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.component-drift-selftest == 'true'
+        with:
+          node-version: 24
+      - uses: actions/cache@v4
+        if: steps.filter.outputs.component-drift-selftest == 'true'
+        with:
+          path: .ci-cache
+          key: ${{ hashFiles('scripts/build-components.ts', 'scripts/lib/**', 'package.json', 'package-lock.json', 'scripts/tests/build-assembly-routing.test.ts', 'scripts/tests/build-components-canonical-repo.test.ts', 'scripts/tests/lib/build-sandbox.ts', 'scripts/tests/lib/build-fixture-tree.ts', 'scripts/tests/fixtures/build-components/**', 'scripts/lib/node-floor-guard.js', 'scripts/ci-cache-guard.ts') }}
+      - name: Install production dependencies
+        if: steps.filter.outputs.component-drift-selftest == 'true'
+        run: npm ci --omit=dev --workspaces=false
+      - name: Floor guard accepts Node.js 24
+        if: steps.filter.outputs.component-drift-selftest == 'true'
+        run: node scripts/lib/node-floor-guard.js
+      - name: Run the self-tests
+        if: steps.filter.outputs.component-drift-selftest == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/build-components.ts,scripts/lib/**,package.json,package-lock.json,scripts/tests/build-assembly-routing.test.ts,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/tests/lib/build-fixture-tree.ts,scripts/tests/fixtures/build-components/**,scripts/lib/node-floor-guard.js,scripts/ci-cache-guard.ts" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-assembly-routing.test.ts
+      - name: Run the self-tests
+        if: steps.filter.outputs.component-drift-selftest == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/build-components.ts,scripts/lib/**,package.json,package-lock.json,scripts/tests/build-assembly-routing.test.ts,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/tests/lib/build-fixture-tree.ts,scripts/tests/fixtures/build-components/**,scripts/lib/node-floor-guard.js,scripts/ci-cache-guard.ts" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-canonical-repo.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1363,9 +1403,44 @@ jobs:
         with:
           path: .ci-cache
           key: ${{ hashFiles('scripts/build-docs-index.ts', 'scripts/lib/docs-index/**', 'scripts/lib/paths.ts', 'scripts/lib/line-endings.ts', 'scripts/lib/node-floor-guard.js', 'scripts/tests/build-docs-index-entry.test.ts', 'scripts/tests/lib/docs-index-entry-tree.ts', 'docs/**', 'scripts/ci-cache-guard.ts') }}
-      - name: Test Build Docs Index
-        if: steps.filter.outputs.docs-index == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/build-docs-index.ts,scripts/lib/docs-index/**,scripts/lib/paths.ts,scripts/lib/line-endings.ts,scripts/lib/node-floor-guard.js,scripts/tests/build-docs-index-entry.test.ts,scripts/tests/lib/docs-index-entry-tree.ts,docs/**,scripts/ci-cache-guard.ts" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-docs-index-entry.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+  docs-index-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            docs-index-selftest:
+              - 'scripts/build-docs-index.ts'
+              - 'scripts/lib/docs-index/**'
+              - 'scripts/lib/paths.ts'
+              - 'scripts/lib/line-endings.ts'
+              - 'scripts/lib/node-floor-guard.js'
+              - 'scripts/tests/build-docs-index-entry.test.ts'
+              - 'scripts/tests/lib/docs-index-entry-tree.ts'
+              - 'scripts/tests/lib/worktree-fixtures.ts'
+              - 'taskfiles/ci.yml'
+              - '.github/workflows/build.yml'
+              - 'ci/ci-capabilities.yml'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.docs-index-selftest == 'true'
+        with:
+          node-version: 24
+      - uses: actions/cache@v4
+        if: steps.filter.outputs.docs-index-selftest == 'true'
+        with:
+          path: .ci-cache
+          key: ${{ hashFiles('scripts/build-docs-index.ts', 'scripts/lib/docs-index/**', 'scripts/lib/paths.ts', 'scripts/lib/line-endings.ts', 'scripts/lib/node-floor-guard.js', 'scripts/tests/build-docs-index-entry.test.ts', 'scripts/tests/lib/docs-index-entry-tree.ts', 'scripts/tests/lib/worktree-fixtures.ts', 'scripts/ci-cache-guard.ts') }}
+      - name: Floor guard accepts Node.js 24
+        if: steps.filter.outputs.docs-index-selftest == 'true'
+        run: node scripts/lib/node-floor-guard.js
+      - name: Run the self-tests
+        if: steps.filter.outputs.docs-index-selftest == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/build-docs-index.ts,scripts/lib/docs-index/**,scripts/lib/paths.ts,scripts/lib/line-endings.ts,scripts/lib/node-floor-guard.js,scripts/tests/build-docs-index-entry.test.ts,scripts/tests/lib/docs-index-entry-tree.ts,scripts/tests/lib/worktree-fixtures.ts,scripts/ci-cache-guard.ts" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-docs-index-entry.test.ts
       - name: Cancel workflow on job failure
         if: failure()
         uses: ./.github/actions/cancel-on-failure
@@ -1523,14 +1598,41 @@ jobs:
       - name: Check Test Wiring
         if: steps.filter.outputs.test-wiring == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-wiring.ts
-      - name: Test Check Test Wiring
-        if: steps.filter.outputs.test-wiring == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-wiring-cases.test.ts
       - name: Check Test Strays
         if: steps.filter.outputs.test-wiring == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-strays.ts
-      - name: Test Check Test Strays
-        if: steps.filter.outputs.test-wiring == 'true'
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+  test-wiring-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            test-wiring-selftest:
+              - 'scripts/check-test-wiring.ts'
+              - 'scripts/check-test-strays.ts'
+              - 'scripts/lib/governance/**'
+              - 'scripts/tests/governance-check-test-wiring-cases.test.ts'
+              - 'scripts/tests/governance-check-test-strays-cases.test.ts'
+              - 'scripts/tests/lib/governance-*.ts'
+              - 'scripts/ci-cache-guard.ts'
+              - 'scripts/lib/ci-cache-guard/**'
+              - 'taskfiles/ci.yml'
+              - '.github/workflows/build.yml'
+              - 'ci/ci-capabilities.yml'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.test-wiring-selftest == 'true'
+        with:
+          node-version: 24
+      - name: Run the self-tests
+        if: steps.filter.outputs.test-wiring-selftest == 'true'
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-wiring-cases.test.ts
+      - name: Run the self-tests
+        if: steps.filter.outputs.test-wiring-selftest == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-strays-cases.test.ts
       - name: Cancel workflow on job failure
         if: failure()
@@ -1863,8 +1965,41 @@ jobs:
       - name: Check Taskfile Commands
         if: steps.filter.outputs.check-taskfile-commands == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-commands.ts
-      - name: Test Check Taskfile Commands
-        if: steps.filter.outputs.check-taskfile-commands == 'true'
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+  check-taskfile-commands-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            check-taskfile-commands-selftest:
+              - 'scripts/check-taskfile-commands.ts'
+              - 'scripts/lib/taskfile-command*.ts'
+              - 'scripts/lib/taskfile-command-exemptions.json'
+              - 'scripts/lib/taskfile-tree.ts'
+              - 'scripts/lib/taskfile-tree-parse.ts'
+              - 'scripts/check-tool-binaries.ts'
+              - 'scripts/lib/tool-binaries.ts'
+              - 'scripts/tests/check-taskfile-commands.test.ts'
+              - 'scripts/tests/check-tool-binaries.test.ts'
+              - 'scripts/ci-cache-guard.ts'
+              - 'scripts/lib/ci-cache-guard/**'
+              - 'taskfiles/ci.yml'
+              - '.github/workflows/build.yml'
+              - 'ci/ci-capabilities.yml'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.check-taskfile-commands-selftest == 'true'
+        with:
+          node-version: 24
+      - name: Install production dependencies
+        if: steps.filter.outputs.check-taskfile-commands-selftest == 'true'
+        run: npm ci --omit=dev --workspaces=false
+      - name: Run the self-tests
+        if: steps.filter.outputs.check-taskfile-commands-selftest == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-taskfile-commands.test.ts scripts/tests/check-tool-binaries.test.ts
       - name: Cancel workflow on job failure
         if: failure()
@@ -1900,8 +2035,53 @@ jobs:
       - name: Check CI Pre-Push Parity
         if: steps.filter.outputs.check-taskfile-tree == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ci-pre-push-parity.ts
-      - name: Test Check Taskfile Tree
-        if: steps.filter.outputs.check-taskfile-tree == 'true'
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+  check-taskfile-tree-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            check-taskfile-tree-selftest:
+              - 'Taskfile.yml'
+              - 'taskfiles/**'
+              - 'ci/ci-capabilities.yml'
+              - 'ci/pre-push-tier.json'
+              - '.githooks/**'
+              - 'scripts/check-taskfile-tree.ts'
+              - 'scripts/check-ci-pre-push-parity.ts'
+              - 'scripts/ci-pre-push.ts'
+              - 'scripts/ci-cache-guard.ts'
+              - 'scripts/lib/ci-cache-guard/**'
+              - 'scripts/lib/taskfile-tree*.ts'
+              - 'scripts/lib/ci-pre-push/**'
+              - 'scripts/lib/ci-parity/**'
+              - 'scripts/lib/glob-engine.ts'
+              - 'scripts/lib/governance/**'
+              - 'scripts/tests/taskfile-tree*.test.ts'
+              - 'scripts/tests/check-taskfile-tree-*.test.ts'
+              - 'scripts/tests/ci-pre-push-*.test.ts'
+              - 'scripts/tests/ci-selftest-split.test.ts'
+              - 'scripts/tests/lib/**'
+              - 'taskfiles/ci.yml'
+              - '.github/workflows/build.yml'
+              - 'ci/ci-capabilities.yml'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.check-taskfile-tree-selftest == 'true'
+        with:
+          node-version: 24
+      - name: Install Task
+        if: steps.filter.outputs.check-taskfile-tree-selftest == 'true'
+        run: sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+      - name: Install production dependencies
+        if: steps.filter.outputs.check-taskfile-tree-selftest == 'true'
+        run: npm ci --omit=dev --workspaces=false
+      - name: Run the self-tests
+        if: steps.filter.outputs.check-taskfile-tree-selftest == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts
       - name: Cancel workflow on job failure
         if: failure()
@@ -3520,8 +3700,34 @@ jobs:
       - name: Check CLI matrix freshness
         if: steps.filter.outputs.cli-matrix-fresh == 'true'
         run: task cli-matrix:check
-      - name: Test the CLI matrix generator
-        if: steps.filter.outputs.cli-matrix-fresh == 'true'
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+  cli-matrix-fresh-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            cli-matrix-fresh-selftest:
+              - 'scripts/build-cli-matrix.ts'
+              - 'scripts/lib/build-cli-matrix/**'
+              - 'scripts/tests/build-cli-matrix.test.ts'
+              - 'scripts/lib/node-floor-guard.js'
+              - 'taskfiles/ci.yml'
+              - '.github/workflows/build.yml'
+              - 'ci/ci-capabilities.yml'
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.cli-matrix-fresh-selftest == 'true'
+        with:
+          node-version: 24
+      - name: Floor guard accepts Node.js 24
+        if: steps.filter.outputs.cli-matrix-fresh-selftest == 'true'
+        run: node scripts/lib/node-floor-guard.js
+      - name: Run the self-tests
+        if: steps.filter.outputs.cli-matrix-fresh-selftest == 'true'
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-cli-matrix.test.ts
       - name: Cancel workflow on job failure
         if: failure()
