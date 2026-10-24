@@ -1,7 +1,7 @@
 ---
 id: "0280"
 slug: task-ci-contract
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1782
