@@ -36,7 +36,9 @@ export function checkGitlab(state: ParityState, pin: TaskPin): string[] {
     if (all.some((l) => /sh -c "?\$\(curl/.test(l)))
       out.push(`.gitlab-ci.yml job '${key}': fail-open command substitution (R6b)`);
     if (needs.has(key) && occurrences(before, recipe) !== 1)
-      out.push(`.gitlab-ci.yml job '${key}': does not carry the generated Task recipe exactly once (R6b)`);
+      out.push(
+        `.gitlab-ci.yml job '${key}': does not carry the generated Task recipe exactly once (R6b)`,
+      );
   }
   return out;
 }

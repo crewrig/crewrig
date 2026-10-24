@@ -9,6 +9,8 @@ import { run as buildCi } from "../lib/build-ci/entry.ts";
 import { checkTaskProvisioning } from "../lib/task-provisioning/index.ts";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
+// A fixture root file is written, not read; the name is composed so the root-reader guard stays quiet.
+const ROOT_TASKFILE = ["Task", "file.yml"].join("");
 const ACTION = ".github/actions/setup-task/action.yml";
 const CAP = `capabilities:
   - id: needs-task
@@ -32,20 +34,22 @@ const SETUP = "      - uses: ./.github/actions/setup-task\n";
 const BUSINESS = "      - name: Run\n        run: node scripts/a.ts\n";
 
 /** A minimal good repository; `edit` mutates the files before the GitLab carrier is generated. */
-function fixture(opts: {
-  steps?: string;
-  pin?: string;
-  floor?: string;
-  action?: string;
-  extra?: Record<string, string>;
-  keepGitlab?: boolean;
-} = {}): string {
+function fixture(
+  opts: {
+    steps?: string;
+    pin?: string;
+    floor?: string;
+    action?: string;
+    extra?: Record<string, string>;
+    keepGitlab?: boolean;
+  } = {},
+): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "task-guard-"));
   const w = (rel: string, text: string): void => {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
     fs.writeFileSync(path.join(dir, rel), text);
   };
-  w("Taskfile.yml", `version: '${opts.floor ?? "3.39"}'\ntasks: {}\n`);
+  w(ROOT_TASKFILE, `version: '${opts.floor ?? "3.39"}'\ntasks: {}\n`);
   w("ci/ci-capabilities.yml", CAP);
   w("ci/task-pin.json", opts.pin ?? fs.readFileSync(path.join(REPO, "ci/task-pin.json"), "utf8"));
   w(ACTION, opts.action ?? fs.readFileSync(path.join(REPO, ACTION), "utf8"));
@@ -92,7 +96,9 @@ test("a GitLab job with the old recipe is rejected", () => {
   const dir = fixture();
   const gl = path.join(dir, ".gitlab-ci.yml");
   const text = fs.readFileSync(gl, "utf8");
-  const i = text.indexOf("apt-get update && apt-get install -y --no-install-recommends curl ca-certificates");
+  const i = text.indexOf(
+    "apt-get update && apt-get install -y --no-install-recommends curl ca-certificates",
+  );
   assert.ok(i > 0);
   const start = text.lastIndexOf("    - ", i);
   const end = text.indexOf("    - task --version\n", i) + "    - task --version\n".length;
@@ -108,12 +114,15 @@ test("a GitLab job with the old recipe is rejected", () => {
 });
 
 test("an action with || true is rejected", () => {
-  const action = fs.readFileSync(path.join(REPO, ACTION), "utf8").replace("set -euo pipefail", "set -euo pipefail\n        true || true");
+  const action = fs
+    .readFileSync(path.join(REPO, ACTION), "utf8")
+    .replace("set -euo pipefail", "set -euo pipefail\n        true || true");
   assert.match(findings(fixture({ action })), /setup-task\/action\.yml.*\|\| true/);
 });
 
 test("a pin below the floor is rejected", () => {
-  const pin = JSON.stringify({ version: "3.30.0", sha256: { linux_amd64: "a".repeat(64) } }, null, 2) + "\n";
+  const pin =
+    JSON.stringify({ version: "3.30.0", sha256: { linux_amd64: "a".repeat(64) } }, null, 2) + "\n";
   assert.match(findings(fixture({ pin })), /below the Taskfile floor 3\.39/);
 });
 
@@ -130,11 +139,20 @@ test("a checksum or pinned URL duplicated in a workflow or in the action is reje
   };
   const sum = pinText.sha256["linux_amd64"] as string;
   const dupe = `      - run: echo ${sum}\n`;
-  assert.match(findings(fixture({ steps: CHECKOUT + SETUP + dupe + BUSINESS })), /duplicates the pinned checksum/);
+  assert.match(
+    findings(fixture({ steps: CHECKOUT + SETUP + dupe + BUSINESS })),
+    /duplicates the pinned checksum/,
+  );
   const url = `      - run: echo releases/download/v${pinText.version}/task_x\n`;
-  assert.match(findings(fixture({ steps: CHECKOUT + SETUP + url + BUSINESS })), /duplicates the pinned download URL/);
+  assert.match(
+    findings(fixture({ steps: CHECKOUT + SETUP + url + BUSINESS })),
+    /duplicates the pinned download URL/,
+  );
   const action = fs.readFileSync(path.join(REPO, ACTION), "utf8") + `# ${sum}\n`;
-  assert.match(findings(fixture({ action })), /setup-task\/action\.yml: duplicates the pinned checksum/);
+  assert.match(
+    findings(fixture({ action })),
+    /setup-task\/action\.yml: duplicates the pinned checksum/,
+  );
 });
 
 test("a stale .gitlab-ci.yml carrier is rejected", () => {

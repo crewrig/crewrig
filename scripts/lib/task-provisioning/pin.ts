@@ -41,16 +41,22 @@ export function readPin(repoDir: string): { pin: TaskPin; findings: string[] } {
   const pin = parseTaskPin(text);
   const findings: string[] = [];
   const canon = JSON.stringify(JSON.parse(text), null, 2) + "\n";
-  if (canon !== text) findings.push(`${PIN_FILE}: not one key per line, two-space pretty JSON (R6d)`);
-  const keys = Object.keys(JSON.parse(text) as object).sort().join(",");
-  if (keys !== "sha256,version") findings.push(`${PIN_FILE}: keys must be exactly version and sha256 (R6d)`);
+  if (canon !== text)
+    findings.push(`${PIN_FILE}: not one key per line, two-space pretty JSON (R6d)`);
+  const keys = Object.keys(JSON.parse(text) as object)
+    .sort()
+    .join(",");
+  if (keys !== "sha256,version")
+    findings.push(`${PIN_FILE}: keys must be exactly version and sha256 (R6d)`);
   const root = loadTaskfileTree(repoDir).nodes[0];
   const floor = majorMinor(String(root?.version ?? ""));
   const have = majorMinor(pin.version);
   if (floor === null || have === null)
     throw new Error("Taskfile.yml: unreadable `version:` floor (R6d)");
   if (have[0] < floor[0] || (have[0] === floor[0] && have[1] < floor[1]))
-    findings.push(`${PIN_FILE}: version ${pin.version} is below the Taskfile floor ${floor.join(".")} (R6d)`);
+    findings.push(
+      `${PIN_FILE}: version ${pin.version} is below the Taskfile floor ${floor.join(".")} (R6d)`,
+    );
   return { pin, findings };
 }
 
@@ -68,10 +74,13 @@ export function checkCarriers(repoDir: string, pin: TaskPin): string[] {
     if (f === PIN_FILE || f === ".gitlab-ci.yml") continue;
     const text = fs.readFileSync(path.join(repoDir, f), "utf8");
     if (text.includes(sum)) out.push(`${f}: duplicates the pinned checksum (R6d)`);
-    if (urls.some((u) => text.includes(u))) out.push(`${f}: duplicates the pinned download URL (R6d)`);
+    if (urls.some((u) => text.includes(u)))
+      out.push(`${f}: duplicates the pinned download URL (R6d)`);
   }
   const gen = buildCi(["--check"], repoDir);
   if (gen.code !== 0)
-    out.push(`.gitlab-ci.yml: stale or ungeneratable against the pin (${gen.stderr.trim() || gen.stdout.trim()}) (R6d)`);
+    out.push(
+      `.gitlab-ci.yml: stale or ungeneratable against the pin (${gen.stderr.trim() || gen.stdout.trim()}) (R6d)`,
+    );
   return out;
 }

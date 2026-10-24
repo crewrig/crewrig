@@ -30,18 +30,17 @@ export function checkGithubJobs(state: ParityState): string[] {
     if (node === null) continue;
     const rec = readJob(node);
     const where = `job '${j.jobKey}' (${j.workflow.replace(`${state.repoDir}/`, "")})`;
-    const needsTask =
-      needs.has(j.id) || rec.steps.some((s) => TASK_INVOCATION.test(s.run));
+    const needsTask = needs.has(j.id) || rec.steps.some((s) => TASK_INVOCATION.test(s.run));
     for (const s of rec.steps)
       if (OTHER_ROUTES.some((re) => re.test(s.run)))
         out.push(`${where}: a step installs Task by a route other than ${ACTION_USES} (R6a)`);
     if (!needsTask) continue;
-    const setups = rec.steps
-      .map((s, i) => [s, i] as const)
-      .filter(([s]) => s.uses === ACTION_USES);
+    const setups = rec.steps.map((s, i) => [s, i] as const).filter(([s]) => s.uses === ACTION_USES);
     const checkout = rec.steps.findIndex((s) => s.uses.includes("/checkout@"));
     if (setups.length !== 1)
-      out.push(`${where}: needs Task but has ${setups.length} '${ACTION_USES}' steps, want exactly one (R6a)`);
+      out.push(
+        `${where}: needs Task but has ${setups.length} '${ACTION_USES}' steps, want exactly one (R6a)`,
+      );
     else if (checkout < 0 || (setups[0] as readonly [unknown, number])[1] < checkout)
       out.push(`${where}: '${ACTION_USES}' must come after the actions/checkout step (R6a)`);
   }
