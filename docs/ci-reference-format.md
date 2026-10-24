@@ -141,6 +141,11 @@ no Windows runner) but carry `command: [task ci:<id>]` like every migrated capab
 job is a checkout plus `./.github/actions/ci-job` on `windows-latest`, and the task lives in
 `taskfiles/ci.yml`. `windows-hook-probe` keeps its own portable shape.
 
+**Windows trap for adopters.** On `windows-latest` a Git Bash step puts its own `PATH` and `HOME` in
+front of the proofs, and a bare `bash` can then resolve to the WSL stub (`C:\Windows\System32\bash.exe`,
+"Windows Subsystem for Linux has no installed distributions"). For that reason `ci-job` runs the final
+`task ci:<id>` step from `pwsh` on Windows; the other steps (gate, installs) stay `bash`.
+
 ## Invocation command and execution requirements
 
 A `portable` capability is not merely *described* by the reference — its
