@@ -154,10 +154,17 @@ runs:
       with:
         path: .ci-cache
         key: ci-${{ inputs.id }}-${{ steps.cachekey.outputs.key }}
-    - if: steps.decide.outputs.run == 'true' && inputs.task == 'true'
+    - if: steps.decide.outputs.run == 'true' && inputs.task == 'true' && runner.os != 'Windows'
       shell: bash
       env:
         JOB_ID: ${{ inputs.id }}
       run: task "ci:${JOB_ID}"
+    # Windows: the task runs from pwsh, the runner's native environment (Git Bash would put its own
+    # PATH and HOME in front of the proofs, which test that no POSIX layer is needed).
+    - if: steps.decide.outputs.run == 'true' && inputs.task == 'true' && runner.os == 'Windows'
+      shell: pwsh
+      env:
+        JOB_ID: ${{ inputs.id }}
+      run: task "ci:$env:JOB_ID"
     - if: steps.decide.outputs.run == 'true' && failure()
       uses: ./.github/actions/cancel-on-failure
