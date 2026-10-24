@@ -168,3 +168,5 @@ describe("release driver sandbox", () => {
     sb.dispose();
   });
 });
+
+// probe #1783: control run of Release Driver Tests on main (do not merge)
