@@ -326,6 +326,11 @@
           "title": "ADR 0020 — Risk-proportional lifecycle ceremony",
           "path": "docs/adr/0020-risk-proportional-ceremony.md",
           "nav_order": 200
+        },
+        {
+          "title": "ADR 0021 — Task is the CI contract",
+          "path": "docs/adr/0021-task-is-the-ci-contract.md",
+          "nav_order": 210
         }
       ]
     }
