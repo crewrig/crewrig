@@ -14,7 +14,12 @@ inputs:
     default: "24"
   install:
     description: "Dependency install: ci, install, omit-dev or none."
-    default: ci
+    default: omit-dev
+  gate:
+    description: >-
+      'false' skips the runtime path gate (a job whose capability has no `paths:` always runs); the
+      run decision is then forced true. Checked by scripts/check-ci-parity.ts against `paths:`.
+    default: "true"
   task:
     description: Provision the pinned Task and run `task ci:<id>`.
     default: "true"
@@ -51,17 +56,32 @@ runs:
       with:
         node-version: ${{ inputs.node }}
         cache: ${{ inputs.install != 'none' && 'npm' || '' }}
-    # The gate needs js-yaml (the yq reader), so this production install precedes it. It is the
-    # only production install: `omit-dev` jobs need nothing more, `ci`/`install` jobs add the full one.
-    - shell: bash
+    # The gate needs js-yaml, so this production install precedes it. It is the only production
+    # install: `omit-dev` jobs need nothing more, `ci`/`install` jobs add the full one. With the gate
+    # off it runs only as the job's own `omit-dev` install.
+    - if: inputs.gate != 'false' || inputs.install == 'omit-dev'
+      shell: bash
       run: npm ci --omit=dev --workspaces=false
     - id: gate
+      if: inputs.gate != 'false'
       shell: bash
       env:
         GATE_BEFORE: ${{ github.event.before }}
         JOB_ID: ${{ inputs.id }}
       run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-paths-gate.ts --capability "${JOB_ID}"
-    - if: steps.gate.outputs.changed == 'true' && inputs.yq != ''
+    # Every later step reads `steps.decide.outputs.run`: forced true when the gate is off.
+    - id: decide
+      shell: bash
+      env:
+        GATE_ENABLED: ${{ inputs.gate }}
+        GATE_CHANGED: ${{ steps.gate.outputs.changed }}
+      run: |
+        if [ "${GATE_ENABLED}" = "false" ]; then
+          echo "run=true" >> "${GITHUB_OUTPUT}"
+        else
+          echo "run=${GATE_CHANGED}" >> "${GITHUB_OUTPUT}"
+        fi
+    - if: steps.decide.outputs.run == 'true' && inputs.yq != ''
       shell: bash
       env:
         YQ_VERSION: ${{ inputs.yq }}
@@ -86,7 +106,7 @@ runs:
         fi
         sudo install -m 0755 "${work}/yq" /usr/local/bin/yq
         yq --version
-    - if: steps.gate.outputs.changed == 'true' && inputs.apt != ''
+    - if: steps.decide.outputs.run == 'true' && inputs.apt != ''
       shell: bash
       env:
         APT_PACKAGES: ${{ inputs.apt }}
@@ -99,7 +119,7 @@ runs:
         read -r -a packages <<< "${APT_PACKAGES}"
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends "${packages[@]}"
-    - if: steps.gate.outputs.changed == 'true' && inputs.python != ''
+    - if: steps.decide.outputs.run == 'true' && inputs.python != ''
       shell: bash
       env:
         PYTHON_VERSION: ${{ inputs.python }}
@@ -109,43 +129,43 @@ runs:
           echo "::error title=ci-job-python::invalid python version '${PYTHON_VERSION}'" >&2
           exit 1
         fi
-    - if: steps.gate.outputs.changed == 'true' && inputs.python != ''
+    - if: steps.decide.outputs.run == 'true' && inputs.python != ''
       uses: actions/setup-python@v5
       with:
         python-version: ${{ inputs.python }}
-    - if: steps.gate.outputs.changed == 'true' && inputs.task == 'true'
+    - if: steps.decide.outputs.run == 'true' && inputs.task == 'true'
       uses: ./.github/actions/setup-task
-    - if: steps.gate.outputs.changed == 'true' && inputs.install == 'ci'
+    - if: steps.decide.outputs.run == 'true' && inputs.install == 'ci'
       shell: bash
       run: npm ci
-    - if: steps.gate.outputs.changed == 'true' && inputs.install == 'install'
+    - if: steps.decide.outputs.run == 'true' && inputs.install == 'install'
       shell: bash
       run: npm install
-    - if: steps.gate.outputs.changed == 'true' && inputs.node == '24'
+    - if: steps.decide.outputs.run == 'true' && inputs.node == '24'
       shell: bash
       run: node scripts/lib/node-floor-guard.js
     - id: cachekey
-      if: steps.gate.outputs.changed == 'true' && inputs.cache == 'true'
+      if: steps.decide.outputs.run == 'true' && inputs.cache == 'true'
       shell: bash
       env:
         JOB_ID: ${{ inputs.id }}
       run: echo "key=$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --capability "${JOB_ID}" --print-key)" >> "${GITHUB_OUTPUT}"
-    - if: steps.gate.outputs.changed == 'true' && inputs.cache == 'true'
+    - if: steps.decide.outputs.run == 'true' && inputs.cache == 'true'
       uses: actions/cache@v4
       with:
         path: .ci-cache
         key: ci-${{ inputs.id }}-${{ steps.cachekey.outputs.key }}
-    - if: steps.gate.outputs.changed == 'true' && inputs.task == 'true' && runner.os != 'Windows'
+    - if: steps.decide.outputs.run == 'true' && inputs.task == 'true' && runner.os != 'Windows'
       shell: bash
       env:
         JOB_ID: ${{ inputs.id }}
       run: task "ci:${JOB_ID}"
     # Windows: the task runs from pwsh, the runner's native environment (Git Bash would put its own
     # PATH and HOME in front of the proofs, which test that no POSIX layer is needed).
-    - if: steps.gate.outputs.changed == 'true' && inputs.task == 'true' && runner.os == 'Windows'
+    - if: steps.decide.outputs.run == 'true' && inputs.task == 'true' && runner.os == 'Windows'
       shell: pwsh
       env:
         JOB_ID: ${{ inputs.id }}
       run: task "ci:$env:JOB_ID"
-    - if: steps.gate.outputs.changed == 'true' && failure()
+    - if: steps.decide.outputs.run == 'true' && failure()
       uses: ./.github/actions/cancel-on-failure

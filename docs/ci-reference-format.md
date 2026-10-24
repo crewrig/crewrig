@@ -910,8 +910,10 @@ before `task ci:<id>`. The list MUST equal the packages implied by the capabilit
 The `python` input is a `x.y` version (anchored `^[0-9]+\.[0-9]+$`, validated through `env`) provisioned
 with `actions/setup-python@v5`. It MUST equal the version of the capability's secondary `runtime` entry
 `python@<version>`; `scripts/check-ci-parity.ts` fails a mismatch in either direction. The GitLab side only
-installs the unversioned Debian `python3` for a secondary python runtime (`secondaryRuntimeInstallLines`),
-so the version equality is enforced between the reference and GitHub, not against the GitLab package.
+installs the Debian `python3` of the node image (3.11 on node:24, bookworm) for a secondary python runtime
+(`secondaryRuntimeInstallLines`) and the generator fails for any other secondary `python@<version>`, so a
+version the GitLab image cannot provide is never silently approximated. GitLab output is not verified on a
+live runner: a green parity check is not a live-runner proof (spec 0285 R6).
 
 Steps, in order: a first step that deepens a shallow checkout to two commits (`git fetch --depth=2`
 of the current `HEAD`, skipped on a full clone), `setup-node`, the path gate (`scripts/ci-paths-gate.ts`), an optional pinned `yq`, the optional `apt` install and `setup-python`, `setup-task` when

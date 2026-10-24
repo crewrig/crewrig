@@ -118,13 +118,21 @@ export function checkGhaJob(
         if (step.withTask !== "false") prov.tools.push("task");
         if (step.withYq !== "") prov.tools.push("yq");
         // `requires.install` (omitted = none) must equal the job's `install` input (the action's
-        // own default is ci), so provisioning lives in exactly one declared place (spec 0283 R1).
+        // own default is omit-dev), so provisioning lives in exactly one declared place (spec 0283 R1).
         const want = c.install === "" ? "none" : c.install;
-        const got = step.withInstall === "" ? "ci" : step.withInstall;
+        const got = step.withInstall === "" ? "omit-dev" : step.withInstall;
         if (want !== got)
           fail(
             state,
             `capability '${c.id}' (github-actions): job '${jobKey}' passes ci-job install '${got}' but the reference requires.install is '${want}' (spec 0283 R1)`,
+          );
+        // `gate: false` skips the runtime path gate, so it is only sound for a capability with no
+        // effective `paths:` (capability level or any trigger); otherwise the job would run on every change.
+        const hasPaths = c.capPaths.length > 0 || c.triggers.some((t) => t.paths.length > 0);
+        if (step.withGate === "false" && hasPaths)
+          fail(
+            state,
+            `capability '${c.id}' (github-actions): job '${jobKey}' passes ci-job gate 'false' but the reference declares paths: (the path gate must stay on)`,
           );
         // The GitHub `yq` input must equal the version the GitLab recipe installs (no silent
         // engine asymmetry): `requires.yq`, else the default version.

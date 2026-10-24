@@ -50,7 +50,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: component-drift
-          install: omit-dev
           cache: true
 
   component-drift-selftest:
@@ -60,7 +59,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: component-drift-selftest
-          install: omit-dev
           cache: true
 
   agent-profile-migration:
@@ -70,7 +68,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: agent-profile-migration
-          install: omit-dev
           yq: "4.54.1"
           cache: true
 
@@ -84,7 +81,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: build-components-ts
-          install: omit-dev
           yq: "4.54.1"
 
   # Spec 0254 R22, R27: the TypeScript extension and plugin builder suites, the golden proof and
@@ -109,7 +105,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: skill-scripts-ts
-          install: omit-dev
           yq: "4.44.3"
 
   # Spec 0259 R26-R28 (ticket #1338), PR P0: the governance-check suites.
@@ -121,7 +116,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: governance-checks-ts
-          install: omit-dev
 
   # Spec 0262 R21-R23 (ticket #1339): the model-CI-tooling suites and their shell differential legs.
   # Linux only. `jq` comes with the runner image; `yq` is pinned to v4.44.3 and its sha256 is checked.
@@ -133,7 +127,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: model-ci-tooling-ts
-          install: omit-dev
           yq: "4.44.3"
 
   # Spec 0255 (row F2), PR B: the dark link-or-copy, component twin and manage module suites.
@@ -145,7 +138,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: install-ts
-          install: omit-dev
 
   # Spec 0255 R3: the install, manage and link entries print nothing on the oldest Node.js 24 release.
   # No path filter, like `extension-builders-ts-node-24-0`.
@@ -173,7 +165,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: setup-oracle
-          install: omit-dev
 
   # Spec 0256 requirement 10 (ticket #1335), PR C: the shell-against-TypeScript parity proof, one shard
   # file per CLI, and the twin differential suites. Linux only; retired with the shell setups.
@@ -186,7 +177,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: setup-differential
-          install: omit-dev
 
   # Spec 0256 R40 (ticket #1335), PR B1: the portable unit suites of the TypeScript setup modules,
   # the TLS environment quoting and writer, and the confirm remainder. The POSIX-only suites skip
@@ -198,7 +188,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: setup-modules-ts
-          install: omit-dev
 
   # Spec 0257 (row of epic #1231, ticket #1336), PR 4a: the TypeScript monorepo release driver
   # modules (refusals, forge, mode, branch, identity, credentials, classification, engine-log
@@ -210,7 +199,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: release-driver-modules-ts
-          install: omit-dev
 
   # Spec 0257 (ticket #1336), PRs 2 and 3: the deterministic tar.gz archive writer, the
   # documentation index and the release packaging modules. The release differential suite spawns
@@ -222,7 +210,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: packaging-modules-ts
-          install: omit-dev
 
   # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
   # release. No path filter, like `mempalace-transcript-node-24-0`.
@@ -270,7 +257,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: extension-render
-          install: omit-dev
           yq: "4.54.1"
 
   extension-provenance:
@@ -282,7 +268,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: extension-provenance
-          install: omit-dev
 
   extension-manifest:
     runs-on: ubuntu-latest
@@ -304,7 +289,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: extension-install
-          install: omit-dev
           yq: "4.54.1"
 
   core-paths:
@@ -326,7 +310,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: ci-parity
-          install: omit-dev
           yq: "4.54.1"
           cache: true
 
@@ -337,7 +320,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: docs-index
-          install: omit-dev
           cache: true
 
   docs-index-selftest:
@@ -347,7 +329,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: docs-index-selftest
-          install: omit-dev
           cache: true
 
   figure-labels:
@@ -367,7 +348,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: mempalace
-          install: omit-dev
           yq: "4.54.1"
           python: "3.12"
           cache: true
@@ -397,7 +377,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: chroma-mcp
-          install: omit-dev
           yq: "4.54.1"
           python: "3.12"
           cache: true
@@ -409,7 +388,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: e2e
-          install: omit-dev
           yq: "4.44.3"
           python: "3.12"
 
@@ -424,7 +402,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: setup
-          install: omit-dev
           yq: "4.54.1"
 
   check-model-mappings:
@@ -436,7 +413,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-model-mappings
-          install: omit-dev
           yq: "4.54.1"
 
   check-agent-profiles:
@@ -448,7 +424,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-agent-profiles
-          install: omit-dev
           yq: "4.54.1"
 
   check-metadata-keys:
@@ -460,7 +435,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-metadata-keys
-          install: omit-dev
 
   check-claude-agent-layout:
     runs-on: ubuntu-latest
@@ -480,7 +454,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-taskfile-commands
-          install: omit-dev
 
   check-taskfile-commands-selftest:
     runs-on: ubuntu-latest
@@ -489,7 +462,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-taskfile-commands-selftest
-          install: omit-dev
 
   check-taskfile-tree:
     runs-on: ubuntu-latest
@@ -498,7 +470,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-taskfile-tree
-          install: omit-dev
 
   check-taskfile-tree-selftest:
     runs-on: ubuntu-latest
@@ -507,7 +478,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-taskfile-tree-selftest
-          install: omit-dev
 
   check-task-provisioning:
     runs-on: ubuntu-latest
@@ -518,7 +488,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-task-provisioning
-          install: omit-dev
 
   check-task-provisioning-selftest:
     runs-on: ubuntu-latest
@@ -529,7 +498,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-task-provisioning-selftest
-          install: omit-dev
 
   ci-pre-push-replay:
     runs-on: ubuntu-latest
@@ -540,6 +508,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: ci-pre-push-replay
+          install: ci
 
   misc:
     runs-on: ubuntu-latest
@@ -550,7 +519,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: misc
-          install: omit-dev
   # Spec 0251 R1-R4: the repository-wide scans. No path filter (a catch-all
   # `**` would make path-ownership vacuous), not changeset-gated, no test
   # suite: they run on every pull request and push to main and release/**.
@@ -570,7 +538,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: frontmatter
-          install: omit-dev
           yq: "4.54.1"
 
   markdown-links:
@@ -622,6 +589,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: path-ownership
+          install: ci
 
   path-ownership-selftest:
     runs-on: ubuntu-latest
@@ -630,6 +598,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: path-ownership-selftest
+          install: ci
 
   lint-markdown:
     runs-on: ubuntu-latest
@@ -638,6 +607,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: lint-markdown
+          install: ci
           node: 22
 
   # Spec 0238 R1-R3: shell / JavaScript / Python footprint ratchet. No path
@@ -684,6 +654,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: host-safety
+          install: ci
 
   host-safety-selftest:
     runs-on: ubuntu-latest
@@ -692,6 +663,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: host-safety-selftest
+          install: ci
 
   # Spec 0238 R4-R8: TypeScript type-check, erasable syntax, Oxlint
   # type-aware strict typing and Oxfmt check mode. No path filter.
@@ -702,6 +674,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: lint-typescript
+          install: ci
 
   lint-typescript-selftest:
     runs-on: ubuntu-latest
@@ -710,6 +683,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: lint-typescript-selftest
+          install: ci
 
   # Spec 0240 R4-R11, R13, R16: floor guard, production-dependency step and
   # shared scripts/lib/ TypeScript modules. No path filter, like `ratchet`.
@@ -883,7 +857,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-node-floor-guard
-          install: omit-dev
+          gate: false
 
   windows-service-task:
     runs-on: windows-latest
@@ -893,7 +867,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-service-task
-          install: omit-dev
+          gate: false
 
   windows-chroma-trio:
     runs-on: windows-latest
@@ -903,7 +877,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-chroma-trio
-          install: omit-dev
+          gate: false
 
   windows-mcp-daemon:
     runs-on: windows-latest
@@ -913,7 +887,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-mcp-daemon
-          install: omit-dev
+          gate: false
 
   windows-doctor-repair:
     runs-on: windows-latest
@@ -923,7 +897,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-doctor-repair
-          install: omit-dev
+          gate: false
 
   windows-usage-capture:
     runs-on: windows-latest
@@ -932,6 +906,8 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-usage-capture
+          gate: false
+          install: ci
 
   windows-usage-wrappers:
     runs-on: windows-latest
@@ -940,7 +916,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-usage-wrappers
-          install: omit-dev
+          gate: false
 
   windows-worktree-git-guard:
     runs-on: windows-latest
@@ -949,7 +925,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-worktree-git-guard
-          install: omit-dev
+          gate: false
 
   windows-mempalace-transcript:
     runs-on: windows-latest
@@ -958,7 +934,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-mempalace-transcript
-          install: omit-dev
+          gate: false
 
   windows-sync-from-upstream:
     runs-on: windows-latest
@@ -967,7 +943,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-sync-from-upstream
-          install: omit-dev
+          gate: false
 
   windows-history-import:
     runs-on: windows-latest
@@ -976,7 +952,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-history-import
-          install: omit-dev
+          gate: false
           python: "3.12"
 
   windows-build-components:
@@ -986,7 +962,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-build-components
-          install: omit-dev
+          gate: false
 
   windows-extension-builders:
     runs-on: windows-latest
@@ -995,7 +971,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-extension-builders
-          install: omit-dev
+          gate: false
 
   windows-install-entries:
     runs-on: windows-latest
@@ -1004,7 +980,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-install-entries
-          install: omit-dev
+          gate: false
 
   windows-packaging-entries:
     runs-on: windows-latest
@@ -1013,7 +989,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-packaging-entries
-          install: omit-dev
+          gate: false
 
   windows-extension-hooks:
     runs-on: windows-latest
@@ -1022,7 +998,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-extension-hooks
-          install: omit-dev
+          gate: false
 
   windows-harness-curator:
     runs-on: windows-latest
@@ -1031,7 +1007,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-harness-curator
-          install: omit-dev
+          gate: false
 
   windows-create-extension:
     runs-on: windows-latest
@@ -1040,7 +1016,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-create-extension
-          install: omit-dev
+          gate: false
 
   windows-skill-scripts:
     runs-on: windows-latest
@@ -1049,7 +1025,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-skill-scripts
-          install: omit-dev
+          gate: false
 
   windows-e2e-harness:
     runs-on: windows-latest
@@ -1058,7 +1034,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-e2e-harness
-          install: omit-dev
+          gate: false
 
   windows-governance-checks:
     runs-on: windows-latest
@@ -1067,7 +1043,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-governance-checks
-          install: omit-dev
+          gate: false
 
   windows-model-ci-tooling:
     runs-on: windows-latest
@@ -1076,7 +1052,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-model-ci-tooling
-          install: omit-dev
+          gate: false
 
   windows-setup-units:
     runs-on: windows-latest
@@ -1085,7 +1061,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-setup-units
-          install: omit-dev
+          gate: false
 
   windows-setup-entries:
     runs-on: windows-latest
@@ -1094,7 +1070,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: windows-setup-entries
-          install: omit-dev
+          gate: false
 
   cli-matrix-fresh:
     runs-on: ubuntu-latest
@@ -1181,7 +1157,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-description-length
-          install: omit-dev
 
   check-extension-version-bump:
     runs-on: ubuntu-latest
@@ -1295,7 +1270,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-plan-review
-          install: omit-dev
 
   check-feedback-routing:
     runs-on: ubuntu-latest
@@ -1329,7 +1303,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: gitlab-ci-check
-          install: omit-dev
 
   check-ci-parity:
     runs-on: ubuntu-latest
@@ -1343,7 +1316,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-ci-parity
-          install: omit-dev
   alert-scheduled-failure-selftest:
     runs-on: ubuntu-latest
     steps:
@@ -1351,7 +1323,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: alert-scheduled-failure-selftest
-          install: omit-dev
   alert-scheduled-failure-check:
     runs-on: ubuntu-latest
     steps:
@@ -1359,4 +1330,3 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: alert-scheduled-failure-check
-          install: omit-dev

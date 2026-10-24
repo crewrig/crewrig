@@ -17,7 +17,7 @@ import {
   VALID_REFERENCE,
 } from "./lib/ci-reference-fixtures.ts";
 import { generate } from "../lib/build-ci/entry.ts";
-import { parseTaskPin } from "../lib/build-ci/tools.ts";
+import { parseTaskPin, secondaryRuntimeInstallLines } from "../lib/build-ci/tools.ts";
 import { applyNormalDiff } from "./lib/normal-diff-apply.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
@@ -191,5 +191,12 @@ describe("build-ci requires.install (spec 0283 R1)", () => {
     );
     assert.ok(!out.includes("before_script"), out);
     assert.match(out, /- "?npm ci"?\n/);
+  });
+});
+
+describe("build-ci GitLab secondary python (spec 0285 R5)", () => {
+  it("accepts the Debian python version and rejects any other", () => {
+    assert.equal(secondaryRuntimeInstallLines("python@3.11").length, 1);
+    assert.throws(() => secondaryRuntimeInstallLines("python@3.12"), /Debian python 3\.11/);
   });
 });

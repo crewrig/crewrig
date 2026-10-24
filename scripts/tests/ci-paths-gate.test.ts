@@ -114,7 +114,7 @@ test("cache guard: --print-key equals the --key-files hash and --capability reso
 
 test("ci-job action: inputs, step order, gated cancel step, no || true", () => {
   const t = fs.readFileSync(".github/actions/ci-job/action.yml", "utf8");
-  for (const i of ["id:", "node:", "install:", "task:", "cache:"])
+  for (const i of ["id:", "node:", "install:", "gate:", "task:", "cache:"])
     assert.ok(t.includes(`\n  ${i}`), i);
   assert.ok(!t.includes("shadow"), "shadow mode is retired");
   const order = [
@@ -139,7 +139,7 @@ test("ci-job action: inputs, step order, gated cancel step, no || true", () => {
   );
   assert.match(
     t,
-    /changed == 'true' && failure\(\)\n\s+uses: \.\/\.github\/actions\/cancel-on-failure/,
+    /run == 'true' && failure\(\)\n\s+uses: \.\/\.github\/actions\/cancel-on-failure/,
   );
   assert.ok(!/\|\|\s*true/.test(t));
 });
@@ -168,5 +168,38 @@ test("ci-job action: no expression inside a run script, one production install (
   assert.ok(
     t.indexOf("npm ci --omit=dev") < t.indexOf("ci-paths-gate.ts"),
     "the production install precedes the gate",
+  );
+});
+
+test("ci-job action: gate false leaves decide run=true and runs the production install once", () => {
+  const t = fs.readFileSync(".github/actions/ci-job/action.yml", "utf8");
+  assert.match(t, /\n {2}gate:\n[\s\S]*?default: "true"\n/);
+  assert.match(t, /\n {2}install:\n[\s\S]*?default: omit-dev\n/);
+  // The gate step is the only one that is skipped; decide always runs and reads inputs.gate.
+  assert.match(t, /- id: gate\n\s+if: inputs\.gate != 'false'\n/);
+  const i = t.indexOf("- id: decide\n");
+  assert.ok(i > 0, "decide step exists");
+  const step = t.slice(i, t.indexOf("\n    - ", i));
+  assert.ok(!/\n\s+if:/.test(step), "decide has no condition");
+  // Execute its script for both settings.
+  const run = /run: \|\n((?:\s{8}.*\n?)+)/.exec(step)?.[1] ?? "";
+  assert.ok(run.includes("run=true"));
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), "decide-"));
+  const out = path.join(d, "out");
+  const exec = (gate: string, changed: string): string => {
+    fs.writeFileSync(out, "");
+    const r = spawnSync("bash", ["-c", run], {
+      env: { ...process.env, GATE_ENABLED: gate, GATE_CHANGED: changed, GITHUB_OUTPUT: out },
+    });
+    assert.equal(r.status, 0);
+    return fs.readFileSync(out, "utf8").trim();
+  };
+  assert.equal(exec("false", ""), "run=true");
+  assert.equal(exec("true", "false"), "run=false");
+  assert.equal(exec("true", "true"), "run=true");
+  // The single production install also covers the gate-off omit-dev job.
+  assert.match(
+    t,
+    /- if: inputs\.gate != 'false' \|\| inputs\.install == 'omit-dev'\n\s+shell: bash\n\s+run: npm ci --omit=dev/,
   );
 });

@@ -186,6 +186,9 @@ export function installLines(install: string): readonly string[] {
   }
 }
 
+/** The `python3` of the node image's Debian (node:24, bookworm: 3.11.2); the only secondary python GitLab can install. */
+const DEBIAN_PYTHON = "3.11";
+
 /** `secondary_runtime_install_lines`: install lines for a runtime beyond the image's own. */
 export function secondaryRuntimeInstallLines(runtime: string): readonly string[] {
   if (runtime.startsWith("node@")) {
@@ -195,7 +198,13 @@ export function secondaryRuntimeInstallLines(runtime: string): readonly string[]
       "apt-get install -y --no-install-recommends nodejs",
     ];
   }
-  if (runtime.startsWith("python@")) return [`${APT} python3`];
+  if (runtime.startsWith("python@")) {
+    if (!runtime.startsWith(`python@${DEBIAN_PYTHON}`))
+      throw new BuildCiError(
+        `Error: secondary runtime '${runtime}' — the GitLab image provides Debian python ${DEBIAN_PYTHON}, no recipe for another version.`,
+      );
+    return [`${APT} python3`];
+  }
   throw new BuildCiError(
     `Error: unknown secondary runtime '${runtime}' — no GitLab install recipe.`,
   );

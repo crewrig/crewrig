@@ -30,6 +30,8 @@ export interface StepRecord {
   withNode: string;
   withCache: string;
   withInstall: string;
+  /** `with.gate` of a ci-job step: "false" skips the runtime path gate; "" is the default (gated). */
+  withGate: string;
   /** `with.yq` of a ci-job step: the pinned yq version, empty when none is installed. */
   withYq: string;
   /** `with.apt` and `with.python` of a ci-job step: explicit apt packages and a Python version. */
@@ -89,6 +91,7 @@ function readStep(step: YqNode): StepRecord {
     withNode: text(at(withNode, ["node"]), "with.node"),
     withCache: text(at(withNode, ["cache"]), "with.cache"),
     withInstall: text(at(withNode, ["install"]), "with.install"),
+    withGate: rawText(at(withNode, ["gate"]), "with.gate"),
     withYq: text(at(withNode, ["yq"]), "with.yq"),
     withApt: text(at(withNode, ["apt"]), "with.apt"),
     withPython: text(at(withNode, ["python"]), "with.python"),

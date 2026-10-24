@@ -99,7 +99,7 @@ test("the action validates the yq version with an anchored regular expression", 
 test("the action deepens a shallow checkout itself and keeps the common-case defaults", () => {
   assert.match(action, /is-shallow-repository[\s\S]*git fetch --no-tags --depth=2 origin/);
   assert.match(action, /\n {2}node:\n {4}description:.*\n {4}default: "24"/);
-  assert.match(action, /\n {2}install:\n {4}description:.*\n {4}default: ci\n/);
+  assert.match(action, /\n {2}install:\n {4}description:.*\n {4}default: omit-dev\n/);
   assert.match(action, /\n {2}task:\n {4}description:.*\n {4}default: "true"\n/);
 });
 
@@ -120,7 +120,7 @@ test("the action declares apt and python inputs that default to none", () => {
 });
 
 test("the apt step is gated, anchored-validated and takes the packages through env only", () => {
-  assert.match(action, /- if: steps\.gate\.outputs\.changed == 'true' && inputs\.apt != ''/);
+  assert.match(action, /- if: steps\.decide\.outputs\.run == 'true' && inputs\.apt != ''/);
   const { head, run } = stepOf("inputs.apt != ''");
   assert.match(head, /env:\n\s+APT_PACKAGES: \$\{\{ inputs\.apt \}\}/);
   assert.ok(!run.includes("${{"), "no expression inside run:");
@@ -143,7 +143,7 @@ test("the python step validates an anchored x.y version and setup-python receive
   assert.ok(run.includes("=~ ^[0-9]+\\.[0-9]+$"), "anchored x.y check");
   assert.match(
     action,
-    /if: steps\.gate\.outputs\.changed == 'true' && inputs\.python != ''\n {6}uses: actions\/setup-python@v5\n {6}with:\n {8}python-version: \$\{\{ inputs\.python \}\}/,
+    /if: steps\.decide\.outputs\.run == 'true' && inputs\.python != ''\n {6}uses: actions\/setup-python@v5\n {6}with:\n {8}python-version: \$\{\{ inputs\.python \}\}/,
   );
   // The validation step precedes setup-python.
   assert.ok(action.indexOf("PYTHON_VERSION") < action.indexOf("actions/setup-python@v5"));

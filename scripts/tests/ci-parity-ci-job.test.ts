@@ -121,7 +121,7 @@ test("a ci-job install input that differs from requires.install fails naming the
   const r = runCheck(root);
   assert.ok(
     r.stderr.includes(
-      "job 'figure-labels' passes ci-job install 'ci' but the reference requires.install is 'none'",
+      "job 'figure-labels' passes ci-job install 'omit-dev' but the reference requires.install is 'none'",
     ),
     r.stderr,
   );
@@ -134,8 +134,8 @@ test("a ci-job yq input that differs from the version GitLab installs fails nami
   // Replacement-first: the mutation must apply, else the test proves nothing.
   replaceOnce(
     wf(root),
-    '          id: build-components-ts\n          install: omit-dev\n          yq: "4.54.1"\n',
-    '          id: build-components-ts\n          install: omit-dev\n          yq: "4.44.3"\n',
+    '          id: build-components-ts\n          yq: "4.54.1"\n',
+    '          id: build-components-ts\n          yq: "4.44.3"\n',
   );
   const r = runCheck(root);
   assert.equal(r.status, 1);
@@ -215,4 +215,38 @@ test("a python runtime the ci-job python input does not provide fails naming the
     r.stderr,
     /capability 'figure-labels'.*passes ci-job python '' but the reference runtime is python '3\.12'/,
   );
+});
+
+const GATE_MSG = "passes ci-job gate 'false' but the reference declares paths:";
+
+test("gate: false on a capability that has paths: fails naming the job", () => {
+  const root = makeFixture();
+  // Replacement-first: the mutation must apply, else the test proves nothing.
+  replaceOnce(
+    wf(root),
+    '          id: build-components-ts\n          yq: "4.54.1"\n',
+    '          id: build-components-ts\n          gate: false\n          yq: "4.54.1"\n',
+  );
+  const r = runCheck(root);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, new RegExp(`capability 'build-components-ts'.*${GATE_MSG}`));
+});
+
+test("gate: false on a capability without paths: passes (the committed windows jobs)", () => {
+  const root = makeFixture();
+  const text = fs.readFileSync(wf(root), "utf8");
+  assert.ok(text.includes("          id: windows-node-floor-guard\n          gate: false\n"));
+  assert.ok(!runCheck(root).stderr.includes(GATE_MSG));
+});
+
+test("install: none with gate: false on a capability without paths: passes", () => {
+  const root = makeFixture();
+  replaceOnce(
+    wf(root),
+    "          id: ratchet\n          install: none\n",
+    "          id: ratchet\n          gate: false\n          install: none\n",
+  );
+  const r = runCheck(root);
+  assert.ok(!r.stderr.includes(GATE_MSG), r.stderr);
+  assert.ok(!r.stderr.includes("job 'ratchet'"), r.stderr);
 });

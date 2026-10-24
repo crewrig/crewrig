@@ -1,23 +1,18 @@
 # CrewRig — platform-neutral CI capability reference (spec 0047).
 #
-# One entry per continuous-integration job, identified by a stable `id` that
-# IS the pipeline job's YAML key on every engine (contract C2). The shape of
-# this file is described normatively in `docs/ci-reference-format.md`
-# (contract C1); the decision is recorded in `docs/adr/0012-ci-reference-contract.md`.
+# One entry per continuous-integration job, identified by a stable `id` that IS the pipeline job's YAML key on every
+# engine (contract C2). The shape of this file is described normatively in `docs/ci-reference-format.md` (contract C1);
+# the decision is recorded in `docs/adr/0012-ci-reference-contract.md`.
 #
-# Portable capabilities are generated into every engine's pipeline by
-# sub-spec B. Engine-specific capabilities carry an `exception` with evidence
-# that the mechanism has no faithful equivalent on the other supported
-# engines (spec 0047 R5); they are hand-authored, never generated.
+# Portable capabilities are generated into every engine's pipeline by sub-spec B. Engine-specific capabilities carry an
+# `exception` with evidence that the mechanism has no faithful equivalent on the other supported engines (spec 0047 R5);
+# they are hand-authored, never generated.
 #
-# This reference DESCRIBES existing jobs. It generates nothing, runs no drift
-# check, and executes no pipeline — those are sub-specs B (#372), C (#373),
-# and D (#374).
+# This reference DESCRIBES existing jobs. It generates nothing, runs no drift check, and executes no pipeline — those
+# are sub-specs B (#372), C (#373), and D (#374).
 
 capabilities:
   # --- Portable: build.yml jobs -------------------------------------------
-  # build.yml fires on pull_request and push to [main, release/**]
-  # (.github/workflows/build.yml lines 3-9).
 
   - id: build
     name: "Build all extensions"
@@ -34,21 +29,12 @@ capabilities:
       - npm run build --workspaces --if-present
 
   # --- Portable: check-components decomposition (spec 0147) ----------------
-  # The former monolithic `check-components` job (~85 sequential steps, >7 min)
-  # is decomposed into focused, parallel, changeset-gated capabilities so the
-  # CI critical-path wall-clock stays under 2 minutes (spec 0147 R1-R4). Each
-  # focused capability keeps the same trigger (pull-request + push to
-  # main/release/**) but ADDS a `paths:` filter covering the files its checks
-  # exercise, and is marked `changeset-gated: true` so the `changeset-coverage`
-  # exhaustive run (spec 0147 delta-01 R21) can read the gated commands from
-  # this reference rather than hardcoding them. Every tracked file is either
-  # owned by one of the focused `paths:` sets or carries a reasoned exemption
-  # (`ci/path-ownership-exemptions.txt`), which the `path-ownership` capability
-  # (no `paths:` filter) checks statically on every change; the exhaustive run
-  # is the daily and on-demand net underneath. Cached groups declare `cache:`
-  # (the key-derivation need: which files + which env vars the cache key is
-  # derived from); the engine cache syntax is the mechanism and is never written
-  # here (R6/R7).
+  # The former monolithic `check-components` job is decomposed into focused, parallel, changeset-gated capabilities (spec
+  # 0147 R1-R4) so the critical path stays under 2 minutes. Each adds a `paths:` filter and `changeset-gated: true`, so
+  # `changeset-coverage` (spec 0147 delta-01 R21) reads the gated commands from here. Every tracked file is owned by a
+  # focused `paths:` set or carries a reasoned exemption (`ci/path-ownership-exemptions.txt`), checked statically by
+  # `path-ownership`. `cache:` declares the key-derivation need (files + env vars); the engine cache syntax is never
+  # written here (R6/R7).
 
   - id: component-drift
     name: "Check community component drift and run build-component tests"
@@ -205,19 +191,11 @@ capabilities:
     command:
       - task ci:agent-profile-migration
 
-  # Spec 0250 R27, R28 (issue #1332): the TypeScript component-build core, its
-  # shared library twins and their node --test suites. `paths:` lists every
-  # entry literally (only `*` and `**`, the forms scripts/lib/glob-engine.ts
-  # accepts: no brace alternation). A glob that matches nothing yet is accepted
-  # by scripts/check-path-ownership.ts, which only flags unowned files and
-  # stale exemptions. Needs yq because the parity suites drive the shell build.
-  # The install is the production command of spec 0240 R4, so a suite that
-  # imports a devDependency fails here: the suites are NAMED, not globbed, to
-  # keep the dev-toolchain suite (build-components-built-trees.test.ts, which
-  # needs Oxlint, Oxfmt and tsc and runs in `lint-typescript`) out of this job.
-  # `--check` on the real tree and the Linux run of the Windows proof script
-  # cover the committed trees. The conformance, differential and YAML corpus
-  # suites spawn `bash` and `yq` and retire with the shell script (PR D).
+  # Spec 0250 R27, R28 (issue #1332): the TypeScript component-build core, its library twins and their node --test suites.
+  # `paths:` lists every entry literally (only `*` and `**`, per scripts/lib/glob-engine.ts). Needs yq: the parity suites
+  # drive the shell build. The install is the production command of spec 0240 R4, so suites are NAMED, not globbed, to
+  # keep the dev-toolchain suite (build-components-built-trees.test.ts, run in `lint-typescript`) out. The conformance,
+  # differential and YAML corpus suites spawn `bash` and `yq` and retire with the shell script (PR D).
   - id: build-components-ts
     name: "Run the TypeScript component-build core and shared library twin suites"
     trigger:
@@ -277,11 +255,9 @@ capabilities:
     command:
       - task ci:build-components-ts
 
-  # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
-  # release, where type stripping still emits an ExperimentalWarning. No
-  # `paths:` filter, like mempalace-transcript-node-24-0 below: the suite is
-  # fast and any shared-module change can reintroduce a warning. The production
-  # install comes first, as the entry-form suite runs a build that loads js-yaml.
+  # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24 release, where type stripping still emits an
+  # ExperimentalWarning. No `paths:` filter, like mempalace-transcript-node-24-0 below: any shared-module change can
+  # reintroduce a warning. The production install comes first, as the entry-form suite runs a build that loads js-yaml.
   - id: build-components-ts-node-24-0
     name: "Component build entry is silent on Node.js 24.0.0"
     trigger:
@@ -296,14 +272,11 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-entry-form.test.ts
 
-  # Spec 0254 R22, R27: the TypeScript extension and plugin builder modules, entries and
-  # twin suites (row G1b of epic #1231). `jq`, `yq` and `bash` are spawned on purpose by the
-  # corpus, context, conformance, shell-comparison, golden-shell and differential suites,
-  # which retire with the shell scripts and libraries (PR D, rows I1, J3, J4). `yq` stays
-  # declared until the differential test is deleted (plan v1-F2). The proof script and the
-  # `--check` on the real tree run here too, so Linux and Windows prove the same bytes.
-  # The install carries the dev dependencies: the scaffold toolchain test (spec 0258 requirement 26)
-  # runs tsc, Oxlint and Oxfmt and fails, rather than skips, when CI is set and one is absent.
+  # Spec 0254 R22, R27: the TypeScript extension and plugin builder modules, entries and twin suites (row G1b of epic
+  # #1231). `jq`, `yq` and `bash` are spawned on purpose by suites that retire with the shell scripts (PR D, rows I1, J3,
+  # J4); `yq` stays declared until the differential test is deleted (plan v1-F2). The install carries the dev
+  # dependencies: the scaffold toolchain test (spec 0258 requirement 26) fails, rather than skips, when CI is set and tsc,
+  # Oxlint or Oxfmt is absent.
   - id: extension-builders-ts
     name: "Run the TypeScript extension and plugin builder suites, the golden proof and the real-tree check"
     trigger:
@@ -353,10 +326,8 @@ capabilities:
     command:
       - task ci:extension-builders-ts
 
-  # Spec 0254 R4: the extension entries print nothing on the oldest Node.js 24 release, where
-  # type stripping still emits an ExperimentalWarning. No `paths:` filter, like
-  # build-components-ts-node-24-0: the suite is fast and any shared-module change can
-  # reintroduce a warning. The production install comes first, as the suite runs builds.
+  # Spec 0254 R4: the extension entries print nothing on the oldest Node.js 24 release. No `paths:` filter, like
+  # build-components-ts-node-24-0: any shared-module change can reintroduce a warning.
   - id: extension-builders-ts-node-24-0
     name: "Extension and plugin builder entries are silent on Node.js 24.0.0"
     trigger:
@@ -371,15 +342,10 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-entry-form.test.ts
 
-  # Spec 0258 R27-R29 (ticket #1337), PR A: the skill-script oracle. The harness runs each shell
-  # script bundled with a skill in a sandbox and compares stdout, stderr, the exit code and the
-  # resulting tree with the committed goldens. Linux only: the goldens are Linux bytes, and the
-  # suites spawn `bash`, `jq` and Go `yq` (the YAML leg of the pr-reviewer lint-skill script).
-  # The job needs the production install and the system tools only, never the dev-toolchain (no
-  # Oxlint). On GitHub, `yq` is pinned to v4.44.3 and its sha256 is checked, the version the goldens
-  # were generated with. The floor guard runs after the production dependency step, before the
-  # first test call. PR B adds the shell-against-entry differential (Linux), the package-layout and
-  # copied-skill suites (Node only) and the oracle mutation suite (git and a Node install).
+  # Spec 0258 R27-R29 (ticket #1337), PR A: the skill-script oracle: each skill's bundled shell script runs in a sandbox
+  # and is compared with the committed goldens. Linux only (Linux-byte goldens; suites spawn `bash`, `jq` and Go `yq`). No
+  # dev-toolchain. On GitHub `yq` is pinned to v4.44.3 and its sha256 checked, the version the goldens were generated
+  # with.
   - id: skill-scripts-ts
     name: "Run the skill-script oracle and its YAML leg"
     trigger:
@@ -410,11 +376,9 @@ capabilities:
     command:
       - task ci:skill-scripts-ts
 
-  # Spec 0255 (row F2 of epic #1231), PR B: the dark link-or-copy module, the component twins and
-  # the manage modules, with their node:test suites. `bash` is spawned on purpose by the two twin
-  # conformance suites (they drive next to the
-  # twins) and `jq` by the shell functions they call; both retire with the shell libraries
-  # (row J4). Those suites skip on Windows, so this job runs on Linux only.
+  # Spec 0255 (row F2 of epic #1231), PR B: the dark link-or-copy module, the component twins and the manage modules.
+  # `bash` is spawned on purpose by the two twin conformance suites and `jq` by the shell functions they call; both retire
+  # with the shell libraries (row J4). Those suites skip on Windows, so this job runs on Linux only.
   - id: install-ts
     name: "Run the TypeScript link-or-copy, component twin, manage and install module suites"
     trigger:
@@ -510,9 +474,8 @@ capabilities:
     command:
       - task ci:install-ts
 
-  # Spec 0255 R3: the install, manage and link entries print nothing on the oldest Node.js 24
-  # release. No `paths:` filter, like extension-builders-ts-node-24-0: any shared-module change can
-  # reintroduce a type-stripping warning. The production install comes first, as the suite runs entries.
+  # Spec 0255 R3: the install, manage and link entries print nothing on the oldest Node.js 24 release. No `paths:` filter,
+  # like extension-builders-ts-node-24-0: any shared-module change can reintroduce a warning.
   - id: install-ts-node-24-0
     name: "Install, manage and link entries are silent on Node.js 24.0.0"
     trigger:
@@ -527,12 +490,9 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/install-entry-form.test.ts
 
-  # Spec 0256 R40 (ticket #1335), PR A: the oracle of the four setup entry points. The sandbox,
-  # command-stub, golden-harness, smoke, per-CLI golden, prompt-inventory and oracle-mutation suites
-  # run the shell setup scripts inside a sandbox HOME with stub CLIs and compare the resulting trees
-  # with the committed goldens. The floor guard runs first, then the production dependency step,
-  # before the first test call. `jq` and `git` are real. The golden suites skip themselves off Linux
-  # and use no network. A change to the shell the oracle drives reruns it.
+  # Spec 0256 R40 (ticket #1335), PR A: the oracle of the four setup entry points: the shell setup scripts run in a sandbox
+  # HOME with stub CLIs and the resulting trees are compared with the committed goldens. `jq` and `git` are real. The
+  # golden suites skip themselves off Linux and use no network. A change to the shell the oracle drives reruns it.
   - id: setup-oracle
     name: "Run the setup entry-point oracle: sandbox, stubs, golden, prompt-inventory and mutation suites"
     trigger:
@@ -573,17 +533,12 @@ capabilities:
     command:
       - task ci:setup-oracle
 
-  # Spec 0256 R40 (ticket #1335), PR B1: the portable unit suites of the TypeScript setup modules
-  # (scripts/lib/setup/**), the TLS environment quoting and writer, the confirm remainder and the
-  # launcher bundle edit. They are dark modules until the entries switch over (rows B2 to B5), so
-  # no entry twin on Node.js 24.0.0 exists yet. The production dependency step is its own command,
-  # before the first test call. The suites that need a POSIX shell skip themselves on win32; the
-  # Windows exercise of the same list is `windows-setup-units`.
-  # Spec 0256 requirement 10 (ticket #1335), PR C: the parity proof. Every golden cell that runs on both
-  # legs is run on the unchanged shell setup and on the TypeScript entry and the two results are
-  # compared directly through the tagged deviations (one shard file per CLI), and each TypeScript twin of
-  # a shell library function is compared with its original. Linux only (it needed the shell and jq); retired
-  # with the shell setups.
+  # Spec 0256 R40 (ticket #1335), PR B1: the portable unit suites of the TypeScript setup modules (scripts/lib/setup/**).
+  # Dark modules until the entries switch over (rows B2 to B5), so no Node.js 24.0.0 twin yet. POSIX-shell suites skip on
+  # win32; the Windows exercise of the same list is `windows-setup-units`.
+  # Spec 0256 requirement 10 (ticket #1335), PR C: the parity proof: every golden cell that runs on both legs is run on
+  # the shell setup and the TypeScript entry and compared through the tagged deviations, and each TypeScript twin of a
+  # shell library function against its original. Linux only; retired with the shell setups.
   - id: setup-differential
     name: "Run the shell-against-TypeScript parity proof of the four setups and the twin differential suites"
     trigger:
@@ -802,12 +757,10 @@ capabilities:
     command:
       - task ci:release-driver-modules-ts
 
-  # Spec 0257 (ticket #1336), PRs 2 and 3: the deterministic tar.gz archive writer, the
-  # documentation index, the release packager, the manifest synchronisation and the single and
-  # every-extension packaging modules, with their node:test suites. The archive suite
-  # cross-checks with `tar` and `gzip` and the release differential suite spawns `bash`, `jq` and
-  # `tar`; all are on the runners and the suites skip themselves when one is absent. The packaging suites build in a sandbox copy of `scripts/`, hence the broad
-  # builder paths.
+  # Spec 0257 (ticket #1336), PRs 2 and 3: the deterministic tar.gz archive writer, documentation index, release packager,
+  # manifest synchronisation and packaging modules. The archive suite cross-checks with `tar` and `gzip`, the release
+  # differential suite spawns `bash`, `jq` and `tar`. They build in a sandbox copy of `scripts/`, hence the broad builder
+  # paths.
   - id: packaging-modules-ts
     name: "Run the TypeScript archive writer, documentation index and release packaging module suites"
     trigger:
@@ -868,14 +821,10 @@ capabilities:
     command:
       - task ci:packaging-modules-ts
 
-  # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components).
-  # The production dependencies are installed first, the floor guard runs, then
-  # scripts/tests/lib/windows-extension-proof.ts builds every golden subject with the TypeScript
-  # entries from pwsh and compares each file with the committed golden tree, runs `--check`, the
-  # three plugin entries, the migration tool and the failure statuses, and prints the elapsed time.
-  # A short list of portable unit suites follows; the suites that spawn `bash`, `jq` or `yq` skip
-  # themselves on win32 and are left to Linux. No timing budget and no `paths:` filter, like the
-  # Windows jobs above: the proof must not skip silently on a change it does not list.
+  # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components):
+  # scripts/tests/lib/windows-extension-proof.ts builds every golden subject with the TypeScript entries from pwsh and
+  # compares each file with the committed golden tree. No timing budget and no `paths:` filter: the proof must not skip
+  # silently on a change it does not list.
   - id: windows-extension-builders
     name: "Windows extension and plugin builders: production install, floor guard, golden proof and unit suites"
     trigger:
@@ -904,13 +853,9 @@ capabilities:
         other supported engines (spec 0240 R15, spec 0254 R23).
 
 
-  # Spec 0255 R28 (parent R17): the install, manage and link entries from a non-POSIX interpreter.
-  # The production dependencies are installed first, the floor guard runs, then
-  # scripts/tests/lib/windows-install-proof.ts runs the thirteen entries against a sandbox
-  # HOME/USERPROFILE from pwsh (and cmd.exe for the unlink and link entries) with stub CLIs, checks
-  # the placed files, the stdout lines, the statuses, the absence of any carriage return, the link
-  # mode and its forced-refusal fallback, prints the elapsed time of each step and the rename-retry
-  # measurement. No timing budget and no `paths:` filter, like the Windows jobs above.
+  # Spec 0255 R28 (parent R17): the install, manage and link entries from a non-POSIX interpreter
+  # (scripts/tests/lib/windows-install-proof.ts): thirteen entries against a sandbox HOME/USERPROFILE from pwsh (and
+  # cmd.exe for unlink and link) with stub CLIs. No timing budget.
   - id: windows-install-entries
     name: "Windows install, manage and link entries: production install, floor guard and the cross-system proof"
     trigger:
@@ -938,13 +883,8 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0255 R28).
 
-  # Spec 0257 R27 (ticket #1336): the packaging and release entries from a non-POSIX interpreter.
-  # The production dependencies are installed first, the floor guard runs, then the cross-system
-  # proof scripts/tests/lib/windows-packaging-proof.ts runs through
-  # scripts/tests/windows-packaging-entries.test.ts: each of the six entries goes through pwsh or
-  # cmd.exe against a sandbox with stub tools and no bash, and the PATH filter is checked on
-  # simulated win32 data. No timing budget and no `paths:` filter, like the Windows jobs above: the
-  # proof must not skip silently on a change it does not list.
+  # Spec 0257 R27 (ticket #1336): the packaging and release entries from a non-POSIX interpreter: six entries through pwsh
+  # or cmd.exe against a sandbox with stub tools and no bash. No timing budget.
   - id: windows-packaging-entries
     name: "Windows packaging and release entries: production install, floor guard and the cross-system proof"
     trigger:
@@ -972,12 +912,10 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0257 R27).
 
-  # Spec 0258 R16, R18, R20, R27 (ticket #1337): the example hooks of `hello-world` and of the
-  # skeleton from PowerShell and cmd.exe with no `bash` on the child PATH (interpreters resolved from
-  # the parent PATH, `System32\bash.exe` never counting), the four package layouts, the no-deprecation
-  # channel, and one latency budget per hook (2000 ms initially, then max(5 x the largest observed
-  # run, 750 ms) rounded up to 50 ms after the first green run). No `paths:` filter, like the Windows
-  # jobs above: the proof must not skip silently on a change it does not list.
+  # Spec 0258 R16, R18, R20, R27 (ticket #1337): the example hooks of `hello-world` and of the skeleton from PowerShell
+  # and cmd.exe with no `bash` on the child PATH, the four package layouts, the no-deprecation channel, and one latency
+  # budget per hook (2000 ms initially, then max(5 x the largest observed run, 750 ms) rounded up to 50 ms after the first
+  # green run).
   - id: windows-extension-hooks
     name: "Windows extension hooks: production install, floor guard, PowerShell and cmd.exe proof, no-deprecation channel and latency budgets"
     trigger:
@@ -1005,12 +943,8 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0258 R27).
 
-  # Spec 0258 R15, R27, R34 (ticket #1337): the Windows proof of the three harness-curator entries.
-  # The production dependencies are installed first, the floor guard runs, then
-  # scripts/tests/windows-harness-curator.test.ts runs each entry through pwsh and cmd.exe against a
-  # sandbox with a stub `gh.cmd`, the runner's plain python and no bash, and registers and removes a
-  # throwaway Task Scheduler task through the service layer. Timings are never asserted and there is
-  # no `paths:` filter, like the Windows jobs above: the proof must not skip silently.
+  # Spec 0258 R15, R27, R34 (ticket #1337): the Windows proof of the three harness-curator entries through pwsh and
+  # cmd.exe against a stub `gh.cmd` and no bash. Timings are never asserted.
   - id: windows-harness-curator
     name: "Windows harness-curator entries: production install, floor guard and the cross-system proof"
     trigger:
@@ -1038,12 +972,8 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0258 R27).
 
-  # Spec 0258 R23-R27 (ticket #1337): the extension scaffolder entry from a non-POSIX interpreter.
-  # The production dependencies are installed first, the floor guard runs, then
-  # scripts/tests/windows-create-extension.test.ts runs the entry through pwsh and cmd.exe against a
-  # hermetic sandbox repository with no POSIX shell and no fzf on PATH. The dev toolchain is absent, so no
-  # `check-typescript` here. No timing budget and no `paths:` filter, like the Windows jobs above:
-  # the proof must not skip silently on a change it does not list.
+  # Spec 0258 R23-R27 (ticket #1337): the extension scaffolder entry from a non-POSIX interpreter, against a hermetic
+  # sandbox repository with no POSIX shell and no fzf on PATH. The dev toolchain is absent, so no `check-typescript` here.
   - id: windows-create-extension
     name: "Windows extension scaffolder entry: production install, floor guard and the cross-system proof"
     trigger:
@@ -1071,12 +1001,8 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0258 R27).
 
-  # Spec 0258 R27 (ticket #1337): the eleven skill entries from a non-POSIX interpreter. The
-  # production dependencies are installed first, the floor guard runs, then
-  # scripts/tests/windows-skill-scripts.test.ts runs each of the eleven entries (github-actions,
-  # gitlab-ci, pr-reviewer) through pwsh and cmd.exe against a sandbox with stub wrapped tools and no
-  # bash; a direct leg runs the same assertions on any host. No timing budget and no `paths:` filter,
-  # like the Windows jobs above: the proof must not skip silently on a change it does not list.
+  # Spec 0258 R27 (ticket #1337): the eleven skill entries (github-actions, gitlab-ci, pr-reviewer) from a non-POSIX
+  # interpreter against stub wrapped tools and no bash; a direct leg runs the same assertions on any host.
   - id: windows-skill-scripts
     name: "Windows skill script entries: production install, floor guard and the cross-system proof"
     trigger:
@@ -1104,11 +1030,8 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0258 R27).
 
-  # Spec 0261 R17, R20, R21 (ticket #1342): the end-to-end harness entries from a non-POSIX
-  # interpreter. scripts/tests/windows-e2e-harness.test.ts runs the runner dry run, toml_merge,
-  # report, the verdict publisher dry run, the docker diagnostics and the three probes (no vendor
-  # CLI) through pwsh and cmd.exe; a direct leg runs the same assertions on any host. No `paths:`
-  # filter, like the Windows jobs above.
+  # Spec 0261 R17, R20, R21 (ticket #1342): the end-to-end harness entries (no vendor CLI) through pwsh and cmd.exe; a
+  # direct leg runs the same assertions on any host.
   - id: windows-e2e-harness
     name: "Windows end-to-end harness entries: production install, floor guard and the cross-system proof"
     trigger:
@@ -1136,9 +1059,9 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0261 R17, R21).
 
-  # Spec 0259 R26-R28 (ticket #1338): the governance-check suites. Linux only. The shell oracle legs
-  # retired with the switch PR (the shell originals are forwarding shims), so no jq or yq is
-  # needed. The floor guard runs after the production dependency step, before the first test call.
+  # Spec 0259 R26-R28 (ticket #1338): the governance-check suites. Linux only. The shell oracle legs retired with the
+  # switch PR (the shell originals are forwarding shims), so no jq or yq is needed. The floor guard runs after the
+  # production dependency step.
   - id: governance-checks-ts
     name: "Run the TypeScript governance-check suites and their shell oracle legs"
     trigger:
@@ -1178,10 +1101,8 @@ capabilities:
     command:
       - task ci:governance-checks-ts
 
-  # Spec 0259 R26-R28 (ticket #1338), PR P0: the governance checks from PowerShell. The production
-  # dependencies are installed first, the floor guard runs, then every
-  # scripts/tests/windows-governance-*.test.ts file runs (glob discovery, so later PRs never edit this
-  # capability). No timing budget and no `paths:` filter, like the Windows jobs above.
+  # Spec 0259 R26-R28 (ticket #1338), PR P0: the governance checks from PowerShell. Glob discovery of
+  # scripts/tests/windows-governance-*.test.ts, so later PRs never edit this capability. No timing budget.
   - id: windows-governance-checks
     name: "Windows governance checks: production install, floor guard and the PowerShell proof"
     trigger:
@@ -1209,10 +1130,9 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0259 R26-R28).
 
-  # Spec 0262 R21-R23 (ticket #1339): the model-CI-tooling suites and their shell-versus-TypeScript
-  # differential legs. Linux only; `jq` and `yq` are installed so the differential suites find the
-  # pinned tools. Glob discovery: later PRs add scripts/tests/model-ci-tooling-*.test.ts files and
-  # never edit this capability. The floor guard runs after the production dependency step.
+  # Spec 0262 R21-R23 (ticket #1339): the model-CI-tooling suites and their shell-versus-TypeScript differential legs. Linux
+  # only; `jq` and `yq` are installed so the differential suites find the pinned tools. Glob discovery: later PRs add
+  # scripts/tests/model-ci-tooling-*.test.ts files and never edit this capability.
   - id: model-ci-tooling-ts
     name: "Run the TypeScript model-CI-tooling suites and their shell differential legs"
     trigger:
@@ -1236,10 +1156,8 @@ capabilities:
     command:
       - task ci:model-ci-tooling-ts
 
-  # Spec 0262 R21-R23 (ticket #1339): merge-spec-pr.ts from PowerShell. The production
-  # dependencies are installed first, the floor guard runs, then every
-  # scripts/tests/windows-model-ci-tooling-*.test.ts file runs (glob discovery, so later PRs never edit this
-  # capability). No timing budget and no `paths:` filter, like the Windows jobs above.
+  # Spec 0262 R21-R23 (ticket #1339): merge-spec-pr.ts from PowerShell. Glob discovery of
+  # scripts/tests/windows-model-ci-tooling-*.test.ts (later PRs never edit this capability). No timing budget.
   - id: windows-model-ci-tooling
     name: "Windows model-CI-tooling checks: production install, floor guard and the PowerShell proof"
     trigger:
@@ -1267,11 +1185,8 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0262 R21-R23).
 
-  # Spec 0256 R40 (ticket #1335), PR B1, plan finding v1-F3: the Windows exercise of layer 1. The
-  # production dependencies are installed first, the floor guard runs as its own step, then the
-  # same unit suites as `setup-modules-ts` run under pwsh; the POSIX-only ones skip themselves on
-  # win32. No timing budget and no `paths:` filter, like the Windows jobs above: the exercise must
-  # not skip silently on a change it does not list.
+  # Spec 0256 R40 (ticket #1335), PR B1, plan finding v1-F3: the Windows exercise of layer 1: the same unit suites as
+  # `setup-modules-ts` under pwsh; the POSIX-only ones skip on win32. No timing budget, no `paths:` filter, as above.
   - id: windows-setup-units
     name: "Windows setup module unit suites: production install, floor guard and the layer-1 suites"
     trigger:
@@ -1299,11 +1214,9 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0256 R40).
 
-  # Spec 0256 requirements 34-35 (ticket #1335), PR C: the Windows proof of the four entries. The
-  # production dependencies are installed first, the floor guard runs as its own step, then the proof
-  # runs the entries under pwsh against a sandbox HOME/USERPROFILE with no POSIX shell on PATH,
-  # including the end-to-end "install CrewRig from PowerShell" run of the Claude entry. Timings are
-  # printed, never asserted. No `paths:` filter, like the Windows jobs above.
+  # Spec 0256 requirements 34-35 (ticket #1335), PR C: the Windows proof of the four entries under pwsh against a sandbox
+  # HOME/USERPROFILE with no POSIX shell on PATH, including the end-to-end "install CrewRig from PowerShell" run of the
+  # Claude entry. Timings are never asserted.
   - id: windows-setup-entries
     name: "Windows setup entries: production install, floor guard and the install-from-PowerShell proof"
     trigger:
@@ -1789,10 +1702,8 @@ capabilities:
     portability: portable
     changeset-gated: true
     requires:
-      # python@3.12 is the primary/image runtime (unchanged); node@24 is a
-      # SECONDARY runtime this job also needs for its TypeScript test
-      # (mempalace-http-client-reuse.test.ts) — installed alongside the
-      # image rather than replacing it (spec 0242, issue #1370).
+      # python@3.12 is the primary/image runtime (unchanged); node@24 is a SECONDARY runtime this job also needs for its
+      # TypeScript test (mempalace-http-client-reuse.test.ts), installed alongside the image (spec 0242, issue #1370).
       runtime: [python@3.12, node@24]
       tools: [yq, jq, task]
       install: omit-dev
@@ -1871,9 +1782,8 @@ capabilities:
       - "ci/ci-capabilities.yml"
     portability: portable
     changeset-gated: true
-    # node@24: the guard oracle below runs through the shim, which execs the
-    # TypeScript guard; on a Node.js below 24 the shim exits 0 without
-    # enforcing, which fails oracle Cases 3 and 4 (spec 0248 R36, R13).
+    # node@24: the guard oracle below runs through the shim, which execs the TypeScript guard; on a Node.js below 24 the
+    # shim exits 0 without enforcing, which fails oracle Cases 3 and 4 (spec 0248 R36, R13).
     requires:
       runtime: node@24
       tools: [task]
@@ -1934,9 +1844,8 @@ capabilities:
     portability: portable
     changeset-gated: true
     requires:
-      # python@3.12 is the primary/image runtime (unchanged); node@24 is a
-      # SECONDARY runtime: the worktree-claim.ts tool is the TypeScript
-      # claim tool, and on a Node.js below 24 it exits 1 (spec 0248 R26, R36).
+      # python@3.12 is the primary/image runtime (unchanged); node@24 is a SECONDARY runtime: worktree-claim.ts is the
+      # TypeScript claim tool and exits 1 below Node.js 24 (spec 0248 R26, R36).
       runtime: [python@3.12, node@24]
       tools: [yq, task]
       install: omit-dev
@@ -1963,10 +1872,8 @@ capabilities:
     command:
       - task ci:chroma-mcp
 
-  # e2e is the heaviest group; it stays enforced on push/PR (changeset-gated)
-  # but is ALSO manually triggerable (spec 0147 R8) so a contributor can run it
-  # on demand without waiting for the full pipeline. The `manual` trigger maps
-  # to GitLab `when: manual` and GHA `workflow_dispatch`.
+  # e2e is the heaviest group; it stays enforced on push/PR (changeset-gated) but is ALSO manually triggerable (spec 0147
+  # R8). The `manual` trigger maps to GitLab `when: manual` and GHA `workflow_dispatch`.
   - id: e2e
     name: "Run the e2e regression suite"
     trigger:
@@ -2087,38 +1994,22 @@ capabilities:
     portability: portable
     changeset-gated: true
     requires:
-      # node@24 is the PRIMARY runtime on purpose (finding i1-F16): the
-      # GitLab image is derived from the FIRST entry, so the job runs on the
-      # pinned node:24 image like every other Node job, instead of piping an
-      # unpinned NodeSource script on a python:3.12 image.
-      # check-gemini-overlay-enrollment.ts runs on Node.js 24, and the check
-      # entries fail closed below Node.js 24. No
-      # python runtime is declared: check-markdown-links was the only
-      # python3 consumer and it is TypeScript now. The GitLab leg cannot be
-      # run locally; it is covered by build-ci.ts --check and
-      # check-ci-parity.ts only.
+      # node@24 is the PRIMARY runtime on purpose (finding i1-F16): the GitLab image is derived from the FIRST entry, so
+      # the job runs on the pinned node:24 image like every other Node job, not an unpinned NodeSource script on
+      # python:3.12. The check entries fail closed below Node.js 24; no python runtime is declared. The GitLab leg cannot
+      # be run locally; it is covered by build-ci.ts --check and check-ci-parity.ts only.
       runtime: node@24
       tools: [task]
       install: omit-dev
     command:
       - task ci:misc
 
-  # repository-scan runs the checks whose verdict depends on files anywhere in
-  # the repository (spec 0251 R1-R4): check-no-machine-paths.ts scans every
-  # tracked file, check-markdown-links.ts every tracked *.md and the target of
-  # every relative link, and check-core-paths.ts every path the manifest names
-  # plus the output directories of build-components.ts. No filter can enumerate
-  # those inputs in advance, so the capability has NO `paths:` filter and runs
-  # on every pull request and push to main and release/**. It is deliberately
-  # NOT filtered with a catch-all `**` glob (R4): that would make every tracked
-  # file count as owned and turn `path-ownership` vacuous. It is not
-  # changeset-gated and runs no test suite (R3): the suites of the three scans
-  # stay in misc, markdown-links and core-paths, under their own filters.
-  # The three scans are TypeScript entries on Node.js 24: no python runtime is
-  # declared (check-markdown-links was its only consumer), and check-core-paths
-  # needs no yq because `build-components.ts --list-output-dirs` exits in its
-  # list_output_dirs guard (scripts/build-components.ts:64-117) before the yq
-  # prerequisite check (scripts/build-components.ts:120).
+  # repository-scan runs the checks whose verdict depends on files anywhere in the repository (spec 0251 R1-R4):
+  # check-no-machine-paths.ts, check-markdown-links.ts and check-core-paths.ts. No filter can enumerate those inputs, so
+  # NO `paths:` filter, and deliberately NOT a catch-all `**` glob (R4): that would make every tracked file count as owned
+  # and turn `path-ownership` vacuous. Not changeset-gated, no test suite (R3). check-core-paths needs no yq because
+  # `build-components.ts --list-output-dirs` exits in its list_output_dirs guard (scripts/build-components.ts:64-117)
+  # before the yq prerequisite check (scripts/build-components.ts:120).
   - id: repository-scan
     name: "Run repository-wide scans on every change"
     trigger:
@@ -2128,9 +2019,8 @@ capabilities:
         branches: [main, "release/**"]
     portability: portable
     requires:
-      # check-core-paths.ts runs build-components.ts through
-      # `--list-output-dirs`, through the TypeScript build, which fails closed below Node.js 24 (spec 0215 R31
-      # follow-up noted in #1550).
+      # check-core-paths.ts runs build-components.ts through `--list-output-dirs`, i.e. the TypeScript build, which fails
+      # closed below Node.js 24 (spec 0215 R31 follow-up noted in #1550).
       runtime: node@24
       tools: [task]
     command:
@@ -2337,9 +2227,8 @@ capabilities:
     command:
       - task ci:check-taskfile-commands-selftest
 
-  # The tree guard's check (b) scans every scripts/**/*.{ts,js} source for a
-  # raw read of the root Taskfile, so this job triggers on the whole scripts/**
-  # surface plus the Taskfile tree itself (spec 0278 R16, plan delta D6).
+  # The tree guard's check (b) scans every scripts/**/*.{ts,js} source for a raw read of the root Taskfile, so this job
+  # triggers on the whole scripts/** surface plus the Taskfile tree itself (spec 0278 R16, plan delta D6).
   - id: check-taskfile-tree
     name: "Check the Taskfile tree guard and run its loader, reference and CI-wiring suites"
     trigger:
@@ -2464,10 +2353,9 @@ capabilities:
     command:
       - task ci:check-task-provisioning-selftest
 
-  # Replay of the pre-push wrapper end to end (spec 0279 R16, plan v2-F1/F5).
-  # CI-only: it has no `ci:` task, is not fast-tier and is not changeset-gated
-  # (the nightly exhaustive run installs no `task` binary). The paths filter
-  # covers what the replayed tools read (spec 0251 R14).
+  # Replay of the pre-push wrapper end to end (spec 0279 R16, plan v2-F1/F5). CI-only: no `ci:` task, not fast-tier, not
+  # changeset-gated (the nightly exhaustive run installs no `task` binary). Its paths filter covers what the replayed
+  # tools read (spec 0251 R14).
   - id: ci-pre-push-replay
     name: "Replay the pre-push wrapper against a fixture repository"
     trigger:
@@ -2521,17 +2409,11 @@ capabilities:
     command:
       - task ci:markdown-links
 
-  # changeset-coverage is the exhaustive run (spec 0147 delta-01 R21): it has
-  # no pull-request and no push trigger. It runs `scheduled` (daily, on the
-  # default branch) and `manual`, and executes EVERY command of every
-  # `changeset-gated: true` capability unconditionally, reading them from this
-  # reference (via yq, never hardcoded). There is no diff and no base ref. The
-  # pull-request guarantee that used to be this job's run-time fail-safe is now
-  # the static `path-ownership` capability below. The job provisions
-  # python@3.12, yq and node@24 (the secondary runtime also runs the
-  # `mempalace` TypeScript test in the full suite), so a `node@22` capability
-  # must still never be changeset-gated. `history-depth: full` is kept so the
-  # gated commands see the same checkout on both engines.
+  # changeset-coverage is the exhaustive run (spec 0147 delta-01 R21): no pull-request or push trigger, only `scheduled`
+  # (daily, default branch) and `manual`. It executes EVERY command of every `changeset-gated: true` capability
+  # unconditionally, read from this reference (via yq); no diff, no base ref. The pull-request guarantee that used to be
+  # its fail-safe is now the static `path-ownership` capability below. It provisions python@3.12, yq and node@24, so a
+  # `node@22` capability must never be changeset-gated.
   - id: changeset-coverage
     name: "Exhaustive run of every changeset-gated check"
     trigger:
@@ -2547,9 +2429,8 @@ capabilities:
       - node scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-changeset-coverage.ts
 
-  # changeset-coverage-test keeps the exhaustive script's regression test on the
-  # pull-request path (spec 0147 delta-01 R23). It has never been path-filtered
-  # and is not changeset-gated.
+  # changeset-coverage-test keeps the exhaustive script's regression test on the pull-request path (spec 0147 delta-01
+  # R23). It has never been path-filtered and is not changeset-gated.
   - id: changeset-coverage-test
     name: "Test the exhaustive-run script"
     trigger:
@@ -2567,11 +2448,9 @@ capabilities:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-changeset-coverage.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-changeset-coverage-tools.test.ts
 
-  # path-ownership is the static ownership check (spec 0147 delta-01 R11-R18):
-  # every tracked file is owned by the `paths:` of a pull-request capability or
-  # exempted with a reason in ci/path-ownership-exemptions.txt (plus the
-  # optional adopter overlay ci/org/path-ownership-exemptions.txt). It reads only
-  # the working tree and this reference, never a base ref, so it has no
+  # path-ownership is the static ownership check (spec 0147 delta-01 R11-R18): every tracked file is owned by the `paths:`
+  # of a pull-request capability or exempted with a reason in ci/path-ownership-exemptions.txt (plus the optional adopter
+  # overlay ci/org/path-ownership-exemptions.txt). It reads only the working tree and this reference, so it has no
   # `paths:` filter and cannot be skipped. `npm ci` provides `js-yaml`.
   - id: path-ownership
     name: "Check path ownership and stray-scan wiring"
@@ -2636,11 +2515,9 @@ capabilities:
     command:
       - task ci:lint-markdown
 
-  # Spec 0238 R1-R3, R13: the shell / JavaScript / Python footprint ratchet.
-  # No `paths:` filter and not changeset-gated: any change may add a shell
-  # file, so the ratchet runs on every change. Its list-growth and Python arms
-  # diff against the merge-base with BASE_REF, hence `history-depth: full`.
-  # Standard library only, so no `npm ci`.
+  # Spec 0238 R1-R3, R13: the shell / JavaScript / Python footprint ratchet. No `paths:` filter and not changeset-gated: any
+  # change may add a shell file. Its list-growth and Python arms diff against the merge-base with BASE_REF, hence
+  # `history-depth: full`. Standard library only, so no `npm ci`.
   - id: ratchet
     name: "Shell, JavaScript and Python footprint ratchet"
     trigger:
@@ -2680,11 +2557,9 @@ capabilities:
     command:
       - task ci:ratchet-selftest
 
-  # Spec 0267 R12, R13, R16-R19: the test-harness host-safety check. No
-  # `paths:` filter: any scripts/** change can add a destructive call. Its
-  # growth arm diffs ci/host-safety-allowlist.txt against the merge-base with
-  # BASE_REF, hence `history-depth: full`. Unlike `ratchet` it imports
-  # `typescript` (the TS 7 programmatic API), so it needs `npm ci`.
+  # Spec 0267 R12, R13, R16-R19: the test-harness host-safety check. No `paths:` filter: any scripts/** change can add a
+  # destructive call. Its growth arm diffs ci/host-safety-allowlist.txt against the merge-base with BASE_REF, hence
+  # `history-depth: full`. Unlike `ratchet` it imports `typescript` (the TS 7 programmatic API), so it needs `npm ci`.
   - id: host-safety
     name: "Test-harness host-safety check"
     trigger:
@@ -2729,11 +2604,9 @@ capabilities:
     command:
       - task ci:host-safety-selftest
 
-  # Spec 0238 R4-R8, R12, R13: type-check, erasable syntax, Oxlint type-aware
-  # strict typing (max-lines as a non-blocking warning) and Oxfmt check mode
-  # on every tracked *.ts outside the built-copy trees (Oxfmt also checks the
-  # JavaScript admitted by ci/js-exceptions.txt, spec 0266 R16). No `paths:` filter: a
-  # lockfile, tsconfig.json or lint-config change must re-run it too.
+  # Spec 0238 R4-R8, R12, R13: type-check, erasable syntax, Oxlint type-aware strict typing and Oxfmt check on every
+  # tracked *.ts outside the built-copy trees (and the JavaScript in ci/js-exceptions.txt, spec 0266 R16). No `paths:`
+  # filter: a lockfile, tsconfig.json or lint-config change must re-run it.
   - id: lint-typescript
     name: "TypeScript type-check, erasable syntax, lint and format"
     trigger:
@@ -2785,12 +2658,9 @@ capabilities:
     command:
       - task ci:lint-typescript-selftest
 
-  # Spec 0240 R4-R11, R13, R16: the Node.js floor guard, the production-
-  # dependency step and the shared scripts/lib/ TypeScript modules, verified by
-  # their node --test suites. No `paths:` filter, like `ratchet`: the suites
-  # are fast, and a lockfile or setup-script change must re-run them.
-  # production-dependencies.test.ts needs the npm registry and skips itself,
-  # with a message, when `npm ping` fails.
+  # Spec 0240 R4-R11, R13, R16: the Node.js floor guard, the production-dependency step and the shared scripts/lib/
+  # TypeScript modules with their node --test suites. No `paths:` filter, like `ratchet`: the suites are fast, and a
+  # lockfile or setup-script change must re-run them. production-dependencies.test.ts skips itself when `npm ping` fails.
   - id: runtime-foundations
     name: "Node.js floor guard, production-dependency step and shared TS modules"
     trigger:
@@ -2804,56 +2674,39 @@ capabilities:
     command:
       - npm ci
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
-      # Spec 0253 PLAN v3 A4: the history-import and prune oracles (POSIX only,
-      # they drive the shell originals through bash; each skips itself on win32).
+      # Spec 0253 PLAN v3 A4: the history-import and prune oracles (POSIX only: they drive the shell originals through bash).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/prune-transcripts-oracle.test.ts
-      # Spec 0253 PLAN v3 C7: the cross-platform unit tests of the TypeScript
-      # history-import and prune entries.
+      # Spec 0253 PLAN v3 C7: the cross-platform unit tests of the TypeScript history-import and prune entries.
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import.test.ts scripts/tests/prune-transcripts-ts.test.ts scripts/tests/prune-transcripts-ts-run.test.ts scripts/tests/history-import-python.test.ts scripts/tests/history-import-prune-python.test.ts
-      # Spec 0252 R21 (PLAN step A1-A3): the stop, uninstall and switch-argument
-      # oracles of the MCP daemon lifecycle scripts (POSIX only, same reason).
+      # Spec 0252 R21 (PLAN step A1-A3): the stop, uninstall and switch-argument oracles of the MCP daemon lifecycle scripts (POSIX only).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/stop-mcp-server-oracle.test.ts scripts/tests/uninstall-mcp-daemon-oracle.test.ts scripts/tests/switch-mempalace-http-args-oracle.test.ts
-      # Spec 0252 requirement 4 (PLAN step 7): the MemPalace helper modules shared
-      # with row F3 (python detection, version pin); hermetic, no real MemPalace.
+      # Spec 0252 requirement 4 (PLAN step 7): the MemPalace helper modules shared with row F3 (python detection, version pin); hermetic.
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-python.test.ts scripts/tests/mempalace-python-shebang.test.ts scripts/tests/mempalace-pin.test.ts
-      # Spec 0252 PR B (issue #1330): the service module, the MCP launcher and the
-      # MemPalace helpers. Linux runs every suite, the conformance test included;
-      # the win32-only suites (service-windows*.test.ts) run in `windows-service-task`.
+      # Spec 0252 PR B (issue #1330): the service module, the MCP launcher and the MemPalace helpers; the win32-only
+      # suites run in `windows-service-task`.
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-backend.test.ts scripts/tests/service-bundle-closure.test.ts scripts/tests/service-exec.test.ts scripts/tests/service-file-size.test.ts scripts/tests/service-install.test.ts scripts/tests/service-launchd-systemd.test.ts scripts/tests/service-launcher-child.test.ts scripts/tests/service-launcher-record.test.ts scripts/tests/service-launcher-token.test.ts scripts/tests/service-launcher-palace-path.test.ts scripts/tests/service-listener-pid.test.ts scripts/tests/service-names.test.ts scripts/tests/service-os-inspect.test.ts scripts/tests/service-owner-check.test.ts scripts/tests/service-probe.test.ts scripts/tests/service-process-tree.test.ts scripts/tests/service-program-install.test.ts scripts/tests/service-schtasks.test.ts scripts/tests/service-schtasks-uninstall.test.ts scripts/tests/service-snapshot-failure.test.ts scripts/tests/service-task-ownership.test.ts scripts/tests/service-task-snapshot.test.ts scripts/tests/service-task-state.test.ts scripts/tests/service-token-argv.test.ts scripts/tests/service-trust-wrapper.test.ts scripts/tests/service-unit-render.test.ts scripts/tests/service-windows-task-xml.test.ts scripts/tests/mcp-launcher-lifecycle.test.ts
-      # Spec 0258 R15, R28, R34 (ticket #1337): the calendar-trigger renderers and backends of the
-      # service layer, the harness-curator differential (the shell leg was retired with the three `.sh`
-      # forwarding shims, spec 0258 R32) and its callers guard. No `paths:` filter: the job already runs on
-      # every change, which covers the curator and schedule paths.
+      # Spec 0258 R15, R28, R34 (ticket #1337): the calendar-trigger renderers and backends of the service layer, the
+      # harness-curator differential (shell leg retired with the `.sh` shims, spec 0258 R32) and its callers guard. No `paths:`
+      # filter: the job already runs on every change, which covers the curator and schedule paths.
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-schedule-launchd-systemd.test.ts scripts/tests/service-schedule-names.test.ts scripts/tests/service-schedule-render.test.ts scripts/tests/service-schedule-schtasks.test.ts scripts/tests/harness-curator-differential.test.ts scripts/tests/harness-curator-callers.test.ts
-      # Spec 0252 PR C (issue #1330): the ChromaDB trio, black-box through the
-      # TypeScript entries, and the open-file floor (needs python3;
-      # the Windows-capable parts also run in `windows-chroma-trio`).
+      # Spec 0252 PR C (issue #1330): the ChromaDB trio, black-box through the TypeScript entries, and the open-file floor
+      # (needs python3; the Windows-capable parts also run in `windows-chroma-trio`).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/chroma-lifecycle.test.ts scripts/tests/chroma-launch.test.ts scripts/tests/chroma-launch-env.test.ts
-      # Spec 0252 PR D (issue #1330): the MCP daemon status report, black-box through
-      # the TypeScript entry against stand-ins (the Windows-capable parts also run in
-      # `windows-mcp-daemon`).
+      # Spec 0252 PR D (issue #1330): the MCP daemon status report against stand-ins (the Windows-capable parts also run in `windows-mcp-daemon`).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/status-mcp-lifecycle.test.ts scripts/tests/status-mcp-lifecycle-windows.test.ts
-      # Spec 0252 PR D (issue #1330): the all-or-nothing switch, the token file and the
-      # token-bearing config backup (review i1-F38), unit level.
+      # Spec 0252 PR D (issue #1330): the all-or-nothing switch, the token file and the token-bearing config backup (review i1-F38).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-token.test.ts scripts/tests/switch-transaction.test.ts scripts/tests/switch-replace.test.ts scripts/tests/service-backup-config.test.ts
-      # Spec 0252 PR E (issue #1330): the switch residue repair, black-box through the
-      # TypeScript entry (POSIX stubs), and its platform-neutral
-      # oracle (TypeScript entry only, also run in `windows-doctor-repair`).
+      # Spec 0252 PR E (issue #1330): the switch residue repair, black-box through the TypeScript entry (POSIX stubs), and its
+      # platform-neutral oracle (also run in `windows-doctor-repair`).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/repair-verbs.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/repair-windows.test.ts
-      # Spec 0252 PR E (issue #1330): the doctor report, black-box through the TypeScript
-      # entry; the Windows fourth section through the os-inspect seam.
+      # Spec 0252 PR E (issue #1330): the doctor report, black-box through the TypeScript entry (Windows fourth section via the os-inspect seam).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/doctor-sections.test.ts scripts/tests/doctor-sections-windows.test.ts
 
-  # Spec 0237 (issue #1322): the Windows hook command-line parsing probe's
-  # install / restore contract, root resolution and wmic parser. The probe
-  # itself only runs on a real Windows host (docs/runbooks/
-  # windows-hook-parsing-probe.md); this job pins its host-independent logic.
-  # The test reads the four committed transcript manifests to check the
-  # installed JSON shape, hence their place in the paths filter. Deliberately
-  # NOT changeset-gated, for the same reason usage-storage is not: a node@22
-  # capability must never enter the fail-safe job's execution set (it
-  # provisions python@3.12, yq and node@24).
+  # Spec 0237 (issue #1322): the Windows hook command-line parsing probe's install / restore contract, root resolution and
+  # wmic parser; the probe itself only runs on a real Windows host (docs/runbooks/windows-hook-parsing-probe.md). The test
+  # reads the four committed transcript manifests, hence their place in the paths filter. Deliberately NOT changeset-gated
+  # (node@22 rule, see `changeset-coverage`).
   - id: windows-hook-probe
     name: "Windows hook command-line parsing probe (spec 0237)"
     trigger:
@@ -2871,9 +2724,8 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/probe-windows-hook-parsing.test.ts
 
-  # Spec 0244 (issue #1387): the cross-contributor ticket-pickup check — the
-  # pure ownership model and the end-to-end tool against the in-process fake
-  # forge (GitHub, GitLab, Gitea wire shapes).
+  # Spec 0244 (issue #1387): the cross-contributor ticket-pickup check: the pure ownership model and the end-to-end tool
+  # against the in-process fake forge (GitHub, GitLab, Gitea wire shapes).
   - id: ticket-pickup
     name: "Ticket-pickup ownership check (spec 0244)"
     trigger:
@@ -2894,9 +2746,8 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts
 
-  # Spec 0245 (issue #1416): the opt-in Playwright MCP registration — the
-  # pure entry model, the JSONC scanner (byte parity with gs_strip_jsonc, so
-  # jq is required) and the hook-config.ts reader it extends.
+  # Spec 0245 (issue #1416): the opt-in Playwright MCP registration: the pure entry model, the JSONC scanner (byte parity
+  # with gs_strip_jsonc, so jq is required) and the hook-config.ts reader it extends.
   - id: playwright-mcp
     name: "Playwright MCP registration through tls-exec (spec 0245)"
     trigger:
@@ -2921,11 +2772,9 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/playwright-mcp.test.ts scripts/tests/jsonc.test.ts scripts/tests/hook-config.test.ts
 
-  # Spec 0246 (issue #1410): the MemPalace session-start check, its hook writer,
-  # and the status side's wrong-endpoint line. The tests run hermetically: a
-  # scratch HOME and CLAUDE_CONFIG_DIR, stub assistant CLIs first on PATH, and
-  # a fake endpoint on 127.0.0.1:0. jq is the shell reader's own parser; the
-  # agreement test logs `jq --version`.
+  # Spec 0246 (issue #1410): the MemPalace session-start check, its hook writer, and the status side's wrong-endpoint
+  # line. Hermetic tests: scratch HOME and CLAUDE_CONFIG_DIR, stub assistant CLIs, a fake endpoint on 127.0.0.1:0. jq is
+  # the shell reader's own parser.
   - id: mempalace-session-check
     name: "MemPalace session-start check (spec 0246)"
     trigger:
@@ -2958,9 +2807,8 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-registration-agreement.test.ts scripts/tests/mempalace-registration.test.ts scripts/tests/mempalace-session-check.test.ts scripts/tests/session-check-throttle.test.ts scripts/tests/session-check-hooks.test.ts
 
-  # Spec 0109 delta-04 R23 (issue #1441): the merged-spec status derivation —
-  # the rule end to end against a throwaway git repository (a main and a
-  # release line) and an in-process fake gh.
+  # Spec 0109 delta-04 R23 (issue #1441): the merged-spec status derivation, end to end against a throwaway git repository
+  # (a main and a release line) and an in-process fake gh.
   - id: derive-spec-status
     name: "Merged-spec status derivation (spec 0109 delta-04 R23)"
     trigger:
@@ -3003,10 +2851,9 @@ capabilities:
       - npm ci --omit=dev --workspaces=false
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-view.test.ts
 
-  # Spec 0240 R3: the floor guard's failure path, proven on a Node.js release
-  # that cannot strip types. Each command is plain POSIX so the job needs no
-  # TypeScript; the grep tokens are the guard's stable diagnostic contract
-  # (scripts/lib/node-floor-guard.js header).
+  # Spec 0240 R3: the floor guard's failure path, proven on a Node.js release that cannot strip types. Plain POSIX
+  # commands, so the job needs no TypeScript; the grep tokens are the guard's stable diagnostic contract
+  # (node-floor-guard.js header).
   - id: node-floor-guard
     name: "Node.js floor guard rejects a pre-24 release"
     trigger:
@@ -3024,12 +2871,9 @@ capabilities:
       - 'grep -F "https://nodejs.org/en/download" guard.out'
       - 'if grep -E "SyntaxError|ERR_|Cannot find module" guard.out; then exit 1; fi'
 
-  # Spec 0243 R5: the hook entries print nothing on the oldest Node.js 24
-  # release, where type stripping still emits an ExperimentalWarning. The
-  # suite runs the entry form check and the unstubbed silence runs of every
-  # CLI's slow path (v1-F5) under exactly 24.0.0. No `paths:` filter, like
-  # node-floor-guard: the suite is fast and any shared-module change can
-  # reintroduce a warning.
+  # Spec 0243 R5: the hook entries print nothing on the oldest Node.js 24 release (entry form check and unstubbed silence
+  # runs of every CLI's slow path, v1-F5, under exactly 24.0.0). No `paths:` filter, like node-floor-guard: any
+  # shared-module change can reintroduce a warning.
   - id: usage-capture-node-24-0
     name: "Usage-capture hook entries are silent on Node.js 24.0.0"
     trigger:
@@ -3043,15 +2887,10 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/hook-entry-form.test.ts
 
-  # Spec 0248 R36: the TypeScript worktree git guard and worktree claim tool
-  # (hooks/worktree-git-guard.ts, scripts/worktree-claim.ts and the module tree
-  # under scripts/lib/worktree-claim/) have their own black-box suites, which
-  # the two Bash oracles (run through the shims in test-wiring, mempalace and
-  # chroma-mcp) do not replace. `jq` is declared for the differential test of
-  # the payload chain (R5), which is skipped with an explicit line where `jq`
-  # is absent. Deliberately NOT changeset-gated, mirroring usage-capture above:
-  # the fail-safe job (ci-changeset-coverage.ts) provisions python@3.12, yq and
-  # node@24 only and carries no `jq`.
+  # Spec 0248 R36: the TypeScript worktree git guard and worktree claim tool have their own black-box suites, which the
+  # two Bash oracles (run through the shims in test-wiring, mempalace and chroma-mcp) do not replace. `jq` is declared for
+  # the differential test of the payload chain (R5), skipped with an explicit line where `jq` is absent. Deliberately NOT
+  # changeset-gated (node@22 rule, see `changeset-coverage`): the fail-safe job carries no `jq`.
   - id: worktree-guard
     name: "Validate the worktree git guard and worktree claim tool (TypeScript)"
     trigger:
@@ -3079,12 +2918,9 @@ capabilities:
     command:
       - task ci:worktree-guard
 
-  # Spec 0248 R10: the two TypeScript entries print nothing on the oldest
-  # Node.js 24 release, where type stripping still emits an ExperimentalWarning.
-  # The suite runs the entry form check and the unstubbed silence runs of the
-  # guard and of the claim tool under exactly 24.0.0. No `paths:` filter, like
-  # usage-capture-node-24-0 above: the suite is fast and any shared-module
-  # change can reintroduce a warning.
+  # Spec 0248 R10: the two TypeScript entries print nothing on the oldest Node.js 24 release (entry form check and
+  # unstubbed silence runs of the guard and the claim tool under exactly 24.0.0). No `paths:` filter, like
+  # usage-capture-node-24-0 above: any shared-module change can reintroduce a warning.
   - id: worktree-guard-node-24-0
     name: "Worktree guard and claim entries are silent on Node.js 24.0.0"
     trigger:
@@ -3098,14 +2934,9 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-entry-form.test.ts
 
-  # Spec 0247 R31, plan step 22(a): the black-box suites of the TypeScript
-  # MemPalace transcript hook (hooks/mempalace-transcript.ts and the module
-  # tree under scripts/lib/mempalace-transcript/) and of its wiring (the
-  # hook-transcript-* suites over the setup scripts and the shared recognition
-  # and command-line modules). The Bash oracle keeps running through the shim
-  # in the `mempalace` capability above. Deliberately NOT changeset-gated,
-  # mirroring worktree-guard: the fail-safe job provisions no Node.js 24 suite
-  # runner of its own.
+  # Spec 0247 R31, plan step 22(a): the black-box suites of the TypeScript MemPalace transcript hook and of its wiring
+  # (hook-transcript-* suites). The Bash oracle keeps running through the shim in the `mempalace` capability above.
+  # Deliberately NOT changeset-gated (node@22 rule, see `changeset-coverage`).
   - id: mempalace-transcript
     name: "Validate the MemPalace transcript hook and its wiring (TypeScript)"
     trigger:
@@ -3139,10 +2970,8 @@ capabilities:
     command:
       - task ci:mempalace-transcript
 
-  # Spec 0247 R1: the transcript hook entry prints nothing on the oldest
-  # Node.js 24 release, where type stripping still emits an ExperimentalWarning.
-  # No `paths:` filter, like usage-capture-node-24-0 above: the suite is fast
-  # and any shared-module change can reintroduce a warning.
+  # Spec 0247 R1: the transcript hook entry prints nothing on the oldest Node.js 24 release. No `paths:` filter, like
+  # usage-capture-node-24-0 above: any shared-module change can reintroduce a warning.
   - id: mempalace-transcript-node-24-0
     name: "MemPalace transcript hook entry is silent on Node.js 24.0.0"
     trigger:
@@ -3156,9 +2985,8 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-transcript-entry-form.test.ts
 
-  # The spec linter's base-branch `status: draft` check (spec 0109 R2) resolves
-  # the change's base ref, so the job needs full source history — declared as
-  # `history-depth: full`, same as the two version-bump guards below.
+  # The spec linter's base-branch `status: draft` check (spec 0109 R2) resolves the change's base ref, so the job needs
+  # full source history: `history-depth: full`, same as the two version-bump guards below.
   - id: lint-specs
     name: "Lint specification files"
     trigger:
@@ -3174,10 +3002,9 @@ capabilities:
       install: install
     env:
       BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
-      # Spec 0168 delta-01 R10: GitLab 17.10+ sets this to "true" when the merge
-      # request is a draft (docs.gitlab.com, predefined variables; the page
-      # documents only the "true" value). Any other value, including unset or
-      # empty, leaves R1 enforced: the linter skips only on the exact "true".
+      # Spec 0168 delta-01 R10: GitLab 17.10+ sets this to "true" when the merge request is a draft (docs.gitlab.com,
+      # predefined variables; the page documents only the "true" value). Any other value, including unset or empty, leaves
+      # R1 enforced: the linter skips only on the exact "true".
       CREWRIG_PR_DRAFT: "$CI_MERGE_REQUEST_DRAFT"
     command:
       - task ci:lint-specs
@@ -3225,12 +3052,9 @@ capabilities:
     command:
       - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/harness-curator-curate-fixture.test.ts scripts/tests/harness-curator-curate-units.test.ts scripts/tests/harness-curator-apply-dry-run.test.ts scripts/tests/harness-curator-apply-units.test.ts scripts/tests/harness-curator-setup-schedule.test.ts scripts/tests/harness-curator-real-palace.test.ts"
 
-  # check-skill-versions and check-extension-version-bump compare the change
-  # against its base ref; the workflow gates them on
-  # `if: github.event_name == 'pull_request'`
-  # (.github/workflows/build.yml lines 173, 186), so the neutral trigger is
-  # pull-request only. They need full source history (GHA `fetch-depth: 0`)
-  # to resolve the base ref — declared as `history-depth: full` (delta-02 R12).
+  # check-skill-versions and check-extension-version-bump compare the change against its base ref; the workflow gates them
+  # on `if: github.event_name == 'pull_request'` (.github/workflows/build.yml lines 173, 186), so the trigger is
+  # pull-request only. They need `history-depth: full` (GHA `fetch-depth: 0`) to resolve the base ref (delta-02 R12).
   - id: check-skill-versions
     name: "Enforce version bump on changed skill/agent sources"
     trigger:
@@ -3291,31 +3115,17 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-version-bump.ts
 
-  # check-spec-id-reserved compares the change against its base ref and reads
-  # the reservation namespaces on the remote, so it needs full source history —
-  # declared as `history-depth: full`, same as the two version-bump guards above.
-  # The workflow gates it on `if: github.event_name == 'pull_request'` (the
-  # origin discrimination of spec 0112 R10 has no meaning on a push), so the
-  # neutral trigger is pull-request only.
+  # check-spec-id-reserved compares the change against its base ref and reads the reservation namespaces on the remote, so
+  # it needs `history-depth: full`, as the two version-bump guards above. The workflow gates it on
+  # `if: github.event_name == 'pull_request'` (spec 0112 R10 origin discrimination has no meaning on a push), so the
+  # trigger is pull-request only.
   #
-  # NO `tools:` KEY, deliberately. The generated GitLab job runs on the default
-  # `debian:stable-slim` image, which ships no git, so git is installed
-  # CONDITIONALLY as the first line of `command:` — a business step, not setup.
-  # Declaring `tools: [git]` instead would still fail check-ci-parity.ts Arm 2
-  # (reference↔GitLab): `git`/`diff` have no `tool_install_lines` recipe in
-  # build-ci.ts, so a GitLab job needing either hard-errors at generation time.
-  # Arm 1 (GitHub Actions) no longer blocks this — since #1216, check-ci-parity.ts
-  # treats `git`/`diff` as preinstalled on ubuntu-latest, the same as `jq`, so
-  # neither an `install_recipe_tool` pattern nor a hand-authored GHA install
-  # step is needed there anymore. This shape still needs none of it — the one
-  # remaining edit to declare `tools: [git]` here would be adding that GitLab
-  # `tool_install_lines` recipe. Note the `lint-markdown` analogy is looser
-  # than it looks: that job's inline install IS recognized by
-  # `install_recipe_tool()` and skipped as setup, whereas this git line stays
-  # a business step matching
-  # `command[0]` verbatim — which is why it must carry NO nested `sudo`
-  # (`normalize_cmd` strips only a *leading* one, so a nested `sudo` would
-  # diverge from the declared command).
+  # NO `tools:` KEY, deliberately. The generated GitLab job runs on the default `debian:stable-slim` image, which ships no
+  # git, so git is installed CONDITIONALLY as the first line of `command:`, a business step, not setup. Declaring
+  # `tools: [git]` would still fail check-ci-parity.ts Arm 2 (reference↔GitLab): `git`/`diff` have no `tool_install_lines`
+  # recipe in build-ci.ts, so a GitLab job needing either hard-errors at generation time (Arm 1 no longer blocks: since
+  # #1216 `git`/`diff` count as preinstalled on ubuntu-latest). The git line must carry NO nested `sudo` (`normalize_cmd`
+  # strips only a *leading* one), or it would diverge from the declared command.
   - id: check-spec-id-reserved
     name: "Verify every spec id added by the change was secured"
     trigger:
@@ -3436,10 +3246,9 @@ capabilities:
 
   # --- Portable: standalone workflows -------------------------------------
 
-  # scripting-conventions.yml gates on pull_request to [main, release/**] with
-  # a path filter (.github/workflows/scripting-conventions.yml lines 3-9).
-  # The two inline grep blocks need no runtime or extra tools — POSIX shell
-  # only — so `requires:` is omitted (an empty engine-agnostic need).
+  # scripting-conventions.yml gates on pull_request to [main, release/**] with a path filter
+  # (.github/workflows/scripting-conventions.yml lines 3-9). Its two inline grep blocks need POSIX shell only, so
+  # `requires:` is omitted.
   - id: grep-anti-patterns
     name: "Flag scripting anti-patterns in scripts and hooks"
     trigger:
@@ -3495,10 +3304,8 @@ capabilities:
       - npm install
       - npm audit --audit-level=critical
 
-  # usage-record-schema validates the usage record contract (spec 0205).
-  # Deliberately NOT changeset-gated: the fail-safe job (ci-changeset-coverage.ts)
-  # provisions python@3.12 + yq + node@24, so a node@22 capability must never
-  # enter its execution set.
+  # usage-record-schema validates the usage record contract (spec 0205). Deliberately NOT changeset-gated (node@22 rule,
+  # see `changeset-coverage`): the fail-safe job (ci-changeset-coverage.ts) provisions python@3.12 + yq + node@24.
   - id: usage-record-schema
     name: "Validate usage record schema and fixtures"
     trigger:
@@ -3520,11 +3327,9 @@ capabilities:
       - npm install
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-record-schema.test.ts
 
-  # release-notes renders an extension release note through the real
-  # scripts/monorepo-release.ts configuration against a hermetic fixture
-  # repository (issue #1225). Deliberately NOT changeset-gated, mirroring
-  # usage-record-schema above. It runs on node@24: the shim's floor guard
-  # (spec 0257) refuses an older Node.js.
+  # release-notes renders an extension release note through the real scripts/monorepo-release.ts configuration against a
+  # hermetic fixture repository (issue #1225). NOT changeset-gated, as usage-record-schema above. Runs on node@24: the
+  # shim's floor guard (spec 0257) refuses an older Node.js.
   - id: release-notes
     name: "Render extension release notes through the monorepo release config"
     trigger:
@@ -3555,11 +3360,8 @@ capabilities:
       - npm ci
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-notes-real-engine.test.ts
 
-  # usage-capture validates the spec 0206 capture-adapter module tree and the
-  # spec 0211 per-CLI usage-capture opt-in (scripts/usage-capture-optin.ts).
-  # Deliberately NOT changeset-gated, mirroring usage-record-schema above:
-  # the fail-safe job (ci-changeset-coverage.ts) provisions node@24 only, so a
-  # node@22 capability must never enter it.
+  # usage-capture validates the spec 0206 capture-adapter module tree and the spec 0211 per-CLI usage-capture opt-in
+  # (scripts/usage-capture-optin.ts). NOT changeset-gated, as usage-record-schema above.
   - id: usage-capture
     name: "Validate usage capture adapters and fixtures"
     trigger:
@@ -3625,13 +3427,9 @@ capabilities:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/e2e-usage-headless.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-statusline-shim.test.ts scripts/tests/hook-*.test.ts scripts/tests/usage-capture-*.test.ts
 
-  # usage-storage validates the usage-record storage contract (spec 0207):
-  # the journal write path, the wing derivation, the drain/sweep, the mirror
-  # gating and catch-up against a fake daemon, and the ajv-precompiled
-  # standalone validator's own drift gate. Deliberately NOT changeset-gated,
-  # for the same reason usage-record-schema above is not — a node@22
-  # capability must never enter the fail-safe job's execution set (python@3.12,
-  # yq and node@24).
+  # usage-storage validates the usage-record storage contract (spec 0207): the journal write path, wing derivation,
+  # drain/sweep, mirror gating and catch-up against a fake daemon, and the ajv-precompiled standalone validator's own
+  # drift gate. NOT changeset-gated, as usage-record-schema above (node@22 rule).
   - id: usage-storage
     name: "Validate the usage-record storage contract"
     trigger:
@@ -3683,15 +3481,10 @@ capabilities:
       - "docs/usage-organization.md"
     portability: portable
     requires:
-      # node@24 (bumped from node@22): scripts/usage-inventory.ts and its test
-      # run directly from .ts source via Node's built-in type stripping (spec
-      # 0238), which requires Node >= 24 — see DEVELOPMENT.md, "TypeScript
-      # toolchain and ratchet". Kept its own id, distinct from the `ratchet`/
-      # `lint-typescript` capabilities (spec 0238 R1-R8): this capability
-      # validates the usage-record storage contract, not the TypeScript
-      # toolchain itself, and no `tsc`/Oxlint/Oxfmt tool is needed here — a
-      # plain `node --test` on .ts sources needs no `npm ci` of its own beyond
-      # what this capability already runs for schema validation.
+      # node@24 (bumped from node@22): scripts/usage-inventory.ts and its test run directly from .ts source via Node's built-in
+      # type stripping (spec 0238), which requires Node >= 24 — see DEVELOPMENT.md, "TypeScript toolchain and ratchet". Kept
+      # its own id, distinct from the `ratchet`/`lint-typescript` capabilities (spec 0238 R1-R8): this capability validates the
+      # usage-record storage contract, and a plain `node --test` on .ts sources needs no `tsc`/Oxlint/Oxfmt nor an extra `npm ci`.
       runtime: node@24
     command:
       - npm install
@@ -3701,18 +3494,11 @@ capabilities:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-wrappers-oracle.test.ts scripts/tests/usage-wrappers.test.ts scripts/tests/hermetic-env.test.ts
       - node scripts/build-usage-validator.js --check
 
-  # usage-attribution validates spec 0208's declaration channels, attribution
-  # ledger, and per-fidelity rollups: the resolver's four-channel order and
-  # offline worktree-or-branch derivation, the append-only ledger's read-time
-  # override, and the registered-derived-store prune reach (spec 0207
-  # delta-01 R28/R33). Deliberately NOT changeset-gated, for the same reason
-  # usage-storage above is not — a node@22 capability must never enter the
-  # fail-safe job's execution set (python@3.12, yq and node@24). The capture
-  # tree is in the paths filter because the resolution point is scripts/lib/usage-capture/
-  # index.js and the backfill's no-channel rule is backfill.js: without it,
-  # an edit dropping the resolveAttribution() call would leave usage-capture
-  # green (it asserts nothing about attribution), usage-storage green (it
-  # does not fire on the capture tree), and usage-attribution not run at all.
+  # usage-attribution validates spec 0208's declaration channels, attribution ledger and per-fidelity rollups, and the
+  # registered-derived-store prune reach (spec 0207 delta-01 R28/R33). NOT changeset-gated, as usage-storage above. The
+  # capture tree is in the paths filter because the resolution point is scripts/lib/usage-capture/index.js and the
+  # backfill's no-channel rule is backfill.js: without it, an edit dropping the resolveAttribution() call would leave
+  # usage-capture, usage-storage and the attribution suite all green or unrun.
   - id: usage-attribution
     name: "Validate the usage-attribution declaration channels and ledger"
     trigger:
@@ -3748,28 +3534,13 @@ capabilities:
       - npm install
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-attribution-channels.test.ts scripts/tests/usage-attribution-ledger-rollup.test.ts scripts/tests/usage-attribution-period-rollup.test.ts scripts/tests/usage-attribution-prune.test.ts scripts/tests/usage-attribution-mutations.test.ts
 
-  # usage-pricing validates spec 0209's comparative pricing engine: the
-  # model-id resolution pipeline (exact/alias/family/org fallback), the
-  # cache-tier and long-context arithmetic against the real LiteLLM field
-  # names, currency conversion against a fixed ECB fixture (including the
-  # freshness and suppression FX cases), the three-timestamp and
-  # --as-of-today contract, the per-fidelity rollup rules, and the R37
-  # registered-derived-store prune reach (the two-store case delta-01 R33
-  # requires). Fully offline — a hand-built ~14-entry fixture price list,
-  # never the real 2.9 MB snapshot. Deliberately NOT changeset-gated, for
-  # the same reason usage-storage above is not — a node@22 capability must
-  # never enter the fail-safe job's execution set (python@3.12, yq and
-  # node@24). The usage-store tree is in the paths filter because step 9 of the plan puts
-  # both halves of the R37 mechanism there (derivedStores() in layout.js,
-  # the walk in prune.js): without it, a changeset touching only layout.js
-  # or prune.js would not run the suite that owns the R37 assertion. The usage-dashboard
-  # tree and entry script are in the paths filter because the suite runs the dashboard
-  # (cases 17 and 19), so a change to either must run it.
-  # The three usage-store entry scripts (usage-attribute.ts, usage-prune.ts,
-  # usage-query.ts) are in the paths filter for the same reason: the suite runs
-  # them (the R37 prune cases 14 and 15, the case 17 period-rollup helper, the
-  # case 19 ledger writes), so a change to their exec line or argument handling
-  # must run it.
+  # usage-pricing validates spec 0209's comparative pricing engine, including the R37 registered-derived-store prune reach
+  # (the two-store case delta-01 R33 requires). Fully offline: a hand-built ~14-entry fixture price list, never the real
+  # 2.9 MB snapshot. NOT changeset-gated, as usage-storage above. The usage-store tree is in the paths filter because step
+  # 9 of the plan puts both halves of the R37 mechanism there: without it, a changeset touching only one would not run the
+  # suite that owns the R37 assertion. The usage-dashboard tree and entry script (cases 17 and 19) and the three
+  # usage-store entry scripts (usage-attribute.ts, usage-prune.ts, usage-query.ts; R37 prune cases 14 and 15, case 17,
+  # case 19) are in the paths filter because the suite runs them.
   - id: usage-pricing
     name: "Validate the usage-pricing model-id resolution, arithmetic, and prune reach"
     trigger:
@@ -3809,13 +3580,10 @@ capabilities:
       - npm install
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-pricing-compute.test.ts scripts/tests/usage-pricing-fx.test.ts scripts/tests/usage-pricing-rollup.test.ts scripts/tests/usage-pricing-rollup-period.test.ts scripts/tests/usage-pricing-prune.test.ts scripts/tests/usage-pricing-static.test.ts scripts/tests/usage-pricing-conversion.test.ts scripts/tests/usage-pricing-conversion-b.test.ts
 
-  # usage-dashboard is spec 0210's three-form agreement, injection and
-  # loopback-bind suite (PLAN v2 steps 13-15). Fully offline, reusing the
-  # usage-pricing fixture price list. Not changeset-gated, for the same
-  # node@22 reason as usage-pricing above. The usage-store and usage-price
-  # trees and model-prices.org.json are in the paths filter because the view
-  # model reads through both (priceRecord() loads the org table on every
-  # call), so a change to either can shift a figure the dashboard shows.
+  # usage-dashboard is spec 0210's three-form agreement, injection and loopback-bind suite (PLAN v2 steps 13-15). Fully
+  # offline, reusing the usage-pricing fixture price list. NOT changeset-gated, as usage-pricing above. The usage-store
+  # and usage-price trees and model-prices.org.json are in the paths filter because the view model reads through both, so
+  # a change to either can shift a dashboard figure.
   - id: usage-dashboard
     name: "Validate the usage dashboard's three delivery forms, injection safety, and loopback bind"
     trigger:
@@ -3865,11 +3633,9 @@ capabilities:
       - npm install
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-dashboard-agreement.test.ts scripts/tests/usage-dashboard-crosscheck.test.ts scripts/tests/usage-dashboard-buckets.test.ts scripts/tests/usage-dashboard-render.test.ts scripts/tests/usage-dashboard-empty.test.ts scripts/tests/usage-dashboard-page.test.ts scripts/tests/usage-dashboard-static.test.ts scripts/tests/usage-dashboard-home-marker.test.ts scripts/tests/usage-dashboard-server.test.ts scripts/tests/usage-dashboard-readonly.test.ts scripts/tests/usage-dashboard-mutations.test.ts
 
-  # gitlab-ci-check is the generator's own drift gate (spec 0048 R6/R7),
-  # registered as a portable capability so the verification surface is itself
-  # contract-described, not a hidden gate. Its command diffs the committed
-  # .gitlab-ci.yml against a fresh derivation; it needs yq to read the
-  # reference (delta-02 R12).
+  # gitlab-ci-check is the generator's own drift gate (spec 0048 R6/R7), registered as a portable capability so the
+  # verification surface is contract-described; it diffs the committed .gitlab-ci.yml against a fresh derivation and needs
+  # yq (delta-02 R12).
   - id: gitlab-ci-check
     name: "Verify the generated GitLab pipeline matches the contract"
     trigger:
@@ -3885,13 +3651,10 @@ capabilities:
     command:
       - task ci:gitlab-ci-check
 
-  # check-ci-parity is the 3-way CI drift harness (spec 0049). It checks the
-  # reference against both engine pipelines on the portable capability set;
-  # registered as a portable capability (spec 0049 R11) so the verification
-  # surface is itself contract-described and parity-checked — symmetric with
-  # gitlab-ci-check above. It shells `yq` to read the reference and the
-  # pipelines, and composes `build-ci.ts --check` (which also needs yq) for the
-  # reference↔GitLab arm; hence `tools: [yq]` (delta-02 R12).
+  # check-ci-parity is the 3-way CI drift harness (spec 0049): it checks the reference against both engine pipelines on
+  # the portable set; registered as a portable capability (spec 0049 R11), symmetric with gitlab-ci-check above. It shells
+  # `yq` and composes `build-ci.ts --check` (also needs yq) for the reference↔GitLab arm; hence `tools: [yq]` (delta-02
+  # R12).
   - id: check-ci-parity
     name: "Verify the reference, GitHub Actions, and GitLab pipelines agree"
     trigger:
@@ -3908,8 +3671,7 @@ capabilities:
       - task ci:check-ci-parity
 
   # --- Engine-specific: bot-mention assistants ----------------------------
-  # A bot-mention trigger (an issue or review comment) is engine-specific,
-  # never portable (spec 0047 R5).
+  # A bot-mention trigger (an issue or review comment) is engine-specific, never portable (spec 0047 R5).
 
   - id: claude
     name: "Claude Code mention-triggered assistant"
@@ -3944,11 +3706,9 @@ capabilities:
 
   # --- Engine-specific: GitHub-native delivery surfaces --------------------
 
-  # pages.yml deploys the `communication/` site to GitHub Pages on push to main
-  # and via workflow_dispatch (.github/workflows/pages.yml lines 3-8). GitHub
-  # Pages is a GitHub-hosted product; GitLab's equivalent (GitLab Pages) is a
-  # distinct surface with its own job contract, so the deploy capability is
-  # engine-specific and hand-authored per engine.
+  # pages.yml deploys the `communication/` site to GitHub Pages on push to main and via workflow_dispatch
+  # (.github/workflows/pages.yml lines 3-8). GitLab Pages is a distinct surface, so the capability is engine-specific and
+  # hand-authored.
   - id: pages-deploy
     name: "Deploy the communication site to GitHub Pages"
     trigger:
@@ -4035,10 +3795,8 @@ capabilities:
 
   # --- Engine-specific: Windows runner scaffolding (spec 0240 R12-R15) -----
 
-  # The reusable `windows-latest` job shape: Node.js 24 invoked from a
-  # non-POSIX interpreter (pwsh), the portable shared-module suites, and the
-  # timing-budget harness applied to the floor guard. Later sub-specs copy the
-  # job and record each copy here the same way.
+  # The reusable `windows-latest` job shape: Node.js 24 from a non-POSIX interpreter (pwsh), the portable shared-module
+  # suites and the timing-budget harness on the floor guard. Later sub-specs copy the job and record each copy here.
   - id: windows-node-floor-guard
     name: "Windows scaffolding: floor guard, shared modules and timing budget"
     trigger:
@@ -4066,9 +3824,7 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15).
 
-  # Spec 0252 R24: the Windows service task proof, a copy of the template above.
-  # Installs both real task chains under throwaway leaves against the real Task
-  # Scheduler and prints each measurement as a `MEASURE:` line.
+  # Spec 0252 R24: the Windows service task proof, a copy of the template above, against the real Task Scheduler (`MEASURE:` lines).
   - id: windows-service-task
     name: "Windows service task: Task Scheduler lifecycle, restart proof and refusal legs"
     trigger:
@@ -4151,8 +3907,8 @@ capabilities:
         Linux Docker images, and .gitlab-ci.yml declares no runner `tags:` that
         could select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15).
-  # Spec 0252 R24 (PR E): the doctor's fourth section and the repair verbs on a real
-  # Windows host, a copy of windows-mcp-daemon.
+  # Spec 0252 R24 (PR E): the doctor's fourth section and the repair verbs on a real Windows host, a copy of
+  # windows-mcp-daemon.
   - id: windows-doctor-repair
     name: "Windows doctor and repair: the background service section against the Task Scheduler, and the repair verbs"
     trigger:
@@ -4179,13 +3935,10 @@ capabilities:
         Linux Docker images, and .gitlab-ci.yml declares no runner `tags:` that
         could select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15).
-  # Spec 0243 R28 (reworded at delta-03): the usage-capture row's copy of the
-  # template above. Both TypeScript entries run from pwsh, the command line of
-  # each CLI and surface runs through the invocation rows 37 and 37e/37f of
-  # docs/cli-matrix.md record for it (both Antigravity CLI surfaces in the
-  # guarded form, through `cmd /c "<command>"`), the b1/b2/b3 legs prove the
-  # guard against a planted node.cmd and node.bat and re-check its premise, and
-  # three timing budgets (R15) apply to the fast path, the slow path and the shim.
+  # Spec 0243 R28 (reworded at delta-03): the usage-capture row's copy of the template above. Both TypeScript entries run
+  # from pwsh, each CLI and surface through the invocation rows 37 and 37e/37f of docs/cli-matrix.md (Antigravity CLI
+  # surfaces in the guarded form, `cmd /c "<command>"`); the b1/b2/b3 legs prove the guard against a planted node.cmd and
+  # node.bat; three timing budgets (R15) apply.
   - id: windows-usage-capture
     name: "Windows usage capture: entries, per-CLI and per-surface command lines, guarded-form legs and timing budgets"
     trigger:
@@ -4213,12 +3966,9 @@ capabilities:
         faithful equivalent on the other supported engines (spec 0240 R15,
         spec 0243 R28).
 
-  # Spec 0253 R27 (delta-01 R17, R24): the usage-wrappers row's copy of the
-  # template above. The nine TypeScript usage entries run from pwsh, offline,
-  # with no Python and no `bash`, against an isolated temp HOME and usage root,
-  # through scripts/tests/usage-wrappers-windows.test.ts. Each command's wall
-  # time is recorded with a `timing:` line and never gated (R24). No `paths:`
-  # filter, like the Windows jobs above.
+  # Spec 0253 R27 (delta-01 R17, R24): the usage-wrappers row's copy of the template above: the nine TypeScript usage
+  # entries from pwsh, offline, no Python and no `bash`, against an isolated temp HOME and usage root
+  # (scripts/tests/usage-wrappers-windows.test.ts). Timings are recorded with a `timing:` line, never gated (R24).
   - id: windows-usage-wrappers
     name: "Windows usage wrappers: the nine TypeScript entries run offline from pwsh, timings recorded"
     trigger:
@@ -4246,14 +3996,9 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0253 R27).
 
-  # Spec 0248 R33, R34: the worktree git guard row's copy of the template
-  # above. Both TypeScript entries run from pwsh: the guard from each CLI's
-  # command line through the invocation rows 37 and 37e/37f of
-  # docs/cli-matrix.md record for it, the claim tool through the R34(d)
-  # sequence, and two timing budgets (R33) apply to the guard's fast path and
-  # to its slow path (refused and allowed). The scripts and suites exist on
-  # every checkout, so the job carries no `paths:` filter, like the two
-  # Windows jobs above.
+  # Spec 0248 R33, R34: the worktree git guard row's copy of the template above. Both TypeScript entries run from pwsh:
+  # the guard from each CLI's command line through the invocation rows 37 and 37e/37f of docs/cli-matrix.md, the claim
+  # tool through the R34(d) sequence; two timing budgets (R33) apply.
   - id: windows-worktree-git-guard
     name: "Windows worktree git guard: entries, per-CLI command lines, claim tool and timing budgets"
     trigger:
@@ -4281,14 +4026,9 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0248 R34).
 
-  # Spec 0247 R31, R19: the MemPalace transcript hook row's copy of the
-  # template above. The entry runs from pwsh against a loopback stub daemon,
-  # the command line of each CLI runs through the invocation rows 37 and 37f
-  # of docs/cli-matrix.md record for it, and four timing budgets (R19) apply to
-  # a `PostToolUse` payload (direct and legacy-disabled), a `Stop` payload
-  # naming a 50 MB transcript persisted to the stub, and a `UserPromptSubmit`
-  # payload with nothing listening on the daemon port. No `paths:` filter, like
-  # the Windows jobs above.
+  # Spec 0247 R31, R19: the MemPalace transcript hook row's copy of the template above. The entry runs from pwsh against a
+  # loopback stub daemon, each CLI's command line through the invocation rows 37 and 37f of docs/cli-matrix.md, and four
+  # timing budgets (R19) apply to the `PostToolUse`, `Stop` (50 MB transcript) and `UserPromptSubmit` payloads.
   - id: windows-mempalace-transcript
     name: "Windows MemPalace transcript hook: entry against a stub daemon, per-CLI command lines and timing budgets"
     trigger:
@@ -4316,21 +4056,11 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0247 R31).
 
-  # Spec 0250 R28, R29: the component-build row's copy of the template above.
-  # The production dependencies are installed first (the command of spec 0240
-  # R4), the floor guard runs, then scripts/tests/lib/windows-build-proof.ts
-  # proves the write path: `--target all --check` exits 0 with its OK line, a
-  # build into a throwaway REPO_DIR matches the four committed trees byte for
-  # byte, `--list-output-dirs` answers, and the elapsed time is printed. A short
-  # list of unit suites follows (entry form, dependency diagnostic, the two
-  # hardening unit suites, and the portable build-components and library twin
-  # suites): each either runs whole on win32 or skips its POSIX-only parts
-  # itself. The suites that compare printed paths (the `-output*`, `-names`,
-  # `-hardening-*-e2e` files) skip on win32 and are left to Linux, as are the
-  # shell-parity, conformance, differential and YAML corpus suites (spec 0250
-  # R28: not the suites that need `bash`). No timing budget (R29) and no
-  # `paths:` filter, like the Windows jobs above: the proof must not skip
-  # silently on a change it does not list.
+  # Spec 0250 R28, R29: the component-build row's copy of the template above. The production dependencies are installed
+  # first (spec 0240 R4), the floor guard runs, then scripts/tests/lib/windows-build-proof.ts proves the write path: a
+  # build into a throwaway REPO_DIR matches the four committed trees byte for byte. The path-printing suites (`-output*`,
+  # `-names`, `-hardening-*-e2e`) and the shell-parity, conformance, differential and YAML corpus suites are left to Linux
+  # (spec 0250 R28: not the suites that need `bash`). No timing budget (R29).
   - id: windows-build-components
     name: "Windows component build: production install, floor guard, write-path proof and unit suites"
     trigger:
@@ -4358,12 +4088,9 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0250 R28).
 
-  # Spec 0253 R27, R17: the history import and operational commands row's copy
-  # of the template above. The TypeScript sync-from-upstream entry runs from
-  # pwsh, offline, against a local upstream repository the suite creates
-  # itself, with Git for Windows and no `bash`. No timing-budget step: the suite
-  # prints `timing:` lines, which R24 records and never gates. No `paths:`
-  # filter, like the Windows jobs above.
+  # Spec 0253 R27, R17: the history import and operational commands row's copy of the template above. The TypeScript
+  # sync-from-upstream entry runs from pwsh, offline, against a local upstream repository the suite creates, with Git for
+  # Windows and no `bash`. Timings are recorded (R24), never gated.
   - id: windows-sync-from-upstream
     name: "Windows sync from upstream: TypeScript entry against a local upstream repository, no bash"
     trigger:
@@ -4391,37 +4118,6 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0253 R27).
 
-  # release-extension.yml (.github/workflows/release-extension.yml) is REMOVED
-  # (spec 0183 R23, issue #1008): it packaged the committed source tree via
-  # `npm pack`, a non-conforming release artifact under R17. The primary
-  # driver (scripts/monorepo-release.ts, the `release` capability below)
-  # already creates the release and uploads its own conforming asset on the
-  # SAME tag it pushes, so a second, conforming path would race it and put a
-  # second asset on the release — which the vendor's measured one-asset gate
-  # (specs/0183-extension-model-migration.delta-01.md Notes) forbids as
-  # firmly as the non-conforming one did. There is no replacement capability:
-  # the property this capability asserted (a tag-triggered release path)
-  # is retired, not relocated.
-
-  # release runs the monorepo release driver (scripts/monorepo-release.ts) on
-  # push to main. Portable since spec 0213: the SAME driver and engine
-  # (semantic-release) publish on both legs — GitHub Actions
-  # (.github/workflows/release-monorepo.yml, @semantic-release/github) and
-  # GitLab CI (the generated `release` job, @semantic-release/gitlab to the
-  # generic package registry plus a GitLab release). The driver detects the
-  # forge itself and sets the GitHub commit identity itself, so the business
-  # steps are identical on both engines. The credential crosses the engines
-  # under the one env key RELEASE_TOKEN (spec 0131 compares env KEYS): its
-  # GitLab value is the masked CI/CD variable $GITLAB_TOKEN (a project access
-  # token with api + write_repository, allowed to push to the protected
-  # release branch and to create tags); its GitHub value is
-  # secrets.GITHUB_TOKEN. yq is required by the packager's render step
-  # (scripts/build-extension.ts). Full history: the engine reads every tag.
-  # The business steps diverge on one point, inside the driver (issue #1379,
-  # docs/github-release-pr.md): on GitHub the release commit goes through a
-  # release PR (branch release-pr/main, required checks dispatched through
-  # build.yml's workflow_dispatch) because GitHub offers no ruleset bypass
-  # for the Actions token; GitLab keeps pushing it to the protected branch.
   - id: windows-history-import
     name: "Windows history import: importer and prune-transcripts entries against a fake mempalace package, no bash"
     trigger:
@@ -4449,37 +4145,25 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0253 R27).
 
-  # release-extension.yml (.github/workflows/release-extension.yml) is REMOVED
-  # (spec 0183 R23, issue #1008): it packaged the committed source tree via
-  # `npm pack`, a non-conforming release artifact under R17. The primary
-  # driver (scripts/monorepo-release.ts, the `release` capability below)
-  # already creates the release and uploads its own conforming asset on the
-  # SAME tag it pushes, so a second, conforming path would race it and put a
-  # second asset on the release — which the vendor's measured one-asset gate
-  # (specs/0183-extension-model-migration.delta-01.md Notes) forbids as
-  # firmly as the non-conforming one did. There is no replacement capability:
-  # the property this capability asserted (a tag-triggered release path)
-  # is retired, not relocated.
+  # release-extension.yml (.github/workflows/release-extension.yml) is REMOVED (spec 0183 R23, issue #1008): it packaged
+  # the committed source tree via `npm pack`, a non-conforming release artifact under R17. The primary driver
+  # (scripts/monorepo-release.ts, the `release` capability below) already creates the release and uploads its own
+  # conforming asset on the SAME tag it pushes, so a second path would race it and put a second asset on the release,
+  # which the vendor's measured one-asset gate (specs/0183-extension-model-migration.delta-01.md Notes) forbids. There is
+  # no replacement capability: the tag-triggered release path is retired, not relocated.
 
-  # release runs the monorepo release driver (scripts/monorepo-release.ts) on
-  # push to main. Portable since spec 0213: the SAME driver and engine
-  # (semantic-release) publish on both legs — GitHub Actions
-  # (.github/workflows/release-monorepo.yml, @semantic-release/github) and
-  # GitLab CI (the generated `release` job, @semantic-release/gitlab to the
-  # generic package registry plus a GitLab release). The driver detects the
-  # forge itself and sets the GitHub commit identity itself, so the business
-  # steps are identical on both engines. The credential crosses the engines
-  # under the one env key RELEASE_TOKEN (spec 0131 compares env KEYS): its
-  # GitLab value is the masked CI/CD variable $GITLAB_TOKEN (a project access
-  # token with api + write_repository, allowed to push to the protected
-  # release branch and to create tags); its GitHub value is
-  # secrets.GITHUB_TOKEN. yq is required by the packager's render step
-  # (scripts/build-extension.ts). Full history: the engine reads every tag.
-  # The business steps diverge on one point, inside the driver (issue #1379,
-  # docs/github-release-pr.md): on GitHub the release commit goes through a
-  # release PR (branch release-pr/main, required checks dispatched through
-  # build.yml's workflow_dispatch) because GitHub offers no ruleset bypass
-  # for the Actions token; GitLab keeps pushing it to the protected branch.
+  # release runs the monorepo release driver (scripts/monorepo-release.ts) on push to main. Portable since spec 0213: the
+  # SAME driver and engine (semantic-release) publish on both legs: GitHub Actions
+  # (.github/workflows/release-monorepo.yml, @semantic-release/github) and GitLab CI (the generated `release` job,
+  # @semantic-release/gitlab to the generic package registry plus a GitLab release). The driver detects the forge and sets
+  # the GitHub commit identity itself, so the business steps are identical. The credential crosses the engines under the
+  # one env key RELEASE_TOKEN (spec 0131 compares env KEYS): GitLab value the masked CI/CD variable $GITLAB_TOKEN (a
+  # project access token with api + write_repository, allowed to push to the protected release branch and create tags),
+  # GitHub value secrets.GITHUB_TOKEN. yq is required by the packager's render step (scripts/build-extension.ts). Full
+  # history: the engine reads every tag. The steps diverge on one point, inside the driver (issue #1379,
+  # docs/github-release-pr.md): on GitHub the release commit goes through a release PR (branch release-pr/main, checks
+  # dispatched through build.yml's workflow_dispatch) because GitHub offers no ruleset bypass for the Actions token;
+  # GitLab pushes to the protected branch.
   - id: release
     name: "Run the monorepo semantic-release pipeline"
     trigger:
@@ -4497,13 +4181,10 @@ capabilities:
       - node scripts/lib/node-floor-guard.js
       - node scripts/monorepo-release.ts
 
-  # release-rehearsal runs the same driver in rehearsal mode on demand
-  # (spec 0213 R12): it computes each extension's next version, tag and
-  # release note and builds the archive, with NO credential — the engine's dry
-  # run happens in a throwaway clone whose every git remote operation is
-  # redirected to a throwaway local mirror, and the config carries no publish
-  # plugin. On GitLab run it from a branch pipeline (the driver refuses a
-  # merge-request or tag pipeline).
+  # release-rehearsal runs the same driver in rehearsal mode on demand (spec 0213 R12): it computes each extension's next
+  # version, tag and release note and builds the archive, with NO credential: the engine's dry run happens in a throwaway
+  # clone whose git remote operations go to a throwaway local mirror, and the config carries no publish plugin. On GitLab
+  # run it from a branch pipeline (the driver refuses a merge-request or tag pipeline).
   - id: release-rehearsal
     name: "Rehearse the monorepo release without publishing"
     trigger:
@@ -4520,13 +4201,9 @@ capabilities:
       - node scripts/lib/node-floor-guard.js
       - node scripts/monorepo-release.ts
 
-  # release-tests exercises the release driver (spec 0213 R17): the hermetic
-  # driver test, the real-engine test against a local forge stub, and the
-  # lint-safe changelog facade test (issue #1364), and the GitHub release-PR
-  # sync test (issue #1379).
-  # Deliberately NOT changeset-gated, for the same reason usage-storage above
-  # is not — a node@22 capability must never enter the fail-safe job's
-  # execution set (python@3.12, yq and node@24).
+  # release-tests exercises the release driver (spec 0213 R17): the hermetic driver test, the real-engine test against a
+  # local forge stub, the lint-safe changelog facade test (issue #1364) and the GitHub release-PR sync test (issue #1379).
+  # NOT changeset-gated, as usage-storage above.
   - id: release-tests
     name: "Test the forge-aware monorepo release driver"
     trigger:

@@ -92,7 +92,7 @@ function assertJob(job: string): void {
   const inputs = ciJobInputs(job, ID);
   assert.ok(inputs, "the job is the thin ci-job call for this capability");
   assert.equal(inputs.node ?? "24", "24", "node 24 (the ci-job default)");
-  assert.equal(inputs.install, "omit-dev", "production install before the check");
+  assert.equal(inputs.install ?? "omit-dev", "omit-dev", "production install before the check");
   assert.equal(inputs.task ?? "true", "true", "runs task ci:<id> (the ci-job default)");
   for (const dir of [".claude", ".gemini", ".github", ".agents"]) {
     assert.ok(gatePaths(ID).includes(`${dir}/skills/**`), `${dir}/skills in the filter`);
@@ -122,6 +122,9 @@ describe("check-description-length CI wiring", () => {
   });
 
   test("mutation: a job without the production install is rejected", () => {
-    assert.throws(() => assertJob(workflowJob().replace("install: omit-dev", "install: none")));
+    const job = workflowJob();
+    const id = `id: ${ID}\n`;
+    assert.ok(job.includes(id), "the mutation applies");
+    assert.throws(() => assertJob(job.replace(id, `${id}          install: none\n`)));
   });
 });
