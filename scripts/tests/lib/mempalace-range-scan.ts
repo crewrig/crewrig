@@ -13,6 +13,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 /** Pathspecs excluded from both checks: immutable records and the guard's own files. */
 export const EXCLUDES: readonly string[] = [
@@ -35,7 +36,7 @@ export interface ScanResult {
 
 /** Environment that shields git from the machine's own configuration. */
 export function gitEnv(): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env };
+  const env: NodeJS.ProcessEnv = scrubGitEnv(process.env);
   env["GIT_CONFIG_GLOBAL"] = os.devNull;
   env["GIT_CONFIG_NOSYSTEM"] = "1";
   return env;

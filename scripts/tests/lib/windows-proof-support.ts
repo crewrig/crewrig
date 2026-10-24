@@ -9,6 +9,7 @@ import path from "node:path";
 
 import { resolveOnPath } from "../../lib/worktree-claim/launch-windows.ts";
 import type { ResolveInput } from "../../lib/worktree-claim/launch-windows.ts";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 export type Shell = "pwsh" | "cmd";
 export interface Run {
@@ -104,7 +105,7 @@ export interface EntrySpawn {
 
 /** Run an entry (POSIX: node directly; Windows: through the absolute interpreter) and record it. */
 export function spawnEntry(o: EntrySpawn): Run {
-  const full: NodeJS.ProcessEnv = { ...process.env };
+  const full: NodeJS.ProcessEnv = scrubGitEnv(process.env);
   for (const key of ["REPO_DIR", "CLAUDE_CONFIG_DIR"]) delete full[key];
   for (const [key, value] of Object.entries({ HOME: o.home, USERPROFILE: o.home, ...o.env }))
     setEnv(full, key, value);

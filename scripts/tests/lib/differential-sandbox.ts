@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertInside, assertRoot, createRoot } from "./differential-guard.ts";
 import { git } from "./scratch-remote.ts";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 export const RECORD_DIR = ".differential";
@@ -97,9 +98,8 @@ export function makeSandbox(root: string, dest: string): string {
 
 /** Child environment: no CI / NODE_TEST_CONTEXT, C locale, no system git config, scratch HOME. */
 export function cleanEnv(home: string, extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env };
-  for (const key of ["CI", "NODE_TEST_CONTEXT", "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"])
-    delete env[key];
+  const env: NodeJS.ProcessEnv = scrubGitEnv(process.env);
+  for (const key of ["CI", "NODE_TEST_CONTEXT"]) delete env[key];
   env.LC_ALL = "C";
   env.GIT_CONFIG_NOSYSTEM = "1";
   env.GIT_CONFIG_GLOBAL = path.join(home, ".gitconfig");

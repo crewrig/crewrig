@@ -19,6 +19,7 @@ import os from "node:os";
 import path from "node:path";
 import { after } from "node:test";
 import { productionClosure, REPO } from "./build-fixture-tree.ts";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 export { REPO };
 
@@ -54,7 +55,7 @@ export function makeSandbox(prefix = "governance-"): string {
 export function childEnv(
   extra: Readonly<Record<string, string | undefined>> = {},
 ): Record<string, string> {
-  const env: Record<string, string | undefined> = { ...process.env };
+  const env: Record<string, string | undefined> = scrubGitEnv(process.env);
   delete env.CI;
   delete env.NODE_TEST_CONTEXT;
   env.LC_ALL = "C";

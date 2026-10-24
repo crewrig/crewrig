@@ -14,6 +14,7 @@ import { after } from "node:test";
 import { createFixtureTree, REPO } from "./build-fixture-tree.ts";
 import type { RunResult } from "./build-fixture-tree.ts";
 import { createHermeticEnv, writeStub } from "./hermetic-env.ts";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 export type Leg = "shell" | "ts";
 
@@ -81,7 +82,10 @@ const copy = (from: string, to: string, filter?: (src: string) => boolean): void
 function buildRepo(repo: string, options: SetupSandboxOptions): void {
   // scripts/** (minus tests), `.git` and package.json come from the fixture tree; refresh `.git`.
   fs.rmSync(path.join(repo, ".git"), { recursive: true, force: true });
-  const init = spawnSync("git", ["init", "-q", repo], { encoding: "utf8" });
+  const init = spawnSync("git", ["init", "-q", repo], {
+    encoding: "utf8",
+    env: scrubGitEnv(process.env),
+  });
   if (init.status !== 0) throw new Error(`git init failed: ${init.stderr}`);
   // A fixed one-package lockfile: the dependency step stamps its sha256 into the goldens, so the
   // repository's real `package-lock.json` must never reach the sandbox (issue #1614).

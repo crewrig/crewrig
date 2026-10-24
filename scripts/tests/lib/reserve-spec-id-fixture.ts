@@ -17,6 +17,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { assertRemotesUnderScratch, FIXED_GIT_ENV, git, writeStubGh } from "./scratch-remote.ts";
+import { scrubGitEnv } from "../../lib/git-env.ts";
 
 export { assertRemotesUnderScratch, git };
 
@@ -173,19 +174,10 @@ function guardRepo(repo: string): string {
   return real;
 }
 
-function childEnv(fx: Fixture, extra: Record<string, string> = {}): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env };
+export function childEnv(fx: Fixture, extra: Record<string, string> = {}): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = scrubGitEnv(process.env);
   for (const k of Object.keys(env)) if (k.startsWith("CREWRIG_SPEC_ID_")) delete env[k];
-  for (const k of [
-    "NODE_TEST_CONTEXT",
-    "CI",
-    "GITHUB_ACTIONS",
-    "GITLAB_CI",
-    "BASE_REF",
-    "GIT_DIR",
-    "GIT_WORK_TREE",
-    "GIT_INDEX_FILE",
-  ])
+  for (const k of ["NODE_TEST_CONTEXT", "CI", "GITHUB_ACTIONS", "GITLAB_CI", "BASE_REF"])
     delete env[k];
   return {
     ...env,
