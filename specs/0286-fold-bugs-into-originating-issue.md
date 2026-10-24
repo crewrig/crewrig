@@ -1,7 +1,7 @@
 ---
 id: "0286"
 slug: fold-bugs-into-originating-issue
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1252
