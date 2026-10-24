@@ -1,7 +1,7 @@
 ---
 id: "0284"
 slug: alert-red-scheduled-run
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1781
