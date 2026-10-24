@@ -90,7 +90,7 @@ for (const [label, tool] of [
     const fx = makeFixture();
     fs.rmSync(gitlabYml(fx), { force: true });
     editYaml(refYml(fx), (doc) => {
-      map(capOf(doc, "check-agents-size")["requires"])["tools"] = [tool];
+      map(capOf(doc, "check-agents-size")["requires"])["tools"] = [tool, "task"];
     });
     const r = runCheck(fx);
     assert.equal(r.status, 0, r.stderr);

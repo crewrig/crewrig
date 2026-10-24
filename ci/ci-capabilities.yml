@@ -1628,8 +1628,7 @@ capabilities:
       runtime: node@24
       tools: [task]
     command:
-      - node scripts/lib/node-floor-guard.js
-      - task cli-matrix:check
+      - task ci:cli-matrix-fresh
 
   - id: cli-matrix-fresh-selftest
     name: "Self-test the CLI matrix generator"
@@ -1650,9 +1649,9 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
     command:
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-cli-matrix.test.ts
+      - task ci:cli-matrix-fresh-selftest
 
   - id: figure-labels
     name: "Check figure labels with OCR"
@@ -1831,9 +1830,9 @@ capabilities:
     # enforcing, which fails oracle Cases 3 and 4 (spec 0248 R36, R13).
     requires:
       runtime: node@24
+      tools: [task]
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-wiring.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-strays.ts
+      - task ci:test-wiring
 
   - id: test-wiring-selftest
     name: "Self-test the test-wiring and test-strays guards"
@@ -1858,9 +1857,9 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-wiring-cases.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-strays-cases.test.ts
+      - task ci:test-wiring-selftest
 
   - id: chroma-mcp
     name: "Test chroma server, MCP daemon, and worktree claim"
@@ -2090,10 +2089,9 @@ capabilities:
       # `--list-output-dirs`, through the TypeScript build, which fails closed below Node.js 24 (spec 0215 R31
       # follow-up noted in #1550).
       runtime: node@24
+      tools: [task]
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-no-machine-paths.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-markdown-links.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-core-paths.ts
+      - task ci:repository-scan
 
   - id: frontmatter
     name: "Test frontmatter, skill-version, and assembly contracts"
@@ -2138,16 +2136,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
-      tools: [yq, jq]
+      tools: [yq, jq, task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-frontmatter-fence.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-skill-versions.test.ts scripts/tests/governance-suite-skill-versions-base.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-feedback-routing.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-assembly-routing.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-install-scope-build.test.ts scripts/tests/build-install-scope-gate.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tier-resolution-collision.test.ts scripts/tests/tier-resolution-declarations.test.ts scripts/tests/tier-resolution-install.test.ts scripts/tests/tier-resolution-landing.test.ts scripts/tests/tier-resolution-taskfile.test.ts scripts/tests/tier-resolution-three-tiers.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/pr-logbook-label-scope.test.ts
+      - task ci:frontmatter
 
   - id: check-model-mappings
     name: "Check model-mapping conformance and run its mutation test suite"
@@ -2268,9 +2260,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-commands.ts
+      - task ci:check-taskfile-commands
 
   - id: check-taskfile-commands-selftest
     name: "Self-test the Taskfile command check and the tool-binary check"
@@ -2298,9 +2291,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-taskfile-commands.test.ts scripts/tests/check-tool-binaries.test.ts
+      - task ci:check-taskfile-commands-selftest
 
   # The tree guard's check (b) scans every scripts/**/*.{ts,js} source for a
   # raw read of the root Taskfile, so this job triggers on the whole scripts/**
@@ -2324,10 +2318,9 @@ capabilities:
     requires:
       runtime: node@24
       tools: [task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-tree.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ci-pre-push-parity.ts
+      - task ci:check-taskfile-tree
 
   - id: check-taskfile-tree-selftest
     name: "Self-test the Taskfile tree guard, loader, reference and CI-wiring suites"
@@ -2367,9 +2360,9 @@ capabilities:
     requires:
       runtime: node@24
       tools: [task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-env-scrub.test.ts scripts/tests/git-env-helpers.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts scripts/tests/ci-pre-push-parity-migrated.test.ts
+      - task ci:check-taskfile-tree-selftest
 
   - id: check-task-provisioning
     name: "Check that Task is provisioned from the pinned, verified release on both engines"
@@ -2482,8 +2475,9 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-markdown-links.test.ts
+      - task ci:markdown-links
 
   # changeset-coverage is the exhaustive run (spec 0147 delta-01 R21): it has
   # no pull-request and no push trigger. It runs `scheduled` (daily, on the
@@ -2547,10 +2541,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
+      tools: [task]
+      install: ci
     command:
-      - npm ci
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-path-ownership.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-stray-scan-wiring.ts
+      - task ci:path-ownership
 
   - id: path-ownership-selftest
     name: "Self-test the path-ownership and stray-scan wiring checks"
@@ -2580,10 +2574,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: ci
     command:
-      - npm ci
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-path-ownership.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-cache-guard-scan.test.ts scripts/tests/check-stray-scan-wiring.test.ts scripts/tests/ci-node-test-arguments.test.ts
+      - task ci:path-ownership-selftest
 
   - id: lint-markdown
     name: "Lint Markdown files"
@@ -2595,9 +2589,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@22
+      tools: [task]
+      install: ci
     command:
-      - npm install -g markdownlint-cli
-      - markdownlint "**/*.md" --ignore node_modules --ignore '**/node_modules/**' --ignore extension-skeleton --ignore communication --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md'
+      - task ci:lint-markdown
 
   # Spec 0238 R1-R3, R13: the shell / JavaScript / Python footprint ratchet.
   # No `paths:` filter and not changeset-gated: any change may add a shell
@@ -2615,10 +2610,11 @@ capabilities:
     requires:
       runtime: node@24
       history-depth: full
+      tools: [task]
     env:
       BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ratchet.ts
+      - task ci:ratchet
 
   - id: ratchet-selftest
     name: "Self-test the footprint ratchet"
@@ -2638,8 +2634,9 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-ratchet.test.ts
+      - task ci:ratchet-selftest
 
   # Spec 0267 R12, R13, R16-R19: the test-harness host-safety check. No
   # `paths:` filter: any scripts/** change can add a destructive call. Its
@@ -2657,11 +2654,12 @@ capabilities:
     requires:
       runtime: node@24
       history-depth: full
+      tools: [task]
+      install: ci
     env:
       BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
     command:
-      - npm ci
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-host-safety.ts
+      - task ci:host-safety
 
   - id: host-safety-selftest
     name: "Self-test the host-safety check"
@@ -2684,9 +2682,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: ci
     command:
-      - npm ci
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-host-safety.test.ts
+      - task ci:host-safety-selftest
 
   # Spec 0238 R4-R8, R12, R13: type-check, erasable syntax, Oxlint type-aware
   # strict typing (max-lines as a non-blocking warning) and Oxfmt check mode
@@ -2703,9 +2702,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
+      tools: [task]
+      install: ci
     command:
-      - npm ci
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts
+      - task ci:lint-typescript
 
   - id: lint-typescript-selftest
     name: "Self-test the TypeScript checks"
@@ -2738,10 +2738,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: ci
     command:
-      - npm ci
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-erasable-syntax.test.ts scripts/tests/lint-typescript.test.ts scripts/tests/check-typescript.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-built-trees.test.ts
+      - task ci:lint-typescript-selftest
 
   # Spec 0240 R4-R11, R13, R16: the Node.js floor guard, the production-
   # dependency step and the shared scripts/lib/ TypeScript modules, verified by
@@ -3128,6 +3128,7 @@ capabilities:
       runtime: node@24
       tools: [task]
       history-depth: full
+      install: install
     env:
       BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
       # Spec 0168 delta-01 R10: GitLab 17.10+ sets this to "true" when the merge
@@ -3136,8 +3137,7 @@ capabilities:
       # empty, leaves R1 enforced: the linter skips only on the exact "true".
       CREWRIG_PR_DRAFT: "$CI_MERGE_REQUEST_DRAFT"
     command:
-      - npm install
-      - task spec:lint
+      - task ci:lint-specs
 
   - id: lint-specs-selftest
     name: "Self-test the spec linter"
@@ -3164,9 +3164,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: install
     command:
-      - npm install
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-linter-*.test.ts
+      - task ci:lint-specs-selftest
 
   - id: test-harness-curate
     name: "Smoke-test the harness curator"
@@ -3196,10 +3197,11 @@ capabilities:
     requires:
       runtime: node@24
       history-depth: full
+      tools: [task]
     env:
       BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-skill-versions.ts
+      - task ci:check-skill-versions
 
   # Spec 0269 R11: a skill or agent description is capped at 300 characters, on the
   # artifacts/ sources and on the compiled outputs of every CLI.
@@ -3227,9 +3229,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-description-length.ts
+      - task ci:check-description-length
 
   - id: check-extension-version-bump
     name: "Enforce carrier-version bump on changed extension sources"
@@ -3297,8 +3300,9 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
+      tools: [task]
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-agents-size.ts
+      - task ci:check-agents-size
 
   - id: check-comment-size
     name: "Check the plan and verdict comment size tool against its fixtures"
@@ -3310,9 +3314,9 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
+      tools: [task]
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-comment-size.ts scripts/tests/fixtures/comment-size/under.txt
-      - "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-comment-size.ts scripts/tests/fixtures/comment-size/over.txt"
+      - task ci:check-comment-size
 
   - id: check-seat-brief
     name: "Check the seat brief linter against its fixtures"
@@ -3367,8 +3371,9 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
+      tools: [task]
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-rules-size.ts
+      - task ci:check-rules-size
 
   - id: check-feedback-routing
     name: "Enforce upstream-tier feedback routing"
@@ -3831,11 +3836,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
-      tools: [yq]
+      tools: [yq, task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts --check
+      - task ci:gitlab-ci-check
 
   # check-ci-parity is the 3-way CI drift harness (spec 0049). It checks the
   # reference against both engine pipelines on the portable capability set;
@@ -3854,11 +3858,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
-      tools: [yq]
+      tools: [yq, task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ci-parity.ts
+      - task ci:check-ci-parity
 
   # --- Engine-specific: bot-mention assistants ----------------------------
   # A bot-mention trigger (an issue or review comment) is engine-specific,

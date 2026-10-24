@@ -129,14 +129,13 @@ function assertCapabilities(text: string): void {
   assert.deepEqual(cap.trigger?.map((t) => t.on).sort(), ["pull-request", "push"]);
   for (const t of cap.trigger ?? [])
     for (const p of TREE_PATHS) assert.ok((t.paths ?? []).includes(p), `${t.on} paths has ${p}`);
-  assert.ok((cap.command ?? []).join("\n").includes(GUARD), "runs the guard");
+  // Spec 0283 R1: the capability is the single `task ci:<id>` entry; the commands live in the task.
+  assert.deepEqual(cap.command, [`task ci:${ID}`], "runs the migrated task");
   // Spec 0281: the suites run in the `-selftest` sibling, under the same tree filters.
   const self = caps.find((c) => c.id === `${ID}-selftest`);
   assert.ok(self, `capability ${ID}-selftest`);
   assert.ok((self.requires?.tools ?? []).includes("task"), "self-test requires the task tool");
-  const cmds = (self.command ?? []).join("\n");
-  for (const s of SUITES) assert.ok(cmds.includes(s), `runs ${s}`);
-  assert.ok(cmds.includes("ci-cache-guard.ts --stray-scan --"), "suites run under the cache guard");
+  assert.deepEqual(self.command, [`task ci:${ID}-selftest`], "self-test runs the migrated task");
 
   // R17: every job that lists the root Taskfile also lists the tree and its companions.
   // The tree job itself is covered by its scripts/** filter, so it is exempt.
@@ -165,13 +164,28 @@ function assertCapabilities(text: string): void {
       assert.ok((t.paths ?? []).includes(p), `spec-view ${t.on} paths has ${p}`);
 }
 
+/** The guard and the suites run in the `ci:` tasks (spec 0283 R1), not in the pipeline text. */
+function assertTasks(text: string): void {
+  const flat = text.replaceAll("{{.REPO_DIR}}/", "");
+  const body = (id: string): string => {
+    const m = new RegExp(`\\n  ${id}:\\n([\\s\\S]*?)(?=\\n  [a-z0-9-]+:\\n|$)`).exec(flat);
+    assert.ok(m, `task ci:${id}`);
+    return m[1] ?? "";
+  };
+  const tree = body(ID);
+  assert.ok(tree.includes(GUARD), "runs the guard");
+  const self = body(`${ID}-selftest`);
+  for (const s of SUITES) assert.ok(self.includes(s), `runs ${s}`);
+  assert.ok(self.includes("ci-cache-guard.ts --stray-scan --"), "suites run under the cache guard");
+}
+
 function assertGithub(text: string): void {
   const job = jobBlock(text, new RegExp(`\\n  ${ID}:\\n`));
-  assert.ok(job.includes("node-version: 24"));
-  assert.ok(job.includes("uses: ./.github/actions/setup-task"), "installs Task via the action");
-  assert.ok(job.includes(GUARD), "runs the guard");
+  assert.ok(job.includes("uses: ./.github/actions/ci-job"), "runs the thin ci-job");
+  assert.ok(job.includes(`id: ${ID}\n`), "ci-job id is the capability id");
+  assert.ok(job.includes("node: 24"));
   const self = jobBlock(text, new RegExp(`\\n  ${ID}-selftest:\\n`));
-  for (const s of SUITES) assert.ok(self.includes(s), `runs ${s}`);
+  assert.ok(self.includes(`id: ${ID}-selftest\n`), "self-test job passes its id");
   for (const p of TREE_PATHS) assert.ok(job.includes(`'${p}'`), `filter has ${p}`);
   // R17: every job that lists the root Taskfile also lists the companions.
   for (const id of LISTING_JOBS) {
@@ -185,9 +199,9 @@ function assertGitlab(text: string): void {
   const job = jobBlock(text, new RegExp(`\\n${ID}:\\n`), true);
   assert.ok(job.includes("image: node:24"));
   assert.ok(job.includes("sha256sum -c"), "installs Task with a checksum check");
-  assert.ok(job.includes(GUARD), "runs the guard");
+  assert.ok(job.includes(`"task ci:${ID}"`), "runs the migrated task");
   const self = jobBlock(text, new RegExp(`\\n${ID}-selftest:\\n`), true);
-  for (const s of SUITES) assert.ok(self.includes(s), `runs ${s}`);
+  assert.ok(self.includes(`"task ci:${ID}-selftest"`), "self-test runs the migrated task");
   for (const p of TREE_PATHS) assert.ok(job.includes(`"${p}"`), `rules have ${p}`);
   for (const id of LISTING_JOBS) {
     const block = jobBlock(text, new RegExp(`\\n${id}:\\n`), true);
@@ -200,6 +214,7 @@ describe("check-taskfile-tree CI wiring", () => {
   test("ci/ci-capabilities.yml", () => assertCapabilities(read("ci", "ci-capabilities.yml")));
   test("GitHub workflow", () => assertGithub(read(".github", "workflows", "build.yml")));
   test("GitLab pipeline", () => assertGitlab(read(".gitlab-ci.yml")));
+  test("ci tasks run the guard and the suites", () => assertTasks(read("taskfiles", "ci.yml")));
 
   test("every job running a loader-importing test installs dependencies first", () => {
     const caps = (yamlLib.load(read("ci", "ci-capabilities.yml")) as { capabilities: Cap[] })
@@ -224,12 +239,14 @@ describe("check-taskfile-tree CI wiring", () => {
 
   test("mutation: a job that does not run the guard is rejected", () => {
     assert.throws(() =>
-      assertGithub(read(".github", "workflows", "build.yml").replaceAll(GUARD, "true")),
+      assertTasks(read("taskfiles", "ci.yml").replaceAll("scripts/check-taskfile-tree.ts", "true")),
     );
   });
   test("mutation: a job missing a suite is rejected", () => {
     assert.throws(() =>
-      assertGitlab(read(".gitlab-ci.yml").replaceAll("scripts/tests/taskfile-tree.test.ts", "")),
+      assertTasks(
+        read("taskfiles", "ci.yml").replaceAll("scripts/tests/taskfile-tree.test.ts", ""),
+      ),
     );
   });
   test("mutation: a Taskfile filter without taskfiles/** is rejected", () => {

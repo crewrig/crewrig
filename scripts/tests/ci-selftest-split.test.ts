@@ -54,6 +54,21 @@ const DATA: Record<string, string> = {
   "check-taskfile-commands": "taskfiles/lint.yml",
   "check-taskfile-tree": ".githooks/pre-push",
 };
+const CI_TASKS = read("taskfiles/ci.yml");
+/** Spec 0283 R1: a migrated capability is the single `task ci:<id>`; its commands live in the task. */
+function resolvedCommands(c: Cap): string[] {
+  const m = /^task ci:(\S+)$/.exec(c.command[0] ?? "");
+  if (c.command.length !== 1 || !m) return c.command;
+  const body = new RegExp(`\\n  ${m[1]}:\\n([\\s\\S]*?)(?=\\n  [a-z0-9-]+:\\n|$)`).exec(CI_TASKS);
+  assert.ok(body, `task ci:${m[1]}`);
+  return [
+    ...(body[1] ?? "")
+      .split("    cmds:\n")
+      .slice(1)
+      .join("")
+      .matchAll(/^ {6}- (?!task:)(.+)$/gm),
+  ].map((x) => (x[1] ?? "").replaceAll("{{.REPO_DIR}}/", ""));
+}
 const BATCH_A = Object.keys(PAIRS); // every split pair, batches A and B
 const PROVISIONING = /^npm (ci|install)( |$)/;
 const FLOOR = /node-floor-guard\.js$/;
@@ -70,10 +85,12 @@ describe("self-test split: structure (a, c)", () => {
       const check = byId.get(id);
       assert.ok(check, `no sibling check '${id}'`);
       assert.equal(st["changeset-gated"], true);
-      for (const c of st.command)
+      const stCmds = resolvedCommands(st);
+      for (const c of stCmds)
         assert.ok(isTest(c) || PROVISIONING.test(c) || FLOOR.test(c), `unexpected command: ${c}`);
-      assert.ok(st.command.some(isTest), "a self-test capability runs at least one --test");
-      for (const c of check.command) assert.ok(!isTest(c), `check still runs a test: ${c}`);
+      assert.ok(stCmds.some(isTest), "a self-test capability runs at least one --test");
+      for (const c of resolvedCommands(check))
+        assert.ok(!isTest(c), `check still runs a test: ${c}`);
       assert.ok(
         st.trigger.every((t) => (t.paths ?? st.paths ?? []).length > 0),
         "a self-test trigger carries paths",

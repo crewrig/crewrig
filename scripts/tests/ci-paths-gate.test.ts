@@ -131,6 +131,11 @@ test("ci-job action: inputs, step order, gated cancel step, no || true", () => {
   }
   assert.match(
     t,
+    /node-version: \$\{\{ inputs\.node \}\}\n\s+cache: \$\{\{ inputs\.install != 'none' && 'npm' \|\| '' \}\}/,
+    "setup-node caches npm unless install is none",
+  );
+  assert.match(
+    t,
     /run == 'true' && failure\(\)\n\s+uses: \.\/\.github\/actions\/cancel-on-failure/,
   );
   assert.ok(!/\|\|\s*true/.test(t));

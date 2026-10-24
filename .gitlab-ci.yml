@@ -1156,8 +1156,7 @@ cli-matrix-fresh:
     - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
     - task --version
   script:
-    - "node scripts/lib/node-floor-guard.js"
-    - "task cli-matrix:check"
+    - "task ci:cli-matrix-fresh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &cli-matrix-fresh-changes-1
@@ -1172,9 +1171,14 @@ cli-matrix-fresh:
 
 cli-matrix-fresh-selftest:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
-    - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-cli-matrix.test.ts"
+    - "task ci:cli-matrix-fresh-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &cli-matrix-fresh-selftest-changes-1
@@ -1325,9 +1329,14 @@ mempalace:
 
 test-wiring:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-wiring.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-strays.ts"
+    - "task ci:test-wiring"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &test-wiring-changes-1
@@ -1351,9 +1360,14 @@ test-wiring:
 
 test-wiring-selftest:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-wiring-cases.test.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-strays-cases.test.ts"
+    - "task ci:test-wiring-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &test-wiring-selftest-changes-1
@@ -1558,10 +1572,14 @@ misc:
 
 repository-scan:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-no-machine-paths.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-markdown-links.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-core-paths.ts"
+    - "task ci:repository-scan"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -1577,15 +1595,14 @@ frontmatter:
     - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
     - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
     - chmod +x /usr/local/bin/jq
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+    - npm ci --omit=dev --workspaces=false
   script:
-    - "npm ci --omit=dev --workspaces=false"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-frontmatter-fence.test.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-skill-versions.test.ts scripts/tests/governance-suite-skill-versions-base.test.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-feedback-routing.test.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-assembly-routing.test.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-install-scope-build.test.ts scripts/tests/build-install-scope-gate.test.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tier-resolution-collision.test.ts scripts/tests/tier-resolution-declarations.test.ts scripts/tests/tier-resolution-install.test.ts scripts/tests/tier-resolution-landing.test.ts scripts/tests/tier-resolution-taskfile.test.ts scripts/tests/tier-resolution-three-tiers.test.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/pr-logbook-label-scope.test.ts"
+    - "task ci:frontmatter"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &frontmatter-changes-1
@@ -1708,9 +1725,15 @@ check-claude-agent-layout:
 
 check-taskfile-commands:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+    - npm ci --omit=dev --workspaces=false
   script:
-    - "npm ci --omit=dev --workspaces=false"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-commands.ts"
+    - "task ci:check-taskfile-commands"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &check-taskfile-commands-changes-1
@@ -1731,9 +1754,15 @@ check-taskfile-commands:
 
 check-taskfile-commands-selftest:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+    - npm ci --omit=dev --workspaces=false
   script:
-    - "npm ci --omit=dev --workspaces=false"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-taskfile-commands.test.ts scripts/tests/check-tool-binaries.test.ts"
+    - "task ci:check-taskfile-commands-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &check-taskfile-commands-selftest-changes-1
@@ -1762,10 +1791,9 @@ check-taskfile-tree:
     - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
     - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
     - task --version
+    - npm ci --omit=dev --workspaces=false
   script:
-    - "npm ci --omit=dev --workspaces=false"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-tree.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ci-pre-push-parity.ts"
+    - "task ci:check-taskfile-tree"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &check-taskfile-tree-changes-1
@@ -1786,9 +1814,9 @@ check-taskfile-tree-selftest:
     - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
     - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
     - task --version
+    - npm ci --omit=dev --workspaces=false
   script:
-    - "npm ci --omit=dev --workspaces=false"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-env-scrub.test.ts scripts/tests/git-env-helpers.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts scripts/tests/ci-pre-push-parity-migrated.test.ts"
+    - "task ci:check-taskfile-tree-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &check-taskfile-tree-selftest-changes-1
@@ -1905,8 +1933,14 @@ ci-pre-push-replay:
 
 markdown-links:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-markdown-links.test.ts"
+    - "task ci:markdown-links"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &markdown-links-changes-1
@@ -1968,20 +2002,30 @@ changeset-coverage-test:
 
 path-ownership:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+    - npm ci
   script:
-    - "npm ci"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-path-ownership.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-stray-scan-wiring.ts"
+    - "task ci:path-ownership"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 path-ownership-selftest:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+    - npm ci
   script:
-    - "npm ci"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-path-ownership.test.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-cache-guard-scan.test.ts scripts/tests/check-stray-scan-wiring.test.ts scripts/tests/ci-node-test-arguments.test.ts"
+    - "task ci:path-ownership-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &path-ownership-selftest-changes-1
@@ -2006,9 +2050,15 @@ path-ownership-selftest:
 
 lint-markdown:
   image: node:22
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+    - npm ci
   script:
-    - "npm install -g markdownlint-cli"
-    - "markdownlint \"**/*.md\" --ignore node_modules --ignore '**/node_modules/**' --ignore extension-skeleton --ignore communication --ignore 'extensions/**/commands/*.md' --ignore 'artifacts/*/commands/*.md'"
+    - "task ci:lint-markdown"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -2018,16 +2068,28 @@ ratchet:
   variables:
     GIT_DEPTH: "0"
     BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ratchet.ts"
+    - "task ci:ratchet"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 ratchet-selftest:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-ratchet.test.ts"
+    - "task ci:ratchet-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &ratchet-selftest-changes-1
@@ -2045,18 +2107,30 @@ host-safety:
   variables:
     GIT_DEPTH: "0"
     BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+    - npm ci
   script:
-    - "npm ci"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-host-safety.ts"
+    - "task ci:host-safety"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 host-safety-selftest:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+    - npm ci
   script:
-    - "npm ci"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-host-safety.test.ts"
+    - "task ci:host-safety-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &host-safety-selftest-changes-1
@@ -2074,19 +2148,30 @@ host-safety-selftest:
 
 lint-typescript:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+    - npm ci
   script:
-    - "npm ci"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts"
+    - "task ci:lint-typescript"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 lint-typescript-selftest:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+    - npm ci
   script:
-    - "npm ci"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-erasable-syntax.test.ts scripts/tests/lint-typescript.test.ts scripts/tests/check-typescript.test.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-built-trees.test.ts"
+    - "task ci:lint-typescript-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &lint-typescript-selftest-changes-1
@@ -2354,18 +2439,24 @@ lint-specs:
     - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
     - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
     - task --version
+    - npm install
   script:
-    - "npm install"
-    - "task spec:lint"
+    - "task ci:lint-specs"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 lint-specs-selftest:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+    - npm install
   script:
-    - "npm install"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-linter-*.test.ts"
+    - "task ci:lint-specs-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &lint-specs-selftest-changes-1
@@ -2398,16 +2489,28 @@ check-skill-versions:
   variables:
     GIT_DEPTH: "0"
     BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-skill-versions.ts"
+    - "task ci:check-skill-versions"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
 
 check-description-length:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+    - npm ci --omit=dev --workspaces=false
   script:
-    - "npm ci --omit=dev --workspaces=false"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-description-length.ts"
+    - "task ci:check-description-length"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &check-description-length-changes-1
@@ -2451,17 +2554,28 @@ check-spec-id-reserved:
 
 check-agents-size:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-agents-size.ts"
+    - "task ci:check-agents-size"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 check-comment-size:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-comment-size.ts scripts/tests/fixtures/comment-size/under.txt"
-    - "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-comment-size.ts scripts/tests/fixtures/comment-size/over.txt"
+    - "task ci:check-comment-size"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -2501,8 +2615,14 @@ check-plan-review:
 
 check-rules-size:
   image: node:24
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
   script:
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-rules-size.ts"
+    - "task ci:check-rules-size"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -2846,10 +2966,14 @@ gitlab-ci-check:
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
     - echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+    - npm ci --omit=dev --workspaces=false
   script:
-    - "npm ci --omit=dev --workspaces=false"
-    - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts --check"
+    - "task ci:gitlab-ci-check"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -2861,10 +2985,14 @@ check-ci-parity:
     - wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
     - echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
     - chmod +x /usr/local/bin/yq
+    - apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+    - curl --fail --silent --show-error --location --retry 3 -o /tmp/task.tar.gz https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+    - echo "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb  /tmp/task.tar.gz" | sha256sum -c -
+    - tar -xzf /tmp/task.tar.gz -C /usr/local/bin task
+    - task --version
+    - npm ci --omit=dev --workspaces=false
   script:
-    - "npm ci --omit=dev --workspaces=false"
-    - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ci-parity.ts"
+    - "task ci:check-ci-parity"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'

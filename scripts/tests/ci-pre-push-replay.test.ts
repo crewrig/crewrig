@@ -59,8 +59,7 @@ const append = (copy: string, rel: string, text: string): void => {
 };
 
 const SPEC_SOURCE = "specs/0279-pre-push-guard.md";
-const PARITY_LINE =
-  "        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-agents-size.ts";
+const PARITY_COMMAND = "      - task ci:check-agents-size";
 
 const ROWS: readonly Row[] = [
   {
@@ -108,16 +107,23 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // Arm 1 of the parity harness: a `run:` command of a build.yml job that no longer matches the
-    // command list of its capability in ci/ci-capabilities.yml.
+    // Arm 1 of the parity harness: the command list of a capability in ci/ci-capabilities.yml no
+    // longer matches the business steps of its build.yml job (the job runs `task ci:<id>`, spec 0283).
     name: "CI parity drift between build.yml and the capability file",
     id: "check-ci-parity",
-    marker: /DRIFT: capability 'check-agents-size'.*--replay-drift/,
+    marker:
+      /DRIFT: capability 'check-agents-size' \(github-actions\): job 'check-agents-size' exhibits 0 of 1 declared business steps/,
     mutate: (copy) => {
-      const file = path.join(copy, ".github/workflows/build.yml");
+      const file = path.join(copy, "ci/ci-capabilities.yml");
       const text = fs.readFileSync(file, "utf8");
-      assert.ok(text.includes(`${PARITY_LINE}\n`), "the build.yml line to drift was not found");
-      fs.writeFileSync(file, text.replace(`${PARITY_LINE}\n`, `${PARITY_LINE} --replay-drift\n`));
+      assert.ok(
+        text.includes(`${PARITY_COMMAND}\n`),
+        "the capability command to drift was not found",
+      );
+      fs.writeFileSync(
+        file,
+        text.replace(`${PARITY_COMMAND}\n`, `${PARITY_COMMAND} --replay-drift\n`),
+      );
     },
   },
   {

@@ -96,19 +96,14 @@ test("provisioning guard: ci-job provides Task unless task is false", () => {
   const root = makeFixture();
   for (const f of ROOT_FILES)
     fs.cpSync(path.join(REPO, f), path.join(root, f), { recursive: true });
-  const lint = "      - uses: ./.github/actions/setup-task\n\n      - name: Lint specs";
-  const withCi = (extra: string) =>
-    `      - uses: ./.github/actions/ci-job\n        with:\n          id: lint-specs\n${extra}\n      - name: Lint specs`;
-  replaceOnce(wf(root), lint, withCi(""));
+  const ci =
+    "          id: lint-specs\n          node: 24\n          install: install\n          task: true\n";
   const good = checkTaskProvisioning(root);
   assert.ok(!good.findings.some((f) => f.includes("lint-specs")), good.findings.join("\n"));
   replaceOnce(
     wf(root),
-    withCi(""),
-    withCi("          task: false\n").replace(
-      "      - name: Lint specs",
-      "      - run: task lint-specs\n      - name: Lint specs",
-    ),
+    ci,
+    `${ci.replace("task: true", "task: false")}      - run: task lint-specs\n`,
   );
   const bad = checkTaskProvisioning(root);
   assert.ok(
