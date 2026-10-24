@@ -125,7 +125,9 @@ export function createReleaseSandbox(opts: ReleaseSandboxOptions = {}): ReleaseS
   const home = path.join(aux, "home");
   for (const dir of [captureDir, home]) fs.mkdirSync(dir, { recursive: true });
   const globalConfig = path.join(home, "gitconfig");
-  fs.writeFileSync(globalConfig, "");
+  // No background maintenance: a detached `git maintenance`/`repack` (gc.auto, which the copied tree sits at
+  // the threshold of) would still be writing into the repository while `dispose()` removes it.
+  fs.writeFileSync(globalConfig, "[gc]\n\tauto = 0\n[maintenance]\n\tauto = false\n");
 
   fs.copyFileSync(path.join(REPO, "package.json"), path.join(root, "package.json"));
   fs.mkdirSync(path.join(root, "node_modules"), { recursive: true });
