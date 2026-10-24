@@ -150,3 +150,61 @@ test("requires.yq moves the GitLab version: the GitHub input must follow", () =>
     /capability 'skill-scripts-ts'.*passes ci-job yq '4\.44\.3' but GitLab installs yq '4\.54\.1'/,
   );
 });
+
+const FL_APT =
+  "          id: figure-labels\n          install: none\n          apt: tesseract-ocr\n";
+
+test("a ci-job apt input outside the packages requires.tools implies fails naming the job", () => {
+  const good = makeFixture();
+  assert.ok(!runCheck(good).stderr.includes("passes ci-job apt"), "the committed tree agrees");
+  const root = makeFixture();
+  // Replacement-first: the mutation must apply, else the test proves nothing.
+  replaceOnce(wf(root), FL_APT, FL_APT.replace("tesseract-ocr", "tesseract-ocr jq"));
+  const r = runCheck(root);
+  assert.equal(r.status, 1);
+  assert.match(
+    r.stderr,
+    /capability 'figure-labels'.*passes ci-job apt 'jq tesseract-ocr' but requires\.tools implies 'tesseract-ocr'/,
+  );
+});
+
+test("dropping a tool from requires.tools makes the ci-job apt input a divergence", () => {
+  const root = makeFixture();
+  replaceOnce(
+    path.join(root, "ci/ci-capabilities.yml"),
+    "      tools: [task, tesseract]\n",
+    "      tools: [task]\n",
+  );
+  const r = runCheck(root);
+  assert.equal(r.status, 1);
+  assert.match(
+    r.stderr,
+    /capability 'figure-labels'.*passes ci-job apt 'tesseract-ocr' but requires\.tools implies ''/,
+  );
+});
+
+test("a ci-job python input absent from the reference runtime fails naming the job", () => {
+  const good = makeFixture();
+  assert.ok(!runCheck(good).stderr.includes("passes ci-job python"), "the committed tree agrees");
+  const root = makeFixture();
+  replaceOnce(wf(root), FL_APT, `${FL_APT}          python: "3.12"\n`);
+  const r = runCheck(root);
+  assert.equal(r.status, 1);
+  assert.match(
+    r.stderr,
+    /capability 'figure-labels'.*passes ci-job python '3\.12' but the reference runtime is python ''/,
+  );
+});
+
+test("a python runtime the ci-job python input does not provide fails naming the job", () => {
+  const root = makeFixture();
+  editYaml(path.join(root, "ci/ci-capabilities.yml"), (doc) => {
+    map(capOf(doc, "figure-labels")["requires"])["runtime"] = ["node@24", "python@3.12"];
+  });
+  const r = runCheck(root);
+  assert.equal(r.status, 1);
+  assert.match(
+    r.stderr,
+    /capability 'figure-labels'.*passes ci-job python '' but the reference runtime is python '3\.12'/,
+  );
+});

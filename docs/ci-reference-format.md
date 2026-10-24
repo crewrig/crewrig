@@ -180,6 +180,7 @@ The requirement is a closed-vocabulary mapping mirroring R12's own enumeration:
 | `tools` | list of strings | Additional tools the command needs on `PATH`. | `[yq]`, `[task]`, `[jq]` |
 | `history-depth` | enum | `full` when the command needs the complete source history (e.g. a base-ref diff); omitted otherwise. | `full` |
 | `yq` | string | The pinned yq version (a key of `ci/yq-pin.json`) the GitLab recipe installs and the GitHub `ci-job` `yq` input must equal; requires `yq` under `tools`. Omitted means `4.54.1`. | `"4.44.3"` |
+| `tools` apt mapping | n/a | A `tools` entry that is an apt package (`tesseract`) maps to the GitHub `ci-job` `apt` input (`tesseract-ocr`); a secondary `runtime` entry `python@<x.y>` maps to the `python` input. Both are checked by `scripts/check-ci-parity.ts`. | `[task, tesseract]` |
 | `install` | enum | The dependency provisioning the job input carries when `command:` is the single entry `task ci:<id>` (a migrated capability, spec 0283 R1): `ci` (`npm ci`), `install` (`npm install`), `omit-dev` (`npm ci --omit=dev --workspaces=false`) or `none`. Omitted means `none`. A not yet migrated capability keeps its provisioning lines as the first `command:` entries and omits the key. | `ci` |
 
 Every sub-key is optional **inside** `requires`: a capability whose
@@ -873,7 +874,8 @@ A migrated GitHub job is a checkout plus `uses: ./.github/actions/ci-job`. The j
 capability id and the `id` input MUST equal it (spec 0049 delta-02 R27a, checked by
 `scripts/check-ci-parity.ts`). Inputs: `id` (required), `node` (default 24), `install` (`ci`,
 `install`, `omit-dev`, `none`; default `ci`), `task` (default true), `cache` (default false),
-`yq` (default empty: none) and `shadow-filter` (default empty).
+`yq` (default empty: none), `apt` (default empty: none), `python` (default empty: none) and `shadow-filter`
+(default empty).
 
 The `yq` input is a version key of `ci/yq-pin.json` (a flat map of version to the sha256 of
 `yq_linux_amd64`; today `4.44.3` and `4.54.1`). The step runs before `setup-task`, only when the gate
@@ -885,15 +887,29 @@ mismatch. A job using `yq: "<version>"` must declare `tools: [yq]`; the GitLab `
 `scripts/check-ci-parity.ts` fails a `ci-job` job whose `yq` differs from the version GitLab installs
 for the same capability, so the two engines never run different yq releases.
 
+The `apt` input is an explicit, space-separated list of Debian package names (no wildcard). A step that runs
+only when the gate says run validates it against the anchored pattern
+`^[a-z0-9][a-z0-9+.-]*( [a-z0-9][a-z0-9+.-]*)*$` (the value reaches the script through `env`, never
+interpolated), then runs `sudo apt-get update && sudo apt-get install -y --no-install-recommends <packages>`
+before `task ci:<id>`. The list MUST equal the packages implied by the capability's `requires.tools`
+(`TOOL_APT_PACKAGES` in `scripts/lib/build-ci/tools.ts`, the same map the GitLab recipe reads; today
+`tesseract` to `tesseract-ocr`); `scripts/check-ci-parity.ts` fails a `ci-job` job whose `apt` differs.
+
+The `python` input is a `x.y` version (anchored `^[0-9]+\.[0-9]+$`, validated through `env`) provisioned
+with `actions/setup-python@v5`. It MUST equal the version of the capability's secondary `runtime` entry
+`python@<version>`; `scripts/check-ci-parity.ts` fails a mismatch in either direction. The GitLab side only
+installs the unversioned Debian `python3` for a secondary python runtime (`secondaryRuntimeInstallLines`),
+so the version equality is enforced between the reference and GitHub, not against the GitLab package.
+
 Steps, in order: a first step that deepens a shallow checkout to two commits (`git fetch --depth=2`
-of the current `HEAD`, skipped on a full clone), `setup-node`, the path gate (`scripts/ci-paths-gate.ts`), an optional pinned `yq`, `setup-task` when
+of the current `HEAD`, skipped on a full clone), `setup-node`, the path gate (`scripts/ci-paths-gate.ts`), an optional pinned `yq`, the optional `apt` install and `setup-python`, `setup-task` when
 `task` is true, the dependency install, the Node floor guard when `node` is 24, the cache step when
 `cache` is true (key from `scripts/ci-cache-guard.ts --capability <id> --print-key`), `task ci:<id>`,
 and cancel-on-failure. Every step after the gate runs only when the decision is `true`, so a job
 the gate skips finishes green.
 
 Template (the defaults carry the common case; set an input only when it differs, such as
-`install: omit-dev`, `yq` or `shadow-filter`):
+`install: omit-dev`, `yq`, `apt`, `python` or `shadow-filter`):
 
 ```yaml
   <capability-id>:

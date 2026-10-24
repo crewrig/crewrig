@@ -197,5 +197,7 @@
   "ci:check-plan-review": "taskfiles/ci.yml",
   "ci:alert-scheduled-failure": "taskfiles/ci.yml",
   "ci:alert-scheduled-failure-selftest": "taskfiles/ci.yml",
-  "ci:alert-scheduled-failure-check": "taskfiles/ci.yml"
+  "ci:alert-scheduled-failure-check": "taskfiles/ci.yml",
+  "ci:setup-oracle": "taskfiles/ci.yml",
+  "ci:figure-labels": "taskfiles/ci.yml"
 }

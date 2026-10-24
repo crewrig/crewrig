@@ -497,3 +497,19 @@ tasks:
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON -e "const {execFileSync}=require('node:child_process');const o=execFileSync(process.execPath,['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON','{{.REPO_DIR}}/scripts/check-plan-review.ts',process.argv[1],process.argv[2]],{encoding:'utf8'}).split('\\n');process.exit(o.includes('plan-review:\\x20'+process.argv[3])?0:1)" {{.REPO_DIR}}/scripts/tests/fixtures/plan-review/skip-spec.md {{.REPO_DIR}}/scripts/tests/fixtures/plan-review/skip-plan.md skipped
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON -e "const {execFileSync}=require('node:child_process');const o=execFileSync(process.execPath,['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON','{{.REPO_DIR}}/scripts/check-plan-review.ts',process.argv[1],process.argv[2]],{encoding:'utf8'}).split('\\n');process.exit(o.includes('plan-review:\\x20'+process.argv[3])?0:1)" {{.REPO_DIR}}/scripts/tests/fixtures/plan-review/skip-spec.md {{.REPO_DIR}}/scripts/tests/fixtures/plan-review/required-plan.md required
+  setup-oracle:
+    desc: Run the setup entry-point oracle (sandbox, stubs, golden, prompt-inventory and mutation suites)
+    preconditions:
+      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/setup-sandbox.test.ts {{.REPO_DIR}}/scripts/tests/setup-stubs.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-harness.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-smoke.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-claude.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-gemini.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-copilot.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-antigravity.test.ts {{.REPO_DIR}}/scripts/tests/setup-prompt-inventory.test.ts {{.REPO_DIR}}/scripts/tests/setup-oracle-mutation.test.ts {{.REPO_DIR}}/scripts/tests/setup-oracle-paths.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-portable.test.ts {{.REPO_DIR}}/scripts/tests/setup-entry-form.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-deviations.test.ts {{.REPO_DIR}}/scripts/tests/setup-no-node-modules.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-antigravity-transcript.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-behaviour-a.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-catalogue-picker.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-claude-env.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-entry-behaviour.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-gemini-copilot-run.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-gemini-overlays.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-mcp-order.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-others.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-rc-guard.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-step-order.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-tier-resolution.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-usage-order.test.ts
+  figure-labels:
+    desc: Check figure labels with OCR (needs tesseract-ocr on PATH)
+    preconditions:
+      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-figure-labels.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/{{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/windows-governance-figure-labels.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-figure-labels.test.ts

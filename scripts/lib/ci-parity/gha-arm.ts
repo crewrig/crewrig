@@ -3,7 +3,7 @@
 
 import { fail } from "./findings.ts";
 import { jobNode, loadJobs, readJob, type JobRecord } from "./job-records.ts";
-import { DEFAULT_YQ_VERSION } from "../build-ci/tools.ts";
+import { aptPackagesForTools, DEFAULT_YQ_VERSION } from "../build-ci/tools.ts";
 import { installRecipeTool, normalizeCmd } from "./probe-tokens.ts";
 import { ShellAbort, type CapRecord, type ParityState } from "./state.ts";
 
@@ -133,6 +133,23 @@ export function checkGhaJob(
             state,
             `capability '${c.id}' (github-actions): job '${jobKey}' passes ci-job yq '${step.withYq}' but GitLab installs yq '${c.yq === "" ? DEFAULT_YQ_VERSION : c.yq}' (requires.yq)`,
           );
+        // `apt` must equal the packages the capability's `requires.tools` implies (the GitLab recipe
+        // reads the same map), `python` the secondary `runtime` entry `python@<version>`.
+        const gotApt = sortedUnique(step.withApt.split(" "));
+        const wantApt = aptPackagesForTools(c.tools);
+        if (gotApt.join(" ") !== wantApt.join(" "))
+          fail(
+            state,
+            `capability '${c.id}' (github-actions): job '${jobKey}' passes ci-job apt '${gotApt.join(" ")}' but requires.tools implies '${wantApt.join(" ")}' (spec 0283)`,
+          );
+        prov.tools.push(...gotApt.map((p) => (p === "tesseract-ocr" ? "tesseract" : p)));
+        const wantPy = c.runtime.find((r) => r.startsWith("python@"))?.slice(7) ?? "";
+        if (step.withPython !== wantPy && !(step.withPython === "" && wantPy === ""))
+          fail(
+            state,
+            `capability '${c.id}' (github-actions): job '${jobKey}' passes ci-job python '${step.withPython}' but the reference runtime is python '${wantPy}' (spec 0283)`,
+          );
+        prov.python = step.withPython;
         if (c.ncmd === 1 && normalizeCmd(c.cmds[0] ?? "") === `task ci:${c.id}`) ci++;
       }
       continue;

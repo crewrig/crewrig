@@ -127,12 +127,9 @@ test("R4d: missing fetch-depth where history-depth: full is required", () => {
 test("R4t: missing tesseract install", () => {
   const fx = ghEdit((doc) => {
     const all = steps(doc, "figure-labels");
-    assert.equal(
-      map(all[2])["name"],
-      "Install tesseract",
-      "precondition: step 2 installs tesseract",
-    );
-    all.splice(2, 1);
+    const w = map(map(all[2])["with"]);
+    assert.equal(w["apt"], "tesseract-ocr", "precondition: the ci-job step installs tesseract");
+    delete w["apt"];
   });
   fails(fx, "R4t", ["figure-labels", "requires tool 'tesseract'"]);
 });

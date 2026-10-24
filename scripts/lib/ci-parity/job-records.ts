@@ -32,6 +32,9 @@ export interface StepRecord {
   withInstall: string;
   /** `with.yq` of a ci-job step: the pinned yq version, empty when none is installed. */
   withYq: string;
+  /** `with.apt` and `with.python` of a ci-job step: explicit apt packages and a Python version. */
+  withApt: string;
+  withPython: string;
 }
 
 export interface JobRecord {
@@ -87,6 +90,8 @@ function readStep(step: YqNode): StepRecord {
     withCache: text(at(withNode, ["cache"]), "with.cache"),
     withInstall: text(at(withNode, ["install"]), "with.install"),
     withYq: text(at(withNode, ["yq"]), "with.yq"),
+    withApt: text(at(withNode, ["apt"]), "with.apt"),
+    withPython: text(at(withNode, ["python"]), "with.python"),
   };
 }
 

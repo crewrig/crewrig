@@ -794,5 +794,13 @@
   {
     "name": "ci:check-plan-review",
     "desc": "Check the plan review gate against its fixtures (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:setup-oracle",
+    "desc": "Run the setup entry-point oracle (sandbox, stubs, golden, prompt-inventory and mutation suites)"
+  },
+  {
+    "name": "ci:figure-labels",
+    "desc": "Check figure labels with OCR (needs tesseract-ocr on PATH)"
   }
 ]

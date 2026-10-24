@@ -117,6 +117,23 @@ export function yqRecipe(version: string, pins: YqPin): readonly string[] {
   ];
 }
 
+/**
+ * The apt packages a `requires.tools` entry stands for: the one source of the GitLab recipe and of the
+ * parity check against the GitHub `ci-job` `apt` input.
+ */
+export const TOOL_APT_PACKAGES: Readonly<Record<string, readonly string[]>> = {
+  tesseract: ["tesseract-ocr"],
+};
+
+/** The sorted, de-duplicated apt packages implied by a list of `requires.tools` entries. */
+export function aptPackagesForTools(tools: readonly string[]): string[] {
+  const out = new Set<string>();
+  for (const t of tools)
+    if (Object.hasOwn(TOOL_APT_PACKAGES, t))
+      for (const p of TOOL_APT_PACKAGES[t] as string[]) out.add(p);
+  return [...out].sort();
+}
+
 const TOOLS: Readonly<Record<string, readonly string[]>> = {
   jq: [
     `${APT} wget ca-certificates`,
@@ -125,7 +142,7 @@ const TOOLS: Readonly<Record<string, readonly string[]>> = {
     "chmod +x /usr/local/bin/jq",
   ],
   "markdownlint-cli": ["npm install -g markdownlint-cli"],
-  tesseract: [`${APT} tesseract-ocr`],
+  tesseract: [`${APT} ${(TOOL_APT_PACKAGES["tesseract"] as readonly string[]).join(" ")}`],
   python3: [`${APT} python3`],
 };
 

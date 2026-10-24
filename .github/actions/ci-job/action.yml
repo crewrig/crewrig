@@ -27,6 +27,17 @@ inputs:
       yq version to install (a key of ci/yq-pin.json; empty installs none). The binary is
       downloaded, its sha256 verified against the pin, then installed to /usr/local/bin.
     default: ""
+  apt:
+    description: >-
+      Explicit space-separated apt package names (no wildcard) installed with
+      `sudo apt-get update && sudo apt-get install -y --no-install-recommends` before the task. Must equal the
+      packages implied by the capability's `requires.tools` (checked by scripts/check-ci-parity.ts).
+    default: ""
+  python:
+    description: >-
+      Python version (x.y, for example 3.12) provisioned with actions/setup-python before the task. Must equal
+      the capability's secondary `runtime` entry `python@<version>`.
+    default: ""
   shadow-filter:
     description: Result of the dorny filter during the shadow window (empty once removed).
     default: ""
@@ -94,6 +105,33 @@ runs:
         fi
         sudo install -m 0755 "${work}/yq" /usr/local/bin/yq
         yq --version
+    - if: steps.decide.outputs.run == 'true' && inputs.apt != ''
+      shell: bash
+      env:
+        APT_PACKAGES: ${{ inputs.apt }}
+      run: |
+        set -euo pipefail
+        if [[ ! "${APT_PACKAGES}" =~ ^[a-z0-9][a-z0-9+.-]*(\ [a-z0-9][a-z0-9+.-]*)*$ ]]; then
+          echo "::error title=ci-job-apt::invalid apt package list '${APT_PACKAGES}'" >&2
+          exit 1
+        fi
+        read -r -a packages <<< "${APT_PACKAGES}"
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends "${packages[@]}"
+    - if: steps.decide.outputs.run == 'true' && inputs.python != ''
+      shell: bash
+      env:
+        PYTHON_VERSION: ${{ inputs.python }}
+      run: |
+        set -euo pipefail
+        if [[ ! "${PYTHON_VERSION}" =~ ^[0-9]+\.[0-9]+$ ]]; then
+          echo "::error title=ci-job-python::invalid python version '${PYTHON_VERSION}'" >&2
+          exit 1
+        fi
+    - if: steps.decide.outputs.run == 'true' && inputs.python != ''
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python }}
     - if: steps.decide.outputs.run == 'true' && inputs.task == 'true'
       uses: ./.github/actions/setup-task
     - if: steps.decide.outputs.run == 'true' && inputs.install == 'ci'

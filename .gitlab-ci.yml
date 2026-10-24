@@ -466,10 +466,10 @@ setup-oracle:
     - wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
     - echo "5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5  /usr/local/bin/jq" | sha256sum -c -
     - chmod +x /usr/local/bin/jq
+    - !reference [.task-install, script]
+    - npm ci --omit=dev --workspaces=false
   script:
-    - "node scripts/lib/node-floor-guard.js"
-    - "npm ci --omit=dev --workspaces=false"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts scripts/tests/setup-golden-portable.test.ts scripts/tests/setup-entry-form.test.ts scripts/tests/setup-golden-deviations.test.ts scripts/tests/setup-no-node-modules.test.ts scripts/tests/setup-retarget-antigravity-transcript.test.ts scripts/tests/setup-retarget-behaviour-a.test.ts scripts/tests/setup-retarget-catalogue-picker.test.ts scripts/tests/setup-retarget-claude-env.test.ts scripts/tests/setup-retarget-entry-behaviour.test.ts scripts/tests/setup-retarget-gemini-copilot-run.test.ts scripts/tests/setup-retarget-gemini-overlays.test.ts scripts/tests/setup-retarget-mcp-order.test.ts scripts/tests/setup-retarget-others.test.ts scripts/tests/setup-retarget-rc-guard.test.ts scripts/tests/setup-retarget-step-order.test.ts scripts/tests/setup-retarget-tier-resolution.test.ts scripts/tests/setup-retarget-usage-order.test.ts"
+    - "task ci:setup-oracle"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &setup-oracle-changes-1
@@ -1206,10 +1206,10 @@ cli-matrix-fresh-selftest:
 figure-labels:
   image: node:24
   before_script:
+    - !reference [.task-install, script]
     - apt-get update && apt-get install -y --no-install-recommends tesseract-ocr
   script:
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-figure-labels.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/windows-governance-figure-labels.test.ts scripts/tests/governance-suite-figure-labels.test.ts"
+    - "task ci:figure-labels"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &figure-labels-changes-1
