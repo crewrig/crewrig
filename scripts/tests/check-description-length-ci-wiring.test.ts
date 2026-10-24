@@ -12,10 +12,17 @@ import { describe, test } from "node:test";
 
 import { globToRegExp } from "../lib/glob-engine.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
+import {
+  ciJobInputs,
+  ciTaskDelegatedCommands,
+  effectivePaths,
+  resolveCapabilityCommands,
+} from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
 interface Capability {
   readonly id: string;
+  readonly paths?: readonly string[];
   readonly trigger: readonly { readonly on?: string; readonly paths?: readonly string[] }[];
   readonly requires?: { readonly runtime?: string | readonly string[] };
   readonly command?: readonly string[];
@@ -48,13 +55,15 @@ function assertCapability(cap: Capability): void {
   const runtime = cap.requires?.runtime;
   assert.equal(runtime, "node@24", "runs on node@24");
   assert.ok(
-    (cap.command ?? []).some((c) => c.includes(SCRIPT)),
-    "a command runs the script",
+    [...resolveCapabilityCommands(cap.command), ...ciTaskDelegatedCommands(ID)].some((c) =>
+      c.includes(SCRIPT),
+    ),
+    "the capability's task runs the script",
   );
   for (const on of ["pull-request", "push"]) {
     const trig = cap.trigger.find((t) => t.on === on);
     assert.ok(trig, `trigger ${on}`);
-    const globs = trig.paths ?? [];
+    const globs = effectivePaths(cap, trig);
     for (const file of COVERED) {
       assert.ok(
         globs.some((g) => globToRegExp(g).test(file)),
@@ -79,9 +88,11 @@ function workflowJob(): string {
 }
 
 function assertJob(job: string): void {
-  assert.ok(job.includes(`run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON ${SCRIPT}`));
-  assert.ok(job.includes("node-version: 24"));
-  assert.ok(job.includes("npm ci --omit=dev --workspaces=false"));
+  const inputs = ciJobInputs(job, ID);
+  assert.ok(inputs, "the job is the thin ci-job call for this capability");
+  assert.equal(inputs.node, "24");
+  assert.equal(inputs.install, "omit-dev", "production install before the check");
+  assert.equal(inputs.task, "true", "runs task ci:<id>");
   for (const dir of [".claude", ".gemini", ".github", ".agents"]) {
     assert.ok(job.includes(`'${dir}/skills/**'`), `${dir}/skills in the filter`);
     assert.ok(job.includes(`'${dir}/agents/**'`), `${dir}/agents in the filter`);
@@ -95,9 +106,12 @@ describe("check-description-length CI wiring", () => {
 
   test("mutation: a capability without a compiled tree in its paths is rejected", () => {
     const cap = structuredClone(loadCapability()) as unknown as {
+      paths?: string[];
       trigger: { paths?: string[] }[];
     };
-    for (const t of cap.trigger) t.paths = (t.paths ?? []).filter((p) => p !== ".gemini/agents/**");
+    cap.paths = (cap.paths ?? []).filter((p) => p !== ".gemini/agents/**");
+    for (const t of cap.trigger)
+      if (t.paths) t.paths = t.paths.filter((p) => p !== ".gemini/agents/**");
     assert.throws(() => assertCapability(cap as unknown as Capability));
   });
 
@@ -107,8 +121,6 @@ describe("check-description-length CI wiring", () => {
   });
 
   test("mutation: a job without the production install is rejected", () => {
-    assert.throws(() =>
-      assertJob(workflowJob().replace("npm ci --omit=dev --workspaces=false", "true")),
-    );
+    assert.throws(() => assertJob(workflowJob().replace("install: omit-dev", "install: none")));
   });
 });

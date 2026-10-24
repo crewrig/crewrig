@@ -12,6 +12,7 @@ import path from "node:path";
 import { test } from "node:test";
 
 import { REPO } from "./lib/build-fixture-tree.ts";
+import { capabilityTriggerPaths } from "./lib/capability-path-scan.ts";
 import { importClosure } from "./lib/setup-source-scan.ts";
 
 const PRINTER = "scripts/tests/lib/print-setup-declarations.ts";
@@ -20,17 +21,7 @@ const read = (rel: string): string => fs.readFileSync(path.join(REPO, rel), "utf
 
 /** The `paths:` entries of each trigger of the `misc` capability, from a plain text scan. */
 export function miscTriggerPaths(): string[][] {
-  const lines = read("ci/ci-capabilities.yml").split("\n");
-  const start = lines.findIndex((l) => /^ {2}- id: misc\s*$/.test(l));
-  if (start < 0) return [];
-  const blocks: string[][] = [];
-  for (const l of lines.slice(start + 1)) {
-    if (/^ {2}- id:/.test(l)) break;
-    if (/^ {8}paths:\s*$/.test(l)) blocks.push([]);
-    const m = /^ {10}- "([^"]+)"\s*$/.exec(l);
-    if (m !== null) blocks.at(-1)?.push(m[1] ?? "");
-  }
-  return blocks;
+  return capabilityTriggerPaths(read("ci/ci-capabilities.yml"), "misc");
 }
 
 /** The globs of the `misc:` filter of the GitHub `misc` job (dorny/paths-filter), same plain scan. */

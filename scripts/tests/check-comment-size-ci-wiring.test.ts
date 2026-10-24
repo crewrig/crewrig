@@ -11,6 +11,7 @@ import { describe, test } from "node:test";
 
 import { loadTaskfileTree, taskCmds, type TaskfileTree } from "../lib/taskfile-tree.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
+import { ciTaskCommands, resolveCapabilityCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
 const ID = "check-comment-size";
@@ -33,6 +34,11 @@ function jobBlock(text: string, header: RegExp, gitlab = false): string {
   return next < 0 ? rest : rest.slice(0, next);
 }
 
+/** The fixtures run in the task body, which is the single source of both CI engines' commands. */
+function assertTaskRunsFixtures(cmds: string[] = ciTaskCommands(ID)): void {
+  assert.deepEqual(cmds, [UNDER, OVER]);
+}
+
 function assertCapabilities(text: string): void {
   const caps = (
     yamlLib.load(text) as {
@@ -42,18 +48,19 @@ function assertCapabilities(text: string): void {
   const cap = caps.find((c) => c.id === ID);
   assert.ok(cap, `capability ${ID}`);
   assert.equal(cap.requires?.runtime, "node@24");
-  assert.deepEqual(cap.command, [UNDER, OVER]);
+  assert.deepEqual(cap.command, [`task ci:${ID}`]);
+  assert.deepEqual(resolveCapabilityCommands(cap.command), [UNDER, OVER]);
   const gov = caps.find((c) => c.id === "governance-checks-ts");
   assert.ok(gov);
   for (const t of TESTS)
-    assert.ok((gov.command ?? []).join(" ").includes(t), `governance runs ${t}`);
+    assert.ok(resolveCapabilityCommands(gov.command).join(" ").includes(t), `governance runs ${t}`);
 }
 
 function assertGithub(text: string): void {
   const job = jobBlock(text, new RegExp(`\\n  ${ID}:\\n`));
-  assert.ok(job.includes("node-version: 24"));
-  assert.ok(job.includes(UNDER));
-  assert.ok(job.includes(OVER.replace("! ", "")));
+  assert.ok(job.includes(`id: ${ID}`), "thin ci-job call");
+  assert.ok(job.includes("node: 24"));
+  assertTaskRunsFixtures();
   const gov = jobBlock(text, /\n {2}governance-checks-ts:\n/);
   for (const t of TESTS) assert.ok(gov.includes(t), `governance-checks-ts runs ${t}`);
   for (const p of [
@@ -68,8 +75,8 @@ function assertGithub(text: string): void {
 function assertGitlab(text: string): void {
   const job = jobBlock(text, new RegExp(`\\n${ID}:\\n`), true);
   assert.ok(job.includes("image: node:24"));
-  assert.ok(job.includes(UNDER));
-  assert.ok(job.includes(OVER));
+  assert.ok(job.includes(`task ci:${ID}`), "runs the task");
+  assertTaskRunsFixtures();
   const gov = jobBlock(text, /\ngovernance-checks-ts:\n/, true);
   for (const t of TESTS) assert.ok(gov.includes(t), `governance-checks-ts runs ${t}`);
 }
@@ -87,11 +94,7 @@ describe("check-comment-size CI wiring", () => {
   test("Taskfile target", () => assertTaskfile(loadTaskfileTree(REPO)));
 
   test("mutation: a job that does not run the over-budget fixture is rejected", () => {
-    assert.throws(() =>
-      assertGithub(
-        read(".github", "workflows", "build.yml").replace(OVER.replace("! ", ""), "true"),
-      ),
-    );
+    assert.throws(() => assertTaskRunsFixtures(ciTaskCommands(ID).filter((c) => c !== OVER)));
   });
   test("mutation: a governance job without the ledger test is rejected", () => {
     assert.throws(() =>

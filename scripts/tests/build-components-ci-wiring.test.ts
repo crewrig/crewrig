@@ -14,14 +14,17 @@ import { describe, test } from "node:test";
 
 import { globToRegExp } from "../lib/glob-engine.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
+import { logicalCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
 interface Capability {
   readonly id: string;
+  readonly paths?: readonly string[];
   readonly trigger: readonly { readonly on?: string; readonly paths?: readonly string[] }[];
   readonly requires?: {
     readonly runtime?: string | readonly string[];
     readonly tools?: readonly string[];
+    readonly install?: string;
   };
   readonly cache?: { readonly files?: readonly string[] };
   /** Absent on the engine-specific capabilities (they carry an `exception` instead). */
@@ -78,14 +81,14 @@ function mutableCopy(ref: Reference): { capabilities: Record<string, unknown>[] 
   return structuredClone(ref) as unknown as { capabilities: Record<string, unknown>[] };
 }
 
-/** The commands of one capability; engine-specific ones have none. */
+/** The commands of one capability (a migrated one resolves to provisioning plus its task body). */
 function commandsOf(cap: Capability): readonly string[] {
-  return cap.command ?? [];
+  return logicalCommands(cap);
 }
 
-/** Every `paths:` entry of one capability's triggers. */
+/** Every effective `paths:` entry of one capability: the capability-level set and each trigger's own. */
 function pathsOf(cap: Capability): string[] {
-  return (cap.trigger ?? []).flatMap((t) => [...(t.paths ?? [])]);
+  return [...(cap.paths ?? []), ...(cap.trigger ?? []).flatMap((t) => [...(t.paths ?? [])])];
 }
 
 /** Capabilities whose `paths:` globs select the single changed `file`. */
@@ -204,6 +207,9 @@ describe("mutation check: each assertion goes red on a broken reference", () => 
   test("dropping the entry from every paths list leaves the entry change unselected", () => {
     const copy = mutableCopy(REF);
     for (const cap of copy.capabilities) {
+      const drop = (l: string[]): string[] =>
+        l.filter((p) => p !== ENTRY && p !== "scripts/build-components.*");
+      if (Array.isArray(cap.paths)) cap.paths = drop(cap.paths as string[]);
       for (const t of (cap.trigger as { paths?: string[] }[]) ?? []) {
         if (t.paths !== undefined)
           t.paths = t.paths.filter((p) => p !== ENTRY && p !== "scripts/build-components.*");
@@ -215,8 +221,10 @@ describe("mutation check: each assertion goes red on a broken reference", () => 
   test("naming the deleted shim in one capability is reported", () => {
     const copy = mutableCopy(REF);
     const cap = copy.capabilities.find((c) => c.id === "component-drift") as {
+      paths?: string[];
       trigger: { paths?: string[] }[];
     };
+    if (cap.paths) cap.paths = [...cap.paths, SHIM];
     for (const t of cap.trigger) if (t.paths) t.paths = [...t.paths, SHIM];
     assert.deepEqual(namesDeletedShim(copy as unknown as Reference), ["component-drift"]);
   });

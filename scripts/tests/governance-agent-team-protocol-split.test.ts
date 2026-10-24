@@ -17,6 +17,7 @@ import path from "node:path";
 import { describe, test } from "node:test";
 
 import { REPO } from "./lib/build-fixture-tree.ts";
+import { effectivePaths } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
 const INDEX = "docs/agent-team-protocol.md";
@@ -477,14 +478,16 @@ describe("agent-team-protocol split guards (spec 0274)", () => {
   test("CI wiring: governance-checks-ts runs on docs and AGENTS.md edits", () => {
     const text = fs.readFileSync(path.join(REPO, "ci", "ci-capabilities.yml"), "utf8");
     const caps = (
-      yamlLib.load(text) as { capabilities?: { id: string; trigger: { paths?: string[] }[] }[] }
+      yamlLib.load(text) as {
+        capabilities?: { id: string; paths?: string[]; trigger: { paths?: string[] }[] }[];
+      }
     ).capabilities;
     const cap = caps?.find((c) => c.id === "governance-checks-ts");
     assert.ok(cap, "capability governance-checks-ts exists");
     assert.ok(cap.trigger.length >= 2);
     for (const t of cap.trigger) {
       for (const p of ["docs/**", "AGENTS.md", "scripts/tests/fixtures/agent-team-protocol/**"]) {
-        assert.ok(t.paths?.includes(p), `trigger path ${p}`);
+        assert.ok(effectivePaths(cap, t).includes(p), `trigger path ${p}`);
       }
     }
   });

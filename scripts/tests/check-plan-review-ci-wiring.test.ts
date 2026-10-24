@@ -12,6 +12,7 @@ import { describe, test } from "node:test";
 
 import { loadTaskfileTree, taskCmds, type TaskfileTree } from "../lib/taskfile-tree.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
+import { effectivePaths } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
 const ID = "check-plan-review";
@@ -53,6 +54,7 @@ function assertCapabilities(text: string): void {
       capabilities: {
         id: string;
         command?: string[];
+        paths?: string[];
         trigger?: { paths?: string[] }[];
         requires?: { runtime?: string };
       }[];
@@ -64,7 +66,7 @@ function assertCapabilities(text: string): void {
   assertCommands((cap.command ?? []).join("\n"));
   assert.ok((cap.trigger ?? []).length > 0, "has a trigger");
   for (const t of cap.trigger ?? [])
-    for (const p of PATHS) assert.ok((t.paths ?? []).includes(p), `trigger paths has ${p}`);
+    for (const p of PATHS) assert.ok(effectivePaths(cap, t).includes(p), `trigger paths has ${p}`);
   const gov = caps.find((c) => c.id === "governance-checks-ts");
   assert.ok(gov);
   for (const t of TESTS)
