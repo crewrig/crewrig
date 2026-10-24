@@ -398,6 +398,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -426,23 +428,13 @@ jobs:
               - 'docs/**'
               - 'AGENTS.md'
               - 'scripts/tests/fixtures/agent-team-protocol/**'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.governance-checks-ts == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-          cache: npm
-      - name: Install production dependencies
-        if: steps.filter.outputs.governance-checks-ts == 'true'
-        run: npm ci --omit=dev --workspaces=false
-      - name: Floor guard accepts Node.js 24
-        if: steps.filter.outputs.governance-checks-ts == 'true'
-        run: node scripts/lib/node-floor-guard.js
-      - name: Test the governance checks
-        if: steps.filter.outputs.governance-checks-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts scripts/tests/check-comment-size.test.ts scripts/tests/check-comment-size-ci-wiring.test.ts scripts/tests/check-seat-brief.test.ts scripts/tests/check-seat-brief-ci-wiring.test.ts scripts/tests/check-plan-review.test.ts scripts/tests/check-plan-review-ci-wiring.test.ts scripts/tests/check-plan-review-gate.test.ts scripts/tests/seat-ledger.test.ts scripts/tests/economy-measure.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: governance-checks-ts
+          node: 24
+          install: omit-dev
+          task: true
+          shadow-filter: ${{ steps.filter.outputs.governance-checks-ts }}
 
   # Spec 0262 R21-R23 (ticket #1339): the model-CI-tooling suites and their shell differential legs.
   # Linux only. `jq` comes with the runner image; `yq` is pinned to v4.44.3 and its sha256 is checked.
@@ -492,6 +484,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -576,23 +570,13 @@ jobs:
               - 'scripts/tests/lib/windows-install-proof.ts'
               - 'scripts/tests/lib/install-golden-*.ts'
               - 'scripts/tests/fixtures/install-golden/**'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.install-ts == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-          cache: npm
-      - name: Install production dependencies
-        if: steps.filter.outputs.install-ts == 'true'
-        run: npm ci --omit=dev --workspaces=false
-      - name: Floor guard accepts Node.js 24
-        if: steps.filter.outputs.install-ts == 'true'
-        run: node scripts/lib/node-floor-guard.js
-      - name: Test the TypeScript link-or-copy, component twin, manage and install modules
-        if: steps.filter.outputs.install-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-migrate.test.ts scripts/tests/component-install.test.ts scripts/tests/component-overlay.test.ts scripts/tests/component-roots.test.ts scripts/tests/component-twins-conformance-migrate.test.ts scripts/tests/component-twins-conformance.test.ts scripts/tests/install-oracle-mutation.test.ts scripts/tests/link-or-copy-classify.test.ts scripts/tests/link-or-copy-remove.test.ts scripts/tests/link-or-copy-swap.test.ts scripts/tests/link-or-copy.test.ts scripts/tests/manage-confirm.test.ts scripts/tests/manage-descriptors.test.ts scripts/tests/manage-main.test.ts scripts/tests/manage-mcp-claude.test.ts scripts/tests/manage-mcp-json.test.ts scripts/tests/manage-overlay-loop.test.ts scripts/tests/manage-place.test.ts scripts/tests/print-manage-declarations.test.ts scripts/tests/tree-copy-dereferenced.test.ts scripts/tests/manage-entry.test.ts scripts/tests/marketplace.test.ts scripts/tests/antigravity-tokens.test.ts scripts/tests/install-all.test.ts scripts/tests/install-entry-form.test.ts scripts/tests/install-file-size.test.ts scripts/tests/install-extension-reentrancy.test.ts scripts/tests/worktree-claim-launch.test.ts scripts/tests/install-golden.test.ts scripts/tests/install-references.test.ts scripts/tests/install-write-mode.test.ts scripts/tests/windows-install-entries.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: install-ts
+          node: 24
+          install: omit-dev
+          task: true
+          shadow-filter: ${{ steps.filter.outputs.install-ts }}
 
 
   # Spec 0255 R3: the install, manage and link entries print nothing on the oldest Node.js 24 release.
@@ -722,6 +706,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -843,23 +829,13 @@ jobs:
               - 'scripts/tests/lib/tls-quote-measure.ts'
               - 'scripts/tests/fixtures/setup-tls/**'
               - 'scripts/tests/fixtures/setup-golden/**'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.setup-modules-ts == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-          cache: npm
-      - name: Install production dependencies
-        if: steps.filter.outputs.setup-modules-ts == 'true'
-        run: npm ci --omit=dev --workspaces=false
-      - name: Floor guard accepts Node.js 24
-        if: steps.filter.outputs.setup-modules-ts == 'true'
-        run: node scripts/lib/node-floor-guard.js
-      - name: Test the TypeScript setup modules
-        if: steps.filter.outputs.setup-modules-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-antigravity-hooks.test.ts scripts/tests/setup-antigravity-statusline.test.ts scripts/tests/setup-antigravity-tier.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-backup-failure.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-chroma-install.test.ts scripts/tests/setup-chroma-install-win.test.ts scripts/tests/setup-chroma-unit.test.ts scripts/tests/setup-cli-claude-gemini.test.ts scripts/tests/setup-cli-copilot-antigravity.test.ts scripts/tests/setup-declarations.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-ensure-http.test.ts scripts/tests/setup-ensure-http-probes.test.ts scripts/tests/setup-ensure-http-wiring.test.ts scripts/tests/setup-file-size.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-flow.test.ts scripts/tests/setup-flow-steps.test.ts scripts/tests/setup-gemini-settings.test.ts scripts/tests/setup-gemini-settings-rc.test.ts scripts/tests/setup-gemini-settings-write.test.ts scripts/tests/setup-golden-evidence.test.ts scripts/tests/setup-hint-strings.test.ts scripts/tests/setup-hooks-rewrite.test.ts scripts/tests/setup-json-secure.test.ts scripts/tests/setup-json-secure-failure.test.ts scripts/tests/setup-lib-tls-entry.test.ts scripts/tests/setup-lib-tls-entry-offer.test.ts scripts/tests/setup-lib-usage-entry.test.ts scripts/tests/setup-lib-usage-entry-form.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-lossless-callsites.test.ts scripts/tests/setup-lossless-shim.test.ts scripts/tests/setup-lossless-writers.test.ts scripts/tests/setup-mcp-agy-step.test.ts scripts/tests/setup-mcp-claude-flow.test.ts scripts/tests/setup-mcp-claude-step.test.ts scripts/tests/setup-mcp-copilot-step.test.ts scripts/tests/setup-mcp-gemini-step.test.ts scripts/tests/setup-mcp-json-writers.test.ts scripts/tests/setup-mcp-json-writers-merge.test.ts scripts/tests/setup-mempalace-callsite.test.ts scripts/tests/setup-mempalace-detect.test.ts scripts/tests/setup-mempalace-install-offer.test.ts scripts/tests/setup-mempalace-stdio.test.ts scripts/tests/setup-mempalace-version.test.ts scripts/tests/setup-misc-paths.test.ts scripts/tests/setup-no-posix-tool.test.ts scripts/tests/setup-org-mcp-claude-argv.test.ts scripts/tests/setup-org-mcp-fold.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-references.test.ts scripts/tests/setup-session-recording.test.ts scripts/tests/setup-session-recording-ownership.test.ts scripts/tests/setup-stdlib-closure.test.ts scripts/tests/setup-steps-agy.test.ts scripts/tests/setup-steps-agy-channels.test.ts scripts/tests/setup-steps-copilot.test.ts scripts/tests/setup-steps-hooks.test.ts scripts/tests/setup-steps-hooks-lossy.test.ts scripts/tests/setup-steps-mcp.test.ts scripts/tests/setup-steps-rules.test.ts scripts/tests/setup-steps-rules-edge.test.ts scripts/tests/setup-steps-tiers.test.ts scripts/tests/setup-steps-usage.test.ts scripts/tests/setup-store-guidance.test.ts scripts/tests/setup-summary.test.ts scripts/tests/setup-tier-build.test.ts scripts/tests/setup-tier-install.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-trust-wrapper.test.ts scripts/tests/setup-trust-wrapper-install.test.ts scripts/tests/setup-usage-capture.test.ts scripts/tests/setup-usage-capture-keep.test.ts scripts/tests/setup-usage-capture-rank.test.ts scripts/tests/setup-usage-capture-state.test.ts scripts/tests/setup-usage-capture-wire-path.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: setup-modules-ts
+          node: 24
+          install: omit-dev
+          task: true
+          shadow-filter: ${{ steps.filter.outputs.setup-modules-ts }}
 
   # Spec 0257 (row of epic #1231, ticket #1336), PR 4a: the TypeScript monorepo release driver
   # modules (refusals, forge, mode, branch, identity, credentials, classification, engine-log
@@ -868,6 +844,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -906,23 +884,13 @@ jobs:
               - 'scripts/tests/lib/release-main-fixture.ts'
               - 'scripts/tests/fixtures/release/**'
               - 'scripts/monorepo-release.ts'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.release-driver-modules-ts == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-          cache: npm
-      - name: Install production dependencies
-        if: steps.filter.outputs.release-driver-modules-ts == 'true'
-        run: npm ci --omit=dev --workspaces=false
-      - name: Floor guard accepts Node.js 24
-        if: steps.filter.outputs.release-driver-modules-ts == 'true'
-        run: node scripts/lib/node-floor-guard.js
-      - name: Test the TypeScript monorepo release driver modules
-        if: steps.filter.outputs.release-driver-modules-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-preflight.test.ts scripts/tests/monorepo-release-credentials.test.ts scripts/tests/monorepo-release-log-parse.test.ts scripts/tests/monorepo-release-prepare-cmd.test.ts scripts/tests/monorepo-release-config.test.ts scripts/tests/monorepo-release-process.test.ts scripts/tests/monorepo-release-scratch.test.ts scripts/tests/monorepo-release-mirror.test.ts scripts/tests/monorepo-release-clone-modules.test.ts scripts/tests/monorepo-release-flows-publish.test.ts scripts/tests/monorepo-release-flows-rehearsal.test.ts scripts/tests/monorepo-release-github.test.ts scripts/tests/monorepo-release-github-sync.test.ts scripts/tests/monorepo-release-main.test.ts scripts/tests/monorepo-release-main-flow.test.ts scripts/tests/monorepo-release-file-size.test.ts scripts/tests/monorepo-release-extension-dirs.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: release-driver-modules-ts
+          node: 24
+          install: omit-dev
+          task: true
+          shadow-filter: ${{ steps.filter.outputs.release-driver-modules-ts }}
 
   # Spec 0257 (ticket #1336), PRs 2 and 3: the deterministic tar.gz archive writer, the
   # documentation index and the release packaging modules. The release differential suite spawns
@@ -931,6 +899,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -980,23 +950,13 @@ jobs:
               - 'scripts/tests/lib/packaging-release-*.ts'
               - 'scripts/tests/lib/golden-normalize.ts'
               - 'scripts/tests/lib/release-driver-sandbox.ts'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.packaging-modules-ts == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-          cache: npm
-      - name: Install production dependencies
-        if: steps.filter.outputs.packaging-modules-ts == 'true'
-        run: npm ci --omit=dev --workspaces=false
-      - name: Floor guard accepts Node.js 24
-        if: steps.filter.outputs.packaging-modules-ts == 'true'
-        run: node scripts/lib/node-floor-guard.js
-      - name: Test the TypeScript archive writer, documentation index and release packaging modules
-        if: steps.filter.outputs.packaging-modules-ts == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tar-writer.test.ts scripts/tests/docs-index.test.ts scripts/tests/docs-index-walk.test.ts scripts/tests/build-docs-index-entry.test.ts scripts/tests/packaging-file-size.test.ts scripts/tests/packaging-release-package.test.ts scripts/tests/packaging-release-package-cli.test.ts scripts/tests/packaging-spawn-tiers.test.ts scripts/tests/packaging-entries.test.ts scripts/tests/release-sync-manifests.test.ts scripts/tests/packaging-release-golden-portable.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: packaging-modules-ts
+          node: 24
+          install: omit-dev
+          task: true
+          shadow-filter: ${{ steps.filter.outputs.packaging-modules-ts }}
 
   # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
   # release. No path filter, like `mempalace-transcript-node-24-0`.

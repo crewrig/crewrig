@@ -147,3 +147,30 @@ test("ci-job action: inputs, step order, gated cancel step, no || true", () => {
   );
   assert.ok(!/\|\|\s*true/.test(t));
 });
+
+test("ci-job action: no expression inside a run script, one production install (i2-F1, i2-F2)", () => {
+  const t = fs.readFileSync(".github/actions/ci-job/action.yml", "utf8");
+  // i2-F2: every inputs.*/steps.* value reaches a `run:` through env:, never interpolated.
+  const lines = t.split("\n");
+  for (const [i, line] of lines.entries()) {
+    const m = /^(\s*)run: (\|)?(.*)$/.exec(line);
+    if (!m) continue;
+    const indent = (m[1] ?? "").length;
+    const body = [m[3] ?? ""];
+    if (m[2]) {
+      for (let j = i + 1; j < lines.length; j++) {
+        const l = lines[j] ?? "";
+        if (l.trim() !== "" && l.length - l.trimStart().length <= indent) break;
+        body.push(l);
+      }
+    }
+    assert.ok(!body.join("\n").includes("${{"), `expression interpolated in run at line ${i + 1}`);
+  }
+  // i2-F1: the pre-gate production install is the only one; omit-dev adds no second install.
+  const prod = t.match(/run: npm ci --omit=dev --workspaces=false/g) ?? [];
+  assert.equal(prod.length, 1, "exactly one production install");
+  assert.ok(
+    t.indexOf("npm ci --omit=dev") < t.indexOf("ci-paths-gate.ts"),
+    "the production install precedes the gate",
+  );
+});

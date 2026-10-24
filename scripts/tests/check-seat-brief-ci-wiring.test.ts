@@ -12,7 +12,11 @@ import { describe, test } from "node:test";
 
 import { loadTaskfileTree, taskCmds, type TaskfileTree } from "../lib/taskfile-tree.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
-import { effectivePaths } from "./lib/ci-task-commands.ts";
+import {
+  ciTaskCommands,
+  effectivePaths,
+  resolveCapabilityCommands,
+} from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
 const ID = "check-seat-brief";
@@ -65,27 +69,33 @@ function assertCapabilities(text: string): void {
   const gov = caps.find((c) => c.id === "governance-checks-ts");
   assert.ok(gov);
   for (const t of TESTS)
-    assert.ok((gov.command ?? []).join(" ").includes(t), `governance runs ${t}`);
+    assert.ok(resolveCapabilityCommands(gov.command).join(" ").includes(t), `governance runs ${t}`);
 }
 
-function assertGithub(text: string): void {
+function assertGithub(
+  text: string,
+  govCmds: string[] = ciTaskCommands("governance-checks-ts"),
+): void {
   const job = jobBlock(text, new RegExp(`\\n  ${ID}:\\n`));
   assert.ok(job.includes("node-version: 24"));
   assert.ok(job.includes(CONFORMING));
   assert.ok(job.includes(BREACHING.replace("! ", "")));
   const gov = jobBlock(text, /\n {2}governance-checks-ts:\n/);
-  for (const t of TESTS) assert.ok(gov.includes(t), `governance-checks-ts runs ${t}`);
+  for (const t of TESTS) assert.ok(govCmds.join(" ").includes(t), `governance-checks-ts runs ${t}`);
   for (const p of ["scripts/tests/fixtures/seat-brief/**", "scripts/tests/check-seat-brief*"])
     assert.ok(gov.includes(`'${p}'`), `filter has ${p}`);
 }
 
-function assertGitlab(text: string): void {
+function assertGitlab(
+  text: string,
+  govCmds: string[] = ciTaskCommands("governance-checks-ts"),
+): void {
   const job = jobBlock(text, new RegExp(`\\n${ID}:\\n`), true);
   assert.ok(job.includes("image: node:24"));
   assert.ok(job.includes(CONFORMING));
   assert.ok(job.includes(BREACHING));
   const gov = jobBlock(text, /\ngovernance-checks-ts:\n/, true);
-  for (const t of TESTS) assert.ok(gov.includes(t), `governance-checks-ts runs ${t}`);
+  for (const t of TESTS) assert.ok(govCmds.join(" ").includes(t), `governance-checks-ts runs ${t}`);
 }
 
 function assertTaskfile(tree: TaskfileTree): void {
@@ -109,7 +119,12 @@ describe("check-seat-brief CI wiring", () => {
   });
   test("mutation: a governance job without the seat brief test is rejected", () => {
     assert.throws(() =>
-      assertGitlab(read(".gitlab-ci.yml").replaceAll("scripts/tests/check-seat-brief.test.ts", "")),
+      assertGitlab(
+        read(".gitlab-ci.yml"),
+        ciTaskCommands("governance-checks-ts").map((c) =>
+          c.replaceAll("scripts/tests/check-seat-brief.test.ts", ""),
+        ),
+      ),
     );
   });
   test("mutation: a capability on the wrong runtime is rejected", () => {

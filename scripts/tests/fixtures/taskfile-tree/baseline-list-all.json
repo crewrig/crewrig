@@ -172,6 +172,10 @@
     "desc": "Check .gitlab-ci.yml is fresh against the CI reference (pre-push mirror of the CI job)"
   },
   {
+    "name": "ci:governance-checks-ts",
+    "desc": "Run the governance-checks-ts CI capability (pre-push mirror of the CI job)"
+  },
+  {
     "name": "ci:hooks-install",
     "desc": "Enable the native pre-push hook for this clone by setting core.hooksPath to .githooks (spec 0279 R15)"
   },
@@ -190,6 +194,10 @@
   {
     "name": "ci:host-safety-selftest",
     "desc": "Run the host-safety self-tests (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:install-ts",
+    "desc": "Run the install-ts CI capability (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:lint-markdown",
@@ -216,6 +224,10 @@
     "desc": "Run the Markdown link suite tests (pre-push mirror of the CI job)"
   },
   {
+    "name": "ci:packaging-modules-ts",
+    "desc": "Run the packaging-modules-ts CI capability (pre-push mirror of the CI job)"
+  },
+  {
     "name": "ci:path-ownership",
     "desc": "Run the path-ownership and stray-scan wiring checks (pre-push mirror of the CI job)"
   },
@@ -236,8 +248,16 @@
     "desc": "Run the footprint ratchet self-tests (pre-push mirror of the CI job)"
   },
   {
+    "name": "ci:release-driver-modules-ts",
+    "desc": "Run the release-driver-modules-ts CI capability (pre-push mirror of the CI job)"
+  },
+  {
     "name": "ci:repository-scan",
     "desc": "Scan the repository for machine paths, broken Markdown links and core-path drift (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:setup-modules-ts",
+    "desc": "Run the setup-modules-ts CI capability (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:test-wiring",

@@ -56,13 +56,16 @@ function assertCapabilities(text: string): void {
     assert.ok(resolveCapabilityCommands(gov.command).join(" ").includes(t), `governance runs ${t}`);
 }
 
-function assertGithub(text: string): void {
+function assertGithub(
+  text: string,
+  govCmds: string[] = ciTaskCommands("governance-checks-ts"),
+): void {
   const job = jobBlock(text, new RegExp(`\\n  ${ID}:\\n`));
   assert.ok(job.includes(`id: ${ID}`), "thin ci-job call");
   assert.ok(job.includes("node: 24"));
   assertTaskRunsFixtures();
   const gov = jobBlock(text, /\n {2}governance-checks-ts:\n/);
-  for (const t of TESTS) assert.ok(gov.includes(t), `governance-checks-ts runs ${t}`);
+  for (const t of TESTS) assert.ok(govCmds.join(" ").includes(t), `governance-checks-ts runs ${t}`);
   for (const p of [
     "scripts/tests/fixtures/comment-size/**",
     "scripts/tests/fixtures/seat-ledger/**",
@@ -72,13 +75,16 @@ function assertGithub(text: string): void {
     assert.ok(gov.includes(`'${p}'`), `filter has ${p}`);
 }
 
-function assertGitlab(text: string): void {
+function assertGitlab(
+  text: string,
+  govCmds: string[] = ciTaskCommands("governance-checks-ts"),
+): void {
   const job = jobBlock(text, new RegExp(`\\n${ID}:\\n`), true);
   assert.ok(job.includes("image: node:24"));
   assert.ok(job.includes(`task ci:${ID}`), "runs the task");
   assertTaskRunsFixtures();
   const gov = jobBlock(text, /\ngovernance-checks-ts:\n/, true);
-  for (const t of TESTS) assert.ok(gov.includes(t), `governance-checks-ts runs ${t}`);
+  for (const t of TESTS) assert.ok(govCmds.join(" ").includes(t), `governance-checks-ts runs ${t}`);
 }
 
 function assertTaskfile(tree: TaskfileTree): void {
@@ -98,7 +104,12 @@ describe("check-comment-size CI wiring", () => {
   });
   test("mutation: a governance job without the ledger test is rejected", () => {
     assert.throws(() =>
-      assertGitlab(read(".gitlab-ci.yml").replaceAll("scripts/tests/seat-ledger.test.ts", "")),
+      assertGitlab(
+        read(".gitlab-ci.yml"),
+        ciTaskCommands("governance-checks-ts").map((c) =>
+          c.replaceAll("scripts/tests/seat-ledger.test.ts", ""),
+        ),
+      ),
     );
   });
   test("mutation: a capability on the wrong runtime is rejected", () => {

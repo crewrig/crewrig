@@ -32,23 +32,30 @@ runs:
       with:
         node-version: ${{ inputs.node }}
         cache: ${{ inputs.install != 'none' && 'npm' || '' }}
+    # The gate needs js-yaml (the yq reader), so this production install precedes it. It is the
+    # only production install: `omit-dev` jobs need nothing more, `ci`/`install` jobs add the full one.
     - shell: bash
       run: npm ci --omit=dev --workspaces=false
     - id: gate
       shell: bash
       env:
         GATE_BEFORE: ${{ github.event.before }}
+        JOB_ID: ${{ inputs.id }}
+        SHADOW_FILTER: ${{ inputs.shadow-filter }}
       run: |
-        args=(--capability "${{ inputs.id }}")
-        if [ -n "${{ inputs.shadow-filter }}" ]; then args+=(--filter-result "${{ inputs.shadow-filter }}"); fi
+        args=(--capability "${JOB_ID}")
+        if [ -n "${SHADOW_FILTER}" ]; then args+=(--filter-result "${SHADOW_FILTER}"); fi
         if ! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-paths-gate.ts "${args[@]}"; then
-          if [ -z "${{ inputs.shadow-filter }}" ]; then exit 1; fi
-          echo "::warning title=ci-paths-gate-shadow::${{ inputs.id }} DISAGREE gate crashed, the dorny filter decides"
+          if [ -z "${SHADOW_FILTER}" ]; then exit 1; fi
+          echo "::warning title=ci-paths-gate-shadow::${JOB_ID} DISAGREE gate crashed, the dorny filter decides"
         fi
     - id: decide
       shell: bash
+      env:
+        SHADOW_FILTER: ${{ inputs.shadow-filter }}
+        GATE_CHANGED: ${{ steps.gate.outputs.changed }}
       run: |
-        if [ -n "${{ inputs.shadow-filter }}" ]; then run="${{ inputs.shadow-filter }}"; else run="${{ steps.gate.outputs.changed }}"; fi
+        if [ -n "${SHADOW_FILTER}" ]; then run="${SHADOW_FILTER}"; else run="${GATE_CHANGED}"; fi
         echo "run=${run}" >> "${GITHUB_OUTPUT}"
     - if: steps.decide.outputs.run == 'true' && inputs.task == 'true'
       uses: ./.github/actions/setup-task
@@ -58,16 +65,15 @@ runs:
     - if: steps.decide.outputs.run == 'true' && inputs.install == 'install'
       shell: bash
       run: npm install
-    - if: steps.decide.outputs.run == 'true' && inputs.install == 'omit-dev'
-      shell: bash
-      run: npm ci --omit=dev --workspaces=false
     - if: steps.decide.outputs.run == 'true' && inputs.node == '24'
       shell: bash
       run: node scripts/lib/node-floor-guard.js
     - id: cachekey
       if: steps.decide.outputs.run == 'true' && inputs.cache == 'true'
       shell: bash
-      run: echo "key=$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --capability "${{ inputs.id }}" --print-key)" >> "${GITHUB_OUTPUT}"
+      env:
+        JOB_ID: ${{ inputs.id }}
+      run: echo "key=$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --capability "${JOB_ID}" --print-key)" >> "${GITHUB_OUTPUT}"
     - if: steps.decide.outputs.run == 'true' && inputs.cache == 'true'
       uses: actions/cache@v4
       with:
@@ -75,6 +81,8 @@ runs:
         key: ci-${{ inputs.id }}-${{ steps.cachekey.outputs.key }}
     - if: steps.decide.outputs.run == 'true' && inputs.task == 'true'
       shell: bash
-      run: task "ci:${{ inputs.id }}"
+      env:
+        JOB_ID: ${{ inputs.id }}
+      run: task "ci:${JOB_ID}"
     - if: steps.decide.outputs.run == 'true' && failure()
       uses: ./.github/actions/cancel-on-failure

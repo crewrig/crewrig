@@ -425,94 +425,93 @@ capabilities:
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
-        paths:
-          - "scripts/lib/link-or-copy*.ts"
-          - "scripts/lib/component-roots.ts"
-          - "scripts/lib/component-overlay.ts"
-          - "scripts/lib/component-install.ts"
-          - "scripts/lib/component-resolve.ts"
-          - "scripts/lib/antigravity-migrate.ts"
-          - "scripts/lib/manage/**"
-          - "scripts/lib/extension/**"
-          - "scripts/lib/paths.ts"
-          - "scripts/lib/tmp-file.ts"
-          - "scripts/lib/mempalace-python.ts"
-          - "scripts/lib/worktree-claim/**"
-          - "scripts/lib/node-floor-guard.js"
-          - "scripts/tests/antigravity-migrate.test.ts"
-          - "scripts/tests/component-install.test.ts"
-          - "scripts/tests/component-overlay.test.ts"
-          - "scripts/tests/component-roots.test.ts"
-          - "scripts/tests/component-twins-conformance-migrate.test.ts"
-          - "scripts/tests/component-twins-conformance.test.ts"
-          - "scripts/tests/install-oracle-mutation.test.ts"
-          - "scripts/tests/antigravity-manage-sandbox.test.ts"
-          - "scripts/tests/antigravity-tier-twin.test.ts"
-          - "scripts/tests/lib/antigravity-fixtures.ts"
-          - "scripts/tests/lib/worktree-fixtures.ts"
-          - "scripts/tests/tier-resolution-*.test.ts"
-          - "scripts/tests/lib/tier-fixtures.ts"
-          - "scripts/tests/lib/tier-landing.ts"
-          - "scripts/tests/lib/tier-taskfile.ts"
-          - "scripts/tests/lib/component-twins-harness.ts"
-          - "scripts/tests/lib/manage-main-run.ts"
-          - "scripts/tests/lib/overlay-loop-box.ts"
-          - "scripts/tests/lib/print-manage-declarations.ts"
-          - "scripts/tests/link-or-copy-classify.test.ts"
-          - "scripts/tests/link-or-copy-remove.test.ts"
-          - "scripts/tests/link-or-copy-swap.test.ts"
-          - "scripts/tests/link-or-copy.test.ts"
-          - "scripts/tests/manage-confirm.test.ts"
-          - "scripts/tests/manage-descriptors.test.ts"
-          - "scripts/tests/manage-main.test.ts"
-          - "scripts/tests/manage-mcp-claude.test.ts"
-          - "scripts/tests/manage-mcp-json.test.ts"
-          - "scripts/tests/manage-overlay-loop.test.ts"
-          - "scripts/tests/manage-place.test.ts"
-          - "scripts/tests/print-manage-declarations.test.ts"
-          - "scripts/tests/tree-copy-dereferenced.test.ts"
-          - "scripts/install-antigravity-extension.ts"
-          - "scripts/install-claude-plugin.ts"
-          - "scripts/install-copilot-plugin.ts"
-          - "scripts/install-extension-all.ts"
-          - "scripts/install-extension.ts"
-          - "scripts/install-workspace.ts"
-          - "scripts/manage-antigravity-component.ts"
-          - "scripts/manage-claude-component.ts"
-          - "scripts/manage-copilot-component.ts"
-          - "scripts/manage-workspace-component.ts"
-          - "scripts/link-extensions.ts"
-          - "scripts/unlink-component.ts"
-          - "scripts/unlink-extensions.ts"
-          - "scripts/lib/install/**"
-          - "scripts/tests/manage-entry.test.ts"
-          - "scripts/tests/marketplace.test.ts"
-          - "scripts/tests/antigravity-tokens.test.ts"
-          - "scripts/tests/install-all.test.ts"
-          - "scripts/tests/install-entry-form.test.ts"
-          - "scripts/tests/install-file-size.test.ts"
-          - "scripts/tests/install-extension-reentrancy.test.ts"
-          - "scripts/tests/lib/install-sandbox.ts"
-          - "scripts/tests/lib/build-fixture-tree.ts"
-          - "scripts/tests/lib/oracle-taskfile-mutants.ts"
-          - "scripts/tests/install-references.test.ts"
-          - "scripts/tests/fixtures/install/**"
-          - "scripts/tests/fixtures/manage-shell-facts/**"
-          - "scripts/tests/install-golden.test.ts"
-          - "scripts/tests/install-write-mode.test.ts"
-          - "scripts/tests/windows-install-entries.test.ts"
-          - "scripts/tests/lib/windows-proof-support.ts"
-          - "scripts/tests/lib/windows-install-proof.ts"
-          - "scripts/tests/lib/install-golden-*.ts"
-          - "scripts/tests/fixtures/install-golden/**"
+    paths:
+      - "scripts/lib/link-or-copy*.ts"
+      - "scripts/lib/component-roots.ts"
+      - "scripts/lib/component-overlay.ts"
+      - "scripts/lib/component-install.ts"
+      - "scripts/lib/component-resolve.ts"
+      - "scripts/lib/antigravity-migrate.ts"
+      - "scripts/lib/manage/**"
+      - "scripts/lib/extension/**"
+      - "scripts/lib/paths.ts"
+      - "scripts/lib/tmp-file.ts"
+      - "scripts/lib/mempalace-python.ts"
+      - "scripts/lib/worktree-claim/**"
+      - "scripts/lib/node-floor-guard.js"
+      - "scripts/tests/antigravity-migrate.test.ts"
+      - "scripts/tests/component-install.test.ts"
+      - "scripts/tests/component-overlay.test.ts"
+      - "scripts/tests/component-roots.test.ts"
+      - "scripts/tests/component-twins-conformance-migrate.test.ts"
+      - "scripts/tests/component-twins-conformance.test.ts"
+      - "scripts/tests/install-oracle-mutation.test.ts"
+      - "scripts/tests/antigravity-manage-sandbox.test.ts"
+      - "scripts/tests/antigravity-tier-twin.test.ts"
+      - "scripts/tests/lib/antigravity-fixtures.ts"
+      - "scripts/tests/lib/worktree-fixtures.ts"
+      - "scripts/tests/tier-resolution-*.test.ts"
+      - "scripts/tests/lib/tier-fixtures.ts"
+      - "scripts/tests/lib/tier-landing.ts"
+      - "scripts/tests/lib/tier-taskfile.ts"
+      - "scripts/tests/lib/component-twins-harness.ts"
+      - "scripts/tests/lib/manage-main-run.ts"
+      - "scripts/tests/lib/overlay-loop-box.ts"
+      - "scripts/tests/lib/print-manage-declarations.ts"
+      - "scripts/tests/link-or-copy-classify.test.ts"
+      - "scripts/tests/link-or-copy-remove.test.ts"
+      - "scripts/tests/link-or-copy-swap.test.ts"
+      - "scripts/tests/link-or-copy.test.ts"
+      - "scripts/tests/manage-confirm.test.ts"
+      - "scripts/tests/manage-descriptors.test.ts"
+      - "scripts/tests/manage-main.test.ts"
+      - "scripts/tests/manage-mcp-claude.test.ts"
+      - "scripts/tests/manage-mcp-json.test.ts"
+      - "scripts/tests/manage-overlay-loop.test.ts"
+      - "scripts/tests/manage-place.test.ts"
+      - "scripts/tests/print-manage-declarations.test.ts"
+      - "scripts/tests/tree-copy-dereferenced.test.ts"
+      - "scripts/install-antigravity-extension.ts"
+      - "scripts/install-claude-plugin.ts"
+      - "scripts/install-copilot-plugin.ts"
+      - "scripts/install-extension-all.ts"
+      - "scripts/install-extension.ts"
+      - "scripts/install-workspace.ts"
+      - "scripts/manage-antigravity-component.ts"
+      - "scripts/manage-claude-component.ts"
+      - "scripts/manage-copilot-component.ts"
+      - "scripts/manage-workspace-component.ts"
+      - "scripts/link-extensions.ts"
+      - "scripts/unlink-component.ts"
+      - "scripts/unlink-extensions.ts"
+      - "scripts/lib/install/**"
+      - "scripts/tests/manage-entry.test.ts"
+      - "scripts/tests/marketplace.test.ts"
+      - "scripts/tests/antigravity-tokens.test.ts"
+      - "scripts/tests/install-all.test.ts"
+      - "scripts/tests/install-entry-form.test.ts"
+      - "scripts/tests/install-file-size.test.ts"
+      - "scripts/tests/install-extension-reentrancy.test.ts"
+      - "scripts/tests/lib/install-sandbox.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/tests/lib/oracle-taskfile-mutants.ts"
+      - "scripts/tests/install-references.test.ts"
+      - "scripts/tests/fixtures/install/**"
+      - "scripts/tests/fixtures/manage-shell-facts/**"
+      - "scripts/tests/install-golden.test.ts"
+      - "scripts/tests/install-write-mode.test.ts"
+      - "scripts/tests/windows-install-entries.test.ts"
+      - "scripts/tests/lib/windows-proof-support.ts"
+      - "scripts/tests/lib/windows-install-proof.ts"
+      - "scripts/tests/lib/install-golden-*.ts"
+      - "scripts/tests/fixtures/install-golden/**"
     portability: portable
     requires:
       runtime: node@24
-      tools: [jq]
+      tools: [jq, task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-migrate.test.ts scripts/tests/component-install.test.ts scripts/tests/component-overlay.test.ts scripts/tests/component-roots.test.ts scripts/tests/component-twins-conformance-migrate.test.ts scripts/tests/component-twins-conformance.test.ts scripts/tests/install-oracle-mutation.test.ts scripts/tests/link-or-copy-classify.test.ts scripts/tests/link-or-copy-remove.test.ts scripts/tests/link-or-copy-swap.test.ts scripts/tests/link-or-copy.test.ts scripts/tests/manage-confirm.test.ts scripts/tests/manage-descriptors.test.ts scripts/tests/manage-main.test.ts scripts/tests/manage-mcp-claude.test.ts scripts/tests/manage-mcp-json.test.ts scripts/tests/manage-overlay-loop.test.ts scripts/tests/manage-place.test.ts scripts/tests/print-manage-declarations.test.ts scripts/tests/tree-copy-dereferenced.test.ts scripts/tests/manage-entry.test.ts scripts/tests/marketplace.test.ts scripts/tests/antigravity-tokens.test.ts scripts/tests/install-all.test.ts scripts/tests/install-entry-form.test.ts scripts/tests/install-file-size.test.ts scripts/tests/install-extension-reentrancy.test.ts scripts/tests/worktree-claim-launch.test.ts scripts/tests/install-golden.test.ts scripts/tests/install-references.test.ts scripts/tests/install-write-mode.test.ts scripts/tests/windows-install-entries.test.ts
+      - task ci:install-ts
 
   # Spec 0255 R3: the install, manage and link entries print nothing on the oldest Node.js 24
   # release. No `paths:` filter, like extension-builders-ts-node-24-0: any shared-module change can
@@ -751,10 +750,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-antigravity-hooks.test.ts scripts/tests/setup-antigravity-statusline.test.ts scripts/tests/setup-antigravity-tier.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-backup-failure.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-chroma-install.test.ts scripts/tests/setup-chroma-install-win.test.ts scripts/tests/setup-chroma-unit.test.ts scripts/tests/setup-cli-claude-gemini.test.ts scripts/tests/setup-cli-copilot-antigravity.test.ts scripts/tests/setup-declarations.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-ensure-http.test.ts scripts/tests/setup-ensure-http-probes.test.ts scripts/tests/setup-ensure-http-wiring.test.ts scripts/tests/setup-file-size.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-flow.test.ts scripts/tests/setup-flow-steps.test.ts scripts/tests/setup-gemini-settings.test.ts scripts/tests/setup-gemini-settings-rc.test.ts scripts/tests/setup-gemini-settings-write.test.ts scripts/tests/setup-golden-evidence.test.ts scripts/tests/setup-hint-strings.test.ts scripts/tests/setup-hooks-rewrite.test.ts scripts/tests/setup-json-secure.test.ts scripts/tests/setup-json-secure-failure.test.ts scripts/tests/setup-lib-tls-entry.test.ts scripts/tests/setup-lib-tls-entry-offer.test.ts scripts/tests/setup-lib-usage-entry.test.ts scripts/tests/setup-lib-usage-entry-form.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-lossless-callsites.test.ts scripts/tests/setup-lossless-shim.test.ts scripts/tests/setup-lossless-writers.test.ts scripts/tests/setup-mcp-agy-step.test.ts scripts/tests/setup-mcp-claude-flow.test.ts scripts/tests/setup-mcp-claude-step.test.ts scripts/tests/setup-mcp-copilot-step.test.ts scripts/tests/setup-mcp-gemini-step.test.ts scripts/tests/setup-mcp-json-writers.test.ts scripts/tests/setup-mcp-json-writers-merge.test.ts scripts/tests/setup-mempalace-callsite.test.ts scripts/tests/setup-mempalace-detect.test.ts scripts/tests/setup-mempalace-install-offer.test.ts scripts/tests/setup-mempalace-stdio.test.ts scripts/tests/setup-mempalace-version.test.ts scripts/tests/setup-misc-paths.test.ts scripts/tests/setup-no-posix-tool.test.ts scripts/tests/setup-org-mcp-claude-argv.test.ts scripts/tests/setup-org-mcp-fold.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-references.test.ts scripts/tests/setup-session-recording.test.ts scripts/tests/setup-session-recording-ownership.test.ts scripts/tests/setup-stdlib-closure.test.ts scripts/tests/setup-steps-agy.test.ts scripts/tests/setup-steps-agy-channels.test.ts scripts/tests/setup-steps-copilot.test.ts scripts/tests/setup-steps-hooks.test.ts scripts/tests/setup-steps-hooks-lossy.test.ts scripts/tests/setup-steps-mcp.test.ts scripts/tests/setup-steps-rules.test.ts scripts/tests/setup-steps-rules-edge.test.ts scripts/tests/setup-steps-tiers.test.ts scripts/tests/setup-steps-usage.test.ts scripts/tests/setup-store-guidance.test.ts scripts/tests/setup-summary.test.ts scripts/tests/setup-tier-build.test.ts scripts/tests/setup-tier-install.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-trust-wrapper.test.ts scripts/tests/setup-trust-wrapper-install.test.ts scripts/tests/setup-usage-capture.test.ts scripts/tests/setup-usage-capture-keep.test.ts scripts/tests/setup-usage-capture-rank.test.ts scripts/tests/setup-usage-capture-state.test.ts scripts/tests/setup-usage-capture-wire-path.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts
+      - task ci:setup-modules-ts
 
   # Spec 0257 (row of epic #1231, ticket #1336), PR 4a: the TypeScript monorepo release driver
   # modules (refusals, forge, mode, branch, identity, credentials, classification, engine-log
@@ -803,10 +802,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-preflight.test.ts scripts/tests/monorepo-release-credentials.test.ts scripts/tests/monorepo-release-log-parse.test.ts scripts/tests/monorepo-release-prepare-cmd.test.ts scripts/tests/monorepo-release-config.test.ts scripts/tests/monorepo-release-process.test.ts scripts/tests/monorepo-release-scratch.test.ts scripts/tests/monorepo-release-mirror.test.ts scripts/tests/monorepo-release-clone-modules.test.ts scripts/tests/monorepo-release-flows-publish.test.ts scripts/tests/monorepo-release-flows-rehearsal.test.ts scripts/tests/monorepo-release-github.test.ts scripts/tests/monorepo-release-github-sync.test.ts scripts/tests/monorepo-release-main.test.ts scripts/tests/monorepo-release-main-flow.test.ts scripts/tests/monorepo-release-file-size.test.ts scripts/tests/monorepo-release-extension-dirs.test.ts
+      - task ci:release-driver-modules-ts
 
   # Spec 0257 (ticket #1336), PRs 2 and 3: the deterministic tar.gz archive writer, the
   # documentation index, the release packager, the manifest synchronisation and the single and
@@ -869,10 +868,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tar-writer.test.ts scripts/tests/docs-index.test.ts scripts/tests/docs-index-walk.test.ts scripts/tests/build-docs-index-entry.test.ts scripts/tests/packaging-file-size.test.ts scripts/tests/packaging-release-package.test.ts scripts/tests/packaging-release-package-cli.test.ts scripts/tests/packaging-spawn-tiers.test.ts scripts/tests/packaging-entries.test.ts scripts/tests/release-sync-manifests.test.ts scripts/tests/packaging-release-golden-portable.test.ts
+      - task ci:packaging-modules-ts
 
   # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components).
   # The production dependencies are installed first, the floor guard runs, then
@@ -1131,10 +1130,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts scripts/tests/check-comment-size.test.ts scripts/tests/check-comment-size-ci-wiring.test.ts scripts/tests/check-seat-brief.test.ts scripts/tests/check-seat-brief-ci-wiring.test.ts scripts/tests/check-plan-review.test.ts scripts/tests/check-plan-review-ci-wiring.test.ts scripts/tests/check-plan-review-gate.test.ts scripts/tests/seat-ledger.test.ts scripts/tests/economy-measure.test.ts
+      - task ci:governance-checks-ts
 
   # Spec 0259 R26-R28 (ticket #1338), PR P0: the governance checks from PowerShell. The production
   # dependencies are installed first, the floor guard runs, then every
