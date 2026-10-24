@@ -144,7 +144,7 @@ function componentDriftFaults(ref: Reference): string[] {
   const faults: string[] = [];
   if ((cap.requires?.tools ?? []).includes("yq")) faults.push("component-drift: still lists yq");
   const guard = commandsOf(cap).indexOf(FLOOR_GUARD);
-  const check = commandsOf(cap).indexOf(`node ${ENTRY} --target all --check`);
+  const check = commandsOf(cap).findIndex((c) => c.endsWith(`node ${ENTRY} --target all --check`));
   if (guard < 0) faults.push("component-drift: no floor guard command");
   if (check < 0) faults.push("component-drift: no `--target all --check` command");
   if (guard >= 0 && check >= 0 && guard > check) faults.push("component-drift: guard after check");
@@ -232,6 +232,7 @@ describe("mutation check: each assertion goes red on a broken reference", () => 
   test("dropping the install command from a building capability is reported", () => {
     const copy = mutableCopy(REF);
     const cap = copy.capabilities.find((c) => c.id === "component-drift") as { command: string[] };
+    cap.command = [...commandsOf(cap as unknown as Capability)];
     cap.command = cap.command.filter((c) => !c.startsWith("npm ci"));
     assert.deepEqual(buildWiringFaults(copy as unknown as Reference), [
       "component-drift: no production install command",
@@ -241,6 +242,7 @@ describe("mutation check: each assertion goes red on a broken reference", () => 
   test("moving the install after the build is reported", () => {
     const copy = mutableCopy(REF);
     const cap = copy.capabilities.find((c) => c.id === "component-drift") as { command: string[] };
+    cap.command = [...commandsOf(cap as unknown as Capability)];
     cap.command = [...cap.command.filter((c) => !c.startsWith("npm ci")), "npm ci"];
     assert.deepEqual(buildWiringFaults(copy as unknown as Reference), [
       "component-drift: install runs after the first build",
@@ -265,6 +267,7 @@ describe("mutation check: each assertion goes red on a broken reference", () => 
       command: string[];
     };
     cap.requires.tools = ["yq"];
+    cap.command = [...commandsOf(cap as unknown as Capability)];
     cap.command = cap.command.filter((c) => c !== FLOOR_GUARD);
     assert.deepEqual(componentDriftFaults(copy as unknown as Reference), [
       "component-drift: still lists yq",

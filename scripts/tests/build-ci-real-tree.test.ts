@@ -82,8 +82,8 @@ describe("build-ci real tree (group R)", () => {
     assert.ok(jobText(outputText, "check-skill-versions").includes("GIT_DEPTH"));
   });
 
-  const parity = jobText(outputText, "ci-parity");
-  it("F: ci-parity tools:[yq] installs yq in before_script", () => {
+  const parity = jobText(outputText, "mempalace");
+  it("F: mempalace tools:[yq] installs yq in before_script", () => {
     assert.ok(parity.includes("/usr/local/bin/yq"));
   });
 
@@ -100,13 +100,17 @@ describe("build-ci real tree (group R)", () => {
 
   for (const [label, text, why] of [
     ["F2a", "cache:", "cached capability emits cache:key:files"],
-    ["F2b", "ci/ci-capabilities.yml", "cache key derived from declared files"],
+    [
+      "F2b",
+      "scripts/tests/mempalace-version-range.test.ts",
+      "cache key derived from declared files",
+    ],
     ["F2c", ".ci-cache/", "cache persists the .ci-cache/ dir"],
     ["F2d", "ci-cache-guard.ts", "hermetic command wrapped in cache-guard"],
-    ["F2e", "ci-parity-positive.test.ts", "cache-guard unwraps to the declared command"],
+    ["F2e", "setup-transcript-claude.test.ts", "cache-guard unwraps to the declared command"],
   ] as const) {
     it(`${label}: ${why}`, () => {
-      assert.ok(parity.includes(text), `ci-parity job lacks ${text}`);
+      assert.ok(parity.includes(text), `mempalace job lacks ${text}`);
     });
   }
 });

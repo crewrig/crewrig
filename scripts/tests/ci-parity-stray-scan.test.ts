@@ -1,7 +1,7 @@
 // Replaces scripts/tests/test-check-ci-parity.sh (stray-scan wiring SC1-SC3, spec 0170 delta-01 R16).
 // The parity unwrap strips only the generated cache layer, never the `--stray-scan` wrapper.
 // Selectors (P3): `release-notes` / `monorepo-release-notes-real-engine` (bare, release-notes.yml)
-// and `docs-index` / `build-docs-index-entry` (layered, build.yml).
+// and `chroma-mcp` / `chroma-wrapper-source` (layered, build.yml).
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -45,15 +45,15 @@ function load(file: string): YMap {
   return map(yamlLib.load(fs.readFileSync(file, "utf8")), file);
 }
 
-test("SC1: scanned steps, bare (release-notes) and inside a cache layer (docs-index), pass", () => {
+test("SC1: scanned steps, bare (release-notes) and inside a cache layer (chroma-mcp), pass", () => {
   const fx = makeFixture();
   const wantBare = lastCommand(fx, "release-notes");
-  const wantLayered = lastCommand(fx, "docs-index-selftest");
+  const wantLayered = lastCommand(fx, "chroma-mcp");
   const gotBare = String(
     stepOf(load(NOTES_YML(fx)), "release-notes", /monorepo-release-notes-real-engine/)["run"],
   );
   const gotLayered = String(
-    stepOf(load(BUILD_YML(fx)), "docs-index-selftest", /build-docs-index-entry/)["run"],
+    stepOf(load(BUILD_YML(fx)), "chroma-mcp", /chroma-wrapper-source/)["run"],
   );
   // Preconditions: the reference declares the scanned form.
   assert.ok(
@@ -62,19 +62,19 @@ test("SC1: scanned steps, bare (release-notes) and inside a cache layer (docs-in
   );
   assert.ok(
     wantLayered.startsWith(SCAN_PREFIX),
-    `docs-index command is not scanned: '${wantLayered}'`,
+    `chroma-mcp command is not scanned: '${wantLayered}'`,
   );
   assert.equal(gotBare, wantBare, "the release-notes step is the declared scanned command, bare");
   assert.ok(
     gotLayered.startsWith(
       "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir ",
     ) && gotLayered.endsWith(` -- ${wantLayered}`),
-    `docs-index step is not a cache layer around the declared command (got '${gotLayered}')`,
+    `chroma-mcp step is not a cache layer around the declared command (got '${gotLayered}')`,
   );
   const r = runCheck(fx);
   assert.equal(r.status, 0, r.stderr);
   assert.ok(!r.stderr.includes("capability 'release-notes' (github-actions)"), r.stderr);
-  assert.ok(!r.stderr.includes("capability 'docs-index-selftest' (github-actions)"), r.stderr);
+  assert.ok(!r.stderr.includes("capability 'chroma-mcp' (github-actions)"), r.stderr);
 });
 
 test("SC2: a bare step missing the scan fails closed", () => {
@@ -92,7 +92,7 @@ test("SC2: a bare step missing the scan fails closed", () => {
 test("SC3: a layered step missing the scan fails closed", () => {
   const fx = makeFixture();
   editYaml(BUILD_YML(fx), (doc) => {
-    const s = stepOf(doc, "docs-index-selftest", /stray-scan/);
+    const s = stepOf(doc, "chroma-mcp", /stray-scan/);
     const inner =
       " -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- ";
     const run = String(s["run"]);
@@ -101,10 +101,10 @@ test("SC3: a layered step missing the scan fails closed", () => {
   });
   const r = runCheck(fx);
   assert.equal(r.status, 1, r.stderr);
-  assert.ok(r.stderr.includes("capability 'docs-index-selftest' (github-actions)"), r.stderr);
+  assert.ok(r.stderr.includes("capability 'chroma-mcp' (github-actions)"), r.stderr);
   assert.ok(
     r.stderr.includes(
-      `unexpected step: '${NODE_TEST} scripts/tests/build-docs-index-entry.test.ts'`,
+      `unexpected step: '${lastCommand(fx, "chroma-mcp").slice(SCAN_PREFIX.length)}'`,
     ),
     r.stderr,
   );

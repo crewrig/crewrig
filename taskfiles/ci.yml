@@ -159,15 +159,15 @@ tasks:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-comment-size.ts {{.REPO_DIR}}/scripts/tests/fixtures/comment-size/under.txt
       - "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-comment-size.ts {{.REPO_DIR}}/scripts/tests/fixtures/comment-size/over.txt"
   docs-index:
-    desc: Check docs/index.json is fresh (pre-push mirror of the CI job)
+    desc: Check docs/index.json is fresh (cached by the ci-cache-guard capability key)
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node {{.REPO_DIR}}/scripts/build-docs-index.ts --check
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability docs-index -- node {{.REPO_DIR}}/scripts/build-docs-index.ts --check
   docs-index-selftest:
-    desc: Run the docs index entry test (pre-push mirror of the CI job)
+    desc: Run the docs index entry test (cached by the ci-cache-guard capability key)
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-docs-index-entry.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability docs-index-selftest -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-docs-index-entry.test.ts
   cli-matrix-fresh:
     desc: Check docs/cli-matrix.md is fresh (pre-push mirror of the CI job)
     cmds:
@@ -205,21 +205,21 @@ tasks:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/build-ci.ts --check
   component-drift:
-    desc: Check built components match their sources (pre-push mirror of the CI job)
+    desc: Check built components match their sources (cached by the ci-cache-guard capability key)
     preconditions:
       - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
         msg: "Run: task lint-bootstrap"
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node {{.REPO_DIR}}/scripts/build-components.ts --target all --check
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability component-drift -- node {{.REPO_DIR}}/scripts/build-components.ts --target all --check
   component-drift-selftest:
-    desc: Run the assembly and canonical-repo build tests (pre-push mirror of the CI job)
+    desc: Run the assembly and canonical-repo build tests (cached by the ci-cache-guard capability key)
     preconditions:
       - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
         msg: "Run: task lint-bootstrap"
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-assembly-routing.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability component-drift-selftest -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-assembly-routing.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-canonical-repo.test.ts
   frontmatter:
     desc: Run the frontmatter, skill-version, routing, install-scope and tier-resolution suites (pre-push mirror of the CI job)
@@ -461,3 +461,24 @@ tasks:
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-agent-profiles.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-agent-profiles-rejections.test.ts {{.REPO_DIR}}/scripts/tests/check-agent-profiles-green.test.ts
+  agent-profile-migration:
+    desc: Run the agent-profile migration regression suite (cached by the ci-cache-guard capability key)
+    preconditions:
+      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability agent-profile-migration -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/agent-profile-baseline-doc.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-build.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-committed.test.ts
+  ci-parity:
+    desc: Test the CI generator and parity harness (cached by the ci-cache-guard capability key)
+    preconditions:
+      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability ci-parity -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-parity-positive.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-fail-closed.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-stray-scan.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-path-filters.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-path-filters-undet.test.ts {{.REPO_DIR}}/scripts/tests/ci-effective-paths.test.ts {{.REPO_DIR}}/scripts/tests/ci-paths-equivalence.test.ts {{.REPO_DIR}}/scripts/tests/ci-paths-gate.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-ci-job.test.ts {{.REPO_DIR}}/scripts/tests/ci-job-yq.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability ci-parity -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-ci-real-tree.test.ts {{.REPO_DIR}}/scripts/tests/build-ci-synthetic.test.ts {{.REPO_DIR}}/scripts/tests/build-ci-synthetic-write.test.ts
+  check-plan-review:
+    desc: Check the plan review gate against its fixtures (pre-push mirror of the CI job)
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON -e "const {execFileSync}=require('node:child_process');const o=execFileSync(process.execPath,['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON','{{.REPO_DIR}}/scripts/check-plan-review.ts',process.argv[1],process.argv[2]],{encoding:'utf8'}).split('\\n');process.exit(o.includes('plan-review:\\x20'+process.argv[3])?0:1)" {{.REPO_DIR}}/scripts/tests/fixtures/plan-review/skip-spec.md {{.REPO_DIR}}/scripts/tests/fixtures/plan-review/skip-plan.md skipped
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON -e "const {execFileSync}=require('node:child_process');const o=execFileSync(process.execPath,['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON','{{.REPO_DIR}}/scripts/check-plan-review.ts',process.argv[1],process.argv[2]],{encoding:'utf8'}).split('\\n');process.exit(o.includes('plan-review:\\x20'+process.argv[3])?0:1)" {{.REPO_DIR}}/scripts/tests/fixtures/plan-review/skip-spec.md {{.REPO_DIR}}/scripts/tests/fixtures/plan-review/required-plan.md required

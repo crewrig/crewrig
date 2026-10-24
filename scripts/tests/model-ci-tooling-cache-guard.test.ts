@@ -14,6 +14,7 @@ import {
   type DiffCase,
   type SideCtx,
 } from "./lib/bash-suite-differential.ts";
+import { yamlLib } from "./lib/yaml-lib.ts";
 
 const posix = process.platform === "win32" ? { skip: "shell legs need bash" } : {};
 const CASE: DiffCase = { script: "scripts/ci-cache-guard.ts" };
@@ -136,8 +137,21 @@ describe("ci-cache-guard twin: real capability key-file lists", posix, () => {
       path.join(import.meta.dirname, "..", "..", ".github", "workflows", "build.yml"),
       "utf8",
     );
+    // Migrated cached capabilities key by `--capability`: their lists are the declared cache.files.
+    const refYml = fs.readFileSync(
+      path.join(import.meta.dirname, "..", "..", "ci", "ci-capabilities.yml"),
+      "utf8",
+    );
+    const declared = (
+      yamlLib.load(refYml) as { capabilities: { cache?: { files?: string[] } }[] }
+    ).capabilities
+      .map((c) => (c.cache?.files ?? []).join(","))
+      .filter((l) => l !== "");
     const lists = [
-      ...new Set([...ref.matchAll(/--key-files "([^"]*)"/g)].map((m) => m[1] as string)),
+      ...new Set([
+        ...[...ref.matchAll(/--key-files "([^"]*)"/g)].map((m) => m[1] as string),
+        ...declared,
+      ]),
     ];
     assert.ok(lists.length > 5, "the reference declares key-file lists");
     lists.forEach((list, n) =>

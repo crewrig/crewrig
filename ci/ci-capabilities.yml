@@ -86,6 +86,8 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     cache:
       files:
         - "scripts/build-components.ts"
@@ -113,9 +115,7 @@ capabilities:
         - "crewrig.config.toml"
       env: []
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node scripts/build-components.ts --target all --check
+      - task ci:component-drift
 
   - id: component-drift-selftest
     name: "Self-test the component assembly routing and canonical-repo build"
@@ -142,6 +142,8 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     cache:
       files:
         - "scripts/build-components.ts"
@@ -157,10 +159,7 @@ capabilities:
         - "scripts/ci-cache-guard.ts"
       env: []
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-assembly-routing.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-canonical-repo.test.ts
+      - task ci:component-drift-selftest
 
   - id: agent-profile-migration
     name: "Run the agent-profile migration regression suite"
@@ -186,6 +185,8 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [yq, task]
+      install: omit-dev
     cache:
       files:
         - "scripts/build-components.ts"
@@ -202,8 +203,7 @@ capabilities:
         - "scripts/ci-cache-guard.ts"
       env: []
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/agent-profile-baseline-doc.test.ts scripts/tests/agent-profile-build.test.ts scripts/tests/agent-profile-committed.test.ts
+      - task ci:agent-profile-migration
 
   # Spec 0250 R27, R28 (issue #1332): the TypeScript component-build core, its
   # shared library twins and their node --test suites. `paths:` lists every
@@ -1512,14 +1512,12 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
-      tools: [yq]
+      tools: [yq, task]
+      install: omit-dev
     cache:
       env: []
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-parity-positive.test.ts scripts/tests/ci-parity-fail-closed.test.ts scripts/tests/ci-parity-stray-scan.test.ts scripts/tests/ci-parity-path-filters.test.ts scripts/tests/ci-parity-path-filters-undet.test.ts scripts/tests/ci-effective-paths.test.ts scripts/tests/ci-paths-equivalence.test.ts scripts/tests/ci-paths-gate.test.ts scripts/tests/ci-parity-ci-job.test.ts scripts/tests/ci-job-yq.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-ci-real-tree.test.ts scripts/tests/build-ci-synthetic.test.ts scripts/tests/build-ci-synthetic-write.test.ts
+      - task ci:ci-parity
 
   - id: docs-index
     name: "Check docs index drift"
@@ -1541,6 +1539,8 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     cache:
       files:
         - "scripts/build-docs-index.ts"
@@ -1554,8 +1554,7 @@ capabilities:
         - "scripts/ci-cache-guard.ts"
       env: []
     command:
-      - node scripts/lib/node-floor-guard.js
-      - node scripts/build-docs-index.ts --check
+      - task ci:docs-index
 
   - id: docs-index-selftest
     name: "Self-test the docs index builder"
@@ -1580,6 +1579,8 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     cache:
       files:
         - "scripts/build-docs-index.ts"
@@ -1593,8 +1594,7 @@ capabilities:
         - "scripts/ci-cache-guard.ts"
       env: []
     command:
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-docs-index-entry.test.ts
+      - task ci:docs-index-selftest
 
   - id: cli-matrix-fresh
     name: "Check the CLI matrix is regenerated"
@@ -2372,7 +2372,7 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
-      tools: [task, task]
+      tools: [task]
       install: omit-dev
     command:
       - task ci:check-task-provisioning
@@ -2433,7 +2433,7 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
-      tools: [task, task]
+      tools: [task]
       install: ci
     command:
       - task ci:ci-pre-push-replay
@@ -3341,9 +3341,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     command:
-      - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-plan-review.ts scripts/tests/fixtures/plan-review/skip-spec.md scripts/tests/fixtures/plan-review/skip-plan.md | grep -qx 'plan-review: skipped'"
-      - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-plan-review.ts scripts/tests/fixtures/plan-review/skip-spec.md scripts/tests/fixtures/plan-review/required-plan.md | grep -qx 'plan-review: required'"
+      - task ci:check-plan-review
 
   - id: check-rules-size
     name: "Check always-loaded core rules size"

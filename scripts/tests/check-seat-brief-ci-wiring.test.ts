@@ -61,7 +61,8 @@ function assertCapabilities(text: string): void {
   const cap = caps.find((c) => c.id === ID);
   assert.ok(cap, `capability ${ID}`);
   assert.equal(cap.requires?.runtime, "node@24");
-  assert.deepEqual(cap.command, [CONFORMING, BREACHING]);
+  assert.deepEqual(cap.command, [`task ci:${ID}`]);
+  assert.deepEqual(resolveCapabilityCommands(cap.command), [CONFORMING, BREACHING]);
   assert.equal(cap["changeset-gated"], true);
   assert.equal(cap.trigger?.length, 2);
   for (const t of cap.trigger ?? [])
@@ -75,11 +76,12 @@ function assertCapabilities(text: string): void {
 function assertGithub(
   text: string,
   govCmds: string[] = ciTaskCommands("governance-checks-ts"),
+  cmds: string[] = ciTaskCommands(ID),
 ): void {
   const job = jobBlock(text, new RegExp(`\\n  ${ID}:\\n`));
-  assert.ok(job.includes("node-version: 24"));
-  assert.ok(job.includes(CONFORMING));
-  assert.ok(job.includes(BREACHING.replace("! ", "")));
+  assert.ok(job.includes(`id: ${ID}`) && job.includes("./.github/actions/ci-job"), "calls ci-job");
+  assert.ok(cmds.includes(CONFORMING));
+  assert.ok(cmds.includes(BREACHING));
   const gov = jobBlock(text, /\n {2}governance-checks-ts:\n/);
   for (const t of TESTS) assert.ok(govCmds.join(" ").includes(t), `governance-checks-ts runs ${t}`);
   for (const p of ["scripts/tests/fixtures/seat-brief/**", "scripts/tests/check-seat-brief*"])
@@ -89,11 +91,13 @@ function assertGithub(
 function assertGitlab(
   text: string,
   govCmds: string[] = ciTaskCommands("governance-checks-ts"),
+  cmds: string[] = ciTaskCommands(ID),
 ): void {
   const job = jobBlock(text, new RegExp(`\\n${ID}:\\n`), true);
   assert.ok(job.includes("image: node:24"));
-  assert.ok(job.includes(CONFORMING));
-  assert.ok(job.includes(BREACHING));
+  assert.ok(job.includes(`task ci:${ID}`), "runs the task");
+  assert.ok(cmds.includes(CONFORMING));
+  assert.ok(cmds.includes(BREACHING));
   const gov = jobBlock(text, /\ngovernance-checks-ts:\n/, true);
   for (const t of TESTS) assert.ok(govCmds.join(" ").includes(t), `governance-checks-ts runs ${t}`);
 }
@@ -113,7 +117,9 @@ describe("check-seat-brief CI wiring", () => {
   test("mutation: a job that does not run the breaching fixture is rejected", () => {
     assert.throws(() =>
       assertGithub(
-        read(".github", "workflows", "build.yml").replace(BREACHING.replace("! ", ""), "true"),
+        read(".github", "workflows", "build.yml"),
+        ciTaskCommands("governance-checks-ts"),
+        ciTaskCommands(ID).map((c) => c.replace(BREACHING, "true")),
       ),
     );
   });

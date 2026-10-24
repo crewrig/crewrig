@@ -76,27 +76,12 @@ jobs:
               - 'crewrig.config.toml'
               - 'package.json'
               - 'package-lock.json'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.component-drift == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-      - name: Install production dependencies
-        if: steps.filter.outputs.component-drift == 'true'
-        run: npm ci --omit=dev --workspaces=false
-      - uses: actions/cache@v4
-        if: steps.filter.outputs.component-drift == 'true'
-        with:
-          path: .ci-cache
-          key: ${{ hashFiles('scripts/build-components.ts', 'scripts/build-components.ts', 'scripts/tests/build-components-canonical-repo.test.ts', 'scripts/tests/agent-profile-*.test.ts', 'scripts/tests/lib/build-sandbox.ts', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**', '.agents/skills/**', '.claude/skills/**', '.gemini/skills/**', '.github/skills/**', '.gemini/commands/**', '.agents/agents/**', '.claude/agents/**', '.gemini/agents/**', '.github/agents/**', 'crewrig.config.toml', 'package.json', 'package-lock.json') }}
-      - name: Floor guard accepts the running Node.js
-        if: steps.filter.outputs.component-drift == 'true'
-        run: node scripts/lib/node-floor-guard.js
-      - name: Build Components
-        if: steps.filter.outputs.component-drift == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/build-components.ts,scripts/build-components.ts,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/agent-profile-*.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,.agents/agents/**,.claude/agents/**,.gemini/agents/**,.github/agents/**,crewrig.config.toml,package.json,package-lock.json" --key-env "" -- node scripts/build-components.ts --target all --check
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: component-drift
+          install: omit-dev
+          cache: true
+          shadow-filter: ${{ steps.filter.outputs.component-drift }}
 
   component-drift-selftest:
     runs-on: ubuntu-latest
@@ -120,30 +105,12 @@ jobs:
               - 'taskfiles/ci.yml'
               - '.github/workflows/build.yml'
               - 'ci/ci-capabilities.yml'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.component-drift-selftest == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-      - uses: actions/cache@v4
-        if: steps.filter.outputs.component-drift-selftest == 'true'
-        with:
-          path: .ci-cache
-          key: ${{ hashFiles('scripts/build-components.ts', 'scripts/lib/**', 'package.json', 'package-lock.json', 'scripts/tests/build-assembly-routing.test.ts', 'scripts/tests/build-components-canonical-repo.test.ts', 'scripts/tests/lib/build-sandbox.ts', 'scripts/tests/lib/build-fixture-tree.ts', 'scripts/tests/fixtures/build-components/**', 'scripts/lib/node-floor-guard.js', 'scripts/ci-cache-guard.ts') }}
-      - name: Install production dependencies
-        if: steps.filter.outputs.component-drift-selftest == 'true'
-        run: npm ci --omit=dev --workspaces=false
-      - name: Floor guard accepts Node.js 24
-        if: steps.filter.outputs.component-drift-selftest == 'true'
-        run: node scripts/lib/node-floor-guard.js
-      - name: Run the self-tests
-        if: steps.filter.outputs.component-drift-selftest == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/build-components.ts,scripts/lib/**,package.json,package-lock.json,scripts/tests/build-assembly-routing.test.ts,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/tests/lib/build-fixture-tree.ts,scripts/tests/fixtures/build-components/**,scripts/lib/node-floor-guard.js,scripts/ci-cache-guard.ts" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-assembly-routing.test.ts
-      - name: Run the self-tests
-        if: steps.filter.outputs.component-drift-selftest == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/build-components.ts,scripts/lib/**,package.json,package-lock.json,scripts/tests/build-assembly-routing.test.ts,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/tests/lib/build-fixture-tree.ts,scripts/tests/fixtures/build-components/**,scripts/lib/node-floor-guard.js,scripts/ci-cache-guard.ts" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-canonical-repo.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: component-drift-selftest
+          install: omit-dev
+          cache: true
+          shadow-filter: ${{ steps.filter.outputs.component-drift-selftest }}
 
   agent-profile-migration:
     runs-on: ubuntu-latest
@@ -166,30 +133,14 @@ jobs:
               - 'docs/layers.md'
               - 'docs/agent-profile-migration.md'
               - 'model-mappings/**'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.agent-profile-migration == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-      - name: Install production dependencies
-        if: steps.filter.outputs.agent-profile-migration == 'true'
-        run: npm ci --omit=dev --workspaces=false
-      - name: Install yq
-        if: steps.filter.outputs.agent-profile-migration == 'true'
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
-          echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
-          sudo chmod +x /usr/local/bin/yq
-      - uses: actions/cache@v4
-        if: steps.filter.outputs.agent-profile-migration == 'true'
-        with:
-          path: .ci-cache
-          key: agent-profile-migration-${{ hashFiles('scripts/build-components.ts', 'scripts/build-components.ts', 'scripts/tests/build-components-canonical-repo.test.ts', 'scripts/tests/agent-profile-*.test.ts', 'scripts/tests/lib/build-sandbox.ts', 'scripts/lib/**', 'artifacts/**', 'extensions/**', '.crewrig/core-paths.txt', 'docs/agent-profile-migration.md', 'model-mappings/**', 'scripts/ci-cache-guard.ts') }}
-      - name: Test Agent Profile Migration
-        if: steps.filter.outputs.agent-profile-migration == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/build-components.ts,scripts/build-components.ts,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/agent-profile-*.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.ts" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/agent-profile-baseline-doc.test.ts scripts/tests/agent-profile-build.test.ts scripts/tests/agent-profile-committed.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: agent-profile-migration
+          install: omit-dev
+          yq: "4.54.1"
+          cache: true
+          shadow-filter: ${{ steps.filter.outputs.agent-profile-migration }}
+
   # Spec 0250 R27: production install (spec 0240 R4), floor guard, `--check` on the
   # real tree, the Linux run of the Windows proof script, then the named suites
   # (the dev-toolchain suite runs in `lint-typescript`). Needs yq for the parity suites.
@@ -495,7 +446,6 @@ jobs:
           id: install-ts
           install: omit-dev
           shadow-filter: ${{ steps.filter.outputs.install-ts }}
-
 
   # Spec 0255 R3: the install, manage and link entries print nothing on the oldest Node.js 24 release.
   # No path filter, like `extension-builders-ts-node-24-0`.
@@ -1143,37 +1093,13 @@ jobs:
               - '.gitlab-ci.yml'
               - '.github/workflows/build.yml'
               - 'docs/ci-reference-format.md'
-      - name: Install yq
-        if: steps.filter.outputs.ci-parity == 'true'
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
-          echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
-          sudo chmod +x /usr/local/bin/yq
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.ci-parity == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-          cache: npm
-      - name: Install production dependencies
-        if: steps.filter.outputs.ci-parity == 'true'
-        run: npm ci --omit=dev --workspaces=false
-      - name: Floor guard accepts Node.js 24
-        if: steps.filter.outputs.ci-parity == 'true'
-        run: node scripts/lib/node-floor-guard.js
-      - uses: actions/cache@v4
-        if: steps.filter.outputs.ci-parity == 'true'
-        with:
-          path: .ci-cache
-          key: ${{ hashFiles('scripts/check-ci-parity.ts', 'scripts/build-ci.ts', 'scripts/ci-cache-guard.ts', 'scripts/ci-changeset-coverage.ts', 'scripts/tests/ci-parity-positive.test.ts', 'scripts/tests/ci-parity-fail-closed.test.ts', 'scripts/tests/ci-parity-stray-scan.test.ts', 'scripts/tests/ci-parity-path-filters.test.ts', 'scripts/tests/ci-parity-path-filters-undet.test.ts', 'scripts/tests/ci-effective-paths.test.ts', 'scripts/tests/ci-paths-equivalence.test.ts', 'scripts/ci-paths-gate.ts', 'scripts/lib/ci-paths-gate/**', '.github/actions/ci-job/action.yml', 'scripts/tests/ci-paths-gate.test.ts', 'scripts/tests/ci-parity-ci-job.test.ts', 'scripts/tests/ci-job-yq.test.ts', 'scripts/tests/fixtures/ci-paths/**', 'scripts/tests/lib/ci-parity-fixture.ts', 'scripts/tests/lib/ci-parity-blocks.ts', 'scripts/tests/lib/ci-parity-matrix.ts', 'scripts/tests/lib/yaml-lib.ts', 'scripts/tests/build-ci-real-tree.test.ts', 'scripts/tests/build-ci-synthetic.test.ts', 'scripts/tests/build-ci-synthetic-write.test.ts', 'scripts/tests/lib/ci-reference-fixtures.ts', 'ci/ci-capabilities.yml', 'ci/task-pin.json', 'ci/yq-pin.json', '.gitlab-ci.yml', '.github/workflows/build.yml', 'docs/ci-reference-format.md') }}
-      - name: Test Check Ci Parity
-        if: steps.filter.outputs.ci-parity == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/check-ci-parity.ts,scripts/build-ci.ts,scripts/ci-cache-guard.ts,scripts/ci-changeset-coverage.ts,scripts/tests/ci-parity-positive.test.ts,scripts/tests/ci-parity-fail-closed.test.ts,scripts/tests/ci-parity-stray-scan.test.ts,scripts/tests/ci-parity-path-filters.test.ts,scripts/tests/ci-parity-path-filters-undet.test.ts,scripts/tests/ci-effective-paths.test.ts,scripts/tests/ci-paths-equivalence.test.ts,scripts/ci-paths-gate.ts,scripts/lib/ci-paths-gate/**,.github/actions/ci-job/action.yml,scripts/tests/ci-paths-gate.test.ts,scripts/tests/ci-parity-ci-job.test.ts,scripts/tests/ci-job-yq.test.ts,scripts/tests/fixtures/ci-paths/**,scripts/tests/lib/ci-parity-fixture.ts,scripts/tests/lib/ci-parity-blocks.ts,scripts/tests/lib/ci-parity-matrix.ts,scripts/tests/lib/yaml-lib.ts,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,ci/task-pin.json,ci/yq-pin.json,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-parity-positive.test.ts scripts/tests/ci-parity-fail-closed.test.ts scripts/tests/ci-parity-stray-scan.test.ts scripts/tests/ci-parity-path-filters.test.ts scripts/tests/ci-parity-path-filters-undet.test.ts scripts/tests/ci-effective-paths.test.ts scripts/tests/ci-paths-equivalence.test.ts scripts/tests/ci-paths-gate.test.ts scripts/tests/ci-parity-ci-job.test.ts scripts/tests/ci-job-yq.test.ts
-      - name: Test Build Ci
-        if: steps.filter.outputs.ci-parity == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/check-ci-parity.ts,scripts/build-ci.ts,scripts/ci-cache-guard.ts,scripts/ci-changeset-coverage.ts,scripts/tests/ci-parity-positive.test.ts,scripts/tests/ci-parity-fail-closed.test.ts,scripts/tests/ci-parity-stray-scan.test.ts,scripts/tests/ci-parity-path-filters.test.ts,scripts/tests/ci-parity-path-filters-undet.test.ts,scripts/tests/ci-effective-paths.test.ts,scripts/tests/ci-paths-equivalence.test.ts,scripts/ci-paths-gate.ts,scripts/lib/ci-paths-gate/**,.github/actions/ci-job/action.yml,scripts/tests/ci-paths-gate.test.ts,scripts/tests/ci-parity-ci-job.test.ts,scripts/tests/ci-job-yq.test.ts,scripts/tests/fixtures/ci-paths/**,scripts/tests/lib/ci-parity-fixture.ts,scripts/tests/lib/ci-parity-blocks.ts,scripts/tests/lib/ci-parity-matrix.ts,scripts/tests/lib/yaml-lib.ts,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,ci/task-pin.json,ci/yq-pin.json,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-ci-real-tree.test.ts scripts/tests/build-ci-synthetic.test.ts scripts/tests/build-ci-synthetic-write.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: ci-parity
+          install: omit-dev
+          yq: "4.54.1"
+          cache: true
+          shadow-filter: ${{ steps.filter.outputs.ci-parity }}
 
   docs-index:
     runs-on: ubuntu-latest
@@ -1192,24 +1118,12 @@ jobs:
               - 'scripts/tests/build-docs-index-entry.test.ts'
               - 'scripts/tests/lib/docs-index-entry-tree.ts'
               - 'docs/**'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.docs-index == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-      - name: Floor guard accepts Node.js 24
-        if: steps.filter.outputs.docs-index == 'true'
-        run: node scripts/lib/node-floor-guard.js
-      - name: Build Docs Index
-        if: steps.filter.outputs.docs-index == 'true'
-        run: node scripts/build-docs-index.ts --check
-      - uses: actions/cache@v4
-        if: steps.filter.outputs.docs-index == 'true'
-        with:
-          path: .ci-cache
-          key: ${{ hashFiles('scripts/build-docs-index.ts', 'scripts/lib/docs-index/**', 'scripts/lib/paths.ts', 'scripts/lib/line-endings.ts', 'scripts/lib/node-floor-guard.js', 'scripts/tests/build-docs-index-entry.test.ts', 'scripts/tests/lib/docs-index-entry-tree.ts', 'docs/**', 'scripts/ci-cache-guard.ts') }}
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: docs-index
+          install: omit-dev
+          cache: true
+          shadow-filter: ${{ steps.filter.outputs.docs-index }}
 
   docs-index-selftest:
     runs-on: ubuntu-latest
@@ -1231,24 +1145,12 @@ jobs:
               - 'taskfiles/ci.yml'
               - '.github/workflows/build.yml'
               - 'ci/ci-capabilities.yml'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.docs-index-selftest == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-      - uses: actions/cache@v4
-        if: steps.filter.outputs.docs-index-selftest == 'true'
-        with:
-          path: .ci-cache
-          key: ${{ hashFiles('scripts/build-docs-index.ts', 'scripts/lib/docs-index/**', 'scripts/lib/paths.ts', 'scripts/lib/line-endings.ts', 'scripts/lib/node-floor-guard.js', 'scripts/tests/build-docs-index-entry.test.ts', 'scripts/tests/lib/docs-index-entry-tree.ts', 'scripts/tests/lib/worktree-fixtures.ts', 'scripts/ci-cache-guard.ts') }}
-      - name: Floor guard accepts Node.js 24
-        if: steps.filter.outputs.docs-index-selftest == 'true'
-        run: node scripts/lib/node-floor-guard.js
-      - name: Run the self-tests
-        if: steps.filter.outputs.docs-index-selftest == 'true'
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files "scripts/build-docs-index.ts,scripts/lib/docs-index/**,scripts/lib/paths.ts,scripts/lib/line-endings.ts,scripts/lib/node-floor-guard.js,scripts/tests/build-docs-index-entry.test.ts,scripts/tests/lib/docs-index-entry-tree.ts,scripts/tests/lib/worktree-fixtures.ts,scripts/ci-cache-guard.ts" --key-env "" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-docs-index-entry.test.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: docs-index-selftest
+          install: omit-dev
+          cache: true
+          shadow-filter: ${{ steps.filter.outputs.docs-index-selftest }}
 
   figure-labels:
     runs-on: ubuntu-latest
@@ -2244,7 +2146,6 @@ jobs:
 
       - name: Test the MemPalace helper modules (python detection, version pin)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-python.test.ts scripts/tests/mempalace-python-shebang.test.ts scripts/tests/mempalace-pin.test.ts
-
 
       - name: Test the service module and the MCP launcher (Linux)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-backend.test.ts scripts/tests/service-bundle-closure.test.ts scripts/tests/service-exec.test.ts scripts/tests/service-file-size.test.ts scripts/tests/service-install.test.ts scripts/tests/service-launchd-systemd.test.ts scripts/tests/service-launcher-child.test.ts scripts/tests/service-launcher-record.test.ts scripts/tests/service-launcher-token.test.ts scripts/tests/service-launcher-palace-path.test.ts scripts/tests/service-listener-pid.test.ts scripts/tests/service-names.test.ts scripts/tests/service-os-inspect.test.ts scripts/tests/service-owner-check.test.ts scripts/tests/service-probe.test.ts scripts/tests/service-process-tree.test.ts scripts/tests/service-program-install.test.ts scripts/tests/service-schtasks.test.ts scripts/tests/service-schtasks-uninstall.test.ts scripts/tests/service-snapshot-failure.test.ts scripts/tests/service-task-ownership.test.ts scripts/tests/service-task-snapshot.test.ts scripts/tests/service-task-state.test.ts scripts/tests/service-token-argv.test.ts scripts/tests/service-trust-wrapper.test.ts scripts/tests/service-unit-render.test.ts scripts/tests/service-windows-task-xml.test.ts scripts/tests/mcp-launcher-lifecycle.test.ts
@@ -3547,19 +3448,11 @@ jobs:
               - '.crewrig/shared-contract-paths.txt'
               - 'scripts/tests/check-plan-review*'
               - 'scripts/tests/fixtures/plan-review/**'
-      - uses: actions/setup-node@v4
-        if: steps.filter.outputs.check-plan-review == 'true'
+      - uses: ./.github/actions/ci-job
         with:
-          node-version: 24
-      - name: Check the plan review gate skips the small standard fixture
-        if: steps.filter.outputs.check-plan-review == 'true'
-        run: "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-plan-review.ts scripts/tests/fixtures/plan-review/skip-spec.md scripts/tests/fixtures/plan-review/skip-plan.md | grep -qx 'plan-review: skipped'"
-      - name: Check the plan review gate requires the review for the shared-contract fixture
-        if: steps.filter.outputs.check-plan-review == 'true'
-        run: "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-plan-review.ts scripts/tests/fixtures/plan-review/skip-spec.md scripts/tests/fixtures/plan-review/required-plan.md | grep -qx 'plan-review: required'"
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
+          id: check-plan-review
+          install: omit-dev
+          shadow-filter: ${{ steps.filter.outputs.check-plan-review }}
 
   check-feedback-routing:
     runs-on: ubuntu-latest

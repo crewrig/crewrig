@@ -73,11 +73,18 @@ describe("T1 — R36: component-drift's --check command is still wired", () => {
     };
     const cap = doc.capabilities.find((c) => c.id === "component-drift");
     assert.ok(cap !== undefined, "capability component-drift exists");
-    const commands = (cap.command ?? []) as string[];
-    assert.ok(Array.isArray(commands) && commands.length > 0, "command list is non-empty");
+    const capCommands = (cap.command ?? []) as string[];
+    assert.ok(Array.isArray(capCommands) && capCommands.length > 0, "command list is non-empty");
+    // The capability delegates to its Taskfile task (spec 0283); the task body carries the command.
+    const tf = yamlLib.load(read("taskfiles/ci.yml")) as {
+      tasks: Record<string, { cmds?: string[] }>;
+    };
+    const commands = capCommands.includes("task ci:component-drift")
+      ? (tf.tasks["component-drift"]?.cmds ?? [])
+      : capCommands;
     // Either form satisfies the wiring (spec 0250 R26); the flags stay literal.
     const form =
-      /(bash scripts\/build-components\.sh|node scripts\/build-components\.ts) --target all --check/;
+      /(bash scripts\/build-components\.sh|node (?:\{\{\.REPO_DIR\}\}\/)?scripts\/build-components\.ts) --target all --check/;
     assert.ok(
       commands.some((c) => form.test(c)),
       commands.join("\n"),

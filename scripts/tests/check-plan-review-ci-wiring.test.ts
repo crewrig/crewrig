@@ -36,12 +36,15 @@ const PATHS = [
 ];
 const read = (...p: string[]): string => fs.readFileSync(path.join(REPO, ...p), "utf8");
 
-/** The job runs the script on committed fixtures and expects one decision on each. */
+/** The task body runs the script on committed fixtures and expects one decision on each. */
 function assertCommands(joined: string): void {
-  assert.ok(joined.includes(`${NODE} ${SCRIPT}`), "runs the script");
+  assert.ok(joined.includes(NODE), "uses the node entry");
+  assert.ok(joined.includes(SCRIPT), "runs the script");
   assert.ok(joined.includes(FIXTURE_DIR), "runs on committed plan-review fixtures");
-  assert.ok(joined.includes("plan-review: skipped"), "expects a skip");
-  assert.ok(joined.includes("plan-review: required"), "expects a require");
+  assert.ok(/plan-review:\\\\x20/.test(joined), "compares the decision line");
+  assert.ok(/ skipped(\n|$)/.test(joined), "expects a skip");
+  assert.ok(/ required(\n|$)/.test(joined), "expects a require");
+  assert.ok(!/\bgrep\b/.test(joined), "no grep in the task body");
 }
 
 function jobBlock(text: string, header: RegExp, gitlab = false): string {
@@ -67,7 +70,7 @@ function assertCapabilities(text: string): void {
   const cap = caps.find((c) => c.id === ID);
   assert.ok(cap, `capability ${ID}`);
   assert.equal(cap.requires?.runtime, "node@24");
-  assertCommands((cap.command ?? []).join("\n"));
+  assertCommands(resolveCapabilityCommands(cap.command).join("\n"));
   assert.ok((cap.trigger ?? []).length > 0, "has a trigger");
   for (const t of cap.trigger ?? [])
     for (const p of PATHS) assert.ok(effectivePaths(cap, t).includes(p), `trigger paths has ${p}`);
@@ -80,10 +83,11 @@ function assertCapabilities(text: string): void {
 function assertGithub(
   text: string,
   govCmds: string[] = ciTaskCommands("governance-checks-ts"),
+  cmds: string[] = ciTaskCommands(ID),
 ): void {
   const job = jobBlock(text, new RegExp(`\\n  ${ID}:\\n`));
-  assert.ok(job.includes("node-version: 24"));
-  assertCommands(job);
+  assert.ok(job.includes(`id: ${ID}`) && job.includes("./.github/actions/ci-job"), "calls ci-job");
+  assertCommands(cmds.join("\n"));
   const gov = jobBlock(text, /\n {2}governance-checks-ts:\n/);
   for (const t of TESTS) assert.ok(govCmds.join(" ").includes(t), `governance-checks-ts runs ${t}`);
   for (const p of ["scripts/tests/fixtures/plan-review/**", "scripts/tests/check-plan-review*"])
@@ -93,17 +97,19 @@ function assertGithub(
 function assertGitlab(
   text: string,
   govCmds: string[] = ciTaskCommands("governance-checks-ts"),
+  cmds: string[] = ciTaskCommands(ID),
 ): void {
   const job = jobBlock(text, new RegExp(`\\n${ID}:\\n`), true);
   assert.ok(job.includes("image: node:24"));
-  assertCommands(job);
+  assert.ok(job.includes(`task ci:${ID}`), "runs the task");
+  assertCommands(cmds.join("\n"));
   const gov = jobBlock(text, /\ngovernance-checks-ts:\n/, true);
   for (const t of TESTS) assert.ok(govCmds.join(" ").includes(t), `governance-checks-ts runs ${t}`);
 }
 
 function assertTaskfile(tree: TaskfileTree): void {
   assert.ok(tree.byName.has("check-plan-review"), "Taskfile target");
-  const want = `${NODE} {{.REPO_DIR}}/${SCRIPT}`;
+  const want = `{{.REPO_DIR}}/${SCRIPT}`;
   assert.ok(taskCmds(tree, "check-plan-review").some((c) => c.includes(want)));
 }
 
@@ -116,7 +122,9 @@ describe("check-plan-review CI wiring", () => {
   test("mutation: a job that never expects a skip is rejected", () => {
     assert.throws(() =>
       assertGithub(
-        read(".github", "workflows", "build.yml").replaceAll("plan-review: skipped", "ok"),
+        read(".github", "workflows", "build.yml"),
+        ciTaskCommands("governance-checks-ts"),
+        ciTaskCommands(ID).map((c) => c.replaceAll(" skipped", " ok")),
       ),
     );
   });

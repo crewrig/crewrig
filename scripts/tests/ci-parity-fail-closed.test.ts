@@ -163,11 +163,11 @@ test("S11: GHA env block divergence", () => {
 
 test("C1: cache key inputs diverge from the reference cache.files", () => {
   const fx = ghEdit((doc) => {
-    const s = steps(doc, "ci-parity")
+    const s = steps(doc, "mempalace")
       .map((x) => map(x))
       .find((x) => x["uses"] === "actions/cache@v4");
-    assert.ok(s, "precondition: the ci-parity job has an actions/cache@v4 step");
+    assert.ok(s, "precondition: the mempalace job has an actions/cache@v4 step");
     map(s["with"])["key"] = "${{ hashFiles('zz/cache-key-drift.txt') }}";
   });
-  fails(fx, "C1", ["capability 'ci-parity' (github-actions)", "cache key inputs diverge"]);
+  fails(fx, "C1", ["capability 'mempalace' (github-actions)", "cache key inputs diverge"]);
 });

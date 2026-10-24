@@ -153,19 +153,19 @@
   },
   {
     "name": "ci:component-drift",
-    "desc": "Check built components match their sources (pre-push mirror of the CI job)"
+    "desc": "Check built components match their sources (cached by the ci-cache-guard capability key)"
   },
   {
     "name": "ci:component-drift-selftest",
-    "desc": "Run the assembly and canonical-repo build tests (pre-push mirror of the CI job)"
+    "desc": "Run the assembly and canonical-repo build tests (cached by the ci-cache-guard capability key)"
   },
   {
     "name": "ci:docs-index",
-    "desc": "Check docs/index.json is fresh (pre-push mirror of the CI job)"
+    "desc": "Check docs/index.json is fresh (cached by the ci-cache-guard capability key)"
   },
   {
     "name": "ci:docs-index-selftest",
-    "desc": "Run the docs index entry test (pre-push mirror of the CI job)"
+    "desc": "Run the docs index entry test (cached by the ci-cache-guard capability key)"
   },
   {
     "name": "ci:extension-builders-ts",
@@ -770,5 +770,17 @@
   {
     "name": "ci:check-agent-profiles",
     "desc": "Run the check-agent-profiles CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:agent-profile-migration",
+    "desc": "Run the agent-profile migration regression suite (cached by the ci-cache-guard capability key)"
+  },
+  {
+    "name": "ci:ci-parity",
+    "desc": "Test the CI generator and parity harness (cached by the ci-cache-guard capability key)"
+  },
+  {
+    "name": "ci:check-plan-review",
+    "desc": "Check the plan review gate against its fixtures (pre-push mirror of the CI job)"
   }
 ]

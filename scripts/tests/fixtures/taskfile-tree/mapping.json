@@ -191,5 +191,8 @@
   "ci:core-paths": "taskfiles/ci.yml",
   "ci:setup": "taskfiles/ci.yml",
   "ci:check-model-mappings": "taskfiles/ci.yml",
-  "ci:check-agent-profiles": "taskfiles/ci.yml"
+  "ci:check-agent-profiles": "taskfiles/ci.yml",
+  "ci:agent-profile-migration": "taskfiles/ci.yml",
+  "ci:ci-parity": "taskfiles/ci.yml",
+  "ci:check-plan-review": "taskfiles/ci.yml"
 }
