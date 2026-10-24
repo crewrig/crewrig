@@ -1,7 +1,7 @@
 ---
 id: "0252"
 slug: windows-service-management
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1477
@@ -71,7 +71,7 @@ Replacement:
 > `CREWRIG_REPO_DIR`. That variable stays baked in the endpoint record only for operator hint
 > text.
 
-### Requirement 24 — what `task mempalace:status` reports about the installed launcher
+### Requirement 15 — what `task mempalace:status` reports about the installed launcher
 
 Original: the status compares the installed launcher's `LAUNCHER_SOURCE_SHA` with the
 repository.
