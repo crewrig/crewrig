@@ -42,33 +42,25 @@ describe("release driver sandbox", () => {
     );
     assert.ok(fs.existsSync(path.join(sb.originBare, "HEAD")), "origin is a bare repository");
     assert.equal(sb.env({ GITHUB_ACTIONS: "true" })["GITHUB_ACTIONS"], "true");
-    const dir17 = fs.existsSync(path.join(sb.root, ".git", "objects", "17"))
-      ? fs.readdirSync(path.join(sb.root, ".git", "objects", "17")).length
-      : -1;
-    const gcFiles = fs.readdirSync(path.join(sb.root, ".git")).filter((f) => /gc|maint/.test(f));
-    // eslint-disable-next-line no-console
-    console.log(`PROBE2 dir17=${dir17} gcFiles=${JSON.stringify(gcFiles)}`);
-    sb.dispose();
     {
       const out: string[] = [];
-      out.push(`exists=${fs.existsSync(sb.root)}`);
+      const ps = () =>
+        spawnSync("sh", ["-c", "ps -eo pid,etime,args | grep -E 'git|node' | grep -v grep | cut -c1-160 | head -12"], { encoding: "utf8" }).stdout;
+      out.push(`ps-before=${ps()}`);
+      const t0 = Date.now();
       try {
-        fs.rmSync(sb.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
-        out.push(`second rmSync ok, exists=${fs.existsSync(sb.root)}`);
+        sb.dispose();
+        out.push(`dispose returned after ${Date.now() - t0}ms`);
       } catch (e) {
-        out.push(`second rmSync threw ${(e as Error).message}`);
+        out.push(`dispose threw ${(e as Error).message}`);
       }
-      try {
-        const st = fs.statSync(sb.root);
-        out.push(`mode=${(st.mode & 0o777).toString(8)} uid=${st.uid} me=${process.getuid?.()}`);
+      out.push(`exists=${fs.existsSync(sb.root)}`);
+      if (fs.existsSync(sb.root)) {
         out.push(`top=${JSON.stringify(fs.readdirSync(sb.root))}`);
-        const procs = spawnSync("sh", ["-c", "ps -eo pid,etime,args | grep -E 'git|node' | grep -v grep | head -15"], { encoding: "utf8" });
-        out.push(`ps=${procs.stdout}`);
-      } catch (e) {
-        out.push(`stat failed ${(e as Error).message}`);
+        out.push(`ps-after=${ps()}`);
       }
       // eslint-disable-next-line no-console
-      console.log(`PROBE3 ${out.join(" | ")}`);
+      console.log(`PROBE4 ${out.join(" || ")}`);
     }
     const left = fs.existsSync(sb.root)
       ? JSON.stringify(fs.readdirSync(sb.root, { recursive: true }).slice(0, 40))
