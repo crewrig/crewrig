@@ -79,7 +79,25 @@ const newStep = (id: string, filters: string): YMap => ({
   with: { filters },
 });
 
+/** Spec 0283 R3: the mutations below edit per-trigger lists, so expand the inherited capability list first. */
+function expandInherited(doc: YMap): void {
+  for (const c of list(doc["capabilities"]).map((x) => map(x))) {
+    const inherited = c["paths"];
+    if (inherited === undefined) continue;
+    for (const t of triggers(c))
+      if ((t["on"] === "pull-request" || t["on"] === "push") && t["paths"] === undefined)
+        t["paths"] = [...list(inherited)];
+    const cache = c["cache"];
+    if (typeof cache === "object" && cache !== null && !Array.isArray(cache)) {
+      const m = cache as YMap;
+      if (m["files"] === undefined) m["files"] = [...list(inherited)];
+    }
+    delete c["paths"];
+  }
+}
+
 function reference(doc: YMap): void {
+  expandInherited(doc);
   const cap = (id: string) => capOf(doc, id);
   for (const t of triggers(cap("figure-labels"))) addPaths(t, "zz/ref-only/**"); // FX1
   addPaths(trigger(cap("docs-index"), "pull-request"), "zz/c/**"); // FX2

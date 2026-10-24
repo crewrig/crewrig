@@ -133,5 +133,7 @@ export function refPaths(id: string, kind: string): string[] {
     (t) => map(t)["on"] === kind,
   );
   if (trigger === undefined) throw new Error(`capability '${id}' has no '${kind}' trigger`);
-  return list(map(trigger)["paths"], `paths of ${id}/${kind}`).map(String);
+  // Spec 0283 R3: a trigger without its own paths inherits the capability-level list.
+  const own = map(trigger)["paths"];
+  return list(own ?? capOf(doc, id)["paths"], `paths of ${id}/${kind}`).map(String);
 }

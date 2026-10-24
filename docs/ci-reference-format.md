@@ -274,6 +274,12 @@ A capability entry MAY declare a capability-level `paths:` list, next to
   capability-level `paths-ignore:` is rejected by the generator and reported as
   a reference-validity error by the parity harness, and a trigger-level one is
   already outside the filter keys above.
+- **Conversion.** The reference was converted once, mechanically, by the committed
+  one-shot `scripts/convert-ci-paths.ts`: a capability whose `pull-request` and `push`
+  lists were identical carries one capability-level `paths:`; a capability whose two
+  lists differ keeps trigger-level lists; `cache.files` was dropped only where equal
+  to the paths. `scripts/tests/ci-paths-equivalence.test.ts` proves the effective sets
+  are unchanged against a frozen pre-conversion snapshot.
 
 The GitLab generator emits a list that appears twice in one job (the two rules'
 `changes:` lists, or the cache key `files:` equal to them) once under a YAML

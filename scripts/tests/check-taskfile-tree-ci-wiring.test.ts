@@ -11,6 +11,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
+import { readCapabilities } from "../lib/ci-parity/reference-read.ts";
+import { parse } from "../lib/yq-accessors/index.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
@@ -113,7 +115,12 @@ type Cap = {
 };
 
 function assertCapabilities(text: string): void {
-  const caps = (yamlLib.load(text) as { capabilities: Cap[] }).capabilities;
+  const effective = new Map(readCapabilities(parse(text)).map((c) => [c.id, c.triggers]));
+  // Triggers carry their effective paths (spec 0283 R3: own list, else the capability-level list).
+  const caps = (yamlLib.load(text) as { capabilities: Cap[] }).capabilities.map((c) => ({
+    ...c,
+    trigger: (effective.get(c.id) ?? []).map((t) => ({ on: t.kind, paths: t.paths })),
+  }));
   const cap = caps.find((c) => c.id === ID);
   assert.ok(cap, `capability ${ID}`);
   assert.equal(cap.requires?.runtime, "node@24");
