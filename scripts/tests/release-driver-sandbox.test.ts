@@ -168,3 +168,5 @@ describe("release driver sandbox", () => {
     sb.dispose();
   });
 });
+
+// probe A: trigger the release-tests path filter
