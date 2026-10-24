@@ -1,7 +1,7 @@
 ---
 id: "0281"
 slug: split-checker-selftests
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1778

@@ -51,24 +51,73 @@ the wrapper prints a warning, without failing, when a run exceeds it.
 
 ### Measured cost
 
-The target is met only on an idle machine with at least 8 cores. The exact CI
-commands of a capability include the checkers' own self-test suites, which makes
-the fast tier CPU-bound: about 200 to 300 CPU-seconds for the whole tier. Measured
-on 2026-10-24 on a 10-core Mac, `ci:pre-push` run on a branch of 16 changed files:
+The commands of a capability no longer bundle the checkers' own self-test
+suites (spec 0281): each bundling check `<id>` has a sibling `<id>-selftest`
+capability with its own `paths:`, so the self-tests run only when the checker's
+sources, tests or fixtures change. The fast tier lists 33 entries in
+`ci/pre-push-tier.json`.
+
+Measured on 2026-10-24 on a 10-core Mac (`uname -sr`: Darwin 25.6.0),
+`ci:pre-push` run on a fixed branch of 16 changed files (8 `taskfiles/*.yml`
+except `ci.yml`, plus 8 `docs/*.md`), median of 3 runs. CPU time is the rusage
+of the whole run; the earlier table used a different method, so the CPU figures
+are not comparable with it.
 
 | Condition | Tasks | Wall-clock | CPU time |
 |---|---|---|---|
-| Idle machine | 21 | 29 s | 205 s |
-| Light contention (load average about 10 on 10 cores) | 21 | 44 s | 276 s |
-| Heavy contention (load average 47 to 60, other agents running) | 21 | 135 s | 311 s |
-| `node:24` Linux container, host under heavy contention | 20 | 121 s | 889 s |
+| Ambient contention (load average 90 to 100 on 10 cores, concurrent agents) | 20 | 25 s (27.4, 25.1, 16.0) | 54 s |
+| Same, plus a synthetic load of 20 CPU-bound `node` processes (cores x 2) | 20 | 25 s (25.6, 24.5, 25.3) | 50 s |
+| Second changeset that also touches one checker source (`scripts/lib/spec-linter.js`), load average 70 to 120, one run | 23 | 67 s | not recorded |
+| Idle machine, light contention, `node:24` Linux container | not re-measured | not re-measured | not re-measured |
 
-Capabilities measured alone on the Mac: `lint-specs` 23 s, `path-ownership` 23 s,
-`frontmatter` 27 s, every other one 9 s or less. Splitting each checker's
-self-tests from the check, in capabilities of their own with their own `paths:`
-filters, is planned work (WP-C of epic #1761) and removes most of that cost. Until
-then, push with `git push --no-verify` when the machine is busy; CI stays
-authoritative.
+- The machine never went below load average 70 during the session, so the idle
+  and light-contention rows were not re-measured. The `node:24` container row
+  was not re-measured either.
+- The first cold run of the 16-file changeset took 51 s.
+- The second changeset adds `lint-specs-selftest`, `component-drift-selftest`
+  and `frontmatter` to the 20 tasks of the first, and the 60 s target is
+  exceeded. The cause is `frontmatter` (27 s alone, kept whole) plus the
+  selected self-tests, under heavy load. The target is met for a data-only
+  changeset and missed when a checker and `lib/` sources change together under
+  heavy load; use `git push --no-verify` when the machine is busy and let CI
+  decide.
+
+Capabilities measured alone on the Mac, check then self-test:
+
+| Capability | Check | Self-test |
+|---|---|---|
+| `lint-specs` | 4 s | 22 s |
+| `path-ownership` | 1 s | 16 s |
+| `ratchet` | 1 s | 9 s |
+| `host-safety` | 1 s | 6 s |
+| `lint-typescript` | 5 s | 3 s |
+| `check-taskfile-tree` | 2 s | 5 s |
+| `check-taskfile-commands` | 1 s | 1 s |
+| `docs-index` | 1 s | 2 s |
+| `cli-matrix-fresh` | 1 s | 1 s |
+| `component-drift` | 1 s | 1 s |
+| `test-wiring` | 1 s | 3 s |
+
+`frontmatter` stays whole at 27 s. Every other fast-tier capability is 6 s or
+less. All self-tests are within the 30 s admission cap and sit in the tier.
+
+### Capabilities that are not bundles
+
+Spec 0281 R1 lists a candidate inventory; these three are examined and stay
+unsplit, each for a stated reason:
+
+- `frontmatter` is in the R1 candidate list. Every command it runs is a
+  governance `--test` suite that validates artifacts, with no separate check
+  command, so its suites are the check. This is the recorded exclusion.
+- `markdown-links` runs one `--test` suite, `governance-suite-markdown-links`,
+  which is the check.
+- `check-comment-size` runs the guard on an under and an over fixture; the
+  guard's self-test is its whole job.
+
+The other fast-tier capabilities without a `--test` line (`repository-scan`,
+`lint-markdown`, the `check-*` size and version guards, `check-ci-parity`,
+`gitlab-ci-check`) have nothing to split. Bundles outside the fast tier, such as
+`build-components-ts`, are a follow-up and out of scope for this slice.
 
 ### Choosing the base
 
