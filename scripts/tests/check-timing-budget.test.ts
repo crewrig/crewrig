@@ -143,7 +143,7 @@ describe("--stdin-file and --env-tmpdir", () => {
   test("without the options a run gets no extras", () => {
     let got: RunExtras | undefined;
     measure(parseArgs(BASE), (_argv, extras) => ((got = extras), 0), fakeClock([1, 1, 1]));
-    assert.deepEqual(got, {});
+    assert.deepEqual(got, { timeoutMs: 10_000 });
   });
 
   test("CLI end to end: the child reads stdin and sees an empty per-run directory", () => {
@@ -318,12 +318,13 @@ describe("tolerance (spec 0264 R1-R5)", () => {
   });
 
   test("a run over three times the budget fails, whatever the tolerance", () => {
-    const v = verdictOf(TEN, near(1700));
+    const v = verdictOf(TEN, [...near(1700), 1700]);
     assert.equal(v.ok, false);
     assert.deepEqual(v.lines, [
+      "timing-budget: s.js ceiling run re-measured: 1700.0 ms then 1700.0 ms (run 10/10)",
       "timing-budget: s.js exceeded 550 ms: measured 1700.0 ms (run 10/10)",
     ]);
-    assert.equal(verdictOf(["--tolerate", "5", ...TEN], near(1700)).ok, false);
+    assert.equal(verdictOf(["--tolerate", "5", ...TEN], [...near(1700), 1700]).ok, false);
   });
 
   test("a wrong exit status in one run fails and names the run", () => {
@@ -449,7 +450,7 @@ describe("--case (spec 0247 R19, delta-01)", () => {
   test("the option does not change what a run receives", () => {
     let got: RunExtras | undefined;
     measure(parseArgs(CASED), (_argv, extras) => ((got = extras), 0), fakeClock([1, 1, 1]));
-    assert.deepEqual(got, {});
+    assert.deepEqual(got, { timeoutMs: 10_000 });
   });
 
   test("CLI end to end: the case reaches the failure line on standard error, exit 1", () => {
@@ -544,5 +545,84 @@ describe("bestOf: a best-of-N upper wall-clock bound (spec 0264 R10)", () => {
       /under the lower bound/,
     );
     assert.equal(runs, 1);
+  });
+});
+
+describe("confirmed ceiling runs (spec 0264 delta-01 R3)", () => {
+  const TEN = ["--runs", "10", "--budget-ms", "550", "--", "s.js"];
+  const near = (...over: number[]): number[] => [
+    ...Array<number>(10 - over.length).fill(150),
+    ...over,
+  ];
+  /** Run durations in call order; the confirmation of a ceiling run is the entry after it. */
+  const verdictOf = (args: string[], durations: number[], run: Runner = exitWith(0)) => {
+    const opts = parseArgs(args);
+    return evaluate(opts, measure(opts, run, fakeClock(durations)));
+  };
+  const REMEASURED =
+    "timing-budget: s.js ceiling run re-measured: 2954.9 ms then 240.0 ms (run 10/10)";
+
+  test("a stall of 2954.9 ms confirmed at 240.0 ms passes with the re-measure line", () => {
+    const v = verdictOf(TEN, [...near(2954.9), 240]);
+    assert.equal(v.ok, true);
+    assert.deepEqual(v.lines.slice(0, 2), [
+      REMEASURED,
+      "timing-budget: s.js exceeded 550 ms: measured 2954.9 ms (run 10/10) tolerated",
+    ]);
+  });
+
+  test("a confirmation at 2900 ms fails and the line shows both numbers", () => {
+    const v = verdictOf(TEN, [...near(2954.9), 2900]);
+    assert.equal(v.ok, false);
+    assert.deepEqual(v.lines, [
+      "timing-budget: s.js ceiling run re-measured: 2954.9 ms then 2900.0 ms (run 10/10)",
+      "timing-budget: s.js exceeded 550 ms: measured 2954.9 ms (run 10/10)",
+    ]);
+  });
+
+  test("a confirmation with the wrong exit status fails", () => {
+    let call = 0;
+    const run: Runner = () => (++call === 11 ? 3 : 0);
+    const v = verdictOf(TEN, [...near(2954.9), 240], run);
+    assert.equal(v.ok, false);
+    assert.ok(v.lines.includes("timing-budget: s.js exited 3, expected 0 (run 10/10)"));
+  });
+
+  test("a hanging confirmation killed at the bound fails and names script, case, budget and run", () => {
+    let call = 0;
+    const run: Runner = () => (++call === 11 ? null : 0);
+    const v = verdictOf(["--case", "c", ...TEN], [...near(2954.9), 2750], run);
+    assert.equal(v.ok, false);
+    const text = v.lines.join("\n");
+    assert.match(text, /s\.js \[case c\] exited null, expected 0 \(run 10\/10\)/);
+    assert.match(text, /s\.js \[case c\] exceeded 550 ms: measured 2954\.9 ms \(run 10\/10\)/);
+  });
+
+  test("a confirmed outlier plus one run 40 ms over budget fails on K with both printed", () => {
+    const v = verdictOf(TEN, [150, 150, 150, 150, 150, 150, 150, 150, 590, 2954.9, 240]);
+    assert.equal(v.ok, false);
+    assert.ok(v.lines.includes(REMEASURED.replace("10/10", "10/10")));
+    assert.ok(
+      v.lines.includes("timing-budget: s.js exceeded 550 ms: measured 590.0 ms (run 9/10)"),
+    );
+    assert.ok(
+      v.lines.includes("timing-budget: s.js exceeded 550 ms: measured 2954.9 ms (run 10/10)"),
+    );
+  });
+
+  test("every run at 1.5 x the budget still fails", () => {
+    const v = verdictOf(TEN, Array<number>(10).fill(825));
+    assert.equal(v.ok, false);
+    assert.equal(v.lines.filter((l) => /exceeded/.test(l)).length, 10);
+  });
+
+  test("the default runner receives the wall-clock bound max(10 s, 5 x budget)", () => {
+    const seen: (number | undefined)[] = [];
+    const run: Runner = (_argv, extras) => (seen.push(extras?.timeoutMs), 0);
+    measure(parseArgs(TEN), run, fakeClock([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]));
+    assert.deepEqual(new Set(seen), new Set([10_000]));
+    seen.length = 0;
+    measure(parseArgs(["--runs", "1", "--budget-ms", "3000", "--", "s.js"]), run, fakeClock([1]));
+    assert.deepEqual(seen, [15_000]);
   });
 });

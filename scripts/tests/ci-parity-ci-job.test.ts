@@ -6,6 +6,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
+import yaml from "js-yaml";
+
 const REPO = path.resolve(import.meta.dirname, "..", "..");
 // Composed so the root-reader guard stays quiet: the fixture root gets a copy, nothing is read here.
 const ROOT_FILES = [["Task", "file.yml"].join(""), "taskfiles"];
@@ -238,4 +240,31 @@ test("install: none with gate: false on a capability without paths: passes", () 
   const r = runCheck(root);
   assert.ok(!r.stderr.includes(GATE_MSG), r.stderr);
   assert.ok(!r.stderr.includes("job 'ratchet'"), r.stderr);
+});
+
+// Spec 0264 delta-01 R15, R18: every windows-latest job of build.yml bounds its runtime.
+const WINDOWS_FLOOR_MINUTES = 10;
+
+/** The windows-latest jobs of a workflow text that declare no timeout-minutes, or one under the floor. */
+function unboundedWindowsJobs(text: string): string[] {
+  const doc = yaml.load(text) as { jobs: Record<string, Record<string, unknown>> };
+  return Object.entries(doc.jobs)
+    .filter(([, job]) => job["runs-on"] === "windows-latest")
+    .filter(([, job]) => {
+      const t = job["timeout-minutes"];
+      return typeof t !== "number" || t < WINDOWS_FLOOR_MINUTES;
+    })
+    .map(([name]) => name);
+}
+
+test("R18: every windows-latest job of build.yml declares timeout-minutes of at least 10", () => {
+  const text = fs.readFileSync(path.join(REPO, WF), "utf8");
+  assert.deepEqual(unboundedWindowsJobs(text), []);
+});
+
+test("R18: a windows-latest job without a limit, or under the floor, is named", () => {
+  const job = (name: string, extra: string): string =>
+    `  ${name}:\n    runs-on: windows-latest\n${extra}    steps: []\n`;
+  const text = `jobs:\n${job("a", "")}${job("b", "    timeout-minutes: 5\n")}${job("c", "    timeout-minutes: 10\n")}  d:\n    runs-on: ubuntu-latest\n    steps: []\n`;
+  assert.deepEqual(unboundedWindowsJobs(text), ["a", "b"]);
 });

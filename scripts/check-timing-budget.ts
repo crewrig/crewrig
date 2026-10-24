@@ -13,6 +13,13 @@
 // exceeds 3 x the budget (the ceiling, whatever K is), or when any run's exit
 // code differs from --expect-exit (default 0). A run over the budget that the
 // verdict tolerates carries the trailing label `tolerated` (spec 0264 R1-R4).
+// A run over the ceiling is re-run exactly once (same argv, stdin and cwd, a
+// fresh --env-tmpdir directory, set-up outside the timed span) and printed as
+//   timing-budget: <script> ceiling run re-measured: <t1> ms then <t2> ms (run <i>/<N>)
+// It fails only when the re-run is itself over the budget or exits with the wrong
+// status; a confirmed outlier still counts as one over-budget run toward K
+// (spec 0264 delta-01 R3). Every spawn is killed after max(10 s, 5 x the budget):
+// a killed run has no exit status and fails like any wrong exit status.
 // --tolerate <K> (non-negative integer) sets K; default 1 when N >= 5, else 0, so
 // one slow spawn among many does not fail a job while a real slowdown, which
 // shifts every run, still does. `--tolerate 0` is the strict verdict. A K at or
@@ -63,11 +70,20 @@ export interface RunExtras {
   stdin?: Buffer;
   cwd?: string;
   env?: Record<string, string>;
+  /** Wall-clock bound in milliseconds; a run still alive then is killed (status null). */
+  timeoutMs?: number;
 }
 
 export interface RunResult {
   ms: number;
   status: number | null;
+  /** The single re-run of a run over the ceiling. */
+  confirm?: RunResult;
+}
+
+/** Wall-clock bound of one spawn: max(10 s, 5 x the budget). */
+export function spawnTimeoutMs(budgetMs: number): number {
+  return Math.max(10_000, 5 * budgetMs);
 }
 
 /** Spawns one run and returns its exit status; injectable for tests. */
@@ -147,6 +163,7 @@ export const spawnNode: Runner = (argv, extras = {}) =>
     ...(extras.stdin === undefined ? {} : { input: extras.stdin }),
     ...(extras.cwd === undefined ? {} : { cwd: extras.cwd }),
     ...(extras.env === undefined ? {} : { env: { ...process.env, ...extras.env } }),
+    ...(extras.timeoutMs === undefined ? {} : { timeout: extras.timeoutMs }),
   }).status;
 
 /** Time `opts.runs` runs of `opts.argv`. */
@@ -157,8 +174,9 @@ export function measure(
 ): RunResult[] {
   const results: RunResult[] = [];
   const stdin = opts.stdinFile === undefined ? undefined : fs.readFileSync(opts.stdinFile);
-  for (let i = 0; i < opts.runs; i++) {
-    // Set-up and clean-up of the per-run directory stay outside the timed span.
+  const timeoutMs = spawnTimeoutMs(opts.budgetMs);
+  // Set-up and clean-up of the per-run directory stay outside the timed span.
+  const once = (): RunResult => {
     const dir =
       opts.envTmpdir === undefined
         ? undefined
@@ -169,14 +187,19 @@ export function measure(
       ...(dir === undefined || opts.envTmpdir === undefined
         ? {}
         : { env: { [opts.envTmpdir]: dir } }),
+      timeoutMs,
     };
     try {
       const start = clock();
       const status = run(opts.argv, extras);
-      results.push({ ms: clock() - start, status });
+      return { ms: clock() - start, status };
     } finally {
       if (dir !== undefined) fs.rmSync(dir, { recursive: true, force: true });
     }
+  };
+  for (let i = 0; i < opts.runs; i++) {
+    const first = once();
+    results.push(first.ms > opts.budgetMs * CEILING_FACTOR ? { ...first, confirm: once() } : first);
   }
   return results;
 }
@@ -215,9 +238,22 @@ export function evaluate(
         `timing-budget: ${script} exited ${String(r.status)}, expected ${opts.expectExit} ${tag}`,
       );
     }
+    if (r.confirm !== undefined) {
+      lines.push(
+        `timing-budget: ${script} ceiling run re-measured: ${r.ms.toFixed(1)} ms then ${r.confirm.ms.toFixed(1)} ms ${tag}`,
+      );
+      if (r.confirm.status !== opts.expectExit) {
+        failed = true;
+        lines.push(
+          `timing-budget: ${script} exited ${String(r.confirm.status)}, expected ${opts.expectExit} ${tag}`,
+        );
+      }
+    }
     if (r.ms > opts.budgetMs) {
       const line = `timing-budget: ${script} exceeded ${opts.budgetMs} ms: measured ${r.ms.toFixed(1)} ms ${tag}`;
-      if (tooMany || r.ms > ceiling) {
+      const confirmedCeiling =
+        r.ms > ceiling && r.confirm !== undefined && r.confirm.ms <= opts.budgetMs;
+      if (tooMany || (r.ms > ceiling && !confirmedCeiling)) {
         failed = true;
         lines.push(line);
       } else lines.push(`${line} tolerated`);

@@ -10,12 +10,12 @@ is not verified on a live runner: it is checked by the generator equality check 
 
 | Surface | Baseline (2026-10-24) | After slice 3 (a67ca65e) | After dorny removal (2d424f74) | After slice 5 | Change from baseline |
 |---|---|---|---|---|---|
-| `.github/workflows/build.yml` | 3,758 | 2,805 | 1,362 | 1,332 | -2,426 |
+| `.github/workflows/build.yml` | 3,758 | 2,805 | 1,362 | 1,352 | -2,406 |
 | `ci/ci-capabilities.yml` | 5,189 | 4,581 | 4,582 | 4,260 | -929 |
 | `.gitlab-ci.yml` | 3,734 | 3,037 | 3,038 | 3,039 | -695 |
-| Total | 12,681 | 10,423 | 8,982 | 8,631 | -4,050 (-31.9%) |
+| Total | 12,681 | 10,423 | 8,982 | 8,651 | -4,030 (-31.8%) |
 
-Floor 8,880, margin 249 lines. The ratchet test `scripts/tests/ci-shrink-report.test.ts` pins the total at 8,631.
+Floor 8,880, margin 229 lines. The ratchet test `scripts/tests/ci-shrink-report.test.ts` pins the total at 8,651 (raised from 8,631 by #1776: 20 `timeout-minutes` lines, spec 0264 delta-01 requirement 19).
 
 ## Outside the floor
 
@@ -45,8 +45,8 @@ The libraries are not part of the floor. `build-ci` grew by 9 lines for the fail
 
 | Measure | Result |
 |---|---|
-| Total of the three surfaces at most 8,880 | Met: 8,631 |
-| Reduction of at least 30% from 12,681 | Met: 31.9% |
+| Total of the three surfaces at most 8,880 | Met: 8,651 |
+| Reduction of at least 30% from 12,681 | Met: 31.8% |
 | `ci:pre-push` within 60 s | Met on the measured changesets: 40.6 s and 51.7 s wall-clock for 30 tasks (a change to the generator and parity sources, under load from concurrent agents); 5.8 s for the 13 tasks of a documentation change. The 2026-10-24 record of `docs/pre-push-guard.md` (67 s for 23 tasks at load average 70 to 120) was not reproduced |
 | Zero unverified `Install Task` steps | Met: `scripts/check-task-provisioning.ts` passes |
 | Thin-job template of at most 15 lines per job | Met for 94 of the 108 jobs of `build.yml` (job body of 15 lines or fewer); the template is the `ci-job` section of `docs/ci-reference-format.md`. The other 14 jobs are exceptions or hand-authored jobs |

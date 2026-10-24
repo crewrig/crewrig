@@ -2674,7 +2674,7 @@ capabilities:
       runtime: node@24
     command:
       - npm ci
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/with-stub-daemon.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
       # Spec 0253 PLAN v3 A4: the history-import and prune oracles (POSIX only: they drive the shell originals through bash).
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/prune-transcripts-oracle.test.ts
       # Spec 0253 PLAN v3 C7: the cross-platform unit tests of the TypeScript history-import and prune entries.

@@ -6,7 +6,7 @@
 // Run as a script:
 //
 //   node scripts/tests/lib/with-stub-daemon.ts [--mode <mode>] [--log <jsonl>]
-//        [--expect-requests <N>] -- <cmd…>
+//        [--expect-requests <N>|<min>-<max>] -- <cmd…>
 //
 // It starts the stub, runs <cmd…> with MEMPALACE_MCP_HOST and
 // MEMPALACE_MCP_PORT naming it (standard streams inherited), stops the stub,
@@ -15,7 +15,9 @@
 // --mode is the stub's answer mode (default `ok`); --log keeps the stub's
 // request log at that path (default: a temporary file, removed afterwards);
 // --expect-requests fails a command that exited 0 when the stub did not log
-// exactly N requests, so a budget step proves the records reached the stub.
+// exactly N requests, or a count within <min>-<max> (inclusive, min <= max, both
+// non-negative integers; a budget step that re-measures one outlier run logs one
+// more request), so a budget step proves the records reached the stub.
 //
 // Exit codes: the command's own status (1 when it died on a signal), 1 on a
 // request-count mismatch, 2 on a usage error or a stub that never listened.
@@ -137,7 +139,7 @@ class UsageError extends Error {}
 interface CliOptions {
   mode: StubMode;
   log?: string;
-  expectRequests?: number;
+  expectRequests?: { min: number; max: number };
   command: string[];
 }
 
@@ -161,11 +163,15 @@ export function parseCli(args: readonly string[]): CliOptions {
       options.mode = value;
     } else if (flag === "--log") options.log = value;
     else if (flag === "--expect-requests") {
-      const n = Number(value);
-      if (!Number.isInteger(n) || n < 0) {
-        throw new UsageError(`--expect-requests needs a non-negative integer, got '${value}'`);
+      const m = /^(\d+)(?:-(\d+))?$/.exec(value);
+      const min = m === null ? NaN : Number(m[1]);
+      const max = m === null ? NaN : m[2] === undefined ? min : Number(m[2]);
+      if (!Number.isSafeInteger(min) || !Number.isSafeInteger(max) || min > max) {
+        throw new UsageError(
+          `--expect-requests needs a non-negative integer or <min>-<max>, got '${value}'`,
+        );
       }
-      options.expectRequests = n;
+      options.expectRequests = { min, max };
     } else throw new UsageError(`unknown option '${flag ?? ""}'`);
   }
   return options;
@@ -179,7 +185,7 @@ export async function main(args: readonly string[]): Promise<number> {
   } catch (error) {
     if (!(error instanceof UsageError)) throw error;
     process.stderr.write(
-      `with-stub-daemon: ${error.message}\nusage: with-stub-daemon.ts [--mode <mode>] [--log <jsonl>] [--expect-requests <N>] -- <cmd…>\n`,
+      `with-stub-daemon: ${error.message}\nusage: with-stub-daemon.ts [--mode <mode>] [--log <jsonl>] [--expect-requests <N>|<min>-<max>] -- <cmd…>\n`,
     );
     return 2;
   }
@@ -206,9 +212,10 @@ export async function main(args: readonly string[]): Promise<number> {
     const status = res.status ?? 1;
     if (status === 0 && options.expectRequests !== undefined) {
       const seen = stub.requests().length;
-      if (seen !== options.expectRequests) {
+      const { min, max } = options.expectRequests;
+      if (seen < min || seen > max) {
         process.stderr.write(
-          `with-stub-daemon: the stub logged ${seen} request(s), expected ${options.expectRequests}\n`,
+          `with-stub-daemon: the stub logged ${seen} request(s), expected ${min === max ? min : `${min}-${max}`}\n`,
         );
         return 1;
       }

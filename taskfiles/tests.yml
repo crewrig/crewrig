@@ -7,7 +7,7 @@ tasks:
   #   task timing-budget -- --runs 10 --budget-ms 750 -- scripts/lib/node-floor-guard.js
   test-runtime-foundations:
     desc: "Run the floor guard, dependency-step and shared-module suites, as CI does (spec 0240)"
-    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/with-stub-daemon.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
 
   # Spec 0237: the exact CI command of the `windows-hook-probe` capability.
   test-windows-hook-probe:

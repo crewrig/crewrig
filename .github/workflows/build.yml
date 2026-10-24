@@ -701,7 +701,7 @@ jobs:
         run: npm ci
 
       - name: Test the runtime foundations
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/with-stub-daemon.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
 
       - name: Test the history import and prune oracles (POSIX only)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/prune-transcripts-oracle.test.ts
@@ -852,6 +852,7 @@ jobs:
 
   windows-node-floor-guard:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -861,7 +862,7 @@ jobs:
 
   windows-service-task:
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 16
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -871,7 +872,7 @@ jobs:
 
   windows-chroma-trio:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -881,7 +882,7 @@ jobs:
 
   windows-mcp-daemon:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -891,7 +892,7 @@ jobs:
 
   windows-doctor-repair:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -901,6 +902,7 @@ jobs:
 
   windows-usage-capture:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -911,6 +913,7 @@ jobs:
 
   windows-usage-wrappers:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -920,6 +923,7 @@ jobs:
 
   windows-worktree-git-guard:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -929,6 +933,7 @@ jobs:
 
   windows-mempalace-transcript:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -938,6 +943,7 @@ jobs:
 
   windows-sync-from-upstream:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -947,6 +953,7 @@ jobs:
 
   windows-history-import:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -957,6 +964,7 @@ jobs:
 
   windows-build-components:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -966,6 +974,7 @@ jobs:
 
   windows-extension-builders:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -975,6 +984,7 @@ jobs:
 
   windows-install-entries:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -984,6 +994,7 @@ jobs:
 
   windows-packaging-entries:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -993,6 +1004,7 @@ jobs:
 
   windows-extension-hooks:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -1002,6 +1014,7 @@ jobs:
 
   windows-harness-curator:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -1011,6 +1024,7 @@ jobs:
 
   windows-create-extension:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -1020,6 +1034,7 @@ jobs:
 
   windows-skill-scripts:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -1029,6 +1044,7 @@ jobs:
 
   windows-e2e-harness:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -1038,6 +1054,7 @@ jobs:
 
   windows-governance-checks:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -1047,6 +1064,7 @@ jobs:
 
   windows-model-ci-tooling:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -1056,6 +1074,7 @@ jobs:
 
   windows-setup-units:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
@@ -1065,6 +1084,7 @@ jobs:
 
   windows-setup-entries:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
