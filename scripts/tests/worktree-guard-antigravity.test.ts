@@ -5,12 +5,15 @@
 // silent, and a refusal prints nothing on stdout for every shape.
 // The file name joins the `worktree-*.test.ts` CI glob.
 
+import path from "node:path";
 import { after, before, describe, test } from "node:test";
 
+import { applyMutation, copyTracked } from "./lib/mutation-copy.ts";
 import { agyPayload, allowed, askAnswer, payload, refused } from "./lib/guard-asserts.ts";
 import {
   cleanupAll,
   makeFixture,
+  REPO,
   runGuard,
   writeClaim,
   type Fixture,
@@ -87,5 +90,27 @@ describe("a refusal prints no decision on either shape (R42)", () => {
   });
   test("tool_input", () => {
     refused(runGuard(payload("git reset --hard", unclaimed.wt), { cwd: unclaimed.wt }), "771");
+  });
+});
+
+describe("an internal error after the read still answers per the shape (R39, R41)", () => {
+  // No payload makes the guard throw from outside, so a fault is planted in a
+  // copy of the entry, right after the Antigravity recognition.
+  test("Antigravity -> ask line; tool_input -> silent", () => {
+    const copy = copyTracked(REPO, ["package.json", "hooks/worktree-git-guard.ts"]);
+    try {
+      applyMutation(
+        copy,
+        "hooks/worktree-git-guard.ts",
+        "const step = (value: unknown, segment: string | number): unknown => {",
+        'throw new Error("injected"); const step = (value: unknown, segment: string | number): unknown => {',
+      );
+      const entry = path.join(copy.root, "hooks", "worktree-git-guard.ts");
+      const opts = { cwd: unclaimed.wt, entry };
+      askAnswer(runGuard(agyPayload("git reset --hard", unclaimed.wt), opts));
+      allowed(runGuard(payload("git reset --hard", unclaimed.wt), opts));
+    } finally {
+      copy.dispose();
+    }
   });
 });
