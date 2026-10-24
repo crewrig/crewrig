@@ -180,3 +180,15 @@ test(
     rmSync(home, { recursive: true });
   },
 );
+
+test("the launcher template keeps the CREWRIG_REPO_DIR declaration form status parses", () => {
+  const template = readFileSync(
+    path.join(REPO_LIB_DIR, "service", "launcher", "mcp-daemon-launcher.ts"),
+    "utf8",
+  );
+  assert.match(
+    template,
+    /(?:^|\n)const CREWRIG_REPO_DIR: string = ("(?:[^"\\\n]|\\.)*");/,
+    "status-report.ts reads the baked checkout from this exact declaration",
+  );
+});
