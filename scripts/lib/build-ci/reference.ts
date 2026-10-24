@@ -63,6 +63,10 @@ export class Capability {
     const n = this.at(["requires", "runtime"]);
     return n instanceof YqSeq ? listText(n) : stripTrailingLf(text(n));
   }
+  /** `requires.install` (ci | install | omit-dev | none); "" when omitted. */
+  get install(): string {
+    return this.orEmpty(["requires", "install"]);
+  }
   get historyDepth(): string {
     return this.orEmpty(["requires", "history-depth"]);
   }

@@ -17,6 +17,7 @@ interface Cap {
   id: string;
   portability?: string;
   "changeset-gated"?: boolean;
+  paths?: string[];
   trigger: { on: string; branches?: string[]; paths?: string[] }[];
   requires?: { runtime?: string; tools?: string[]; "history-depth"?: string };
   command: string[];
@@ -74,7 +75,7 @@ describe("self-test split: structure (a, c)", () => {
       assert.ok(st.command.some(isTest), "a self-test capability runs at least one --test");
       for (const c of check.command) assert.ok(!isTest(c), `check still runs a test: ${c}`);
       assert.ok(
-        st.trigger.every((t) => (t.paths ?? []).length > 0),
+        st.trigger.every((t) => (t.paths ?? st.paths ?? []).length > 0),
         "a self-test trigger carries paths",
       );
     });
@@ -87,7 +88,7 @@ describe("self-test split: structure (a, c)", () => {
         assert.ok(check.requires?.tools?.includes(tool), `tool ${tool} not on the check`);
       assert.equal(st.cache === undefined, check.cache === undefined, "cache on both or neither");
       if (st.cache !== undefined) {
-        const own = new Set(st.trigger[0]?.paths ?? []);
+        const own = new Set(st.trigger[0]?.paths ?? st.paths ?? []);
         for (const f of st.cache.files)
           assert.ok(
             own.has(f) || f === "scripts/ci-cache-guard.ts",

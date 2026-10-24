@@ -10,15 +10,21 @@
 //   plus: every `- task:` call written in taskfiles/ci.yml is colon-anchored (R2), and no
 //   provisioning command (R5) is left in a ci task.
 //
+// Spec 0279 delta-03 R22: a capability whose `command:` is exactly the single entry `task ci:<id>`
+// is *migrated* and checked by shape (its task must exist; nothing is compared); a `command:` that
+// is a single `task ci:<other>` fails unconditionally (mismatched-command); every other shape keeps
+// the R3/R4 comparison. Provisioning (R5) stays enforced on every ci task.
+//
 // Exit: 0 clean, 1 findings, 2 wiring fault (an input cannot be read or parsed: an explicit
 // NOTICE is printed on stderr, nothing is skipped silently).
 // Finding line format: `ci-pre-push-parity: <rule>: <where>: <message>`, one per line on stderr.
-// Rules: no-capability, command-mismatch, missing-task, unanchored-call, provisioning, unresolved.
+// Rules: no-capability, command-mismatch, mismatched-command, missing-task, unanchored-call, provisioning, unresolved.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
   CONTROL_TASKS,
+  normalizeCommand,
   CommandResolveError,
   PROVISIONING,
   loadTaskfileTree,
@@ -108,6 +114,23 @@ function firstDifference(
   return undefined;
 }
 
+/** `ci:<id>` when the capability's `command:` is exactly the single entry `task ci:<id>`. */
+type CapClass = { kind: "migrated" } | { kind: "mismatched"; text: string } | { kind: "raw" };
+
+function classify(cap: CapRecord): CapClass {
+  if (cap.ncmd !== 1 || cap.cmds.length !== 1) {
+    return { kind: "raw" };
+  }
+  const text = normalizeCommand(cap.cmds[0] ?? "");
+  if (text === `task ci:${cap.id}`) {
+    return { kind: "migrated" };
+  }
+  if (/^task ci:\S+$/.test(text)) {
+    return { kind: "mismatched", text };
+  }
+  return { kind: "raw" };
+}
+
 function checkTask(tree: TaskfileTree, caps: Map<string, CapRecord>, name: string): void {
   const id = name.slice("ci:".length);
   const cap = caps.get(id);
@@ -124,6 +147,9 @@ function checkTask(tree: TaskfileTree, caps: Map<string, CapRecord>, name: strin
         `provisioning command '${cmd}' (${PROVISIONING.source}) must be a precondition, not a command`,
       );
     }
+    if (classify(cap).kind !== "raw") {
+      return; // migrated: the task is the authority; mismatched: reported by checkCapabilities
+    }
     const reference = resolveCapabilityCommands(tree, cap.cmds);
     const diff = firstDifference(reference.commands, task.commands);
     if (diff !== undefined) {
@@ -139,6 +165,22 @@ function checkTask(tree: TaskfileTree, caps: Map<string, CapRecord>, name: strin
       return;
     }
     throw err;
+  }
+}
+
+/** R22(b) and (d): the shape rules of a migrated or mismatched `command:`. */
+function checkCapabilities(tree: TaskfileTree, caps: Map<string, CapRecord>): void {
+  for (const cap of caps.values()) {
+    const cls = classify(cap);
+    if (cls.kind === "mismatched") {
+      finding(
+        "mismatched-command",
+        cap.id,
+        `capability '${cap.id}' command '${cls.text}' names another capability's task; expected 'task ci:${cap.id}'`,
+      );
+    } else if (cls.kind === "migrated" && !tree.byName.has(`ci:${cap.id}`)) {
+      finding("missing-task", cap.id, `migrated capability '${cap.id}' has no 'ci:${cap.id}' task`);
+    }
   }
 }
 
@@ -173,6 +215,7 @@ function main(): number {
       }
     }
     if (caps !== undefined) {
+      checkCapabilities(tree, caps);
       for (const task of ciTasks) {
         if (!CONTROL_TASKS.includes(task.name)) {
           checkTask(tree, caps, task.name);

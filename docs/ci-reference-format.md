@@ -179,8 +179,9 @@ The requirement is a closed-vocabulary mapping mirroring R12's own enumeration:
 | `runtime` | string, or list of strings | The language runtime(s) and version, as `<name>@<version>`. A capability whose command genuinely needs more than one language (e.g. a job that runs both `bash`/`python3` test scripts and a `node --test` suite) declares each; the FIRST entry is the primary runtime the GitLab derivation bases the job's Docker `image:` on, and any further entry is installed alongside it via `before_script` (never replacing the image). | `node@22`, `python@3.12`, `[python@3.12, node@24]` |
 | `tools` | list of strings | Additional tools the command needs on `PATH`. | `[yq]`, `[task]`, `[jq]` |
 | `history-depth` | enum | `full` when the command needs the complete source history (e.g. a base-ref diff); omitted otherwise. | `full` |
+| `install` | enum | The dependency provisioning the job input carries when `command:` is the single entry `task ci:<id>` (a migrated capability, spec 0283 R1): `ci` (`npm ci`), `install` (`npm install`), `omit-dev` (`npm ci --omit=dev --workspaces=false`) or `none`. Omitted means `none`. A not yet migrated capability keeps its provisioning lines as the first `command:` entries and omits the key. | `ci` |
 
-All three sub-keys are optional **inside** `requires`: a capability whose
+All four sub-keys are optional **inside** `requires`: a capability whose
 command needs only POSIX shell (e.g. `grep-anti-patterns`) may omit `requires`
 entirely. What is *not* optional is consistency — a command that invokes a tool
 or runtime it does not declare is rejected:
@@ -297,7 +298,7 @@ it emits one job keyed by the capability `id` (the C2 primary path below), with
 entry → `image:`, any further `runtime` entry AND every `tools` entry →
 `before_script:` installs, `history-depth: full` →
 `variables: { GIT_DEPTH: "0" }` — and `command` becoming the job's `script:`.
-The boilerplate is the generator's own output; it is never written back into
+`requires.install` becomes the matching provisioning line at the end of `before_script:` (after the tool installs), and a migrated capability's `script:` is the single `task ci:<id>` entry. The GitHub Actions `ci-job` step must pass an `install` input equal to `requires.install` (omitted means `none`; the action's own default is `ci`, so a job relying on it fails the parity check when the reference omits the key). The boilerplate is the generator's own output; it is never written back into
 the reference (the R12 need-vs-mechanism boundary). Engine-specific
 capabilities are skipped with no placeholder (spec 0048 R4), and the existing
 GitHub Actions workflows are **not** regenerated (spec 0048 R5) — they stay

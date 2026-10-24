@@ -26,6 +26,8 @@ export interface CapRecord {
   runtime: string[];
   tools: string[];
   historyDepth: string;
+  /** `requires.install` (ci | install | omit-dev | none); "" when omitted (spec 0283 R1). */
+  install: string;
   envTag: string;
   envKeys: string[];
   cacheTag: string;

@@ -29,6 +29,7 @@ export interface StepRecord {
   withTask: string;
   withNode: string;
   withCache: string;
+  withInstall: string;
 }
 
 export interface JobRecord {
@@ -82,6 +83,7 @@ function readStep(step: YqNode): StepRecord {
     withTask: rawText(at(withNode, ["task"]), "with.task"),
     withNode: text(at(withNode, ["node"]), "with.node"),
     withCache: text(at(withNode, ["cache"]), "with.cache"),
+    withInstall: text(at(withNode, ["install"]), "with.install"),
   };
 }
 

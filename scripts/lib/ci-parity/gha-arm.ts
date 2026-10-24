@@ -115,6 +115,15 @@ export function checkGhaJob(
         // cancel-on-failure itself (spec 0283 R5, spec 0049 delta-02 R27).
         prov.node = step.withNode === "" ? "24" : step.withNode;
         if (step.withTask !== "false") prov.tools.push("task");
+        // `requires.install` (omitted = none) must equal the job's `install` input (the action's
+        // own default is ci), so provisioning lives in exactly one declared place (spec 0283 R1).
+        const want = c.install === "" ? "none" : c.install;
+        const got = step.withInstall === "" ? "ci" : step.withInstall;
+        if (want !== got)
+          fail(
+            state,
+            `capability '${c.id}' (github-actions): job '${jobKey}' passes ci-job install '${got}' but the reference requires.install is '${want}' (spec 0283 R1)`,
+          );
         if (c.ncmd === 1 && normalizeCmd(c.cmds[0] ?? "") === `task ci:${c.id}`) ci++;
       }
       continue;

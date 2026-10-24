@@ -5,6 +5,7 @@ import { Capability } from "./reference.ts";
 import { blockItem, dqEntry, dqItem, nonEmptyLines } from "./render-yaml.ts";
 import {
   runtimeToImage,
+  installLines,
   secondaryRuntimeInstallLines,
   toolInstallLines,
   type TaskPin,
@@ -107,6 +108,7 @@ export function emitJob(cap: Capability, pin: TaskPin): string[] {
   const before: string[] = [];
   for (const sr of nonEmptyLines(secondary)) before.push(...secondaryRuntimeInstallLines(sr));
   for (const t of nonEmptyLines(cap.tools)) before.push(...toolInstallLines(t, pin));
+  before.push(...installLines(cap.install));
   if (before.length > 0) out.push("  before_script:", ...before.map((l) => `    - ${l}`));
 
   const cacheFiles = cap.cacheFiles;

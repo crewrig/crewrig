@@ -16,6 +16,8 @@ import {
   UNKNOWN_TOOL_REFERENCE,
   VALID_REFERENCE,
 } from "./lib/ci-reference-fixtures.ts";
+import { generate } from "../lib/build-ci/entry.ts";
+import { parseTaskPin } from "../lib/build-ci/tools.ts";
 import { applyNormalDiff } from "./lib/normal-diff-apply.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
@@ -90,5 +92,91 @@ describe("build-ci synthetic (group S)", () => {
         .readFileSync(pipeline(root), "utf8")
         .includes('BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"'),
     );
+  });
+});
+
+describe("build-ci requires.install (spec 0283 R1)", () => {
+  const INSTALL_PIN = parseTaskPin(
+    JSON.stringify({ version: "3.54.0", sha256: { linux_amd64: "a".repeat(64) } }),
+  );
+
+  const installCap = (requires: string, command: string): string =>
+    [
+      "capabilities:",
+      "  - id: alpha",
+      '    name: "Alpha"',
+      "    portability: portable",
+      "    trigger:",
+      "      - on: pull-request",
+      "        branches: [main]",
+      `${requires}    command:`,
+      `${command}`,
+      "",
+    ].join("\n");
+
+  const installJob = (text: string): string => text.slice(text.indexOf("\nalpha:"));
+
+  it("a migrated capability generates image, pinned Task, npm ci and the task script", () => {
+    const out = installJob(
+      generate(
+        installCap(
+          "    requires:\n      runtime: node@24\n      tools: [task]\n      install: ci\n",
+          "      - task ci:alpha",
+        ),
+        INSTALL_PIN,
+      ),
+    );
+    assert.match(out, /image: node:24/);
+    assert.match(out, /task --version/);
+    const lines = out.split("\n");
+    const taskAt = lines.findIndex((l) => l.includes("task --version"));
+    const ciAt = lines.findIndex((l) => l.trim() === "- npm ci");
+    const scriptAt = lines.findIndex((l) => l.trim() === "script:");
+    assert.ok(taskAt > 0 && ciAt > taskAt && scriptAt > ciAt, out);
+    assert.match(out, /script:\n {4}- "?task ci:alpha"?\n/);
+  });
+
+  it("install values map to their provisioning line; none and omitted add nothing", () => {
+    const lineFor = (v: string): string | undefined => {
+      const req = `    requires:\n      runtime: node@24\n${v === "" ? "" : `      install: ${v}\n`}`;
+      const out = generate(installCap(req, "      - task ci:alpha"), INSTALL_PIN);
+      return out
+        .split("\n")
+        .find((l) => /^\s+- npm /.test(l))
+        ?.trim();
+    };
+    assert.equal(lineFor("ci"), "- npm ci");
+    assert.equal(lineFor("install"), "- npm install");
+    assert.equal(lineFor("omit-dev"), "- npm ci --omit=dev --workspaces=false");
+    assert.equal(lineFor("none"), undefined);
+    assert.equal(lineFor(""), undefined);
+  });
+
+  it("an unknown install value is rejected", () => {
+    assert.throws(
+      () =>
+        generate(
+          installCap(
+            "    requires:\n      runtime: node@24\n      install: yarn\n",
+            "      - task ci:alpha",
+          ),
+          INSTALL_PIN,
+        ),
+      /requires\.install 'yarn'/,
+    );
+  });
+
+  it("a capability that omits install generates exactly what it did before", () => {
+    const out = installJob(
+      generate(
+        installCap(
+          "    requires:\n      runtime: node@24\n",
+          '      - "npm ci"\n      - "node x.ts"',
+        ),
+        INSTALL_PIN,
+      ),
+    );
+    assert.ok(!out.includes("before_script"), out);
+    assert.match(out, /- "?npm ci"?\n/);
   });
 });

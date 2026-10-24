@@ -90,6 +90,25 @@ export function toolInstallLines(tool: string, pin: TaskPin): readonly string[] 
   );
 }
 
+/** The provisioning line of a `requires.install` value (spec 0283 R1); none for none or omitted. */
+export function installLines(install: string): readonly string[] {
+  switch (install) {
+    case "":
+    case "none":
+      return [];
+    case "ci":
+      return ["npm ci"];
+    case "install":
+      return ["npm install"];
+    case "omit-dev":
+      return ["npm ci --omit=dev --workspaces=false"];
+    default:
+      throw new BuildCiError(
+        `Error: requires.install '${install}' is not one of ci, install, omit-dev, none.`,
+      );
+  }
+}
+
 /** `secondary_runtime_install_lines`: install lines for a runtime beyond the image's own. */
 export function secondaryRuntimeInstallLines(runtime: string): readonly string[] {
   if (runtime.startsWith("node@")) {

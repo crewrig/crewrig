@@ -116,3 +116,15 @@ test("provisioning guard: ci-job provides Task unless task is false", () => {
     "BAD:" + bad.findings.join("\n"),
   );
 });
+
+test("a ci-job install input that differs from requires.install fails naming the job (spec 0283 R1)", () => {
+  const root = makeFixture();
+  addCiJob(root, "figure-labels");
+  const r = runCheck(root);
+  assert.ok(
+    r.stderr.includes(
+      "job 'figure-labels' passes ci-job install 'ci' but the reference requires.install is 'none'",
+    ),
+    r.stderr,
+  );
+});
