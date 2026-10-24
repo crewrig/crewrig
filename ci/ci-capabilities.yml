@@ -3910,6 +3910,70 @@ capabilities:
         (GitLab Pages is a distinct surface with its own job contract), so the
         deploy capability is hand-authored per engine, not generated.
 
+  # Spec 0284: the alert job of the exhaustive-run workflow (slice 4 of 0280).
+  - id: alert-scheduled-failure
+    name: "Open or comment on an issue when a scheduled run fails"
+    trigger:
+      - on: scheduled
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        The neutral format has no failure-conditional or on-failure `needs` construct,
+        and the generated GitLab pipeline is not executed on a live GitLab. A GitLab
+        adopter gets the same effect from GitLab's own pipeline-failure notification
+        to the schedule owner.
+    command:
+      - task ci:alert-scheduled-failure
+
+  - id: alert-scheduled-failure-selftest
+    name: "Self-test the scheduled-failure alert and its wiring check"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/ci-alert-scheduled-failure.ts"
+      - "scripts/check-alert-scheduled-failure.ts"
+      - "scripts/tests/ci-alert-scheduled-failure.test.ts"
+      - ".github/workflows/changeset-coverage.yml"
+      - "taskfiles/ci.yml"
+      - ".github/workflows/build.yml"
+      - "ci/ci-capabilities.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:alert-scheduled-failure-selftest
+
+  - id: alert-scheduled-failure-check
+    name: "Check the scheduled-failure alert wiring"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/ci-alert-scheduled-failure.ts"
+      - "scripts/check-alert-scheduled-failure.ts"
+      - "scripts/tests/ci-alert-scheduled-failure.test.ts"
+      - ".github/workflows/changeset-coverage.yml"
+      - "taskfiles/ci.yml"
+      - ".github/workflows/build.yml"
+      - "ci/ci-capabilities.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:alert-scheduled-failure-check
+
   # --- Engine-specific: Windows runner scaffolding (spec 0240 R12-R15) -----
 
   # The reusable `windows-latest` job shape: Node.js 24 invoked from a

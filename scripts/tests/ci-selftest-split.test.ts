@@ -82,7 +82,7 @@ describe("self-test split: structure (a, c)", () => {
   for (const st of SELFTESTS) {
     const id = st.id.replace(/-selftest$/, "");
     it(`${st.id}: has a sibling check, only test or provisioning commands, is gated`, () => {
-      const check = byId.get(id);
+      const check = byId.get(`${id}-check`) ?? byId.get(id);
       assert.ok(check, `no sibling check '${id}'`);
       assert.equal(st["changeset-gated"], true);
       const stCmds = resolvedCommands(st);
@@ -98,7 +98,7 @@ describe("self-test split: structure (a, c)", () => {
     });
 
     it(`${st.id}: env, tools, history-depth and cache follow the R-fields rules`, () => {
-      const check = byId.get(id) as Cap;
+      const check = (byId.get(`${id}-check`) ?? byId.get(id)) as Cap;
       assert.equal(st.env, undefined, "env stays with the check");
       assert.equal(st.requires?.["history-depth"], undefined);
       for (const tool of st.requires?.tools ?? [])
@@ -115,7 +115,7 @@ describe("self-test split: structure (a, c)", () => {
     });
 
     it(`${st.id}: runtime, portability and branches equal the check's`, () => {
-      const check = byId.get(id) as Cap;
+      const check = (byId.get(`${id}-check`) ?? byId.get(id)) as Cap;
       assert.equal(st.requires?.runtime, check.requires?.runtime);
       assert.equal(st.portability, check.portability);
       assert.deepEqual(

@@ -48,3 +48,22 @@ jobs:
         run: node scripts/lib/node-floor-guard.js
       - name: Exhaustive run of every changeset-gated check (spec 0147 delta-01 R21)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-changeset-coverage.ts
+  # Spec 0284: a red scheduled run opens, or comments on, one issue; a manual dispatch does not.
+  alert: # ci-capability: alert-scheduled-failure
+    runs-on: ubuntu-latest
+    needs: changeset-coverage
+    if: failure() && github.event_name == 'schedule'
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --omit=dev --workspaces=false
+      - run: node scripts/lib/node-floor-guard.js
+      - uses: ./.github/actions/setup-task
+      - run: task ci:alert-scheduled-failure -- --result ${{ needs.changeset-coverage.result }}
+        env:
+          GH_TOKEN: ${{ github.token }}

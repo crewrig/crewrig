@@ -3501,3 +3501,19 @@ jobs:
         with:
           id: check-ci-parity
           install: omit-dev
+  alert-scheduled-failure-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: alert-scheduled-failure-selftest
+          install: omit-dev
+  alert-scheduled-failure-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: alert-scheduled-failure-check
+          install: omit-dev

@@ -147,6 +147,9 @@ function checkTask(tree: TaskfileTree, caps: Map<string, CapRecord>, name: strin
         `provisioning command '${cmd}' (${PROVISIONING.source}) must be a precondition, not a command`,
       );
     }
+    if (cap.engine !== "") {
+      return; // a `specific` capability carries no command list in the reference (spec 0284)
+    }
     if (classify(cap).kind !== "raw") {
       return; // migrated: the task is the authority; mismatched: reported by checkCapabilities
     }

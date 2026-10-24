@@ -470,6 +470,17 @@ A dedicated workflow file is used on GitHub because a `schedule:` trigger on
 red workflow run or pipeline on the ref it ran against; it is never reported
 only in a log (R22).
 
+A red scheduled run is also reported to a human (spec 0284). The `alert` job of
+that workflow runs `task ci:alert-scheduled-failure` when the gated job fails on
+the `schedule` event only, never on a manual dispatch. It opens one issue titled
+`Scheduled run failed: <workflow name>` whose body starts with the marker
+`<!-- crewrig:scheduled-failure workflow="<workflow name>" -->`, or comments on
+the open issue carrying that title and marker. The job is the `specific`
+capability `alert-scheduled-failure` (exception engine `github-actions`, no
+GitLab job): the neutral format has no failure-conditional construct, and
+GitLab adopters rely on GitLab's native pipeline-failure notification to the
+schedule owner. `alert-scheduled-failure-check` guards the wiring.
+
 ### Operational prerequisites
 
 These four items live outside the repository's files; they are recorded here

@@ -92,6 +92,18 @@
     "desc": "Check Taskfile.yml names no POSIX-only command, modulo the owned exemption list (local mirror of the CI guard, spec 0266 R13)"
   },
   {
+    "name": "ci:alert-scheduled-failure",
+    "desc": "Open or comment on the issue for a red scheduled run (pass -- --result <value> [--dry-run])"
+  },
+  {
+    "name": "ci:alert-scheduled-failure-check",
+    "desc": "Check the alert job wiring in the exhaustive-run workflow"
+  },
+  {
+    "name": "ci:alert-scheduled-failure-selftest",
+    "desc": "Run the scheduled-failure alert self-test against a fake gh"
+  },
+  {
     "name": "ci:build-components-ts",
     "desc": "Run the build-components-ts CI capability (pre-push mirror of the CI job)"
   },

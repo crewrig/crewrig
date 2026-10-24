@@ -194,5 +194,8 @@
   "ci:check-agent-profiles": "taskfiles/ci.yml",
   "ci:agent-profile-migration": "taskfiles/ci.yml",
   "ci:ci-parity": "taskfiles/ci.yml",
-  "ci:check-plan-review": "taskfiles/ci.yml"
+  "ci:check-plan-review": "taskfiles/ci.yml",
+  "ci:alert-scheduled-failure": "taskfiles/ci.yml",
+  "ci:alert-scheduled-failure-selftest": "taskfiles/ci.yml",
+  "ci:alert-scheduled-failure-check": "taskfiles/ci.yml"
 }

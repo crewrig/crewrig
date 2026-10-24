@@ -188,6 +188,21 @@ tasks:
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-check-test-wiring-cases.test.ts
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-check-test-strays-cases.test.ts
+  alert-scheduled-failure:
+    desc: Open or comment on the issue for a red scheduled run (pass -- --result <value> [--dry-run])
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-alert-scheduled-failure.ts {{.CLI_ARGS}}
+  alert-scheduled-failure-selftest:
+    desc: Run the scheduled-failure alert self-test against a fake gh
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-alert-scheduled-failure.test.ts
+  alert-scheduled-failure-check:
+    desc: Check the alert job wiring in the exhaustive-run workflow
+    preconditions:
+      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-alert-scheduled-failure.ts
   check-ci-parity:
     desc: Check the CI reference, workflow and GitLab outputs agree (pre-push mirror of the CI job)
     preconditions:

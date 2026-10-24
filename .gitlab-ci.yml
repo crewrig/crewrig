@@ -2896,6 +2896,46 @@ check-ci-parity:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
+alert-scheduled-failure-selftest:
+  image: node:24
+  before_script:
+    - !reference [.task-install, script]
+    - npm ci --omit=dev --workspaces=false
+  script:
+    - "task ci:alert-scheduled-failure-selftest"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes: &alert-scheduled-failure-selftest-changes-1
+        - "scripts/ci-alert-scheduled-failure.ts"
+        - "scripts/check-alert-scheduled-failure.ts"
+        - "scripts/tests/ci-alert-scheduled-failure.test.ts"
+        - ".github/workflows/changeset-coverage.yml"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes: *alert-scheduled-failure-selftest-changes-1
+
+alert-scheduled-failure-check:
+  image: node:24
+  before_script:
+    - !reference [.task-install, script]
+    - npm ci --omit=dev --workspaces=false
+  script:
+    - "task ci:alert-scheduled-failure-check"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes: &alert-scheduled-failure-check-changes-1
+        - "scripts/ci-alert-scheduled-failure.ts"
+        - "scripts/check-alert-scheduled-failure.ts"
+        - "scripts/tests/ci-alert-scheduled-failure.test.ts"
+        - ".github/workflows/changeset-coverage.yml"
+        - "taskfiles/ci.yml"
+        - ".github/workflows/build.yml"
+        - "ci/ci-capabilities.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes: *alert-scheduled-failure-check-changes-1
+
 release:
   image: node:24
   variables:
