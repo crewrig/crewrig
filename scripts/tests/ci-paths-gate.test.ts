@@ -58,11 +58,18 @@ function repo(): string {
   fs.writeFileSync(path.join(d, "a/f.txt"), "hello");
   return d;
 }
+// The gate reads GITHUB_OUTPUT and the event variables; a CI runner sets them, so scrub every
+// GITHUB_* and GATE_* variable to keep the stdout assertions hermetic on any host.
+const hermeticEnv = (env: Record<string, string>): NodeJS.ProcessEnv => {
+  const base = { ...process.env };
+  for (const k of Object.keys(base)) if (/^(GITHUB_|GATE_)/.test(k)) delete base[k];
+  return { ...base, ...env };
+};
 const cli = (script: string, args: string[], cwd: string, env: Record<string, string> = {}) =>
   spawnSync(
     process.execPath,
     ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", path.resolve(script), ...args],
-    { cwd, encoding: "utf8", env: { ...process.env, ...env, REPO_DIR: cwd } },
+    { cwd, encoding: "utf8", env: { ...hermeticEnv(env), REPO_DIR: cwd } },
   );
 
 test("cli: shadow annotations, unsupported glob exit 2, schedule", () => {
