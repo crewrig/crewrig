@@ -81,8 +81,8 @@ are unchanged.
 
 Requirement 38, deviation (b) — the command lines each CLI runs are joined by deviation
 (f): the guard's allow outcome on Antigravity CLI is `{"decision": "ask"}` where the
-shell guard printed nothing, because the shell guard's silence is the defect of issue
-#1489.
+shell guard printed nothing, because the shell guard's silence is the defect of
+issue #1489.
 
 ## REMOVED
 
