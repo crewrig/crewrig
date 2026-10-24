@@ -49,6 +49,27 @@ describe("release driver sandbox", () => {
     // eslint-disable-next-line no-console
     console.log(`PROBE2 dir17=${dir17} gcFiles=${JSON.stringify(gcFiles)}`);
     sb.dispose();
+    {
+      const out: string[] = [];
+      out.push(`exists=${fs.existsSync(sb.root)}`);
+      try {
+        fs.rmSync(sb.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+        out.push(`second rmSync ok, exists=${fs.existsSync(sb.root)}`);
+      } catch (e) {
+        out.push(`second rmSync threw ${(e as Error).message}`);
+      }
+      try {
+        const st = fs.statSync(sb.root);
+        out.push(`mode=${(st.mode & 0o777).toString(8)} uid=${st.uid} me=${process.getuid?.()}`);
+        out.push(`top=${JSON.stringify(fs.readdirSync(sb.root))}`);
+        const procs = spawnSync("sh", ["-c", "ps -eo pid,etime,args | grep -E 'git|node' | grep -v grep | head -15"], { encoding: "utf8" });
+        out.push(`ps=${procs.stdout}`);
+      } catch (e) {
+        out.push(`stat failed ${(e as Error).message}`);
+      }
+      // eslint-disable-next-line no-console
+      console.log(`PROBE3 ${out.join(" | ")}`);
+    }
     const left = fs.existsSync(sb.root)
       ? JSON.stringify(fs.readdirSync(sb.root, { recursive: true }).slice(0, 40))
       : "gone";
