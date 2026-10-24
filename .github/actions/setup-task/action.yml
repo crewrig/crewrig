@@ -2,8 +2,10 @@ name: Set up Task
 description: >-
   Installs the Task release pinned in ci/task-pin.json (spec 0282). The archive
   is verified against the SHA-256 committed in the pin before it is unpacked;
-  a mismatch, a missing checksum, an unsupported platform (Windows included)
-  or a wrong `task --version` fails the step. The logic is inline on purpose:
+  a mismatch, a missing checksum, an unsupported platform or a wrong
+  `task --version` fails the step. Linux installs `task_linux_amd64.tar.gz` to /usr/local/bin; Windows (Git Bash)
+  installs `task_windows_amd64.zip`, unpacked with the system `tar.exe` (bsdtar reads zip, Git Bash's GNU tar
+  cannot), into `$RUNNER_TEMP/task-bin`, which is appended to `$GITHUB_PATH`. The logic is inline on purpose:
   the shell-allowlist ratchet forbids a new shell file. Call it after
   `actions/checkout`, since it reads the pin from the checked-out tree.
 runs:
@@ -13,11 +15,20 @@ runs:
       run: |
         set -euo pipefail
         pin_file="${TASK_PIN_FILE-ci/task-pin.json}"
-        install_dir="${TASK_INSTALL_DIR-/usr/local/bin}"
-        sudo_cmd="${TASK_SUDO-sudo}"
-        case "$(uname -s)/$(uname -m)" in
-          Linux/x86_64) platform="${TASK_PLATFORM-linux_amd64}" ;;
-          *) platform="${TASK_PLATFORM-$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)}" ;;
+        case "$(uname -s)" in
+          Linux) default_platform=linux_amd64; default_dir=/usr/local/bin; default_sudo=sudo ;;
+          MINGW*|MSYS*|CYGWIN*)
+            default_platform=windows_amd64
+            default_dir="$(cygpath -u "${RUNNER_TEMP:-${TEMP:-/tmp}}")/task-bin"
+            default_sudo="" ;;
+          *) default_platform="$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)"; default_dir=/usr/local/bin; default_sudo=sudo ;;
+        esac
+        platform="${TASK_PLATFORM-${default_platform}}"
+        install_dir="${TASK_INSTALL_DIR-${default_dir}}"
+        sudo_cmd="${TASK_SUDO-${default_sudo}}"
+        case "${platform}" in
+          windows_*) ext=zip; bin=task.exe ;;
+          *) ext=tar.gz; bin=task ;;
         esac
         version="$(sed -n 's/^ *"version": *"\([0-9.]*\)".*/\1/p' "${pin_file}")"
         sum="$(sed -n 's/^ *"'"${platform}"'": *"\([0-9a-f]\{64\}\)".*/\1/p' "${pin_file}")"
@@ -29,22 +40,28 @@ runs:
           echo "::error title=setup-task::no pinned checksum for Task ${version} on platform ${platform} in ${pin_file}" >&2
           exit 1
         fi
-        url="${TASK_ARCHIVE_URL-https://github.com/go-task/task/releases/download/v${version}/task_${platform}.tar.gz}"
+        url="${TASK_ARCHIVE_URL-https://github.com/go-task/task/releases/download/v${version}/task_${platform}.${ext}}"
         work="$(mktemp -d)"
-        curl --fail --silent --show-error --location --retry 3 -o "${work}/task.tar.gz" "${url}"
+        curl --fail --silent --show-error --location --retry 3 -o "${work}/task.${ext}" "${url}"
         if command -v sha256sum >/dev/null 2>&1; then
-          actual="$(sha256sum "${work}/task.tar.gz" | cut -d' ' -f1)"
+          actual="$(sha256sum "${work}/task.${ext}" | cut -d' ' -f1)"
         else
-          actual="$(shasum -a 256 "${work}/task.tar.gz" | cut -d' ' -f1)"
+          actual="$(shasum -a 256 "${work}/task.${ext}" | cut -d' ' -f1)"
         fi
         if [ "${actual}" != "${sum}" ]; then
           echo "::error title=setup-task::checksum mismatch for Task ${version} on platform ${platform}: expected ${sum}, got ${actual}" >&2
           exit 1
         fi
-        tar -xzf "${work}/task.tar.gz" -C "${work}" task
+        if [ "${ext}" = zip ]; then
+          native="$(cygpath -m "${work}" 2>/dev/null || printf '%s' "${work}")"
+          "${TASK_UNZIP-/c/Windows/System32/tar.exe}" -xf "${native}/task.${ext}" -C "${native}" "${bin}"
+        else
+          tar -xzf "${work}/task.${ext}" -C "${work}" "${bin}"
+        fi
         ${sudo_cmd} install -d "${install_dir}"
-        ${sudo_cmd} install -m 0755 "${work}/task" "${install_dir}/task"
-        reported="$("${install_dir}/task" --version)"
+        ${sudo_cmd} install -m 0755 "${work}/${bin}" "${install_dir}/${bin}"
+        if [ -n "${GITHUB_PATH-}" ] && [ "${ext}" = zip ]; then cygpath -w "${install_dir}" >> "${GITHUB_PATH}"; fi
+        reported="$("${install_dir}/${bin}" --version)"
         want="$(printf '%s' "${version}" | sed 's/\./\\./g')"
         if ! printf '%s\n' "${reported}" | grep -Eq "(^|[^0-9.])v?${want}([^0-9.]|\$)"; then
           echo "::error title=setup-task::task --version reports '${reported}', expected ${version} on platform ${platform}" >&2

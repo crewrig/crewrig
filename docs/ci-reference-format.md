@@ -839,11 +839,13 @@ platform). It has three carriers and no others: the file itself, the generated `
 (rendered by `scripts/build-ci.ts` from the pin) and the composite action
 `.github/actions/setup-task/action.yml`, which reads the pin at run time and holds neither the
 checksum nor the version. The archive is verified against the pinned SHA-256 before it is
-unpacked, and a `task --version` check ends the install; Windows jobs fail closed until slice 3
-(#1780) adds a Windows archive.
+unpacked, and a `task --version` check ends the install. Linux uses `task_linux_amd64.tar.gz`;
+Windows (Git Bash) uses `task_windows_amd64.zip`, unpacked with the system `tar.exe` (Git Bash's GNU
+`tar` cannot read zip) into `$RUNNER_TEMP/task-bin`, added to `$GITHUB_PATH`; any other platform
+without a pinned checksum fails closed.
 
-To bump the pin by hand: pick the release, copy the `task_linux_amd64.tar.gz` line of its
-`task_checksums.txt`, download the archive and confirm the same value with `sha256sum`, edit
+To bump the pin by hand: pick the release, copy the `task_linux_amd64.tar.gz` and `task_windows_amd64.zip` lines of its
+`task_checksums.txt`, download each archive and confirm the same value with `sha256sum`, edit
 `ci/task-pin.json` (the version must stay at or above the `version:` floor of the root
 `Taskfile.yml`), then run `node scripts/build-ci.ts` and commit the regenerated
 `.gitlab-ci.yml`. The `check-task-provisioning` job installs the pinned Task end to end on both

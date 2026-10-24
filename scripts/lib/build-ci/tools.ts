@@ -51,7 +51,14 @@ export function parseTaskPin(text: string): TaskPin {
   const sum = o.sha256?.["linux_amd64"];
   if (typeof sum !== "string" || !/^[0-9a-f]{64}$/.test(sum))
     return bad("'sha256.linux_amd64' must be 64 lowercase hex digits");
-  return { version: o.version, sha256: { linux_amd64: sum } };
+  const out: Record<string, string> = { linux_amd64: sum };
+  const win = o.sha256?.["windows_amd64"];
+  if (win !== undefined) {
+    if (typeof win !== "string" || !/^[0-9a-f]{64}$/.test(win))
+      return bad("'sha256.windows_amd64' must be 64 lowercase hex digits");
+    out["windows_amd64"] = win;
+  }
+  return { version: o.version, sha256: out };
 }
 
 /** The GitLab `task` recipe: pinned release, checksum-verified, then a failing version check. */

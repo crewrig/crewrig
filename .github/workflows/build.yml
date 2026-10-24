@@ -2250,6 +2250,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: ./.github/actions/setup-task
+      - name: Proof of the Windows Task pin
+        shell: bash
+        run: task --version
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24

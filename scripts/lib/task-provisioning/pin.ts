@@ -63,7 +63,7 @@ export function readPin(repoDir: string): { pin: TaskPin; findings: string[] } {
 /** Duplicate carriers and a stale generated `.gitlab-ci.yml`. */
 export function checkCarriers(repoDir: string, pin: TaskPin): string[] {
   const out: string[] = [];
-  const sum = pin.sha256["linux_amd64"] as string;
+  const sums = Object.values(pin.sha256);
   const urls = [`releases/download/v${pin.version}/task_`];
   const files: string[] = [];
   for (const top of [".github", "ci", "scripts", "taskfiles"])
@@ -73,7 +73,8 @@ export function checkCarriers(repoDir: string, pin: TaskPin): string[] {
     if (!SCOPE.some((re) => re.test(f)) || EXCLUDED.some((re) => re.test(f))) continue;
     if (f === PIN_FILE || f === ".gitlab-ci.yml") continue;
     const text = fs.readFileSync(path.join(repoDir, f), "utf8");
-    if (text.includes(sum)) out.push(`${f}: duplicates the pinned checksum (R6d)`);
+    if (sums.some((sum) => text.includes(sum)))
+      out.push(`${f}: duplicates the pinned checksum (R6d)`);
     if (urls.some((u) => text.includes(u)))
       out.push(`${f}: duplicates the pinned download URL (R6d)`);
   }

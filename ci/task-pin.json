@@ -1,6 +1,7 @@
 {
   "version": "3.54.0",
   "sha256": {
-    "linux_amd64": "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb"
+    "linux_amd64": "680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb",
+    "windows_amd64": "837f42f71899ea41d07a47acc81d4d6ea80cb41c68292345f915c656473efcb7"
   }
 }

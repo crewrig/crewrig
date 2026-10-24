@@ -158,3 +158,57 @@ test("action: success when the archive matches and the binary reports the pinned
   const r = runAction(buf, pin);
   assert.equal(r.code, 0, r.out);
 });
+
+test("the committed pin carries both the linux and the windows checksum", () => {
+  assert.match(PIN.sha256["windows_amd64"] as string, /^[0-9a-f]{64}$/);
+  assert.throws(
+    () =>
+      parseTaskPin(
+        '{"version":"3.54.0","sha256":{"linux_amd64":"' +
+          "a".repeat(64) +
+          '","windows_amd64":"zz"}}',
+      ),
+    BuildCiError,
+  );
+});
+
+test("action: the windows branch unpacks the zip through the unzip hook and checks the version", () => {
+  const dir = tmp();
+  const src = path.join(dir, "src");
+  fs.mkdirSync(src);
+  fs.writeFileSync(path.join(src, "task.exe"), "#!/bin/sh\necho 'Task version: v3.54.0 (h1:x)'\n", {
+    mode: 0o755,
+  });
+  const zip = path.join(dir, "t.zip");
+  const made = spawnSync("python3", ["-m", "zipfile", "-c", zip, path.join(src, "task.exe")]);
+  if (made.status !== 0) return; // no python3 on this host: the branch is proven on windows-latest
+  // zipfile stores the absolute path; rebuild with the bare name through a cwd run.
+  assert.equal(
+    spawnSync("python3", ["-m", "zipfile", "-c", zip, "task.exe"], { cwd: src }).status,
+    0,
+  );
+  const hook = path.join(dir, "unzip.sh");
+  fs.writeFileSync(hook, '#!/bin/sh\nexec unzip -o -q "$2" "$5" -d "$4"\n', { mode: 0o755 });
+  const buf = fs.readFileSync(zip);
+  const sum = crypto.createHash("sha256").update(buf).digest("hex");
+  const pin = JSON.stringify({ version: "3.54.0", sha256: { windows_amd64: sum } }, null, 2) + "\n";
+  const pinFile = path.join(dir, "pin.json");
+  fs.writeFileSync(pinFile, pin);
+  fs.writeFileSync(path.join(dir, "a.zip"), buf);
+  const script = path.join(dir, "run.sh");
+  fs.writeFileSync(script, actionScript());
+  const r = spawnSync("bash", [script], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      TASK_PIN_FILE: pinFile,
+      TASK_ARCHIVE_URL: `file://${path.join(dir, "a.zip")}`,
+      TASK_INSTALL_DIR: path.join(dir, "bin"),
+      TASK_SUDO: "",
+      TASK_PLATFORM: "windows_amd64",
+      TASK_UNZIP: hook,
+    },
+  });
+  assert.equal(r.status, 0, `${r.stdout}${r.stderr}`);
+  assert.ok(fs.existsSync(path.join(dir, "bin", "task.exe")));
+});
