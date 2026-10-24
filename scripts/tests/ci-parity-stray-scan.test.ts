@@ -48,12 +48,12 @@ function load(file: string): YMap {
 test("SC1: scanned steps, bare (release-notes) and inside a cache layer (docs-index), pass", () => {
   const fx = makeFixture();
   const wantBare = lastCommand(fx, "release-notes");
-  const wantLayered = lastCommand(fx, "docs-index");
+  const wantLayered = lastCommand(fx, "docs-index-selftest");
   const gotBare = String(
     stepOf(load(NOTES_YML(fx)), "release-notes", /monorepo-release-notes-real-engine/)["run"],
   );
   const gotLayered = String(
-    stepOf(load(BUILD_YML(fx)), "docs-index", /build-docs-index-entry/)["run"],
+    stepOf(load(BUILD_YML(fx)), "docs-index-selftest", /build-docs-index-entry/)["run"],
   );
   // Preconditions: the reference declares the scanned form.
   assert.ok(
@@ -74,7 +74,7 @@ test("SC1: scanned steps, bare (release-notes) and inside a cache layer (docs-in
   const r = runCheck(fx);
   assert.equal(r.status, 0, r.stderr);
   assert.ok(!r.stderr.includes("capability 'release-notes' (github-actions)"), r.stderr);
-  assert.ok(!r.stderr.includes("capability 'docs-index' (github-actions)"), r.stderr);
+  assert.ok(!r.stderr.includes("capability 'docs-index-selftest' (github-actions)"), r.stderr);
 });
 
 test("SC2: a bare step missing the scan fails closed", () => {
@@ -92,7 +92,7 @@ test("SC2: a bare step missing the scan fails closed", () => {
 test("SC3: a layered step missing the scan fails closed", () => {
   const fx = makeFixture();
   editYaml(BUILD_YML(fx), (doc) => {
-    const s = stepOf(doc, "docs-index", /stray-scan/);
+    const s = stepOf(doc, "docs-index-selftest", /stray-scan/);
     const inner =
       " -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- ";
     const run = String(s["run"]);
@@ -101,7 +101,7 @@ test("SC3: a layered step missing the scan fails closed", () => {
   });
   const r = runCheck(fx);
   assert.equal(r.status, 1, r.stderr);
-  assert.ok(r.stderr.includes("capability 'docs-index' (github-actions)"), r.stderr);
+  assert.ok(r.stderr.includes("capability 'docs-index-selftest' (github-actions)"), r.stderr);
   assert.ok(
     r.stderr.includes(
       `unexpected step: '${NODE_TEST} scripts/tests/build-docs-index-entry.test.ts'`,
