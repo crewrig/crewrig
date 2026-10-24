@@ -3,6 +3,9 @@
 // install lines. The recipes are text the generated pipeline runs later; this
 // generator spawns nothing. An unknown runtime or tool fails closed (delta-02 Scenario 2).
 
+import fs from "node:fs";
+import path from "node:path";
+
 /** A failure the shell reports as one `Error:` line on stderr and a non-zero exit. */
 export class BuildCiError extends Error {
   readonly code: number;
@@ -63,13 +66,58 @@ export function taskRecipe(pin: TaskPin): readonly string[] {
   ];
 }
 
-const TOOLS: Readonly<Record<string, readonly string[]>> = {
-  yq: [
+/** The pinned yq releases (ci/yq-pin.json): version -> sha256 of `yq_linux_amd64`. */
+export type YqPin = Readonly<Record<string, string>>;
+
+/** The yq version a capability gets when `requires.yq` is omitted (the GitHub `yq` input must match). */
+export const DEFAULT_YQ_VERSION = "4.54.1";
+
+/** Parse the yq pin text; a malformed version or digest fails closed. */
+export function parseYqPin(text: string): YqPin {
+  const bad = (why: string): never => {
+    throw new BuildCiError(`Error: ci/yq-pin.json: ${why}.`);
+  };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return bad("not valid JSON");
+  }
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return bad("not an object");
+  const out: Record<string, string> = {};
+  for (const [v, sum] of Object.entries(raw)) {
+    if (!/^\d+\.\d+\.\d+$/.test(v)) return bad(`key '${v}' must be x.y.z`);
+    if (typeof sum !== "string" || !/^[0-9a-f]{64}$/.test(sum))
+      return bad(`'${v}' must map to 64 lowercase hex digits`);
+    out[v] = sum;
+  }
+  if (!Object.hasOwn(out, DEFAULT_YQ_VERSION)) return bad(`no entry for ${DEFAULT_YQ_VERSION}`);
+  return out;
+}
+
+let repoYqPin: YqPin | undefined;
+/** The committed ci/yq-pin.json of this checkout (the default for callers that pass none). */
+export function repoYqPins(): YqPin {
+  repoYqPin ??= parseYqPin(
+    fs.readFileSync(path.join(import.meta.dirname, "..", "..", "..", "ci", "yq-pin.json"), "utf8"),
+  );
+  return repoYqPin;
+}
+
+/** The GitLab `yq` recipe for one pinned version. */
+export function yqRecipe(version: string, pins: YqPin): readonly string[] {
+  const sum = pins[version];
+  if (sum === undefined)
+    throw new BuildCiError(`Error: no pinned checksum for yq ${version} in ci/yq-pin.json.`);
+  return [
     `${APT} wget ca-certificates`,
-    "wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64",
-    'echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -',
+    `wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v${version}/yq_linux_amd64`,
+    `echo "${sum}  /usr/local/bin/yq" | sha256sum -c -`,
     "chmod +x /usr/local/bin/yq",
-  ],
+  ];
+}
+
+const TOOLS: Readonly<Record<string, readonly string[]>> = {
   jq: [
     `${APT} wget ca-certificates`,
     "wget -qO /usr/local/bin/jq https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64",
@@ -82,8 +130,13 @@ const TOOLS: Readonly<Record<string, readonly string[]>> = {
 };
 
 /** `tool_install_lines`: the before_script lines installing one `requires.tools` entry. */
-export function toolInstallLines(tool: string, pin: TaskPin): readonly string[] {
+export function toolInstallLines(
+  tool: string,
+  pin: TaskPin,
+  yq: { readonly version?: string; readonly pins?: YqPin } = {},
+): readonly string[] {
   if (tool === "task") return taskRecipe(pin);
+  if (tool === "yq") return yqRecipe(yq.version || DEFAULT_YQ_VERSION, yq.pins ?? repoYqPins());
   if (Object.hasOwn(TOOLS, tool)) return TOOLS[tool] as readonly string[];
   throw new BuildCiError(
     `Error: unknown tool '${tool}' — no GitLab install recipe (delta-02 Scenario 2).`,

@@ -96,15 +96,10 @@ test("provisioning guard: ci-job provides Task unless task is false", () => {
   const root = makeFixture();
   for (const f of ROOT_FILES)
     fs.cpSync(path.join(REPO, f), path.join(root, f), { recursive: true });
-  const ci =
-    "          id: lint-specs\n          node: 24\n          install: install\n          task: true\n";
+  const ci = "          id: lint-specs\n          install: install\n";
   const good = checkTaskProvisioning(root);
   assert.ok(!good.findings.some((f) => f.includes("lint-specs")), good.findings.join("\n"));
-  replaceOnce(
-    wf(root),
-    ci,
-    `${ci.replace("task: true", "task: false")}      - run: task lint-specs\n`,
-  );
+  replaceOnce(wf(root), ci, `${ci}          task: false\n      - run: task lint-specs\n`);
   const bad = checkTaskProvisioning(root);
   assert.ok(
     bad.findings.some((f) => f.includes("lint-specs") && f.includes("R6a")),
@@ -121,5 +116,37 @@ test("a ci-job install input that differs from requires.install fails naming the
       "job 'figure-labels' passes ci-job install 'ci' but the reference requires.install is 'none'",
     ),
     r.stderr,
+  );
+});
+
+test("a ci-job yq input that differs from the version GitLab installs fails naming the job", () => {
+  const good = makeFixture();
+  assert.ok(!runCheck(good).stderr.includes("passes ci-job yq"), "the committed tree agrees");
+  const root = makeFixture();
+  // Replacement-first: the mutation must apply, else the test proves nothing.
+  replaceOnce(
+    wf(root),
+    '          id: build-components-ts\n          install: omit-dev\n          yq: "4.54.1"\n',
+    '          id: build-components-ts\n          install: omit-dev\n          yq: "4.44.3"\n',
+  );
+  const r = runCheck(root);
+  assert.equal(r.status, 1);
+  assert.match(
+    r.stderr,
+    /capability 'build-components-ts'.*passes ci-job yq '4\.44\.3' but GitLab installs yq '4\.54\.1'/,
+  );
+});
+
+test("requires.yq moves the GitLab version: the GitHub input must follow", () => {
+  const root = makeFixture();
+  replaceOnce(
+    path.join(root, "ci/ci-capabilities.yml"),
+    '      install: omit-dev\n      yq: "4.44.3"\n    command:\n      - task ci:skill-scripts-ts',
+    '      install: omit-dev\n      yq: "4.54.1"\n    command:\n      - task ci:skill-scripts-ts',
+  );
+  const r = runCheck(root);
+  assert.match(
+    r.stderr,
+    /capability 'skill-scripts-ts'.*passes ci-job yq '4\.44\.3' but GitLab installs yq '4\.54\.1'/,
   );
 });

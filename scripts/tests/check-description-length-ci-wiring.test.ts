@@ -90,9 +90,9 @@ function workflowJob(): string {
 function assertJob(job: string): void {
   const inputs = ciJobInputs(job, ID);
   assert.ok(inputs, "the job is the thin ci-job call for this capability");
-  assert.equal(inputs.node, "24");
+  assert.equal(inputs.node ?? "24", "24", "node 24 (the ci-job default)");
   assert.equal(inputs.install, "omit-dev", "production install before the check");
-  assert.equal(inputs.task, "true", "runs task ci:<id>");
+  assert.equal(inputs.task ?? "true", "true", "runs task ci:<id> (the ci-job default)");
   for (const dir of [".claude", ".gemini", ".github", ".agents"]) {
     assert.ok(job.includes(`'${dir}/skills/**'`), `${dir}/skills in the filter`);
     assert.ok(job.includes(`'${dir}/agents/**'`), `${dir}/agents in the filter`);

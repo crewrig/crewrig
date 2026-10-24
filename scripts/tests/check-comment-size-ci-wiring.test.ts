@@ -62,7 +62,6 @@ function assertGithub(
 ): void {
   const job = jobBlock(text, new RegExp(`\\n  ${ID}:\\n`));
   assert.ok(job.includes(`id: ${ID}`), "thin ci-job call");
-  assert.ok(job.includes("node: 24"));
   assertTaskRunsFixtures();
   const gov = jobBlock(text, /\n {2}governance-checks-ts:\n/);
   for (const t of TESTS) assert.ok(govCmds.join(" ").includes(t), `governance-checks-ts runs ${t}`);

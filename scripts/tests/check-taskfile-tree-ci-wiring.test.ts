@@ -183,7 +183,6 @@ function assertGithub(text: string): void {
   const job = jobBlock(text, new RegExp(`\\n  ${ID}:\\n`));
   assert.ok(job.includes("uses: ./.github/actions/ci-job"), "runs the thin ci-job");
   assert.ok(job.includes(`id: ${ID}\n`), "ci-job id is the capability id");
-  assert.ok(job.includes("node: 24"));
   const self = jobBlock(text, new RegExp(`\\n  ${ID}-selftest:\\n`));
   assert.ok(self.includes(`id: ${ID}-selftest\n`), "self-test job passes its id");
   for (const p of TREE_PATHS) assert.ok(job.includes(`'${p}'`), `filter has ${p}`);

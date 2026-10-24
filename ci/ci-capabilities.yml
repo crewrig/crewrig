@@ -406,6 +406,7 @@ capabilities:
       runtime: node@24
       tools: [jq, yq, task]
       install: omit-dev
+      yq: "4.44.3"
     command:
       - task ci:skill-scripts-ts
 
@@ -1177,6 +1178,7 @@ capabilities:
       runtime: node@24
       tools: [jq, yq, task]
       install: omit-dev
+      yq: "4.44.3"
     command:
       - task ci:model-ci-tooling-ts
 

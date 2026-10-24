@@ -192,8 +192,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -245,9 +243,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: build-components-ts
-          node: 24
           install: omit-dev
-          task: true
           yq: "4.54.1"
           shadow-filter: ${{ steps.filter.outputs.build-components-ts }}
 
@@ -257,8 +253,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -300,9 +294,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: extension-builders-ts
-          node: 24
           install: install
-          task: true
           yq: "4.54.1"
           shadow-filter: ${{ steps.filter.outputs.extension-builders-ts }}
 
@@ -313,8 +305,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -336,9 +326,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: skill-scripts-ts
-          node: 24
           install: omit-dev
-          task: true
           yq: "4.44.3"
           shadow-filter: ${{ steps.filter.outputs.skill-scripts-ts }}
 
@@ -348,8 +336,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -381,9 +367,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: governance-checks-ts
-          node: 24
           install: omit-dev
-          task: true
           shadow-filter: ${{ steps.filter.outputs.governance-checks-ts }}
 
   # Spec 0262 R21-R23 (ticket #1339): the model-CI-tooling suites and their shell differential legs.
@@ -393,8 +377,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -409,9 +391,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: model-ci-tooling-ts
-          node: 24
           install: omit-dev
-          task: true
           yq: "4.44.3"
           shadow-filter: ${{ steps.filter.outputs.model-ci-tooling-ts }}
 
@@ -421,8 +401,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -510,9 +488,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: install-ts
-          node: 24
           install: omit-dev
-          task: true
           shadow-filter: ${{ steps.filter.outputs.install-ts }}
 
 
@@ -643,8 +619,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -769,9 +743,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: setup-modules-ts
-          node: 24
           install: omit-dev
-          task: true
           shadow-filter: ${{ steps.filter.outputs.setup-modules-ts }}
 
   # Spec 0257 (row of epic #1231, ticket #1336), PR 4a: the TypeScript monorepo release driver
@@ -781,8 +753,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -824,9 +794,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: release-driver-modules-ts
-          node: 24
           install: omit-dev
-          task: true
           shadow-filter: ${{ steps.filter.outputs.release-driver-modules-ts }}
 
   # Spec 0257 (ticket #1336), PRs 2 and 3: the deterministic tar.gz archive writer, the
@@ -836,8 +804,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -890,9 +856,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: packaging-modules-ts
-          node: 24
           install: omit-dev
-          task: true
           shadow-filter: ${{ steps.filter.outputs.packaging-modules-ts }}
 
   # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
@@ -1479,8 +1443,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -1504,16 +1466,12 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: test-wiring
-          node: 24
           install: none
-          task: true
           shadow-filter: ${{ steps.filter.outputs.test-wiring }}
   test-wiring-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -1533,9 +1491,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: test-wiring-selftest
-          node: 24
           install: none
-          task: true
           shadow-filter: ${{ steps.filter.outputs.test-wiring-selftest }}
   chroma-mcp:
     runs-on: ubuntu-latest
@@ -1838,8 +1794,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -1860,16 +1814,12 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-taskfile-commands
-          node: 24
           install: omit-dev
-          task: true
           shadow-filter: ${{ steps.filter.outputs.check-taskfile-commands }}
   check-taskfile-commands-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -1892,16 +1842,12 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-taskfile-commands-selftest
-          node: 24
           install: omit-dev
-          task: true
           shadow-filter: ${{ steps.filter.outputs.check-taskfile-commands-selftest }}
   check-taskfile-tree:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -1916,16 +1862,12 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-taskfile-tree
-          node: 24
           install: omit-dev
-          task: true
           shadow-filter: ${{ steps.filter.outputs.check-taskfile-tree }}
   check-taskfile-tree-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -1959,9 +1901,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-taskfile-tree-selftest
-          node: 24
           install: omit-dev
-          task: true
           shadow-filter: ${{ steps.filter.outputs.check-taskfile-tree-selftest }}
   check-task-provisioning:
     runs-on: ubuntu-latest
@@ -2140,20 +2080,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: ./.github/actions/ci-job
         with:
           id: repository-scan
-          node: 24
           install: none
-          task: true
   frontmatter:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -2199,16 +2133,12 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: frontmatter
-          node: 24
           install: omit-dev
-          task: true
           shadow-filter: ${{ steps.filter.outputs.frontmatter }}
   markdown-links:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -2225,9 +2155,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: markdown-links
-          node: 24
           install: none
-          task: true
           shadow-filter: ${{ steps.filter.outputs.markdown-links }}
   # Spec 0147 delta-01 R21, R23: the exhaustive run lives in its own scheduled
   # workflow (changeset-coverage.yml). Its script's regression test stays on the
@@ -2267,21 +2195,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: ./.github/actions/ci-job
         with:
           id: path-ownership
-          node: 24
-          install: ci
-          task: true
 
   path-ownership-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -2306,23 +2227,16 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: path-ownership-selftest
-          node: 24
-          install: ci
-          task: true
           shadow-filter: ${{ steps.filter.outputs.path-ownership-selftest }}
 
   lint-markdown:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: ./.github/actions/ci-job
         with:
           id: lint-markdown
           node: 22
-          install: ci
-          task: true
 
   # Spec 0238 R1-R3: shell / JavaScript / Python footprint ratchet. No path
   # filter: any change may add a shell file. Full history for the merge-base.
@@ -2340,16 +2254,12 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: ratchet
-          node: 24
           install: none
-          task: true
 
   ratchet-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -2364,9 +2274,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: ratchet-selftest
-          node: 24
           install: none
-          task: true
           shadow-filter: ${{ steps.filter.outputs.ratchet-selftest }}
 
   # Spec 0267 R12, R13, R16-R19: test-harness host-safety check. No path
@@ -2386,16 +2294,11 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: host-safety
-          node: 24
-          install: ci
-          task: true
 
   host-safety-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -2413,9 +2316,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: host-safety-selftest
-          node: 24
-          install: ci
-          task: true
           shadow-filter: ${{ steps.filter.outputs.host-safety-selftest }}
 
   # Spec 0238 R4-R8: TypeScript type-check, erasable syntax, Oxlint
@@ -2424,21 +2324,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: ./.github/actions/ci-job
         with:
           id: lint-typescript
-          node: 24
-          install: ci
-          task: true
 
   lint-typescript-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -2466,9 +2359,6 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: lint-typescript-selftest
-          node: 24
-          install: ci
-          task: true
           shadow-filter: ${{ steps.filter.outputs.lint-typescript-selftest }}
 
   # Spec 0240 R4-R11, R13, R16: floor guard, production-dependency step and
@@ -3535,8 +3425,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -3551,16 +3439,12 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: cli-matrix-fresh
-          node: 24
           install: none
-          task: true
           shadow-filter: ${{ steps.filter.outputs.cli-matrix-fresh }}
   cli-matrix-fresh-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -3576,9 +3460,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: cli-matrix-fresh-selftest
-          node: 24
           install: none
-          task: true
           shadow-filter: ${{ steps.filter.outputs.cli-matrix-fresh-selftest }}
 
   lint-specs:
@@ -3601,16 +3483,12 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: lint-specs
-          node: 24
           install: install
-          task: true
 
   lint-specs-selftest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -3632,9 +3510,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: lint-specs-selftest
-          node: 24
           install: install
-          task: true
           shadow-filter: ${{ steps.filter.outputs.lint-specs-selftest }}
 
   test-harness-curate:
@@ -3664,16 +3540,12 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-skill-versions
-          node: 24
           install: none
-          task: true
 
   check-description-length:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -3694,9 +3566,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-description-length
-          node: 24
           install: omit-dev
-          task: true
           shadow-filter: ${{ steps.filter.outputs.check-description-length }}
 
   check-extension-version-bump:
@@ -3767,41 +3637,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: ./.github/actions/ci-job
         with:
           id: check-agents-size
-          node: 24
           install: none
-          task: true
 
   check-rules-size:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: ./.github/actions/ci-job
         with:
           id: check-rules-size
-          node: 24
           install: none
-          task: true
 
   # Spec 0275 R-E2: author-side size tool; CI only checks the script against committed fixtures, never forge content.
   check-comment-size:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: ./.github/actions/ci-job
         with:
           id: check-comment-size
-          node: 24
           install: none
-          task: true
 
   # Spec 0276 R10-R11: author-side brief linter; CI only checks the script against committed fixtures, never a live brief.
   check-seat-brief:
@@ -3886,8 +3744,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
@@ -3896,16 +3752,12 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: gitlab-ci-check
-          node: 24
           install: omit-dev
-          task: true
 
   check-ci-parity:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
@@ -3914,6 +3766,4 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: check-ci-parity
-          node: 24
           install: omit-dev
-          task: true

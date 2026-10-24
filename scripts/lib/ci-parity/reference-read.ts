@@ -130,6 +130,7 @@ export function readCapability(c: YqNode): CapRecord {
     tools: withCmd ? items(at(c, ["requires", "tools"]), "requires.tools") : [],
     historyDepth: withCmd ? orEmpty(at(c, ["requires", "history-depth"]), "history-depth") : "",
     install: withCmd ? orEmpty(at(c, ["requires", "install"]), "install") : "",
+    yq: withCmd ? orEmpty(at(c, ["requires", "yq"]), "yq") : "",
     envTag: tag(env),
     envKeys,
     cacheTag: tag(cache),

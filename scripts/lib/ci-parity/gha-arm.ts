@@ -3,6 +3,7 @@
 
 import { fail } from "./findings.ts";
 import { jobNode, loadJobs, readJob, type JobRecord } from "./job-records.ts";
+import { DEFAULT_YQ_VERSION } from "../build-ci/tools.ts";
 import { installRecipeTool, normalizeCmd } from "./probe-tokens.ts";
 import { ShellAbort, type CapRecord, type ParityState } from "./state.ts";
 
@@ -124,6 +125,13 @@ export function checkGhaJob(
           fail(
             state,
             `capability '${c.id}' (github-actions): job '${jobKey}' passes ci-job install '${got}' but the reference requires.install is '${want}' (spec 0283 R1)`,
+          );
+        // The GitHub `yq` input must equal the version the GitLab recipe installs (no silent
+        // engine asymmetry): `requires.yq`, else the default version.
+        if (step.withYq !== "" && step.withYq !== (c.yq === "" ? DEFAULT_YQ_VERSION : c.yq))
+          fail(
+            state,
+            `capability '${c.id}' (github-actions): job '${jobKey}' passes ci-job yq '${step.withYq}' but GitLab installs yq '${c.yq === "" ? DEFAULT_YQ_VERSION : c.yq}' (requires.yq)`,
           );
         if (c.ncmd === 1 && normalizeCmd(c.cmds[0] ?? "") === `task ci:${c.id}`) ci++;
       }

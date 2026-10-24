@@ -1,8 +1,8 @@
 name: CI job
 description: >-
-  The thin CI job body (spec 0283 R5/R6): setup-node, the runtime path gate,
+  The thin CI job body (spec 0283 R5/R6): a checkout deepening to two commits, setup-node, the runtime path gate,
   setup-task, an optional pinned yq (ci/yq-pin.json), the dependency install, the Node floor guard, `task ci:<id>` and
-  cancel-on-failure. Call it after `actions/checkout` with `fetch-depth: 2`.
+  cancel-on-failure. Call it after a plain `actions/checkout` (the default depth is deepened here).
   While `shadow-filter` is set the dorny filter stays authoritative and the
   gate only reports agreement. Logic is inline: the shell-allowlist ratchet
   forbids a new shell file.
@@ -33,6 +33,13 @@ inputs:
 runs:
   using: composite
   steps:
+    # The path gate diffs HEAD^1..HEAD (pull_request merge commit) or <before>..HEAD (push), so the
+    # shallow default checkout is deepened to two commits. A full clone (fetch-depth: 0) is left alone.
+    - shell: bash
+      run: |
+        if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+          git fetch --no-tags --depth=2 origin "$(git rev-parse HEAD)"
+        fi
     - uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node }}
@@ -69,13 +76,10 @@ runs:
       run: |
         set -euo pipefail
         pin_file="ci/yq-pin.json"
-        case "${YQ_VERSION}" in
-          [0-9]*.[0-9]*.[0-9]*) ;;
-          *)
-            echo "::error title=ci-job-yq::invalid yq version '${YQ_VERSION}'" >&2
-            exit 1
-            ;;
-        esac
+        if [[ ! "${YQ_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "::error title=ci-job-yq::invalid yq version '${YQ_VERSION}'" >&2
+          exit 1
+        fi
         sum="$(sed -n 's/^ *"'"${YQ_VERSION}"'": *"\([0-9a-f]\{64\}\)".*/\1/p' "${pin_file}")"
         if [ -z "${sum}" ]; then
           echo "::error title=ci-job-yq::no pinned checksum for yq ${YQ_VERSION} in ${pin_file}" >&2

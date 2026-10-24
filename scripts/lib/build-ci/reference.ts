@@ -67,6 +67,10 @@ export class Capability {
   get install(): string {
     return this.orEmpty(["requires", "install"]);
   }
+  /** `requires.yq`: the pinned yq version of the job (ci/yq-pin.json); "" when omitted. */
+  get yq(): string {
+    return this.orEmpty(["requires", "yq"]);
+  }
   get historyDepth(): string {
     return this.orEmpty(["requires", "history-depth"]);
   }

@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
-import { parseTaskPin, toolInstallLines } from "../lib/build-ci/tools.ts";
+import { parseTaskPin, parseYqPin, toolInstallLines, yqRecipe } from "../lib/build-ci/tools.ts";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
 const read = (rel: string): string => fs.readFileSync(path.join(REPO, rel), "utf8");
@@ -72,4 +72,27 @@ test("the GitLab yq recipe installs a pinned version with its pinned digest", ()
   const m = /download\/v(\d+\.\d+\.\d+)\/yq_linux_amd64/.exec(lines);
   assert.ok(m, "the recipe downloads a versioned binary");
   assert.ok(lines.includes(pin[m?.[1] ?? ""] ?? "no-such-digest"), "digest equals the pin entry");
+});
+
+test("the GitLab yq recipe follows the requested version and reads its digest from the pin", () => {
+  const task = parseTaskPin(read("ci/task-pin.json"));
+  const pins = parseYqPin(read("ci/yq-pin.json"));
+  const lines = toolInstallLines("yq", task, { version: "4.44.3", pins }).join("\n");
+  assert.ok(lines.includes("download/v4.44.3/yq_linux_amd64"));
+  assert.ok(lines.includes(pins["4.44.3"] ?? "no-such-digest"));
+  assert.throws(() => yqRecipe("9.9.9", pins), /no pinned checksum for yq 9\.9\.9/);
+  assert.throws(() => parseYqPin('{"4.54.1":"nothex"}'), /64 lowercase hex/);
+});
+
+test("the action validates the yq version with an anchored regular expression", () => {
+  const run = yqStep();
+  assert.ok(run.includes("=~ ^[0-9]+\\.[0-9]+\\.[0-9]+$"), "anchored x.y.z check");
+  assert.ok(!run.includes("[0-9]*.[0-9]*.[0-9]*"), "the loose glob is gone");
+});
+
+test("the action deepens a shallow checkout itself and keeps the common-case defaults", () => {
+  assert.match(action, /is-shallow-repository[\s\S]*git fetch --no-tags --depth=2 origin/);
+  assert.match(action, /\n {2}node:\n {4}description:.*\n {4}default: "24"/);
+  assert.match(action, /\n {2}install:\n {4}description:.*\n {4}default: ci\n/);
+  assert.match(action, /\n {2}task:\n {4}description:.*\n {4}default: "true"\n/);
 });

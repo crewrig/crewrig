@@ -9,6 +9,8 @@ import {
   secondaryRuntimeInstallLines,
   taskRecipe,
   toolInstallLines,
+  repoYqPins,
+  type YqPin,
   type TaskPin,
   BuildCiError,
 } from "./tools.ts";
@@ -99,7 +101,7 @@ export function emitTaskInstallJob(pin: TaskPin): string[] {
 }
 
 /** The lines of one job, starting with the blank separator. */
-export function emitJob(cap: Capability, pin: TaskPin): string[] {
+export function emitJob(cap: Capability, pin: TaskPin, yqPins: YqPin = repoYqPins()): string[] {
   const id = cap.id;
   const runtimes = cap.runtimes;
   const nl = runtimes.indexOf("\n");
@@ -117,8 +119,17 @@ export function emitJob(cap: Capability, pin: TaskPin): string[] {
 
   const before: string[] = [];
   for (const sr of nonEmptyLines(secondary)) before.push(...secondaryRuntimeInstallLines(sr));
-  for (const t of nonEmptyLines(cap.tools))
-    before.push(...(t === "task" ? [TASK_REFERENCE] : toolInstallLines(t, pin)));
+  const toolList = nonEmptyLines(cap.tools);
+  if (cap.yq !== "" && !toolList.includes("yq"))
+    throw new BuildCiError(
+      `Error: capability '${id}': requires.yq is set but requires.tools lacks yq.`,
+    );
+  for (const t of toolList)
+    before.push(
+      ...(t === "task"
+        ? [TASK_REFERENCE]
+        : toolInstallLines(t, pin, { version: cap.yq, pins: yqPins })),
+    );
   before.push(...installLines(cap.install));
   if (before.length > 0) out.push("  before_script:", ...before.map((l) => `    - ${l}`));
 

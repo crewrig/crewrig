@@ -53,7 +53,7 @@ these keys:
 | `portability` | always | enum | `portable` or `specific` (see *Portability and exceptions*). |
 | `exception` | iff `specific` | mapping | `{engine, evidence}` (see *Portability and exceptions*). |
 | `command` | iff `portable` | list of strings | The business invocation command(s) that realize the job (see *Invocation command and execution requirements*). |
-| `requires` | iff `portable` | mapping | The engine-agnostic execution requirement: `{runtime, tools, history-depth}` (see *Invocation command and execution requirements*). |
+| `requires` | iff `portable` | mapping | The engine-agnostic execution requirement: `{runtime, tools, history-depth, install, yq}` (see *Invocation command and execution requirements*). |
 | `env` | optional | mapping | Optional dictionary of job-scoped environment variable keys and string values (spec 0131). |
 | `cache` | optional | mapping | The cache key-derivation **need**: `{files, env}` (see *Cache*). |
 | `cache-guard` | optional | boolean | Whether the job's hermetic `node … scripts/<tool>.ts` commands are wrapped in the coarse `scripts/ci-cache-guard.ts` (default `true`). Set `false` when a command manages its own fine-grained cache (see *Cache*). |
@@ -179,9 +179,10 @@ The requirement is a closed-vocabulary mapping mirroring R12's own enumeration:
 | `runtime` | string, or list of strings | The language runtime(s) and version, as `<name>@<version>`. A capability whose command genuinely needs more than one language (e.g. a job that runs both `bash`/`python3` test scripts and a `node --test` suite) declares each; the FIRST entry is the primary runtime the GitLab derivation bases the job's Docker `image:` on, and any further entry is installed alongside it via `before_script` (never replacing the image). | `node@22`, `python@3.12`, `[python@3.12, node@24]` |
 | `tools` | list of strings | Additional tools the command needs on `PATH`. | `[yq]`, `[task]`, `[jq]` |
 | `history-depth` | enum | `full` when the command needs the complete source history (e.g. a base-ref diff); omitted otherwise. | `full` |
+| `yq` | string | The pinned yq version (a key of `ci/yq-pin.json`) the GitLab recipe installs and the GitHub `ci-job` `yq` input must equal; requires `yq` under `tools`. Omitted means `4.54.1`. | `"4.44.3"` |
 | `install` | enum | The dependency provisioning the job input carries when `command:` is the single entry `task ci:<id>` (a migrated capability, spec 0283 R1): `ci` (`npm ci`), `install` (`npm install`), `omit-dev` (`npm ci --omit=dev --workspaces=false`) or `none`. Omitted means `none`. A not yet migrated capability keeps its provisioning lines as the first `command:` entries and omits the key. | `ci` |
 
-All four sub-keys are optional **inside** `requires`: a capability whose
+Every sub-key is optional **inside** `requires`: a capability whose
 command needs only POSIX shell (e.g. `grep-anti-patterns`) may omit `requires`
 entirely. What is *not* optional is consistency — a command that invokes a tool
 or runtime it does not declare is rejected:
@@ -868,28 +869,29 @@ The `yq` input is a version key of `ci/yq-pin.json` (a flat map of version to th
 says run: it reads the pinned sha256, downloads the release binary, verifies the sha256 before
 installing it to `/usr/local/bin/yq`, and fails on an invalid version, a missing pin entry or a
 mismatch. A job using `yq: "<version>"` must declare `tools: [yq]`; the GitLab `yq` recipe
-(`scripts/lib/build-ci/tools.ts`) installs 4.54.1 and a test keeps its sha256 equal to the pin entry.
+(`scripts/lib/build-ci/tools.ts`) reads `ci/yq-pin.json` and installs the version of the optional
+`requires.yq` key (default `4.54.1`) with its pinned sha256. The `yq` input MUST equal that version;
+`scripts/check-ci-parity.ts` fails a `ci-job` job whose `yq` differs from the version GitLab installs
+for the same capability, so the two engines never run different yq releases.
 
-Steps, in order: `setup-node`, the path gate (`scripts/ci-paths-gate.ts`), an optional pinned `yq`, `setup-task` when
+Steps, in order: a first step that deepens a shallow checkout to two commits (`git fetch --depth=2`
+of the current `HEAD`, skipped on a full clone), `setup-node`, the path gate (`scripts/ci-paths-gate.ts`), an optional pinned `yq`, `setup-task` when
 `task` is true, the dependency install, the Node floor guard when `node` is 24, the cache step when
 `cache` is true (key from `scripts/ci-cache-guard.ts --capability <id> --print-key`), `task ci:<id>`,
 and cancel-on-failure. Every step after the gate runs only when the decision is `true`, so a job
 the gate skips finishes green.
 
-Template, at most 15 lines (the `fetch-depth: 2` line counts):
+Template (the defaults carry the common case; set an input only when it differs, such as
+`install: omit-dev`, `yq` or `shadow-filter`):
 
 ```yaml
   <capability-id>:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: ./.github/actions/ci-job
         with:
           id: <capability-id>
-          node: 24
-          install: ci
 ```
 
 Shadow variant (while `dorny/paths-filter` is authoritative; no length cap): the same checkout, then

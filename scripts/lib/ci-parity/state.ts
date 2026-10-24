@@ -28,6 +28,8 @@ export interface CapRecord {
   historyDepth: string;
   /** `requires.install` (ci | install | omit-dev | none); "" when omitted (spec 0283 R1). */
   install: string;
+  /** `requires.yq` (a ci/yq-pin.json version); "" when omitted (the default version applies). */
+  yq: string;
   envTag: string;
   envKeys: string[];
   cacheTag: string;

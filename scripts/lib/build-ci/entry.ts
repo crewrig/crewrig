@@ -8,17 +8,28 @@ import { checkDrift, type Outcome } from "./check.ts";
 import { portableCapabilities } from "./reference.ts";
 import { emitJob, emitTaskInstallJob } from "./render-job.ts";
 import { HEADER, WORKFLOW } from "./render-yaml.ts";
-import { BuildCiError, parseTaskPin, type TaskPin } from "./tools.ts";
+import {
+  BuildCiError,
+  parseTaskPin,
+  parseYqPin,
+  repoYqPins,
+  type TaskPin,
+  type YqPin,
+} from "./tools.ts";
 
 /** The generated pipeline text for a reference document. */
-export function generate(referenceText: string, pin: TaskPin): string {
+export function generate(
+  referenceText: string,
+  pin: TaskPin,
+  yqPins: YqPin = repoYqPins(),
+): string {
   const caps = portableCapabilities(referenceText).filter((c) => c.id !== "");
   const lines: string[] = caps.some((c) => c.tools.split("\n").includes("task"))
     ? emitTaskInstallJob(pin)
     : [];
   for (const cap of portableCapabilities(referenceText)) {
     if (cap.id === "") continue;
-    lines.push(...emitJob(cap, pin));
+    lines.push(...emitJob(cap, pin, yqPins));
   }
   return HEADER + WORKFLOW + lines.map((l) => `${l}\n`).join("");
 }
@@ -35,7 +46,12 @@ export function run(argv: readonly string[], repoDir: string): Outcome {
     const pinFile = path.join(repoDir, "ci", "task-pin.json");
     if (!fs.existsSync(pinFile)) throw new BuildCiError(`Error: Task pin not found: ${pinFile}.`);
     const pin = parseTaskPin(fs.readFileSync(pinFile, "utf8"));
-    fresh = generate(fs.readFileSync(reference, "utf8"), pin);
+    const yqFile = path.join(repoDir, "ci", "yq-pin.json");
+    // A tree without ci/yq-pin.json (a fixture) falls back to this checkout's pin.
+    const yqPins = fs.existsSync(yqFile)
+      ? parseYqPin(fs.readFileSync(yqFile, "utf8"))
+      : repoYqPins();
+    fresh = generate(fs.readFileSync(reference, "utf8"), pin, yqPins);
   } catch (e) {
     if (e instanceof BuildCiError) return { stdout: "", stderr: `${e.message}\n`, code: e.code };
     throw e;
