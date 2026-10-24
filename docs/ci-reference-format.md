@@ -537,19 +537,13 @@ that job (spec 0049 delta-01, R12 to R24). A glob added to the reference and
 forgotten in the workflow, or the reverse, is a failure of the harness, not a
 silent gap.
 
-**What is compared.** Two GitHub-side shapes are recognised:
-
-- **In-job filter.** The list of the job's `dorny/paths-filter` step, which must
-  define exactly one filter, named after the capability id. It cannot tell a
-  pull request from a push, so it is compared with the `paths` of every
-  comparable trigger the capability declares; a capability whose `pull-request`
-  and `push` triggers list different paths therefore cannot match it. A
-  comparable event the capability does not declare is left out for an in-job
-  filter (whether an event is declared at all is trigger-set
-  conformance, not a path comparison).
-- **Dedicated-workflow filter.** `on.pull_request.paths` and `on.push.paths` of
-  the workflow file that holds the job, each compared separately with the
-  `paths` of the matching reference trigger.
+**What is compared.** `on.pull_request.paths` and `on.push.paths` of the
+workflow file that holds the job, each compared separately with the `paths` of
+the matching reference trigger (dedicated-workflow filter). A job that uses
+`ci-job` with its own id and whose workflow declares no `paths` has no
+GitHub-side list: the runtime path gate reads the reference. A job that carries
+a `dorny/paths-filter` step fails (spec 0285 R4): the runtime gate replaced
+every such step, so a re-added one would be a second, unchecked filter.
 
 **How.** The comparison is a set equality on the decoded textual entries: order,
 repetition and YAML quoting do not matter, but no glob is normalised, so
@@ -560,7 +554,7 @@ unfiltered sides agree. Only `paths` is compared; `branches`, `tag-pattern` and
 the cache-key lists keep their own treatment.
 
 **What is reported.** One block per mismatch, naming the capability, the
-platform, the event (or `in-job filter`) and the reference trigger compared,
+platform, the event and the reference trigger compared,
 then two labelled lists, either of which may read `(none)`:
 
 ```text
@@ -574,17 +568,14 @@ then two labelled lists, either of which may read `(none)`:
 **What fails closed.** A GitHub-side entry with a leading `!`, and a
 `paths-ignore` under a comparable event, cannot be expressed in the reference:
 each is reported with its entries (R16) and the remaining entries are still
-compared. A filter that cannot be read unambiguously is reported with its cause
-and the capability is compared no further (R17): several `dorny/paths-filter` steps in the job; several
-named filters, or one that is not named after the capability id; a `filters:`
-text that is not a mapping of named lists, is not valid YAML, or whose list
-holds a non-string entry; an in-job filter in a workflow that also declares
-`paths` under a comparable event (the effective filter would be the conjunction
-of two lists); a workflow file with several YAML documents. A reference `paths`
+compared. A `dorny/paths-filter` step in the job is reported and the capability is
+compared no further. A workflow `paths` that is not a list of strings, or whose
+list holds a non-string entry, is reported with its cause and the capability is
+compared no further (R17); a workflow file with several YAML documents fails
+likewise. A reference `paths`
 that is not a list of strings fails the same way.
 
-**What is out of scope.** `branches`, `tag-pattern`, the wiring that consumes an
-in-job filter's output, and glob semantics (the engines' matchers can differ on
+**What is out of scope.** `branches`, `tag-pattern` and glob semantics (the engines' matchers can differ on
 the same spelling). The `hashFiles(...)` lists of an `actions/cache` key and the
 `--key-files` lists remain mirrored by hand: whoever extends a cache-guarded
 capability's `cache.files` mirrors them there.

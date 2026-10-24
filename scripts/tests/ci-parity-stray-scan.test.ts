@@ -61,7 +61,6 @@ function inlineChroma(fx: string): void {
   const tests = last.slice(last.indexOf(marker) + marker.length);
   const declared = `${SCAN_PREFIX}${tests}`;
   let files: string[] = [];
-  let paths: string[] = [];
   const capFile = path.join(fx, "ci", "ci-capabilities.yml");
   editYaml(capFile, (doc) => {
     const c = capOf(doc, "chroma-mcp");
@@ -70,7 +69,9 @@ function inlineChroma(fx: string): void {
     delete req["install"];
     req["tools"] = list(req["tools"]).filter((x) => x !== "task");
     files = list(map(c["cache"])["files"]).map(String);
-    paths = list(c["paths"]).map(String);
+    // No dorny filter any more (spec 0285 R4): the hand-written job has no GitHub-side list, so drop the reference one.
+    delete c["paths"];
+    for (const t of list(c["trigger"]).map((x) => map(x))) delete t["paths"];
   });
   fs.rmSync(path.join(fx, ".gitlab-ci.yml"), { force: true });
   editYaml(BUILD_YML(fx), (doc) => {
@@ -82,15 +83,8 @@ function inlineChroma(fx: string): void {
     const guard =
       "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache " +
       `--key-files "${files.join(",")}" --key-env "" -- ${declared}`;
-    // The dorny filter left build.yml (spec 0283 R9): this hand-written job carries the one the reference implies.
-    const filter = {
-      uses: "dorny/paths-filter@v3",
-      id: "filter",
-      with: { filters: `chroma-mcp:\n${paths.map((p) => `  - '${p}'\n`).join("")}` },
-    };
     job["steps"] = [
       ...kept,
-      filter,
       { uses: "actions/setup-python@v5", with: { "python-version": "3.12" } },
       { uses: "actions/setup-node@v4", with: { "node-version": 24 } },
       {

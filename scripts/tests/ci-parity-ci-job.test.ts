@@ -48,24 +48,13 @@ function addCiJob(root: string, id: string): void {
 }
 const figureBlocks = (err: string) => err.split("\n").filter((l) => l.includes("figure-labels"));
 
-test("shape C with the right id: no R27 finding, the filter stays compared", () => {
+test("shape C: a dorny/paths-filter step beside ci-job still fails (spec 0285 R4)", () => {
   const root = makeFixture();
   addCiJob(root, "figure-labels");
   addFilter(root);
-  const r = runCheck(root);
-  assert.ok(!r.stderr.includes("R27"), r.stderr);
-  assert.ok(!r.stderr.includes("path filters diverge on in-job filter"), r.stderr);
-});
-
-test("shape C with an unequal filter still fails R14 (R29)", () => {
-  const root = makeFixture();
-  addCiJob(root, "figure-labels");
-  addFilter(root);
-  replaceOnce(wf(root), DORNY, `${DORNY}              - 'zz/extra/**'\n`);
   const r = runCheck(root);
   assert.equal(r.status, 1);
-  assert.match(r.stderr, /capability 'figure-labels'.*path filters diverge/);
-  assert.ok(r.stderr.includes("zz/extra/**"));
+  assert.match(r.stderr, /capability 'figure-labels'.*dorny\/paths-filter step/);
 });
 
 test("id naming another capability fails R27a, naming the job and the capability", () => {

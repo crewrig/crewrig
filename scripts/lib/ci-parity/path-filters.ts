@@ -5,7 +5,6 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { get, isYqFalsy, parse, tag, YqMap, YqSeq, type YqNode } from "../yq-accessors/index.ts";
-import { decodeFilters } from "./filters-doc.ts";
 import { fail } from "./findings.ts";
 import { CI_JOB } from "./gha-arm.ts";
 import { UnsupportedGlobError, globToRegExp } from "../glob-engine.ts";
@@ -28,7 +27,6 @@ interface WfDoc {
   onEntries: string[];
   events: EventPaths[];
   nFilters: number;
-  raw: string;
 }
 
 const bullets = (list: string[]): string => {
@@ -54,18 +52,16 @@ function readOn(on: YqNode): { onTag: string; onEntries: string[]; events: Event
   return { onTag, onEntries, events };
 }
 
-function jobFilters(jobs: YqNode, key: string): { n: number; raw: string } {
+/** How many `dorny/paths-filter` steps the job carries (the runtime path gate replaced them all). */
+function dornySteps(jobs: YqNode, key: string): number {
   const job = jobs instanceof YqMap ? (jobs.entries.find(([k]) => k === key)?.[1] ?? null) : null;
   const steps = job === null || job instanceof YqSeq ? null : get(job, ["steps"]);
-  if (!(steps instanceof YqSeq)) return { n: 0, raw: "" };
-  const hits = steps.items.filter((s) => {
+  if (!(steps instanceof YqSeq)) return 0;
+  return steps.items.filter((s) => {
     if (s instanceof YqSeq || s === null) return false;
     const u = get(s, ["uses"]);
     return tag(u) === "!!str" && String(u).startsWith("dorny/paths-filter@");
-  });
-  const first = hits[0];
-  const f = first === undefined ? null : get(get(first, ["with"]), ["filters"]);
-  return { n: hits.length, raw: f !== null && tag(f) === "!!str" ? String(f) : "" };
+  }).length;
 }
 
 /** The `with.id` of the first `ci-job` step of the job: null when the job does not use it. */
@@ -106,9 +102,8 @@ function ciJobChecks(s: ParityState, c: CapRecord, jobKey: string, declared: str
 function loadWf(file: string, jobKey: string): WfDoc & { ciId: string | null } {
   const doc = parse(fs.readFileSync(file, "utf8"));
   const ciId = ciJobId(get(doc, ["jobs"]), jobKey);
-  const jf = jobFilters(get(doc, ["jobs"]), jobKey);
   const on = readOn(get(doc, ["on"]));
-  return { ...on, nFilters: jf.n, raw: jf.raw, ciId };
+  return { ...on, nFilters: dornySteps(get(doc, ["jobs"]), jobKey), ciId };
 }
 
 const undet = (s: ParityState, id: string, why: string): void =>
@@ -186,42 +181,6 @@ function dedicated(s: ParityState, c: CapRecord, d: WfDoc): void {
   }
 }
 
-function inJob(s: ParityState, c: CapRecord, d: WfDoc): void {
-  const id = c.id;
-  if (d.nFilters > 1) return undet(s, id, `the job carries ${d.nFilters} path-filter steps`);
-  const f = decodeFilters(d.raw);
-  if (typeof f === "string") return undet(s, id, f);
-  if (f.root !== "!!map") return undet(s, id, "its filters input is not a mapping of named lists");
-  if (f.count !== 1)
-    return undet(
-      s,
-      id,
-      `the path-filter step defines ${f.count} named filters (${f.names || "none"})`,
-    );
-  if (f.name !== id)
-    return undet(s, id, `the path-filter step defines only the filter '${f.name}', not '${id}'`);
-  if (f.vtag !== "!!seq" || f.bad)
-    return undet(s, id, `the list of filter '${id}' is not a list of strings`);
-  for (let i = 0; i < EVENTS.length; i++) {
-    const ev = (EVENTS[i] as (typeof EVENTS)[number])[0];
-    const e = d.events[i] as EventPaths;
-    if (!["", "!!null"].includes(e.paths.tag))
-      return undet(
-        s,
-        id,
-        `the job has an in-job filter and the workflow also declares paths under '${ev}'`,
-      );
-  }
-  EVENTS.forEach(([ev], e) => ignore(s, id, ev, d.events[e] as EventPaths));
-  const sp = split(f.items);
-  if (sp.neg.length > 0) neg(s, id, "the in-job filter", sp.neg);
-  const mine = c.triggers.filter((t) => t.kind === "pull-request" || t.kind === "push");
-  for (const t of mine)
-    compare(s, id, "in-job filter", `reference trigger '${t.kind}'`, t.paths.join("\n"), sp.pos);
-  if (mine.length === 0)
-    compare(s, id, "in-job filter", "no comparable reference trigger", "", sp.pos);
-}
-
 /** R12-R18 for one portable capability with an attributed GitHub job. */
 export function checkGhaPaths(
   state: ParityState,
@@ -245,9 +204,13 @@ export function checkGhaPaths(
   const d = loadWf(workflow, jobKey);
   if (d.ciId !== null) ciJobChecks(state, c, jobKey, d.ciId);
   const wfPaths = d.events.some((e) => !["", "!!null"].includes(e.paths.tag));
-  if (d.ciId !== null && d.nFilters === 0 && !wfPaths) return; // shape A: no GitHub-side list
-  if (d.nFilters === 0) dedicated(state, c, d);
-  else inJob(state, c, d);
+  if (d.nFilters > 0)
+    return fail(
+      state,
+      `capability '${c.id}' (github-actions): job '${jobKey}' carries ${d.nFilters} dorny/paths-filter step(s); the runtime path gate replaced them (spec 0283 R6, spec 0285 R4)`,
+    );
+  if (d.ciId !== null && !wfPaths) return; // shape A: no GitHub-side list
+  dedicated(state, c, d);
 }
 
 export { isYqFalsy, path };
