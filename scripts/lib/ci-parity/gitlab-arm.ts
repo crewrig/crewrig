@@ -5,7 +5,16 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { get, isYqFalsy, parse, render, tag, YqSeq, type YqNode } from "../yq-accessors/index.ts";
+import {
+  get,
+  isYqFalsy,
+  parse,
+  render,
+  resolve,
+  tag,
+  YqSeq,
+  type YqNode,
+} from "../yq-accessors/index.ts";
 import { sortLines } from "./gha-arm.ts";
 import { fail } from "./findings.ts";
 import { ShellAbort, type ParityState } from "./state.ts";
@@ -28,15 +37,16 @@ function composeBuildCheck(state: ParityState): void {
 }
 
 /** `.<id>.cache.key.files[]` of the GitLab file, or null when a sequence on the path aborts yq. */
-function gitlabFiles(doc: YqNode, id: string): string[] | null {
+export function gitlabFiles(doc: YqNode, id: string): string[] | null {
   try {
     let n: YqNode = doc;
     for (const k of [id, "cache", "key"]) {
-      if (n instanceof YqSeq) return null;
+      if (resolve(n) instanceof YqSeq) return null;
       n = get(n, [k]);
     }
+    n = resolve(n);
     if (n instanceof YqSeq) return null;
-    const files = get(n, ["files"]);
+    const files = resolve(get(n, ["files"]));
     if (isYqFalsy(files) && tag(files) === "!!null") return [];
     return files instanceof YqSeq ? files.items.map((f) => render(f)) : [];
   } catch {

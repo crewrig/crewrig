@@ -254,6 +254,33 @@ A command that matches the wrapped-command pattern of `scripts/lib/build-ci/rend
 including a stray-scanned suite command; the two guards then nest, the cache
 guard outside and the scan inside (see *Stray scan of registered test suites*).
 
+### Capability-level `paths` (spec 0283 R3)
+
+A capability entry MAY declare a capability-level `paths:` list, next to
+`trigger:`. It is the one authority for the path set of the capability:
+
+- **Inheritance.** A `pull-request` or `push` trigger that declares no `paths:`
+  of its own takes the capability-level list. A trigger-level `paths:` stays
+  accepted and wins. Other trigger kinds never inherit.
+- **Effective path set.** The effective path set of a trigger is its own
+  `paths:`, else the capability-level `paths:` for a `pull-request` or `push`
+  trigger, else none, and a trigger with none is an unfiltered event. Every
+  reader of the reference uses this one rule (the parity harness, the pre-push
+  selection, the path-ownership check and the GitLab generator).
+- **`cache.files` default.** When `cache:` is declared without `files:`, the
+  capability-level `paths:` is the key file list. An explicit `cache.files:`
+  wins.
+- **No `paths-ignore:`.** The reference has no exclusion form. A
+  capability-level `paths-ignore:` is rejected by the generator and reported as
+  a reference-validity error by the parity harness, and a trigger-level one is
+  already outside the filter keys above.
+
+The GitLab generator emits a list that appears twice in one job (the two rules'
+`changes:` lists, or the cache key `files:` equal to them) once under a YAML
+anchor and then by alias. Anchor names are built from the job id and are unique
+per job. The parity reader resolves such aliases through the `resolve` accessor
+of `scripts/lib/yq-accessors`.
+
 ### GitLab generation
 
 The GitLab pipeline generator `scripts/build-ci.ts` (spec 0048) is the

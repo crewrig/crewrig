@@ -46,8 +46,9 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 
 /**
  * Ownership globs: the `paths:` of every `pull-request` trigger entry of every
- * capability, unique, in first-seen order. A `push`-only `paths:` and a trigger
- * entry with no `paths:` confer nothing (delta-01 vocabulary).
+ * capability, unique, in first-seen order, where a trigger with no `paths:` of its
+ * own takes the capability-level `paths:` (spec 0283 R3). A `push`-only `paths:` and
+ * a trigger with no effective `paths:` confer nothing (delta-01 vocabulary).
  */
 export function ownershipGlobs(capabilities: unknown): string[] {
   if (!Array.isArray(capabilities)) throw new OwnershipInputError("'capabilities' is not a list");
@@ -60,10 +61,13 @@ export function ownershipGlobs(capabilities: unknown): string[] {
     if (!Array.isArray(triggers))
       throw new OwnershipInputError(`capability '${id}': 'trigger' is not a list`);
     for (const t of triggers) {
-      if (!isRecord(t) || t.on !== "pull-request" || t.paths === undefined) continue;
-      if (!Array.isArray(t.paths) || t.paths.some((p) => typeof p !== "string"))
+      if (!isRecord(t) || t.on !== "pull-request") continue;
+      // Effective path set (spec 0283 R3): own `paths`, else the capability-level `paths`.
+      const effective = t.paths === undefined ? cap.paths : t.paths;
+      if (effective === undefined) continue;
+      if (!Array.isArray(effective) || effective.some((p) => typeof p !== "string"))
         throw new OwnershipInputError(`capability '${id}': 'paths' is not a list of strings`);
-      for (const p of t.paths as string[]) {
+      for (const p of effective as string[]) {
         try {
           globToRegExp(p); // fail closed now, with the owning capability named
         } catch (err) {

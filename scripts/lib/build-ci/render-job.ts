@@ -29,7 +29,33 @@ function branchRegex(b: string): string {
   return re.replaceAll("/", "\\/");
 }
 
-function emitRules(cap: Capability, id: string, out: string[]): void {
+/**
+ * One job's repeated lists: a list that appears twice (the cache key files and a `changes:`, or
+ * the `changes:` of two rules) is emitted once under a YAML anchor and then aliased (spec 0283
+ * R4). Anchor names are unique per job, built only from `[A-Za-z0-9_-]`.
+ */
+class ListAnchors {
+  private readonly counts = new Map<string, number>();
+  private readonly names = new Map<string, string>();
+  private readonly prefix: string;
+  constructor(id: string) {
+    this.prefix = id.replace(/[^A-Za-z0-9_-]/g, "_");
+  }
+  count(list: string): void {
+    if (list !== "") this.counts.set(list, (this.counts.get(list) ?? 0) + 1);
+  }
+  /** The header suffix after `key:` (an anchor, an alias or nothing) and whether items follow. */
+  header(list: string, role: string): { suffix: string; items: boolean } {
+    if ((this.counts.get(list) ?? 0) < 2) return { suffix: "", items: true };
+    const known = this.names.get(list);
+    if (known !== undefined) return { suffix: ` *${known}`, items: false };
+    const name = `${this.prefix}-${role}-${this.names.size + 1}`;
+    this.names.set(list, name);
+    return { suffix: ` &${name}`, items: true };
+  }
+}
+
+function emitRules(cap: Capability, id: string, out: string[], anchors: ListAnchors): void {
   out.push("  rules:");
   for (let i = 0; i < cap.triggerCount; i++) {
     const kind = cap.triggerKind(i);
@@ -53,7 +79,9 @@ function emitRules(cap: Capability, id: string, out: string[]): void {
 
     const paths = nonEmptyLines(cap.triggerPaths(i));
     if (cap.triggerPaths(i) !== "") {
-      out.push("      changes:", ...paths.map((p) => `        - "${p}"`));
+      const h = anchors.header(cap.triggerPaths(i), "changes");
+      out.push(`      changes:${h.suffix}`);
+      if (h.items) out.push(...paths.map((p) => `        - "${p}"`));
     }
     if (kind === "manual" && cond !== "") out.push("      when: manual");
   }
@@ -85,13 +113,13 @@ export function emitJob(cap: Capability, pin: TaskPin): string[] {
   const cacheEnv = cap.cacheEnv;
   let guard = cap.cacheGuard;
   if (guard === "") guard = "true";
+  const anchors = new ListAnchors(id);
+  anchors.count(cacheFiles);
+  for (let i = 0; i < cap.triggerCount; i++) anchors.count(cap.triggerPaths(i));
   if (cacheFiles !== "") {
-    out.push(
-      "  cache:",
-      "    key:",
-      "      files:",
-      ...nonEmptyLines(cacheFiles).map((f) => dqItem(8, f)),
-    );
+    const h = anchors.header(cacheFiles, "files");
+    out.push("  cache:", "    key:", `      files:${h.suffix}`);
+    if (h.items) out.push(...nonEmptyLines(cacheFiles).map((f) => dqItem(8, f)));
     out.push("    paths:", "      - .ci-cache/");
   }
 
@@ -111,6 +139,6 @@ export function emitJob(cap: Capability, pin: TaskPin): string[] {
     out.push(dqItem(4, emitted));
   }
 
-  emitRules(cap, id, out);
+  emitRules(cap, id, out, anchors);
   return out;
 }

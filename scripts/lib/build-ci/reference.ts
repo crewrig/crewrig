@@ -8,6 +8,7 @@ import {
   length,
   parse,
   render,
+  resolve,
   tag,
   YqMap,
   YqSeq,
@@ -29,7 +30,8 @@ function text(node: YqNode): string {
 }
 
 /** `EXPR | .[]` joined by LF, trailing line feeds stripped; absent or null -> "". */
-function listText(node: YqNode): string {
+function listText(input: YqNode): string {
+  const node = resolve(input);
   if (node === null || tag(node) === "!!null") return "";
   if (node instanceof YqSeq) return stripTrailingLf(node.items.map(text).join("\n"));
   if (node instanceof YqMap)
@@ -45,7 +47,7 @@ export class Capability {
   }
   private at(path: readonly string[]): YqNode {
     try {
-      return get(this.node, path);
+      return resolve(get(this.node, path));
     } catch (e) {
       throw new BuildCiError(`Error: ${(e as Error).message}`);
     }
@@ -77,8 +79,21 @@ export class Capability {
   get tools(): string {
     return listText(this.at(["requires", "tools"]));
   }
+  /** `cache.files`, defaulting to the capability-level `paths` when absent (spec 0283 R3). */
   get cacheFiles(): string {
-    return listText(this.at(["cache", "files"]));
+    const cache = this.at(["cache"]);
+    const own = this.at(["cache", "files"]);
+    if (cache instanceof YqMap && (own === null || tag(own) === "!!null")) return this.capPaths;
+    return listText(own);
+  }
+  /** The capability-level `paths`; a capability-level `paths-ignore` is rejected. */
+  get capPaths(): string {
+    const c = this.node;
+    if (c instanceof YqMap && c.entries.some(([k]) => k === "paths-ignore"))
+      throw new BuildCiError(
+        `Error: capability '${this.id}' declares paths-ignore, which is not accepted (spec 0283 R3).`,
+      );
+    return listText(this.at(["paths"]));
   }
   get cacheEnv(): string {
     return listText(this.at(["cache", "env"]));
@@ -106,7 +121,19 @@ export class Capability {
   triggerTagPattern(i: number): string {
     return this.orEmpty(["trigger", String(i), "tag-pattern"]);
   }
+  /**
+   * The effective path set of trigger `i` (spec 0049 delta-02 R25): its own `paths` when the key
+   * is declared, else the capability-level `paths` for a pull-request or push trigger.
+   */
   triggerPaths(i: number): string {
+    const t = this.at(["trigger", String(i)]);
+    if (t instanceof YqMap && t.entries.some(([k]) => k === "paths-ignore"))
+      throw new BuildCiError(
+        `Error: capability '${this.id}' declares paths-ignore, which is not accepted (spec 0283 R3).`,
+      );
+    const hasOwn = t instanceof YqMap && t.entries.some(([k]) => k === "paths");
+    const kind = this.triggerKind(i);
+    if (!hasOwn && (kind === "pull-request" || kind === "push")) return this.capPaths;
     return listText(this.at(["trigger", String(i), "paths"]));
   }
 }

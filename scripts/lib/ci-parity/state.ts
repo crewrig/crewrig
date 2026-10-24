@@ -8,6 +8,8 @@ export interface TriggerRecord {
   pathsTag: string;
   paths: string[];
   pathsBad: boolean;
+  /** True when `paths` is the capability-level list inherited under spec 0283 R3. */
+  inherited: boolean;
 }
 
 /** What the reference pass decodes per capability (the shell's CAP_* arrays and c_* locals). */
@@ -31,6 +33,12 @@ export interface CapRecord {
   cacheEnvTag: string;
   cacheLen: number;
   cacheFiles: string[];
+  /** Capability-level `paths` (spec 0283 R3): tag, string entries, malformed flag. */
+  capPathsTag: string;
+  capPaths: string[];
+  capPathsBad: boolean;
+  /** A capability-level `paths-ignore` key, which the reference never accepts. */
+  capPathsIgnore: boolean;
 }
 
 export interface GhaJob {

@@ -61,6 +61,12 @@ function checkCapability(c: CapRecord, i: number, seen: string[], verr: (m: stri
         );
     }
   }
+  if (c.capPathsIgnore)
+    verr(`${label}: capability-level paths-ignore is not accepted; use paths (spec 0283 R3)`);
+  if (!["", "!!null", "!!seq"].includes(c.capPathsTag))
+    verr(`${label}: capability-level paths must be a list (spec 0283 R3)`);
+  else if (c.capPathsBad)
+    verr(`${label}: capability-level paths holds an entry that is not a string (spec 0283 R3)`);
   if (c.port === "specific") {
     if (c.engine === "" || c.engine === "null")
       verr(`${label}: engine-specific capability without exception.engine (validity rule 3)`);

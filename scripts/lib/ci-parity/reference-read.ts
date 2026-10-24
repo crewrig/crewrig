@@ -8,6 +8,7 @@ import {
   keys,
   length,
   render,
+  resolve,
   tag,
   YqMap,
   YqSeq,
@@ -34,6 +35,7 @@ function orEmpty(n: YqNode, what: string): string {
 
 /** `.[]` rendered, for a falsy-or-sequence node (`// []`). */
 function items(n: YqNode, what: string): string[] {
+  n = resolve(n);
   if (isYqFalsy(n)) return [];
   if (!(n instanceof YqSeq)) throw gap(`iterating ${what}`);
   return n.items.map((i) => scalar(i, what));
@@ -41,14 +43,15 @@ function items(n: YqNode, what: string): string[] {
 
 function at(n: YqNode, path: string[]): YqNode {
   try {
-    return get(n, path);
+    return resolve(get(n, path));
   } catch {
     throw gap(`indexing a scalar at .${path.join(".")}`);
   }
 }
 
 /** A "path list": the entry tag, the string entries, and the shell's TLBAD (non-string, empty or multi-line entry). */
-export function plist(n: YqNode): { tag: string; list: string[]; bad: boolean } {
+export function plist(node: YqNode): { tag: string; list: string[]; bad: boolean } {
+  const n = resolve(node);
   const t = tag(n);
   if (!(n instanceof YqSeq)) return { tag: t, list: [], bad: false };
   const list = n.items.filter((i) => tag(i) === "!!str").map((i) => scalar(i, "a path list"));
@@ -56,19 +59,32 @@ export function plist(n: YqNode): { tag: string; list: string[]; bad: boolean } 
   return { tag: t, list, bad };
 }
 
-function readTriggers(c: YqNode): TriggerRecord[] {
+/** The trigger kinds that inherit the capability-level `paths` (spec 0283 R3). */
+const INHERITING_KINDS = ["pull-request", "push"];
+
+/**
+ * The effective path set of a trigger (spec 0049 delta-02 R25): its own `paths` when it declares
+ * the key, else the capability-level `paths` for a pull-request or push trigger, else none.
+ */
+function readTriggers(c: YqNode, cap: ReturnType<typeof plist>, capHas: boolean): TriggerRecord[] {
   const t = at(c, ["trigger"]);
   if (!(t instanceof YqSeq)) return [];
-  return t.items.map((e) => {
+  return t.items.map((raw) => {
+    const e = resolve(raw);
     if (!isColl(e)) throw gap("a scalar trigger entry");
-    const p = e instanceof YqMap ? plist(at(e, ["paths"])) : { tag: "", list: [], bad: false };
+    const own = e instanceof YqMap ? plist(at(e, ["paths"])) : { tag: "", list: [], bad: false };
+    const kind = orEmpty(at(e, ["on"]), "trigger.on");
+    const hasOwn = e instanceof YqMap && keys(e).includes("paths");
+    const inherited = !hasOwn && capHas && INHERITING_KINDS.includes(kind);
+    const p = inherited ? cap : own;
     return {
-      kind: orEmpty(at(e, ["on"]), "trigger.on"),
+      kind,
       tag: tag(e),
       keys: keys(e),
       pathsTag: p.tag,
       paths: p.list,
       pathsBad: p.bad,
+      inherited,
     };
   });
 }
@@ -94,12 +110,17 @@ export function readCapability(c: YqNode): CapRecord {
   const env = at(c, ["env"]);
   const envKeys: string[] = [];
   if (withCmd && !isYqFalsy(env) && isColl(env)) envKeys.push(...keys(env));
-  const cacheFiles = at(cache, ["files"]);
+  const capPaths = plist(at(c, ["paths"]));
+  const capKeys = resolve(c) instanceof YqMap ? keys(resolve(c)) : [];
+  // cache.files defaults to the capability-level paths when absent (spec 0283 R3).
+  const ownFiles = at(cache, ["files"]);
+  const cacheFiles =
+    cacheMap && isYqFalsy(ownFiles) && capPaths.tag === "!!seq" ? at(c, ["paths"]) : ownFiles;
   return {
     id: orEmpty(at(c, ["id"]), "id"),
     port,
     ntrig: isYqFalsy(trigger) ? 0 : length(trigger),
-    triggers: readTriggers(c),
+    triggers: readTriggers(c, capPaths, capKeys.includes("paths")),
     engine: specific ? orEmpty(at(c, ["exception", "engine"]), "exception.engine") : "",
     evidence: specific ? orEmpty(at(c, ["exception", "evidence"]), "exception.evidence") : "",
     ncmd: portable ? ncmd : 0,
@@ -115,6 +136,10 @@ export function readCapability(c: YqNode): CapRecord {
     cacheEnvTag: cacheMap ? tag(at(cache, ["env"])) : "",
     cacheLen: isYqFalsy(cache) ? 0 : length(cache),
     cacheFiles: cacheMap && cacheFiles instanceof YqSeq ? items(cacheFiles, "cache.files") : [],
+    capPathsTag: capPaths.tag,
+    capPaths: capPaths.list,
+    capPathsBad: capPaths.bad,
+    capPathsIgnore: capKeys.includes("paths-ignore"),
   };
 }
 

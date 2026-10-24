@@ -6,6 +6,13 @@ import { isYqFalsy, lengthOf, render, tagOf } from "./render.ts";
 export { loadYq, YqAlias, YqMap, YqSeq, YqParseError, PlainScalar, type YqNode } from "./load.ts";
 export { isYqFalsy, lengthOf, render, tagOf } from "./render.ts";
 
+/** Follow aliases to the node they stand for (a YAML `*name`); any other node is returned as is. */
+export function resolve(node: YqNode): YqNode {
+  let cur = node;
+  while (cur instanceof YqAlias) cur = cur.target;
+  return cur;
+}
+
 /** `.a.b`: an absent key is null; indexing a scalar throws, as yq does. */
 export function get(doc: YqNode, path: readonly string[]): YqNode {
   let cur = doc;

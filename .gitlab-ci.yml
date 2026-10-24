@@ -65,7 +65,7 @@ component-drift:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/build-components.ts,scripts/build-components.ts,package.json,package-lock.json,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/agent-profile-*.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,.agents/skills/**,.claude/skills/**,.gemini/skills/**,.github/skills/**,.gemini/commands/**,.agents/agents/**,.claude/agents/**,.gemini/agents/**,.github/agents/**,crewrig.config.toml\" --key-env \"\" -- node scripts/build-components.ts --target all --check"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &component-drift-changes-1
         - "scripts/build-components.ts"
         - "scripts/build-components.ts"
         - "package.json"
@@ -91,31 +91,7 @@ component-drift:
         - ".github/agents/**"
         - "crewrig.config.toml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/build-components.ts"
-        - "scripts/build-components.ts"
-        - "package.json"
-        - "package-lock.json"
-        - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/agent-profile-*.test.ts"
-        - "scripts/tests/lib/build-sandbox.ts"
-        - "scripts/lib/**"
-        - "artifacts/**"
-        - "extensions/**"
-        - ".crewrig/core-paths.txt"
-        - "docs/layers.md"
-        - "docs/agent-profile-migration.md"
-        - "model-mappings/**"
-        - ".agents/skills/**"
-        - ".claude/skills/**"
-        - ".gemini/skills/**"
-        - ".github/skills/**"
-        - ".gemini/commands/**"
-        - ".agents/agents/**"
-        - ".claude/agents/**"
-        - ".gemini/agents/**"
-        - ".github/agents/**"
-        - "crewrig.config.toml"
+      changes: *component-drift-changes-1
 
 component-drift-selftest:
   image: node:24
@@ -142,7 +118,7 @@ component-drift-selftest:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-canonical-repo.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &component-drift-selftest-changes-1
         - "scripts/build-components.ts"
         - "scripts/lib/**"
         - "package.json"
@@ -157,20 +133,7 @@ component-drift-selftest:
         - ".github/workflows/build.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/build-components.ts"
-        - "scripts/lib/**"
-        - "package.json"
-        - "package-lock.json"
-        - "scripts/tests/build-assembly-routing.test.ts"
-        - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/lib/build-sandbox.ts"
-        - "scripts/tests/lib/build-fixture-tree.ts"
-        - "scripts/tests/fixtures/build-components/**"
-        - "scripts/lib/node-floor-guard.js"
-        - "taskfiles/ci.yml"
-        - ".github/workflows/build.yml"
-        - "ci/ci-capabilities.yml"
+      changes: *component-drift-selftest-changes-1
 
 agent-profile-migration:
   image: node:24
@@ -196,7 +159,7 @@ agent-profile-migration:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/build-components.ts,scripts/build-components.ts,scripts/tests/build-components-canonical-repo.test.ts,scripts/tests/agent-profile-*.test.ts,scripts/tests/lib/build-sandbox.ts,scripts/lib/**,artifacts/**,extensions/**,.crewrig/core-paths.txt,docs/agent-profile-migration.md,model-mappings/**,scripts/ci-cache-guard.ts\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/agent-profile-baseline-doc.test.ts scripts/tests/agent-profile-build.test.ts scripts/tests/agent-profile-committed.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &agent-profile-migration-changes-1
         - "scripts/build-components.ts"
         - "scripts/build-components.ts"
         - "scripts/tests/build-components-canonical-repo.test.ts"
@@ -210,19 +173,7 @@ agent-profile-migration:
         - "docs/agent-profile-migration.md"
         - "model-mappings/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/build-components.ts"
-        - "scripts/build-components.ts"
-        - "scripts/tests/build-components-canonical-repo.test.ts"
-        - "scripts/tests/agent-profile-*.test.ts"
-        - "scripts/tests/lib/build-sandbox.ts"
-        - "scripts/lib/**"
-        - "artifacts/**"
-        - "extensions/**"
-        - ".crewrig/core-paths.txt"
-        - "docs/layers.md"
-        - "docs/agent-profile-migration.md"
-        - "model-mappings/**"
+      changes: *agent-profile-migration-changes-1
 
 build-components-ts:
   image: node:24
@@ -238,7 +189,7 @@ build-components-ts:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-cleanup.test.ts scripts/tests/build-components-cli.test.ts scripts/tests/build-components-cli-config.test.ts scripts/tests/build-components-conformance.test.ts scripts/tests/build-components-conformance-mutation.test.ts scripts/tests/build-components-conformance-org.test.ts scripts/tests/build-components-conformance-render.test.ts scripts/tests/build-components-conformance-root.test.ts scripts/tests/build-components-dependency.test.ts scripts/tests/build-components-entry-form.test.ts scripts/tests/build-components-file-size.test.ts scripts/tests/build-components-fixture-closure.test.ts scripts/tests/build-components-hardening-names.test.ts scripts/tests/build-components-hardening-names-e2e.test.ts scripts/tests/build-components-hardening-printed.test.ts scripts/tests/build-components-hardening-printed-values.test.ts scripts/tests/build-components-hardening-yaml.test.ts scripts/tests/build-components-hardening-yaml-e2e.test.ts scripts/tests/build-components-names.test.ts scripts/tests/build-components-output.test.ts scripts/tests/build-components-output-agents.test.ts scripts/tests/build-components-output-resources.test.ts scripts/tests/build-components-output-skills.test.ts scripts/tests/build-components-provenance.test.ts scripts/tests/build-components-resources.test.ts scripts/tests/build-components-write.test.ts scripts/tests/build-components-shim.test.ts scripts/tests/build-components-ci-wiring.test.ts scripts/tests/build-components-references.test.ts scripts/tests/build-components-yaml-corpus.test.ts scripts/tests/yaml-text.test.ts scripts/tests/render-command.test.ts scripts/tests/component-resolve.test.ts scripts/tests/model-resolve-*.test.ts scripts/tests/build-sandbox.test.ts scripts/tests/repo-agent-frontmatter.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &build-components-ts-changes-1
         - "scripts/build-components.*"
         - "scripts/lib/build-components/**"
         - "scripts/lib/render-command.ts"
@@ -283,50 +234,7 @@ build-components-ts:
         - ".github/agents/**"
         - ".github/skills/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/build-components.*"
-        - "scripts/lib/build-components/**"
-        - "scripts/lib/render-command.ts"
-        - "scripts/lib/component-resolve.ts"
-        - "scripts/lib/model-resolve.ts"
-        - "scripts/lib/yaml-text.ts"
-        - "scripts/lib/escape-control.ts"
-        - "scripts/lib/line-endings.ts"
-        - "scripts/lib/paths.ts"
-        - "scripts/lib/tmp-file.ts"
-        - "scripts/lib/require-dependency.ts"
-        - "scripts/lib/node-floor-guard.js"
-        - "scripts/lib/model-resolve/**"
-        - "scripts/tests/build-components-*.test.ts"
-        - "scripts/tests/build-sandbox.test.ts"
-        - "scripts/tests/repo-agent-frontmatter.test.ts"
-        - "scripts/tests/lib/build-sandbox.ts"
-        - "scripts/tests/yaml-text.test.ts"
-        - "scripts/tests/render-command.test.ts"
-        - "scripts/tests/component-resolve.test.ts"
-        - "scripts/tests/model-resolve-*.test.ts"
-        - "scripts/tests/lib/yaml-lib.ts"
-        - "scripts/tests/lib/shell-resolve-harness.ts"
-        - "scripts/tests/lib/mapping-fixtures.ts"
-        - "scripts/tests/lib/build-fixture-tree.ts"
-        - "scripts/tests/lib/windows-build-proof.ts"
-        - "scripts/tests/lib/shim-env.ts"
-        - "scripts/tests/fixtures/build-components/**"
-        - "artifacts/**"
-        - "model-mappings/**"
-        - "tests/fixtures/**"
-        - "crewrig.config.toml"
-        - "package.json"
-        - "package-lock.json"
-        - ".agents/agents/**"
-        - ".agents/skills/**"
-        - ".claude/agents/**"
-        - ".claude/skills/**"
-        - ".gemini/agents/**"
-        - ".gemini/commands/**"
-        - ".gemini/skills/**"
-        - ".github/agents/**"
-        - ".github/skills/**"
+      changes: *build-components-ts-changes-1
 
 build-components-ts-node-24-0:
   image: node:24.0.0
@@ -356,7 +264,7 @@ extension-builders-ts:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/create-extension-differential.test.ts scripts/tests/create-extension-prompt.test.ts scripts/tests/create-extension-skeleton-toolchain.test.ts scripts/tests/extension-args.test.ts scripts/tests/extension-check-scan.test.ts scripts/tests/extension-check.test.ts scripts/tests/extension-cli.test.ts scripts/tests/extension-conformance.test.ts scripts/tests/extension-context-declared.test.ts scripts/tests/extension-context.test.ts scripts/tests/extension-descriptors.test.ts scripts/tests/extension-entry-ctx.test.ts scripts/tests/extension-entry-form.test.ts scripts/tests/extension-file-size.test.ts scripts/tests/extension-gap-record.test.ts scripts/tests/extension-golden.test.ts scripts/tests/extension-hooks-antigravity-guard.test.ts scripts/tests/extension-hooks-differential.test.ts scripts/tests/extension-hooks-entry-form.test.ts scripts/tests/extension-hooks-layouts.test.ts scripts/tests/extension-hook-static-reads.test.ts scripts/tests/extension-hooks.test.ts scripts/tests/extension-json-corpus.test.ts scripts/tests/extension-json.test.ts scripts/tests/extension-manifest.test.ts scripts/tests/extension-mcp-delivery.test.ts scripts/tests/extension-migrate.test.ts scripts/tests/extension-org-mcp.test.ts scripts/tests/extension-plugin-antigravity.test.ts scripts/tests/extension-plugin-claude.test.ts scripts/tests/extension-plugin-common.test.ts scripts/tests/extension-plugin-copilot.test.ts scripts/tests/extension-render-gemini.test.ts scripts/tests/extension-render-plugins.test.ts scripts/tests/extension-resolve.test.ts scripts/tests/extension-shape-guard.test.ts scripts/tests/extension-tree-copy.test.ts scripts/tests/extension-validate-all.test.ts scripts/tests/extension-validate.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &extension-builders-ts-changes-1
         - "scripts/lib/extension/**"
         - "scripts/lib/org-mcp.ts"
         - "scripts/build-extension.*"
@@ -391,40 +299,7 @@ extension-builders-ts:
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/lib/extension/**"
-        - "scripts/lib/org-mcp.ts"
-        - "scripts/build-extension.*"
-        - "scripts/build-claude-plugin.*"
-        - "scripts/build-copilot-plugin.*"
-        - "scripts/build-antigravity-extension.*"
-        - "scripts/migrate-extension.*"
-        - "scripts/lib/extension-*.json"
-        - "scripts/lib/render-command.ts"
-        - "scripts/lib/yaml-text.ts"
-        - "scripts/lib/line-endings.ts"
-        - "scripts/lib/paths.ts"
-        - "scripts/lib/tmp-file.ts"
-        - "scripts/lib/glob-engine.ts"
-        - "scripts/lib/require-dependency.ts"
-        - "scripts/lib/node-floor-guard.js"
-        - "scripts/tests/extension-*.test.ts"
-        - "scripts/tests/lib/extension-*.ts"
-        - "scripts/tests/lib/shell-extension-harness.ts"
-        - "scripts/tests/lib/plugin-ctx.ts"
-        - "scripts/tests/lib/windows-extension-proof.ts"
-        - "scripts/tests/lib/build-fixture-tree.ts"
-        - "scripts/tests/fixtures/extension-golden/**"
-        - "scripts/tests/fixtures/extension-hooks/**"
-        - "scripts/create-extension.ts"
-        - "scripts/lib/create-extension/**"
-        - "scripts/tests/create-extension-*"
-        - "scripts/tests/lib/create-extension-*"
-        - "scripts/tests/fixtures/create-extension/**"
-        - "extensions/**"
-        - "extension-skeleton/**"
-        - "package.json"
-        - "package-lock.json"
+      changes: *extension-builders-ts-changes-1
 
 extension-builders-ts-node-24-0:
   image: node:24.0.0
@@ -452,7 +327,7 @@ skill-scripts-ts:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/skill-scripts-oracle.test.ts scripts/tests/skill-scripts-yaml-leg.test.ts scripts/tests/skill-scripts-differential.test.ts scripts/tests/skill-scripts-layouts.test.ts scripts/tests/skill-scripts-copied-skill.test.ts scripts/tests/skill-scripts-mutation.test.ts scripts/tests/callers-sweep.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &skill-scripts-ts-changes-1
         - "artifacts/**/skills/*/scripts/**"
         - "scripts/tests/skill-scripts-*"
         - "scripts/tests/lib/skill-scripts-*"
@@ -467,20 +342,7 @@ skill-scripts-ts:
         - "scripts/lib/taskfile-tree-parse.ts"
         - "scripts/lib/governance/taskfile-tree-guard.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "artifacts/**/skills/*/scripts/**"
-        - "scripts/tests/skill-scripts-*"
-        - "scripts/tests/lib/skill-scripts-*"
-        - "scripts/tests/fixtures/skill-scripts/**"
-        - "scripts/tests/callers-sweep.test.ts"
-        - "scripts/tests/lib/callers-sweep.ts"
-        - "artifacts/**"
-        - "README.md"
-        - "Taskfile.yml"
-        - "taskfiles/**"
-        - "scripts/lib/taskfile-tree.ts"
-        - "scripts/lib/taskfile-tree-parse.ts"
-        - "scripts/lib/governance/taskfile-tree-guard.ts"
+      changes: *skill-scripts-ts-changes-1
 
 install-ts:
   image: node:24
@@ -598,7 +460,7 @@ setup-oracle:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-sandbox.test.ts scripts/tests/setup-stubs.test.ts scripts/tests/setup-golden-harness.test.ts scripts/tests/setup-golden-smoke.test.ts scripts/tests/setup-golden-claude.test.ts scripts/tests/setup-golden-gemini.test.ts scripts/tests/setup-golden-copilot.test.ts scripts/tests/setup-golden-antigravity.test.ts scripts/tests/setup-prompt-inventory.test.ts scripts/tests/setup-oracle-mutation.test.ts scripts/tests/setup-oracle-paths.test.ts scripts/tests/setup-golden-portable.test.ts scripts/tests/setup-entry-form.test.ts scripts/tests/setup-golden-deviations.test.ts scripts/tests/setup-no-node-modules.test.ts scripts/tests/setup-retarget-antigravity-transcript.test.ts scripts/tests/setup-retarget-behaviour-a.test.ts scripts/tests/setup-retarget-catalogue-picker.test.ts scripts/tests/setup-retarget-claude-env.test.ts scripts/tests/setup-retarget-entry-behaviour.test.ts scripts/tests/setup-retarget-gemini-copilot-run.test.ts scripts/tests/setup-retarget-gemini-overlays.test.ts scripts/tests/setup-retarget-mcp-order.test.ts scripts/tests/setup-retarget-others.test.ts scripts/tests/setup-retarget-rc-guard.test.ts scripts/tests/setup-retarget-step-order.test.ts scripts/tests/setup-retarget-tier-resolution.test.ts scripts/tests/setup-retarget-usage-order.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &setup-oracle-changes-1
         - "scripts/**"
         - "config/**"
         - "hooks/**"
@@ -624,31 +486,7 @@ setup-oracle:
         - "scripts/tests/lib/real-home-guard.ts"
         - "scripts/tests/fixtures/setup-golden/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/**"
-        - "config/**"
-        - "hooks/**"
-        - "artifacts/core/rules/**"
-        - "artifacts/core/system-context/**"
-        - "mcp-servers.org.json"
-        - "AGENTS.org.md"
-        - "package.json"
-        - "package-lock.json"
-        - "scripts/tests/setup-sandbox.test.ts"
-        - "scripts/tests/setup-stubs.test.ts"
-        - "scripts/tests/setup-golden-harness.test.ts"
-        - "scripts/tests/setup-golden-smoke.test.ts"
-        - "scripts/tests/setup-golden-claude.test.ts"
-        - "scripts/tests/setup-golden-gemini.test.ts"
-        - "scripts/tests/setup-golden-copilot.test.ts"
-        - "scripts/tests/setup-golden-antigravity.test.ts"
-        - "scripts/tests/setup-prompt-inventory.test.ts"
-        - "scripts/tests/setup-oracle-mutation.test.ts"
-        - "scripts/tests/setup-golden-deviations.test.ts"
-        - "scripts/tests/setup-entry-form.test.ts"
-        - "scripts/tests/lib/setup-*.ts"
-        - "scripts/tests/lib/real-home-guard.ts"
-        - "scripts/tests/fixtures/setup-golden/**"
+      changes: *setup-oracle-changes-1
 
 setup-differential:
   image: node:24
@@ -663,7 +501,7 @@ setup-differential:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-differential.test.ts scripts/tests/setup-differential-antigravity.test.ts scripts/tests/setup-differential-claude.test.ts scripts/tests/setup-differential-copilot.test.ts scripts/tests/setup-differential-gemini.test.ts scripts/tests/setup-twins-differential-usage.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &setup-differential-changes-1
         - "scripts/**"
         - "config/**"
         - "hooks/**"
@@ -683,25 +521,7 @@ setup-differential:
         - "scripts/tests/lib/real-home-guard.ts"
         - "scripts/tests/fixtures/setup-golden/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/**"
-        - "config/**"
-        - "hooks/**"
-        - "artifacts/core/rules/**"
-        - "artifacts/core/system-context/**"
-        - "mcp-servers.org.json"
-        - "AGENTS.org.md"
-        - "package.json"
-        - "package-lock.json"
-        - "scripts/tests/setup-differential.test.ts"
-        - "scripts/tests/setup-differential-claude.test.ts"
-        - "scripts/tests/setup-differential-gemini.test.ts"
-        - "scripts/tests/setup-differential-copilot.test.ts"
-        - "scripts/tests/setup-differential-antigravity.test.ts"
-        - "scripts/tests/setup-twins-differential-usage.test.ts"
-        - "scripts/tests/lib/setup-*.ts"
-        - "scripts/tests/lib/real-home-guard.ts"
-        - "scripts/tests/fixtures/setup-golden/**"
+      changes: *setup-differential-changes-1
 
 setup-modules-ts:
   image: node:24
@@ -711,7 +531,7 @@ setup-modules-ts:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-answers.test.ts scripts/tests/setup-antigravity-hooks.test.ts scripts/tests/setup-antigravity-statusline.test.ts scripts/tests/setup-antigravity-tier.test.ts scripts/tests/setup-backup.test.ts scripts/tests/setup-backup-failure.test.ts scripts/tests/setup-catalogue.test.ts scripts/tests/setup-chroma-install.test.ts scripts/tests/setup-chroma-install-win.test.ts scripts/tests/setup-chroma-unit.test.ts scripts/tests/setup-cli-claude-gemini.test.ts scripts/tests/setup-cli-copilot-antigravity.test.ts scripts/tests/setup-declarations.test.ts scripts/tests/setup-deps.test.ts scripts/tests/setup-ensure-http.test.ts scripts/tests/setup-ensure-http-probes.test.ts scripts/tests/setup-ensure-http-wiring.test.ts scripts/tests/setup-file-size.test.ts scripts/tests/setup-files.test.ts scripts/tests/setup-flow.test.ts scripts/tests/setup-flow-steps.test.ts scripts/tests/setup-gemini-settings.test.ts scripts/tests/setup-gemini-settings-rc.test.ts scripts/tests/setup-gemini-settings-write.test.ts scripts/tests/setup-golden-evidence.test.ts scripts/tests/setup-hint-strings.test.ts scripts/tests/setup-hooks-rewrite.test.ts scripts/tests/setup-json-secure.test.ts scripts/tests/setup-json-secure-failure.test.ts scripts/tests/setup-lib-tls-entry.test.ts scripts/tests/setup-lib-tls-entry-offer.test.ts scripts/tests/setup-lib-usage-entry.test.ts scripts/tests/setup-lib-usage-entry-form.test.ts scripts/tests/setup-link-key.test.ts scripts/tests/setup-lossless-callsites.test.ts scripts/tests/setup-lossless-shim.test.ts scripts/tests/setup-lossless-writers.test.ts scripts/tests/setup-mcp-agy-step.test.ts scripts/tests/setup-mcp-claude-flow.test.ts scripts/tests/setup-mcp-claude-step.test.ts scripts/tests/setup-mcp-copilot-step.test.ts scripts/tests/setup-mcp-gemini-step.test.ts scripts/tests/setup-mcp-json-writers.test.ts scripts/tests/setup-mcp-json-writers-merge.test.ts scripts/tests/setup-mempalace-callsite.test.ts scripts/tests/setup-mempalace-detect.test.ts scripts/tests/setup-mempalace-install-offer.test.ts scripts/tests/setup-mempalace-stdio.test.ts scripts/tests/setup-mempalace-version.test.ts scripts/tests/setup-misc-paths.test.ts scripts/tests/setup-no-posix-tool.test.ts scripts/tests/setup-org-mcp-claude-argv.test.ts scripts/tests/setup-org-mcp-fold.test.ts scripts/tests/setup-prerequisites.test.ts scripts/tests/setup-prompt.test.ts scripts/tests/setup-prompt-integration.test.ts scripts/tests/setup-prompt-table.test.ts scripts/tests/setup-prompt-tty.test.ts scripts/tests/setup-references.test.ts scripts/tests/setup-session-recording.test.ts scripts/tests/setup-session-recording-ownership.test.ts scripts/tests/setup-stdlib-closure.test.ts scripts/tests/setup-steps-agy.test.ts scripts/tests/setup-steps-agy-channels.test.ts scripts/tests/setup-steps-copilot.test.ts scripts/tests/setup-steps-hooks.test.ts scripts/tests/setup-steps-hooks-lossy.test.ts scripts/tests/setup-steps-mcp.test.ts scripts/tests/setup-steps-rules.test.ts scripts/tests/setup-steps-rules-edge.test.ts scripts/tests/setup-steps-tiers.test.ts scripts/tests/setup-steps-usage.test.ts scripts/tests/setup-store-guidance.test.ts scripts/tests/setup-summary.test.ts scripts/tests/setup-tier-build.test.ts scripts/tests/setup-tier-install.test.ts scripts/tests/setup-tls-detect.test.ts scripts/tests/setup-tls-offer.test.ts scripts/tests/setup-trust-wrapper.test.ts scripts/tests/setup-trust-wrapper-install.test.ts scripts/tests/setup-usage-capture.test.ts scripts/tests/setup-usage-capture-keep.test.ts scripts/tests/setup-usage-capture-rank.test.ts scripts/tests/setup-usage-capture-state.test.ts scripts/tests/setup-usage-capture-wire-path.test.ts scripts/tests/setup-validation.test.ts scripts/tests/tls-env-quote.test.ts scripts/tests/tls-env-writer.test.ts scripts/tests/manage-confirm-remainder.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &setup-modules-ts-changes-1
         - "scripts/lib/setup/**"
         - "scripts/lib/tls-env.ts"
         - "scripts/lib/tls-env-quote.ts"
@@ -829,123 +649,7 @@ setup-modules-ts:
         - "scripts/tests/fixtures/setup-tls/**"
         - "scripts/tests/fixtures/setup-golden/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/lib/setup/**"
-        - "scripts/lib/tls-env.ts"
-        - "scripts/lib/tls-env-quote.ts"
-        - "scripts/lib/manage/confirm.ts"
-        - "scripts/lib/service/launcher/bundle.ts"
-        - "scripts/lib/link-or-copy*.ts"
-        - "scripts/lib/extension/types.ts"
-        - "scripts/setup-antigravity-interactive.ts"
-        - "scripts/setup-claude-interactive.ts"
-        - "scripts/setup-copilot-interactive.ts"
-        - "scripts/setup-gemini-interactive.ts"
-        - "scripts/lib/node-floor-guard.js"
-        - "scripts/tests/setup-answers.test.ts"
-        - "scripts/tests/setup-antigravity-hooks.test.ts"
-        - "scripts/tests/setup-antigravity-statusline.test.ts"
-        - "scripts/tests/setup-antigravity-tier.test.ts"
-        - "scripts/tests/setup-backup.test.ts"
-        - "scripts/tests/setup-backup-failure.test.ts"
-        - "scripts/tests/setup-catalogue.test.ts"
-        - "scripts/tests/setup-chroma-install.test.ts"
-        - "scripts/tests/setup-chroma-install-win.test.ts"
-        - "scripts/tests/setup-chroma-unit.test.ts"
-        - "scripts/tests/setup-cli-claude-gemini.test.ts"
-        - "scripts/tests/setup-cli-copilot-antigravity.test.ts"
-        - "scripts/tests/setup-declarations.test.ts"
-        - "scripts/tests/setup-deps.test.ts"
-        - "scripts/tests/setup-ensure-http.test.ts"
-        - "scripts/tests/setup-ensure-http-probes.test.ts"
-        - "scripts/tests/setup-ensure-http-wiring.test.ts"
-        - "scripts/tests/setup-file-size.test.ts"
-        - "scripts/tests/setup-files.test.ts"
-        - "scripts/tests/setup-flow.test.ts"
-        - "scripts/tests/setup-flow-steps.test.ts"
-        - "scripts/tests/setup-gemini-settings.test.ts"
-        - "scripts/tests/setup-gemini-settings-rc.test.ts"
-        - "scripts/tests/setup-gemini-settings-write.test.ts"
-        - "scripts/tests/setup-golden-evidence.test.ts"
-        - "scripts/tests/setup-hint-strings.test.ts"
-        - "scripts/tests/setup-hooks-rewrite.test.ts"
-        - "scripts/tests/setup-json-secure.test.ts"
-        - "scripts/tests/setup-json-secure-failure.test.ts"
-        - "scripts/tests/setup-lib-tls-entry.test.ts"
-        - "scripts/tests/setup-lib-tls-entry-offer.test.ts"
-        - "scripts/tests/setup-lib-usage-entry.test.ts"
-        - "scripts/tests/setup-lib-usage-entry-form.test.ts"
-        - "scripts/tests/setup-link-key.test.ts"
-        - "scripts/tests/setup-lossless-callsites.test.ts"
-        - "scripts/tests/setup-lossless-shim.test.ts"
-        - "scripts/tests/setup-lossless-writers.test.ts"
-        - "scripts/tests/setup-mcp-agy-step.test.ts"
-        - "scripts/tests/setup-mcp-claude-flow.test.ts"
-        - "scripts/tests/setup-mcp-claude-step.test.ts"
-        - "scripts/tests/setup-mcp-copilot-step.test.ts"
-        - "scripts/tests/setup-mcp-gemini-step.test.ts"
-        - "scripts/tests/setup-mcp-json-writers.test.ts"
-        - "scripts/tests/setup-mcp-json-writers-merge.test.ts"
-        - "scripts/tests/setup-mempalace-callsite.test.ts"
-        - "scripts/tests/setup-mempalace-detect.test.ts"
-        - "scripts/tests/setup-mempalace-install-offer.test.ts"
-        - "scripts/tests/setup-mempalace-stdio.test.ts"
-        - "scripts/tests/setup-mempalace-version.test.ts"
-        - "scripts/tests/setup-misc-paths.test.ts"
-        - "scripts/tests/setup-no-posix-tool.test.ts"
-        - "scripts/tests/setup-org-mcp-claude-argv.test.ts"
-        - "scripts/tests/setup-org-mcp-fold.test.ts"
-        - "scripts/tests/setup-prerequisites.test.ts"
-        - "scripts/tests/setup-prompt.test.ts"
-        - "scripts/tests/setup-prompt-integration.test.ts"
-        - "scripts/tests/setup-prompt-table.test.ts"
-        - "scripts/tests/setup-prompt-tty.test.ts"
-        - "scripts/tests/setup-references.test.ts"
-        - "scripts/tests/setup-session-recording.test.ts"
-        - "scripts/tests/setup-session-recording-ownership.test.ts"
-        - "scripts/tests/setup-stdlib-closure.test.ts"
-        - "scripts/tests/setup-steps-agy.test.ts"
-        - "scripts/tests/setup-steps-agy-channels.test.ts"
-        - "scripts/tests/setup-steps-copilot.test.ts"
-        - "scripts/tests/setup-steps-hooks.test.ts"
-        - "scripts/tests/setup-steps-hooks-lossy.test.ts"
-        - "scripts/tests/setup-steps-mcp.test.ts"
-        - "scripts/tests/setup-steps-rules.test.ts"
-        - "scripts/tests/setup-steps-rules-edge.test.ts"
-        - "scripts/tests/setup-steps-tiers.test.ts"
-        - "scripts/tests/setup-steps-usage.test.ts"
-        - "scripts/tests/setup-store-guidance.test.ts"
-        - "scripts/tests/setup-summary.test.ts"
-        - "scripts/tests/setup-tier-build.test.ts"
-        - "scripts/tests/setup-tier-install.test.ts"
-        - "scripts/tests/setup-tls-detect.test.ts"
-        - "scripts/tests/setup-tls-offer.test.ts"
-        - "scripts/tests/setup-trust-wrapper.test.ts"
-        - "scripts/tests/setup-trust-wrapper-install.test.ts"
-        - "scripts/tests/setup-usage-capture.test.ts"
-        - "scripts/tests/setup-usage-capture-keep.test.ts"
-        - "scripts/tests/setup-usage-capture-rank.test.ts"
-        - "scripts/tests/setup-usage-capture-state.test.ts"
-        - "scripts/tests/setup-usage-capture-wire-path.test.ts"
-        - "scripts/tests/setup-validation.test.ts"
-        - "scripts/tests/tls-env-quote.test.ts"
-        - "scripts/tests/tls-env-writer.test.ts"
-        - "scripts/tests/manage-confirm-remainder.test.ts"
-        - "scripts/tests/lib/setup-*.ts"
-        - "scripts/usage-capture-optin.ts"
-        - "scripts/tls-delegation.ts"
-        - "scripts/tests/fixtures/setup-declarations/**"
-        - "scripts/tests/lib/setup-declarations-consumers.ts"
-        - "scripts/tests/lib/setup-declarations-facts.ts"
-        - "scripts/tests/lib/print-setup-declarations.ts"
-        - "scripts/tests/lib/tls-entry-run.ts"
-        - "scripts/tests/lib/usage-entry-rig.ts"
-        - "scripts/tests/lib/keep-differential.ts"
-        - "scripts/tests/lib/usage-capture-rig.ts"
-        - "scripts/tests/lib/mcp-writers-box.ts"
-        - "scripts/tests/lib/tls-quote-measure.ts"
-        - "scripts/tests/fixtures/setup-tls/**"
-        - "scripts/tests/fixtures/setup-golden/**"
+      changes: *setup-modules-ts-changes-1
 
 release-driver-modules-ts:
   image: node:24
@@ -955,7 +659,7 @@ release-driver-modules-ts:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-preflight.test.ts scripts/tests/monorepo-release-credentials.test.ts scripts/tests/monorepo-release-log-parse.test.ts scripts/tests/monorepo-release-prepare-cmd.test.ts scripts/tests/monorepo-release-config.test.ts scripts/tests/monorepo-release-process.test.ts scripts/tests/monorepo-release-scratch.test.ts scripts/tests/monorepo-release-mirror.test.ts scripts/tests/monorepo-release-clone-modules.test.ts scripts/tests/monorepo-release-flows-publish.test.ts scripts/tests/monorepo-release-flows-rehearsal.test.ts scripts/tests/monorepo-release-github.test.ts scripts/tests/monorepo-release-github-sync.test.ts scripts/tests/monorepo-release-main.test.ts scripts/tests/monorepo-release-main-flow.test.ts scripts/tests/monorepo-release-file-size.test.ts scripts/tests/monorepo-release-extension-dirs.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &release-driver-modules-ts-changes-1
         - "scripts/lib/monorepo-release/**"
         - "scripts/lib/release-notes/**"
         - "scripts/lib/sync-from-upstream/git.ts"
@@ -990,40 +694,7 @@ release-driver-modules-ts:
         - "scripts/tests/fixtures/release/**"
         - "scripts/monorepo-release.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/lib/monorepo-release/**"
-        - "scripts/lib/release-notes/**"
-        - "scripts/lib/sync-from-upstream/git.ts"
-        - "scripts/lib/paths.ts"
-        - "scripts/lib/node-floor-guard.js"
-        - "scripts/tests/monorepo-release-preflight.test.ts"
-        - "scripts/tests/monorepo-release-credentials.test.ts"
-        - "scripts/tests/monorepo-release-log-parse.test.ts"
-        - "scripts/tests/monorepo-release-prepare-cmd.test.ts"
-        - "scripts/tests/monorepo-release-config.test.ts"
-        - "scripts/tests/lib/release-preflight-tables.ts"
-        - "scripts/lib/packaging/digest.ts"
-        - "scripts/lib/worktree-claim/**"
-        - "scripts/lib/link-or-copy*.ts"
-        - "scripts/lib/extension/tree-copy.ts"
-        - "scripts/lib/extension/types.ts"
-        - "scripts/tests/monorepo-release-process.test.ts"
-        - "scripts/tests/monorepo-release-scratch.test.ts"
-        - "scripts/tests/monorepo-release-mirror.test.ts"
-        - "scripts/tests/monorepo-release-clone-modules.test.ts"
-        - "scripts/tests/monorepo-release-flows-publish.test.ts"
-        - "scripts/tests/monorepo-release-flows-rehearsal.test.ts"
-        - "scripts/tests/monorepo-release-github.test.ts"
-        - "scripts/tests/monorepo-release-github-sync.test.ts"
-        - "scripts/tests/monorepo-release-main.test.ts"
-        - "scripts/tests/monorepo-release-main-flow.test.ts"
-        - "scripts/tests/monorepo-release-file-size.test.ts"
-        - "scripts/tests/monorepo-release-extension-dirs.test.ts"
-        - "scripts/tests/lib/release-flow-ctx.ts"
-        - "scripts/tests/lib/release-github-fixture.ts"
-        - "scripts/tests/lib/release-main-fixture.ts"
-        - "scripts/tests/fixtures/release/**"
-        - "scripts/monorepo-release.ts"
+      changes: *release-driver-modules-ts-changes-1
 
 packaging-modules-ts:
   image: node:24
@@ -1033,7 +704,7 @@ packaging-modules-ts:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tar-writer.test.ts scripts/tests/docs-index.test.ts scripts/tests/docs-index-walk.test.ts scripts/tests/build-docs-index-entry.test.ts scripts/tests/packaging-file-size.test.ts scripts/tests/packaging-release-package.test.ts scripts/tests/packaging-release-package-cli.test.ts scripts/tests/packaging-spawn-tiers.test.ts scripts/tests/packaging-entries.test.ts scripts/tests/release-sync-manifests.test.ts scripts/tests/packaging-release-golden-portable.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &packaging-modules-ts-changes-1
         - "scripts/lib/packaging/**"
         - "scripts/lib/docs-index/**"
         - "scripts/lib/paths.ts"
@@ -1079,51 +750,7 @@ packaging-modules-ts:
         - "scripts/tests/lib/golden-normalize.ts"
         - "scripts/tests/lib/release-driver-sandbox.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/lib/packaging/**"
-        - "scripts/lib/docs-index/**"
-        - "scripts/lib/paths.ts"
-        - "scripts/lib/line-endings.ts"
-        - "scripts/lib/tmp-file.ts"
-        - "scripts/lib/node-floor-guard.js"
-        - "scripts/tests/tar-writer.test.ts"
-        - "scripts/tests/docs-index.test.ts"
-        - "scripts/tests/docs-index-walk.test.ts"
-        - "scripts/tests/build-docs-index-entry.test.ts"
-        - "scripts/tests/lib/docs-index-entry-tree.ts"
-        - "scripts/tests/packaging-file-size.test.ts"
-        - "scripts/tests/lib/tar-reader.ts"
-        - "scripts/tests/lib/docs-index-trees.ts"
-        - "scripts/tests/lib/extension-trees.ts"
-        - "scripts/build-extension.ts"
-        - "scripts/lib/extension/**"
-        - "scripts/lib/worktree-claim/**"
-        - "scripts/lib/mempalace-python.ts"
-        - "scripts/lib/render-command.ts"
-        - "scripts/lib/yaml-text.ts"
-        - "scripts/lib/require-dependency.ts"
-        - "scripts/lib/extension-*.json"
-        - "extension-skeleton/**"
-        - "extensions/**"
-        - "package.json"
-        - "package-lock.json"
-        - "scripts/tests/packaging-release-package.test.ts"
-        - "scripts/tests/packaging-release-package-cli.test.ts"
-        - "scripts/tests/packaging-spawn-tiers.test.ts"
-        - "scripts/tests/packaging-entries.test.ts"
-        - "scripts/tests/release-sync-manifests.test.ts"
-        - "scripts/tests/lib/release-sandbox.ts"
-        - "scripts/tests/lib/build-fixture-tree.ts"
-        - "scripts/build-docs-index.ts"
-        - "scripts/package-extension.ts"
-        - "scripts/package-extensions.ts"
-        - "scripts/release-package-extension.ts"
-        - "scripts/release-sync-manifests.ts"
-        - "scripts/tests/packaging-release-golden-portable.test.ts"
-        - "scripts/tests/fixtures/packaging-release/**"
-        - "scripts/tests/lib/packaging-release-*.ts"
-        - "scripts/tests/lib/golden-normalize.ts"
-        - "scripts/tests/lib/release-driver-sandbox.ts"
+      changes: *packaging-modules-ts-changes-1
 
 governance-checks-ts:
   image: node:24
@@ -1133,7 +760,7 @@ governance-checks-ts:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/governance-*.test.ts' scripts/tests/check-agents-size.test.ts scripts/tests/check-rules-size.test.ts scripts/tests/check-comment-size.test.ts scripts/tests/check-comment-size-ci-wiring.test.ts scripts/tests/check-seat-brief.test.ts scripts/tests/check-seat-brief-ci-wiring.test.ts scripts/tests/check-plan-review.test.ts scripts/tests/check-plan-review-ci-wiring.test.ts scripts/tests/check-plan-review-gate.test.ts scripts/tests/seat-ledger.test.ts scripts/tests/economy-measure.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &governance-checks-ts-changes-1
         - "scripts/check-*.ts"
         - "scripts/lib/governance/**"
         - "scripts/lib/sequence-matcher.ts"
@@ -1158,30 +785,7 @@ governance-checks-ts:
         - "AGENTS.md"
         - "scripts/tests/fixtures/agent-team-protocol/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/check-*.ts"
-        - "scripts/lib/governance/**"
-        - "scripts/lib/sequence-matcher.ts"
-        - "scripts/tests/governance-*"
-        - "scripts/tests/lib/governance-*"
-        - "scripts/tests/check-agents-size.test.ts"
-        - "scripts/tests/check-rules-size.test.ts"
-        - "scripts/tests/check-comment-size*"
-        - "scripts/tests/check-seat-brief*"
-        - "scripts/tests/check-plan-review*"
-        - "scripts/tests/seat-ledger.test.ts"
-        - "scripts/tests/economy-measure.test.ts"
-        - "scripts/tests/fixtures/comment-size/**"
-        - "scripts/tests/fixtures/seat-brief/**"
-        - "scripts/tests/fixtures/plan-review/**"
-        - "scripts/tests/fixtures/seat-ledger/**"
-        - "scripts/tests/fixtures/economy-1410/**"
-        - "scripts/lib/seat-ledger*.ts"
-        - "scripts/lib/economy-transform.ts"
-        - "scripts/economy-*.ts"
-        - "docs/**"
-        - "AGENTS.md"
-        - "scripts/tests/fixtures/agent-team-protocol/**"
+      changes: *governance-checks-ts-changes-1
 
 model-ci-tooling-ts:
   image: node:24
@@ -1200,7 +804,7 @@ model-ci-tooling-ts:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test 'scripts/tests/model-ci-tooling-*.test.ts'"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &model-ci-tooling-ts-changes-1
         - "scripts/tests/model-ci-tooling-*"
         - "scripts/tests/lib/bash-suite-differential.ts"
         - "scripts/tests/lib/differential-*.ts"
@@ -1208,13 +812,7 @@ model-ci-tooling-ts:
         - "scripts/merge-spec-pr.*"
         - "scripts/lib/governance/merge-spec-pr.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/model-ci-tooling-*"
-        - "scripts/tests/lib/bash-suite-differential.ts"
-        - "scripts/tests/lib/differential-*.ts"
-        - "scripts/tests/lib/scratch-remote.ts"
-        - "scripts/merge-spec-pr.*"
-        - "scripts/lib/governance/merge-spec-pr.ts"
+      changes: *model-ci-tooling-ts-changes-1
 
 extension-render:
   image: node:24
@@ -1237,7 +835,7 @@ extension-render:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-hook-map.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &extension-render-changes-1
         - "scripts/build-extension.ts"
         - "scripts/lib/extension/**"
         - "scripts/lib/org-mcp.ts"
@@ -1291,59 +889,7 @@ extension-render:
         - "scripts/check-extension-hook-map.ts"
         - "scripts/check-extension-hook-tokens.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/build-extension.ts"
-        - "scripts/lib/extension/**"
-        - "scripts/lib/org-mcp.ts"
-        - "scripts/lib/node-floor-guard.js"
-        - "scripts/lib/extension-percli-keys.json"
-        - "scripts/lib/extension-generated-class.json"
-        - "scripts/tests/build-extension-suite-render.test.ts"
-        - "scripts/tests/build-extension-suite-check.test.ts"
-        - "scripts/tests/build-extension-suite-hooks.test.ts"
-        - "scripts/tests/build-extension-suite-context.test.ts"
-        - "scripts/tests/build-extension-suite-scaffold.test.ts"
-        - "scripts/tests/migrate-extension-entry.test.ts"
-        - "scripts/tests/create-extension-combinations.test.ts"
-        - "scripts/tests/create-extension-gap-derivation.test.ts"
-        - "scripts/tests/extension-render-conformance.test.ts"
-        - "scripts/tests/extension-render-conformance-checks.test.ts"
-        - "scripts/tests/extension-sandbox.test.ts"
-        - "scripts/tests/lib/extension-sandbox.ts"
-        - "scripts/tests/lib/extension-render-conformance.ts"
-        - "Taskfile.yml"
-        - "taskfiles/**"
-        - "scripts/lib/taskfile-tree.ts"
-        - "scripts/lib/taskfile-tree-parse.ts"
-        - "scripts/lib/governance/taskfile-tree-guard.ts"
-        - "extensions/**"
-        - "artifacts/**"
-        - "scripts/lib/extension-targets.json"
-        - "docs/extension-hook-events.md"
-        - "extension-skeleton/**"
-        - "scripts/build-claude-plugin.ts"
-        - "scripts/lib/extension/**"
-        - "scripts/lib/org-mcp.ts"
-        - "scripts/lib/node-floor-guard.js"
-        - "scripts/build-copilot-plugin.ts"
-        - "scripts/build-antigravity-extension.ts"
-        - "scripts/install-extension.ts"
-        - "scripts/install-antigravity-extension.ts"
-        - "scripts/lib/link-or-copy*.ts"
-        - "scripts/lib/manage/**"
-        - "scripts/lib/install/**"
-        - "scripts/lib/component-roots.ts"
-        - "scripts/lib/component-overlay.ts"
-        - "scripts/lib/component-install.ts"
-        - "scripts/lib/antigravity-migrate.ts"
-        - "scripts/lib/extension-legacy-shape.json"
-        - "scripts/migrate-extension.ts"
-        - "scripts/release-package-extension.ts"
-        - "scripts/lib/packaging/**"
-        - "scripts/check-extension-pivot.ts"
-        - "scripts/lib/governance/**"
-        - "scripts/check-extension-hook-map.ts"
-        - "scripts/check-extension-hook-tokens.ts"
+      changes: *extension-render-changes-1
 
 extension-provenance:
   image: node:24
@@ -1353,7 +899,7 @@ extension-provenance:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-extension-provenance.test.ts scripts/tests/governance-suite-extension-provenance-r4.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &extension-provenance-changes-1
         - "scripts/tests/governance-suite-extension-provenance.test.ts"
         - "scripts/tests/governance-suite-extension-provenance-r4.test.ts"
         - "scripts/tests/lib/governance-*.ts"
@@ -1362,14 +908,7 @@ extension-provenance:
         - "scripts/check-extension-provenance.ts"
         - "scripts/lib/governance/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/governance-suite-extension-provenance.test.ts"
-        - "scripts/tests/governance-suite-extension-provenance-r4.test.ts"
-        - "scripts/tests/lib/governance-*.ts"
-        - "extensions/**"
-        - "artifacts/**"
-        - "scripts/check-extension-provenance.ts"
-        - "scripts/lib/governance/**"
+      changes: *extension-provenance-changes-1
 
 extension-manifest:
   image: node:24
@@ -1378,7 +917,7 @@ extension-manifest:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-extension-version-bump.test.ts scripts/tests/governance-suite-extension-version-bump-base.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &extension-manifest-changes-1
         - "scripts/tests/governance-suite-extension-version-bump.test.ts"
         - "scripts/tests/governance-suite-extension-version-bump-base.test.ts"
         - "scripts/tests/lib/governance-*.ts"
@@ -1389,16 +928,7 @@ extension-manifest:
         - "scripts/check-extension-manifest-version.ts"
         - "scripts/lib/extension/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/governance-suite-extension-version-bump.test.ts"
-        - "scripts/tests/governance-suite-extension-version-bump-base.test.ts"
-        - "scripts/tests/lib/governance-*.ts"
-        - "extensions/**"
-        - "artifacts/**"
-        - "scripts/check-extension-version-bump.ts"
-        - "scripts/lib/governance/**"
-        - "scripts/check-extension-manifest-version.ts"
-        - "scripts/lib/extension/**"
+      changes: *extension-manifest-changes-1
 
 extension-install:
   image: node:24
@@ -1417,7 +947,7 @@ extension-install:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/install-sandbox.test.ts scripts/tests/install-workspace.test.ts scripts/tests/unlink-component.test.ts scripts/tests/unlink-extensions.test.ts scripts/tests/install-extension.test.ts scripts/tests/link-extensions.test.ts scripts/tests/install-copilot-plugin.test.ts scripts/tests/install-antigravity-extension.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &extension-install-changes-1
         - "scripts/tests/install-claude-plugin-marketplace.test.ts"
         - "scripts/tests/install-extension-all-real.test.ts"
         - "scripts/tests/lib/yaml-lib.ts"
@@ -1460,48 +990,7 @@ extension-install:
         - "extensions/**"
         - "artifacts/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/install-claude-plugin-marketplace.test.ts"
-        - "scripts/tests/install-extension-all-real.test.ts"
-        - "scripts/tests/lib/yaml-lib.ts"
-        - "scripts/build-claude-plugin.ts"
-        - "scripts/lib/extension/**"
-        - "scripts/lib/org-mcp.ts"
-        - "scripts/lib/node-floor-guard.js"
-        - "scripts/tests/install-sandbox.test.ts"
-        - "scripts/tests/install-workspace.test.ts"
-        - "scripts/tests/unlink-component.test.ts"
-        - "scripts/tests/unlink-extensions.test.ts"
-        - "scripts/tests/install-extension.test.ts"
-        - "scripts/tests/link-extensions.test.ts"
-        - "scripts/tests/install-copilot-plugin.test.ts"
-        - "scripts/tests/install-antigravity-extension.test.ts"
-        - "scripts/tests/lib/install-sandbox.ts"
-        - "scripts/tests/lib/hermetic-env.ts"
-        - "scripts/tests/lib/build-fixture-tree.ts"
-        - "scripts/tests/lib/worktree-fixtures.ts"
-        - "scripts/install-extension-all.ts"
-        - "scripts/install-extension.ts"
-        - "scripts/install-claude-plugin.ts"
-        - "scripts/install-copilot-plugin.ts"
-        - "scripts/install-antigravity-extension.ts"
-        - "scripts/install-workspace.ts"
-        - "scripts/manage-claude-component.ts"
-        - "scripts/manage-copilot-component.ts"
-        - "scripts/manage-antigravity-component.ts"
-        - "scripts/manage-workspace-component.ts"
-        - "scripts/link-extensions.ts"
-        - "scripts/unlink-extensions.ts"
-        - "scripts/unlink-component.ts"
-        - "scripts/lib/link-or-copy*.ts"
-        - "scripts/lib/manage/**"
-        - "scripts/lib/install/**"
-        - "scripts/lib/component-roots.ts"
-        - "scripts/lib/component-overlay.ts"
-        - "scripts/lib/component-install.ts"
-        - "scripts/lib/antigravity-migrate.ts"
-        - "extensions/**"
-        - "artifacts/**"
+      changes: *extension-install-changes-1
 
 core-paths:
   image: node:24
@@ -1515,7 +1004,7 @@ core-paths:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-self-update.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &core-paths-changes-1
         - "scripts/sync-from-upstream.ts"
         - "scripts/lib/sync-from-upstream/**"
         - "scripts/tests/sync-from-upstream-policies.test.ts"
@@ -1534,24 +1023,7 @@ core-paths:
         - "scripts/check-core-paths.ts"
         - "scripts/lib/governance/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/sync-from-upstream.ts"
-        - "scripts/lib/sync-from-upstream/**"
-        - "scripts/tests/sync-from-upstream-policies.test.ts"
-        - "scripts/tests/sync-from-upstream-reconcile.test.ts"
-        - "scripts/tests/sync-from-upstream-orphans.test.ts"
-        - "scripts/tests/sync-from-upstream-dirty-report.test.ts"
-        - "scripts/tests/sync-from-upstream-preserve.test.ts"
-        - "scripts/tests/sync-from-upstream-signing.test.ts"
-        - "scripts/tests/lib/sync-fixture.ts"
-        - "scripts/tests/sync-from-upstream-self-update.test.ts"
-        - "scripts/tests/lib/hermetic-env.ts"
-        - "scripts/tests/fixtures/sync-from-upstream/**"
-        - ".crewrig/core-paths.txt"
-        - "docs/layers.md"
-        - "model-mappings/**"
-        - "scripts/check-core-paths.ts"
-        - "scripts/lib/governance/**"
+      changes: *core-paths-changes-1
 
 ci-parity:
   image: node:24
@@ -1562,7 +1034,7 @@ ci-parity:
     - chmod +x /usr/local/bin/yq
   cache:
     key:
-      files:
+      files: &ci-parity-files-1
         - "scripts/check-ci-parity.ts"
         - "scripts/build-ci.ts"
         - "scripts/ci-cache-guard.ts"
@@ -1572,6 +1044,7 @@ ci-parity:
         - "scripts/tests/ci-parity-stray-scan.test.ts"
         - "scripts/tests/ci-parity-path-filters.test.ts"
         - "scripts/tests/ci-parity-path-filters-undet.test.ts"
+        - "scripts/tests/ci-effective-paths.test.ts"
         - "scripts/tests/lib/ci-parity-fixture.ts"
         - "scripts/tests/lib/ci-parity-blocks.ts"
         - "scripts/tests/lib/ci-parity-matrix.ts"
@@ -1590,57 +1063,13 @@ ci-parity:
   script:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.ts,scripts/build-ci.ts,scripts/ci-cache-guard.ts,scripts/ci-changeset-coverage.ts,scripts/tests/ci-parity-positive.test.ts,scripts/tests/ci-parity-fail-closed.test.ts,scripts/tests/ci-parity-stray-scan.test.ts,scripts/tests/ci-parity-path-filters.test.ts,scripts/tests/ci-parity-path-filters-undet.test.ts,scripts/tests/lib/ci-parity-fixture.ts,scripts/tests/lib/ci-parity-blocks.ts,scripts/tests/lib/ci-parity-matrix.ts,scripts/tests/lib/yaml-lib.ts,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,ci/task-pin.json,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-parity-positive.test.ts scripts/tests/ci-parity-fail-closed.test.ts scripts/tests/ci-parity-stray-scan.test.ts scripts/tests/ci-parity-path-filters.test.ts scripts/tests/ci-parity-path-filters-undet.test.ts"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.ts,scripts/build-ci.ts,scripts/ci-cache-guard.ts,scripts/ci-changeset-coverage.ts,scripts/tests/ci-parity-positive.test.ts,scripts/tests/ci-parity-fail-closed.test.ts,scripts/tests/ci-parity-stray-scan.test.ts,scripts/tests/ci-parity-path-filters.test.ts,scripts/tests/ci-parity-path-filters-undet.test.ts,scripts/tests/lib/ci-parity-fixture.ts,scripts/tests/lib/ci-parity-blocks.ts,scripts/tests/lib/ci-parity-matrix.ts,scripts/tests/lib/yaml-lib.ts,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,ci/task-pin.json,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-ci-real-tree.test.ts scripts/tests/build-ci-synthetic.test.ts scripts/tests/build-ci-synthetic-write.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.ts,scripts/build-ci.ts,scripts/ci-cache-guard.ts,scripts/ci-changeset-coverage.ts,scripts/tests/ci-parity-positive.test.ts,scripts/tests/ci-parity-fail-closed.test.ts,scripts/tests/ci-parity-stray-scan.test.ts,scripts/tests/ci-parity-path-filters.test.ts,scripts/tests/ci-parity-path-filters-undet.test.ts,scripts/tests/ci-effective-paths.test.ts,scripts/tests/lib/ci-parity-fixture.ts,scripts/tests/lib/ci-parity-blocks.ts,scripts/tests/lib/ci-parity-matrix.ts,scripts/tests/lib/yaml-lib.ts,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,ci/task-pin.json,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-parity-positive.test.ts scripts/tests/ci-parity-fail-closed.test.ts scripts/tests/ci-parity-stray-scan.test.ts scripts/tests/ci-parity-path-filters.test.ts scripts/tests/ci-parity-path-filters-undet.test.ts scripts/tests/ci-effective-paths.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/check-ci-parity.ts,scripts/build-ci.ts,scripts/ci-cache-guard.ts,scripts/ci-changeset-coverage.ts,scripts/tests/ci-parity-positive.test.ts,scripts/tests/ci-parity-fail-closed.test.ts,scripts/tests/ci-parity-stray-scan.test.ts,scripts/tests/ci-parity-path-filters.test.ts,scripts/tests/ci-parity-path-filters-undet.test.ts,scripts/tests/ci-effective-paths.test.ts,scripts/tests/lib/ci-parity-fixture.ts,scripts/tests/lib/ci-parity-blocks.ts,scripts/tests/lib/ci-parity-matrix.ts,scripts/tests/lib/yaml-lib.ts,scripts/tests/build-ci-real-tree.test.ts,scripts/tests/build-ci-synthetic.test.ts,scripts/tests/build-ci-synthetic-write.test.ts,scripts/tests/lib/ci-reference-fixtures.ts,ci/ci-capabilities.yml,ci/task-pin.json,.gitlab-ci.yml,.github/workflows/build.yml,docs/ci-reference-format.md\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-ci-real-tree.test.ts scripts/tests/build-ci-synthetic.test.ts scripts/tests/build-ci-synthetic-write.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
-        - "scripts/check-ci-parity.ts"
-        - "scripts/build-ci.ts"
-        - "scripts/ci-cache-guard.ts"
-        - "scripts/ci-changeset-coverage.ts"
-        - "scripts/tests/ci-parity-positive.test.ts"
-        - "scripts/tests/ci-parity-fail-closed.test.ts"
-        - "scripts/tests/ci-parity-stray-scan.test.ts"
-        - "scripts/tests/ci-parity-path-filters.test.ts"
-        - "scripts/tests/ci-parity-path-filters-undet.test.ts"
-        - "scripts/tests/lib/ci-parity-fixture.ts"
-        - "scripts/tests/lib/ci-parity-blocks.ts"
-        - "scripts/tests/lib/ci-parity-matrix.ts"
-        - "scripts/tests/lib/yaml-lib.ts"
-        - "scripts/tests/build-ci-real-tree.test.ts"
-        - "scripts/tests/build-ci-synthetic.test.ts"
-        - "scripts/tests/build-ci-synthetic-write.test.ts"
-        - "scripts/tests/lib/ci-reference-fixtures.ts"
-        - "ci/ci-capabilities.yml"
-        - "ci/task-pin.json"
-        - ".gitlab-ci.yml"
-        - ".github/workflows/build.yml"
-        - "docs/ci-reference-format.md"
+      changes: *ci-parity-files-1
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/check-ci-parity.ts"
-        - "scripts/build-ci.ts"
-        - "scripts/ci-cache-guard.ts"
-        - "scripts/ci-changeset-coverage.ts"
-        - "scripts/tests/ci-parity-positive.test.ts"
-        - "scripts/tests/ci-parity-fail-closed.test.ts"
-        - "scripts/tests/ci-parity-stray-scan.test.ts"
-        - "scripts/tests/ci-parity-path-filters.test.ts"
-        - "scripts/tests/ci-parity-path-filters-undet.test.ts"
-        - "scripts/tests/lib/ci-parity-fixture.ts"
-        - "scripts/tests/lib/ci-parity-blocks.ts"
-        - "scripts/tests/lib/ci-parity-matrix.ts"
-        - "scripts/tests/lib/yaml-lib.ts"
-        - "scripts/tests/build-ci-real-tree.test.ts"
-        - "scripts/tests/build-ci-synthetic.test.ts"
-        - "scripts/tests/build-ci-synthetic-write.test.ts"
-        - "scripts/tests/lib/ci-reference-fixtures.ts"
-        - "ci/ci-capabilities.yml"
-        - "ci/task-pin.json"
-        - ".gitlab-ci.yml"
-        - ".github/workflows/build.yml"
-        - "docs/ci-reference-format.md"
+      changes: *ci-parity-files-1
 
 docs-index:
   image: node:24
@@ -1663,7 +1092,7 @@ docs-index:
     - "node scripts/build-docs-index.ts --check"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &docs-index-changes-1
         - "scripts/build-docs-index.ts"
         - "scripts/lib/docs-index/**"
         - "scripts/lib/paths.ts"
@@ -1673,15 +1102,7 @@ docs-index:
         - "scripts/tests/lib/docs-index-entry-tree.ts"
         - "docs/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/build-docs-index.ts"
-        - "scripts/lib/docs-index/**"
-        - "scripts/lib/paths.ts"
-        - "scripts/lib/line-endings.ts"
-        - "scripts/lib/node-floor-guard.js"
-        - "scripts/tests/build-docs-index-entry.test.ts"
-        - "scripts/tests/lib/docs-index-entry-tree.ts"
-        - "docs/**"
+      changes: *docs-index-changes-1
 
 docs-index-selftest:
   image: node:24
@@ -1704,7 +1125,7 @@ docs-index-selftest:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/build-docs-index.ts,scripts/lib/docs-index/**,scripts/lib/paths.ts,scripts/lib/line-endings.ts,scripts/lib/node-floor-guard.js,scripts/tests/build-docs-index-entry.test.ts,scripts/tests/lib/docs-index-entry-tree.ts,scripts/tests/lib/worktree-fixtures.ts,scripts/ci-cache-guard.ts\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-docs-index-entry.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &docs-index-selftest-changes-1
         - "scripts/build-docs-index.ts"
         - "scripts/lib/docs-index/**"
         - "scripts/lib/paths.ts"
@@ -1717,18 +1138,7 @@ docs-index-selftest:
         - ".github/workflows/build.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/build-docs-index.ts"
-        - "scripts/lib/docs-index/**"
-        - "scripts/lib/paths.ts"
-        - "scripts/lib/line-endings.ts"
-        - "scripts/lib/node-floor-guard.js"
-        - "scripts/tests/build-docs-index-entry.test.ts"
-        - "scripts/tests/lib/docs-index-entry-tree.ts"
-        - "scripts/tests/lib/worktree-fixtures.ts"
-        - "taskfiles/ci.yml"
-        - ".github/workflows/build.yml"
-        - "ci/ci-capabilities.yml"
+      changes: *docs-index-selftest-changes-1
 
 cli-matrix-fresh:
   image: node:24
@@ -1743,7 +1153,7 @@ cli-matrix-fresh:
     - "task cli-matrix:check"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &cli-matrix-fresh-changes-1
         - "docs/cli-matrix.md"
         - "docs/cli-matrix/**"
         - "scripts/build-cli-matrix.ts"
@@ -1751,13 +1161,7 @@ cli-matrix-fresh:
         - "scripts/tests/build-cli-matrix.test.ts"
         - "scripts/lib/node-floor-guard.js"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "docs/cli-matrix.md"
-        - "docs/cli-matrix/**"
-        - "scripts/build-cli-matrix.ts"
-        - "scripts/lib/build-cli-matrix/**"
-        - "scripts/tests/build-cli-matrix.test.ts"
-        - "scripts/lib/node-floor-guard.js"
+      changes: *cli-matrix-fresh-changes-1
 
 cli-matrix-fresh-selftest:
   image: node:24
@@ -1766,7 +1170,7 @@ cli-matrix-fresh-selftest:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-cli-matrix.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &cli-matrix-fresh-selftest-changes-1
         - "scripts/build-cli-matrix.ts"
         - "scripts/lib/build-cli-matrix/**"
         - "scripts/tests/build-cli-matrix.test.ts"
@@ -1775,14 +1179,7 @@ cli-matrix-fresh-selftest:
         - ".github/workflows/build.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/build-cli-matrix.ts"
-        - "scripts/lib/build-cli-matrix/**"
-        - "scripts/tests/build-cli-matrix.test.ts"
-        - "scripts/lib/node-floor-guard.js"
-        - "taskfiles/ci.yml"
-        - ".github/workflows/build.yml"
-        - "ci/ci-capabilities.yml"
+      changes: *cli-matrix-fresh-selftest-changes-1
 
 figure-labels:
   image: node:24
@@ -1793,7 +1190,7 @@ figure-labels:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/windows-governance-figure-labels.test.ts scripts/tests/governance-suite-figure-labels.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &figure-labels-changes-1
         - "scripts/tests/windows-governance-figure-labels.test.ts"
         - "scripts/tests/governance-suite-figure-labels.test.ts"
         - "docs/assets/**/*.png"
@@ -1802,14 +1199,7 @@ figure-labels:
         - "scripts/lib/governance/**"
         - "scripts/lib/sequence-matcher.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/windows-governance-figure-labels.test.ts"
-        - "scripts/tests/governance-suite-figure-labels.test.ts"
-        - "docs/assets/**/*.png"
-        - "docs/assets/**/*.prompt.md"
-        - "scripts/check-figure-labels.ts"
-        - "scripts/lib/governance/**"
-        - "scripts/lib/sequence-matcher.ts"
+      changes: *figure-labels-changes-1
 
 mempalace:
   image: python:3.12
@@ -1880,7 +1270,7 @@ mempalace:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/tests/mempalace-doctor-*.test.ts,scripts/tests/mempalace-runtime-guard-*.test.ts,scripts/tests/mempalace-pin-*.test.ts,scripts/tests/mempalace-version-range.test.ts,scripts/tests/lib/doctor-machine.ts,scripts/tests/lib/doctor-wrappers.ts,scripts/tests/lib/mempalace-guard-fixture.ts,scripts/tests/lib/mempalace-pin-rig.ts,scripts/tests/lib/mempalace-range-scan.ts,scripts/tests/fixtures/mempalace-pin/**,scripts/tests/mempalace-http-client-reuse.test.ts,scripts/tests/system-context-store.test.ts,scripts/tests/setup-transcript-antigravity-*.test.ts,scripts/tests/mempalace-transcript-antigravity-payload.test.ts,scripts/tests/lib/antigravity-transcript-rig.ts,scripts/tests/setup-transcript-*.test.ts,scripts/tests/lib/transcript-manifest-rig.ts,scripts/tests/antigravity-manage-sandbox.test.ts,scripts/tests/antigravity-tier-twin.test.ts,scripts/tests/lib/antigravity-fixtures.ts,scripts/tests/lib/worktree-fixtures.ts,scripts/tests/lib/install-sandbox.ts,scripts/tests/e2e-probes-antigravity-discovery.test.ts,hooks/worktree-git-guard.ts,hooks/mempalace-transcript.ts,scripts/tests/fixtures/mempalace-transcript/**,scripts/worktree-claim.ts,scripts/tests/lib/print-manage-declarations.ts,scripts/lib/**,artifacts/library/skills/mempalace/**,artifacts/library/skills/harness-report/**,config/copilot/*.json.template,scripts/ci-cache-guard.ts,scripts/setup-*-interactive.ts,scripts/tests/setup-retarget-*.test.ts,scripts/tests/lib/setup-*.ts,scripts/tests/lib/build-fixture-tree.ts,scripts/tests/lib/hermetic-env.ts,scripts/tests/lib/real-home-guard.ts,scripts/tests/lib/print-setup-declarations.ts,scripts/tests/fixtures/setup-golden/**,scripts/tests/fixtures/setup-declarations/**\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-manage-sandbox.test.ts scripts/tests/antigravity-tier-twin.test.ts scripts/tests/system-context-store.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &mempalace-changes-1
         - "scripts/tests/mempalace-doctor-*.test.ts"
         - "scripts/tests/mempalace-runtime-guard-*.test.ts"
         - "scripts/tests/mempalace-pin-*.test.ts"
@@ -1924,49 +1314,7 @@ mempalace:
         - "scripts/tests/fixtures/setup-golden/**"
         - "scripts/tests/fixtures/setup-declarations/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/mempalace-doctor-*.test.ts"
-        - "scripts/tests/mempalace-runtime-guard-*.test.ts"
-        - "scripts/tests/mempalace-pin-*.test.ts"
-        - "scripts/tests/mempalace-version-range.test.ts"
-        - "scripts/tests/lib/doctor-machine.ts"
-        - "scripts/tests/lib/doctor-wrappers.ts"
-        - "scripts/tests/lib/mempalace-guard-fixture.ts"
-        - "scripts/tests/lib/mempalace-pin-rig.ts"
-        - "scripts/tests/lib/mempalace-range-scan.ts"
-        - "scripts/tests/fixtures/mempalace-pin/**"
-        - "scripts/tests/mempalace-http-client-reuse.test.ts"
-        - "scripts/tests/system-context-store.test.ts"
-        - "scripts/tests/setup-transcript-antigravity-*.test.ts"
-        - "scripts/tests/mempalace-transcript-antigravity-payload.test.ts"
-        - "scripts/tests/lib/antigravity-transcript-rig.ts"
-        - "scripts/tests/setup-transcript-*.test.ts"
-        - "scripts/tests/lib/transcript-manifest-rig.ts"
-        - "scripts/tests/antigravity-manage-sandbox.test.ts"
-        - "scripts/tests/antigravity-tier-twin.test.ts"
-        - "scripts/tests/lib/antigravity-fixtures.ts"
-        - "scripts/tests/lib/worktree-fixtures.ts"
-        - "scripts/tests/lib/install-sandbox.ts"
-        - "scripts/tests/e2e-probes-antigravity-discovery.test.ts"
-        - "hooks/worktree-git-guard.ts"
-        - "hooks/mempalace-transcript.ts"
-        - "scripts/tests/fixtures/mempalace-transcript/**"
-        - "scripts/worktree-claim.ts"
-        - "scripts/tests/lib/print-manage-declarations.ts"
-        - "scripts/lib/**"
-        - "artifacts/library/skills/mempalace/**"
-        - "artifacts/library/skills/harness-report/**"
-        - "config/copilot/*.json.template"
-        - "scripts/manage-antigravity-component.ts"
-        - "scripts/setup-*-interactive.ts"
-        - "scripts/tests/setup-retarget-*.test.ts"
-        - "scripts/tests/lib/setup-*.ts"
-        - "scripts/tests/lib/build-fixture-tree.ts"
-        - "scripts/tests/lib/hermetic-env.ts"
-        - "scripts/tests/lib/real-home-guard.ts"
-        - "scripts/tests/lib/print-setup-declarations.ts"
-        - "scripts/tests/fixtures/setup-golden/**"
-        - "scripts/tests/fixtures/setup-declarations/**"
+      changes: *mempalace-changes-1
 
 test-wiring:
   image: node:24
@@ -1975,7 +1323,7 @@ test-wiring:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-test-strays.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &test-wiring-changes-1
         - "scripts/tests/governance-check-test-wiring-cases.test.ts"
         - "scripts/tests/governance-check-test-strays-cases.test.ts"
         - "scripts/check-test-strays.ts"
@@ -1992,22 +1340,7 @@ test-wiring:
         - ".github/workflows/*.yaml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/governance-check-test-wiring-cases.test.ts"
-        - "scripts/tests/governance-check-test-strays-cases.test.ts"
-        - "scripts/check-test-strays.ts"
-        - "scripts/lib/governance/**"
-        - "scripts/check-test-wiring.ts"
-        - "scripts/tests/**"
-        - "hooks/worktree-git-guard.ts"
-        - "hooks/mempalace-transcript.ts"
-        - "scripts/worktree-claim.ts"
-        - "scripts/lib/worktree-claim/**"
-        - "scripts/lib/hook-*.ts"
-        - "ci/test-wiring-exemptions.txt"
-        - ".github/workflows/*.yml"
-        - ".github/workflows/*.yaml"
-        - "ci/ci-capabilities.yml"
+      changes: *test-wiring-changes-1
 
 test-wiring-selftest:
   image: node:24
@@ -2016,7 +1349,7 @@ test-wiring-selftest:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-check-test-strays-cases.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &test-wiring-selftest-changes-1
         - "scripts/check-test-wiring.ts"
         - "scripts/check-test-strays.ts"
         - "scripts/lib/governance/**"
@@ -2029,18 +1362,7 @@ test-wiring-selftest:
         - ".github/workflows/build.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/check-test-wiring.ts"
-        - "scripts/check-test-strays.ts"
-        - "scripts/lib/governance/**"
-        - "scripts/tests/governance-check-test-wiring-cases.test.ts"
-        - "scripts/tests/governance-check-test-strays-cases.test.ts"
-        - "scripts/tests/lib/governance-*.ts"
-        - "scripts/ci-cache-guard.ts"
-        - "scripts/lib/ci-cache-guard/**"
-        - "taskfiles/ci.yml"
-        - ".github/workflows/build.yml"
-        - "ci/ci-capabilities.yml"
+      changes: *test-wiring-selftest-changes-1
 
 chroma-mcp:
   image: python:3.12
@@ -2077,7 +1399,7 @@ chroma-mcp:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir .ci-cache --key-files \"scripts/tests/chroma-wrapper-source.test.ts,scripts/tests/chroma-wrapper-live.test.ts,scripts/tests/chroma-fd-limits.test.ts,scripts/tests/mcp-daemon-*.test.ts,scripts/tests/lib/mcp-daemon-rig.ts,scripts/tests/service-launcher-palace-path.test.ts,scripts/tests/repair-restore-modes.test.ts,scripts/tests/repair-report-handoff.test.ts,scripts/tests/lib/repair-rig.ts,scripts/tests/switch-rotate-token.test.ts,scripts/worktree-claim.ts,hooks/worktree-git-guard.ts,scripts/lib/**,config/launchd/**,config/systemd/**,config/windows/**,scripts/ci-cache-guard.ts\" --key-env \"\" -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/chroma-wrapper-source.test.ts scripts/tests/chroma-wrapper-live.test.ts scripts/tests/chroma-fd-limits.test.ts scripts/tests/mcp-daemon-static-guards.test.ts scripts/tests/mcp-daemon-status.test.ts scripts/tests/repair-restore-modes.test.ts scripts/tests/repair-report-handoff.test.ts scripts/tests/switch-rotate-token.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &chroma-mcp-changes-1
         - "scripts/tests/chroma-wrapper-source.test.ts"
         - "scripts/tests/chroma-wrapper-live.test.ts"
         - "scripts/tests/chroma-fd-limits.test.ts"
@@ -2095,23 +1417,7 @@ chroma-mcp:
         - "config/systemd/**"
         - "config/windows/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/chroma-wrapper-source.test.ts"
-        - "scripts/tests/chroma-wrapper-live.test.ts"
-        - "scripts/tests/chroma-fd-limits.test.ts"
-        - "scripts/tests/mcp-daemon-*.test.ts"
-        - "scripts/tests/lib/mcp-daemon-rig.ts"
-        - "scripts/tests/service-launcher-palace-path.test.ts"
-        - "scripts/tests/repair-restore-modes.test.ts"
-        - "scripts/tests/repair-report-handoff.test.ts"
-        - "scripts/tests/lib/repair-rig.ts"
-        - "scripts/tests/switch-rotate-token.test.ts"
-        - "scripts/worktree-claim.ts"
-        - "hooks/worktree-git-guard.ts"
-        - "scripts/lib/**"
-        - "config/launchd/**"
-        - "config/systemd/**"
-        - "config/windows/**"
+      changes: *chroma-mcp-changes-1
 
 e2e:
   image: python:3.12
@@ -2132,7 +1438,7 @@ e2e:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/e2e-docker-standin.test.ts scripts/tests/e2e-oracle-scenarios.test.ts scripts/tests/e2e-oracle-libs.test.ts scripts/tests/e2e-oracle-judge.test.ts scripts/tests/e2e-libs-differential.test.ts scripts/tests/e2e-auth-differential.test.ts scripts/tests/e2e-capture-differential.test.ts scripts/tests/e2e-toml-subset.test.ts scripts/tests/e2e-judge-differential.test.ts scripts/tests/e2e-runner-differential.test.ts scripts/tests/e2e-scenario-06-differential.test.ts scripts/tests/e2e-probe-hooks-blackbox.test.ts scripts/tests/e2e-probe-mcp-token-blackbox.test.ts scripts/tests/e2e-usage-headless.test.ts scripts/tests/e2e-defaults-config.test.ts scripts/tests/e2e-docs-lock.test.ts scripts/tests/e2e-taskfile-surface.test.ts scripts/tests/e2e-docker-images.test.ts scripts/tests/e2e-assert-lib.test.ts scripts/tests/e2e-auth-common.test.ts scripts/tests/e2e-auth-ready.test.ts scripts/tests/e2e-llm-judge-lib-oauth.test.ts scripts/tests/e2e-llm-judge-lib-ollama.test.ts scripts/tests/e2e-llm-judge-lib-quorum.test.ts scripts/tests/e2e-report.test.ts scripts/tests/e2e-structural-lib.test.ts scripts/tests/e2e-toml-merge.test.ts scripts/tests/e2e-auth-mounts.test.ts scripts/tests/e2e-auth-scripts.test.ts scripts/tests/e2e-runner-delegation.test.ts scripts/tests/e2e-runner.test.ts scripts/tests/e2e-scenarios-structure.test.ts scripts/tests/e2e-probes-antigravity-discovery.test.ts scripts/tests/e2e-probes-publisher.test.ts scripts/tests/e2e-literal-capture.test.ts scripts/tests/e2e-literal-publisher.test.ts scripts/tests/e2e-literal-publisher-edge.test.ts scripts/tests/e2e-probes-resolvers.test.ts scripts/tests/e2e-probes-scenarios.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &e2e-changes-1
         - "scripts/tests/e2e-*.test.ts"
         - "scripts/tests/lib/e2e-*.ts"
         - "scripts/tests/fixtures/e2e-oracle/**"
@@ -2145,18 +1451,7 @@ e2e:
         - "docker/e2e/.versions.lock"
         - ".gitignore"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/e2e-*.test.ts"
-        - "scripts/tests/lib/e2e-*.ts"
-        - "scripts/tests/fixtures/e2e-oracle/**"
-        - "tests/e2e/**"
-        - "scripts/e2e/**"
-        - "docs/cli-matrix.md"
-        - "docs/cli-matrix/**"
-        - "scripts/build-cli-matrix.ts"
-        - "scripts/lib/build-cli-matrix/**"
-        - "docker/e2e/.versions.lock"
-        - ".gitignore"
+      changes: *e2e-changes-1
     - when: manual
 
 setup:
@@ -2176,7 +1471,7 @@ setup:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tls-delegation-contract.test.ts scripts/tests/setup-gemini-settings-failure.test.ts scripts/tests/setup-gemini-settings-jsonc.test.ts scripts/tests/setup-gemini-settings-runs.test.ts scripts/tests/setup-gemini-settings-seeds.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &setup-changes-1
         - "scripts/tests/setup-common-*.test.ts"
         - "scripts/tests/setup-identity-flow.test.ts"
         - "scripts/tests/setup-legacy-gemini-md-declaration.test.ts"
@@ -2209,38 +1504,7 @@ setup:
         - "scripts/tests/fixtures/setup-declarations/**"
         - "scripts/tests/setup-flow-fixtures.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/setup-common-*.test.ts"
-        - "scripts/tests/setup-identity-flow.test.ts"
-        - "scripts/tests/setup-legacy-gemini-md-declaration.test.ts"
-        - "scripts/tests/setup-mcp-merge-policy.test.ts"
-        - "scripts/tests/setup-org-mcp-wiring.test.ts"
-        - "scripts/tests/setup-secrets-fold.test.ts"
-        - "scripts/tests/setup-tier-staging-declared.test.ts"
-        - "scripts/tests/tls-delegation-contract.test.ts"
-        - "scripts/tests/lib/tls-entry-run.ts"
-        - "scripts/tests/lib/yaml-lib.ts"
-        - "scripts/tests/setup-gemini-settings-failure.test.ts"
-        - "scripts/tests/setup-gemini-settings-jsonc.test.ts"
-        - "scripts/tests/setup-gemini-settings-runs.test.ts"
-        - "scripts/tests/setup-gemini-settings-seeds.test.ts"
-        - "scripts/tests/lib/gemini-settings-rig.ts"
-        - "scripts/tests/lib/worktree-fixtures.ts"
-        - "scripts/setup-*-interactive.ts"
-        - "scripts/tls-delegation.ts"
-        - "scripts/usage-capture-optin.ts"
-        - "scripts/lib/**"
-        - "mcp-servers.org.json"
-        - "scripts/setup-*-interactive.ts"
-        - "scripts/tests/setup-retarget-*.test.ts"
-        - "scripts/tests/lib/setup-*.ts"
-        - "scripts/tests/lib/build-fixture-tree.ts"
-        - "scripts/tests/lib/hermetic-env.ts"
-        - "scripts/tests/lib/real-home-guard.ts"
-        - "scripts/tests/lib/print-setup-declarations.ts"
-        - "scripts/tests/fixtures/setup-golden/**"
-        - "scripts/tests/fixtures/setup-declarations/**"
-        - "scripts/tests/setup-flow-fixtures.ts"
+      changes: *setup-changes-1
 
 misc:
   image: node:24
@@ -2253,7 +1517,7 @@ misc:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-spec-id-reserved-blocking.test.ts scripts/tests/check-spec-id-reserved-mark.test.ts scripts/tests/check-spec-id-reserved-origin.test.ts scripts/tests/check-spec-id-reserved-degraded.test.ts scripts/tests/check-spec-id-reserved-base-ref.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &misc-changes-1
         - "scripts/tests/governance-suite-no-machine-paths.test.ts"
         - "scripts/tests/lib/governance-*.ts"
         - "scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts"
@@ -2283,35 +1547,7 @@ misc:
         - "scripts/lib/governance/**"
         - "scripts/check-no-machine-paths.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/governance-suite-no-machine-paths.test.ts"
-        - "scripts/tests/lib/governance-*.ts"
-        - "scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts"
-        - "scripts/tests/lib/build-fixture-tree.ts"
-        - "scripts/tests/reserve-spec-id-contract.test.ts"
-        - "scripts/tests/reserve-spec-id-carrier-reuse.test.ts"
-        - "scripts/tests/reserve-spec-id-races.test.ts"
-        - "scripts/tests/check-spec-id-reserved-blocking.test.ts"
-        - "scripts/tests/check-spec-id-reserved-mark.test.ts"
-        - "scripts/tests/check-spec-id-reserved-origin.test.ts"
-        - "scripts/tests/check-spec-id-reserved-degraded.test.ts"
-        - "scripts/tests/check-spec-id-reserved-base-ref.test.ts"
-        - "scripts/tests/lib/reserve-spec-id-fixture.ts"
-        - "scripts/tests/lib/spec-id-fixture.ts"
-        - "scripts/tests/lib/spec-id-constants.ts"
-        - "scripts/tests/lib/scratch-remote.ts"
-        - "scripts/tests/lib/differential-guard.ts"
-        - "scripts/reserve-spec-id.ts"
-        - "scripts/check-spec-id-reserved.ts"
-        - "model-mappings/**"
-        - "scripts/setup-gemini-interactive.ts"
-        - "config/gemini/settings.json"
-        - "scripts/lib/**"
-        - "scripts/tests/lib/print-setup-declarations.ts"
-        - "scripts/tests/lib/setup-declarations-*.ts"
-        - "scripts/check-gemini-overlay-enrollment.ts"
-        - "scripts/lib/governance/**"
-        - "scripts/check-no-machine-paths.ts"
+      changes: *misc-changes-1
 
 repository-scan:
   image: node:24
@@ -2345,7 +1581,7 @@ frontmatter:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/pr-logbook-label-scope.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &frontmatter-changes-1
         - "scripts/tests/build-components-frontmatter-fence.test.ts"
         - "scripts/tests/governance-suite-skill-versions.test.ts"
         - "scripts/tests/governance-suite-skill-versions-base.test.ts"
@@ -2378,38 +1614,7 @@ frontmatter:
         - "scripts/check-skill-versions.ts"
         - "scripts/lib/governance/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/build-components-frontmatter-fence.test.ts"
-        - "scripts/tests/governance-suite-skill-versions.test.ts"
-        - "scripts/tests/governance-suite-skill-versions-base.test.ts"
-        - "scripts/tests/lib/governance-*.ts"
-        - "scripts/tests/governance-suite-feedback-routing.test.ts"
-        - "scripts/tests/build-assembly-routing.test.ts"
-        - "scripts/tests/build-install-scope-*.test.ts"
-        - "scripts/tests/tier-resolution-*.test.ts"
-        - "scripts/tests/lib/tier-fixtures.ts"
-        - "scripts/tests/lib/tier-landing.ts"
-        - "scripts/tests/lib/tier-taskfile.ts"
-        - "scripts/tests/pr-logbook-label-scope.test.ts"
-        - "scripts/lib/**"
-        - "scripts/tests/lib/print-manage-declarations.ts"
-        - "artifacts/**"
-        - "scripts/install-workspace.ts"
-        - "scripts/manage-claude-component.ts"
-        - "scripts/manage-copilot-component.ts"
-        - "scripts/manage-antigravity-component.ts"
-        - "scripts/manage-workspace-component.ts"
-        - "scripts/setup-*-interactive.ts"
-        - "scripts/tests/setup-retarget-*.test.ts"
-        - "scripts/tests/lib/setup-*.ts"
-        - "scripts/tests/lib/build-fixture-tree.ts"
-        - "scripts/tests/lib/hermetic-env.ts"
-        - "scripts/tests/lib/real-home-guard.ts"
-        - "scripts/tests/lib/print-setup-declarations.ts"
-        - "scripts/tests/fixtures/setup-golden/**"
-        - "scripts/tests/fixtures/setup-declarations/**"
-        - "scripts/check-skill-versions.ts"
-        - "scripts/lib/governance/**"
+      changes: *frontmatter-changes-1
 
 check-model-mappings:
   image: node:24
@@ -2425,7 +1630,7 @@ check-model-mappings:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-model-mappings-rejections.test.ts scripts/tests/check-model-mappings-org.test.ts scripts/tests/check-model-mappings-selection.test.ts scripts/tests/check-model-mappings-committed.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &check-model-mappings-changes-1
         - "model-mappings/**"
         - "docs/model-mapping-format.md"
         - "scripts/check-model-mappings.ts"
@@ -2435,15 +1640,7 @@ check-model-mappings:
         - "scripts/tests/check-model-mappings-committed.test.ts"
         - "scripts/tests/lib/model-mapping-fixtures.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "model-mappings/**"
-        - "docs/model-mapping-format.md"
-        - "scripts/check-model-mappings.ts"
-        - "scripts/tests/check-model-mappings-rejections.test.ts"
-        - "scripts/tests/check-model-mappings-org.test.ts"
-        - "scripts/tests/check-model-mappings-selection.test.ts"
-        - "scripts/tests/check-model-mappings-committed.test.ts"
-        - "scripts/tests/lib/model-mapping-fixtures.ts"
+      changes: *check-model-mappings-changes-1
 
 check-agent-profiles:
   image: node:24
@@ -2458,19 +1655,14 @@ check-agent-profiles:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-agent-profiles-rejections.test.ts scripts/tests/check-agent-profiles-green.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &check-agent-profiles-changes-1
         - "artifacts/**"
         - "scripts/check-agent-profiles.ts"
         - "scripts/tests/check-agent-profiles-rejections.test.ts"
         - "scripts/tests/check-agent-profiles-green.test.ts"
         - "scripts/tests/lib/agent-profile-fixtures.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "artifacts/**"
-        - "scripts/check-agent-profiles.ts"
-        - "scripts/tests/check-agent-profiles-rejections.test.ts"
-        - "scripts/tests/check-agent-profiles-green.test.ts"
-        - "scripts/tests/lib/agent-profile-fixtures.ts"
+      changes: *check-agent-profiles-changes-1
 
 check-metadata-keys:
   image: node:24
@@ -2480,7 +1672,7 @@ check-metadata-keys:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-component-metadata-keys.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &check-metadata-keys-changes-1
         - "artifacts/**"
         - "scripts/check-component-metadata-keys.ts"
         - "scripts/lib/governance/**"
@@ -2489,14 +1681,7 @@ check-metadata-keys:
         - "scripts/lib/yaml-text.ts"
         - "scripts/lib/require-dependency.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "artifacts/**"
-        - "scripts/check-component-metadata-keys.ts"
-        - "scripts/lib/governance/**"
-        - "scripts/lib/build-components/**"
-        - "scripts/lib/render-command.ts"
-        - "scripts/lib/yaml-text.ts"
-        - "scripts/lib/require-dependency.ts"
+      changes: *check-metadata-keys-changes-1
 
 check-claude-agent-layout:
   image: node:24
@@ -2504,7 +1689,7 @@ check-claude-agent-layout:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-claude-agent-layout.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &check-claude-agent-layout-changes-1
         - ".claude/agents/**"
         - "scripts/build-components.ts"
         - "scripts/build-components.ts"
@@ -2512,13 +1697,7 @@ check-claude-agent-layout:
         - "scripts/check-claude-agent-layout.ts"
         - "scripts/lib/governance/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - ".claude/agents/**"
-        - "scripts/build-components.ts"
-        - "scripts/build-components.ts"
-        - "scripts/lib/build-components/**"
-        - "scripts/check-claude-agent-layout.ts"
-        - "scripts/lib/governance/**"
+      changes: *check-claude-agent-layout-changes-1
 
 check-taskfile-commands:
   image: node:24
@@ -2527,7 +1706,7 @@ check-taskfile-commands:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-taskfile-commands.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &check-taskfile-commands-changes-1
         - "Taskfile.yml"
         - "taskfiles/**"
         - "scripts/lib/taskfile-tree.ts"
@@ -2541,19 +1720,7 @@ check-taskfile-commands:
         - "scripts/lib/tool-binaries.ts"
         - "scripts/tests/check-tool-binaries.test.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "Taskfile.yml"
-        - "taskfiles/**"
-        - "scripts/lib/taskfile-tree.ts"
-        - "scripts/lib/taskfile-tree-parse.ts"
-        - "scripts/lib/governance/taskfile-tree-guard.ts"
-        - "scripts/check-taskfile-commands.ts"
-        - "scripts/lib/taskfile-command*.ts"
-        - "scripts/lib/taskfile-command-exemptions.json"
-        - "scripts/tests/check-taskfile-commands.test.ts"
-        - "scripts/check-tool-binaries.ts"
-        - "scripts/lib/tool-binaries.ts"
-        - "scripts/tests/check-tool-binaries.test.ts"
+      changes: *check-taskfile-commands-changes-1
 
 check-taskfile-commands-selftest:
   image: node:24
@@ -2562,7 +1729,7 @@ check-taskfile-commands-selftest:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-taskfile-commands.test.ts scripts/tests/check-tool-binaries.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &check-taskfile-commands-selftest-changes-1
         - "scripts/check-taskfile-commands.ts"
         - "scripts/lib/taskfile-command*.ts"
         - "scripts/lib/taskfile-command-exemptions.json"
@@ -2578,21 +1745,7 @@ check-taskfile-commands-selftest:
         - ".github/workflows/build.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/check-taskfile-commands.ts"
-        - "scripts/lib/taskfile-command*.ts"
-        - "scripts/lib/taskfile-command-exemptions.json"
-        - "scripts/lib/taskfile-tree.ts"
-        - "scripts/lib/taskfile-tree-parse.ts"
-        - "scripts/check-tool-binaries.ts"
-        - "scripts/lib/tool-binaries.ts"
-        - "scripts/tests/check-taskfile-commands.test.ts"
-        - "scripts/tests/check-tool-binaries.test.ts"
-        - "scripts/ci-cache-guard.ts"
-        - "scripts/lib/ci-cache-guard/**"
-        - "taskfiles/ci.yml"
-        - ".github/workflows/build.yml"
-        - "ci/ci-capabilities.yml"
+      changes: *check-taskfile-commands-selftest-changes-1
 
 check-taskfile-tree:
   image: node:24
@@ -2608,7 +1761,7 @@ check-taskfile-tree:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ci-pre-push-parity.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &check-taskfile-tree-changes-1
         - "Taskfile.yml"
         - "taskfiles/**"
         - "scripts/**"
@@ -2616,13 +1769,7 @@ check-taskfile-tree:
         - "ci/pre-push-tier.json"
         - ".githooks/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "Taskfile.yml"
-        - "taskfiles/**"
-        - "scripts/**"
-        - "ci/ci-capabilities.yml"
-        - "ci/pre-push-tier.json"
-        - ".githooks/**"
+      changes: *check-taskfile-tree-changes-1
 
 check-taskfile-tree-selftest:
   image: node:24
@@ -2637,7 +1784,7 @@ check-taskfile-tree-selftest:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/taskfile-tree.test.ts scripts/tests/check-taskfile-tree-layout.test.ts scripts/tests/check-taskfile-tree-contract.test.ts scripts/tests/taskfile-tree-references.test.ts scripts/tests/check-taskfile-tree-ci-wiring.test.ts scripts/tests/ci-pre-push-parity.test.ts scripts/tests/ci-pre-push-select.test.ts scripts/tests/ci-pre-push-refs.test.ts scripts/tests/ci-pre-push-hook.test.ts scripts/tests/ci-pre-push-env-scrub.test.ts scripts/tests/git-env-helpers.test.ts scripts/tests/ci-pre-push-hooks-config.test.ts scripts/tests/ci-selftest-split.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &check-taskfile-tree-selftest-changes-1
         - "Taskfile.yml"
         - "taskfiles/**"
         - "ci/ci-capabilities.yml"
@@ -2664,32 +1811,7 @@ check-taskfile-tree-selftest:
         - ".github/workflows/build.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "Taskfile.yml"
-        - "taskfiles/**"
-        - "ci/ci-capabilities.yml"
-        - "ci/pre-push-tier.json"
-        - ".githooks/**"
-        - "scripts/check-taskfile-tree.ts"
-        - "scripts/check-ci-pre-push-parity.ts"
-        - "scripts/ci-pre-push.ts"
-        - "scripts/ci-cache-guard.ts"
-        - "scripts/lib/ci-cache-guard/**"
-        - "scripts/lib/taskfile-tree*.ts"
-        - "scripts/lib/ci-pre-push/**"
-        - "scripts/lib/ci-parity/**"
-        - "scripts/lib/glob-engine.ts"
-        - "scripts/lib/governance/**"
-        - "scripts/tests/taskfile-tree*.test.ts"
-        - "scripts/tests/check-taskfile-tree-*.test.ts"
-        - "scripts/tests/ci-pre-push-*.test.ts"
-        - "scripts/tests/ci-selftest-split.test.ts"
-        - "scripts/tests/git-env-helpers.test.ts"
-        - "scripts/lib/git-env.ts"
-        - "scripts/tests/lib/**"
-        - "taskfiles/ci.yml"
-        - ".github/workflows/build.yml"
-        - "ci/ci-capabilities.yml"
+      changes: *check-taskfile-tree-selftest-changes-1
 
 check-task-provisioning:
   image: node:24
@@ -2704,7 +1826,7 @@ check-task-provisioning:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-task-provisioning.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &check-task-provisioning-changes-1
         - ".github/actions/setup-task/**"
         - "ci/task-pin.json"
         - ".github/workflows/**"
@@ -2720,21 +1842,7 @@ check-task-provisioning:
         - "scripts/tests/check-task-provisioning.test.ts"
         - "scripts/tests/task-pin-provisioning.test.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - ".github/actions/setup-task/**"
-        - "ci/task-pin.json"
-        - ".github/workflows/**"
-        - ".gitlab-ci.yml"
-        - "ci/**"
-        - "taskfiles/ci.yml"
-        - "scripts/check-task-provisioning.ts"
-        - "scripts/lib/task-provisioning/**"
-        - "scripts/lib/build-ci/**"
-        - "scripts/lib/ci-parity/**"
-        - "scripts/lib/taskfile-tree*.ts"
-        - "scripts/lib/glob-engine.ts"
-        - "scripts/tests/check-task-provisioning.test.ts"
-        - "scripts/tests/task-pin-provisioning.test.ts"
+      changes: *check-task-provisioning-changes-1
 
 check-task-provisioning-selftest:
   image: node:24
@@ -2743,7 +1851,7 @@ check-task-provisioning-selftest:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-task-provisioning.test.ts scripts/tests/task-pin-provisioning.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &check-task-provisioning-selftest-changes-1
         - ".github/actions/setup-task/**"
         - "ci/task-pin.json"
         - "scripts/check-task-provisioning.ts"
@@ -2756,18 +1864,7 @@ check-task-provisioning-selftest:
         - "ci/ci-capabilities.yml"
         - ".github/workflows/build.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - ".github/actions/setup-task/**"
-        - "ci/task-pin.json"
-        - "scripts/check-task-provisioning.ts"
-        - "scripts/lib/task-provisioning/**"
-        - "scripts/lib/build-ci/**"
-        - "scripts/lib/ci-parity/**"
-        - "scripts/tests/check-task-provisioning.test.ts"
-        - "scripts/tests/task-pin-provisioning.test.ts"
-        - "taskfiles/ci.yml"
-        - "ci/ci-capabilities.yml"
-        - ".github/workflows/build.yml"
+      changes: *check-task-provisioning-selftest-changes-1
 
 ci-pre-push-replay:
   image: node:24
@@ -2782,7 +1879,7 @@ ci-pre-push-replay:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-pre-push-replay.test.ts scripts/tests/ci-pre-push-draft-lint.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &ci-pre-push-replay-changes-1
         - "scripts/**"
         - "taskfiles/**"
         - "ci/**"
@@ -2797,20 +1894,7 @@ ci-pre-push-replay:
         - "specs/**"
         - "artifacts/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/**"
-        - "taskfiles/**"
-        - "ci/**"
-        - ".githooks/**"
-        - ".markdownlintrc"
-        - ".oxfmtrc.json"
-        - ".oxlintrc.json"
-        - "tsconfig.json"
-        - "package.json"
-        - "package-lock.json"
-        - "docs/**"
-        - "specs/**"
-        - "artifacts/**"
+      changes: *ci-pre-push-replay-changes-1
 
 markdown-links:
   image: node:24
@@ -2818,7 +1902,7 @@ markdown-links:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-markdown-links.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &markdown-links-changes-1
         - "scripts/tests/governance-suite-markdown-links.test.ts"
         - "scripts/tests/lib/governance-*.ts"
         - "docs/**"
@@ -2828,15 +1912,7 @@ markdown-links:
         - "scripts/check-markdown-links.ts"
         - "scripts/lib/governance/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/governance-suite-markdown-links.test.ts"
-        - "scripts/tests/lib/governance-*.ts"
-        - "docs/**"
-        - "README.md"
-        - "AGENTS.md"
-        - "**/*.md"
-        - "scripts/check-markdown-links.ts"
-        - "scripts/lib/governance/**"
+      changes: *markdown-links-changes-1
 
 changeset-coverage:
   image: python:3.12
@@ -2901,7 +1977,7 @@ path-ownership-selftest:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-cache-guard-scan.test.ts scripts/tests/check-stray-scan-wiring.test.ts scripts/tests/ci-node-test-arguments.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &path-ownership-selftest-changes-1
         - "scripts/check-path-ownership.ts"
         - "scripts/check-stray-scan-wiring.ts"
         - "scripts/lib/path-ownership.ts"
@@ -2919,23 +1995,7 @@ path-ownership-selftest:
         - ".github/workflows/build.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/check-path-ownership.ts"
-        - "scripts/check-stray-scan-wiring.ts"
-        - "scripts/lib/path-ownership.ts"
-        - "scripts/lib/glob-engine.ts"
-        - "scripts/ci-cache-guard.ts"
-        - "scripts/lib/ci-cache-guard/**"
-        - "scripts/lib/node-floor-guard.js"
-        - "scripts/tests/check-path-ownership.test.ts"
-        - "scripts/tests/ci-cache-guard-scan.test.ts"
-        - "scripts/tests/check-stray-scan-wiring.test.ts"
-        - "scripts/tests/ci-node-test-arguments.test.ts"
-        - "package.json"
-        - "package-lock.json"
-        - "taskfiles/ci.yml"
-        - ".github/workflows/build.yml"
-        - "ci/ci-capabilities.yml"
+      changes: *path-ownership-selftest-changes-1
 
 lint-markdown:
   image: node:22
@@ -2963,7 +2023,7 @@ ratchet-selftest:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-ratchet.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &ratchet-selftest-changes-1
         - "scripts/check-ratchet.ts"
         - "scripts/lib/ratchet-lists.ts"
         - "scripts/tests/check-ratchet.test.ts"
@@ -2971,13 +2031,7 @@ ratchet-selftest:
         - ".github/workflows/build.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/check-ratchet.ts"
-        - "scripts/lib/ratchet-lists.ts"
-        - "scripts/tests/check-ratchet.test.ts"
-        - "taskfiles/ci.yml"
-        - ".github/workflows/build.yml"
-        - "ci/ci-capabilities.yml"
+      changes: *ratchet-selftest-changes-1
 
 host-safety:
   image: node:24
@@ -2998,7 +2052,7 @@ host-safety-selftest:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-host-safety.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &host-safety-selftest-changes-1
         - "scripts/check-host-safety.ts"
         - "scripts/lib/host-safety/**"
         - "scripts/tests/check-host-safety.test.ts"
@@ -3009,16 +2063,7 @@ host-safety-selftest:
         - ".github/workflows/build.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/check-host-safety.ts"
-        - "scripts/lib/host-safety/**"
-        - "scripts/tests/check-host-safety.test.ts"
-        - "scripts/tests/lib/host-safety-fixtures.ts"
-        - "package.json"
-        - "package-lock.json"
-        - "taskfiles/ci.yml"
-        - ".github/workflows/build.yml"
-        - "ci/ci-capabilities.yml"
+      changes: *host-safety-selftest-changes-1
 
 lint-typescript:
   image: node:24
@@ -3037,7 +2082,7 @@ lint-typescript-selftest:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-built-trees.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &lint-typescript-selftest-changes-1
         - "scripts/check-typescript.ts"
         - "scripts/lib/erasable-syntax.ts"
         - "scripts/lib/erasable-probe.ts"
@@ -3058,26 +2103,7 @@ lint-typescript-selftest:
         - ".github/workflows/build.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/check-typescript.ts"
-        - "scripts/lib/erasable-syntax.ts"
-        - "scripts/lib/erasable-probe.ts"
-        - "scripts/lib/ts-scope.ts"
-        - "scripts/build-components.ts"
-        - "scripts/tests/check-erasable-syntax.test.ts"
-        - "scripts/tests/lint-typescript.test.ts"
-        - "scripts/tests/check-typescript.test.ts"
-        - "scripts/tests/build-components-built-trees.test.ts"
-        - "scripts/tests/fixtures/build-components/**"
-        - "artifacts/core/skills/pr-reviewer/scripts/lint-typescript.ts"
-        - ".oxfmtrc.json"
-        - ".oxlintrc.json"
-        - "tsconfig.json"
-        - "package.json"
-        - "package-lock.json"
-        - "taskfiles/ci.yml"
-        - ".github/workflows/build.yml"
-        - "ci/ci-capabilities.yml"
+      changes: *lint-typescript-selftest-changes-1
 
 runtime-foundations:
   image: node:24
@@ -3106,15 +2132,12 @@ windows-hook-probe:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/probe-windows-hook-parsing.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &windows-hook-probe-changes-1
         - "scripts/probe-windows-hook-parsing.ts"
         - "scripts/tests/probe-windows-hook-parsing.test.ts"
         - "hooks/*-transcript-hooks.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/probe-windows-hook-parsing.ts"
-        - "scripts/tests/probe-windows-hook-parsing.test.ts"
-        - "hooks/*-transcript-hooks.json"
+      changes: *windows-hook-probe-changes-1
 
 ticket-pickup:
   image: node:24
@@ -3122,7 +2145,7 @@ ticket-pickup:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &ticket-pickup-changes-1
         - "scripts/ticket-pickup.ts"
         - "scripts/lib/ticket-*.ts"
         - "scripts/lib/forge-*.ts"
@@ -3130,13 +2153,7 @@ ticket-pickup:
         - "scripts/tests/ticket-*.test.ts"
         - "scripts/tests/fixtures/ticket-pickup/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/ticket-pickup.ts"
-        - "scripts/lib/ticket-*.ts"
-        - "scripts/lib/forge-*.ts"
-        - "scripts/lib/ts-scope.ts"
-        - "scripts/tests/ticket-*.test.ts"
-        - "scripts/tests/fixtures/ticket-pickup/**"
+      changes: *ticket-pickup-changes-1
 
 playwright-mcp:
   image: node:24
@@ -3149,7 +2166,7 @@ playwright-mcp:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/playwright-mcp.test.ts scripts/tests/jsonc.test.ts scripts/tests/hook-config.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &playwright-mcp-changes-1
         - "scripts/setup-playwright-mcp.ts"
         - "scripts/lib/playwright-mcp*.ts"
         - "scripts/lib/jsonc.ts"
@@ -3160,16 +2177,7 @@ playwright-mcp:
         - "scripts/tests/jsonc.test.ts"
         - "scripts/tests/hook-config.test.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/setup-playwright-mcp.ts"
-        - "scripts/lib/playwright-mcp*.ts"
-        - "scripts/lib/jsonc.ts"
-        - "scripts/lib/hook-config.ts"
-        - "scripts/lib/tmp-file.ts"
-        - "scripts/lib/paths.ts"
-        - "scripts/tests/playwright-mcp.test.ts"
-        - "scripts/tests/jsonc.test.ts"
-        - "scripts/tests/hook-config.test.ts"
+      changes: *playwright-mcp-changes-1
 
 mempalace-session-check:
   image: node:24
@@ -3182,7 +2190,7 @@ mempalace-session-check:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-registration-agreement.test.ts scripts/tests/mempalace-registration.test.ts scripts/tests/mempalace-session-check.test.ts scripts/tests/session-check-throttle.test.ts scripts/tests/session-check-hooks.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &mempalace-session-check-changes-1
         - "scripts/mempalace-session-check.ts"
         - "scripts/session-check-hooks.ts"
         - "scripts/lib/mempalace-registration.ts"
@@ -3201,24 +2209,7 @@ mempalace-session-check:
         - "hooks/*-transcript-hooks.json"
         - "hooks/*-usage-capture-hooks.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/mempalace-session-check.ts"
-        - "scripts/session-check-hooks.ts"
-        - "scripts/lib/mempalace-registration.ts"
-        - "scripts/lib/session-check-throttle.ts"
-        - "scripts/lib/session-check-config.ts"
-        - "scripts/lib/tmp-file.ts"
-        - "scripts/usage-capture-optin.ts"
-        - "scripts/status-mcp-server.ts"
-        - "scripts/lib/service/**"
-        - "scripts/setup-*-interactive.ts"
-        - "scripts/tests/mempalace-registration*.test.ts"
-        - "scripts/tests/mempalace-session-check.test.ts"
-        - "scripts/tests/session-check-*.test.ts"
-        - "scripts/tests/lib/session-check-harness.ts"
-        - "scripts/tests/fixtures/session-check/**"
-        - "hooks/*-transcript-hooks.json"
-        - "hooks/*-usage-capture-hooks.json"
+      changes: *mempalace-session-check-changes-1
 
 derive-spec-status:
   image: node:24
@@ -3226,17 +2217,13 @@ derive-spec-status:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/derive-spec-status.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &derive-spec-status-changes-1
         - "scripts/derive-spec-status.ts"
         - "scripts/lib/spec-status-derivation.ts"
         - "scripts/lib/ts-scope.ts"
         - "scripts/tests/derive-spec-status.test.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/derive-spec-status.ts"
-        - "scripts/lib/spec-status-derivation.ts"
-        - "scripts/lib/ts-scope.ts"
-        - "scripts/tests/derive-spec-status.test.ts"
+      changes: *derive-spec-status-changes-1
 
 spec-view:
   image: node:24
@@ -3245,7 +2232,7 @@ spec-view:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-view.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &spec-view-changes-1
         - "scripts/spec-view.ts"
         - "scripts/lib/spec-view.ts"
         - "scripts/lib/ts-scope.ts"
@@ -3255,15 +2242,7 @@ spec-view:
         - "scripts/lib/taskfile-tree.ts"
         - "scripts/lib/taskfile-tree-parse.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/spec-view.ts"
-        - "scripts/lib/spec-view.ts"
-        - "scripts/lib/ts-scope.ts"
-        - "scripts/tests/spec-view.test.ts"
-        - "Taskfile.yml"
-        - "taskfiles/**"
-        - "scripts/lib/taskfile-tree.ts"
-        - "scripts/lib/taskfile-tree-parse.ts"
+      changes: *spec-view-changes-1
 
 node-floor-guard:
   image: node:20
@@ -3296,7 +2275,7 @@ worktree-guard:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-*.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &worktree-guard-changes-1
         - "hooks/worktree-git-guard.ts"
         - "scripts/worktree-claim.ts"
         - "scripts/lib/worktree-claim/**"
@@ -3310,19 +2289,7 @@ worktree-guard:
         - "scripts/tests/fixtures/worktree-claim/**"
         - "scripts/tests/fixtures/worktree-guard/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "hooks/worktree-git-guard.ts"
-        - "scripts/worktree-claim.ts"
-        - "scripts/lib/worktree-claim/**"
-        - "scripts/lib/hook-*.ts"
-        - "scripts/lib/node-floor-guard.js"
-        - "scripts/hook-wiring.ts"
-        - "scripts/tests/worktree-*.test.ts"
-        - "scripts/tests/lib/worktree-*.ts"
-        - "scripts/tests/lib/spawn-spy.ts"
-        - "scripts/tests/lib/windows-invocation.ts"
-        - "scripts/tests/fixtures/worktree-claim/**"
-        - "scripts/tests/fixtures/worktree-guard/**"
+      changes: *worktree-guard-changes-1
 
 worktree-guard-node-24-0:
   image: node:24.0.0
@@ -3338,7 +2305,7 @@ mempalace-transcript:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-transcript-*.test.ts scripts/tests/hook-transcript-*.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &mempalace-transcript-changes-1
         - "hooks/mempalace-transcript.*"
         - "scripts/lib/mempalace-transcript/**"
         - "scripts/lib/tls-env.ts"
@@ -3358,25 +2325,7 @@ mempalace-transcript:
         - "scripts/tests/lib/windows-invocation.ts"
         - "scripts/tests/fixtures/mempalace-transcript/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "hooks/mempalace-transcript.*"
-        - "scripts/lib/mempalace-transcript/**"
-        - "scripts/lib/tls-env.ts"
-        - "scripts/lib/tls-env-quote.ts"
-        - "scripts/lib/transcript-recognition.ts"
-        - "scripts/lib/hook-*.ts"
-        - "scripts/hook-wiring.ts"
-        - "scripts/lib/usage-store/mcp.*"
-        - "scripts/usage-capture-optin.ts"
-        - "scripts/setup-*-interactive.ts"
-        - "hooks/*-transcript-hooks.json"
-        - "scripts/tests/mempalace-transcript-*.test.ts"
-        - "scripts/tests/hook-transcript-*.test.ts"
-        - "scripts/tests/lib/with-stub-daemon.ts"
-        - "scripts/tests/lib/transcript-*.ts"
-        - "scripts/tests/lib/spawn-spy.ts"
-        - "scripts/tests/lib/windows-invocation.ts"
-        - "scripts/tests/fixtures/mempalace-transcript/**"
+      changes: *mempalace-transcript-changes-1
 
 mempalace-transcript-node-24-0:
   image: node:24.0.0
@@ -3412,7 +2361,7 @@ lint-specs-selftest:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-linter-*.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &lint-specs-selftest-changes-1
         - "scripts/lib/spec-linter.js"
         - "scripts/tests/spec-linter-*.test.ts"
         - "scripts/tests/lib/spec-linter-fixtures.ts"
@@ -3427,20 +2376,7 @@ lint-specs-selftest:
         - ".github/workflows/build.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/lib/spec-linter.js"
-        - "scripts/tests/spec-linter-*.test.ts"
-        - "scripts/tests/lib/spec-linter-fixtures.ts"
-        - "scripts/tests/lib/spec-linter-lifecycle.ts"
-        - "scripts/tests/lib/yaml-lib.ts"
-        - "docs/spec-format.md"
-        - ".crewrig/core-paths.txt"
-        - ".markdownlintrc"
-        - "scripts/ci-cache-guard.ts"
-        - "scripts/lib/ci-cache-guard/**"
-        - "taskfiles/ci.yml"
-        - ".github/workflows/build.yml"
-        - "ci/ci-capabilities.yml"
+      changes: *lint-specs-selftest-changes-1
 
 test-harness-curate:
   image: node:24
@@ -3467,7 +2403,7 @@ check-description-length:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-description-length.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &check-description-length-changes-1
         - "artifacts/**"
         - ".claude/skills/**"
         - ".claude/agents/**"
@@ -3481,19 +2417,7 @@ check-description-length:
         - "scripts/lib/governance/**"
         - "scripts/lib/require-dependency.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "artifacts/**"
-        - ".claude/skills/**"
-        - ".claude/agents/**"
-        - ".gemini/skills/**"
-        - ".gemini/agents/**"
-        - ".github/skills/**"
-        - ".github/agents/**"
-        - ".agents/skills/**"
-        - ".agents/agents/**"
-        - "scripts/check-description-length.ts"
-        - "scripts/lib/governance/**"
-        - "scripts/lib/require-dependency.ts"
+      changes: *check-description-length-changes-1
 
 check-extension-version-bump:
   image: node:24
@@ -3542,19 +2466,14 @@ check-seat-brief:
     - "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-seat-brief.ts scripts/tests/fixtures/seat-brief/breach-1410.txt"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &check-seat-brief-changes-1
         - "scripts/check-seat-brief.ts"
         - "scripts/lib/governance/seat-brief.ts"
         - "scripts/lib/governance/report.ts"
         - "scripts/tests/check-seat-brief*"
         - "scripts/tests/fixtures/seat-brief/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/check-seat-brief.ts"
-        - "scripts/lib/governance/seat-brief.ts"
-        - "scripts/lib/governance/report.ts"
-        - "scripts/tests/check-seat-brief*"
-        - "scripts/tests/fixtures/seat-brief/**"
+      changes: *check-seat-brief-changes-1
 
 check-plan-review:
   image: node:24
@@ -3563,7 +2482,7 @@ check-plan-review:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-plan-review.ts scripts/tests/fixtures/plan-review/skip-spec.md scripts/tests/fixtures/plan-review/required-plan.md | grep -qx 'plan-review: required'"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &check-plan-review-changes-1
         - "scripts/check-plan-review.ts"
         - "scripts/lib/governance/plan-review-gate.ts"
         - ".crewrig/plan-components.txt"
@@ -3571,13 +2490,7 @@ check-plan-review:
         - "scripts/tests/check-plan-review*"
         - "scripts/tests/fixtures/plan-review/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/check-plan-review.ts"
-        - "scripts/lib/governance/plan-review-gate.ts"
-        - ".crewrig/plan-components.txt"
-        - ".crewrig/shared-contract-paths.txt"
-        - "scripts/tests/check-plan-review*"
-        - "scripts/tests/fixtures/plan-review/**"
+      changes: *check-plan-review-changes-1
 
 check-rules-size:
   image: node:24
@@ -3651,7 +2564,7 @@ usage-record-schema:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-record-schema.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &usage-record-schema-changes-1
         - "schemas/**"
         - "scripts/lib/usage-record-validator.js"
         - "scripts/tests/usage-record-schema.test.ts"
@@ -3659,13 +2572,7 @@ usage-record-schema:
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "schemas/**"
-        - "scripts/lib/usage-record-validator.js"
-        - "scripts/tests/usage-record-schema.test.ts"
-        - "scripts/tests/fixtures/usage-records/**"
-        - "package.json"
-        - "package-lock.json"
+      changes: *usage-record-schema-changes-1
 
 release-notes:
   image: node:24
@@ -3674,7 +2581,7 @@ release-notes:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-notes-real-engine.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &release-notes-changes-1
         - "scripts/monorepo-release.ts"
         - "scripts/release-sync-manifests.ts"
         - "scripts/release-package-extension.ts"
@@ -3691,22 +2598,7 @@ release-notes:
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/monorepo-release.ts"
-        - "scripts/release-sync-manifests.ts"
-        - "scripts/release-package-extension.ts"
-        - "scripts/lib/monorepo-release/**"
-        - "scripts/lib/packaging/**"
-        - "scripts/lib/release-notes/**"
-        - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
-        - "scripts/tests/lib/release-*.ts"
-        - "scripts/tests/lib/build-fixture-tree.ts"
-        - "scripts/lib/release-rehearse.mjs"
-        - "scripts/lib/release-pr.ts"
-        - "scripts/release-pr.ts"
-        - "scripts/tests/fixtures/release/forge-stub.mjs"
-        - "package.json"
-        - "package-lock.json"
+      changes: *release-notes-changes-1
 
 usage-capture:
   image: node:24
@@ -3721,7 +2613,7 @@ usage-capture:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-statusline-shim.test.ts scripts/tests/hook-*.test.ts scripts/tests/usage-capture-*.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &usage-capture-changes-1
         - "hooks/claude-transcript-hooks.json"
         - "hooks/gemini-transcript-hooks.json"
         - "hooks/copilot-transcript-hooks.json"
@@ -3771,55 +2663,7 @@ usage-capture:
         - "scripts/tests/fixtures/setup-declarations/**"
         - "scripts/lib/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "hooks/claude-transcript-hooks.json"
-        - "hooks/gemini-transcript-hooks.json"
-        - "hooks/copilot-transcript-hooks.json"
-        - "scripts/lib/usage-capture/**"
-        - "scripts/usage-backfill.ts"
-        - "scripts/tests/e2e-usage-headless.test.ts"
-        - "scripts/tests/fixtures/usage-capture/**"
-        - "hooks/claude-usage-capture-hooks.json"
-        - "hooks/gemini-usage-capture-hooks.json"
-        - "hooks/copilot-usage-capture-hooks.json"
-        - "scripts/usage-capture-optin.ts"
-        - "scripts/setup-claude-interactive.ts"
-        - "scripts/setup-gemini-interactive.ts"
-        - "scripts/setup-copilot-interactive.ts"
-        - "scripts/tests/usage-capture-optin-*.test.ts"
-        - "scripts/tests/lib/optin-*.ts"
-        - "scripts/tests/fixtures/setup-usage-capture/**"
-        - "hooks/usage-capture.ts"
-        - "hooks/antigravity-statusline-shim.ts"
-        - "hooks/worktree-git-guard.ts"
-        - "scripts/lib/hook-*.ts"
-        - "scripts/hook-wiring.ts"
-        - "scripts/check-timing-budget.ts"
-        - "scripts/setup-antigravity-interactive.ts"
-        - "scripts/tests/antigravity-statusline-shim.test.ts"
-        - "scripts/tests/setup-transcript-antigravity-*.test.ts"
-        - "scripts/tests/mempalace-transcript-antigravity-payload.test.ts"
-        - "scripts/tests/lib/antigravity-transcript-rig.ts"
-        - "scripts/tests/hook-*"
-        - "scripts/tests/lib/hook-*"
-        - "scripts/tests/usage-capture-*"
-        - "scripts/tests/lib/usage-capture-*"
-        - "docs/cli-matrix.md"
-        - "docs/cli-matrix/**"
-        - "scripts/build-cli-matrix.ts"
-        - "scripts/lib/build-cli-matrix/**"
-        - "package.json"
-        - "package-lock.json"
-        - "scripts/setup-*-interactive.ts"
-        - "scripts/tests/setup-retarget-*.test.ts"
-        - "scripts/tests/lib/setup-*.ts"
-        - "scripts/tests/lib/build-fixture-tree.ts"
-        - "scripts/tests/lib/hermetic-env.ts"
-        - "scripts/tests/lib/real-home-guard.ts"
-        - "scripts/tests/lib/print-setup-declarations.ts"
-        - "scripts/tests/fixtures/setup-golden/**"
-        - "scripts/tests/fixtures/setup-declarations/**"
-        - "scripts/lib/**"
+      changes: *usage-capture-changes-1
 
 usage-storage:
   image: node:24
@@ -3832,7 +2676,7 @@ usage-storage:
     - "node scripts/build-usage-validator.js --check"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &usage-storage-changes-1
         - "scripts/lib/usage-store/**"
         - "scripts/usage-query.ts"
         - "scripts/usage-prune.ts"
@@ -3875,48 +2719,7 @@ usage-storage:
         - "docs/usage-storage.md"
         - "docs/usage-organization.md"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/lib/usage-store/**"
-        - "scripts/usage-query.ts"
-        - "scripts/usage-prune.ts"
-        - "scripts/usage-mirror.ts"
-        - "scripts/usage-inventory.ts"
-        - "scripts/usage-drain.ts"
-        - "scripts/usage-task.ts"
-        - "scripts/usage-attribute.ts"
-        - "scripts/usage-backfill.ts"
-        - "scripts/build-usage-validator.js"
-        - "scripts/tests/usage-mirror-catchup.test.ts"
-        - "scripts/tests/usage-mirror-prune.test.ts"
-        - "scripts/tests/usage-mirror-failures.test.ts"
-        - "scripts/tests/usage-mirror-mutants.test.ts"
-        - "scripts/tests/lib/usage-mirror-rig.ts"
-        - "scripts/tests/lib/usage-mirror-records.ts"
-        - "scripts/tests/lib/usage-mirror-backlog.ts"
-        - "scripts/tests/usage-storage-journal.test.ts"
-        - "scripts/tests/usage-storage-query.test.ts"
-        - "scripts/tests/usage-storage-gate.test.ts"
-        - "scripts/tests/usage-mirror-spawn.test.ts"
-        - "scripts/tests/usage-storage-wing.test.ts"
-        - "scripts/tests/usage-storage-drain.test.ts"
-        - "scripts/tests/usage-storage-prune.test.ts"
-        - "scripts/tests/lib/usage-storage-rig.ts"
-        - "scripts/tests/lib/usage-storage-driver.ts"
-        - "scripts/tests/lib/usage-mutants.ts"
-        - "scripts/tests/lib/mutation-copy.ts"
-        - "scripts/tests/lib/capability.ts"
-        - "scripts/tests/usage-inventory.test.ts"
-        - "scripts/lib/usage-wrapper.ts"
-        - "scripts/tests/usage-wrappers-oracle.test.ts"
-        - "scripts/tests/usage-wrappers.test.ts"
-        - "scripts/tests/hermetic-env.test.ts"
-        - "scripts/tests/lib/hermetic-env.ts"
-        - "scripts/tests/fixtures/usage-storage/**"
-        - "schemas/**"
-        - "package.json"
-        - "package-lock.json"
-        - "docs/usage-storage.md"
-        - "docs/usage-organization.md"
+      changes: *usage-storage-changes-1
 
 usage-attribution:
   image: node:24
@@ -3925,7 +2728,7 @@ usage-attribution:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-attribution-channels.test.ts scripts/tests/usage-attribution-ledger-rollup.test.ts scripts/tests/usage-attribution-period-rollup.test.ts scripts/tests/usage-attribution-prune.test.ts scripts/tests/usage-attribution-mutations.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &usage-attribution-changes-1
         - "scripts/lib/usage-store/**"
         - "scripts/lib/usage-capture/**"
         - "scripts/usage-task.ts"
@@ -3947,27 +2750,7 @@ usage-attribution:
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/lib/usage-store/**"
-        - "scripts/lib/usage-capture/**"
-        - "scripts/usage-task.ts"
-        - "scripts/usage-attribute.ts"
-        - "scripts/tests/usage-attribution-channels.test.ts"
-        - "scripts/tests/usage-attribution-ledger-rollup.test.ts"
-        - "scripts/tests/usage-attribution-period-rollup.test.ts"
-        - "scripts/tests/usage-attribution-prune.test.ts"
-        - "scripts/tests/usage-attribution-mutations.test.ts"
-        - "scripts/tests/lib/usage-attribution-rig.ts"
-        - "scripts/tests/lib/usage-attribution-driver.ts"
-        - "scripts/tests/lib/usage-attribution-prune-rig.ts"
-        - "scripts/tests/lib/usage-mutants.ts"
-        - "scripts/tests/lib/mutation-copy.ts"
-        - "scripts/tests/lib/capability.ts"
-        - "scripts/tests/fixtures/usage-attribution/**"
-        - "docs/usage-attribution.md"
-        - "schemas/**"
-        - "package.json"
-        - "package-lock.json"
+      changes: *usage-attribution-changes-1
 
 usage-pricing:
   image: node:24
@@ -3976,7 +2759,7 @@ usage-pricing:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-pricing-compute.test.ts scripts/tests/usage-pricing-fx.test.ts scripts/tests/usage-pricing-rollup.test.ts scripts/tests/usage-pricing-rollup-period.test.ts scripts/tests/usage-pricing-prune.test.ts scripts/tests/usage-pricing-static.test.ts scripts/tests/usage-pricing-conversion.test.ts scripts/tests/usage-pricing-conversion-b.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &usage-pricing-changes-1
         - "scripts/lib/usage-price/**"
         - "scripts/usage-price.ts"
         - "scripts/tests/usage-pricing-compute.test.ts"
@@ -4002,31 +2785,7 @@ usage-pricing:
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/lib/usage-price/**"
-        - "scripts/usage-price.ts"
-        - "scripts/tests/usage-pricing-compute.test.ts"
-        - "scripts/tests/usage-pricing-fx.test.ts"
-        - "scripts/tests/usage-pricing-rollup.test.ts"
-        - "scripts/tests/usage-pricing-rollup-period.test.ts"
-        - "scripts/tests/usage-pricing-prune.test.ts"
-        - "scripts/tests/usage-pricing-static.test.ts"
-        - "scripts/tests/usage-pricing-conversion.test.ts"
-        - "scripts/tests/usage-pricing-conversion-b.test.ts"
-        - "scripts/tests/lib/usage-pricing-rig.ts"
-        - "scripts/tests/lib/usage-pricing-driver.ts"
-        - "scripts/tests/lib/usage-pricing-case-kit.ts"
-        - "scripts/tests/lib/usage-pricing-conversion-world.ts"
-        - "scripts/tests/fixtures/usage-pricing/**"
-        - "model-prices.org.json"
-        - "scripts/lib/usage-store/**"
-        - "scripts/usage-attribute.ts"
-        - "scripts/usage-prune.ts"
-        - "scripts/usage-query.ts"
-        - "scripts/lib/usage-dashboard/**"
-        - "scripts/usage-dashboard.ts"
-        - "package.json"
-        - "package-lock.json"
+      changes: *usage-pricing-changes-1
 
 usage-dashboard:
   image: node:24
@@ -4035,7 +2794,7 @@ usage-dashboard:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-dashboard-agreement.test.ts scripts/tests/usage-dashboard-crosscheck.test.ts scripts/tests/usage-dashboard-buckets.test.ts scripts/tests/usage-dashboard-render.test.ts scripts/tests/usage-dashboard-empty.test.ts scripts/tests/usage-dashboard-page.test.ts scripts/tests/usage-dashboard-static.test.ts scripts/tests/usage-dashboard-home-marker.test.ts scripts/tests/usage-dashboard-server.test.ts scripts/tests/usage-dashboard-readonly.test.ts scripts/tests/usage-dashboard-mutations.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &usage-dashboard-changes-1
         - "scripts/lib/usage-dashboard/**"
         - "scripts/usage-dashboard.ts"
         - "scripts/tests/usage-dashboard-agreement.test.ts"
@@ -4071,41 +2830,7 @@ usage-dashboard:
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/lib/usage-dashboard/**"
-        - "scripts/usage-dashboard.ts"
-        - "scripts/tests/usage-dashboard-agreement.test.ts"
-        - "scripts/tests/usage-dashboard-crosscheck.test.ts"
-        - "scripts/tests/usage-dashboard-buckets.test.ts"
-        - "scripts/tests/usage-dashboard-render.test.ts"
-        - "scripts/tests/usage-dashboard-empty.test.ts"
-        - "scripts/tests/usage-dashboard-page.test.ts"
-        - "scripts/tests/usage-dashboard-static.test.ts"
-        - "scripts/tests/usage-dashboard-home-marker.test.ts"
-        - "scripts/tests/usage-dashboard-server.test.ts"
-        - "scripts/tests/usage-dashboard-readonly.test.ts"
-        - "scripts/tests/usage-dashboard-mutations.test.ts"
-        - "scripts/tests/lib/usage-dashboard-rig.ts"
-        - "scripts/tests/lib/usage-dashboard-serve.ts"
-        - "scripts/tests/lib/usage-dashboard-views.ts"
-        - "scripts/tests/lib/usage-dashboard-checks.ts"
-        - "scripts/tests/lib/usage-dashboard-cells.ts"
-        - "scripts/tests/lib/usage-dashboard-text.ts"
-        - "scripts/tests/lib/usage-dashboard-mutate.ts"
-        - "scripts/tests/lib/mutation-copy.ts"
-        - "scripts/tests/lib/capability.ts"
-        - "scripts/tests/fixtures/usage-dashboard/**"
-        - "scripts/tests/fixtures/usage-pricing/**"
-        - "model-prices.org.json"
-        - "scripts/lib/usage-store/**"
-        - "scripts/lib/usage-price/**"
-        - "scripts/usage-query.ts"
-        - "scripts/usage-price.ts"
-        - "scripts/usage-attribute.ts"
-        - "scripts/usage-prune.ts"
-        - "schemas/usage-record/**"
-        - "package.json"
-        - "package-lock.json"
+      changes: *usage-dashboard-changes-1
 
 gitlab-ci-check:
   image: node:24
@@ -4205,7 +2930,7 @@ release-tests:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-blackbox-flows2.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
+      changes: &release-tests-changes-1
         - "scripts/monorepo-release.ts"
         - "scripts/release-sync-manifests.ts"
         - "scripts/release-package-extension.ts"
@@ -4236,33 +2961,4 @@ release-tests:
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes:
-        - "scripts/monorepo-release.ts"
-        - "scripts/release-sync-manifests.ts"
-        - "scripts/release-package-extension.ts"
-        - "scripts/lib/monorepo-release/**"
-        - "scripts/lib/packaging/**"
-        - "scripts/lib/release-rehearse.mjs"
-        - "scripts/lib/release-pr.ts"
-        - "scripts/release-pr.ts"
-        - "scripts/tests/release-pr.test.ts"
-        - ".github/workflows/release-monorepo.yml"
-        - "scripts/lib/release-notes/**"
-        - "scripts/tests/monorepo-release-engine-*.test.ts"
-        - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
-        - "scripts/tests/release-docs-and-workflows.test.ts"
-        - "scripts/tests/release-golden-generator.test.ts"
-        - "scripts/tests/release-changelog.test.ts"
-        - "scripts/tests/release-driver-sandbox.test.ts"
-        - "scripts/tests/monorepo-release-blackbox-*.test.ts"
-        - "scripts/tests/lib/release-*.ts"
-        - "scripts/tests/lib/build-fixture-tree.ts"
-        - "scripts/tests/fixtures/release-blackbox/**"
-        - ".markdownlintrc"
-        - "scripts/tests/fixtures/release/**"
-        - "scripts/build-extension.ts"
-        - "scripts/lib/extension/**"
-        - "scripts/lib/org-mcp.ts"
-        - "scripts/lib/node-floor-guard.js"
-        - "package.json"
-        - "package-lock.json"
+      changes: *release-tests-changes-1
