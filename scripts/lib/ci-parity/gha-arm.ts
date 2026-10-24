@@ -6,6 +6,8 @@ import { jobNode, loadJobs, readJob, type JobRecord } from "./job-records.ts";
 import { installRecipeTool, normalizeCmd } from "./probe-tokens.ts";
 import { ShellAbort, type CapRecord, type ParityState } from "./state.ts";
 
+export const CI_JOB = "./.github/actions/ci-job";
+
 const GUARD =
   "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --cache-dir ";
 
@@ -108,6 +110,13 @@ export function checkGhaJob(
       else if (step.uses.includes("/setup-node@")) prov.node = step.nodeVersion;
       else if (step.uses.includes("/setup-python@")) prov.python = step.pythonVersion;
       else if (step.uses === "./.github/actions/setup-task") prov.tools.push("task");
+      else if (step.uses === CI_JOB) {
+        // The composite runs setup-node, setup-task (unless task: false), `task ci:<id>` and
+        // cancel-on-failure itself (spec 0283 R5, spec 0049 delta-02 R27).
+        prov.node = step.withNode === "" ? "24" : step.withNode;
+        if (step.withTask !== "false") prov.tools.push("task");
+        if (c.ncmd === 1 && normalizeCmd(c.cmds[0] ?? "") === `task ci:${c.id}`) ci++;
+      }
       continue;
     }
     if (step.run === "" || step.run === "null") continue;
@@ -150,6 +159,7 @@ export function checkGhaCache(state: ParityState, c: CapRecord, job: JobRecord):
   let gha = "";
   for (let s = 0; s < job.nsteps; s++) {
     const step = job.steps[s];
+    if (step?.uses === CI_JOB && step.withCache === "true") return; // the action keys it
     if (step?.uses.includes("/cache@")) gha = sortLines(extractHashFiles(step.key));
   }
   if (gha === "") {

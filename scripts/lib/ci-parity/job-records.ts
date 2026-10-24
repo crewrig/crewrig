@@ -24,6 +24,11 @@ export interface StepRecord {
   nodeVersion: string;
   pythonVersion: string;
   key: string;
+  /** `with.id` and `with.task` of a `./.github/actions/ci-job` step (spec 0049 delta-02 R27). */
+  withId: string;
+  withTask: string;
+  withNode: string;
+  withCache: string;
 }
 
 export interface JobRecord {
@@ -41,6 +46,12 @@ function text(n: YqNode, what: string): string {
   if (isYqFalsy(n)) return "";
   if (n instanceof YqMap || n instanceof YqSeq) throw gap(`a collection for ${what}`);
   return render(n).replace(/\n+$/, "");
+}
+
+/** Like `text`, but a YAML `false` stays "false" (the `// ""` falsy rule would blank it). */
+function rawText(n: YqNode, what: string): string {
+  if (n === null || n instanceof YqMap || n instanceof YqSeq) return text(n, what);
+  return render(n);
 }
 
 function at(n: YqNode, path: string[]): YqNode {
@@ -67,6 +78,10 @@ function readStep(step: YqNode): StepRecord {
     nodeVersion: text(at(withNode, ["node-version"]), "with.node-version"),
     pythonVersion: text(at(withNode, ["python-version"]), "with.python-version"),
     key: text(at(withNode, ["key"]), "with.key"),
+    withId: text(at(withNode, ["id"]), "with.id"),
+    withTask: rawText(at(withNode, ["task"]), "with.task"),
+    withNode: text(at(withNode, ["node"]), "with.node"),
+    withCache: text(at(withNode, ["cache"]), "with.cache"),
   };
 }
 

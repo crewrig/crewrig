@@ -1,0 +1,74 @@
+name: CI job
+description: >-
+  The thin CI job body (spec 0283 R5/R6): setup-node, the runtime path gate,
+  setup-task, the dependency install, the Node floor guard, `task ci:<id>` and
+  cancel-on-failure. Call it after `actions/checkout` with `fetch-depth: 2`.
+  While `shadow-filter` is set the dorny filter stays authoritative and the
+  gate only reports agreement. Logic is inline: the shell-allowlist ratchet
+  forbids a new shell file.
+inputs:
+  id:
+    description: Capability id in ci/ci-capabilities.yml.
+    required: true
+  node:
+    description: Node.js major version.
+    default: "24"
+  install:
+    description: "Dependency install: ci, install, omit-dev or none."
+    default: ci
+  task:
+    description: Provision the pinned Task and run `task ci:<id>`.
+    default: "true"
+  cache:
+    description: Cache `.ci-cache` keyed by the ci-cache-guard content hash.
+    default: "false"
+  shadow-filter:
+    description: Result of the dorny filter during the shadow window (empty once removed).
+    default: ""
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node }}
+    - id: gate
+      shell: bash
+      env:
+        GATE_BEFORE: ${{ github.event.before }}
+      run: |
+        args=(--capability "${{ inputs.id }}")
+        if [ -n "${{ inputs.shadow-filter }}" ]; then args+=(--filter-result "${{ inputs.shadow-filter }}"); fi
+        node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-paths-gate.ts "${args[@]}"
+    - id: decide
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.shadow-filter }}" ]; then run="${{ inputs.shadow-filter }}"; else run="${{ steps.gate.outputs.changed }}"; fi
+        echo "run=${run}" >> "${GITHUB_OUTPUT}"
+    - if: steps.decide.outputs.run == 'true' && inputs.task == 'true'
+      uses: ./.github/actions/setup-task
+    - if: steps.decide.outputs.run == 'true' && inputs.install == 'ci'
+      shell: bash
+      run: npm ci
+    - if: steps.decide.outputs.run == 'true' && inputs.install == 'install'
+      shell: bash
+      run: npm install
+    - if: steps.decide.outputs.run == 'true' && inputs.install == 'omit-dev'
+      shell: bash
+      run: npm ci --omit=dev --workspaces=false
+    - if: steps.decide.outputs.run == 'true' && inputs.node == '24'
+      shell: bash
+      run: node scripts/lib/node-floor-guard.js
+    - id: cachekey
+      if: steps.decide.outputs.run == 'true' && inputs.cache == 'true'
+      shell: bash
+      run: echo "key=$(node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --capability "${{ inputs.id }}" --print-key)" >> "${GITHUB_OUTPUT}"
+    - if: steps.decide.outputs.run == 'true' && inputs.cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: .ci-cache
+        key: ci-${{ inputs.id }}-${{ steps.cachekey.outputs.key }}
+    - if: steps.decide.outputs.run == 'true' && inputs.task == 'true'
+      shell: bash
+      run: task "ci:${{ inputs.id }}"
+    - if: steps.decide.outputs.run == 'true' && failure()
+      uses: ./.github/actions/cancel-on-failure

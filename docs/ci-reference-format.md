@@ -853,3 +853,40 @@ mapping of the existing neutral vocabulary (spec 0047 R7, R9):
 
 It **never** edits a capability definition. The capability set and the neutral
 vocabulary are the stable contract; each engine is one mapping over them.
+
+## The `ci-job` thin job (spec 0283 R5, R6)
+
+A migrated GitHub job is a checkout plus `uses: ./.github/actions/ci-job`. The job key is the
+capability id and the `id` input MUST equal it (spec 0049 delta-02 R27a, checked by
+`scripts/check-ci-parity.ts`). Inputs: `id` (required), `node` (default 24), `install` (`ci`,
+`install`, `omit-dev`, `none`; default `ci`), `task` (default true), `cache` (default false) and
+`shadow-filter` (default empty).
+
+Steps, in order: `setup-node`, the path gate (`scripts/ci-paths-gate.ts`), `setup-task` when
+`task` is true, the dependency install, the Node floor guard when `node` is 24, the cache step when
+`cache` is true (key from `scripts/ci-cache-guard.ts --capability <id> --print-key`), `task ci:<id>`,
+and cancel-on-failure. Every step after the gate runs only when the decision is `true`, so a job
+the gate skips finishes green.
+
+Template, at most 15 lines (the `fetch-depth: 2` line counts):
+
+```yaml
+  <capability-id>:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: <capability-id>
+          node: 24
+          install: ci
+```
+
+Shadow variant (while `dorny/paths-filter` is authoritative; no length cap): the same checkout, then
+the dorny step with `id: filter`, then `ci-job` with `shadow-filter: ${{ steps.filter.outputs.<id> }}`.
+The gate then only annotates `::notice title=ci-paths-gate-shadow::<id> agree ...` or
+`::warning title=ci-paths-gate-shadow::<id> DISAGREE ...`. Concern 6 treats a `ci-job` job with no
+filter as shape A (id and glob checks only) and one that still carries a filter as shape C (those
+checks plus the filter comparison).

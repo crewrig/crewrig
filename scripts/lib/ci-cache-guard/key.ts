@@ -33,8 +33,12 @@ export interface KeyInput {
   env: NodeJS.ProcessEnv;
 }
 
-/** `$CACHE_DIR/<key>/<cmd-hash>.marker`, with the same concatenation order as the shell. */
-export function markerPath(i: KeyInput): string {
+/** The content hash of the declared files and env (`--print-key` with no command: that hash alone). */
+export function cacheKey(i: Omit<KeyInput, "cacheDir">): string {
+  return sha256(keyMaterial(i) + i.args.join(" "));
+}
+
+function keyMaterial(i: Omit<KeyInput, "cacheDir">): string {
   let input = "";
   for (const f of splitComma(i.keyFiles)) {
     if (f === "") continue;
@@ -49,7 +53,12 @@ export function markerPath(i: KeyInput): string {
     if (e === "") continue;
     input += `${e}=${i.env[e] ?? ""}`;
   }
+  return input;
+}
+
+/** `$CACHE_DIR/<key>/<cmd-hash>.marker`, with the same concatenation order as the shell. */
+export function markerPath(i: KeyInput): string {
   const cmd = i.args.join(" ");
-  const key = sha256(`${input}${cmd}`);
+  const key = cacheKey(i);
   return `${i.cacheDir}/${key}/${sha256(cmd)}.marker`;
 }

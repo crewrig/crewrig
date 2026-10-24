@@ -7,6 +7,8 @@ import path from "node:path";
 import { get, isYqFalsy, parse, tag, YqMap, YqSeq, type YqNode } from "../yq-accessors/index.ts";
 import { decodeFilters } from "./filters-doc.ts";
 import { fail } from "./findings.ts";
+import { CI_JOB } from "./gha-arm.ts";
+import { UnsupportedGlobError, globToRegExp } from "../glob-engine.ts";
 import { plist } from "./reference-read.ts";
 import type { CapRecord, ParityState } from "./state.ts";
 
@@ -66,11 +68,47 @@ function jobFilters(jobs: YqNode, key: string): { n: number; raw: string } {
   return { n: hits.length, raw: f !== null && tag(f) === "!!str" ? String(f) : "" };
 }
 
-function loadWf(file: string, jobKey: string): WfDoc {
+/** The `with.id` of the first `ci-job` step of the job: null when the job does not use it. */
+function ciJobId(jobs: YqNode, key: string): string | null {
+  const job = jobs instanceof YqMap ? (jobs.entries.find(([k]) => k === key)?.[1] ?? null) : null;
+  const steps = job === null || job instanceof YqSeq ? null : get(job, ["steps"]);
+  if (!(steps instanceof YqSeq)) return null;
+  for (const s of steps.items) {
+    if (s instanceof YqSeq || s === null) continue;
+    const u = get(s, ["uses"]);
+    if (tag(u) !== "!!str" || String(u) !== CI_JOB) continue;
+    const id = get(get(s, ["with"]), ["id"]);
+    return id !== null && tag(id) === "!!str" ? String(id) : "";
+  }
+  return null;
+}
+
+/** R27(a) and (b): the id binding and the supported globs, for a job that uses `ci-job`. */
+function ciJobChecks(s: ParityState, c: CapRecord, jobKey: string, declared: string): void {
+  if (declared !== c.id || declared.includes("${{"))
+    fail(
+      s,
+      `capability '${c.id}' (github-actions): job '${jobKey}' passes ci-job id '${declared || "(missing)"}' but its key names capability '${c.id}' (R27a)`,
+    );
+  for (const t of c.triggers)
+    for (const g of t.paths)
+      try {
+        globToRegExp(g);
+      } catch (e) {
+        if (!(e instanceof UnsupportedGlobError)) throw e;
+        fail(
+          s,
+          `capability '${c.id}' (reference): trigger '${t.kind}' path '${g}' is not supported by the glob engine: ${e.why} (R27b)`,
+        );
+      }
+}
+
+function loadWf(file: string, jobKey: string): WfDoc & { ciId: string | null } {
   const doc = parse(fs.readFileSync(file, "utf8"));
+  const ciId = ciJobId(get(doc, ["jobs"]), jobKey);
   const jf = jobFilters(get(doc, ["jobs"]), jobKey);
   const on = readOn(get(doc, ["on"]));
-  return { ...on, nFilters: jf.n, raw: jf.raw };
+  return { ...on, nFilters: jf.n, raw: jf.raw, ciId };
 }
 
 const undet = (s: ParityState, id: string, why: string): void =>
@@ -205,6 +243,9 @@ export function checkGhaPaths(
       );
   }
   const d = loadWf(workflow, jobKey);
+  if (d.ciId !== null) ciJobChecks(state, c, jobKey, d.ciId);
+  const wfPaths = d.events.some((e) => !["", "!!null"].includes(e.paths.tag));
+  if (d.ciId !== null && d.nFilters === 0 && !wfPaths) return; // shape A: no GitHub-side list
   if (d.nFilters === 0) dedicated(state, c, d);
   else inJob(state, c, d);
 }

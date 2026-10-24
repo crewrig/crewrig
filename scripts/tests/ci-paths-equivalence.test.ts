@@ -21,6 +21,11 @@ const after = caps(fs.readFileSync("ci/ci-capabilities.yml", "utf8"));
 const ADDED = new Set([
   "scripts/tests/ci-paths-equivalence.test.ts",
   "scripts/tests/fixtures/ci-paths/**",
+  "scripts/ci-paths-gate.ts",
+  "scripts/lib/ci-paths-gate/**",
+  ".github/actions/ci-job/action.yml",
+  "scripts/tests/ci-paths-gate.test.ts",
+  "scripts/tests/ci-parity-ci-job.test.ts",
 ]);
 const base = (id: string, l: string[]): string[] =>
   id === "ci-parity" ? l.filter((x) => !ADDED.has(x)) : l;

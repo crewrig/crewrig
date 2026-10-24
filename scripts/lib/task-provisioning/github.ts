@@ -9,6 +9,7 @@ import { jobNode, loadJobs, readJob } from "../ci-parity/job-records.ts";
 import type { ParityState } from "../ci-parity/state.ts";
 
 export const ACTION_USES = "./.github/actions/setup-task";
+export const CI_JOB_USES = "./.github/actions/ci-job";
 
 const OTHER_ROUTES: readonly RegExp[] = [
   /taskfile\.dev/,
@@ -35,7 +36,11 @@ export function checkGithubJobs(state: ParityState): string[] {
       if (OTHER_ROUTES.some((re) => re.test(s.run)))
         out.push(`${where}: a step installs Task by a route other than ${ACTION_USES} (R6a)`);
     if (!needsTask) continue;
-    const setups = rec.steps.map((s, i) => [s, i] as const).filter(([s]) => s.uses === ACTION_USES);
+    const setups = rec.steps
+      .map((s, i) => [s, i] as const)
+      .filter(
+        ([s]) => s.uses === ACTION_USES || (s.uses === CI_JOB_USES && s.withTask !== "false"),
+      );
     const checkout = rec.steps.findIndex((s) => s.uses.includes("/checkout@"));
     if (setups.length !== 1)
       out.push(

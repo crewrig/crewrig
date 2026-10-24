@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { fatal, ok } from "../governance/report.ts";
-import { markerPath } from "./key.ts";
+import { cacheKey, markerPath } from "./key.ts";
 import { atLine, bashPath, NO_BASH, shellName, statusOf } from "./shell.ts";
 import { strayScan } from "./stray.ts";
 
@@ -19,7 +19,12 @@ import { strayScan } from "./stray.ts";
  * Options that take a value. A missing value is a shell runtime diagnostic (`$2: unbound
  * variable`, with a script path and line): spec 0262 requirement 24 (c), so one `Error:` line, 1.
  */
-const OPTION_LINES: Record<string, number> = { "--cache-dir": 1, "--key-files": 1, "--key-env": 1 };
+const OPTION_LINES: Record<string, number> = {
+  "--cache-dir": 1,
+  "--key-files": 1,
+  "--key-env": 1,
+  "--capability": 1,
+};
 const RUN_LINE = 218;
 
 export async function runGuard(argv: readonly string[], entry: string): Promise<number> {
@@ -28,6 +33,8 @@ export async function runGuard(argv: readonly string[], entry: string): Promise<
   let keyFiles = "";
   let keyEnv = "";
   let stray = false;
+  let capability = "";
+  let printKey = false;
   let cacheOpt = false;
   let i = 0;
   for (; i < argv.length;) {
@@ -41,9 +48,13 @@ export async function runGuard(argv: readonly string[], entry: string): Promise<
       }
       if (a === "--cache-dir") cacheDir = value;
       else if (a === "--key-files") keyFiles = value;
+      else if (a === "--capability") capability = value;
       else keyEnv = value;
       cacheOpt = true;
       i += 2;
+    } else if (a === "--print-key") {
+      printKey = true;
+      i += 1;
     } else if (a === "--stray-scan") {
       stray = true;
       i += 1;
@@ -56,6 +67,34 @@ export async function runGuard(argv: readonly string[], entry: string): Promise<
     }
   }
   const args = argv.slice(i);
+  if (capability !== "") {
+    if (keyFiles !== "" || keyEnv !== "") {
+      fatal("Error: --capability cannot be combined with --key-files or --key-env");
+      return 2;
+    }
+    try {
+      // Lazy: the plain guard stays a self-contained copy (stray-scan fixtures copy only this lib).
+      const { readEffective } = await import("../ci-paths-gate/reference.ts");
+      const eff = readEffective(
+        fs.readFileSync(path.resolve(process.cwd(), "ci/ci-capabilities.yml"), "utf8"),
+        capability,
+      );
+      keyFiles = eff.cacheFiles.join(",");
+      keyEnv = eff.cacheEnv.join(",");
+    } catch (e) {
+      fatal(`Error: --capability: ${(e as Error).message}`);
+      return 2;
+    }
+  }
+  if (printKey) {
+    if (stray) {
+      fatal("Error: --print-key cannot be combined with --stray-scan");
+      return 2;
+    }
+    const key = cacheKey({ keyFiles, keyEnv, args, cwd: process.cwd(), env: process.env });
+    process.stdout.write(`${key}\n`);
+    return 0;
+  }
   if (args.length === 0) {
     fatal("Error: no command given after '--'");
     return 2;
