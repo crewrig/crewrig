@@ -706,5 +706,69 @@
   {
     "name": "usage:task",
     "desc": "Write, read, or clear the current session's usage-attribution declaration record (spec 0208). Usage: task usage:task -- set --channel explicit|protocol [--task-key <key>] [--asset <kind>:<ref>] | show | clear"
+  },
+  {
+    "name": "ci:extension-provenance",
+    "desc": "Run the extension-provenance CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:extension-manifest",
+    "desc": "Run the extension-manifest CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:setup-differential",
+    "desc": "Run the setup-differential CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-metadata-keys",
+    "desc": "Run the check-metadata-keys CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-claude-agent-layout",
+    "desc": "Run the check-claude-agent-layout CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:ci-pre-push-replay",
+    "desc": "Run the ci-pre-push-replay CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:misc",
+    "desc": "Run the misc CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:worktree-guard",
+    "desc": "Run the worktree-guard CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:mempalace-transcript",
+    "desc": "Run the mempalace-transcript CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-seat-brief",
+    "desc": "Run the check-seat-brief CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:extension-render",
+    "desc": "Run the extension-render CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:extension-install",
+    "desc": "Run the extension-install CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:core-paths",
+    "desc": "Run the core-paths CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:setup",
+    "desc": "Run the setup CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-model-mappings",
+    "desc": "Run the check-model-mappings CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-agent-profiles",
+    "desc": "Run the check-agent-profiles CI capability (pre-push mirror of the CI job)"
   }
 ]

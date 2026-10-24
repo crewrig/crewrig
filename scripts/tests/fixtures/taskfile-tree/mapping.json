@@ -175,5 +175,21 @@
   "ci:build-components-ts": "taskfiles/ci.yml",
   "ci:extension-builders-ts": "taskfiles/ci.yml",
   "ci:skill-scripts-ts": "taskfiles/ci.yml",
-  "ci:model-ci-tooling-ts": "taskfiles/ci.yml"
+  "ci:model-ci-tooling-ts": "taskfiles/ci.yml",
+  "ci:extension-provenance": "taskfiles/ci.yml",
+  "ci:extension-manifest": "taskfiles/ci.yml",
+  "ci:setup-differential": "taskfiles/ci.yml",
+  "ci:check-metadata-keys": "taskfiles/ci.yml",
+  "ci:check-claude-agent-layout": "taskfiles/ci.yml",
+  "ci:ci-pre-push-replay": "taskfiles/ci.yml",
+  "ci:misc": "taskfiles/ci.yml",
+  "ci:worktree-guard": "taskfiles/ci.yml",
+  "ci:mempalace-transcript": "taskfiles/ci.yml",
+  "ci:check-seat-brief": "taskfiles/ci.yml",
+  "ci:extension-render": "taskfiles/ci.yml",
+  "ci:extension-install": "taskfiles/ci.yml",
+  "ci:core-paths": "taskfiles/ci.yml",
+  "ci:setup": "taskfiles/ci.yml",
+  "ci:check-model-mappings": "taskfiles/ci.yml",
+  "ci:check-agent-profiles": "taskfiles/ci.yml"
 }

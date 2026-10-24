@@ -612,11 +612,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
-      tools: [jq]
+      tools: [jq, task]
+      install: omit-dev
     command:
-      - node scripts/lib/node-floor-guard.js
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-differential.test.ts scripts/tests/setup-differential-antigravity.test.ts scripts/tests/setup-differential-claude.test.ts scripts/tests/setup-differential-copilot.test.ts scripts/tests/setup-differential-gemini.test.ts scripts/tests/setup-twins-differential-usage.test.ts
+      - task ci:setup-differential
 
   - id: setup-modules-ts
     name: "Run the TypeScript setup module, TLS quoting and confirm remainder unit suites"
@@ -1323,15 +1322,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
-      tools: [jq, yq]
+      tools: [jq, yq, task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-pivot.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-extension-suite-render.test.ts scripts/tests/build-extension-suite-check.test.ts scripts/tests/build-extension-suite-hooks.test.ts scripts/tests/build-extension-suite-context.test.ts scripts/tests/build-extension-suite-scaffold.test.ts scripts/tests/migrate-extension-entry.test.ts scripts/tests/create-extension-combinations.test.ts scripts/tests/create-extension-gap-derivation.test.ts scripts/tests/extension-render-conformance.test.ts scripts/tests/extension-render-conformance-checks.test.ts scripts/tests/extension-sandbox.test.ts
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-extension.ts --check
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-hook-tokens.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-hook-map.ts
+      - task ci:extension-render
 
 
   - id: extension-provenance
@@ -1353,10 +1347,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-provenance.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-extension-provenance.test.ts scripts/tests/governance-suite-extension-provenance-r4.test.ts
+      - task ci:extension-provenance
 
   - id: extension-manifest
     name: "Enforce extension manifest single-version and version-bump"
@@ -1379,9 +1373,9 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-manifest-version.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-extension-version-bump.test.ts scripts/tests/governance-suite-extension-version-bump-base.test.ts
+      - task ci:extension-manifest
 
   - id: extension-install
     name: "Test extension install and agent frontmatter contracts"
@@ -1436,11 +1430,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
-      tools: [jq, yq]
+      tools: [jq, yq, task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/install-claude-plugin-marketplace.test.ts scripts/tests/install-extension-all-real.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/install-sandbox.test.ts scripts/tests/install-workspace.test.ts scripts/tests/unlink-component.test.ts scripts/tests/unlink-extensions.test.ts scripts/tests/install-extension.test.ts scripts/tests/link-extensions.test.ts scripts/tests/install-copilot-plugin.test.ts scripts/tests/install-antigravity-extension.test.ts
+      - task ci:extension-install
 
   - id: core-paths
     name: "Check core-paths resolve and sync-from-upstream"
@@ -1471,10 +1464,9 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
-      tools: [yq]
+      tools: [yq, task]
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-policies.test.ts scripts/tests/sync-from-upstream-reconcile.test.ts scripts/tests/sync-from-upstream-orphans.test.ts scripts/tests/sync-from-upstream-dirty-report.test.ts scripts/tests/sync-from-upstream-preserve.test.ts scripts/tests/sync-from-upstream-signing.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/sync-from-upstream-self-update.test.ts
+      - task ci:core-paths
 
   - id: ci-parity
     name: "Test the CI generator and parity harness"
@@ -1991,12 +1983,11 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
-      tools: [jq, yq]
+      tools: [jq, yq, task]
+      install: omit-dev
     command:
       # The retargeted suites run the TypeScript setup in a sandbox that copies js-yaml and argparse from here.
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/setup-identity-flow.test.ts scripts/tests/setup-legacy-gemini-md-declaration.test.ts scripts/tests/setup-mcp-merge-policy.test.ts scripts/tests/setup-org-mcp-wiring.test.ts scripts/tests/setup-secrets-fold.test.ts scripts/tests/setup-tier-staging-declared.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/tls-delegation-contract.test.ts scripts/tests/setup-gemini-settings-failure.test.ts scripts/tests/setup-gemini-settings-jsonc.test.ts scripts/tests/setup-gemini-settings-runs.test.ts scripts/tests/setup-gemini-settings-seeds.test.ts
+      - task ci:setup
 
   - id: misc
     name: "Run miscellaneous portability and reservation checks"
@@ -2048,13 +2039,10 @@ capabilities:
       # run locally; it is covered by build-ci.ts --check and
       # check-ci-parity.ts only.
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-suite-no-machine-paths.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-gemini-overlay-enrollment.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/reserve-spec-id-contract.test.ts scripts/tests/reserve-spec-id-carrier-reuse.test.ts scripts/tests/reserve-spec-id-races.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-spec-id-reserved-blocking.test.ts scripts/tests/check-spec-id-reserved-mark.test.ts scripts/tests/check-spec-id-reserved-origin.test.ts scripts/tests/check-spec-id-reserved-degraded.test.ts scripts/tests/check-spec-id-reserved-base-ref.test.ts
+      - task ci:misc
 
   # repository-scan runs the checks whose verdict depends on files anywhere in
   # the repository (spec 0251 R1-R4): check-no-machine-paths.ts scans every
@@ -2157,12 +2145,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
-      tools: [yq]
+      tools: [yq, task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-model-mappings.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-model-mappings-rejections.test.ts scripts/tests/check-model-mappings-org.test.ts scripts/tests/check-model-mappings-selection.test.ts scripts/tests/check-model-mappings-committed.test.ts
+      - task ci:check-model-mappings
 
   - id: check-agent-profiles
     name: "Check agent capability-profile conformance and run its mutation test suite"
@@ -2181,11 +2167,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
-      tools: [yq]
+      tools: [yq, task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-agent-profiles.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-agent-profiles-rejections.test.ts scripts/tests/check-agent-profiles-green.test.ts
+      - task ci:check-agent-profiles
 
   - id: check-metadata-keys
     name: "Check the component metadata: closed key set and run its mutation test suite"
@@ -2206,10 +2191,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-component-metadata-keys.ts
+      - task ci:check-metadata-keys
 
   - id: check-claude-agent-layout
     name: "Check the compiled Claude Code agent tree is flat and run its mutation test suite"
@@ -2229,8 +2214,9 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-claude-agent-layout.ts
+      - task ci:check-claude-agent-layout
 
   - id: check-taskfile-commands
     name: "Check the Taskfile tree names no POSIX-only command and run the tool-binary check suites"
@@ -2386,10 +2372,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
-      tools: [task]
+      tools: [task, task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-task-provisioning.ts
+      - task ci:check-task-provisioning
 
   - id: check-task-provisioning-selftest
     name: "Self-test the Task provisioning guard and the pinned action"
@@ -2414,9 +2400,10 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
+      install: omit-dev
     command:
-      - npm ci --omit=dev --workspaces=false
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/check-task-provisioning.test.ts scripts/tests/task-pin-provisioning.test.ts
+      - task ci:check-task-provisioning-selftest
 
   # Replay of the pre-push wrapper end to end (spec 0279 R16, plan v2-F1/F5).
   # CI-only: it has no `ci:` task, is not fast-tier and is not changeset-gated
@@ -2446,10 +2433,10 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
-      tools: [task]
+      tools: [task, task]
+      install: ci
     command:
-      - npm ci
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-pre-push-replay.test.ts scripts/tests/ci-pre-push-draft-lint.test.ts
+      - task ci:ci-pre-push-replay
 
   - id: markdown-links
     name: "Check relative Markdown link integrity"
@@ -3029,9 +3016,9 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
-      tools: [jq]
+      tools: [jq, task]
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-*.test.ts
+      - task ci:worktree-guard
 
   # Spec 0248 R10: the two TypeScript entries print nothing on the oldest
   # Node.js 24 release, where type stripping still emits an ExperimentalWarning.
@@ -3089,8 +3076,9 @@ capabilities:
     portability: portable
     requires:
       runtime: node@24
+      tools: [task]
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-transcript-*.test.ts scripts/tests/hook-transcript-*.test.ts
+      - task ci:mempalace-transcript
 
   # Spec 0247 R1: the transcript hook entry prints nothing on the oldest
   # Node.js 24 release, where type stripping still emits an ExperimentalWarning.
@@ -3331,9 +3319,9 @@ capabilities:
     changeset-gated: true
     requires:
       runtime: node@24
+      tools: [task]
     command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-seat-brief.ts scripts/tests/fixtures/seat-brief/conforming-review.txt
-      - "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-seat-brief.ts scripts/tests/fixtures/seat-brief/breach-1410.txt"
+      - task ci:check-seat-brief
 
   - id: check-plan-review
     name: "Check the plan review gate against its fixtures"

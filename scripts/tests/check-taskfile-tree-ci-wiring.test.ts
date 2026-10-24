@@ -95,7 +95,7 @@ function assertInstallBeforeLoaderTests(caps: Cap[], importers: string[]): void 
       `${c.id} runs ${runs[0]} (a loader importer) without an install step`,
     );
   }
-  assert.ok(checked >= 5, "the audit covers the jobs that run loader importers");
+  assert.ok(checked >= 4, "the audit covers the jobs that run loader importers");
 }
 
 function jobBlock(text: string, header: RegExp, gitlab = false): string {
