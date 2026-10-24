@@ -51,6 +51,8 @@ export function newRoot(reference: string): string {
   const root = makeSandbox("build-ci-");
   fs.mkdirSync(path.join(root, "ci"), { recursive: true });
   fs.writeFileSync(path.join(root, "ci", "ci-capabilities.yml"), reference);
+  // build-ci reads the Task pin at generation (spec 0282); a root without one fails closed.
+  fs.copyFileSync(path.join(REPO, "ci", "task-pin.json"), path.join(root, "ci", "task-pin.json"));
   return root;
 }
 

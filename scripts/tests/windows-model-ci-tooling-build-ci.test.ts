@@ -35,6 +35,8 @@ function withBox<T>(
     fs.mkdirSync(bin);
     fs.mkdirSync(path.join(work, "ci"), { recursive: true });
     fs.writeFileSync(path.join(work, "ci", "ci-capabilities.yml"), reference);
+    // build-ci reads the Task pin at generation (spec 0282); a root without one fails closed.
+    fs.copyFileSync(path.join(repo, "ci", "task-pin.json"), path.join(work, "ci", "task-pin.json"));
     if (output !== null) fs.writeFileSync(path.join(work, ".gitlab-ci.yml"), output);
     return body(root, work, bin);
   } finally {
