@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { after, before, describe, test } from "node:test";
 
-import { allowed, payload, refusal, refused } from "./lib/guard-asserts.ts";
+import { allowed, allowedFor, payload, refusal, refused } from "./lib/guard-asserts.ts";
 
 import {
   cleanEnv,
@@ -160,10 +160,8 @@ describe("payload shapes (R5; scenarios 5, 6, 7)", () => {
   for (const [name, build] of allowedShapes) {
     test(`allowed: ${name}`, () => {
       const hasDir = /cwd|workspace_dir|project_dir/.test(JSON.stringify(build()));
-      allowed(
-        runGuard(JSON.stringify(build()), { cwd: hasDir ? unclaimed.main : unclaimed.wt }),
-        name,
-      );
+      const input = JSON.stringify(build());
+      allowedFor(runGuard(input, { cwd: hasDir ? unclaimed.main : unclaimed.wt }), input, name);
     });
   }
 

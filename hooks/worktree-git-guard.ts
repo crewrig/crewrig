@@ -22,6 +22,15 @@
 //  - From that point on, every failure refuses, a failed `import()` included:
 //    an undetermined claim state is never read as `claimed`.
 //
+// Allow contract (R10, R39-R42, issue #1489): every allow outcome leaves
+// through the single `allow()` below. For an Antigravity payload (a `toolCall`
+// object, or unparsable text containing `"toolCall"`, settled right after the
+// read) it writes `{"decision": "ask"}` plus a line feed to stdout, exit 0,
+// nothing on stderr: `agy` reads an empty stdout as a fail-closed denial, and
+// `ask` defers to its standard permission flow where `allow` would widen it.
+// For any other payload an allow stays zero bytes. A refusal prints nothing to
+// stdout on every payload shape.
+//
 // The whole decision of whether there is anything to enforce lives in this file
 // on purpose (R11): the claim module graph loads only on the slow path.
 
@@ -31,6 +40,11 @@ void (async () => {
   let ticket = "";
   let identified = false;
   let allowed = true;
+  let antigravity = false;
+  // The single allow exit (R41).
+  const allow = (): void => {
+    if (antigravity) process.stdout.write('{"decision": "ask"}\n');
+  };
   try {
     // Stream read (`readFileSync(0)` throws EAGAIN on a non-blocking pipe and
     // EOF on a closed or console stdin on Windows). A failed read keeps what
@@ -51,6 +65,16 @@ void (async () => {
     } catch {
       payload = undefined;
     }
+
+    // R39: recognised from the payload bytes only, before anything else.
+    const toolCall =
+      typeof payload === "object" && payload !== null && !Array.isArray(payload)
+        ? (payload as Record<string, unknown>)["toolCall"]
+        : undefined;
+    antigravity =
+      payload === undefined
+        ? rawPayload.includes('"toolCall"')
+        : typeof toolCall === "object" && toolCall !== null && !Array.isArray(toolCall);
 
     // One segment of a `jq` path. An intermediate value that cannot be indexed
     // reads as absent (R5, R38(h)), as does `null`.
@@ -94,11 +118,11 @@ void (async () => {
     if (process.platform === "win32") cwd = cwd.replaceAll("\\", "/");
     const marker = "/.worktrees/";
     const at = cwd.lastIndexOf(marker);
-    if (at === -1) return;
+    if (at === -1) return allow();
     const rest = cwd.slice(at + marker.length);
     const slash = rest.indexOf("/");
     ticket = slash === -1 ? rest : rest.slice(0, slash);
-    if (ticket === "") return;
+    if (ticket === "") return allow();
 
     // R7: substring tests on the whole text, with the quirks of the shell
     // guard. The stash exemption never applies when a first-group phrase is
@@ -116,7 +140,7 @@ void (async () => {
       wholeTree.some((phrase) => command.includes(phrase)) ||
       (command.includes("git stash") &&
         !stashReads.some((verb) => command.includes(`git stash ${verb}`)));
-    if (!prohibited) return;
+    if (!prohibited) return allow();
 
     identified = true;
     const { readClaimState } = await import("../scripts/lib/worktree-claim/claim-state.ts");
@@ -131,5 +155,7 @@ void (async () => {
       `mempalace-git-guard: prohibited whole-tree operation in shared worktree '.worktrees/${ticket}' refused (Spec 0114 R2 / Spec 0153 R2). Take an exclusive claim via 'node scripts/worktree-claim.ts take --agent <name>' or use 'run' before attempting whole-tree git operations.\n`,
     );
     process.exitCode = 1;
+    return;
   }
+  allow();
 })();

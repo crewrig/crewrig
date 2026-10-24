@@ -625,7 +625,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   the named transcript hook `crewrig-mempalace-transcript`, and it is the only one that fires once per turn.** The
   manifest also carries the named hook `crewrig-worktree-git-guard` (`PreToolUse` grouped `run_command`, deployed to the
   repository path, not installed, as a direct `node` command line — spec 0116 delta-03 R27/R28; spec 0169; spec 0248,
-  row 29); spec 0206 registers no usage-capture hook in this manifest — the only Antigravity usage channel is the
+  row 29), which answers `{"decision": "ask"}` on every allow outcome because `agy` reads an empty `PreToolUse`
+  stdout as a denial (spec 0248 delta-01, #1489); spec 0206 registers no usage-capture hook in this manifest — the only Antigravity usage channel is the
   statusline shim, wired into `statusLine.command` by `setup-antigravity-interactive.ts` (row 8c,
   `docs/usage-capture.md`). Measured on `agy` 1.0.16 (spec 0116 delta-02 R26 — the exercise, not just the counts). **Exercise
   A**, one `agy --print` turn issuing three shell commands: `PreInvocation` 4×, `PostInvocation` 4×, `PreToolUse` 3×,
@@ -1535,7 +1536,10 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   fires**; a Node.js downgraded after setup makes the directly wired guard fail with Node.js's own non-zero status until
   setup is re-run (spec 0243 R30). Whether exit status `1` blocks the tool call on each CLI, and the working directory
   of the Antigravity CLI hooks surface, are open measurements recorded under *Parity gaps* (probe case `X2` of
-  `docs/runbooks/windows-hook-parsing-probe.md`).
+  `docs/runbooks/windows-hook-parsing-probe.md`). **Antigravity CLI allow answer (spec 0248 delta-01 R39-R42, #1489):** on every allow outcome for an Antigravity
+  payload (a `toolCall` object) the guard prints `{"decision": "ask"}` and exits `0`, because `agy` reads an empty
+  `PreToolUse` stdout as a fail-closed denial and `ask` defers to its standard permission flow; every other CLI's allow
+  stays silent, and a refusal prints nothing on stdout.
 - **Source of truth:** `hooks/worktree-git-guard.ts`, `scripts/worktree-claim.ts`, `scripts/lib/worktree-claim/`,
   `scripts/lib/hook-command.ts`, `scripts/hook-wiring.ts`, `hooks/*-transcript-hooks.json`
 - **Claude Code:** ✅ `hooks/claude-transcript-hooks.json` (`PreToolUse` on `Bash`); command

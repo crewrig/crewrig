@@ -30,3 +30,35 @@ export function refused(res: Result, ticket: string, why = ""): void {
   assert.equal(res.stdout, "", why);
   assert.equal(res.stderr, refusal(ticket), why);
 }
+
+/** An Antigravity `PreToolUse` payload: a `toolCall` envelope (R39). */
+export const agyPayload = (command: string, cwd: string): string =>
+  JSON.stringify({
+    workspacePaths: [cwd],
+    toolCall: { name: "run_command", args: { CommandLine: command } },
+  });
+
+/** An allow outcome for an Antigravity payload: exit 0, the single `ask` line, empty stderr (R40). */
+export function askAnswer(res: Result, why = ""): void {
+  assert.equal(res.status, 0, `${why}\n${res.stderr}`);
+  assert.equal(res.stdout, '{"decision": "ask"}\n', why);
+  assert.equal(res.stderr, "", why);
+}
+
+/** R39 as a test oracle: a parsed `toolCall` object, or unparsable text carrying `"toolCall"`. */
+export function isAntigravityInput(input: string): boolean {
+  try {
+    const parsed: unknown = JSON.parse(input);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return false;
+    const call = (parsed as Record<string, unknown>)["toolCall"];
+    return typeof call === "object" && call !== null && !Array.isArray(call);
+  } catch {
+    return input.includes('"toolCall"');
+  }
+}
+
+/** An allow outcome for `input`: the `ask` line for an Antigravity payload, silence otherwise. */
+export function allowedFor(res: Result, input: string, why = ""): void {
+  if (isAntigravityInput(input)) askAnswer(res, why);
+  else allowed(res, why);
+}

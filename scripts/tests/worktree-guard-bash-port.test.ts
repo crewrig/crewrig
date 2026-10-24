@@ -13,6 +13,7 @@ import path from "node:path";
 import { after, before, describe, test } from "node:test";
 
 import { applyMutation, copyTracked, type MutationCopy } from "./lib/mutation-copy.ts";
+import { isAntigravityInput } from "./lib/guard-asserts.ts";
 import { requireOrSkip } from "./lib/capability.ts";
 import {
   cleanEnv,
@@ -143,10 +144,12 @@ before(() => {
 after(cleanupAll);
 
 /** The contract of a row: the status, silence on allow, a `worktree` diagnostic on refuse. */
-function meets(row: Row, res: Result): boolean {
+function meets(row: Row, res: Result, input: string): boolean {
   if (res.status !== row.expected) return false;
+  // An allow answers `ask` to an Antigravity payload and stays silent otherwise (spec 0248 R40, R42).
+  const stdout = isAntigravityInput(input) ? '{"decision": "ask"}\n' : "";
   return row.expected === 0
-    ? res.stdout === "" && res.stderr === ""
+    ? res.stdout === stdout && res.stderr === ""
     : res.stdout === "" && res.stderr.includes("worktree");
 }
 
@@ -155,9 +158,10 @@ const procCwd = (row: Row): string => (row.proc === "wt" ? fx.wt : bare);
 describe("TypeScript entry", () => {
   for (const row of ROWS) {
     test(`case ${row.id}: ${row.name}`, () => {
-      const res = runGuard(row.payload(fx.wt, elsewhere), { cwd: procCwd(row) });
+      const input = row.payload(fx.wt, elsewhere);
+      const res = runGuard(input, { cwd: procCwd(row) });
       assert.equal(res.status, row.expected, `${res.stdout}${res.stderr}`);
-      assert.ok(meets(row, res), `contract of case ${row.id}`);
+      assert.ok(meets(row, res, input), `contract of case ${row.id}`);
     });
   }
 });
@@ -177,7 +181,7 @@ const MUTANTS: readonly {
 }[] = [
   {
     id: "G1 allow everywhere",
-    edits: [["if (!prohibited) return;", "return;"]],
+    edits: [["if (!prohibited) return allow();", "return allow();"]],
     red: ["3", "3u", "4", "5", "7", "8", "9"],
   },
   {
@@ -203,12 +207,12 @@ const MUTANTS: readonly {
   },
   {
     id: "G7 refuse outside .worktrees",
-    edits: [["if (at === -1) return;", `if (at === -1) { ${REFUSE} }`]],
+    edits: [["if (at === -1) return allow();", `if (at === -1) { ${REFUSE} }`]],
     red: ["1"],
   },
   {
     id: "G8 refuse safe commands",
-    edits: [["if (!prohibited) return;", `if (!prohibited) { ${REFUSE} }`]],
+    edits: [["if (!prohibited) return allow();", `if (!prohibited) { ${REFUSE} }`]],
     red: ["2", "6"],
   },
 ];
@@ -226,10 +230,10 @@ describe("mutation: the nine cases catch a broken guard", () => {
           applyMutation(mutated, "hooks/worktree-git-guard.ts", needle, replacement);
         }
         const entry = path.join(mutated.root, "hooks", "worktree-git-guard.ts");
-        const failing = ROWS.filter(
-          (row) =>
-            !meets(row, runGuard(row.payload(fx.wt, elsewhere), { cwd: procCwd(row), entry })),
-        ).map((row) => row.id);
+        const failing = ROWS.filter((row) => {
+          const input = row.payload(fx.wt, elsewhere);
+          return !meets(row, runGuard(input, { cwd: procCwd(row), entry }), input);
+        }).map((row) => row.id);
         for (const id of mutant.red)
           assert.ok(
             failing.includes(id),
@@ -252,8 +256,9 @@ describe("mutation: the nine cases catch a broken guard", () => {
       const ok = runGuard(cmd("git reset --hard", claimed.wt), { cwd: claimed.wt, entry });
       assert.equal(ok.status, 0, ok.stderr);
       for (const row of ROWS) {
-        const res = runGuard(row.payload(fx.wt, elsewhere), { cwd: procCwd(row), entry });
-        assert.ok(meets(row, res), `case ${row.id} red on the pristine copy: ${res.stderr}`);
+        const input = row.payload(fx.wt, elsewhere);
+        const res = runGuard(input, { cwd: procCwd(row), entry });
+        assert.ok(meets(row, res, input), `case ${row.id} red on the pristine copy: ${res.stderr}`);
       }
     } finally {
       mutated.dispose();

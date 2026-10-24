@@ -19,7 +19,7 @@ import { after, before, describe, test } from "node:test";
 
 import { GUARDED_PREFIX, hookCommandLine, type Cli } from "../lib/hook-command.ts";
 import { resolveReal } from "../lib/paths.ts";
-import { allowed, payload, refused } from "./lib/guard-asserts.ts";
+import { allowedFor, payload, refused } from "./lib/guard-asserts.ts";
 import { invocation, LEGS, GIT_BASH, runInvocation } from "./lib/windows-invocation.ts";
 import {
   cleanupAll,
@@ -69,11 +69,13 @@ describe("the entry from a native working directory, a payload of each CLI's sha
     });
 
     test(`${cli}: allowed with a claim, empty streams`, () => {
-      allowed(runGuard(shape(cli, "git reset --hard", claimed.wt), { cwd: claimed.wt }));
+      const input = shape(cli, "git reset --hard", claimed.wt);
+      allowedFor(runGuard(input, { cwd: claimed.wt }), input);
     });
 
     test(`${cli}: a safe command is allowed, empty streams`, () => {
-      allowed(runGuard(shape(cli, "git status", unclaimed.wt), { cwd: unclaimed.wt }));
+      const input = shape(cli, "git status", unclaimed.wt);
+      allowedFor(runGuard(input, { cwd: unclaimed.wt }), input);
     });
   }
 
