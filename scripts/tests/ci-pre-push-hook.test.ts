@@ -51,7 +51,7 @@ function binDir(withTask: boolean): string {
 /** A CrewRig-shaped repository: the real hook and an empty taskfiles/ci.yml. */
 function crewrigRepo(): string {
   const dir = newRepo();
-  writeRel(dir, "taskfiles/ci.yml", "version: '3.39'\ntasks: {}\n");
+  writeRel(dir, "taskfiles/ci.yml", "version: '3.54'\ntasks: {}\n");
   fs.mkdirSync(path.join(dir, ".githooks"));
   fs.copyFileSync(HOOK, path.join(dir, ".githooks", "pre-push"));
   fs.chmodSync(path.join(dir, ".githooks", "pre-push"), 0o755);

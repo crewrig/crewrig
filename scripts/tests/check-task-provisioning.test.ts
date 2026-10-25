@@ -49,7 +49,7 @@ function fixture(
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
     fs.writeFileSync(path.join(dir, rel), text);
   };
-  w(ROOT_TASKFILE, `version: '${opts.floor ?? "3.39"}'\ntasks: {}\n`);
+  w(ROOT_TASKFILE, `version: '${opts.floor ?? "3.54"}'\ntasks: {}\n`);
   w("ci/ci-capabilities.yml", CAP);
   w("ci/task-pin.json", opts.pin ?? fs.readFileSync(path.join(REPO, "ci/task-pin.json"), "utf8"));
   w(ACTION, opts.action ?? fs.readFileSync(path.join(REPO, ACTION), "utf8"));
@@ -123,7 +123,7 @@ test("an action with || true is rejected", () => {
 test("a pin below the floor is rejected", () => {
   const pin =
     JSON.stringify({ version: "3.30.0", sha256: { linux_amd64: "a".repeat(64) } }, null, 2) + "\n";
-  assert.match(findings(fixture({ pin })), /below the Taskfile floor 3\.39/);
+  assert.match(findings(fixture({ pin })), /below the Taskfile floor 3\.54/);
 });
 
 test("a malformed pin fails closed", () => {

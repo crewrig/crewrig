@@ -88,7 +88,7 @@ describe("check-taskfile-tree CLI contract", () => {
   });
 
   it("exits 1 and lists the offender under FAILED on stderr", () => {
-    const result = cli(stage({ ...split(), "taskfiles/foo.yml": "version: '3.39'\ntasks: {}\n" }));
+    const result = cli(stage({ ...split(), "taskfiles/foo.yml": "version: '3.54'\ntasks: {}\n" }));
     assert.equal(result.status, 1);
     assert.equal(result.stdout, "");
     assert.match(
@@ -126,7 +126,7 @@ describe("check-taskfile-tree R14 comparison with task --list-all --json", () =>
     );
     assert.match(clean.stdout, /^check-taskfile-tree: OK/);
 
-    const broken = cli(stage({ ...split(), "taskfiles/foo.yml": "version: '3.39'\ntasks: {}\n" }), {
+    const broken = cli(stage({ ...split(), "taskfiles/foo.yml": "version: '3.54'\ntasks: {}\n" }), {
       PATH: emptyBin,
     });
     assert.equal(broken.status, 1);
@@ -165,7 +165,7 @@ describe("check-taskfile-tree R14 comparison with task --list-all --json", () =>
       return;
     }
     const result = checkTaskfileTree(
-      stage({ ...split(), "taskfiles/lint.yml": LINT.replace("'3.39'", "'3.38'") }),
+      stage({ ...split(), "taskfiles/lint.yml": LINT.replace("'3.54'", "'3.38'") }),
     );
     assert.ok(result.findings.some((f) => f.startsWith("taskfiles/lint.yml: version '3.38'")));
     assert.ok(result.findings.some((f) => f.startsWith("'task --list-all --json' exited")));

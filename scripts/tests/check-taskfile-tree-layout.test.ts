@@ -15,7 +15,7 @@ describe("check-taskfile-tree checks (a)-(d)", () => {
   });
 
   it("(a) fails an unincluded taskfiles/foo.yml", () => {
-    const out = findings({ ...split(), "taskfiles/foo.yml": `version: '3.39'\ntasks: {}\n` });
+    const out = findings({ ...split(), "taskfiles/foo.yml": `version: '3.54'\ntasks: {}\n` });
     assert.deepEqual(out, ["taskfiles/foo.yml is not reachable from the root includes"]);
   });
 
@@ -80,23 +80,23 @@ describe("check-taskfile-tree checks (a)-(d)", () => {
     ]);
   });
 
-  it("(d) fails a version string differing from '3.39'", () => {
-    const out = findings({ ...split(), "taskfiles/lint.yml": LINT.replace("'3.39'", "'3.38'") });
-    assert.deepEqual(out, ["taskfiles/lint.yml: version '3.38' differs from '3.39'"]);
+  it("(d) fails a version string differing from '3.54'", () => {
+    const out = findings({ ...split(), "taskfiles/lint.yml": LINT.replace("'3.54'", "'3.38'") });
+    assert.deepEqual(out, ["taskfiles/lint.yml: version '3.38' differs from '3.54'"]);
   });
 
-  it("(d) fails an unquoted 3.39 float and a root version '3'", () => {
-    const float = findings({ ...split(), "taskfiles/lint.yml": LINT.replace("'3.39'", "3.39") });
-    assert.deepEqual(float, ["taskfiles/lint.yml: version 3.39 (number) differs from '3.39'"]);
-    const root = findings({ ...split(), "Taskfile.yml": ROOT.replace("'3.39'", "'3'") });
-    assert.deepEqual(root, ["Taskfile.yml: version '3' differs from '3.39'"]);
+  it("(d) fails an unquoted 3.54 float and a root version '3'", () => {
+    const float = findings({ ...split(), "taskfiles/lint.yml": LINT.replace("'3.54'", "3.54") });
+    assert.deepEqual(float, ["taskfiles/lint.yml: version 3.54 (number) differs from '3.54'"]);
+    const root = findings({ ...split(), "Taskfile.yml": ROOT.replace("'3.54'", "'3'") });
+    assert.deepEqual(root, ["Taskfile.yml: version '3' differs from '3.54'"]);
   });
 
   it("reports every finding, not just the first", () => {
     const out = findings({
       ...split(),
-      "taskfiles/foo.yml": `version: '3.39'\ntasks: {}\n`,
-      "taskfiles/lint.yml": LINT.replace("'3.39'", "'3'"),
+      "taskfiles/foo.yml": `version: '3.54'\ntasks: {}\n`,
+      "taskfiles/lint.yml": LINT.replace("'3.54'", "'3'"),
     });
     assert.equal(out.length, 2);
   });

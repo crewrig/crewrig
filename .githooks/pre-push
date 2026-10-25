@@ -33,7 +33,7 @@ const run = spawnSync('task', ['ci:pre-push', '--', remote, url], {
   env: { ...env, PWD: cwd, CREWRIG_PRE_PUSH_REFS: refs },
 });
 if (run.error?.code === 'ENOENT') {
-  process.stderr.write('pre-push: task is not on PATH: install Task >= 3.39 (https://taskfile.dev/installation/) and Node.js >= 24, or push with --no-verify.\n');
+  process.stderr.write('pre-push: task is not on PATH: install Task >= 3.54 (https://taskfile.dev/installation/) and Node.js >= 24, or push with --no-verify.\n');
   process.exit(1);
 }
 process.exit(run.status ?? 1);

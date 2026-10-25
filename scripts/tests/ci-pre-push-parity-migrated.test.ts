@@ -9,7 +9,7 @@ import { makeSandbox, REPO, runEntry } from "./lib/governance-sandbox.ts";
 
 const ENTRY = path.join(REPO, "scripts", "check-ci-pre-push-parity.ts");
 const ROOT_NAME = ["Task", "file.yml"].join("");
-const ROOT = `version: '3.39'
+const ROOT = `version: '3.54'
 vars:
   REPO_DIR: '{{.PWD}}'
 includes:
@@ -40,7 +40,7 @@ function stage(caps: string, tasks: string): string {
   fs.writeFileSync(path.join(dir, ROOT_NAME), ROOT);
   fs.writeFileSync(
     path.join(dir, "taskfiles", "ci.yml"),
-    `version: '3.39'\ntasks:\n${tasks}  pre-push:\n    cmds:\n      - echo control\n`,
+    `version: '3.54'\ntasks:\n${tasks}  pre-push:\n    cmds:\n      - echo control\n`,
   );
   fs.writeFileSync(path.join(dir, "ci", "ci-capabilities.yml"), `capabilities:\n${caps}`);
   fs.writeFileSync(path.join(dir, "ci", "pre-push-tier.json"), "{}");

@@ -182,9 +182,9 @@ For iterative development, prefer the `--plugin-dir` flag documented in the [Lin
 
 ## Taskfile layout
 
-Task 3.39 or later is required: the root includes the domain files with the
-`flatten:` option, which Task introduced in 3.39. Every Taskfile declares
-`version: '3.39'`, so an older Task fails loudly (`Schema version (3.39.0) is
+Task 3.54 or later is required: the root includes the domain files with the
+`flatten:` option, so CI and local runs share one Task version. Every Taskfile declares
+`version: '3.54'`, so an older Task fails loudly (`Schema version (3.54.0) is
 greater than the current version of Task`) instead of silently renaming the
 flattened tasks (spec 0278).
 
@@ -214,7 +214,7 @@ unprefixed global names.
 
 **Adding a task.** Put it in the domain file that matches its area. A new file
 must be added to the root `includes` (flattened unless it is a namespace) and
-declare `version: '3.39'`.
+declare `version: '3.54'`.
 
 **Referencing tasks.**
 
@@ -253,7 +253,7 @@ task ci:hooks-status
 task ci:hooks-uninstall
 ```
 
-`git push --no-verify` skips it. It needs Node 24 and Task 3.39, and a
+`git push --no-verify` skips it. It needs Node 24 and Task 3.54, and a
 worktree needs `node_modules` (`task lint-bootstrap`). Selection, the 60 s
 budget, worktrees and how to add a `ci:<id>` task:
 [`docs/pre-push-guard.md`](docs/pre-push-guard.md).

@@ -54,7 +54,7 @@ No big-bang rewrite. Five ordered slices (spec 0280): split checker self-tests f
 
 ## Consequences
 
-- Task becomes a hard dependency of every engine and every job. The floor is 3.39 (spec 0278 R8); fail-open provisioning (`sh -c "$(curl ...)"` exits 0 when curl fails, issue #1770) must be replaced by a pinned, verified download plus `task --version` before any job is migrated.
+- Task becomes a hard dependency of every engine and every job. The floor is 3.54 (spec 0278 R8, raised by delta-01 R21); fail-open provisioning (`sh -c "$(curl ...)"` exits 0 when curl fails, issue #1770) must be replaced by a pinned, verified download plus `task --version` before any job is migrated.
 - Per-step visibility in the engine UI drops, since one `run:` step replaces many. Mitigation: `output: group` in Task to fold step output.
 - Caching and path filtering remain engine-specific and are not deduplicated by this ADR; the capability reference keeps carrying them.
 - Windows jobs run Task, but every command in `taskfiles/ci.yml` must obey the Windows-command rule of spec 0266; this is the last family migrated.

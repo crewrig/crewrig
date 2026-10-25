@@ -2091,7 +2091,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   symmetric: Claude Code, Gemini CLI, Copilot CLI and Antigravity CLI all trigger it whenever they run `git push`, with
   no per-CLI wiring, script or hook file. **Decision:** no CLI integration point exists for it, so no row cell carries a
   CLI-specific mechanism and no asymmetry is introduced. **Escape hatch:** `git push --no-verify` skips the hook; CI stays
-  authoritative and the hook is a convenience, not a gate. Floors: Node 24 and Task 3.39.
+  authoritative and the hook is a convenience, not a gate. Floors: Node 24 and Task 3.54.
 - **Source of truth:** `.githooks/pre-push`, `scripts/ci-pre-push.ts`, `taskfiles/ci.yml`
 - **Claude Code:** ✅ native `git push` runs the hook; no CLI wiring
 - **Gemini CLI:** ✅ native `git push` runs the hook; no CLI wiring

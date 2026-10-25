@@ -95,7 +95,7 @@ interface PushOutcome {
 /** A sacrificial CrewRig repository with `hookSource` as its pre-push hook, pushed to a bare remote. */
 function pushScenario(hookSource: string): PushOutcome {
   const repo = newRepo("main", "env-scrub-repo-");
-  writeRel(repo, "taskfiles/ci.yml", "version: '3.39'\ntasks: {}\n");
+  writeRel(repo, "taskfiles/ci.yml", "version: '3.54'\ntasks: {}\n");
   fs.mkdirSync(path.join(repo, ".githooks"));
   fs.writeFileSync(path.join(repo, ".githooks", "pre-push"), hookSource, { mode: 0o755 });
   fs.chmodSync(path.join(repo, ".githooks", "pre-push"), 0o755);

@@ -1,4 +1,4 @@
-version: '3.39'
+version: '3.54'
 
 # WP-B (#1763, spec 0279): one `ci:<capability-id>` task per fast-tier CI job,
 # running exactly the capability's command list (R3), plus four control tasks.

@@ -149,7 +149,7 @@ passes silently.
 
 - Node 24 or later (the hook tests `process.getBuiltinModule` first and names
   the floor when it is missing).
-- Task 3.39 or later (every Taskfile declares `version: '3.39'`).
+- Task 3.54 or later (every Taskfile declares `version: '3.54'`).
 - `task` missing from `PATH`, a missing `node_modules`, an unreadable
   capability file or any internal error of the wrapper all block the push with
   a message naming the cause and the fix. The hook runs no `npm` command and no

@@ -16,7 +16,7 @@ const hasTask = spawnSync("task", ["--version"], { encoding: "utf8" }).error ===
 let root = "";
 
 const files: Record<string, string> = {
-  "Taskfile.yml": `version: '3.39'
+  "Taskfile.yml": `version: '3.54'
 includes:
   e2e: ./taskfiles/e2e.yml
   flat:
@@ -27,7 +27,7 @@ tasks:
     cmds:
       - task --list
 `,
-  "taskfiles/e2e.yml": `version: '3.39'
+  "taskfiles/e2e.yml": `version: '3.54'
 tasks:
   base:
     cmds:
@@ -47,7 +47,7 @@ tasks:
     cmds:
       - task: ":hello"
 `,
-  "taskfiles/flat.yml": `version: '3.39'
+  "taskfiles/flat.yml": `version: '3.54'
 tasks:
   hello:
     cmds:

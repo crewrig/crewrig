@@ -12,7 +12,7 @@ import { git } from "./lib/governance-git-fixture.ts";
 function crewrig(): string {
   const dir = newRepo();
   writeRel(dir, ".githooks/pre-push", "#!/usr/bin/env node\n");
-  writeRel(dir, "taskfiles/ci.yml", "version: '3.39'\ntasks: {}\n");
+  writeRel(dir, "taskfiles/ci.yml", "version: '3.54'\ntasks: {}\n");
   return dir;
 }
 

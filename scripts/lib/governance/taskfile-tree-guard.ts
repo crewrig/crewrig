@@ -20,7 +20,7 @@ import { loadTaskfileTree } from "../taskfile-tree.ts";
 import type { TaskEntry, TaskfileTree } from "../taskfile-tree.ts";
 
 /** The uniform floor string of spec 0278 R8. */
-export const TASKFILE_VERSION = "3.39";
+export const TASKFILE_VERSION = "3.54";
 
 /** Files under scripts/ that may name the root Taskfile literally, each with its reason (check b). */
 export const ROOT_READER_ALLOW: ReadonlyMap<string, string> = new Map([

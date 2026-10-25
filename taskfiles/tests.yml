@@ -1,4 +1,4 @@
-version: '3.39'
+version: '3.54'
 
 tasks:
   # Spec 0240 R13-R14: local entry points for the runtime-foundations suites

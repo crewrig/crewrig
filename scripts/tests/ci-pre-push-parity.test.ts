@@ -19,7 +19,7 @@ import { makeSandbox, REPO, runEntry } from "./lib/governance-sandbox.ts";
 const ENTRY = path.join(REPO, "scripts", "check-ci-pre-push-parity.ts");
 const ROOT_NAME = ["Task", "file.yml"].join("");
 
-const ROOT = `version: '3.39'
+const ROOT = `version: '3.54'
 vars:
   REPO_DIR: '{{.PWD}}'
 includes:
@@ -41,7 +41,7 @@ const CAPS = (cmds: readonly string[]): string => `capabilities:
 ${cmds.map((c) => `      - ${JSON.stringify(c)}`).join("\n")}
 `;
 
-const CI_TASK = (cmds: readonly string[]): string => `version: '3.39'
+const CI_TASK = (cmds: readonly string[]): string => `version: '3.54'
 tasks:
   alpha:
     cmds:
@@ -177,7 +177,7 @@ describe("check-ci-pre-push-parity CLI on fixture trees", () => {
 
   it("fails an unanchored task call that also exists as ci:<name>, passes the anchored form", () => {
     const withCall = (ref: string): string =>
-      `version: '3.39'
+      `version: '3.54'
 tasks:
   alpha:
     cmds:
@@ -203,7 +203,7 @@ tasks:
   });
 
   it("expands a capability-side `task <name>` against the Taskfile side", () => {
-    const ci = `version: '3.39'
+    const ci = `version: '3.54'
 tasks:
   alpha:
     cmds:
@@ -217,7 +217,7 @@ tasks:
   });
 
   it("reports an unresolvable task call as unresolved", () => {
-    const ci = `version: '3.39'
+    const ci = `version: '3.54'
 tasks:
   alpha:
     cmds:

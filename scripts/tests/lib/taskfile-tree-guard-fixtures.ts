@@ -29,7 +29,7 @@ export function tempDir(prefix: string): string {
   return dir;
 }
 
-export const ROOT = `version: '3.39'
+export const ROOT = `version: '3.54'
 vars:
   REPO_DIR: '{{.PWD}}'
 includes:
@@ -43,7 +43,7 @@ tasks:
       - task --list
 `;
 
-export const E2E = `version: '3.39'
+export const E2E = `version: '3.54'
 tasks:
   build:base:
     cmds:
@@ -55,7 +55,7 @@ tasks:
       - task: ":hello"
 `;
 
-export const LINT = `version: '3.39'
+export const LINT = `version: '3.54'
 tasks:
   hello:
     cmds:

@@ -179,7 +179,7 @@ describe("self-test split: workflow and parity (d, e)", () => {
     fs.mkdirSync(path.join(dir, "ci"));
     fs.writeFileSync(
       path.join(dir, ["Task", "file.yml"].join("")),
-      "version: '3.39'\nvars:\n  REPO_DIR: '{{.PWD}}'\nincludes:\n  ci: ./taskfiles/ci.yml\ntasks:\n  noop:\n    cmds:\n      - echo x\n",
+      "version: '3.54'\nvars:\n  REPO_DIR: '{{.PWD}}'\nincludes:\n  ci: ./taskfiles/ci.yml\ntasks:\n  noop:\n    cmds:\n      - echo x\n",
     );
     const cap = (id: string, cmd: string): string =>
       `  - id: ${id}\n    name: "${id}"\n    trigger:\n      - on: pull-request\n        branches: [main]\n    portability: portable\n    command:\n      - ${cmd}\n`;
@@ -189,7 +189,7 @@ describe("self-test split: workflow and parity (d, e)", () => {
     );
     fs.writeFileSync(
       path.join(dir, "taskfiles", "ci.yml"),
-      "version: '3.39'\ntasks:\n  alpha:\n    cmds:\n      - node scripts/a.ts\n  alpha-selftest:\n    cmds:\n      - node --test scripts/tests/other.test.ts\n  pre-push:\n    cmds:\n      - echo control\n",
+      "version: '3.54'\ntasks:\n  alpha:\n    cmds:\n      - node scripts/a.ts\n  alpha-selftest:\n    cmds:\n      - node --test scripts/tests/other.test.ts\n  pre-push:\n    cmds:\n      - echo control\n",
     );
     fs.writeFileSync(
       path.join(dir, "ci", "pre-push-tier.json"),
