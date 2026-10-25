@@ -6,92 +6,87 @@ version: '3.54'
 # points at `task lint-bootstrap` instead (R5). Calls to tasks of another file
 # are always colon-anchored (R2): an unanchored name resolves to `ci:<name>`.
 
+# Factorization (spec 0278 R22): the `js-yaml` precondition is written once as the
+# anchor `&needs-js-yaml` and reused by alias (anchors are file-scoped). The variable
+# below is declared once here and reaches every flattened `ci/` file. Its value
+# INCLUDES the `scripts` directory, so a command is written `{{.NODE_SCRIPTS}}/x.ts`,
+# never `{{.NODE_SCRIPTS}} scripts/x.ts`. The `node ... --test <paths>` commands (the
+# `*-selftest` tasks) keep their literal text and are not substituted.
+vars:
+  NODE_SCRIPTS: "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts"
+
 tasks:
   check-taskfile-tree:
     desc: Check the Taskfile tree layout and contract (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
+    preconditions: &needs-js-yaml
+      - sh: "{{.NODE_SCRIPTS}}/check-tool-binaries.ts js-yaml"
         msg: "Run: task lint-bootstrap"
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-taskfile-tree.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-ci-pre-push-parity.ts
+      - '{{.NODE_SCRIPTS}}/check-taskfile-tree.ts'
+      - '{{.NODE_SCRIPTS}}/check-ci-pre-push-parity.ts'
   check-taskfile-tree-selftest:
     desc: Run the Taskfile tree self-tests (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/taskfile-tree.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-layout.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-contract.test.ts {{.REPO_DIR}}/scripts/tests/taskfile-tree-references.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-ci-wiring.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-parity.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-select.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-refs.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-hook.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-env-scrub.test.ts {{.REPO_DIR}}/scripts/tests/git-env-helpers.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-hooks-config.test.ts {{.REPO_DIR}}/scripts/tests/ci-selftest-split.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-parity-migrated.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/taskfile-tree.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-layout.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-contract.test.ts {{.REPO_DIR}}/scripts/tests/taskfile-tree-references.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-ci-wiring.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-parity.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-select.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-refs.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-hook.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-env-scrub.test.ts {{.REPO_DIR}}/scripts/tests/git-env-helpers.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-hooks-config.test.ts {{.REPO_DIR}}/scripts/tests/ci-selftest-split.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-parity-migrated.test.ts {{.REPO_DIR}}/scripts/tests/ci-taskfile-factorization.test.ts {{.REPO_DIR}}/scripts/tests/taskfile-tree-anchors.test.ts'
   check-task-provisioning:
     desc: Check the pinned Task provisioning (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-task-provisioning.ts
+      - '{{.NODE_SCRIPTS}}/check-task-provisioning.ts'
   check-task-provisioning-selftest:
     desc: Run the Task provisioning self-tests (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-task-provisioning.test.ts {{.REPO_DIR}}/scripts/tests/task-pin-provisioning.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-task-provisioning.test.ts {{.REPO_DIR}}/scripts/tests/task-pin-provisioning.test.ts'
   check-taskfile-commands:
     desc: Check the Taskfile tree names no POSIX-only command (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - task: :check-taskfile-commands
   check-taskfile-commands-selftest:
     desc: Run the Taskfile command and tool-binary self-tests (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-taskfile-commands.test.ts {{.REPO_DIR}}/scripts/tests/check-tool-binaries.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-taskfile-commands.test.ts {{.REPO_DIR}}/scripts/tests/check-tool-binaries.test.ts'
   lint-specs:
     desc: Lint the spec files (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - task: :spec:lint
   lint-specs-selftest:
     desc: Run the spec-linter self-tests (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/spec-linter-*.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/spec-linter-*.test.ts'
   lint-markdown:
     desc: Lint every Markdown file (pre-push mirror of the CI job)
     preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts markdownlint
+      - sh: '{{.NODE_SCRIPTS}}/check-tool-binaries.ts markdownlint'
         msg: "Run: task lint-bootstrap"
     cmds:
       - task: :lint-markdown
   markdown-links:
     desc: Run the Markdown link suite tests (pre-push mirror of the CI job)
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-markdown-links.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-markdown-links.test.ts'
   repository-scan:
     desc: Scan the repository for machine paths, broken Markdown links and core-path drift (pre-push mirror of the CI job)
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-no-machine-paths.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-markdown-links.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-core-paths.ts
+      - '{{.NODE_SCRIPTS}}/check-no-machine-paths.ts'
+      - '{{.NODE_SCRIPTS}}/check-markdown-links.ts'
+      - '{{.NODE_SCRIPTS}}/check-core-paths.ts'
   lint-typescript:
     desc: Run every TypeScript check (pre-push mirror of the CI job)
     preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts tsc oxlint oxfmt
+      - sh: '{{.NODE_SCRIPTS}}/check-tool-binaries.ts tsc oxlint oxfmt'
         msg: "Run: task lint-bootstrap"
     cmds:
       - task: :lint-ts
   lint-typescript-selftest:
     desc: Run the TypeScript lint self-tests (pre-push mirror of the CI job)
     preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts tsc oxlint oxfmt
+      - sh: '{{.NODE_SCRIPTS}}/check-tool-binaries.ts tsc oxlint oxfmt'
         msg: "Run: task lint-bootstrap"
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-erasable-syntax.test.ts {{.REPO_DIR}}/scripts/tests/lint-typescript.test.ts {{.REPO_DIR}}/scripts/tests/check-typescript.test.ts
@@ -107,29 +102,29 @@ tasks:
   host-safety:
     desc: Run the host-safety check (pre-push mirror of the CI job)
     preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts tsc
+      - sh: '{{.NODE_SCRIPTS}}/check-tool-binaries.ts tsc'
         msg: "Run: task lint-bootstrap"
     cmds:
       - task: :host-safety
   host-safety-selftest:
     desc: Run the host-safety self-tests (pre-push mirror of the CI job)
     preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts tsc
+      - sh: '{{.NODE_SCRIPTS}}/check-tool-binaries.ts tsc'
         msg: "Run: task lint-bootstrap"
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-host-safety.test.ts
   path-ownership:
     desc: Run the path-ownership and stray-scan wiring checks (pre-push mirror of the CI job)
     preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts tsc
+      - sh: '{{.NODE_SCRIPTS}}/check-tool-binaries.ts tsc'
         msg: "Run: task lint-bootstrap"
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-path-ownership.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-stray-scan-wiring.ts
+      - '{{.NODE_SCRIPTS}}/check-path-ownership.ts'
+      - '{{.NODE_SCRIPTS}}/check-stray-scan-wiring.ts'
   path-ownership-selftest:
     desc: Run the path-ownership and stray-scan wiring self-tests (pre-push mirror of the CI job)
     preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts tsc
+      - sh: '{{.NODE_SCRIPTS}}/check-tool-binaries.ts tsc'
         msg: "Run: task lint-bootstrap"
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-path-ownership.test.ts
@@ -140,34 +135,32 @@ tasks:
       - task: :check-skill-versions
   check-description-length:
     desc: Fail when a skill or agent description exceeds the length cap (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - task: :check-description-length
   check-agents-size:
     desc: Fail when the AGENTS.md size budget is exceeded (pre-push mirror of the CI job)
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-agents-size.ts
+      - '{{.NODE_SCRIPTS}}/check-agents-size.ts'
   check-rules-size:
     desc: Fail when the rules size budget is exceeded (pre-push mirror of the CI job)
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-rules-size.ts
+      - '{{.NODE_SCRIPTS}}/check-rules-size.ts'
   check-comment-size:
     desc: Check the comment-size guard on its under and over fixtures (pre-push mirror of the CI job)
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-comment-size.ts {{.REPO_DIR}}/scripts/tests/fixtures/comment-size/under.txt
-      - "! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-comment-size.ts {{.REPO_DIR}}/scripts/tests/fixtures/comment-size/over.txt"
+      - '{{.NODE_SCRIPTS}}/check-comment-size.ts {{.REPO_DIR}}/scripts/tests/fixtures/comment-size/under.txt'
+      - "! {{.NODE_SCRIPTS}}/check-comment-size.ts {{.REPO_DIR}}/scripts/tests/fixtures/comment-size/over.txt"
   docs-index:
     desc: Check docs/index.json is fresh (cached by the ci-cache-guard capability key)
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability docs-index -- node {{.REPO_DIR}}/scripts/build-docs-index.ts --check
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability docs-index -- node {{.REPO_DIR}}/scripts/build-docs-index.ts --check'
   docs-index-selftest:
     desc: Run the docs index entry test (cached by the ci-cache-guard capability key)
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability docs-index-selftest -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-docs-index-entry.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability docs-index-selftest -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-docs-index-entry.test.ts'
   cli-matrix-fresh:
     desc: Check docs/cli-matrix.md is fresh (pre-push mirror of the CI job)
     cmds:
@@ -181,318 +174,252 @@ tasks:
   test-wiring:
     desc: Check every test is wired into CI and no stray test exists (pre-push mirror of the CI job)
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-test-wiring.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-test-strays.ts
+      - '{{.NODE_SCRIPTS}}/check-test-wiring.ts'
+      - '{{.NODE_SCRIPTS}}/check-test-strays.ts'
   test-wiring-selftest:
     desc: Run the test-wiring and test-strays guard self-tests (pre-push mirror of the CI job)
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-check-test-wiring-cases.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-check-test-strays-cases.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-provenance-strip.test.ts {{.REPO_DIR}}/scripts/tests/check-description-length-ci-wiring.test.ts {{.REPO_DIR}}/scripts/tests/check-description-length.test.ts {{.REPO_DIR}}/scripts/tests/extension-references.test.ts {{.REPO_DIR}}/scripts/tests/model-ci-shims-wiring.test.ts {{.REPO_DIR}}/scripts/tests/mutation-copy.test.ts {{.REPO_DIR}}/scripts/tests/normal-diff-apply.test.ts {{.REPO_DIR}}/scripts/tests/setup-hooks-stale-migration.test.ts {{.REPO_DIR}}/scripts/tests/skill-size-budgets.test.ts {{.REPO_DIR}}/scripts/tests/tls-exec-legacy-rewrite.test.ts {{.REPO_DIR}}/scripts/tests/tls-exec.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-check-test-wiring-cases.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-check-test-strays-cases.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-provenance-strip.test.ts {{.REPO_DIR}}/scripts/tests/check-description-length-ci-wiring.test.ts {{.REPO_DIR}}/scripts/tests/check-description-length.test.ts {{.REPO_DIR}}/scripts/tests/extension-references.test.ts {{.REPO_DIR}}/scripts/tests/model-ci-shims-wiring.test.ts {{.REPO_DIR}}/scripts/tests/mutation-copy.test.ts {{.REPO_DIR}}/scripts/tests/normal-diff-apply.test.ts {{.REPO_DIR}}/scripts/tests/setup-hooks-stale-migration.test.ts {{.REPO_DIR}}/scripts/tests/skill-size-budgets.test.ts {{.REPO_DIR}}/scripts/tests/tls-exec-legacy-rewrite.test.ts {{.REPO_DIR}}/scripts/tests/tls-exec.test.ts'
   alert-scheduled-failure:
     desc: Open or comment on the issue for a red scheduled run (pass -- --result <value> [--dry-run])
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-alert-scheduled-failure.ts {{.CLI_ARGS}}
+      - '{{.NODE_SCRIPTS}}/ci-alert-scheduled-failure.ts {{.CLI_ARGS}}'
   alert-scheduled-failure-selftest:
     desc: Run the scheduled-failure alert self-test against a fake gh
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-alert-scheduled-failure.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-alert-scheduled-failure.test.ts'
   alert-scheduled-failure-check:
     desc: Check the alert job wiring in the exhaustive-run workflow
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-alert-scheduled-failure.ts
+      - '{{.NODE_SCRIPTS}}/check-alert-scheduled-failure.ts'
   check-ci-parity:
     desc: Check the CI reference, workflow and GitLab outputs agree (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-ci-parity.ts
+      - '{{.NODE_SCRIPTS}}/check-ci-parity.ts'
   gitlab-ci-check:
     desc: Check .gitlab-ci.yml is fresh against the CI reference (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/build-ci.ts --check
+      - '{{.NODE_SCRIPTS}}/build-ci.ts --check'
   component-drift:
     desc: Check built components match their sources (cached by the ci-cache-guard capability key)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability component-drift -- node {{.REPO_DIR}}/scripts/build-components.ts --target all --check
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability component-drift -- node {{.REPO_DIR}}/scripts/build-components.ts --target all --check'
   component-drift-selftest:
     desc: Run the assembly and canonical-repo build tests (cached by the ci-cache-guard capability key)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability component-drift-selftest -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-assembly-routing.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability component-drift-selftest -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-assembly-routing.test.ts'
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-canonical-repo.test.ts
   frontmatter:
     desc: Run the frontmatter, skill-version, routing, install-scope and tier-resolution suites (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-frontmatter-fence.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-skill-versions.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-skill-versions-base.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-feedback-routing.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-assembly-routing.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-install-scope-build.test.ts {{.REPO_DIR}}/scripts/tests/build-install-scope-gate.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/tier-resolution-collision.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-declarations.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-install.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-landing.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-taskfile.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-three-tiers.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/pr-logbook-label-scope.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-frontmatter-fence.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-skill-versions.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-skill-versions-base.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-feedback-routing.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-assembly-routing.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-install-scope-build.test.ts {{.REPO_DIR}}/scripts/tests/build-install-scope-gate.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/tier-resolution-collision.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-declarations.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-install.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-landing.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-taskfile.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-three-tiers.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/pr-logbook-label-scope.test.ts'
   pre-push:
     desc: "Run the fast subset of the CI checks the pushed changeset can affect, concurrently (spec 0279). Usage: task ci:pre-push [-- <wrapper args>]"
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-pre-push.ts {{.CLI_ARGS}}
+      - '{{.NODE_SCRIPTS}}/ci-pre-push.ts {{.CLI_ARGS}}'
   hooks-install:
     desc: Enable the native pre-push hook for this clone by setting core.hooksPath to .githooks (spec 0279 R15)
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-pre-push.ts hooks install
+      - '{{.NODE_SCRIPTS}}/ci-pre-push.ts hooks install'
   hooks-uninstall:
     desc: Disable the native pre-push hook by unsetting core.hooksPath for this clone (spec 0279 R15)
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-pre-push.ts hooks uninstall
+      - '{{.NODE_SCRIPTS}}/ci-pre-push.ts hooks uninstall'
   hooks-status:
     desc: Report whether the native pre-push hook is enabled for this clone (spec 0279 R15)
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-pre-push.ts hooks status
+      - '{{.NODE_SCRIPTS}}/ci-pre-push.ts hooks status'
   install-ts:
     desc: Run the install-ts CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/antigravity-migrate.test.ts {{.REPO_DIR}}/scripts/tests/component-install.test.ts {{.REPO_DIR}}/scripts/tests/component-overlay.test.ts {{.REPO_DIR}}/scripts/tests/component-roots.test.ts {{.REPO_DIR}}/scripts/tests/component-twins-conformance-migrate.test.ts {{.REPO_DIR}}/scripts/tests/component-twins-conformance.test.ts {{.REPO_DIR}}/scripts/tests/install-oracle-mutation.test.ts {{.REPO_DIR}}/scripts/tests/link-or-copy-classify.test.ts {{.REPO_DIR}}/scripts/tests/link-or-copy-remove.test.ts {{.REPO_DIR}}/scripts/tests/link-or-copy-swap.test.ts {{.REPO_DIR}}/scripts/tests/link-or-copy.test.ts {{.REPO_DIR}}/scripts/tests/manage-confirm.test.ts {{.REPO_DIR}}/scripts/tests/manage-descriptors.test.ts {{.REPO_DIR}}/scripts/tests/manage-main.test.ts {{.REPO_DIR}}/scripts/tests/manage-mcp-claude.test.ts {{.REPO_DIR}}/scripts/tests/manage-mcp-json.test.ts {{.REPO_DIR}}/scripts/tests/manage-overlay-loop.test.ts {{.REPO_DIR}}/scripts/tests/manage-place.test.ts {{.REPO_DIR}}/scripts/tests/print-manage-declarations.test.ts {{.REPO_DIR}}/scripts/tests/tree-copy-dereferenced.test.ts {{.REPO_DIR}}/scripts/tests/manage-entry.test.ts {{.REPO_DIR}}/scripts/tests/marketplace.test.ts {{.REPO_DIR}}/scripts/tests/antigravity-tokens.test.ts {{.REPO_DIR}}/scripts/tests/install-all.test.ts {{.REPO_DIR}}/scripts/tests/install-entry-form.test.ts {{.REPO_DIR}}/scripts/tests/install-file-size.test.ts {{.REPO_DIR}}/scripts/tests/install-extension-reentrancy.test.ts {{.REPO_DIR}}/scripts/tests/worktree-claim-launch.test.ts {{.REPO_DIR}}/scripts/tests/install-golden.test.ts {{.REPO_DIR}}/scripts/tests/install-references.test.ts {{.REPO_DIR}}/scripts/tests/install-write-mode.test.ts {{.REPO_DIR}}/scripts/tests/windows-install-entries.test.ts
   setup-modules-ts:
     desc: Run the setup-modules-ts CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/setup-answers.test.ts {{.REPO_DIR}}/scripts/tests/setup-antigravity-hooks.test.ts {{.REPO_DIR}}/scripts/tests/setup-antigravity-statusline.test.ts {{.REPO_DIR}}/scripts/tests/setup-antigravity-tier.test.ts {{.REPO_DIR}}/scripts/tests/setup-backup.test.ts {{.REPO_DIR}}/scripts/tests/setup-backup-failure.test.ts {{.REPO_DIR}}/scripts/tests/setup-catalogue.test.ts {{.REPO_DIR}}/scripts/tests/setup-chroma-install.test.ts {{.REPO_DIR}}/scripts/tests/setup-chroma-install-win.test.ts {{.REPO_DIR}}/scripts/tests/setup-chroma-unit.test.ts {{.REPO_DIR}}/scripts/tests/setup-cli-claude-gemini.test.ts {{.REPO_DIR}}/scripts/tests/setup-cli-copilot-antigravity.test.ts {{.REPO_DIR}}/scripts/tests/setup-declarations.test.ts {{.REPO_DIR}}/scripts/tests/setup-deps.test.ts {{.REPO_DIR}}/scripts/tests/setup-ensure-http.test.ts {{.REPO_DIR}}/scripts/tests/setup-ensure-http-probes.test.ts {{.REPO_DIR}}/scripts/tests/setup-ensure-http-wiring.test.ts {{.REPO_DIR}}/scripts/tests/setup-file-size.test.ts {{.REPO_DIR}}/scripts/tests/setup-files.test.ts {{.REPO_DIR}}/scripts/tests/setup-flow.test.ts {{.REPO_DIR}}/scripts/tests/setup-flow-steps.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-rc.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-write.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-evidence.test.ts {{.REPO_DIR}}/scripts/tests/setup-hint-strings.test.ts {{.REPO_DIR}}/scripts/tests/setup-hooks-rewrite.test.ts {{.REPO_DIR}}/scripts/tests/setup-json-secure.test.ts {{.REPO_DIR}}/scripts/tests/setup-json-secure-failure.test.ts {{.REPO_DIR}}/scripts/tests/setup-lib-tls-entry.test.ts {{.REPO_DIR}}/scripts/tests/setup-lib-tls-entry-offer.test.ts {{.REPO_DIR}}/scripts/tests/setup-lib-usage-entry.test.ts {{.REPO_DIR}}/scripts/tests/setup-lib-usage-entry-form.test.ts {{.REPO_DIR}}/scripts/tests/setup-link-key.test.ts {{.REPO_DIR}}/scripts/tests/setup-lossless-callsites.test.ts {{.REPO_DIR}}/scripts/tests/setup-lossless-shim.test.ts {{.REPO_DIR}}/scripts/tests/setup-lossless-writers.test.ts {{.REPO_DIR}}/scripts/tests/setup-mcp-agy-step.test.ts {{.REPO_DIR}}/scripts/tests/setup-mcp-claude-flow.test.ts {{.REPO_DIR}}/scripts/tests/setup-mcp-claude-step.test.ts {{.REPO_DIR}}/scripts/tests/setup-mcp-copilot-step.test.ts {{.REPO_DIR}}/scripts/tests/setup-mcp-gemini-step.test.ts {{.REPO_DIR}}/scripts/tests/setup-mcp-json-writers.test.ts {{.REPO_DIR}}/scripts/tests/setup-mcp-json-writers-merge.test.ts {{.REPO_DIR}}/scripts/tests/setup-mempalace-callsite.test.ts {{.REPO_DIR}}/scripts/tests/setup-mempalace-detect.test.ts {{.REPO_DIR}}/scripts/tests/setup-mempalace-install-offer.test.ts {{.REPO_DIR}}/scripts/tests/setup-mempalace-stdio.test.ts {{.REPO_DIR}}/scripts/tests/setup-mempalace-version.test.ts {{.REPO_DIR}}/scripts/tests/setup-misc-paths.test.ts {{.REPO_DIR}}/scripts/tests/setup-no-posix-tool.test.ts {{.REPO_DIR}}/scripts/tests/setup-org-mcp-claude-argv.test.ts {{.REPO_DIR}}/scripts/tests/setup-org-mcp-fold.test.ts {{.REPO_DIR}}/scripts/tests/setup-prerequisites.test.ts {{.REPO_DIR}}/scripts/tests/setup-prompt.test.ts {{.REPO_DIR}}/scripts/tests/setup-prompt-integration.test.ts {{.REPO_DIR}}/scripts/tests/setup-prompt-table.test.ts {{.REPO_DIR}}/scripts/tests/setup-prompt-tty.test.ts {{.REPO_DIR}}/scripts/tests/setup-references.test.ts {{.REPO_DIR}}/scripts/tests/setup-session-recording.test.ts {{.REPO_DIR}}/scripts/tests/setup-session-recording-ownership.test.ts {{.REPO_DIR}}/scripts/tests/setup-stdlib-closure.test.ts {{.REPO_DIR}}/scripts/tests/setup-steps-agy.test.ts {{.REPO_DIR}}/scripts/tests/setup-steps-agy-channels.test.ts {{.REPO_DIR}}/scripts/tests/setup-steps-copilot.test.ts {{.REPO_DIR}}/scripts/tests/setup-steps-hooks.test.ts {{.REPO_DIR}}/scripts/tests/setup-steps-hooks-lossy.test.ts {{.REPO_DIR}}/scripts/tests/setup-steps-mcp.test.ts {{.REPO_DIR}}/scripts/tests/setup-steps-rules.test.ts {{.REPO_DIR}}/scripts/tests/setup-steps-rules-edge.test.ts {{.REPO_DIR}}/scripts/tests/setup-steps-tiers.test.ts {{.REPO_DIR}}/scripts/tests/setup-steps-usage.test.ts {{.REPO_DIR}}/scripts/tests/setup-store-guidance.test.ts {{.REPO_DIR}}/scripts/tests/setup-summary.test.ts {{.REPO_DIR}}/scripts/tests/setup-tier-build.test.ts {{.REPO_DIR}}/scripts/tests/setup-tier-install.test.ts {{.REPO_DIR}}/scripts/tests/setup-tls-detect.test.ts {{.REPO_DIR}}/scripts/tests/setup-tls-offer.test.ts {{.REPO_DIR}}/scripts/tests/setup-trust-wrapper.test.ts {{.REPO_DIR}}/scripts/tests/setup-trust-wrapper-install.test.ts {{.REPO_DIR}}/scripts/tests/setup-usage-capture.test.ts {{.REPO_DIR}}/scripts/tests/setup-usage-capture-keep.test.ts {{.REPO_DIR}}/scripts/tests/setup-usage-capture-rank.test.ts {{.REPO_DIR}}/scripts/tests/setup-usage-capture-state.test.ts {{.REPO_DIR}}/scripts/tests/setup-usage-capture-wire-path.test.ts {{.REPO_DIR}}/scripts/tests/setup-validation.test.ts {{.REPO_DIR}}/scripts/tests/tls-env-quote.test.ts {{.REPO_DIR}}/scripts/tests/tls-env-writer.test.ts {{.REPO_DIR}}/scripts/tests/manage-confirm-remainder.test.ts
   release-driver-modules-ts:
     desc: Run the release-driver-modules-ts CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/monorepo-release-preflight.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-credentials.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-log-parse.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-prepare-cmd.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-config.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-process.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-scratch.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-mirror.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-clone-modules.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-flows-publish.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-flows-rehearsal.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-github.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-github-sync.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-main.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-main-flow.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-file-size.test.ts {{.REPO_DIR}}/scripts/tests/monorepo-release-extension-dirs.test.ts
   packaging-modules-ts:
     desc: Run the packaging-modules-ts CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/tar-writer.test.ts {{.REPO_DIR}}/scripts/tests/docs-index.test.ts {{.REPO_DIR}}/scripts/tests/docs-index-walk.test.ts {{.REPO_DIR}}/scripts/tests/build-docs-index-entry.test.ts {{.REPO_DIR}}/scripts/tests/packaging-file-size.test.ts {{.REPO_DIR}}/scripts/tests/packaging-release-package.test.ts {{.REPO_DIR}}/scripts/tests/packaging-release-package-cli.test.ts {{.REPO_DIR}}/scripts/tests/packaging-spawn-tiers.test.ts {{.REPO_DIR}}/scripts/tests/packaging-entries.test.ts {{.REPO_DIR}}/scripts/tests/release-sync-manifests.test.ts {{.REPO_DIR}}/scripts/tests/packaging-release-golden-portable.test.ts
   governance-checks-ts:
     desc: Run the governance-checks-ts CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test '{{.REPO_DIR}}/scripts/tests/governance-*.test.ts' {{.REPO_DIR}}/scripts/tests/check-agents-size.test.ts {{.REPO_DIR}}/scripts/tests/check-rules-size.test.ts {{.REPO_DIR}}/scripts/tests/check-comment-size.test.ts {{.REPO_DIR}}/scripts/tests/check-comment-size-ci-wiring.test.ts {{.REPO_DIR}}/scripts/tests/check-seat-brief.test.ts {{.REPO_DIR}}/scripts/tests/check-seat-brief-ci-wiring.test.ts {{.REPO_DIR}}/scripts/tests/check-plan-review.test.ts {{.REPO_DIR}}/scripts/tests/check-plan-review-ci-wiring.test.ts {{.REPO_DIR}}/scripts/tests/check-plan-review-gate.test.ts {{.REPO_DIR}}/scripts/tests/seat-ledger.test.ts {{.REPO_DIR}}/scripts/tests/economy-measure.test.ts
   build-components-ts:
     desc: Run the build-components-ts CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/tests/lib/windows-build-proof.ts
+      - '{{.NODE_SCRIPTS}}/tests/lib/windows-build-proof.ts'
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-cleanup.test.ts {{.REPO_DIR}}/scripts/tests/build-components-cli.test.ts {{.REPO_DIR}}/scripts/tests/build-components-cli-config.test.ts {{.REPO_DIR}}/scripts/tests/build-components-conformance.test.ts {{.REPO_DIR}}/scripts/tests/build-components-conformance-mutation.test.ts {{.REPO_DIR}}/scripts/tests/build-components-conformance-org.test.ts {{.REPO_DIR}}/scripts/tests/build-components-conformance-render.test.ts {{.REPO_DIR}}/scripts/tests/build-components-conformance-root.test.ts {{.REPO_DIR}}/scripts/tests/build-components-dependency.test.ts {{.REPO_DIR}}/scripts/tests/build-components-entry-form.test.ts {{.REPO_DIR}}/scripts/tests/build-components-file-size.test.ts {{.REPO_DIR}}/scripts/tests/build-components-fixture-closure.test.ts {{.REPO_DIR}}/scripts/tests/build-components-hardening-names.test.ts {{.REPO_DIR}}/scripts/tests/build-components-hardening-names-e2e.test.ts {{.REPO_DIR}}/scripts/tests/build-components-hardening-printed.test.ts {{.REPO_DIR}}/scripts/tests/build-components-hardening-printed-values.test.ts {{.REPO_DIR}}/scripts/tests/build-components-hardening-yaml.test.ts {{.REPO_DIR}}/scripts/tests/build-components-hardening-yaml-e2e.test.ts {{.REPO_DIR}}/scripts/tests/build-components-names.test.ts {{.REPO_DIR}}/scripts/tests/build-components-output.test.ts {{.REPO_DIR}}/scripts/tests/build-components-output-agents.test.ts {{.REPO_DIR}}/scripts/tests/build-components-output-resources.test.ts {{.REPO_DIR}}/scripts/tests/build-components-output-skills.test.ts {{.REPO_DIR}}/scripts/tests/build-components-provenance.test.ts {{.REPO_DIR}}/scripts/tests/build-components-resources.test.ts {{.REPO_DIR}}/scripts/tests/build-components-write.test.ts {{.REPO_DIR}}/scripts/tests/build-components-shim.test.ts {{.REPO_DIR}}/scripts/tests/build-components-ci-wiring.test.ts {{.REPO_DIR}}/scripts/tests/build-components-references.test.ts {{.REPO_DIR}}/scripts/tests/build-components-yaml-corpus.test.ts {{.REPO_DIR}}/scripts/tests/yaml-text.test.ts {{.REPO_DIR}}/scripts/tests/render-command.test.ts {{.REPO_DIR}}/scripts/tests/component-resolve.test.ts {{.REPO_DIR}}/scripts/tests/model-resolve-*.test.ts {{.REPO_DIR}}/scripts/tests/build-sandbox.test.ts {{.REPO_DIR}}/scripts/tests/repo-agent-frontmatter.test.ts
   extension-builders-ts:
     desc: Run the extension-builders-ts CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/tests/lib/windows-extension-proof.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/build-extension.ts --check
+      - '{{.NODE_SCRIPTS}}/tests/lib/windows-extension-proof.ts'
+      - '{{.NODE_SCRIPTS}}/build-extension.ts --check'
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/create-extension-differential.test.ts {{.REPO_DIR}}/scripts/tests/create-extension-prompt.test.ts {{.REPO_DIR}}/scripts/tests/create-extension-skeleton-toolchain.test.ts {{.REPO_DIR}}/scripts/tests/extension-args.test.ts {{.REPO_DIR}}/scripts/tests/extension-check-scan.test.ts {{.REPO_DIR}}/scripts/tests/extension-check.test.ts {{.REPO_DIR}}/scripts/tests/extension-cli.test.ts {{.REPO_DIR}}/scripts/tests/extension-conformance.test.ts {{.REPO_DIR}}/scripts/tests/extension-context-declared.test.ts {{.REPO_DIR}}/scripts/tests/extension-context.test.ts {{.REPO_DIR}}/scripts/tests/extension-descriptors.test.ts {{.REPO_DIR}}/scripts/tests/extension-entry-ctx.test.ts {{.REPO_DIR}}/scripts/tests/extension-entry-form.test.ts {{.REPO_DIR}}/scripts/tests/extension-file-size.test.ts {{.REPO_DIR}}/scripts/tests/extension-gap-record.test.ts {{.REPO_DIR}}/scripts/tests/extension-golden.test.ts {{.REPO_DIR}}/scripts/tests/extension-hooks-antigravity-guard.test.ts {{.REPO_DIR}}/scripts/tests/extension-hooks-differential.test.ts {{.REPO_DIR}}/scripts/tests/extension-hooks-entry-form.test.ts {{.REPO_DIR}}/scripts/tests/extension-hooks-layouts.test.ts {{.REPO_DIR}}/scripts/tests/extension-hook-static-reads.test.ts {{.REPO_DIR}}/scripts/tests/extension-hooks.test.ts {{.REPO_DIR}}/scripts/tests/extension-json-corpus.test.ts {{.REPO_DIR}}/scripts/tests/extension-json.test.ts {{.REPO_DIR}}/scripts/tests/extension-manifest.test.ts {{.REPO_DIR}}/scripts/tests/extension-mcp-delivery.test.ts {{.REPO_DIR}}/scripts/tests/extension-migrate.test.ts {{.REPO_DIR}}/scripts/tests/extension-org-mcp.test.ts {{.REPO_DIR}}/scripts/tests/extension-plugin-antigravity.test.ts {{.REPO_DIR}}/scripts/tests/extension-plugin-claude.test.ts {{.REPO_DIR}}/scripts/tests/extension-plugin-common.test.ts {{.REPO_DIR}}/scripts/tests/extension-plugin-copilot.test.ts {{.REPO_DIR}}/scripts/tests/extension-render-gemini.test.ts {{.REPO_DIR}}/scripts/tests/extension-render-plugins.test.ts {{.REPO_DIR}}/scripts/tests/extension-resolve.test.ts {{.REPO_DIR}}/scripts/tests/extension-shape-guard.test.ts {{.REPO_DIR}}/scripts/tests/extension-tree-copy.test.ts {{.REPO_DIR}}/scripts/tests/extension-validate-all.test.ts {{.REPO_DIR}}/scripts/tests/extension-validate.test.ts
   skill-scripts-ts:
     desc: Run the skill-scripts-ts CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/skill-scripts-oracle.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-yaml-leg.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-differential.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-layouts.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-copied-skill.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-mutation.test.ts {{.REPO_DIR}}/scripts/tests/callers-sweep.test.ts
   model-ci-tooling-ts:
     desc: Run the model-ci-tooling-ts CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test '{{.REPO_DIR}}/scripts/tests/model-ci-tooling-*.test.ts'
   extension-provenance:
     desc: Run the extension-provenance CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-extension-provenance.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-extension-provenance.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-extension-provenance-r4.test.ts
+      - '{{.NODE_SCRIPTS}}/check-extension-provenance.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-extension-provenance.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-extension-provenance-r4.test.ts'
   extension-manifest:
     desc: Run the extension-manifest CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-extension-manifest-version.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-extension-version-bump.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-extension-version-bump-base.test.ts
+      - '{{.NODE_SCRIPTS}}/check-extension-manifest-version.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-extension-version-bump.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-extension-version-bump-base.test.ts'
   setup-differential:
     desc: Run the setup-differential CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/setup-differential.test.ts {{.REPO_DIR}}/scripts/tests/setup-differential-antigravity.test.ts {{.REPO_DIR}}/scripts/tests/setup-differential-claude.test.ts {{.REPO_DIR}}/scripts/tests/setup-differential-copilot.test.ts {{.REPO_DIR}}/scripts/tests/setup-differential-gemini.test.ts {{.REPO_DIR}}/scripts/tests/setup-twins-differential-usage.test.ts
   check-metadata-keys:
     desc: Run the check-metadata-keys CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-component-metadata-keys.ts
+      - '{{.NODE_SCRIPTS}}/check-component-metadata-keys.ts'
   check-claude-agent-layout:
     desc: Run the check-claude-agent-layout CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-claude-agent-layout.ts
+      - '{{.NODE_SCRIPTS}}/check-claude-agent-layout.ts'
   ci-pre-push-replay:
     desc: Run the ci-pre-push-replay CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-pre-push-replay.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-draft-lint.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-pre-push-replay.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-draft-lint.test.ts'
   misc:
     desc: Run the misc CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-no-machine-paths.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-gemini-overlay-enrollment.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/reserve-spec-id-contract.test.ts {{.REPO_DIR}}/scripts/tests/reserve-spec-id-carrier-reuse.test.ts {{.REPO_DIR}}/scripts/tests/reserve-spec-id-races.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-spec-id-reserved-blocking.test.ts {{.REPO_DIR}}/scripts/tests/check-spec-id-reserved-mark.test.ts {{.REPO_DIR}}/scripts/tests/check-spec-id-reserved-origin.test.ts {{.REPO_DIR}}/scripts/tests/check-spec-id-reserved-degraded.test.ts {{.REPO_DIR}}/scripts/tests/check-spec-id-reserved-base-ref.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-no-machine-paths.test.ts'
+      - '{{.NODE_SCRIPTS}}/check-gemini-overlay-enrollment.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/reserve-spec-id-contract.test.ts {{.REPO_DIR}}/scripts/tests/reserve-spec-id-carrier-reuse.test.ts {{.REPO_DIR}}/scripts/tests/reserve-spec-id-races.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-spec-id-reserved-blocking.test.ts {{.REPO_DIR}}/scripts/tests/check-spec-id-reserved-mark.test.ts {{.REPO_DIR}}/scripts/tests/check-spec-id-reserved-origin.test.ts {{.REPO_DIR}}/scripts/tests/check-spec-id-reserved-degraded.test.ts {{.REPO_DIR}}/scripts/tests/check-spec-id-reserved-base-ref.test.ts'
   worktree-guard:
     desc: Run the worktree-guard CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test '{{.REPO_DIR}}/scripts/tests/worktree-*.test.ts'
   mempalace-transcript:
     desc: Run the mempalace-transcript CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test '{{.REPO_DIR}}/scripts/tests/mempalace-transcript-*.test.ts' '{{.REPO_DIR}}/scripts/tests/hook-transcript-*.test.ts'
   check-seat-brief:
     desc: Run the check-seat-brief CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-seat-brief.ts {{.REPO_DIR}}/scripts/tests/fixtures/seat-brief/conforming-review.txt
-      - '! node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-seat-brief.ts {{.REPO_DIR}}/scripts/tests/fixtures/seat-brief/breach-1410.txt'
+      - '{{.NODE_SCRIPTS}}/check-seat-brief.ts {{.REPO_DIR}}/scripts/tests/fixtures/seat-brief/conforming-review.txt'
+      - '! {{.NODE_SCRIPTS}}/check-seat-brief.ts {{.REPO_DIR}}/scripts/tests/fixtures/seat-brief/breach-1410.txt'
   extension-render:
     desc: Run the extension-render CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-extension-pivot.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-extension-suite-render.test.ts {{.REPO_DIR}}/scripts/tests/build-extension-suite-check.test.ts {{.REPO_DIR}}/scripts/tests/build-extension-suite-hooks.test.ts {{.REPO_DIR}}/scripts/tests/build-extension-suite-context.test.ts {{.REPO_DIR}}/scripts/tests/build-extension-suite-scaffold.test.ts {{.REPO_DIR}}/scripts/tests/migrate-extension-entry.test.ts {{.REPO_DIR}}/scripts/tests/create-extension-combinations.test.ts {{.REPO_DIR}}/scripts/tests/create-extension-gap-derivation.test.ts {{.REPO_DIR}}/scripts/tests/extension-render-conformance.test.ts {{.REPO_DIR}}/scripts/tests/extension-render-conformance-checks.test.ts {{.REPO_DIR}}/scripts/tests/extension-sandbox.test.ts
+      - '{{.NODE_SCRIPTS}}/check-extension-pivot.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-extension-suite-render.test.ts {{.REPO_DIR}}/scripts/tests/build-extension-suite-check.test.ts {{.REPO_DIR}}/scripts/tests/build-extension-suite-hooks.test.ts {{.REPO_DIR}}/scripts/tests/build-extension-suite-context.test.ts {{.REPO_DIR}}/scripts/tests/build-extension-suite-scaffold.test.ts {{.REPO_DIR}}/scripts/tests/migrate-extension-entry.test.ts {{.REPO_DIR}}/scripts/tests/create-extension-combinations.test.ts {{.REPO_DIR}}/scripts/tests/create-extension-gap-derivation.test.ts {{.REPO_DIR}}/scripts/tests/extension-render-conformance.test.ts {{.REPO_DIR}}/scripts/tests/extension-render-conformance-checks.test.ts {{.REPO_DIR}}/scripts/tests/extension-sandbox.test.ts'
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/build-extension.ts --check
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-extension-hook-tokens.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-extension-hook-map.ts
+      - '{{.NODE_SCRIPTS}}/build-extension.ts --check'
+      - '{{.NODE_SCRIPTS}}/check-extension-hook-tokens.ts'
+      - '{{.NODE_SCRIPTS}}/check-extension-hook-map.ts'
   extension-install:
     desc: Run the extension-install CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/install-claude-plugin-marketplace.test.ts {{.REPO_DIR}}/scripts/tests/install-extension-all-real.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/install-claude-plugin-marketplace.test.ts {{.REPO_DIR}}/scripts/tests/install-extension-all-real.test.ts'
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/install-sandbox.test.ts {{.REPO_DIR}}/scripts/tests/install-workspace.test.ts {{.REPO_DIR}}/scripts/tests/unlink-component.test.ts {{.REPO_DIR}}/scripts/tests/unlink-extensions.test.ts {{.REPO_DIR}}/scripts/tests/install-extension.test.ts {{.REPO_DIR}}/scripts/tests/link-extensions.test.ts {{.REPO_DIR}}/scripts/tests/install-copilot-plugin.test.ts {{.REPO_DIR}}/scripts/tests/install-antigravity-extension.test.ts
   core-paths:
     desc: Run the core-paths CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/sync-from-upstream-policies.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-reconcile.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-orphans.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-dirty-report.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-preserve.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-signing.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/sync-from-upstream-policies.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-reconcile.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-orphans.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-dirty-report.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-preserve.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-signing.test.ts'
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/sync-from-upstream-self-update.test.ts
   setup:
     desc: Run the setup CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/setup-identity-flow.test.ts {{.REPO_DIR}}/scripts/tests/setup-legacy-gemini-md-declaration.test.ts {{.REPO_DIR}}/scripts/tests/setup-mcp-merge-policy.test.ts {{.REPO_DIR}}/scripts/tests/setup-org-mcp-wiring.test.ts {{.REPO_DIR}}/scripts/tests/setup-secrets-fold.test.ts {{.REPO_DIR}}/scripts/tests/setup-tier-staging-declared.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/tls-delegation-contract.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-failure.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-jsonc.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-runs.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-seeds.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/setup-identity-flow.test.ts {{.REPO_DIR}}/scripts/tests/setup-legacy-gemini-md-declaration.test.ts {{.REPO_DIR}}/scripts/tests/setup-mcp-merge-policy.test.ts {{.REPO_DIR}}/scripts/tests/setup-org-mcp-wiring.test.ts {{.REPO_DIR}}/scripts/tests/setup-secrets-fold.test.ts {{.REPO_DIR}}/scripts/tests/setup-tier-staging-declared.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/tls-delegation-contract.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-failure.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-jsonc.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-runs.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-seeds.test.ts'
   check-model-mappings:
     desc: Run the check-model-mappings CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-model-mappings.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-model-mappings-rejections.test.ts {{.REPO_DIR}}/scripts/tests/check-model-mappings-org.test.ts {{.REPO_DIR}}/scripts/tests/check-model-mappings-selection.test.ts {{.REPO_DIR}}/scripts/tests/check-model-mappings-committed.test.ts
+      - '{{.NODE_SCRIPTS}}/check-model-mappings.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-model-mappings-rejections.test.ts {{.REPO_DIR}}/scripts/tests/check-model-mappings-org.test.ts {{.REPO_DIR}}/scripts/tests/check-model-mappings-selection.test.ts {{.REPO_DIR}}/scripts/tests/check-model-mappings-committed.test.ts'
   check-agent-profiles:
     desc: Run the check-agent-profiles CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-agent-profiles.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-agent-profiles-rejections.test.ts {{.REPO_DIR}}/scripts/tests/check-agent-profiles-green.test.ts
+      - '{{.NODE_SCRIPTS}}/check-agent-profiles.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-agent-profiles-rejections.test.ts {{.REPO_DIR}}/scripts/tests/check-agent-profiles-green.test.ts'
   agent-profile-migration:
     desc: Run the agent-profile migration regression suite (cached by the ci-cache-guard capability key)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability agent-profile-migration -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/agent-profile-baseline-doc.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-build.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-committed.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability agent-profile-migration -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/agent-profile-baseline-doc.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-build.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-committed.test.ts'
   ci-parity:
     desc: Test the CI generator and parity harness (cached by the ci-cache-guard capability key)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability ci-parity -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-parity-positive.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-fail-closed.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-stray-scan.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-path-filters.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-path-filters-undet.test.ts {{.REPO_DIR}}/scripts/tests/ci-shrink-report.test.ts {{.REPO_DIR}}/scripts/tests/ci-effective-paths.test.ts {{.REPO_DIR}}/scripts/tests/ci-paths-push-trigger.test.ts {{.REPO_DIR}}/scripts/tests/ci-paths-gate.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-ci-job.test.ts {{.REPO_DIR}}/scripts/tests/ci-job-yq.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability ci-parity -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-ci-real-tree.test.ts {{.REPO_DIR}}/scripts/tests/build-ci-synthetic.test.ts {{.REPO_DIR}}/scripts/tests/build-ci-synthetic-write.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability ci-parity -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-parity-positive.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-fail-closed.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-stray-scan.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-path-filters.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-path-filters-undet.test.ts {{.REPO_DIR}}/scripts/tests/ci-shrink-report.test.ts {{.REPO_DIR}}/scripts/tests/ci-effective-paths.test.ts {{.REPO_DIR}}/scripts/tests/ci-paths-push-trigger.test.ts {{.REPO_DIR}}/scripts/tests/ci-paths-gate.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-ci-job.test.ts {{.REPO_DIR}}/scripts/tests/ci-job-yq.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability ci-parity -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-ci-real-tree.test.ts {{.REPO_DIR}}/scripts/tests/build-ci-synthetic.test.ts {{.REPO_DIR}}/scripts/tests/build-ci-synthetic-write.test.ts'
   check-plan-review:
     desc: Check the plan review gate against its fixtures (pre-push mirror of the CI job)
     cmds:
@@ -500,29 +427,23 @@ tasks:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON -e "const {execFileSync}=require('node:child_process');const o=execFileSync(process.execPath,['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON','{{.REPO_DIR}}/scripts/check-plan-review.ts',process.argv[1],process.argv[2]],{encoding:'utf8'}).split('\\n');process.exit(o.includes('plan-review:\\x20'+process.argv[3])?0:1)" {{.REPO_DIR}}/scripts/tests/fixtures/plan-review/skip-spec.md {{.REPO_DIR}}/scripts/tests/fixtures/plan-review/required-plan.md required
   setup-oracle:
     desc: Run the setup entry-point oracle (sandbox, stubs, golden, prompt-inventory and mutation suites)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/setup-sandbox.test.ts {{.REPO_DIR}}/scripts/tests/setup-stubs.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-harness.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-smoke.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-claude.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-gemini.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-copilot.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-antigravity.test.ts {{.REPO_DIR}}/scripts/tests/setup-prompt-inventory.test.ts {{.REPO_DIR}}/scripts/tests/setup-oracle-mutation.test.ts {{.REPO_DIR}}/scripts/tests/setup-oracle-paths.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-portable.test.ts {{.REPO_DIR}}/scripts/tests/setup-entry-form.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-deviations.test.ts {{.REPO_DIR}}/scripts/tests/setup-no-node-modules.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-antigravity-transcript.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-behaviour-a.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-catalogue-picker.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-claude-env.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-entry-behaviour.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-gemini-copilot-run.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-gemini-overlays.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-mcp-order.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-others.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-rc-guard.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-step-order.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-tier-resolution.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-usage-order.test.ts
   figure-labels:
     desc: Check figure labels with OCR (needs tesseract-ocr on PATH)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-figure-labels.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/windows-governance-figure-labels.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-figure-labels.test.ts
+      - '{{.NODE_SCRIPTS}}/check-figure-labels.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/windows-governance-figure-labels.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-figure-labels.test.ts'
   mempalace:
     desc: Run the mempalace CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/mempalace-http-client-reuse.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability mempalace -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/setup-transcript-claude.test.ts {{.REPO_DIR}}/scripts/tests/setup-transcript-gemini.test.ts {{.REPO_DIR}}/scripts/tests/setup-transcript-copilot.test.ts {{.REPO_DIR}}/scripts/tests/setup-transcript-antigravity-manifest.test.ts {{.REPO_DIR}}/scripts/tests/setup-transcript-antigravity-statusline.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-transcript-antigravity-payload.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability mempalace -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/setup-transcript-claude.test.ts {{.REPO_DIR}}/scripts/tests/setup-transcript-gemini.test.ts {{.REPO_DIR}}/scripts/tests/setup-transcript-copilot.test.ts {{.REPO_DIR}}/scripts/tests/setup-transcript-antigravity-manifest.test.ts {{.REPO_DIR}}/scripts/tests/setup-transcript-antigravity-statusline.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-transcript-antigravity-payload.test.ts'
       # `packaging` is the spec-0108 launch guard's PRIMARY comparator and is the
       # branch in force on every serving interpreter that carries it, so CI must
       # exercise it against the real library rather than only against the degraded
@@ -531,21 +452,17 @@ tasks:
       # comparator was actually tested. Not a runtime dependency of the guard: the
       # wrapper still runs, and is still tested, where `packaging` is absent.
       - python3 -m pip install --quiet packaging
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability mempalace -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/mempalace-pin-read.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-pin-compare.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-pin-corpus.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-runtime-guard-refusal.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-runtime-guard-paths.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-doctor-divergence.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-doctor-report.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-doctor-launch.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-doctor-shell-wrappers.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-version-range.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability mempalace -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/antigravity-manage-sandbox.test.ts {{.REPO_DIR}}/scripts/tests/antigravity-tier-twin.test.ts {{.REPO_DIR}}/scripts/tests/system-context-store.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability mempalace -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/mempalace-pin-read.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-pin-compare.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-pin-corpus.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-runtime-guard-refusal.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-runtime-guard-paths.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-doctor-divergence.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-doctor-report.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-doctor-launch.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-doctor-shell-wrappers.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-version-range.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability mempalace -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/antigravity-manage-sandbox.test.ts {{.REPO_DIR}}/scripts/tests/antigravity-tier-twin.test.ts {{.REPO_DIR}}/scripts/tests/system-context-store.test.ts'
   chroma-mcp:
     desc: Run the chroma-mcp CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --capability chroma-mcp -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/chroma-wrapper-source.test.ts {{.REPO_DIR}}/scripts/tests/chroma-wrapper-live.test.ts {{.REPO_DIR}}/scripts/tests/chroma-fd-limits.test.ts {{.REPO_DIR}}/scripts/tests/mcp-daemon-static-guards.test.ts {{.REPO_DIR}}/scripts/tests/mcp-daemon-status.test.ts {{.REPO_DIR}}/scripts/tests/repair-restore-modes.test.ts {{.REPO_DIR}}/scripts/tests/repair-report-handoff.test.ts {{.REPO_DIR}}/scripts/tests/switch-rotate-token.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability chroma-mcp -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/chroma-wrapper-source.test.ts {{.REPO_DIR}}/scripts/tests/chroma-wrapper-live.test.ts {{.REPO_DIR}}/scripts/tests/chroma-fd-limits.test.ts {{.REPO_DIR}}/scripts/tests/mcp-daemon-static-guards.test.ts {{.REPO_DIR}}/scripts/tests/mcp-daemon-status.test.ts {{.REPO_DIR}}/scripts/tests/repair-restore-modes.test.ts {{.REPO_DIR}}/scripts/tests/repair-report-handoff.test.ts {{.REPO_DIR}}/scripts/tests/switch-rotate-token.test.ts'
   e2e:
     desc: Run the e2e CI capability (pre-push mirror of the CI job)
-    preconditions:
-      - sh: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-tool-binaries.ts js-yaml
-        msg: "Run: task lint-bootstrap"
+    preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/e2e-docker-standin.test.ts {{.REPO_DIR}}/scripts/tests/e2e-oracle-scenarios.test.ts {{.REPO_DIR}}/scripts/tests/e2e-oracle-libs.test.ts {{.REPO_DIR}}/scripts/tests/e2e-oracle-judge.test.ts {{.REPO_DIR}}/scripts/tests/e2e-libs-differential.test.ts {{.REPO_DIR}}/scripts/tests/e2e-auth-differential.test.ts {{.REPO_DIR}}/scripts/tests/e2e-capture-differential.test.ts {{.REPO_DIR}}/scripts/tests/e2e-toml-subset.test.ts {{.REPO_DIR}}/scripts/tests/e2e-judge-differential.test.ts {{.REPO_DIR}}/scripts/tests/e2e-runner-differential.test.ts {{.REPO_DIR}}/scripts/tests/e2e-scenario-06-differential.test.ts {{.REPO_DIR}}/scripts/tests/e2e-probe-hooks-blackbox.test.ts {{.REPO_DIR}}/scripts/tests/e2e-probe-mcp-token-blackbox.test.ts {{.REPO_DIR}}/scripts/tests/e2e-usage-headless.test.ts {{.REPO_DIR}}/scripts/tests/e2e-defaults-config.test.ts {{.REPO_DIR}}/scripts/tests/e2e-docs-lock.test.ts {{.REPO_DIR}}/scripts/tests/e2e-taskfile-surface.test.ts {{.REPO_DIR}}/scripts/tests/e2e-docker-images.test.ts {{.REPO_DIR}}/scripts/tests/e2e-assert-lib.test.ts {{.REPO_DIR}}/scripts/tests/e2e-auth-common.test.ts {{.REPO_DIR}}/scripts/tests/e2e-auth-ready.test.ts {{.REPO_DIR}}/scripts/tests/e2e-llm-judge-lib-oauth.test.ts {{.REPO_DIR}}/scripts/tests/e2e-llm-judge-lib-ollama.test.ts {{.REPO_DIR}}/scripts/tests/e2e-llm-judge-lib-quorum.test.ts {{.REPO_DIR}}/scripts/tests/e2e-report.test.ts {{.REPO_DIR}}/scripts/tests/e2e-structural-lib.test.ts {{.REPO_DIR}}/scripts/tests/e2e-toml-merge.test.ts {{.REPO_DIR}}/scripts/tests/e2e-auth-mounts.test.ts {{.REPO_DIR}}/scripts/tests/e2e-auth-scripts.test.ts {{.REPO_DIR}}/scripts/tests/e2e-runner-delegation.test.ts {{.REPO_DIR}}/scripts/tests/e2e-runner.test.ts {{.REPO_DIR}}/scripts/tests/e2e-scenarios-structure.test.ts {{.REPO_DIR}}/scripts/tests/e2e-probes-antigravity-discovery.test.ts {{.REPO_DIR}}/scripts/tests/e2e-probes-publisher.test.ts {{.REPO_DIR}}/scripts/tests/e2e-literal-capture.test.ts {{.REPO_DIR}}/scripts/tests/e2e-literal-publisher.test.ts {{.REPO_DIR}}/scripts/tests/e2e-literal-publisher-edge.test.ts {{.REPO_DIR}}/scripts/tests/e2e-probes-resolvers.test.ts {{.REPO_DIR}}/scripts/tests/e2e-probes-scenarios.test.ts

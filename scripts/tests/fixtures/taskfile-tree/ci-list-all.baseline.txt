@@ -1,0 +1,229 @@
+task: Available tasks for this project:
+* build-antigravity-extension:               Build an Antigravity CLI plugin from an extension (task build-antigravity-extension EXT=hello-world)
+* build-claude-plugin:                       Build a Claude Code plugin from an extension (task build-claude-plugin EXT=hello-world)
+* build-components:                          Build all community components for Gemini CLI, Claude Code, and GitHub Copilot CLI (Node.js 24)
+* build-components-antigravity:              Build community components for Antigravity CLI only (Node.js 24)
+* build-components-claude:                   Build community components for Claude Code only (Node.js 24)
+* build-components-copilot:                  Build community components for GitHub Copilot CLI only (Node.js 24)
+* build-components-gemini:                   Build community components for Gemini CLI only (Node.js 24)
+* build-copilot-plugin:                      Build a Copilot CLI plugin from an extension (task build-copilot-plugin EXT=hello-world)
+* check-agent-profiles:                      Check agent capability-profile conformance against spec 0195 (local mirror of the CI guard, spec 0198)
+* check-claude-agent-layout:                 Check the compiled .claude/agents/ tree holds only flat <name>.md files (local mirror of the CI guard, spec 0201)
+* check-comment-size:                        Fail when a plan or verdict comment body exceeds 12288 bytes (spec 0275 R-E2). Author-side: task check-comment-size -- <file> (or pipe the body on stdin)
+* check-components:                          Check that generated community components match source (drift detection) and run the assembly verification test (Node.js 24)
+* check-description-length:                  Fail when a skill or agent description exceeds 300 characters (spec 0269 R11)
+* check-extension-manifest-version:          Enforce a single authoritative version across an extension's manifests (local mirror of the CI guard, spec 0044)
+* check-extension-provenance:                Enforce extension skill/agent provenance carrier presence + routing (local mirror of the CI guard, spec 0043)
+* check-extension-version-bump:              Enforce carrier-version bump on modified extension skill/agent sources (local mirror of the CI guard, spec 0044)
+* check-feedback-routing:                    Enforce upstream-tier feedback routing to canonical (local mirror of the CI guard, spec 0030)
+* check-metadata-keys:                       Check the metadata: closed key set on artifacts/core/** and artifacts/library/** (local mirror of the CI guard, spec 0200)
+* check-model-mappings:                      Check model-mapping conformance against docs/model-mapping-format.md (local mirror of the CI guard, spec 0197)
+* check-plan-review:                         Decide whether a plan needs the cold second-architect review (spec 0277). Orchestrator-side at PLAN time: task check-plan-review -- <spec> [<plan>|-] [--prior-review] (plan on stdin when absent)
+* check-seat-brief:                          Fail when a seated-pass brief breaches the references-only form (spec 0276). Orchestrator-side, before the spawn: task check-seat-brief -- <file> (or pipe the brief on stdin; --template <specs|plan|review> prints a skeleton)
+* check-skill-versions:                      Enforce provenance.version bump on changed skill/agent sources (local mirror of the CI guard)
+* check-taskfile-commands:                   Check Taskfile.yml names no POSIX-only command, modulo the owned exemption list (local mirror of the CI guard, spec 0266 R13)
+* create-extension:                          Scaffold a new extension from skeleton (task create-extension NAME=my-ext)
+* default:                                   
+* erasable-ts:                               Reject TypeScript syntax Node type stripping cannot erase (spec 0238 R5)
+* fix-markdown:                              Auto-fix Markdown formatting issues
+* format-ts:                                 Check TypeScript formatting with Oxfmt (spec 0238 R8)
+* harness-curate:                            Run the Harness Curator (task harness-curate -- [--apply | --from-stdin])
+* host-safety:                               Run the test-harness host-safety check, as CI does (spec 0267)
+* import-antigravity-history:                Backfill MemPalace with pre-existing Antigravity CLI transcripts from ~/.gemini/antigravity-cli/history.jsonl (idempotent)
+* import-claude-history:                     Backfill MemPalace with pre-existing Claude Code transcripts from ~/.claude/projects (idempotent)
+* import-copilot-history:                    Backfill MemPalace with pre-existing GitHub Copilot CLI transcripts from ~/.copilot/session-state (idempotent)
+* import-gemini-history:                     Backfill MemPalace with pre-existing Gemini CLI transcripts from ~/.gemini/tmp (idempotent)
+* install-antigravity-component:             Install a single Antigravity CLI component (task install-antigravity-component TYPE=antigravity-skills NAME=my-skill)
+* install-antigravity-extension:             Build and install an Antigravity CLI plugin from an extension (requires agy in PATH; task install-antigravity-extension EXT=hello-world)
+* install-claude-component:                  Install a single Claude Code component (task install-claude-component TYPE=claude-skills NAME=my-skill)
+* install-claude-plugin:                     Install a Claude Code plugin (task install-claude-plugin EXT=hello-world)
+* install-claude-workspace:                  Install all artifacts Claude Code components (copy mode)
+* install-component:                         Install a single component (task install-component TYPE=skills NAME=my-skill)
+* install-copilot-component:                 Install a Copilot component (task install-copilot-component TYPE=skills NAME=my-skill)
+* install-copilot-plugin:                    Build and install a Copilot CLI plugin from an extension (requires copilot in PATH; task install-copilot-plugin EXT=hello-world)
+* install-deps:                              Install npm dependencies for all extensions
+* install-extension:                         Deprecated: Install a single extension to Gemini CLI (use install-gemini-extension or install-extension-all)
+* install-extension-all:                     Install a single extension across all present CLIs (task install-extension-all EXT=hello-world)
+* install-extensions:                        Deprecated: Install all extensions to Gemini CLI (use install-gemini-extensions)
+* install-gemini-extension:                  Install a single extension to Gemini CLI (task install-gemini-extension EXT=hello-world)
+* install-gemini-extensions:                 Install all extensions to Gemini CLI (copy mode)
+* install-mempalace:                         Install or upgrade MemPalace at the pinned version (>=3.6.0,<3.7)
+* install-workspace:                         Install all artifacts components (copy mode)
+* link-antigravity-component:                Link a single Antigravity CLI component (task link-antigravity-component TYPE=antigravity-skills NAME=my-skill)
+* link-claude-component:                     Link a single Claude Code component (task link-claude-component TYPE=claude-skills NAME=my-skill)
+* link-claude-workspace:                     Link all artifacts Claude Code components (symlink mode — dev only)
+* link-component:                            Link a single component (task link-component TYPE=skills NAME=my-skill)
+* link-copilot-component:                    Link a Copilot component (task link-copilot-component TYPE=skills NAME=my-skill)
+* link-extensions:                           Deprecated: Link all extensions to Gemini CLI (use link-gemini-extensions)
+* link-gemini-extension-build:               Debugging path (not an install path): symlink one extension's rendered build directory into Gemini CLI (task link-gemini-extension-build EXT=hello-world)
+* link-gemini-extensions:                    Debugging path (not an install path): symlink every extension's rendered build directory into Gemini CLI
+* link-workspace:                            Link all artifacts components (symlink mode, for development)
+* lint-bootstrap:                            Install every dependency the spec, Markdown and TypeScript linters need (js-yaml, semver, markdownlint-cli, typescript, oxlint, oxfmt)
+* lint-markdown:                             Check all Markdown files for lint compliance
+* lint-ts:                                   Run every TypeScript check CI runs: type-check, erasable syntax, Oxlint, Oxfmt (spec 0238 R4-R8)
+* migrate-extension:                         Convert an extension source tree from the retired declaration shape to the current one (task migrate-extension EXT=my-ext, spec 0183)
+* oxlint-ts:                                 Run Oxlint type-aware strict typing and the max-lines warning (spec 0238 R6-R7)
+* package:                                   Package all extensions to dist/
+* package-extension:                         Package a single extension (task package-extension EXT=hello-world)
+* prune-transcripts:                         Prune old transcripts from MemPalace (task prune-transcripts -- --days 30 [--apply])
+* ratchet:                                   Run the shell / JavaScript / Python footprint ratchet, as CI does (spec 0238 R1-R3)
+* setup-antigravity-interactive:             Interactive Antigravity CLI setup with team/expertise/level selection
+* setup-claude-interactive:                  Interactive Claude Code setup with team/expertise/level selection (copy by default)
+* setup-copilot-interactive:                 Interactive GitHub Copilot CLI setup (workspace settings + optional transcript hooks)
+* setup-gemini-interactive:                  Interactive setup with team/expertise/level selection
+* test-components:                           Test the build-components canonical_repo validator
+* test-derive-spec-status:                   Run the merged-spec status derivation suite, as CI does (spec 0109 delta-04)
+* test-harness-curate:                       Smoke-test the Harness Curator against the bundled fixture
+* test-playwright-mcp:                       Run the Playwright MCP registration suites (model, JSONC scanner, config reader), as CI does (spec 0245)
+* test-runtime-foundations:                  Run the floor guard, dependency-step and shared-module suites, as CI does (spec 0240)
+* test-spec-view:                            Run the spec effective view suite, as CI does (spec 0273)
+* test-ticket-pickup:                        Run the ticket-pickup check's suites (model, fake-forge end to end, interleavings), as CI does (spec 0244)
+* test-windows-hook-probe:                   Run the Windows hook command-line parsing probe's suite, as CI does (spec 0237)
+* ticket-pickup:                             Check who owns a ticket and claim it if free, before any authoring action (spec 0244)
+* timing-budget:                             Time a Node.js script against a budget (spec 0240 R13); pass the harness arguments after --
+* typecheck-ts:                              Type-check every tracked TypeScript source in strict mode (spec 0238 R4)
+* unlink-component:                          Remove a component from ~/.gemini (task unlink-component TYPE=skills NAME=my-skill)
+* unlink-extensions:                         Deprecated: Remove all installed extensions from Gemini CLI (use unlink-gemini-extensions)
+* unlink-gemini-extensions:                  Remove all installed extensions from Gemini CLI
+* ci:agent-profile-migration:                Run the agent-profile migration regression suite (cached by the ci-cache-guard capability key)
+* ci:alert-scheduled-failure:                Open or comment on the issue for a red scheduled run (pass -- --result <value> [--dry-run])
+* ci:alert-scheduled-failure-check:          Check the alert job wiring in the exhaustive-run workflow
+* ci:alert-scheduled-failure-selftest:       Run the scheduled-failure alert self-test against a fake gh
+* ci:build-components-ts:                    Run the build-components-ts CI capability (pre-push mirror of the CI job)
+* ci:check-agent-profiles:                   Run the check-agent-profiles CI capability (pre-push mirror of the CI job)
+* ci:check-agents-size:                      Fail when the AGENTS.md size budget is exceeded (pre-push mirror of the CI job)
+* ci:check-ci-parity:                        Check the CI reference, workflow and GitLab outputs agree (pre-push mirror of the CI job)
+* ci:check-claude-agent-layout:              Run the check-claude-agent-layout CI capability (pre-push mirror of the CI job)
+* ci:check-comment-size:                     Check the comment-size guard on its under and over fixtures (pre-push mirror of the CI job)
+* ci:check-description-length:               Fail when a skill or agent description exceeds the length cap (pre-push mirror of the CI job)
+* ci:check-metadata-keys:                    Run the check-metadata-keys CI capability (pre-push mirror of the CI job)
+* ci:check-model-mappings:                   Run the check-model-mappings CI capability (pre-push mirror of the CI job)
+* ci:check-plan-review:                      Check the plan review gate against its fixtures (pre-push mirror of the CI job)
+* ci:check-rules-size:                       Fail when the rules size budget is exceeded (pre-push mirror of the CI job)
+* ci:check-seat-brief:                       Run the check-seat-brief CI capability (pre-push mirror of the CI job)
+* ci:check-skill-versions:                   Enforce the provenance version bump on changed skill and agent sources (pre-push mirror of the CI job)
+* ci:check-task-provisioning:                Check the pinned Task provisioning (pre-push mirror of the CI job)
+* ci:check-task-provisioning-selftest:       Run the Task provisioning self-tests (pre-push mirror of the CI job)
+* ci:check-taskfile-commands:                Check the Taskfile tree names no POSIX-only command (pre-push mirror of the CI job)
+* ci:check-taskfile-commands-selftest:       Run the Taskfile command and tool-binary self-tests (pre-push mirror of the CI job)
+* ci:check-taskfile-tree:                    Check the Taskfile tree layout and contract (pre-push mirror of the CI job)
+* ci:check-taskfile-tree-selftest:           Run the Taskfile tree self-tests (pre-push mirror of the CI job)
+* ci:chroma-mcp:                             Run the chroma-mcp CI capability (pre-push mirror of the CI job)
+* ci:ci-parity:                              Test the CI generator and parity harness (cached by the ci-cache-guard capability key)
+* ci:ci-pre-push-replay:                     Run the ci-pre-push-replay CI capability (pre-push mirror of the CI job)
+* ci:cli-matrix-fresh:                       Check docs/cli-matrix.md is fresh (pre-push mirror of the CI job)
+* ci:cli-matrix-fresh-selftest:              Run the CLI matrix builder test (pre-push mirror of the CI job)
+* ci:component-drift:                        Check built components match their sources (cached by the ci-cache-guard capability key)
+* ci:component-drift-selftest:               Run the assembly and canonical-repo build tests (cached by the ci-cache-guard capability key)
+* ci:core-paths:                             Run the core-paths CI capability (pre-push mirror of the CI job)
+* ci:docs-index:                             Check docs/index.json is fresh (cached by the ci-cache-guard capability key)
+* ci:docs-index-selftest:                    Run the docs index entry test (cached by the ci-cache-guard capability key)
+* ci:e2e:                                    Run the e2e CI capability (pre-push mirror of the CI job)
+* ci:extension-builders-ts:                  Run the extension-builders-ts CI capability (pre-push mirror of the CI job)
+* ci:extension-install:                      Run the extension-install CI capability (pre-push mirror of the CI job)
+* ci:extension-manifest:                     Run the extension-manifest CI capability (pre-push mirror of the CI job)
+* ci:extension-provenance:                   Run the extension-provenance CI capability (pre-push mirror of the CI job)
+* ci:extension-render:                       Run the extension-render CI capability (pre-push mirror of the CI job)
+* ci:figure-labels:                          Check figure labels with OCR (needs tesseract-ocr on PATH)
+* ci:frontmatter:                            Run the frontmatter, skill-version, routing, install-scope and tier-resolution suites (pre-push mirror of the CI job)
+* ci:gitlab-ci-check:                        Check .gitlab-ci.yml is fresh against the CI reference (pre-push mirror of the CI job)
+* ci:governance-checks-ts:                   Run the governance-checks-ts CI capability (pre-push mirror of the CI job)
+* ci:hooks-install:                          Enable the native pre-push hook for this clone by setting core.hooksPath to .githooks (spec 0279 R15)
+* ci:hooks-status:                           Report whether the native pre-push hook is enabled for this clone (spec 0279 R15)
+* ci:hooks-uninstall:                        Disable the native pre-push hook by unsetting core.hooksPath for this clone (spec 0279 R15)
+* ci:host-safety:                            Run the host-safety check (pre-push mirror of the CI job)
+* ci:host-safety-selftest:                   Run the host-safety self-tests (pre-push mirror of the CI job)
+* ci:install-ts:                             Run the install-ts CI capability (pre-push mirror of the CI job)
+* ci:lint-markdown:                          Lint every Markdown file (pre-push mirror of the CI job)
+* ci:lint-specs:                             Lint the spec files (pre-push mirror of the CI job)
+* ci:lint-specs-selftest:                    Run the spec-linter self-tests (pre-push mirror of the CI job)
+* ci:lint-typescript:                        Run every TypeScript check (pre-push mirror of the CI job)
+* ci:lint-typescript-selftest:               Run the TypeScript lint self-tests (pre-push mirror of the CI job)
+* ci:markdown-links:                         Run the Markdown link suite tests (pre-push mirror of the CI job)
+* ci:mempalace:                              Run the mempalace CI capability (pre-push mirror of the CI job)
+* ci:mempalace-transcript:                   Run the mempalace-transcript CI capability (pre-push mirror of the CI job)
+* ci:misc:                                   Run the misc CI capability (pre-push mirror of the CI job)
+* ci:model-ci-tooling-ts:                    Run the model-ci-tooling-ts CI capability (pre-push mirror of the CI job)
+* ci:packaging-modules-ts:                   Run the packaging-modules-ts CI capability (pre-push mirror of the CI job)
+* ci:path-ownership:                         Run the path-ownership and stray-scan wiring checks (pre-push mirror of the CI job)
+* ci:path-ownership-selftest:                Run the path-ownership and stray-scan wiring self-tests (pre-push mirror of the CI job)
+* ci:pre-push:                               Run the fast subset of the CI checks the pushed changeset can affect, concurrently (spec 0279). Usage: task ci:pre-push [-- <wrapper args>]
+* ci:ratchet:                                Run the footprint ratchet (pre-push mirror of the CI job)
+* ci:ratchet-selftest:                       Run the footprint ratchet self-tests (pre-push mirror of the CI job)
+* ci:release-driver-modules-ts:              Run the release-driver-modules-ts CI capability (pre-push mirror of the CI job)
+* ci:repository-scan:                        Scan the repository for machine paths, broken Markdown links and core-path drift (pre-push mirror of the CI job)
+* ci:setup:                                  Run the setup CI capability (pre-push mirror of the CI job)
+* ci:setup-differential:                     Run the setup-differential CI capability (pre-push mirror of the CI job)
+* ci:setup-modules-ts:                       Run the setup-modules-ts CI capability (pre-push mirror of the CI job)
+* ci:setup-oracle:                           Run the setup entry-point oracle (sandbox, stubs, golden, prompt-inventory and mutation suites)
+* ci:skill-scripts-ts:                       Run the skill-scripts-ts CI capability (pre-push mirror of the CI job)
+* ci:test-wiring:                            Check every test is wired into CI and no stray test exists (pre-push mirror of the CI job)
+* ci:test-wiring-selftest:                   Run the test-wiring and test-strays guard self-tests (pre-push mirror of the CI job)
+* ci:windows-build-components:               Windows proof of build components (CI mirror of the windows-latest job)
+* ci:windows-chroma-trio:                    Windows proof of chroma trio (CI mirror of the windows-latest job)
+* ci:windows-create-extension:               Windows proof of create extension (CI mirror of the windows-latest job)
+* ci:windows-doctor-repair:                  Windows proof of doctor repair (CI mirror of the windows-latest job)
+* ci:windows-e2e-harness:                    Windows proof of e2e harness (CI mirror of the windows-latest job)
+* ci:windows-extension-builders:             Windows proof of extension builders (CI mirror of the windows-latest job)
+* ci:windows-extension-hooks:                Windows proof of extension hooks (CI mirror of the windows-latest job)
+* ci:windows-governance-checks:              Windows proof of governance checks (CI mirror of the windows-latest job)
+* ci:windows-harness-curator:                Windows proof of harness curator (CI mirror of the windows-latest job)
+* ci:windows-history-import:                 Windows proof of history import (CI mirror of the windows-latest job)
+* ci:windows-install-entries:                Windows proof of install entries (CI mirror of the windows-latest job)
+* ci:windows-mcp-daemon:                     Windows proof of mcp daemon (CI mirror of the windows-latest job)
+* ci:windows-mempalace-transcript:           Windows proof of mempalace transcript (CI mirror of the windows-latest job)
+* ci:windows-model-ci-tooling:               Windows proof of model ci tooling (CI mirror of the windows-latest job)
+* ci:windows-node-floor-guard:               Windows proof of node floor guard (CI mirror of the windows-latest job)
+* ci:windows-packaging-entries:              Windows proof of packaging entries (CI mirror of the windows-latest job)
+* ci:windows-service-task:                   Windows proof of service task (CI mirror of the windows-latest job)
+* ci:windows-setup-entries:                  Windows proof of setup entries (CI mirror of the windows-latest job)
+* ci:windows-setup-units:                    Windows proof of setup units (CI mirror of the windows-latest job)
+* ci:windows-skill-scripts:                  Windows proof of skill scripts (CI mirror of the windows-latest job)
+* ci:windows-sync-from-upstream:             Windows proof of sync from upstream (CI mirror of the windows-latest job)
+* ci:windows-usage-capture:                  Windows proof of usage capture (CI mirror of the windows-latest job)
+* ci:windows-usage-wrappers:                 Windows proof of usage wrappers (CI mirror of the windows-latest job)
+* ci:windows-worktree-git-guard:             Windows proof of worktree git guard (CI mirror of the windows-latest job)
+* ci:worktree-guard:                         Run the worktree-guard CI capability (pre-push mirror of the CI job)
+* cli-matrix:build:                          Regenerate docs/cli-matrix.md from docs/cli-matrix/ (spec 0272)
+* cli-matrix:check:                          Fail when docs/cli-matrix.md is stale against docs/cli-matrix/ (local mirror of the CI guard, spec 0272)
+* cli-matrix:row:                            Print one CLI-matrix row source. Usage: task cli-matrix:row -- <id>
+* e2e:auth:claude:                           Interactive Claude Code login → ~/.crewrig-e2e/claude/ (RW one-shot, RO at scenario time).
+* e2e:auth:copilot:                          Guidance for Copilot CLI auth via PAT (env-var COPILOT_GITHUB_TOKEN). Runs a sanity check if the token is already set.
+* e2e:auth:gemini:                           Interactive Gemini CLI login → ~/.crewrig-e2e/gemini/ (RW one-shot, RO at scenario time).
+* e2e:auth:ollama:                           Interactive Ollama Cloud signin → ~/.crewrig-e2e/ollama/ (RW one-shot, RO at scenario time). Required only when local.toml routes Copilot through Ollama Cloud.
+* e2e:build:                                 Build all e2e images (base + claude + gemini + copilot + mempalace) and refresh .versions.lock.
+* e2e:build:base:                            Build the shared e2e base image (crewrig/e2e-base:latest).
+* e2e:build:claude:                          Build the Claude Code e2e image (crewrig/e2e-claude:latest).
+* e2e:build:copilot:                         Build the GitHub Copilot CLI e2e image (crewrig/e2e-copilot:latest).
+* e2e:build:gemini:                          Build the Gemini CLI e2e image (crewrig/e2e-gemini:latest).
+* e2e:build:mempalace:                       Build the MemPalace sidecar e2e image (crewrig/e2e-mempalace:latest).
+* e2e:lock:                                  Capture resolved CLI/tool versions from the built images into docker/e2e/.versions.lock.
+* e2e:report:                                Aggregate TAP results into a parity matrix (console + markdown)
+* e2e:test:                                  Run all e2e scenarios across all configured CLIs (TAP report).
+* e2e:test:cli:                              Run all scenarios against one CLI. Usage: task e2e:test:cli -- <claude|gemini|copilot>
+* e2e:test:scenario:                         Run one scenario across all configured CLIs. Usage: task e2e:test:scenario -- <scenario-name>
+* format-ts:fix:                             Rewrite every tracked TypeScript source with Oxfmt (local convenience, not a CI mirror)
+* mempalace:doctor:                          Report which MemPalace will actually answer on this machine — resolved path, interpreter and version behind every MemPalace command and every CLI's memory-server registration. Exits non-zero on divergence (spec 0108).
+* mempalace:repair:                          Repair the residue left by an interrupted MemPalace switch (spec 0165): an assistant whose configuration does not parse as JSON, or whose mempalace registration matches neither the http nor the stdio shape. With no flag, reports each affected assistant, its config path, whether a timestamped backup exists, and the available actions. The repair verbs need the separator (task mempalace:repair -- [--restore-backup | --reset-none]): --restore-backup restores the most recent usable backup, --reset-none removes the mempalace registration. Restores recognisability only — never registers anyone for http, never places the bearer token in argv.
+* mempalace:rotate-token:                    Rotate the shared MemPalace MCP HTTP daemon bearer token (spec 0176). Mints a new token, replaces the daemon process, purges stale backups, and re-registers every assistant.
+* mempalace:status:                          Report the shared MemPalace MCP HTTP daemon: whether it is serving, whether authentication is actually enforced, whether the installed launcher has drifted from the repository, and which arrangement each assistant is configured for.
+* mempalace:stop:                            Restart the shared MemPalace MCP HTTP daemon. Under the supervisor a stop IS a restart request — to end the daemon, use mempalace:uninstall-daemon.
+* mempalace:switch-http:                     Switch every supported assistant on this machine to the shared MemPalace MCP HTTP daemon, so concurrent sessions all write to shared memory (spec 0113). All-or-nothing: if one assistant cannot be switched, none is.
+* mempalace:uninstall-daemon:                End the shared MemPalace MCP HTTP daemon and remove its supervisor unit. Run this BEFORE reverting the ticket that introduced it — the launcher lives outside the repository, so a revert alone would leave a unit that keeps autostarting.
+* setup:playwright-mcp:                      Register the Playwright MCP server (opt-in) in Claude Code, Gemini CLI, GitHub Copilot CLI and Antigravity CLI, routed through scripts/tls-exec.ts; converges a legacy or relocated entry, leaves a customised one untouched (spec 0245). Requires Node.js >= 24; run it from the checkout you keep. Idempotent.
+* skill:check:                               Verify built skill (+ optional agent) mirrors for one component across .claude/, .gemini/, .github/. Usage: task skill:check NAME=<skill-name>
+* spec:derive-status:                        Derive merged spec and delta-spec statuses from evidence (spec 0109 delta-04 R23)
+* spec:lint:                                 Lint spec files for format compliance (markdown + custom semantic rules)
+* spec:view:                                 Print a spec and its deltas as one read-only Markdown document (spec 0273)
+* usage:attribute:                           Append to, list, or inspect the append-only attribution ledger (spec 0208). Usage: task usage:attribute -- add (--session <id> | --agent <id> --parent <id> | --period <YYYY-MM>) (--task-key <key> | --asset <kind>:<ref>) --reason <text> | list | explain --record <id> --cli <cli> --period <YYYY-MM>
+* usage:backfill:                            Replay usage-record capture for Claude Code, Gemini CLI and Copilot CLI against history already on this machine (idempotent; pass --reset-cursors to re-derive from scratch, spec 0206)
+* usage:dashboard:                           Generate the usage dashboard as one self-contained, offline HTML file (spec 0210 form A) at <root>/dashboard/usage-dashboard.html. Reference figures, never an invoice. Usage: task usage:dashboard -- [--session <id> | --agent <id> --parent <id> | --task-key <key> | --asset <kind>:<ref> | --cli <cli>] [--from <YYYY-MM-DD>] [--to <YYYY-MM-DD>] [--period <YYYY-MM>] [--model <id>] [--bucket day|week|month] [--currency <ISO4217>] [--as-of-today] [--out <path>]
+* usage:dashboard:report:                    Print the usage dashboard as a plain-text report, or its view model as JSON (spec 0210 form C). Usage: task usage:dashboard:report -- [same filters as usage:dashboard] [--as-of-today] [--json]
+* usage:dashboard:serve:                     Serve the live usage dashboard on 127.0.0.1 only, in the foreground (spec 0210 form B); stop it with Ctrl-C or its Stop action. Writes nothing. Usage: task usage:dashboard:serve -- [--port <n>] (default 41920; filters are request parameters, e.g. /?period=2026-09)
+* usage:drain:                               One-shot, unbounded drain of the usage-capture spool into the usage-record journal (spec 0207 R-L). Pays the first-drain cost once, at a time the operator chooses.
+* usage:inventory:                           Inventory (and, on request, purge) usage-record drawers directly in MemPalace's usage-records room, independent of the local usage root, journal, or mirror markers (spec 0239). Usage: task usage:inventory -- [list] [--wing <name>[,<name>...]] [--cli <cli>] [--period <YYYY-MM>] [--json] | delete [same filters] [--commit [--confirm-count <N>]]
+* usage:mirror:                              Run the MemPalace catch-up for pending usage-record mirror markers (spec 0207). Usage: task usage:mirror -- [--reconcile]
+* usage:price:                               Compute comparative reference prices for usage records against a pinned LiteLLM snapshot (spec 0209). Never an invoice. Usage: task usage:price -- --period <YYYY-MM> [--cli <cli>] [--currency <ISO4217>] [--as-of-today] [--rollup] | --refresh-pricelist [--sha <sha>] | --refresh-fx [--fx-mirror frankfurter] | --cross-check <modelId>
+* usage:prune:                               Remove a period's usage-record journal entries and mirrored drawers together (spec 0207). Never automatic. Usage: task usage:prune -- <cli> <YYYY-MM> [--force | --unprune]
+* usage:query:                               Read usage records by session, agent+parent, period, task-handoff key, or external asset reference (spec 0207/0208). JSONL output. Usage: task usage:query -- --session <id> | --period <YYYY-MM> [--cli <cli>] | --task-key <key> [--rollup [--combined]] | ...
+* usage:task:                                Write, read, or clear the current session's usage-attribution declaration record (spec 0208). Usage: task usage:task -- set --channel explicit|protocol [--task-key <key>] [--asset <kind>:<ref>] | show | clear

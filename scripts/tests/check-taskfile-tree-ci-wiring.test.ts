@@ -171,7 +171,9 @@ function assertCapabilities(text: string): void {
 
 /** The guard and the suites run in the `ci:` tasks (spec 0283 R1), not in the pipeline text. */
 function assertTasks(text: string): void {
-  const flat = text.replaceAll("{{.REPO_DIR}}/", "");
+  const flat = text
+    .replaceAll("{{.NODE_SCRIPTS}}", `${NODE} {{.REPO_DIR}}/scripts`)
+    .replaceAll("{{.REPO_DIR}}/", "");
   const body = (id: string): string => {
     const m = new RegExp(`\\n  ${id}:\\n([\\s\\S]*?)(?=\\n  [a-z0-9-]+:\\n|$)`).exec(flat);
     assert.ok(m, `task ci:${id}`);
@@ -250,7 +252,7 @@ describe("check-taskfile-tree CI wiring", () => {
 
   test("mutation: a job that does not run the guard is rejected", () => {
     assert.throws(() =>
-      assertTasks(read("taskfiles", "ci.yml").replaceAll("scripts/check-taskfile-tree.ts", "true")),
+      assertTasks(read("taskfiles", "ci.yml").replaceAll("/check-taskfile-tree.ts", "/true")),
     );
   });
   test("mutation: a job missing a suite is rejected", () => {

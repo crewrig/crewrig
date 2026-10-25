@@ -9,6 +9,8 @@
 //   (b) expand each Taskfile-side `- task: <ref>` call and each capability-side `task <name>`
 //       command into the commands of the called task, recursively, through `resolveTaskRef`
 //       (a capability-side name is global, so it resolves like the anchored `:<name>`);
+//   (b2) expand the literal `vars:` of `taskfiles/ci.yml` (spec 0278 R22 b, R26), one level deep and
+//        BEFORE (c), because a value such as NODE_SCRIPTS itself contains `{{.REPO_DIR}}/`;
 //   (c) strip the exact prefix `{{.REPO_DIR}}/` wherever it appears and a trailing `{{.CLI_ARGS}}`;
 //   (d) collapse runs of whitespace.
 // Nothing else is normalised: flags, `--ignore` values and wrappers compare verbatim.
@@ -49,6 +51,36 @@ export class CommandResolveError extends Error {
     super(message);
     this.name = "CommandResolveError";
   }
+}
+
+const CI_CONTROL_FILE = "taskfiles/ci.yml";
+const varsCache = new WeakMap<TaskfileTree, ReadonlyMap<string, string>>();
+
+/** The string-valued literal `vars:` of `taskfiles/ci.yml` (control file), empty when absent. */
+export function ciFileVars(tree: TaskfileTree): ReadonlyMap<string, string> {
+  let vars = varsCache.get(tree);
+  if (vars === undefined) {
+    const node = tree.nodes.find((n) => n.file === CI_CONTROL_FILE);
+    const raw = node?.doc["vars"];
+    const map = new Map<string, string>();
+    if (isRecord(raw)) {
+      for (const [key, value] of Object.entries(raw)) {
+        if (typeof value === "string") {
+          map.set(key, value);
+        }
+      }
+    }
+    vars = map;
+    varsCache.set(tree, vars);
+  }
+  return vars;
+}
+
+/** Step (b2): substitute `{{.NAME}}` for each file variable, one level deep (no re-scan). */
+export function expandFileVars(text: string, vars: ReadonlyMap<string, string>): string {
+  return text.replace(/\{\{\s*\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g, (whole, name: string) => {
+    return vars.get(name) ?? whole;
+  });
 }
 
 const REPO_DIR_PREFIX = "{{.REPO_DIR}}/";
@@ -138,7 +170,7 @@ function expand(
       expand(tree, taskItems(target.definition), target.file, [...stack, target.name], out);
       continue;
     }
-    const text = normalizeCommand(item);
+    const text = normalizeCommand(expandFileVars(item, ciFileVars(tree)));
     if (PROVISIONING.test(text)) {
       out.provisioning.push(text);
       continue;

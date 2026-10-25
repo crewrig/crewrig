@@ -11,30 +11,43 @@ import { loadTaskfileTree, taskCmds } from "../../lib/taskfile-tree.ts";
 import { REPO } from "./build-fixture-tree.ts";
 import { yamlLib } from "./yaml-lib.ts";
 
+type CiDoc = { vars?: Record<string, unknown>; tasks?: Record<string, { cmds?: unknown[] }> };
+
+/** Expand the literal `vars:` of taskfiles/ci.yml one level deep, then strip `{{.REPO_DIR}}/`. */
+function expandCmd(doc: CiDoc, cmd: string): string {
+  const vars = doc.vars ?? {};
+  return cmd
+    .replace(/\{\{\s*\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g, (whole, name: string) => {
+      const value = vars[name];
+      return typeof value === "string" ? value : whole;
+    })
+    .replaceAll("{{.REPO_DIR}}/", "");
+}
+
 /** The string `cmds:` of task `ci:<id>`, with the `{{.REPO_DIR}}/` prefix removed. */
 export function ciTaskCommands(id: string, repo: string = REPO): string[] {
-  const doc = yamlLib.load(fs.readFileSync(path.join(repo, "taskfiles", "ci.yml"), "utf8")) as {
-    tasks?: Record<string, { cmds?: unknown[] }>;
-  };
+  const doc = yamlLib.load(
+    fs.readFileSync(path.join(repo, "taskfiles", "ci.yml"), "utf8"),
+  ) as CiDoc;
   const task = doc.tasks?.[id];
   if (!task) throw new Error(`taskfiles/ci.yml has no task '${id}'`);
   return (task.cmds ?? [])
     .filter((c): c is string => typeof c === "string")
-    .map((c) => c.replaceAll("{{.REPO_DIR}}/", ""));
+    .map((c) => expandCmd(doc, c));
 }
 
 /** The commands of the root tasks that task `ci:<id>` delegates to with `- task: :<name>`. */
 export function ciTaskDelegatedCommands(id: string, repo: string = REPO): string[] {
-  const doc = yamlLib.load(fs.readFileSync(path.join(repo, "taskfiles", "ci.yml"), "utf8")) as {
-    tasks?: Record<string, { cmds?: unknown[] }>;
-  };
+  const doc = yamlLib.load(
+    fs.readFileSync(path.join(repo, "taskfiles", "ci.yml"), "utf8"),
+  ) as CiDoc;
   const tree = loadTaskfileTree(repo);
   return (doc.tasks?.[id]?.cmds ?? [])
     .flatMap((c) => {
       const ref = (c as { task?: unknown } | null)?.task;
       return typeof ref === "string" ? taskCmds(tree, ref.replace(/^:/, "")) : [];
     })
-    .map((c) => c.replaceAll("{{.REPO_DIR}}/", ""));
+    .map((c) => expandCmd(doc, c));
 }
 
 /** A capability's commands: the task body when it is the single `task ci:<id>`, else as declared. */

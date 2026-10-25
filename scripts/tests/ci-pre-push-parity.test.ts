@@ -9,6 +9,7 @@ import { describe, it } from "node:test";
 import {
   CONTROL_TASKS,
   capabilityTaskName,
+  expandFileVars,
   isProvisioning,
   normalizeCommand,
   taskCallRefs,
@@ -89,6 +90,15 @@ describe("normalize.ts units", () => {
   it("strips the REPO_DIR prefix, a trailing CLI_ARGS and collapses whitespace", () => {
     assert.equal(normalizeCommand("node  {{.REPO_DIR}}/x.ts   {{.CLI_ARGS}}"), "node x.ts");
     assert.equal(normalizeCommand("a {{.CLI_ARGS}} b"), "a {{.CLI_ARGS}} b");
+  });
+
+  it("expands file variables one level deep before the REPO_DIR strip", () => {
+    const vars = new Map([["NODE_SCRIPTS", "node {{.REPO_DIR}}/scripts"]]);
+    assert.equal(
+      normalizeCommand(expandFileVars("{{.NODE_SCRIPTS}}/x.ts", vars)),
+      "node scripts/x.ts",
+    );
+    assert.equal(expandFileVars("{{.OTHER}}/x", vars), "{{.OTHER}}/x");
   });
 
   it("recognises provisioning only as a leading npm ci / npm install word", () => {
@@ -229,6 +239,32 @@ tasks:
     const r = parity(stage({ ci }));
     assert.equal(r.status, 1);
     assert.match(r.stderr, /unresolved: ci:alpha:/);
+  });
+
+  // Spec 0278 R22 b / R26 / R28 c: a file variable whose value itself contains `{{.REPO_DIR}}/`
+  // is expanded before the prefix strip, so it never produces a finding.
+  const VARS_CI = (a: string): string => `version: '3.54'
+vars:
+  NODE_SCRIPTS: "node {{.REPO_DIR}}/scripts"
+tasks:
+  alpha:
+    cmds:
+      - '{{.NODE_SCRIPTS}}/a.ts ${a}'
+      - node scripts/b.ts
+  pre-push:
+    cmds:
+      - echo control
+`;
+
+  it("expands a file variable containing REPO_DIR and passes the expanded capability text", () => {
+    const r = parity(stage({ ci: VARS_CI("--flag --ignore x") }));
+    assert.equal(r.status, 0, r.stderr);
+  });
+
+  it("still fails a real command difference behind a file variable", () => {
+    const r = parity(stage({ ci: VARS_CI("--other --ignore x") }));
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /command-mismatch: ci:alpha: capability 'alpha' command #1 differs/);
   });
 
   it("exits 2 with a NOTICE when the tier file is absent", () => {
