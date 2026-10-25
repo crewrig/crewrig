@@ -7,6 +7,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { readWorkflowUnionText } from "./workflow-union.ts";
+
 export const GITLAB_DOC = "docs/gitlab-release-publishing.md";
 export const RELEASE_WORKFLOW = ".github/workflows/release-monorepo.yml";
 export const BUILD_WORKFLOW = ".github/workflows/build.yml";
@@ -44,9 +46,9 @@ export function releaseWorkflowPinned(root: string): boolean {
   return hasLine(all, /^ {2}actions: write$/) && hasLine(all, /^ {2}cancel-in-progress: false$/);
 }
 
-/** (g)-2: build.yml is dispatchable and defines the `ratchet` and `lint-typescript` jobs. */
+/** (g)-2: build.yml is dispatchable and the workflows define the `ratchet` and `lint-typescript` jobs. */
 export function buildWorkflowPinned(root: string): boolean {
-  const all = lines(root, BUILD_WORKFLOW);
+  const all = readWorkflowUnionText(root).split(/\r?\n/);
   return (
     hasLine(all, /^ {2}workflow_dispatch:/) &&
     hasLine(all, /^ {2}ratchet:$/) &&

@@ -19,6 +19,7 @@ import {
 } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 import { gatePaths } from "./lib/capability-path-scan.ts";
+import { readWorkflowUnionText } from "./lib/workflow-union.ts";
 
 const ID = "check-seat-brief";
 const SCRIPT = "scripts/check-seat-brief.ts";
@@ -111,14 +112,14 @@ function assertTaskfile(tree: TaskfileTree): void {
 
 describe("check-seat-brief CI wiring", () => {
   test("ci/ci-capabilities.yml", () => assertCapabilities(read("ci", "ci-capabilities.yml")));
-  test("GitHub workflow", () => assertGithub(read(".github", "workflows", "build.yml")));
+  test("GitHub workflow", () => assertGithub(readWorkflowUnionText(REPO)));
   test("GitLab pipeline", () => assertGitlab(read(".gitlab-ci.yml")));
   test("Taskfile target", () => assertTaskfile(loadTaskfileTree(REPO)));
 
   test("mutation: a job that does not run the breaching fixture is rejected", () => {
     assert.throws(() =>
       assertGithub(
-        read(".github", "workflows", "build.yml"),
+        readWorkflowUnionText(REPO),
         ciTaskCommands("governance-checks-ts"),
         ciTaskCommands(ID).map((c) => c.replace(BREACHING, "true")),
       ),

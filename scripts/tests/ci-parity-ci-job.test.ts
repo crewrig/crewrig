@@ -13,6 +13,7 @@ const REPO = path.resolve(import.meta.dirname, "..", "..");
 const ROOT_FILES = [["Task", "file.yml"].join(""), "taskfiles"];
 
 import { checkTaskProvisioning } from "../lib/task-provisioning/index.ts";
+import { readWorkflowUnionYaml } from "./lib/workflow-union.ts";
 import {
   capOf,
   editYaml,
@@ -257,8 +258,8 @@ function unboundedWindowsJobs(text: string): string[] {
     .map(([name]) => name);
 }
 
-test("R18: every windows-latest job of build.yml declares timeout-minutes of at least 10", () => {
-  const text = fs.readFileSync(path.join(REPO, WF), "utf8");
+test("R18: every windows-latest job of the workflows declares timeout-minutes of at least 10", () => {
+  const text = readWorkflowUnionYaml(REPO);
   assert.deepEqual(unboundedWindowsJobs(text), []);
 });
 

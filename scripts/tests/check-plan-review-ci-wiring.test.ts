@@ -19,6 +19,7 @@ import {
 } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 import { gatePaths } from "./lib/capability-path-scan.ts";
+import { readWorkflowUnionText } from "./lib/workflow-union.ts";
 
 const ID = "check-plan-review";
 const SCRIPT = "scripts/check-plan-review.ts";
@@ -116,14 +117,14 @@ function assertTaskfile(tree: TaskfileTree): void {
 
 describe("check-plan-review CI wiring", () => {
   test("ci/ci-capabilities.yml", () => assertCapabilities(read("ci", "ci-capabilities.yml")));
-  test("GitHub workflow", () => assertGithub(read(".github", "workflows", "build.yml")));
+  test("GitHub workflow", () => assertGithub(readWorkflowUnionText(REPO)));
   test("GitLab pipeline", () => assertGitlab(read(".gitlab-ci.yml")));
   test("Taskfile target", () => assertTaskfile(loadTaskfileTree(REPO)));
 
   test("mutation: a job that never expects a skip is rejected", () => {
     assert.throws(() =>
       assertGithub(
-        read(".github", "workflows", "build.yml"),
+        readWorkflowUnionText(REPO),
         ciTaskCommands("governance-checks-ts"),
         ciTaskCommands(ID).map((c) => c.replaceAll(" skipped", " ok")),
       ),

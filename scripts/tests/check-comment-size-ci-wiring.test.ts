@@ -14,6 +14,7 @@ import { REPO } from "./lib/build-fixture-tree.ts";
 import { ciTaskCommands, resolveCapabilityCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 import { gatePaths } from "./lib/capability-path-scan.ts";
+import { readWorkflowUnionText } from "./lib/workflow-union.ts";
 
 const ID = "check-comment-size";
 const SCRIPT = "scripts/check-comment-size.ts";
@@ -95,7 +96,7 @@ function assertTaskfile(tree: TaskfileTree): void {
 
 describe("check-comment-size CI wiring", () => {
   test("ci/ci-capabilities.yml", () => assertCapabilities(read("ci", "ci-capabilities.yml")));
-  test("GitHub workflow", () => assertGithub(read(".github", "workflows", "build.yml")));
+  test("GitHub workflow", () => assertGithub(readWorkflowUnionText(REPO)));
   test("GitLab pipeline", () => assertGitlab(read(".gitlab-ci.yml")));
   test("Taskfile target", () => assertTaskfile(loadTaskfileTree(REPO)));
 

@@ -9,6 +9,7 @@ import path from "node:path";
 import { describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { yamlLib } from "./lib/yaml-lib.ts";
+import { readWorkflowUnion } from "./lib/workflow-union.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const T = { timeout: 60_000 };
@@ -38,8 +39,7 @@ describe("Draft-PR signal CI mapping (spec 0168 delta-01 R9-R11)", () => {
   });
 
   test("GitHub: the lint-specs job env maps github.event.pull_request.draft", T, () => {
-    const wf = load(".github/workflows/build.yml");
-    const job = obj(obj(wf["jobs"], "jobs")["lint-specs"], "jobs.lint-specs");
+    const job = obj(readWorkflowUnion(ROOT)["lint-specs"], "jobs.lint-specs");
     const expr = obj(job["env"], "job env")["CREWRIG_PR_DRAFT"];
     assert.equal(typeof expr, "string");
     assert.ok(

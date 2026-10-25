@@ -20,6 +20,7 @@ import {
 } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 import { gatePaths } from "./lib/capability-path-scan.ts";
+import { readWorkflowUnionText } from "./lib/workflow-union.ts";
 
 interface Capability {
   readonly id: string;
@@ -81,9 +82,9 @@ function assertCapability(cap: Capability): void {
 }
 
 function workflowJob(): string {
-  const text = fs.readFileSync(path.join(REPO, ".github", "workflows", "build.yml"), "utf8");
+  const text = readWorkflowUnionText(REPO);
   const start = text.indexOf(`\n  ${ID}:\n`);
-  assert.ok(start >= 0, `build.yml has a '${ID}' job`);
+  assert.ok(start >= 0, `workflows have a '${ID}' job`);
   const next = text.slice(start + 1).search(/\n  [a-z0-9-]+:\n/);
   return text.slice(start, next < 0 ? undefined : start + 1 + next);
 }

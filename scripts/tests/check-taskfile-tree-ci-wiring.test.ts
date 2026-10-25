@@ -17,6 +17,7 @@ import { REPO } from "./lib/build-fixture-tree.ts";
 import { resolveCapabilityCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 import { gatePaths } from "./lib/capability-path-scan.ts";
+import { readWorkflowUnionText } from "./lib/workflow-union.ts";
 
 const ID = "check-taskfile-tree";
 const ROOT = ["Task", "file.yml"].join("");
@@ -236,7 +237,7 @@ function assertGitlab(text: string): void {
 
 describe("check-taskfile-tree CI wiring", () => {
   test("ci/ci-capabilities.yml", () => assertCapabilities(read("ci", "ci-capabilities.yml")));
-  test("GitHub workflow", () => assertGithub(read(".github", "workflows", "build.yml")));
+  test("GitHub workflow", () => assertGithub(readWorkflowUnionText(REPO)));
   test("GitLab pipeline", () => assertGitlab(read(".gitlab-ci.yml")));
   test("ci tasks run the guard and the suites", () => assertTasks(readCiTaskfiles()));
 

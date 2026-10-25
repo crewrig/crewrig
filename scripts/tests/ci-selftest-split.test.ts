@@ -12,6 +12,7 @@ import { loadCapabilities, loadTier, selectFromChangeset } from "../lib/ci-pre-p
 import { loadTaskfileTree } from "../lib/taskfile-tree.ts";
 import { ciTaskCommands } from "./lib/ci-task-commands.ts";
 import { makeSandbox, REPO, runEntry } from "./lib/governance-sandbox.ts";
+import { readWorkflowUnion } from "./lib/workflow-union.ts";
 
 interface Cap {
   env?: Record<string, string>;
@@ -151,9 +152,9 @@ describe("self-test split: selection (b)", () => {
 });
 
 describe("self-test split: workflow and parity (d, e)", () => {
-  it("every build.yml job key equals a capability id", () => {
-    const jobs = Object.keys((load(read(".github/workflows/build.yml")) as { jobs: object }).jobs);
-    for (const st of SELFTESTS) assert.ok(jobs.includes(st.id), `build.yml lacks job ${st.id}`);
+  it("every workflow job key equals a capability id", () => {
+    const jobs = Object.keys(readWorkflowUnion(REPO));
+    for (const st of SELFTESTS) assert.ok(jobs.includes(st.id), `workflows lack job ${st.id}`);
   });
 
   it("every self-test id has a ci:<id> task running its commands only", () => {

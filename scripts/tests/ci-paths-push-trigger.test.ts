@@ -11,6 +11,7 @@ import { test } from "node:test";
 
 import { readCapabilities } from "../lib/ci-parity/reference-read.ts";
 import { get, parse, tag, YqMap, YqSeq } from "../lib/yq-accessors/index.ts";
+import { readWorkflowUnionYaml } from "./lib/workflow-union.ts";
 
 const caps = new Map(
   readCapabilities(parse(fs.readFileSync("ci/ci-capabilities.yml", "utf8"))).map((c) => [c.id, c]),
@@ -18,7 +19,7 @@ const caps = new Map(
 
 /** The capability ids of the `ci-job` steps of build.yml, by job. */
 function ciJobIds(): Map<string, string> {
-  const jobs = get(parse(fs.readFileSync(".github/workflows/build.yml", "utf8")), ["jobs"]);
+  const jobs = get(parse(readWorkflowUnionYaml(".")), ["jobs"]);
   assert.ok(jobs instanceof YqMap);
   const ids = new Map<string, string>();
   for (const [key, job] of jobs.entries) {
