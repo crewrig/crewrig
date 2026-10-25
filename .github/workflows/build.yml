@@ -368,7 +368,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: test-wiring-selftest
-          install: none
+          install: omit-dev
 
   chroma-mcp:
     runs-on: ubuntu-latest
