@@ -1,7 +1,7 @@
 ---
 id: "0278"
 slug: taskfile-domain-split
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1827
@@ -79,7 +79,7 @@ and passes with R31.
 Three clauses of the base spec (as amended by delta-01) change; every other
 requirement is unchanged. The base spec's rejection of `dir:` on includes
 (*Alternatives considered*, "`includes` with `dir:` on each include") still
-holds for every include other than the six of R31.
+holds for every include other than the group-file includes of R31.
 
 1. R9 (working directory and variables). Original, first sentence:
 
