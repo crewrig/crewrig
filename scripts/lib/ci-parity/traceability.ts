@@ -77,6 +77,9 @@ function callerJobs(jobs: YqNode): Set<string> {
   return out;
 }
 
+/** Spec 0287 delta-01 R21: the two required contexts are hosted by build.yml, not by the gate callee. */
+export const TOP_LEVEL_JOBS = ["ratchet", "lint-typescript"];
+
 export const GROUPS = ["gate", "modules", "governance", "extensions", "integration", "windows"];
 
 /** Spec 0287 R11: every GitHub-engine capability has a valid `group`; callee file matches it. */
@@ -96,6 +99,13 @@ export function groupChecks(state: ParityState): void {
         state,
         `capability '${j.id}' has group '${cap.group}', not one of ${GROUPS.join(", ")} (R11)`,
       );
+    } else if (layered && TOP_LEVEL_JOBS.includes(j.jobKey)) {
+      if (base !== "build.yml") {
+        fail(
+          state,
+          `job '${j.jobKey}' is in ${base} but the required context belongs in build.yml (R21)`,
+        );
+      }
     } else if (layered && base !== `_ci-${cap.group}.yml`) {
       fail(
         state,

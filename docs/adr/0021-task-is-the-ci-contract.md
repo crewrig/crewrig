@@ -105,4 +105,6 @@ The generator emits `stages:` in the taxonomy order, `stage: <group>` on every j
 
 ### Consequence on branch protection
 
-A called workflow's jobs report as `<caller job id> / <job>`. The required contexts `ratchet` and `lint-typescript` of the `main-protected` and `release-protected` rulesets become `gate / ratchet` and `gate / lint-typescript`. The ruleset update is run by the coordinator or owner after the pull request has reported once under the new names and before it merges (spec 0287 R5).
+A called workflow's jobs report as `<caller job id> / <job>`. Hosting `ratchet` and `lint-typescript` in `_ci-gate.yml` would rename the required contexts of the `main-protected` and `release-protected` rulesets to `gate / ratchet` and `gate / lint-typescript`. Required status check names are a branch-protection contract that a workflow restructuring must not rename, so those two jobs are the one exception (spec 0287 delta-01 R21): they are top-level jobs with steps in `build.yml`, keep `group: gate` in the reference, and precede every Linux group through `needs: [gate, ratchet, lint-typescript]`. The contexts stay `ratchet` and `lint-typescript`; no ruleset changes (R5).
+
+Rejected alternative: host both jobs in `_ci-gate.yml` and update the rulesets to the `gate / ...` names. It is impossible without admin rights (the executing account holds the maintain role), the owner must not be needed, and it couples a merge to an out-of-band ruleset change.

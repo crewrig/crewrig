@@ -44,8 +44,8 @@ extension from the release engine's dry run on the pushed commit:
 4. **Checks.** Events made with `GITHUB_TOKEN` start no workflow run, so the
    branch push and the PR it opens get no check on their own. The driver
    dispatches `build.yml` (`workflow_dispatch`) on `release-pr/main`; its
-   `gate / ratchet` and `gate / lint-typescript` checks (the `ratchet` and
-   `lint-typescript` jobs of the `gate` stage) are the ruleset's required contexts.
+   `ratchet` and `lint-typescript` checks (top-level jobs of `build.yml`, so
+   their names do not change) are the ruleset's required contexts.
 
 Merging the release PR (squash, merge or rebase) pushes to `main`, which
 runs step 1 for its extensions. They are no longer pending, so no new

@@ -19,12 +19,12 @@ Floor 8,880, margin 229 lines. The ratchet test `scripts/tests/ci-shrink-report.
 
 ## Staged reusable workflows (spec 0287, issue #1828)
 
-The 108 jobs of `build.yml` moved verbatim into six reusable callees, one per `group` of the capability reference; `build.yml` keeps the triggers, `concurrency` and `permissions` and holds six caller jobs. The groups buy fail-fast gating (`gate` first, then the middle stages) and a two-engine stage model (the same six groups become GitLab stages). The extra lines are the price (spec 0287 R13): six headers and six caller jobs, plus the `group` fields and stage output.
+The 108 jobs of `build.yml` moved verbatim into six reusable callees, one per `group` of the capability reference; `build.yml` keeps the triggers, `concurrency` and `permissions` and holds six caller jobs plus the two top-level required-context jobs `ratchet` and `lint-typescript` (delta-01 R21). The groups buy fail-fast gating (`gate` first, then the middle stages) and a two-engine stage model (the same six groups become GitLab stages). The extra lines are the price (spec 0287 R13): six headers and six caller jobs, plus the `group` fields and stage output.
 
 | Surface | Before (8,849) | After |
 |---|---|---|
-| `.github/workflows/build.yml` | 1,352 | 47 |
-| `.github/workflows/_ci-gate.yml` | 0 | 205 |
+| `.github/workflows/build.yml` | 1,352 | 78 |
+| `.github/workflows/_ci-gate.yml` | 0 | 176 |
 | `.github/workflows/_ci-modules.yml` | 0 | 213 |
 | `.github/workflows/_ci-governance.yml` | 0 | 402 |
 | `.github/workflows/_ci-extensions.yml` | 0 | 160 |
@@ -32,9 +32,9 @@ The 108 jobs of `build.yml` moved verbatim into six reusable callees, one per `g
 | `.github/workflows/_ci-windows.yml` | 0 | 249 |
 | `ci/ci-capabilities.yml` | 4,260 | 4,382 |
 | `.gitlab-ci.yml` | 3,039 | 3,147 |
-| Total | 8,651 (8,849 with the `group` fields) | 8,950 |
+| Total | 8,651 (8,849 with the `group` fields) | 8,952 |
 
-The ratchet pin is 8,950 (the test floor moves from 8,880 to 9,000: spec 0287 R13 accepts the staged overhead).
+The ratchet pin is 8,960 (the test floor moves from 8,880 to 9,000: spec 0287 R13 accepts the staged overhead).
 
 ## Outside the floor
 

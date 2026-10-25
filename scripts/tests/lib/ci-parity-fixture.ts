@@ -166,18 +166,27 @@ function editStagedBuild(file: string, edit: (doc: YMap) => void): boolean {
   const docs = callees.map((f) => ({ f, d: map(yamlLib.load(fs.readFileSync(f, "utf8")), f) }));
   const merged: YMap = {};
   for (const { d } of docs) Object.assign(merged, map(d["jobs"], "jobs"));
+  // Delta-01 R21: top-level jobs with steps (`ratchet`, `lint-typescript`) stay in the caller.
+  const own: string[] = [];
+  for (const [k, v] of Object.entries(callers)) {
+    if ("steps" in map(v, k)) {
+      merged[k] = v;
+      own.push(k);
+    }
+  }
   const origKeys = new Set(Object.keys(merged));
   doc["jobs"] = merged;
   edit(doc);
   const after = map(doc["jobs"], "jobs");
   for (const { f, d } of docs) {
-    const own = Object.keys(map(d["jobs"], "jobs"));
+    const mine = Object.keys(map(d["jobs"], "jobs"));
     const added = docs[0]?.d === d ? Object.keys(after).filter((k) => !origKeys.has(k)) : [];
     d["jobs"] = Object.fromEntries(
-      [...own, ...added].filter((k) => k in after).map((k) => [k, after[k]]),
+      [...mine, ...added].filter((k) => k in after).map((k) => [k, after[k]]),
     );
     fs.writeFileSync(f, yamlLib.dump(d, { lineWidth: -1, noRefs: true }));
   }
+  for (const k of own) if (k in after) callers[k] = after[k];
   doc["jobs"] = callers;
   fs.writeFileSync(file, yamlLib.dump(doc, { lineWidth: -1, noRefs: true }));
   return true;

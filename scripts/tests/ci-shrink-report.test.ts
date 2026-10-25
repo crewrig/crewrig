@@ -21,7 +21,7 @@ const workflowSurfaces = (): string[] => [
 ];
 const SURFACES = [...workflowSurfaces(), "ci/ci-capabilities.yml", ".gitlab-ci.yml"];
 const FLOOR = 9000; // spec 0280 R10 floor 8880, raised by spec 0287 R13 (staged callees)
-const PIN = 8950; // measured 8948 with the six staged callees (spec 0287 R1); 8849 before the move
+const PIN = 8960; // measured 8952 with the six staged callees and the two top-level jobs (spec 0287 R1, R21)
 const COMMENT_LIMIT = 322; // spec 0285 R2: half of the 644 comment lines of a67ca65e
 
 const lines = (rel: string): string[] => {

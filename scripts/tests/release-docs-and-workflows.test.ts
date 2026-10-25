@@ -84,10 +84,9 @@ describe("(g) #1379 — release workflow permissions and build.yml dispatch", ()
       ),
       false,
     );
-    const gate = ".github/workflows/_ci-gate.yml";
     for (const [file, job] of [
-      [gate, "ratchet:"],
-      [gate, "lint-typescript:"],
+      [BUILD_WORKFLOW, "ratchet:"],
+      [BUILD_WORKFLOW, "lint-typescript:"],
       [BUILD_WORKFLOW, "workflow_dispatch:"],
     ] as const) {
       const edited = mutant(file, (t) => t.replace(new RegExp(`^ {2}${job}`, "m"), `  x-${job}`));

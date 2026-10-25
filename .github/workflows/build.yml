@@ -27,20 +27,51 @@ jobs:
   gate:
     uses: ./.github/workflows/_ci-gate.yml
 
+  # Spec 0287 delta-01 R21: required status contexts `ratchet` and `lint-typescript`
+  # stay top-level jobs so branch protection keeps matching their names.
+  # Spec 0238 R1-R3: shell / JavaScript / Python footprint ratchet. No path
+  # filter: any change may add a shell file. Full history for the merge-base.
+  ratchet:
+    runs-on: ubuntu-latest
+    env:
+      # The list-growth and Python arms diff against the PR's target
+      # branch. On a push the empty value hands the check back to its own
+      # default derivation (first `crewrig|origin` remote + /main).
+      BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/ci-job
+        with:
+          id: ratchet
+          install: none
+
+  # Spec 0238 R4-R8: TypeScript type-check, erasable syntax, Oxlint
+  # type-aware strict typing and Oxfmt check mode. No path filter.
+  lint-typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: lint-typescript
+          install: ci
+
   modules:
-    needs: [gate]
+    needs: [gate, ratchet, lint-typescript]
     uses: ./.github/workflows/_ci-modules.yml
 
   governance:
-    needs: [gate]
+    needs: [gate, ratchet, lint-typescript]
     uses: ./.github/workflows/_ci-governance.yml
 
   extensions:
-    needs: [gate]
+    needs: [gate, ratchet, lint-typescript]
     uses: ./.github/workflows/_ci-extensions.yml
 
   integration:
-    needs: [gate]
+    needs: [gate, ratchet, lint-typescript]
     uses: ./.github/workflows/_ci-integration.yml
 
   windows:

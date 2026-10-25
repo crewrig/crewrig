@@ -284,6 +284,8 @@ const R3_COUNTS: Record<string, number> = {
   windows: 24,
 };
 const LINUX_MIDDLE = ["modules", "governance", "extensions"];
+const TOP_LEVEL = ["ratchet", "lint-typescript"];
+const LINUX_NEEDS = ["gate", ...TOP_LEVEL];
 
 type Doc = Record<string, unknown>;
 const asMap = (v: unknown): Doc => (typeof v === "object" && v !== null ? (v as Doc) : {});
@@ -310,18 +312,29 @@ function assertStagedLayout(root: string): void {
   // Caller: permissions, one `uses` job per group, no steps, no `if:`, the needs graph (R4).
   assert.deepEqual(callerDoc["permissions"], { contents: "read", actions: "write" });
   const callerJobs = asMap(callerDoc["jobs"]);
-  assert.deepEqual(Object.keys(callerJobs).sort(), [...GROUP_NAMES].sort(), "caller jobs");
+  assert.deepEqual(
+    Object.keys(callerJobs).sort(),
+    [...GROUP_NAMES, ...TOP_LEVEL].sort(),
+    "caller jobs",
+  );
   for (const [k, v] of Object.entries(callerJobs)) {
     const j = asMap(v);
+    if (TOP_LEVEL.includes(k)) {
+      // Spec 0287 delta-01 R21: the two required contexts are ordinary top-level jobs with steps.
+      assert.ok(Array.isArray(j["steps"]), `${k}: a top-level job has steps`);
+      assert.ok(!("uses" in j), `${k}: a top-level job has no uses`);
+      assert.equal(j["needs"], undefined, `${k}: no needs`);
+      continue;
+    }
     assert.equal(j["uses"], `./.github/workflows/_ci-${k}.yml`, `${k}: uses`);
     assert.ok(!("steps" in j), `${k}: a caller job has no steps`);
     assert.ok(!("if" in j), `${k}: a caller job has no if`);
   }
   const needs = (k: string) => asMap(callerJobs[k])["needs"];
   assert.equal(needs("gate"), undefined, "gate has no needs");
-  for (const k of LINUX_MIDDLE) assert.deepEqual(needs(k), ["gate"], `${k}: needs`);
+  for (const k of LINUX_MIDDLE) assert.deepEqual(needs(k), LINUX_NEEDS, `${k}: needs`);
   assert.ok(
-    [JSON.stringify(["gate"]), JSON.stringify(["gate", ...LINUX_MIDDLE])].includes(
+    [JSON.stringify(LINUX_NEEDS), JSON.stringify([...LINUX_NEEDS, ...LINUX_MIDDLE])].includes(
       JSON.stringify(needs("integration")),
     ),
     "integration needs",
@@ -339,11 +352,17 @@ function assertStagedLayout(root: string): void {
     assert.ok(!("concurrency" in doc), `${f}: no concurrency`);
     assert.ok(!JSON.stringify(doc).includes("secrets."), `${f}: no secrets`);
     for (const key of Object.keys(asMap(doc["jobs"]))) {
+      assert.ok(!TOP_LEVEL.includes(key), `${f}: '${key}' must be a top-level job of build.yml`);
       assert.ok(!seen.has(key), `job key '${key}' is in both ${seen.get(key)} and ${f}`);
       seen.set(key, f);
       assert.equal(groupOf.get(key), group, `job '${key}' in ${f} has group ${groupOf.get(key)}`);
       counts[group] = (counts[group] ?? 0) + 1;
     }
+  }
+  for (const k of TOP_LEVEL) {
+    seen.set(k, "build.yml");
+    const g = groupOf.get(k) ?? "";
+    counts[g] = (counts[g] ?? 0) + 1;
   }
   assert.deepEqual(counts, R3_COUNTS, "R3 counts");
   assert.deepEqual(
@@ -353,8 +372,8 @@ function assertStagedLayout(root: string): void {
   );
 
   const gateJobs = Object.keys(asMap(loadYaml(path.join(dir, "_ci-gate.yml"))["jobs"]));
-  for (const k of ["ratchet", "lint-typescript"])
-    assert.ok(gateJobs.includes(k), `gate holds ${k}`);
+  assert.equal(gateJobs.length, 17, "_ci-gate.yml holds the other 17 gate jobs");
+  for (const k of TOP_LEVEL) assert.equal(groupOf.get(k), "gate", `${k} stays in group gate`);
 }
 
 test("the committed layout is the seven-file staged layout of spec 0287 (R1-R4, R9)", () => {
@@ -405,6 +424,24 @@ test("mutation proofs: each broken layout fails the assertion function", () => {
       delete asMap(asMap(d["jobs"])["modules"])["needs"];
     });
     assert.throws(() => assertStagedLayout(noGate), /modules: needs/);
+
+    // Delta-01 R21: moving a required job into _ci-gate.yml, or dropping it from a Linux group's needs.
+    for (const k of TOP_LEVEL) {
+      const root = mutate("build.yml", (d) => {
+        delete asMap(d["jobs"])[k];
+      });
+      const gateFile = path.join(root, ".github", "workflows", "_ci-gate.yml");
+      const gd = loadYaml(gateFile);
+      asMap(gd["jobs"])[k] = { "runs-on": "ubuntu-latest", steps: [] };
+      fs.writeFileSync(gateFile, yaml.dump(gd, { lineWidth: -1 }));
+      assert.throws(() => assertStagedLayout(root), /caller jobs|must be a top-level/);
+
+      const dropped = mutate("build.yml", (d) => {
+        const m = asMap(asMap(d["jobs"])["modules"]);
+        m["needs"] = (m["needs"] as string[]).filter((n) => n !== k);
+      });
+      assert.throws(() => assertStagedLayout(dropped), /modules: needs/);
+    }
   } finally {
     // Only directories created by mkdtemp above.
     for (const r of roots) fs.rmSync(r, { recursive: true, force: true });
