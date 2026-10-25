@@ -273,7 +273,9 @@ describe("check-taskfile-tree CI wiring", () => {
   });
   test("mutation: a Taskfile filter without taskfiles/** is rejected", () => {
     assert.throws(() =>
-      assertCapabilities(read("ci", "ci-capabilities.yml").replace(/\n\s*- "taskfiles\/\*\*"/, "")),
+      assertCapabilities(
+        read("ci", "ci-capabilities.yml").replace(/\n\s*- "taskfiles\/\*\*"/g, ""),
+      ),
     );
   });
 });
