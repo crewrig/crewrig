@@ -5,7 +5,7 @@ status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1828
-version: 1.1.0
+version: 2.0.0
 ---
 
 # Staged reusable workflows for the GitHub CI
