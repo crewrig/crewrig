@@ -8,7 +8,7 @@
 // line is judged, as the shell twin does. Otherwise the test must be named in
 // `ci/test-wiring-exemptions.txt` (`name<WS>reason`).
 // A `scripts/tests/*.test.ts` file (issue #1375) is WIRED iff an executed line of a CI surface
-// (the surfaces above plus `taskfiles/*.yml` and `Taskfile.yml`, where the Task CI contract
+// (the surfaces above plus `taskfiles/**/*.yml` and `Taskfile.yml`, where the Task CI contract
 // keeps the commands) names it, literally or through a `scripts/tests/<glob>` it matches, at
 // ANY occurrence of the line with no `#` before it. A line that is only a path-filter entry
 // (`- "scripts/tests/x.test.ts"`) selects when a job runs, not what it runs, and never wires.
@@ -62,6 +62,16 @@ function globNames(dir: string, prefix: string, suffix: string): string[] {
     .sort(byCodeUnit);
 }
 
+/** Every `*.yml` under `dir`, recursively (spec 0278 R27 c: a test wired only in a moved task counts). */
+function collectYml(dir: string, out: string[]): void {
+  for (const n of globNames(dir, "", ".yml")) out.push(`${dir}/${n}`);
+  const subdirs = readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith(".") && e.name !== "node_modules")
+    .map((e) => e.name)
+    .sort(byCodeUnit);
+  for (const d of subdirs) collectYml(`${dir}/${d}`, out);
+}
+
 /** Contents of every CI surface that exists. */
 function readSurfaces(repo: string): string[] {
   const files: string[] = [];
@@ -71,8 +81,7 @@ function readSurfaces(repo: string): string[] {
       for (const n of globNames(workflows, "", ext)) files.push(`${workflows}/${n}`);
   }
   const taskfiles = `${repo}/taskfiles`;
-  if (isDir(taskfiles))
-    for (const n of globNames(taskfiles, "", ".yml")) files.push(`${taskfiles}/${n}`);
+  if (isDir(taskfiles)) collectYml(taskfiles, files);
   files.push(`${repo}/ci/ci-capabilities.yml`, `${repo}/Taskfile.yml`);
   return files.filter(isFile).map((f) => readFileSync(f, "utf8"));
 }

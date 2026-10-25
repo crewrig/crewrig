@@ -8,6 +8,7 @@ import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { check } from "../check-alert-scheduled-failure.ts";
+import { loadTaskfileTree } from "../lib/taskfile-tree.ts";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const script = path.join(root, "scripts/ci-alert-scheduled-failure.ts");
@@ -123,7 +124,7 @@ describe("alert script", () => {
 
 describe("wiring checker", () => {
   const wf = readFileSync(path.join(root, ".github/workflows/changeset-coverage.yml"), "utf8");
-  const tf = readFileSync(path.join(root, "taskfiles/ci.yml"), "utf8");
+  const tf = [...loadTaskfileTree(root).byName.keys()];
   it("accepts the real wiring", () => assert.deepEqual(check(wf, tf), []));
   const mutants: [string, string, string][] = [
     ["needs", "needs: changeset-coverage", "needs: other"],
@@ -149,5 +150,11 @@ describe("wiring checker", () => {
     assert.notEqual(check(wf.replace(g, "").concat(g), tf).length, 0);
   });
   it("flags a missing task", () =>
-    assert.notEqual(check(wf, tf.replace("  alert-scheduled-failure:", "  other:")).length, 0));
+    assert.notEqual(
+      check(
+        wf,
+        tf.filter((n) => n !== "ci:alert-scheduled-failure"),
+      ).length,
+      0,
+    ));
 });

@@ -1,0 +1,60 @@
+version: '3.54'
+
+# Stage group `integration` (spec 0278 R23): suites that need a real service or oracle.
+# Flattened under `ci:` by taskfiles/ci.yml; `{{.NODE_SCRIPTS}}` is declared there.
+
+tasks:
+  worktree-guard:
+    desc: Run the worktree-guard CI capability (pre-push mirror of the CI job)
+    preconditions: &needs-js-yaml
+      - sh: "{{.NODE_SCRIPTS}}/check-tool-binaries.ts js-yaml"
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test '{{.REPO_DIR}}/scripts/tests/worktree-*.test.ts'
+  mempalace-transcript:
+    desc: Run the mempalace-transcript CI capability (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test '{{.REPO_DIR}}/scripts/tests/mempalace-transcript-*.test.ts' '{{.REPO_DIR}}/scripts/tests/hook-transcript-*.test.ts'
+  setup-oracle:
+    desc: Run the setup entry-point oracle (sandbox, stubs, golden, prompt-inventory and mutation suites)
+    preconditions: *needs-js-yaml
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/setup-sandbox.test.ts {{.REPO_DIR}}/scripts/tests/setup-stubs.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-harness.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-smoke.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-claude.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-gemini.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-copilot.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-antigravity.test.ts {{.REPO_DIR}}/scripts/tests/setup-prompt-inventory.test.ts {{.REPO_DIR}}/scripts/tests/setup-oracle-mutation.test.ts {{.REPO_DIR}}/scripts/tests/setup-oracle-paths.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-portable.test.ts {{.REPO_DIR}}/scripts/tests/setup-entry-form.test.ts {{.REPO_DIR}}/scripts/tests/setup-golden-deviations.test.ts {{.REPO_DIR}}/scripts/tests/setup-no-node-modules.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-antigravity-transcript.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-behaviour-a.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-catalogue-picker.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-claude-env.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-entry-behaviour.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-gemini-copilot-run.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-gemini-overlays.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-mcp-order.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-others.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-rc-guard.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-step-order.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-tier-resolution.test.ts {{.REPO_DIR}}/scripts/tests/setup-retarget-usage-order.test.ts
+  figure-labels:
+    desc: Check figure labels with OCR (needs tesseract-ocr on PATH)
+    preconditions: *needs-js-yaml
+    cmds:
+      - '{{.NODE_SCRIPTS}}/check-figure-labels.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/windows-governance-figure-labels.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-figure-labels.test.ts'
+  mempalace:
+    desc: Run the mempalace CI capability (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/mempalace-http-client-reuse.test.ts
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability mempalace -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/setup-transcript-claude.test.ts {{.REPO_DIR}}/scripts/tests/setup-transcript-gemini.test.ts {{.REPO_DIR}}/scripts/tests/setup-transcript-copilot.test.ts {{.REPO_DIR}}/scripts/tests/setup-transcript-antigravity-manifest.test.ts {{.REPO_DIR}}/scripts/tests/setup-transcript-antigravity-statusline.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-transcript-antigravity-payload.test.ts'
+      # `packaging` is the spec-0108 launch guard's PRIMARY comparator and is the
+      # branch in force on every serving interpreter that carries it, so CI must
+      # exercise it against the real library rather than only against the degraded
+      # fallback. the mempalace-pin-*.test.ts files fail loudly when no interpreter here can
+      # import it — deliberately, so that a green pipeline means the primary
+      # comparator was actually tested. Not a runtime dependency of the guard: the
+      # wrapper still runs, and is still tested, where `packaging` is absent.
+      - python3 -m pip install --quiet packaging
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability mempalace -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/mempalace-pin-read.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-pin-compare.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-pin-corpus.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-runtime-guard-refusal.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-runtime-guard-paths.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-doctor-divergence.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-doctor-report.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-doctor-launch.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-doctor-shell-wrappers.test.ts {{.REPO_DIR}}/scripts/tests/mempalace-version-range.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability mempalace -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/antigravity-manage-sandbox.test.ts {{.REPO_DIR}}/scripts/tests/antigravity-tier-twin.test.ts {{.REPO_DIR}}/scripts/tests/system-context-store.test.ts'
+  chroma-mcp:
+    desc: Run the chroma-mcp CI capability (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability chroma-mcp -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/chroma-wrapper-source.test.ts {{.REPO_DIR}}/scripts/tests/chroma-wrapper-live.test.ts {{.REPO_DIR}}/scripts/tests/chroma-fd-limits.test.ts {{.REPO_DIR}}/scripts/tests/mcp-daemon-static-guards.test.ts {{.REPO_DIR}}/scripts/tests/mcp-daemon-status.test.ts {{.REPO_DIR}}/scripts/tests/repair-restore-modes.test.ts {{.REPO_DIR}}/scripts/tests/repair-report-handoff.test.ts {{.REPO_DIR}}/scripts/tests/switch-rotate-token.test.ts'
+  e2e:
+    desc: Run the e2e CI capability (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/e2e-docker-standin.test.ts {{.REPO_DIR}}/scripts/tests/e2e-oracle-scenarios.test.ts {{.REPO_DIR}}/scripts/tests/e2e-oracle-libs.test.ts {{.REPO_DIR}}/scripts/tests/e2e-oracle-judge.test.ts {{.REPO_DIR}}/scripts/tests/e2e-libs-differential.test.ts {{.REPO_DIR}}/scripts/tests/e2e-auth-differential.test.ts {{.REPO_DIR}}/scripts/tests/e2e-capture-differential.test.ts {{.REPO_DIR}}/scripts/tests/e2e-toml-subset.test.ts {{.REPO_DIR}}/scripts/tests/e2e-judge-differential.test.ts {{.REPO_DIR}}/scripts/tests/e2e-runner-differential.test.ts {{.REPO_DIR}}/scripts/tests/e2e-scenario-06-differential.test.ts {{.REPO_DIR}}/scripts/tests/e2e-probe-hooks-blackbox.test.ts {{.REPO_DIR}}/scripts/tests/e2e-probe-mcp-token-blackbox.test.ts {{.REPO_DIR}}/scripts/tests/e2e-usage-headless.test.ts {{.REPO_DIR}}/scripts/tests/e2e-defaults-config.test.ts {{.REPO_DIR}}/scripts/tests/e2e-docs-lock.test.ts {{.REPO_DIR}}/scripts/tests/e2e-taskfile-surface.test.ts {{.REPO_DIR}}/scripts/tests/e2e-docker-images.test.ts {{.REPO_DIR}}/scripts/tests/e2e-assert-lib.test.ts {{.REPO_DIR}}/scripts/tests/e2e-auth-common.test.ts {{.REPO_DIR}}/scripts/tests/e2e-auth-ready.test.ts {{.REPO_DIR}}/scripts/tests/e2e-llm-judge-lib-oauth.test.ts {{.REPO_DIR}}/scripts/tests/e2e-llm-judge-lib-ollama.test.ts {{.REPO_DIR}}/scripts/tests/e2e-llm-judge-lib-quorum.test.ts {{.REPO_DIR}}/scripts/tests/e2e-report.test.ts {{.REPO_DIR}}/scripts/tests/e2e-structural-lib.test.ts {{.REPO_DIR}}/scripts/tests/e2e-toml-merge.test.ts {{.REPO_DIR}}/scripts/tests/e2e-auth-mounts.test.ts {{.REPO_DIR}}/scripts/tests/e2e-auth-scripts.test.ts {{.REPO_DIR}}/scripts/tests/e2e-runner-delegation.test.ts {{.REPO_DIR}}/scripts/tests/e2e-runner.test.ts {{.REPO_DIR}}/scripts/tests/e2e-scenarios-structure.test.ts {{.REPO_DIR}}/scripts/tests/e2e-probes-antigravity-discovery.test.ts {{.REPO_DIR}}/scripts/tests/e2e-probes-publisher.test.ts {{.REPO_DIR}}/scripts/tests/e2e-literal-capture.test.ts {{.REPO_DIR}}/scripts/tests/e2e-literal-publisher.test.ts {{.REPO_DIR}}/scripts/tests/e2e-literal-publisher-edge.test.ts {{.REPO_DIR}}/scripts/tests/e2e-probes-resolvers.test.ts {{.REPO_DIR}}/scripts/tests/e2e-probes-scenarios.test.ts
+

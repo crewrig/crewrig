@@ -31,6 +31,8 @@ export interface IncludeRecord {
   optional: boolean;
   /** Include keys other than `taskfile`, `flatten` and `optional` (dir, excludes, aliases, ...). */
   extraKeys: string[];
+  /** The raw `dir:` value when the include declares one (spec 0278 delta-02 R32), else undefined. */
+  dir?: unknown;
 }
 
 export interface TaskfileNode {
@@ -159,10 +161,12 @@ export function parseIncludes(
     let flatten = false;
     let optional = false;
     let extraKeys: string[] = [];
+    let dir: unknown;
     if (isRecord(value)) {
       target = value["taskfile"];
       flatten = value["flatten"] === true;
       optional = value["optional"] === true;
+      dir = value["dir"];
       extraKeys = Object.keys(value).filter(
         (k) => !["taskfile", "flatten", "optional"].includes(k),
       );
@@ -184,6 +188,7 @@ export function parseIncludes(
       flatten,
       optional,
       extraKeys,
+      ...(dir === undefined ? {} : { dir }),
     };
     out.push({ record, abs });
   }

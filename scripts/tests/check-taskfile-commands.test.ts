@@ -207,6 +207,24 @@ describe("check-taskfile-commands over a split tree (spec 0278 R15)", () => {
     assert.match(res.stderr, /task 'lint-md' uses forbidden command 'jq'/);
   });
 
+  it("fails a jq planted in a taskfiles/ci/gate.yml task, naming the effective ci:<id> (spec 0278 R28 e)", () => {
+    const root = makeRoot("version: '3'\nincludes:\n  ci: ./taskfiles/ci.yml\n", {
+      exemptions: [],
+    });
+    mkdirSync(path.join(root, "taskfiles", "ci"), { recursive: true });
+    writeFileSync(
+      path.join(root, "taskfiles", "ci.yml"),
+      "version: '3'\nincludes:\n  gate: { taskfile: ./ci/gate.yml, flatten: true }\n",
+    );
+    writeFileSync(
+      path.join(root, "taskfiles", "ci", "gate.yml"),
+      "version: '3'\ntasks:\n  lint-specs:\n    cmds:\n      - jq . a.json\n",
+    );
+    const res = run(root);
+    assert.equal(res.status, 1);
+    assert.match(res.stderr, /task 'ci:lint-specs' uses forbidden command 'jq'/);
+  });
+
   it("fails a jq planted in a namespaced included file under its effective name", () => {
     const planted = "version: '3'\ntasks:\n  price:\n    cmds:\n      - jq . a.json\n";
     const res = run(splitRoot(clean, planted));

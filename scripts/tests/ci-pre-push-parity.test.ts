@@ -212,6 +212,40 @@ tasks:
     assert.match(good.stderr, /no-capability: ci:lint-md/);
   });
 
+  it("applies the anchoring check to a file under taskfiles/ci/ (spec 0278 R24, R26)", () => {
+    const control = `version: '3.54'
+includes:
+  gate: { taskfile: ./ci/gate.yml, flatten: true }
+tasks:
+  pre-push:
+    cmds:
+      - echo control
+`;
+    const gate = (ref: string): string => `version: '3.54'
+tasks:
+  alpha:
+    cmds:
+      - task: ${ref}
+  lint-md:
+    cmds:
+      - echo shadow
+`;
+    const staged = (ref: string): string => {
+      const dir = stage({
+        ci: control,
+        caps: CAPS(['markdownlint --ignore node_modules "**/*.md"']),
+      });
+      fs.mkdirSync(path.join(dir, "taskfiles", "ci"));
+      fs.writeFileSync(path.join(dir, "taskfiles", "ci", "gate.yml"), gate(ref));
+      return dir;
+    };
+    const bad = parity(staged("lint-md"));
+    assert.equal(bad.status, 1);
+    assert.match(bad.stderr, /unanchored-call: ci:alpha: '- task: lint-md' must be written/);
+    const good = parity(staged('":lint-md"'));
+    assert.match(good.stderr, /^(?![\s\S]*unanchored-call)/);
+  });
+
   it("expands a capability-side `task <name>` against the Taskfile side", () => {
     const ci = `version: '3.54'
 tasks:

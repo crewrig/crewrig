@@ -1,0 +1,87 @@
+version: '3.54'
+
+# Stage group `extensions` (spec 0278 R23): component, extension and setup checks. Flattened
+# under `ci:` by taskfiles/ci.yml; `{{.NODE_SCRIPTS}}` is declared there.
+
+tasks:
+  docs-index:
+    desc: Check docs/index.json is fresh (cached by the ci-cache-guard capability key)
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability docs-index -- node {{.REPO_DIR}}/scripts/build-docs-index.ts --check'
+  docs-index-selftest:
+    desc: Run the docs index entry test (cached by the ci-cache-guard capability key)
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability docs-index-selftest -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-docs-index-entry.test.ts'
+  cli-matrix-fresh:
+    desc: Check docs/cli-matrix.md is fresh (pre-push mirror of the CI job)
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - task: :cli-matrix:check
+  cli-matrix-fresh-selftest:
+    desc: Run the CLI matrix builder test (pre-push mirror of the CI job)
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-cli-matrix.test.ts
+  component-drift:
+    desc: Check built components match their sources (cached by the ci-cache-guard capability key)
+    preconditions: &needs-js-yaml
+      - sh: "{{.NODE_SCRIPTS}}/check-tool-binaries.ts js-yaml"
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability component-drift -- node {{.REPO_DIR}}/scripts/build-components.ts --target all --check'
+  component-drift-selftest:
+    desc: Run the assembly and canonical-repo build tests (cached by the ci-cache-guard capability key)
+    preconditions: *needs-js-yaml
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability component-drift-selftest -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-assembly-routing.test.ts'
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-canonical-repo.test.ts
+  extension-provenance:
+    desc: Run the extension-provenance CI capability (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - '{{.NODE_SCRIPTS}}/check-extension-provenance.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-extension-provenance.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-extension-provenance-r4.test.ts'
+  extension-manifest:
+    desc: Run the extension-manifest CI capability (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - '{{.NODE_SCRIPTS}}/check-extension-manifest-version.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-extension-version-bump.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-extension-version-bump-base.test.ts'
+  setup-differential:
+    desc: Run the setup-differential CI capability (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/setup-differential.test.ts {{.REPO_DIR}}/scripts/tests/setup-differential-antigravity.test.ts {{.REPO_DIR}}/scripts/tests/setup-differential-claude.test.ts {{.REPO_DIR}}/scripts/tests/setup-differential-copilot.test.ts {{.REPO_DIR}}/scripts/tests/setup-differential-gemini.test.ts {{.REPO_DIR}}/scripts/tests/setup-twins-differential-usage.test.ts
+  extension-render:
+    desc: Run the extension-render CI capability (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - '{{.NODE_SCRIPTS}}/check-extension-pivot.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-extension-suite-render.test.ts {{.REPO_DIR}}/scripts/tests/build-extension-suite-check.test.ts {{.REPO_DIR}}/scripts/tests/build-extension-suite-hooks.test.ts {{.REPO_DIR}}/scripts/tests/build-extension-suite-context.test.ts {{.REPO_DIR}}/scripts/tests/build-extension-suite-scaffold.test.ts {{.REPO_DIR}}/scripts/tests/migrate-extension-entry.test.ts {{.REPO_DIR}}/scripts/tests/create-extension-combinations.test.ts {{.REPO_DIR}}/scripts/tests/create-extension-gap-derivation.test.ts {{.REPO_DIR}}/scripts/tests/extension-render-conformance.test.ts {{.REPO_DIR}}/scripts/tests/extension-render-conformance-checks.test.ts {{.REPO_DIR}}/scripts/tests/extension-sandbox.test.ts'
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - '{{.NODE_SCRIPTS}}/build-extension.ts --check'
+      - '{{.NODE_SCRIPTS}}/check-extension-hook-tokens.ts'
+      - '{{.NODE_SCRIPTS}}/check-extension-hook-map.ts'
+  extension-install:
+    desc: Run the extension-install CI capability (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/install-claude-plugin-marketplace.test.ts {{.REPO_DIR}}/scripts/tests/install-extension-all-real.test.ts'
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/install-sandbox.test.ts {{.REPO_DIR}}/scripts/tests/install-workspace.test.ts {{.REPO_DIR}}/scripts/tests/unlink-component.test.ts {{.REPO_DIR}}/scripts/tests/unlink-extensions.test.ts {{.REPO_DIR}}/scripts/tests/install-extension.test.ts {{.REPO_DIR}}/scripts/tests/link-extensions.test.ts {{.REPO_DIR}}/scripts/tests/install-copilot-plugin.test.ts {{.REPO_DIR}}/scripts/tests/install-antigravity-extension.test.ts
+  core-paths:
+    desc: Run the core-paths CI capability (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/sync-from-upstream-policies.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-reconcile.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-orphans.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-dirty-report.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-preserve.test.ts {{.REPO_DIR}}/scripts/tests/sync-from-upstream-signing.test.ts'
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/sync-from-upstream-self-update.test.ts
+  setup:
+    desc: Run the setup CI capability (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/setup-identity-flow.test.ts {{.REPO_DIR}}/scripts/tests/setup-legacy-gemini-md-declaration.test.ts {{.REPO_DIR}}/scripts/tests/setup-mcp-merge-policy.test.ts {{.REPO_DIR}}/scripts/tests/setup-org-mcp-wiring.test.ts {{.REPO_DIR}}/scripts/tests/setup-secrets-fold.test.ts {{.REPO_DIR}}/scripts/tests/setup-tier-staging-declared.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/tls-delegation-contract.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-failure.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-jsonc.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-runs.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-seeds.test.ts'

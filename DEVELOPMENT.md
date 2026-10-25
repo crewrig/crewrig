@@ -206,7 +206,8 @@ by area and never by CLI so the four CLIs stay side by side:
 | `harness.yml` | `harness-curate`, `test-harness-curate`, `prune-transcripts` |
 | `e2e.yml` | `e2e:*` Docker images, auth flow and runner |
 | `cli-matrix.yml` | `cli-matrix:*` build, check and row viewer |
-| `ci.yml` | `ci:*` tasks: one `ci:<id>` per CI capability, `ci:pre-push` and `ci:hooks-*` (spec 0279) |
+| `ci.yml` | `ci:pre-push` and `ci:hooks-*` (spec 0279), plus the includes of the `ci/` group files |
+| `ci/<group>.yml` | the `ci:<id>` tasks, one per CI capability, split by stage group: `gate`, `modules`, `governance`, `extensions`, `integration`, `windows`, `windows-b` (spec 0278 delta-01) |
 
 Prefixed groups (`mempalace:`, `usage:`, `e2e:`, `spec:`, `cli-matrix:`) are
 include namespaces; every other file is flattened, so its tasks keep their
@@ -214,7 +215,13 @@ unprefixed global names.
 
 **Adding a task.** Put it in the domain file that matches its area. A new file
 must be added to the root `includes` (flattened unless it is a namespace) and
-declare `version: '3.54'`.
+declare `version: '3.54'`. A new `ci:<id>` task goes in the `taskfiles/ci/<group>.yml`
+file of its stage group, each file staying within 200 lines; a new group file is
+included from `taskfiles/ci.yml` as `{ taskfile: ./ci/<group>.yml, flatten: true, dir: .. }`.
+The `dir: ..` is mandatory there (without it the group's tasks would run from
+`taskfiles/`) and is the only `dir:` the guard accepts; never write `dir:` in a
+`ci/` file or on a task. Inside a `ci/` file an unanchored `- task: x` resolves to
+`ci:x`, so call other files colon-anchored (`:lint-markdown`).
 
 **Referencing tasks.**
 

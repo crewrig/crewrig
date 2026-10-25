@@ -1,6 +1,6 @@
 // Tests for the checker self-test split (spec 0281 R2, R3, R4, R5; plan v3 step 7): each
 // `<id>-selftest` capability pairs with its check `<id>` in ci/ci-capabilities.yml,
-// taskfiles/ci.yml, .github/workflows/build.yml and ci/pre-push-tier.json. Read-only over the
+// taskfiles/ci.yml + taskfiles/ci/*.yml, .github/workflows/build.yml and ci/pre-push-tier.json. Read-only over the
 // real tree except the parity fixture, which lives in a mkdtemp sandbox.
 
 import assert from "node:assert/strict";
@@ -9,6 +9,8 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import { load } from "js-yaml";
 import { loadCapabilities, loadTier, selectFromChangeset } from "../lib/ci-pre-push/select.ts";
+import { loadTaskfileTree } from "../lib/taskfile-tree.ts";
+import { ciTaskCommands } from "./lib/ci-task-commands.ts";
 import { makeSandbox, REPO, runEntry } from "./lib/governance-sandbox.ts";
 
 interface Cap {
@@ -54,20 +56,11 @@ const DATA: Record<string, string> = {
   "check-taskfile-commands": "taskfiles/lint.yml",
   "check-taskfile-tree": ".githooks/pre-push",
 };
-const CI_TASKS = read("taskfiles/ci.yml");
 /** Spec 0283 R1: a migrated capability is the single `task ci:<id>`; its commands live in the task. */
 function resolvedCommands(c: Cap): string[] {
   const m = /^task ci:(\S+)$/.exec(c.command[0] ?? "");
   if (c.command.length !== 1 || !m) return c.command;
-  const body = new RegExp(`\\n  ${m[1]}:\\n([\\s\\S]*?)(?=\\n  [a-z0-9-]+:\\n|$)`).exec(CI_TASKS);
-  assert.ok(body, `task ci:${m[1]}`);
-  return [
-    ...(body[1] ?? "")
-      .split("    cmds:\n")
-      .slice(1)
-      .join("")
-      .matchAll(/^ {6}- (?!task:)(.+)$/gm),
-  ].map((x) => (x[1] ?? "").replaceAll("{{.REPO_DIR}}/", ""));
+  return ciTaskCommands(m[1] ?? "");
 }
 const BATCH_A = Object.keys(PAIRS); // every split pair, batches A and B
 const PROVISIONING = /^npm (ci|install)( |$)/;
@@ -164,10 +157,9 @@ describe("self-test split: workflow and parity (d, e)", () => {
   });
 
   it("every self-test id has a ci:<id> task running its commands only", () => {
-    const ci = (load(read("taskfiles/ci.yml")) as { tasks: Record<string, { cmds: unknown[] }> })
-      .tasks;
+    const tree = loadTaskfileTree(REPO);
     for (const st of SELFTESTS) {
-      const t = ci[st.id];
+      const t = tree.byName.get(`ci:${st.id}`)?.definition as { cmds: unknown[] } | undefined;
       assert.ok(t, `task ci:${st.id} missing`);
       assert.ok(t.cmds.every((c) => typeof c === "string" && (isTest(c) || FLOOR.test(c))));
     }

@@ -7,7 +7,7 @@
 //   (a) a capability `<id>` exists in ci/ci-capabilities.yml;
 //   (b) the normalised, expanded command lists of the task and the capability are equal (R3);
 //   (c) every id of ci/pre-push-tier.json has a `ci:<id>` task;
-//   plus: every `- task:` call written in taskfiles/ci.yml is colon-anchored (R2), and no
+//   plus: every `- task:` call written in taskfiles/ci.yml or under taskfiles/ci/ is colon-anchored (R2), and no
 //   provisioning command (R5) is left in a ci task.
 //
 // Spec 0279 delta-03 R22: a capability whose `command:` is exactly the single entry `task ci:<id>`
@@ -39,6 +39,10 @@ import type { TaskfileTree } from "./lib/taskfile-tree.ts";
 import { parse } from "./lib/yq-accessors/index.ts";
 
 const CI_FILE = "taskfiles/ci.yml";
+const CI_DIR = "taskfiles/ci/";
+
+/** True for a file of the `ci` sub-tree: the control file and every file under `taskfiles/ci/` (spec 0278 R26). */
+const inCiSubTree = (file: string): boolean => file === CI_FILE || file.startsWith(CI_DIR);
 const CAPABILITIES_FILE = "ci/ci-capabilities.yml";
 const TIER_FILE = "ci/pre-push-tier.json";
 
@@ -204,7 +208,7 @@ function main(): number {
   if (tree !== undefined) {
     const ciTasks = tree.tasks.filter((t) => t.name.startsWith("ci:"));
     for (const task of ciTasks) {
-      if (task.file !== CI_FILE) {
+      if (!inCiSubTree(task.file)) {
         continue;
       }
       for (const ref of taskCallRefs(task.definition)) {

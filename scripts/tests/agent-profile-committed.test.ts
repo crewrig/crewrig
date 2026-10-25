@@ -12,6 +12,7 @@ import { describe, test } from "node:test";
 
 import { REPO } from "./lib/build-fixture-tree.ts";
 import { readFrontmatter } from "./lib/build-sandbox.ts";
+import { ciTaskCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 
 export const BASELINE = `accessibility-auditor medium
@@ -76,11 +77,8 @@ describe("T1 — R36: component-drift's --check command is still wired", () => {
     const capCommands = (cap.command ?? []) as string[];
     assert.ok(Array.isArray(capCommands) && capCommands.length > 0, "command list is non-empty");
     // The capability delegates to its Taskfile task (spec 0283); the task body carries the command.
-    const tf = yamlLib.load(read("taskfiles/ci.yml")) as {
-      tasks: Record<string, { cmds?: string[] }>;
-    };
     const commands = capCommands.includes("task ci:component-drift")
-      ? (tf.tasks["component-drift"]?.cmds ?? [])
+      ? ciTaskCommands("component-drift")
       : capCommands;
     // Either form satisfies the wiring (spec 0250 R26); the flags stay literal.
     const form =

@@ -39,6 +39,17 @@ const COMPANIONS = [
 const LISTING_JOBS = ["skill-scripts-ts", "extension-render", "check-taskfile-commands"];
 const read = (...p: string[]): string => fs.readFileSync(path.join(REPO, ...p), "utf8");
 
+/** The text of the `ci` Taskfile sub-tree: `taskfiles/ci.yml` then every `taskfiles/ci/*.yml` (spec 0278 R23). */
+const readCiTaskfiles = (): string =>
+  [
+    read("taskfiles", "ci.yml"),
+    ...fs
+      .readdirSync(path.join(REPO, "taskfiles", "ci"))
+      .filter((n) => n.endsWith(".yml"))
+      .sort()
+      .map((n) => read("taskfiles", "ci", n)),
+  ].join("\n");
+
 // Install-step audit: a test that reaches the Taskfile loader pulls js-yaml, so every CI job that
 // runs one must install dependencies first. The importer set is computed, one level transitively.
 const SEEDS = [
@@ -227,7 +238,7 @@ describe("check-taskfile-tree CI wiring", () => {
   test("ci/ci-capabilities.yml", () => assertCapabilities(read("ci", "ci-capabilities.yml")));
   test("GitHub workflow", () => assertGithub(read(".github", "workflows", "build.yml")));
   test("GitLab pipeline", () => assertGitlab(read(".gitlab-ci.yml")));
-  test("ci tasks run the guard and the suites", () => assertTasks(read("taskfiles", "ci.yml")));
+  test("ci tasks run the guard and the suites", () => assertTasks(readCiTaskfiles()));
 
   test("every job running a loader-importing test installs dependencies first", () => {
     const caps = (yamlLib.load(read("ci", "ci-capabilities.yml")) as { capabilities: Cap[] })
@@ -252,14 +263,12 @@ describe("check-taskfile-tree CI wiring", () => {
 
   test("mutation: a job that does not run the guard is rejected", () => {
     assert.throws(() =>
-      assertTasks(read("taskfiles", "ci.yml").replaceAll("/check-taskfile-tree.ts", "/true")),
+      assertTasks(readCiTaskfiles().replaceAll("/check-taskfile-tree.ts", "/true")),
     );
   });
   test("mutation: a job missing a suite is rejected", () => {
     assert.throws(() =>
-      assertTasks(
-        read("taskfiles", "ci.yml").replaceAll("scripts/tests/taskfile-tree.test.ts", ""),
-      ),
+      assertTasks(readCiTaskfiles().replaceAll("scripts/tests/taskfile-tree.test.ts", "")),
     );
   });
   test("mutation: a Taskfile filter without taskfiles/** is rejected", () => {

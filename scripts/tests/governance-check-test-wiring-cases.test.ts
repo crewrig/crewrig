@@ -110,6 +110,17 @@ describe("check-test-wiring cases", () => {
     assert.ok(r.stderr.includes("  - scripts/tests/alpha.test.ts\n"), r.stderr);
   });
 
+  it("case-g2: a .test.ts wired only in taskfiles/ci/gate.yml is seen (spec 0278 R27 c)", () => {
+    const dir = mkTs(["alpha.test.ts"], "tasks: {}\n");
+    fs.mkdirSync(path.join(dir, "taskfiles/ci"), { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, "taskfiles/ci/gate.yml"),
+      cmd("{{.REPO_DIR}}/scripts/tests/alpha.test.ts"),
+    );
+    const r = check(dir);
+    assert.equal(r.status, 0, r.stderr);
+  });
+
   it("case-h: a .test.ts named at any position of a command line is wired", () => {
     const line = "{{.REPO_DIR}}/scripts/tests/a.test.ts {{.REPO_DIR}}/scripts/tests/b.test.ts";
     const r = check(mkTs(["a.test.ts", "b.test.ts"], cmd(line)));

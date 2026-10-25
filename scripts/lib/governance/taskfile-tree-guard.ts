@@ -2,13 +2,14 @@
 //
 // Usage: checkTaskfileTree(repoDir, { compareWithTask }) -> { findings, notices, taskCount, fileCount }
 // Checks (a)-(g):
-//   (a) every taskfiles/*.yml is reachable from the root includes
+//   (a) every taskfiles/**/*.yml (recursive, spec 0278 R25) is reachable from the root includes
 //   (b) no file under scripts/ outside ALLOW reads the root Taskfile directly
 //   (c) the root defines no task other than `default`
 //   (d) every Taskfile of the tree declares the uniform `version` string
 //   (e) an included file does not use TASKFILE_DIR
 //   (f) every `deps:` entry and `- task:` call resolves from the namespace of its file (R20)
-//   (g) no include carries `dir:`, `excludes:` or `aliases:` (R7, R9)
+//   (g) no include carries `dir:`, `excludes:` or `aliases:` (R7, R9); the one exception (delta-02
+//       R32) is `dir: ..` on an include declared in taskfiles/ci.yml whose target is under taskfiles/ci/
 // R14: the loader's effective names must equal `task --list-all --json`; when the `task` binary is
 // absent the comparison is skipped with an explicit notice, never silently.
 // Throws TaskfileTreeError when the tree cannot be loaded (the CLI maps it to exit 2).
@@ -82,16 +83,32 @@ function listFiles(dir: string, out: string[], rel: string): void {
   }
 }
 
-function checkUnreachable(repoDir: string, tree: TaskfileTree, findings: string[]): void {
-  let names: string[];
+/** Every `*.yml` under `dir`, as repo-relative POSIX paths (recursive, dot entries skipped). */
+function listYml(repoDir: string, rel: string, out: string[]): void {
+  let entries;
   try {
-    names = readdirSync(path.join(repoDir, "taskfiles"));
+    entries = readdirSync(path.join(repoDir, rel), { withFileTypes: true });
   } catch {
     return;
   }
+  for (const entry of entries) {
+    if (entry.name === "node_modules" || entry.name.startsWith(".")) {
+      continue;
+    }
+    const childRel = `${rel}/${entry.name}`;
+    if (entry.isDirectory()) {
+      listYml(repoDir, childRel, out);
+    } else if (entry.name.endsWith(".yml")) {
+      out.push(childRel);
+    }
+  }
+}
+
+function checkUnreachable(repoDir: string, tree: TaskfileTree, findings: string[]): void {
+  const found: string[] = [];
+  listYml(repoDir, "taskfiles", found);
   const reachable = new Set(tree.files);
-  for (const name of names.filter((n) => n.endsWith(".yml")).sort()) {
-    const rel = `taskfiles/${name}`;
+  for (const rel of found.sort()) {
     if (!reachable.has(rel)) {
       findings.push(`${rel} is not reachable from the root includes`);
     }
@@ -251,6 +268,13 @@ function compareWithTaskBinary(
 }
 
 /** Run every check against the tree under `repoDir`. */
+/** Delta-02 R32: `dir: ..` on a taskfiles/ci.yml include whose target lies under taskfiles/ci/. */
+function isCiGroupDir(file: string, include: { file: string; dir?: unknown }): boolean {
+  return (
+    file === "taskfiles/ci.yml" && include.file.startsWith("taskfiles/ci/") && include.dir === ".."
+  );
+}
+
 export function checkTaskfileTree(repoDir: string, options: GuardOptions = {}): GuardResult {
   const tree = loadTaskfileTree(repoDir);
   const findings: string[] = [];
@@ -281,6 +305,9 @@ export function checkTaskfileTree(repoDir: string, options: GuardOptions = {}): 
       for (const key of include.extraKeys.filter((k) =>
         ["dir", "excludes", "aliases"].includes(k),
       )) {
+        if (key === "dir" && isCiGroupDir(node.file, include)) {
+          continue;
+        }
         findings.push(`${node.file}: include '${include.key}' uses '${key}:' (not allowed, R7/R9)`);
       }
     }

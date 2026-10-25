@@ -1,53 +1,42 @@
 // ci-task-commands.ts — resolve a migrated capability to its commands (spec 0283 R1).
 //
 // A migrated capability's `command` is the single line `task ci:<id>`; the commands it runs live
-// as the `cmds:` of the task `ci:<id>` in taskfiles/ci.yml. Wiring tests that assert what a
+// as the `cmds:` of the task `ci:<id>` in the `ci` Taskfile sub-tree. Wiring tests that assert what a
 // capability runs read it through here, so they keep protecting the command text after the move.
 
-import fs from "node:fs";
-import path from "node:path";
-
 import { loadTaskfileTree, taskCmds } from "../../lib/taskfile-tree.ts";
+import { ciFileVars, expandFileVars } from "../../lib/ci-pre-push/normalize.ts";
 import { REPO } from "./build-fixture-tree.ts";
-import { yamlLib } from "./yaml-lib.ts";
-
-type CiDoc = { vars?: Record<string, unknown>; tasks?: Record<string, { cmds?: unknown[] }> };
 
 /** Expand the literal `vars:` of taskfiles/ci.yml one level deep, then strip `{{.REPO_DIR}}/`. */
-function expandCmd(doc: CiDoc, cmd: string): string {
-  const vars = doc.vars ?? {};
-  return cmd
-    .replace(/\{\{\s*\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g, (whole, name: string) => {
-      const value = vars[name];
-      return typeof value === "string" ? value : whole;
-    })
-    .replaceAll("{{.REPO_DIR}}/", "");
+function expandCmd(vars: ReadonlyMap<string, string>, cmd: string): string {
+  return expandFileVars(cmd, vars).replaceAll("{{.REPO_DIR}}/", "");
 }
 
-/** The string `cmds:` of task `ci:<id>`, with the `{{.REPO_DIR}}/` prefix removed. */
+/**
+ * The string `cmds:` of task `ci:<id>` (defined in `taskfiles/ci.yml` or any file of the flattened
+ * `taskfiles/ci/` sub-tree, found through the loader), with the `{{.REPO_DIR}}/` prefix removed.
+ */
 export function ciTaskCommands(id: string, repo: string = REPO): string[] {
-  const doc = yamlLib.load(
-    fs.readFileSync(path.join(repo, "taskfiles", "ci.yml"), "utf8"),
-  ) as CiDoc;
-  const task = doc.tasks?.[id];
-  if (!task) throw new Error(`taskfiles/ci.yml has no task '${id}'`);
-  return (task.cmds ?? [])
-    .filter((c): c is string => typeof c === "string")
-    .map((c) => expandCmd(doc, c));
+  const tree = loadTaskfileTree(repo);
+  if (!tree.byName.has(id.startsWith("ci:") ? id : `ci:${id}`)) {
+    throw new Error(`the Taskfile tree has no task 'ci:${id}'`);
+  }
+  const vars = ciFileVars(tree);
+  return taskCmds(tree, `ci:${id}`).map((c) => expandCmd(vars, c));
 }
 
 /** The commands of the root tasks that task `ci:<id>` delegates to with `- task: :<name>`. */
 export function ciTaskDelegatedCommands(id: string, repo: string = REPO): string[] {
-  const doc = yamlLib.load(
-    fs.readFileSync(path.join(repo, "taskfiles", "ci.yml"), "utf8"),
-  ) as CiDoc;
   const tree = loadTaskfileTree(repo);
-  return (doc.tasks?.[id]?.cmds ?? [])
+  const vars = ciFileVars(tree);
+  const def = tree.byName.get(`ci:${id}`)?.definition as { cmds?: unknown[] } | undefined;
+  return (def?.cmds ?? [])
     .flatMap((c) => {
       const ref = (c as { task?: unknown } | null)?.task;
       return typeof ref === "string" ? taskCmds(tree, ref.replace(/^:/, "")) : [];
     })
-    .map((c) => expandCmd(doc, c));
+    .map((c) => expandCmd(vars, c));
 }
 
 /** A capability's commands: the task body when it is the single `task ci:<id>`, else as declared. */

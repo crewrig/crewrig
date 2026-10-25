@@ -19,6 +19,11 @@ describe("check-taskfile-tree checks (a)-(d)", () => {
     assert.deepEqual(out, ["taskfiles/foo.yml is not reachable from the root includes"]);
   });
 
+  it("(a) fails an orphan taskfiles/ci/foo.yml, recursively (spec 0278 R25)", () => {
+    const out = findings({ ...split(), "taskfiles/ci/foo.yml": `version: '3.54'\ntasks: {}\n` });
+    assert.deepEqual(out, ["taskfiles/ci/foo.yml is not reachable from the root includes"]);
+  });
+
   it("(b) fails a test source under scripts/tests/ reading the root file", () => {
     const out = findings({
       ...split(),

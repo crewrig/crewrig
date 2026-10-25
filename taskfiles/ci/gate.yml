@@ -1,0 +1,114 @@
+version: '3.54'
+
+# Stage group `gate` (spec 0278 R23): the fast lint and layout checks. Flattened under `ci:`
+# by taskfiles/ci.yml; an unanchored `- task:` call resolves to `ci:<name>` (R24), so calls
+# to other files stay colon-anchored. `{{.NODE_SCRIPTS}}` is declared in taskfiles/ci.yml.
+
+tasks:
+  check-taskfile-tree:
+    desc: Check the Taskfile tree layout and contract (pre-push mirror of the CI job)
+    preconditions: &needs-js-yaml
+      - sh: "{{.NODE_SCRIPTS}}/check-tool-binaries.ts js-yaml"
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - '{{.NODE_SCRIPTS}}/check-taskfile-tree.ts'
+      - '{{.NODE_SCRIPTS}}/check-ci-pre-push-parity.ts'
+  check-taskfile-tree-selftest:
+    desc: Run the Taskfile tree self-tests (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/taskfile-tree.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-layout.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-contract.test.ts {{.REPO_DIR}}/scripts/tests/taskfile-tree-references.test.ts {{.REPO_DIR}}/scripts/tests/check-taskfile-tree-ci-wiring.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-parity.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-select.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-refs.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-hook.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-env-scrub.test.ts {{.REPO_DIR}}/scripts/tests/git-env-helpers.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-hooks-config.test.ts {{.REPO_DIR}}/scripts/tests/ci-selftest-split.test.ts {{.REPO_DIR}}/scripts/tests/ci-pre-push-parity-migrated.test.ts {{.REPO_DIR}}/scripts/tests/ci-taskfile-factorization.test.ts {{.REPO_DIR}}/scripts/tests/ci-taskfile-split.test.ts {{.REPO_DIR}}/scripts/tests/ci-taskfile-dir.test.ts {{.REPO_DIR}}/scripts/tests/taskfile-tree-anchors.test.ts'
+  check-task-provisioning:
+    desc: Check the pinned Task provisioning (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - '{{.NODE_SCRIPTS}}/check-task-provisioning.ts'
+  check-task-provisioning-selftest:
+    desc: Run the Task provisioning self-tests (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-task-provisioning.test.ts {{.REPO_DIR}}/scripts/tests/task-pin-provisioning.test.ts'
+  check-taskfile-commands:
+    desc: Check the Taskfile tree names no POSIX-only command (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - task: :check-taskfile-commands
+  check-taskfile-commands-selftest:
+    desc: Run the Taskfile command and tool-binary self-tests (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-taskfile-commands.test.ts {{.REPO_DIR}}/scripts/tests/check-tool-binaries.test.ts'
+  lint-specs:
+    desc: Lint the spec files (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - task: :spec:lint
+  lint-specs-selftest:
+    desc: Run the spec-linter self-tests (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/spec-linter-*.test.ts'
+  lint-markdown:
+    desc: Lint every Markdown file (pre-push mirror of the CI job)
+    preconditions:
+      - sh: '{{.NODE_SCRIPTS}}/check-tool-binaries.ts markdownlint'
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - task: :lint-markdown
+  markdown-links:
+    desc: Run the Markdown link suite tests (pre-push mirror of the CI job)
+    cmds:
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-markdown-links.test.ts'
+  repository-scan:
+    desc: Scan the repository for machine paths, broken Markdown links and core-path drift (pre-push mirror of the CI job)
+    cmds:
+      - '{{.NODE_SCRIPTS}}/check-no-machine-paths.ts'
+      - '{{.NODE_SCRIPTS}}/check-markdown-links.ts'
+      - '{{.NODE_SCRIPTS}}/check-core-paths.ts'
+  lint-typescript:
+    desc: Run every TypeScript check (pre-push mirror of the CI job)
+    preconditions:
+      - sh: '{{.NODE_SCRIPTS}}/check-tool-binaries.ts tsc oxlint oxfmt'
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - task: :lint-ts
+  lint-typescript-selftest:
+    desc: Run the TypeScript lint self-tests (pre-push mirror of the CI job)
+    preconditions:
+      - sh: '{{.NODE_SCRIPTS}}/check-tool-binaries.ts tsc oxlint oxfmt'
+        msg: "Run: task lint-bootstrap"
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-erasable-syntax.test.ts {{.REPO_DIR}}/scripts/tests/lint-typescript.test.ts {{.REPO_DIR}}/scripts/tests/check-typescript.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-built-trees.test.ts
+  ratchet:
+    desc: Run the footprint ratchet (pre-push mirror of the CI job)
+    cmds:
+      - task: :ratchet
+  ratchet-selftest:
+    desc: Run the footprint ratchet self-tests (pre-push mirror of the CI job)
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-ratchet.test.ts
+  check-agents-size:
+    desc: Fail when the AGENTS.md size budget is exceeded (pre-push mirror of the CI job)
+    cmds:
+      - '{{.NODE_SCRIPTS}}/check-agents-size.ts'
+  check-rules-size:
+    desc: Fail when the rules size budget is exceeded (pre-push mirror of the CI job)
+    cmds:
+      - '{{.NODE_SCRIPTS}}/check-rules-size.ts'
+  check-comment-size:
+    desc: Check the comment-size guard on its under and over fixtures (pre-push mirror of the CI job)
+    cmds:
+      - '{{.NODE_SCRIPTS}}/check-comment-size.ts {{.REPO_DIR}}/scripts/tests/fixtures/comment-size/under.txt'
+      - "! {{.NODE_SCRIPTS}}/check-comment-size.ts {{.REPO_DIR}}/scripts/tests/fixtures/comment-size/over.txt"
+  frontmatter:
+    desc: Run the frontmatter, skill-version, routing, install-scope and tier-resolution suites (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-frontmatter-fence.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-skill-versions.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-skill-versions-base.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-feedback-routing.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-assembly-routing.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-install-scope-build.test.ts {{.REPO_DIR}}/scripts/tests/build-install-scope-gate.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/tier-resolution-collision.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-declarations.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-install.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-landing.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-taskfile.test.ts {{.REPO_DIR}}/scripts/tests/tier-resolution-three-tiers.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/pr-logbook-label-scope.test.ts'

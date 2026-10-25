@@ -77,6 +77,68 @@ describe("check-taskfile-tree checks (e)-(g)", () => {
   });
 });
 
+describe("check-taskfile-tree (g) delta-02 R32: `dir: ..` on ci group includes", () => {
+  const CI = (dir: string, target = "./ci/gate.yml"): string =>
+    `version: '3.54'\nincludes:\n  gate: { taskfile: ${target}, flatten: true${dir} }\ntasks:\n  pre-push:\n    cmds:\n      - echo x\n`;
+  const GATE = `version: '3.54'\ntasks:\n  lint:\n    cmds:\n      - echo x\n`;
+  const ciTree = (ciYml: string): Record<string, string> => ({
+    ...split(),
+    [ROOT_NAME]: ROOT.replace(
+      "  e2e: ./taskfiles/e2e.yml\n",
+      "  e2e: ./taskfiles/e2e.yml\n  ci: ./taskfiles/ci.yml\n",
+    ),
+    "taskfiles/ci.yml": ciYml,
+    "taskfiles/ci/gate.yml": GATE,
+  });
+  const offence = (key: string, file = "taskfiles/ci.yml", inc = "gate"): string =>
+    `${file}: include '${inc}' uses '${key}:' (not allowed, R7/R9)`;
+
+  it("accepts `dir: ..` on a taskfiles/ci.yml include of ./ci/<group>.yml", () => {
+    assert.deepEqual(findings(ciTree(CI(", dir: .."))), []);
+  });
+
+  it("accepts a ci sub-include with no dir: (the runtime test owns that omission)", () => {
+    assert.deepEqual(findings(ciTree(CI(""))), []);
+  });
+
+  it("rejects other dir values on that include, naming it", () => {
+    for (const value of ["'{{.ROOT_DIR}}'", "../x", ".", "../", "/tmp"]) {
+      assert.deepEqual(findings(ciTree(CI(`, dir: ${value}`))), [offence("dir")]);
+    }
+  });
+
+  it("rejects `dir: ..` on a root include and on a taskfiles/e2e.yml include", () => {
+    const root = ROOT.replace("    flatten: true\n", "    flatten: true\n    dir: ..\n");
+    assert.deepEqual(findings({ ...split(), [ROOT_NAME]: root }), [
+      `${ROOT_NAME}: include 'lint' uses 'dir:' (not allowed, R7/R9)`,
+    ]);
+    const e2e = `${E2E}includes:\n  lint2: { taskfile: ./lint.yml, dir: .. }\n`;
+    const out = findings({ ...split(), "taskfiles/e2e.yml": e2e });
+    assert.ok(out.includes(offence("dir", "taskfiles/e2e.yml", "lint2")), out.join("\n"));
+  });
+
+  it("rejects `dir: ..` on a ci.yml include whose target is not under taskfiles/ci/", () => {
+    const tree = { ...ciTree(CI(", dir: ..", "./lint.yml")) };
+    assert.ok(findings(tree).includes(offence("dir")), findings(tree).join("\n"));
+  });
+
+  it("rejects `dir: ..` on an include nested in a taskfiles/ci/ file", () => {
+    const tree = {
+      ...ciTree(CI(", dir: ..")),
+      "taskfiles/ci/gate.yml": `${GATE}includes:\n  inner: { taskfile: ./other.yml, dir: .. }\n`,
+      "taskfiles/ci/other.yml": GATE,
+    };
+    assert.ok(findings(tree).includes(offence("dir", "taskfiles/ci/gate.yml", "inner")));
+  });
+
+  it("still rejects excludes: and aliases: on a ci.yml include", () => {
+    for (const key of ["excludes", "aliases"]) {
+      const value = key === "excludes" ? "[lint]" : "[l]";
+      assert.deepEqual(findings(ciTree(CI(`, ${key}: ${value}`))), [offence(key)]);
+    }
+  });
+});
+
 describe("check-taskfile-tree CLI contract", () => {
   it("prints the OK line on stdout and exits 0 on a clean tree", () => {
     const result = cli(stage(split()));

@@ -1,18 +1,20 @@
 // check-alert-scheduled-failure.ts — static wiring check of the `alert` job (spec 0284 R6).
 //
-// Usage: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-alert-scheduled-failure.ts [workflow] [taskfile]
+// Usage: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-alert-scheduled-failure.ts [workflow] [repo-dir]
 // Exit: 0 wired, 1 one or more elements missing or extra (each named on stderr).
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { loadTaskfileTree } from "./lib/taskfile-tree.ts";
 import { get, keys, parse, render, resolve, YqMap, YqSeq } from "./lib/yq-accessors/index.ts";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const workflowPath = process.argv[2] ?? `${root}.github/workflows/changeset-coverage.yml`;
-const taskfilePath = process.argv[3] ?? `${root}taskfiles/ci.yml`;
+const repoDir = process.argv[3] ?? root;
 const TASK = "ci:alert-scheduled-failure";
 
-export function check(workflowText: string, taskfileText: string): string[] {
+/** `taskNames` are the effective task names of the Taskfile tree (any file of the `ci` sub-tree). */
+export function check(workflowText: string, taskNames: readonly string[]): string[] {
   const out: string[] = [];
   const doc = parse(workflowText);
   const job = (...p: string[]) => get(doc, ["jobs", "alert", ...p]);
@@ -45,14 +47,14 @@ export function check(workflowText: string, taskfileText: string): string[] {
   if (call < 0) out.push(`missing call to task ${TASK}`);
   else if (guard > call) out.push("floor guard must run before the task call");
   if (workflowText.includes("secrets.")) out.push("workflow must not reference secrets.");
-  const taskName = TASK.slice("ci:".length);
-  if (!keys(get(parse(taskfileText), ["tasks"])).includes(taskName))
-    out.push(`task ${TASK} does not exist in taskfiles/ci.yml`);
+  if (!taskNames.includes(TASK)) out.push(`task ${TASK} does not exist in the Taskfile tree`);
   return out;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const findings = check(readFileSync(workflowPath, "utf8"), readFileSync(taskfilePath, "utf8"));
+  const findings = check(readFileSync(workflowPath, "utf8"), [
+    ...loadTaskfileTree(repoDir).byName.keys(),
+  ]);
   for (const f of findings) process.stderr.write(`check-alert-scheduled-failure: ${f}\n`);
   if (findings.length === 0) process.stdout.write("OK: the alert job is wired as specified\n");
   process.exitCode = findings.length === 0 ? 0 : 1;
