@@ -1,0 +1,112 @@
+---
+id: "0287"
+slug: staged-reusable-workflows
+status: draft
+complexity: standard
+interaction-mode: AUTO
+related-issue: 1828
+version: 1.0.0
+---
+
+# Staged reusable workflows for the GitHub CI
+
+## Intent
+
+A maintainer reading the GitHub CI notices that the single 1,352-line workflow file with 108 unrelated jobs is replaced by a short top-level workflow that states the order of six named stages (`gate`, `modules`, `governance`, `extensions`, `integration`, `windows`), each stage living in its own workflow file. A failure in the fast checks stops the Linux stages from spending runner time, the Windows jobs still start immediately, the wall-clock time of a green run stays what it is today, every job keeps the name it has in the capability reference, and the generated GitLab pipeline carries the same stage taxonomy so the two engines do not drift. Parent ticket #1828, epic #1761 follow-up; sibling ticket #1827 splits the Task files along the same six names; rationale for the shared taxonomy: `docs/adr/0021-task-is-the-ci-contract.md`.
+
+## Requirements
+
+1. **R1 (six callee files, one caller).** `.github/workflows/build.yml` SHALL keep the triggers, the `concurrency` block and the workflow-level `permissions` (`contents: read`, `actions: write`) it has today and SHALL contain only six caller jobs, one per group, each a `uses: ./.github/workflows/_ci-<group>.yml` reference with no steps. The six callee files SHALL be `.github/workflows/_ci-gate.yml`, `_ci-modules.yml`, `_ci-governance.yml`, `_ci-extensions.yml`, `_ci-integration.yml` and `_ci-windows.yml`, each declaring `on: workflow_call` as its only trigger. Acceptance: a wiring test parses the seven files and asserts exactly this structure.
+2. **R2 (job keys unchanged, each present once).** Every one of the 108 job keys of `build.yml` at the commit of this spec SHALL appear unchanged, with an unchanged body, in exactly one `_ci-*.yml` file, in the group given by the table of R3. The union of job keys over the six callees SHALL equal the capability ids of the GitHub engine in `ci/ci-capabilities.yml` (contract C2, `docs/adr/0012-ci-reference-contract.md`); no key appears twice and none is lost. Acceptance: the wiring test of R9 asserts presence, uniqueness and equality with the reference.
+3. **R3 (group of every job).** The group of each job SHALL be exactly the following (counts: gate 19, modules 15, governance 28, extensions 14, integration 8, windows 24, total 108):
+   - `gate` (19): `check-taskfile-tree`, `check-taskfile-tree-selftest`, `check-task-provisioning`, `check-task-provisioning-selftest`, `check-taskfile-commands`, `check-taskfile-commands-selftest`, `lint-specs`, `lint-specs-selftest`, `lint-markdown`, `lint-typescript`, `lint-typescript-selftest`, `markdown-links`, `repository-scan`, `ratchet`, `ratchet-selftest`, `check-agents-size`, `check-rules-size`, `check-comment-size`, `frontmatter`.
+   - `modules` (15): `build-components-ts`, `extension-builders-ts`, `skill-scripts-ts`, `governance-checks-ts`, `model-ci-tooling-ts`, `install-ts`, `setup-modules-ts`, `release-driver-modules-ts`, `packaging-modules-ts`, `install-ts-node-24-0`, `build-components-ts-node-24-0`, `extension-builders-ts-node-24-0`, `usage-capture-node-24-0`, `worktree-guard-node-24-0`, `mempalace-transcript-node-24-0`.
+   - `governance` (28): `path-ownership`, `path-ownership-selftest`, `host-safety`, `host-safety-selftest`, `check-skill-versions`, `check-description-length`, `check-extension-version-bump`, `test-wiring`, `test-wiring-selftest`, `check-seat-brief`, `check-plan-review`, `check-model-mappings`, `check-agent-profiles`, `check-metadata-keys`, `check-claude-agent-layout`, `ci-parity`, `check-ci-parity`, `gitlab-ci-check`, `check-spec-id-reserved`, `check-feedback-routing`, `changeset-coverage-test`, `alert-scheduled-failure-selftest`, `alert-scheduled-failure-check`, `ci-pre-push-replay`, `test-harness-curate`, `node-floor-guard`, `agent-profile-migration`, `misc`.
+   - `extensions` (14): `build`, `component-drift`, `component-drift-selftest`, `extension-render`, `extension-provenance`, `extension-manifest`, `extension-install`, `setup`, `setup-differential`, `core-paths`, `docs-index`, `docs-index-selftest`, `cli-matrix-fresh`, `cli-matrix-fresh-selftest`.
+   - `integration` (8): `setup-oracle`, `e2e`, `mempalace`, `chroma-mcp`, `worktree-guard`, `mempalace-transcript`, `figure-labels`, `runtime-foundations`.
+   - `windows` (24): `windows-node-floor-guard`, `windows-service-task`, `windows-chroma-trio`, `windows-mcp-daemon`, `windows-doctor-repair`, `windows-usage-capture`, `windows-usage-wrappers`, `windows-worktree-git-guard`, `windows-mempalace-transcript`, `windows-sync-from-upstream`, `windows-history-import`, `windows-build-components`, `windows-extension-builders`, `windows-install-entries`, `windows-packaging-entries`, `windows-extension-hooks`, `windows-harness-curator`, `windows-create-extension`, `windows-skill-scripts`, `windows-e2e-harness`, `windows-governance-checks`, `windows-model-ci-tooling`, `windows-setup-units`, `windows-setup-entries`.
+
+   `ratchet` and `lint-typescript` SHALL stay in `gate` in every case (R5). The `*-node-24-0` twins of integration jobs (`usage-capture-node-24-0`, `worktree-guard-node-24-0`, `mempalace-transcript-node-24-0`) stay in `modules` per the owner taxonomy of #1828 and the group of a job is otherwise changed only by a delta-spec. A job that the PLAN measures at more than 60 s in `gate` SHALL move to `governance` (except the two above), recorded in the report of R13. Control tasks (`pre-push`, `hooks-*`) are not CI jobs and stay in `taskfiles/ci.yml`.
+4. **R4 (needs graph).** The caller SHALL declare: `gate` with no `needs`; `modules`, `governance` and `extensions` each with `needs: [gate]`; `windows` with no `needs` and therefore starting at once; `integration` with `needs: [gate]` plus the middle groups (`modules`, `governance`, `extensions`) only if the wall-clock rule of R10 holds with that dependency, and otherwise `needs: [gate]` alone. The choice is made at DEV time from measured runs and recorded in the report; the default when the measurement is inconclusive is `needs: [gate]` alone. No caller job SHALL carry an `if:` that skips a group, so that a skipped dependency can never silently skip a required check.
+5. **R5 (required status checks and rulesets).** Because a called workflow's jobs report as `<caller job id> / <job>`, the required contexts `ratchet` and `lint-typescript` of the rulesets `main-protected` (id 16466901) and `release-protected` (id 24240579) (integration_id 15368) become `gate / ratchet` and `gate / lint-typescript`. The implementation SHALL (a) prepare the exact `gh api` command updating both rulesets, replacing the two contexts and keeping every other rule field unchanged, and carry it in the pull request body; (b) NOT execute it; (c) leave its execution to the coordinator or owner, who SHALL run it after the pull request's checks have reported once under the new names and before the pull request is merged, so that the merge is never blocked on a context that does not exist and never allowed without the new contexts; (d) include the inverse command for rollback. Acceptance: the pull request body carries both commands; a test asserts that the `gate` callee contains jobs keyed `ratchet` and `lint-typescript` and that the caller job is keyed `gate`. Classic branch protection returns 404 on `main` (measured 2026-10-25) and is not touched.
+6. **R6 (cancel-on-failure inside called workflows).** The `cancel-on-failure` action SHALL identify its failing job when the jobs API names it `<caller job> / <job>`: the match SHALL accept a name equal to the job, a name starting with the job followed by a space and an opening parenthesis (matrix suffix), a name ending with a space, a slash and the job, and the same with a matrix suffix, so the annotation names the failing step instead of `unknown`. The cancel itself keeps targeting the run id of the caller, which is the only run; callee jobs cannot hold more permission than the caller grants, so the caller's `actions: write` SHALL be kept. The action's metadata version SHALL be bumped per `docs/version-bump-convention.md`. Acceptance: a fixture of jobs-API output with a prefixed name yields the failing step name; unprefixed names still match.
+7. **R7 (path gate unchanged).** The runtime path gate (`scripts/ci-paths-gate.ts`, invoked by the `ci-job` action) SHALL behave identically in a called workflow: the `github` context of a callee is the caller's, so `github.event_name` and `github.event.before` are those of the `build.yml` trigger. Acceptance: a test or the report shows the gate decision of one `paths:`-filtered job on a `push` and on a `pull_request` run after the split equals its decision before it, and `scripts/tests/ci-paths-push-trigger.test.ts` is re-pointed to read the union of the workflow files with unchanged assertions.
+8. **R8 (parity tooling reads callers and callees).** `scripts/check-ci-parity.ts` SHALL keep requiring that every job key it finds is a capability id or carries a valid annotation. A caller job (a job with `uses:` and no `steps:`) is not a capability: the traceability harvest of `scripts/lib/ci-parity/traceability.ts` SHALL skip a job that has a `uses:` key and no `steps:` key, and SHALL still harvest every job of every file, so the callee jobs are traced by their own keys. The skip SHALL NOT apply to a job without `uses:`. Any other tool or test that names `build.yml` for a job body (listed under R12) SHALL read the union of `.github/workflows/*.yml`, not `build.yml` alone. Acceptance: parity fixtures with a caller job pass, a fixture with an untraceable job inside a callee fails, and a fixture with a stepless job without `uses:` fails as untraceable.
+9. **R9 (wiring test).** A new test SHALL assert on the committed workflow files: the seven-file layout of R1; each job key unique and present exactly once across the six callees and equal to the capability ids; the group of every job equal to the table of R3 (the table lives in `ci/ci-capabilities.yml` as the `group` field of R11 and the test compares the two); the needs graph of R4 (`gate` precedes every Linux group, `windows` has no `needs`, no group is skipped by an `if:`); the permissions of the caller; and that no callee declares `concurrency` or a trigger other than `workflow_call`. The test SHALL be wired in `.github/workflows/build.yml` side (as a job in its group), `ci/ci-capabilities.yml` and the regenerated `.gitlab-ci.yml`, and in `scripts/check-test-wiring.ts` following spec 0281, and SHALL use `mkdtemp` directories only for any fixture. Acceptance: a mutation (a duplicate key, a missing key, `windows` given `needs: [gate]`, `gate` removed from `modules`) fails the test.
+10. **R10 (wall-clock acceptance).** The median wall-clock time of three consecutive green `pull_request` runs of the implementation pull request, measured from `createdAt` of the run to the completion of its last job (`gh run view <id> --json jobs,createdAt,updatedAt` with the `startedAt` and `completedAt` of each job), SHALL be within 30 s of the baseline of 6 min 45 s (405 s), that is between 375 s and 435 s; the baseline SHALL be re-measured by the same procedure on three runs of `main` at the commit before the split and recorded if it differs by more than 30 s from 405 s, and the criterion applies to the re-measured value. The report SHALL list the critical path (today `windows-service-task` about 250 s; `setup-oracle` about 184 s; `gate` about 45 s) and the per-group start and end times. Windows jobs SHALL start within 60 s of the run's start. A run that fails R10 SHALL lead to a smaller `needs` for `integration` (R4) or a rebalanced `gate` (R3), not to a relaxed criterion.
+11. **R11 (shared `group` field, both engines).** `ci/ci-capabilities.yml` SHALL gain one optional field `group` per capability, whose value is one of the six names, and `docs/ci-reference-format.md` SHALL define it. It is the single source of truth for the stage of a job on both engines and for the split of `taskfiles/ci/*.yml` of ticket #1827. The generator `scripts/build-ci.ts` SHALL emit `stages:` at the top of `.gitlab-ci.yml` in the order `gate`, `modules`, `governance`, `extensions`, `integration`, `windows`, SHALL emit `stage: <group>` on every job of a capability that has a `group`, and SHALL emit `needs: []` on every job of the `windows` group so those jobs do not wait for the earlier stages. `scripts/check-ci-parity.ts` SHALL fail when a capability enabled on a GitHub-engine job has no `group`, when `group` is not one of the six names, or when the callee file that holds the job does not match the field. A capability without `group` is permitted only when it is not run on the GitHub engine. Acceptance: the regenerated `.gitlab-ci.yml` is identical to the generator output; fixtures for each failure case fail.
+12. **R12 (files that name `build.yml`).** The implementation SHALL update every reader of `build.yml` job content so it reads the union of the workflow files, at least: `scripts/tests/ci-parity-ci-job.test.ts`, `ci-paths-push-trigger.test.ts`, `ci-selftest-split.test.ts`, `spec-linter-draft-signal-mapping.test.ts`, `release-docs-and-workflows.test.ts` (its check that `ratchet` and `lint-typescript` are defined), `check-plan-review-ci-wiring.test.ts`, `check-comment-size-ci-wiring.test.ts`, `check-seat-brief-ci-wiring.test.ts`, `check-taskfile-tree-ci-wiring.test.ts`, `check-description-length-ci-wiring.test.ts`, `check-stray-scan-wiring.test.ts`, `model-ci-tooling-cache-guard.test.ts`, `check-task-provisioning` (and its test), `scripts/lib/governance/test-wiring.ts`, `scripts/lib/path-ownership.ts` message and `setup-references.test.ts`/`install-references.test.ts` fixture lists. Readers that dispatch `build.yml` as a workflow (`scripts/lib/release-pr.ts` and its tests) stay unchanged because the caller keeps the name `build.yml` and its `workflow_dispatch`. The PLAN SHALL re-run `grep -rn 'build\.yml'` over `scripts/`, `docs/`, `ci/`, `taskfiles/`, `.github/` and list any further reader. Acceptance: the full test suite passes with no reader left on the single-file assumption.
+13. **R13 (line ratchet and report).** The CI line ratchet of `scripts/tests/ci-shrink-report.test.ts` SHALL count `.github/workflows/build.yml`, every `.github/workflows/_ci-*.yml`, `ci/ci-capabilities.yml` and `.gitlab-ci.yml`; leaving the new files out would bypass the ratchet and is forbidden. The pin of the test (8,651 on `main`, measured total 8,649 on 2026-10-25) and its floor (8,880, margin 229) SHALL stay unchanged if the new total fits. The estimate is that it does not fit: about +72 lines of callee headers, +40 of caller, +108 of `group` fields and +160 of GitLab `stage:`, `needs: []` and `stages:` lines, about +380 in total. If the measured total exceeds 8,880, this spec authorizes raising both the pin and the floor to the measured total at DEV time, rounded up to the next ten, with the hard cap of 9,100 lines (a 28.2% reduction from the 12,681 baseline instead of 30%); the justification (the structure of R1 and the shared taxonomy of R11 cost line count and buy fail-fast gating and a two-engine stage model) SHALL be recorded in the pull request body and in `docs/ci-shrink-report.md`, with the before and after per file. A total above 9,100 SHALL lead to a smaller design, not a higher cap. Acceptance: the ratchet test counts the seven workflow files; the report states the new measured figure.
+14. **R14 (ADR amendment).** An amendment of `docs/adr/0021-task-is-the-ci-contract.md` (a new section or a delta) SHALL record the shared stage taxonomy (six names, their meaning, the `group` field), the decision of R15 and the rejected alternatives. This spec does not write that amendment; the plan SHALL include it and the implementation pull request SHALL carry it.
+15. **R15 (GitLab decision and recorded gap).** GitLab stages are sequential barriers, so the `stages:` order of R11 makes `modules`, `governance` and `extensions` run one after the other on GitLab, whereas on GitHub they run in parallel after `gate`; only `windows` is exempt (`needs: []`). This difference SHALL be documented once in `docs/ci-reference-format.md` and in the ADR amendment as an accepted, non-silent gap (GitLab wall-clock is not an objective, and the GitLab output is verified by the generator equality check and lint only, not on a live runner). Rejected alternatives, to be recorded: (a) leave GitLab unstaged, which is a silent asymmetry and loses fail-fast gating there; (b) emit a per-job `needs:` list of the gate jobs, which adds about 2,000 lines and breaks R13; (c) put the three middle groups in one GitLab stage, which breaks the one-group-one-stage identity of the shared field. Acceptance: the document states the gap; the generator test asserts the order of `stages:` and `needs: []` on `windows` jobs only.
+16. **R16 (no secrets or concurrency in callees).** The callee files SHALL NOT declare `concurrency` (the caller's group cancels the whole run) and SHALL NOT use `secrets: inherit` or declare secrets, unless the PLAN proves that a job needs a secret, in which case the proof and the narrowest passing form are recorded. Callee `permissions`, if declared, SHALL NOT exceed the caller's. Acceptance: covered by the wiring test of R9.
+17. **R17 (pre-push tier unaffected).** `ci/pre-push-tier.json`, the `ci:pre-push` task and the guards of spec 0279 SHALL be unchanged by this spec, as they are keyed by capability id, which R2 preserves. Acceptance: `ci/pre-push-tier.json` and `taskfiles/ci.yml` are absent from the diff, except where R18 states otherwise.
+18. **R18 (Task files untouched).** This spec SHALL NOT edit `taskfiles/ci.yml`, any `task ci:*` recipe or the Taskfile guards, which ticket #1827 edits in parallel. If the implementation finds that a guard reads `build.yml` job content (for example `check-task-provisioning`, whose input is the workflow files), the change is limited to that reader's workflow-file discovery, is listed in the pull request body, and is coordinated with #1827 before merge; no other Taskfile change is permitted.
+19. **R19 (rejected matrices).** The implementation SHALL NOT merge the `windows-*` jobs or the `*-node-24-0` twins into matrix jobs: a matrix renames the job and breaks contract C2.
+20. **R20 (invariants and rollback).** At the merge: CI is green on the new structure; the change is reversible by `git revert` of one pull request (the ruleset rollback command of R5 reverses the contexts); `.gitlab-ci.yml` is regenerated by `node scripts/build-ci.ts`; `check-ci-parity`, `gitlab-ci-check`, `cancel-on-failure`, `changeset-coverage` and `path-ownership` keep working; every `ci:<id>` task name is stable. Acceptance: the pull request body shows each invariant green.
+
+## Scenarios
+
+**Scenario:** Fast failure stops the Linux stages
+
+Given the run has started and `gate / lint-markdown` fails
+When the `cancel-on-failure` step of that job runs
+Then the annotation names the failing step (not `unknown`), the run is cancelled, and no job of `modules`, `governance`, `extensions` or `integration` has started, while `windows` jobs that began at t=0 are cancelled with the run.
+
+**Scenario:** Green run keeps the wall-clock time
+
+Given three consecutive green runs of the implementation pull request
+When their median duration is computed from the jobs timing
+Then it lies between 375 s and 435 s and the Windows jobs started within 60 s of the run start.
+
+**Scenario:** Required contexts follow the rename
+
+Given the first run under the new structure has reported `gate / ratchet` and `gate / lint-typescript`
+When the coordinator runs the prepared ruleset command and the pull request is merged
+Then both rulesets require the two new contexts and no ruleset requires the old names.
+
+**Scenario:** Merging before the ruleset update is detected
+
+Given the pull request is mergeable but the rulesets still require `ratchet`
+When the coordinator checks the contexts before merging
+Then the old context is reported as never produced by the new run and the merge waits for the ruleset update.
+
+**Scenario:** A job key lost or duplicated
+
+Given a job key is removed from, or present in two of, the `_ci-*.yml` files
+When the wiring test runs
+Then it fails naming the key.
+
+**Scenario:** Caller jobs are not untraceable
+
+Given `build.yml` contains six jobs that have `uses:` and no steps
+When `check-ci-parity` runs
+Then the caller jobs are skipped, every callee job is traced by its capability id, and a stepless job without `uses:` is still reported as untraceable.
+
+**Scenario:** GitLab stages
+
+Given capabilities carry `group`
+When `node scripts/build-ci.ts` runs
+Then `.gitlab-ci.yml` starts with the six-stage list, each job has its `stage:`, and only `windows` jobs have `needs: []`; a capability on the GitHub engine without `group` fails the parity check.
+
+**Scenario:** The ceiling is exceeded
+
+Given the measured total of the seven workflow files, the reference and the GitLab file is 9,150 lines
+When the ratchet and the report are updated
+Then the change is rejected for exceeding the 9,100-line cap and the design is reduced.
+
+## Out of scope
+
+- `taskfiles/ci.yml`, the `task ci:*` recipes, the Taskfile guards and the split of `taskfiles/ci/*.yml`: ticket #1827 (R18).
+- Merging the `windows-*` jobs or the `*-node-24-0` twins into matrices (R19).
+- Changing any command, path filter, runtime or trigger of a capability; only the grouping and the file location of its job change.
+- Editing the rulesets from the implementation pull request (R5: prepared only, executed by the coordinator).
+- A live GitLab runner verification, and parallel middle stages on GitLab (R15).
+- Changing `ci/pre-push-tier.json` or the pre-push guard (R17).
+- Writing the ADR amendment in this file (R14).
+
+## Open questions
+
+- Should `integration` wait for the three middle groups? Resolved by measurement at DEV time through R4 and R10; the default is `needs: [gate]` alone.
+- Does the 60 s `gate` bound hold for all 19 jobs? Resolved by the PLAN measurement of R3; a slower job moves to `governance`.
+- Which rulesets exist beyond `main-protected` and `release-protected` at execution time? The coordinator re-lists them (`gh api repos/crewrig/crewrig/rulesets`) before running the R5 command.
