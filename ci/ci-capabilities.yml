@@ -122,6 +122,7 @@ capabilities:
       - "scripts/tests/fixtures/build-components/**"
       - "scripts/lib/node-floor-guard.js"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - ".github/workflows/build.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
@@ -1559,6 +1560,7 @@ capabilities:
       - "scripts/tests/lib/docs-index-entry-tree.ts"
       - "scripts/tests/lib/worktree-fixtures.ts"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - ".github/workflows/build.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
@@ -1617,6 +1619,7 @@ capabilities:
       - "scripts/tests/build-cli-matrix.test.ts"
       - "scripts/lib/node-floor-guard.js"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - ".github/workflows/build.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
@@ -1804,6 +1807,7 @@ capabilities:
       - "scripts/ci-cache-guard.ts"
       - "scripts/lib/ci-cache-guard/**"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - ".github/workflows/build.yml"
       - "ci/ci-capabilities.yml"
       - "scripts/tests/**"
@@ -2215,6 +2219,7 @@ capabilities:
       - "scripts/ci-cache-guard.ts"
       - "scripts/lib/ci-cache-guard/**"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - ".github/workflows/build.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
@@ -2282,6 +2287,7 @@ capabilities:
       - "scripts/lib/git-env.ts"
       - "scripts/tests/lib/**"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - ".github/workflows/build.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
@@ -2307,6 +2313,7 @@ capabilities:
       - ".gitlab-ci.yml"
       - "ci/**"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - "scripts/check-task-provisioning.ts"
       - "scripts/lib/task-provisioning/**"
       - "scripts/lib/build-ci/**"
@@ -2341,6 +2348,7 @@ capabilities:
       - "scripts/tests/check-task-provisioning.test.ts"
       - "scripts/tests/task-pin-provisioning.test.ts"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - "ci/ci-capabilities.yml"
       - ".github/workflows/build.yml"
     portability: portable
@@ -2488,6 +2496,7 @@ capabilities:
       - "package.json"
       - "package-lock.json"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - ".github/workflows/build.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
@@ -2546,6 +2555,7 @@ capabilities:
       - "scripts/lib/ratchet-lists.ts"
       - "scripts/tests/check-ratchet.test.ts"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - ".github/workflows/build.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
@@ -2592,6 +2602,7 @@ capabilities:
       - "package.json"
       - "package-lock.json"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - ".github/workflows/build.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
@@ -2646,6 +2657,7 @@ capabilities:
       - "package.json"
       - "package-lock.json"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - ".github/workflows/build.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
@@ -3027,6 +3039,7 @@ capabilities:
       - "scripts/ci-cache-guard.ts"
       - "scripts/lib/ci-cache-guard/**"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - ".github/workflows/build.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
@@ -3757,6 +3770,7 @@ capabilities:
       - "scripts/tests/ci-alert-scheduled-failure.test.ts"
       - ".github/workflows/changeset-coverage.yml"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - ".github/workflows/build.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
@@ -3781,6 +3795,7 @@ capabilities:
       - "scripts/tests/ci-alert-scheduled-failure.test.ts"
       - ".github/workflows/changeset-coverage.yml"
       - "taskfiles/ci.yml"
+      - "taskfiles/ci/**"
       - ".github/workflows/build.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
