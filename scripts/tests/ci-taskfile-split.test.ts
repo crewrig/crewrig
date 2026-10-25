@@ -134,6 +134,12 @@ describe("taskfiles/ci split (spec 0278 R23)", () => {
     }
   });
 
+  // Deterministic output: CI exports colour-forcing variables the real binary honours.
+  const plainTaskEnv = (cwd: string): NodeJS.ProcessEnv => {
+    const env: NodeJS.ProcessEnv = { ...process.env, PWD: cwd, NO_COLOR: "1" };
+    for (const k of ["FORCE_COLOR", "CLICOLOR_FORCE", "TASK_COLOR"]) delete env[k];
+    return env;
+  };
   const hasTask = spawnSync("task", ["--version"], { encoding: "utf8" }).status === 0;
   if (!hasTask)
     process.stderr.write("ci-taskfile-split: NOTICE `task` absent, list-all case skipped\n");
@@ -141,10 +147,10 @@ describe("taskfiles/ci split (spec 0278 R23)", () => {
     "task --list-all is byte-identical to the pre-split baseline (R28 d)",
     { skip: !hasTask },
     () => {
-      const r = spawnSync("task", ["--list-all"], {
+      const r = spawnSync("task", ["--color=false", "--list-all"], {
         cwd: REPO,
         encoding: "utf8",
-        env: { ...process.env, PWD: REPO },
+        env: plainTaskEnv(REPO),
       });
       assert.equal(r.status, 0, r.stderr);
       assert.equal(

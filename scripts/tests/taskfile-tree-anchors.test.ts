@@ -26,7 +26,10 @@ function task(
   cwd: string,
   args: string[],
 ): { status: number | null; stdout: string; stderr: string } {
-  return spawnSync("task", args, { cwd, encoding: "utf8", env: { ...process.env, PWD: cwd } });
+  // Deterministic output: CI exports colour-forcing variables the real binary honours.
+  const env: NodeJS.ProcessEnv = { ...process.env, PWD: cwd, NO_COLOR: "1" };
+  for (const k of ["FORCE_COLOR", "CLICOLOR_FORCE", "TASK_COLOR"]) delete env[k];
+  return spawnSync("task", ["--color=false", ...args], { cwd, encoding: "utf8", env });
 }
 
 // Spelled in two parts so the root-reader guard does not mistake the fixture writer for a reader.
