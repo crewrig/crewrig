@@ -115,3 +115,11 @@ test("P6: python3 requirement satisfied by actions/setup-python alone (GHA-only)
   assert.equal(r.status, 0, r.stderr);
   assert.ok(!r.stderr.includes("requires tool 'python3'"), r.stderr);
 });
+
+test("P7 (spec 0287 R8): a caller job (uses, no steps) is not a capability and passes", () => {
+  const fx = makeFixture();
+  fs.appendFileSync(buildYml(fx), "\n  extra-stage:\n    uses: ./.github/workflows/_ci-gate.yml\n");
+  const r = runCheck(fx);
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(!r.stderr.includes("extra-stage"), r.stderr);
+});

@@ -177,3 +177,38 @@ test("C1: cache key inputs diverge from the reference cache.files", () => {
   });
   fails(fx, "C1", ["capability 'mempalace' (github-actions)", "cache key inputs diverge"]);
 });
+
+test("S13 (spec 0287 R8): an untraceable job inside a callee fails, naming the callee file", () => {
+  const fx = ghEdit((doc) => {
+    map(doc["jobs"])["mystery"] = { "runs-on": "ubuntu-latest", steps: [{ run: "echo hi" }] };
+  });
+  fails(fx, "S13", ["untraceable job 'mystery'", "_ci-", "github-actions"]);
+});
+
+test("S14 (spec 0287 R8): a stepless job without `uses` is untraceable, not a caller", () => {
+  const fx = ghEdit((doc) => {
+    map(doc["jobs"])["hollow"] = { "runs-on": "ubuntu-latest" };
+  });
+  fails(fx, "S14", ["untraceable job 'hollow'", "github-actions"]);
+});
+
+test("S15 (spec 0287 R11): a GitHub-engine capability without `group` fails", () => {
+  const fx = refEdit((doc) => {
+    delete capOf(doc, "lint-specs")["group"];
+  });
+  fails(fx, "S15", ["capability 'lint-specs'", "no 'group'", "R11"]);
+});
+
+test("S16 (spec 0287 R11): a group outside the six names fails", () => {
+  const fx = refEdit((doc) => {
+    capOf(doc, "lint-specs")["group"] = "bogus";
+  });
+  fails(fx, "S16", ["capability 'lint-specs'", "group 'bogus'", "R11"]);
+});
+
+test("S17 (spec 0287 R11): a callee file that does not match the group fails", () => {
+  const fx = refEdit((doc) => {
+    capOf(doc, "lint-specs")["group"] = "modules";
+  });
+  fails(fx, "S17", ["job 'lint-specs'", "_ci-gate.yml", "_ci-modules.yml", "R11"]);
+});
