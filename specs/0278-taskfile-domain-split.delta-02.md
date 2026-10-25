@@ -23,8 +23,8 @@ the 95 tasks that moved. `dir: '{{.ROOT_DIR}}'` on the include does not fix
 it; `dir: ..` on the include (resolved against the directory of the including
 file, `taskfiles/`) does: the task then runs from the repository root. The
 delta keeps the R9 invariant (every included task runs from the repository
-root) and relaxes only the means: the blanket ban on `dir:` of base R7, R9 and
-R13 (g) gets one narrow, exact exception.
+root) and relaxes only the means: the ban on `dir:` of base R9 and of guard
+rule (g) gets one narrow, exact exception.
 
 ## ADDED
 
@@ -52,11 +52,12 @@ includes, an include nested in a `taskfiles/ci/*.yml` file), and on `excludes:`
 and `aliases:` everywhere, unchanged. Acceptance: fixture tests under
 `scripts/tests/` (the staged `mkdtemp` trees of the existing guard fixtures)
 prove that `dir: ..` on a `taskfiles/ci.yml` include of `./ci/<group>.yml`
-passes, and that each of the following fails: `dir: '{{.ROOT_DIR}}'` on that
-include, `dir: ../x` on it, `dir: ..` on a root include, `dir: ..` on a
-`taskfiles/e2e.yml` include, `dir: ..` on a `taskfiles/ci.yml` include whose
-target is not under `taskfiles/ci/`, and a `ci` sub-include with no `dir:`
-at all is NOT a guard failure (the runtime test of R33 owns that omission).
+passes. Separately, each of the following fails the guard, naming the include:
+`dir: '{{.ROOT_DIR}}'` on that include, `dir: ../x` on it, `dir: ..` on a root
+include, `dir: ..` on a `taskfiles/e2e.yml` include, and `dir: ..` on a
+`taskfiles/ci.yml` include whose target is not under `taskfiles/ci/`. A `ci`
+sub-include with no `dir:` at all is not a guard failure; the runtime test of
+R33 owns that omission.
 
 **R33 (runtime proof from the repository root).** A committed test SHALL run,
 with the real `task` binary on Task 3.54.0 (explicit notice when absent,
@@ -68,13 +69,17 @@ Taskfile tree in which the probed task bodies are replaced by a `pwd`
 recorder, so it never mutates the checkout (host-safety, base R15), and it
 SHALL include a mutation proof: the same tree with `dir: ..` removed from one
 include reports the working directory `taskfiles/` for that group and fails
-the assertion. Acceptance: the test fails on the delta-01 layout (no `dir:`)
+the assertion. Both the baseline assertion and the mutation proof run with
+the staged copy's root as the invoking directory and again from its `scripts/`
+subdirectory, never from `taskfiles/`. Acceptance: the test fails on the delta-01 layout (no `dir:`)
 and passes with R31.
 
 ## MODIFIED
 
 Three clauses of the base spec (as amended by delta-01) change; every other
-requirement is unchanged.
+requirement is unchanged. The base spec's rejection of `dir:` on includes
+(*Alternatives considered*, "`includes` with `dir:` on each include") still
+holds for every include other than the six of R31.
 
 1. R9 (working directory and variables). Original, first sentence:
 
@@ -98,17 +103,22 @@ requirement is unchanged.
    from a subdirectory (R33 of delta-02). The remainder of R9 (root `vars`,
    `REPO_DIR`, the `TASKFILE_DIR` prohibition) is unchanged.
 
-2. R13 (g), and R7 (which states the same ban). Original (guard rule (g)
-   as written in the guard header and in base R7 and R9): no include carries
-   `dir:`, `excludes:` or `aliases:`. Replacement:
+2. Guard rule (g), as its own modification. Rule (g) is not part of base
+   R13 (a) to (f), nor of R7 or R9: it exists only in the header of
+   `scripts/lib/governance/taskfile-tree-guard.ts`, which cites R7 and R9 as
+   its rationale. Current text there:
+
+   > (g) no include carries `dir:`, `excludes:` or `aliases:` (R7, R9)
+
+   Replacement, which this delta also records as base R13 (g) so that the
+   requirement and the guard agree:
 
    > (g) no include carries `excludes:` or `aliases:`, and no include carries
    > `dir:` except an include declared in `taskfiles/ci.yml` whose target is a
    > file under `taskfiles/ci/`, with the exact value `..` (R32 of delta-02).
 
-   R7 keeps its substance (the split SHALL NOT work around a name collision
-   with `excludes:` or `aliases:`); its mention of `dir:` is read with this
-   exception.
+   R7 is unchanged: it forbids working around a name collision with
+   `excludes:` or `aliases:` and does not mention `dir:`.
 
 3. R23 (delta-01), include form. The sentence "each written as `{ taskfile:
    ./ci/<group>.yml, flatten: true }`" becomes "each written as `{ taskfile:
@@ -139,7 +149,7 @@ Then it fails naming the include
 
 - Any change to task names, descriptions or commands, or to the layout of
   delta-01 (R21 to R30 are unchanged).
-- Giving any other include a `dir:`; the ban of base R13 (g) stays for all of
+- Giving any other include a `dir:`; the ban of guard rule (g) stays for all of
   them.
 
 ### Alternatives considered
