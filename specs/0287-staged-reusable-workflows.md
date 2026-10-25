@@ -1,7 +1,7 @@
 ---
 id: "0287"
 slug: staged-reusable-workflows
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1828
