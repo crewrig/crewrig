@@ -1,7 +1,7 @@
 ---
 id: "0278"
 slug: taskfile-domain-split
-status: draft
+status: approved
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1827
