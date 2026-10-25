@@ -7,7 +7,7 @@ import path from "node:path";
 import { checkDrift, type Outcome } from "./check.ts";
 import { portableCapabilities } from "./reference.ts";
 import { emitJob, emitTaskInstallJob } from "./render-job.ts";
-import { HEADER, WORKFLOW } from "./render-yaml.ts";
+import { HEADER, STAGES, WORKFLOW } from "./render-yaml.ts";
 import {
   BuildCiError,
   parseTaskPin,
@@ -31,7 +31,7 @@ export function generate(
     if (cap.id === "") continue;
     lines.push(...emitJob(cap, pin, yqPins));
   }
-  return HEADER + WORKFLOW + lines.map((l) => `${l}\n`).join("");
+  return HEADER + STAGES + WORKFLOW + lines.map((l) => `${l}\n`).join("");
 }
 
 export function run(argv: readonly string[], repoDir: string): Outcome {

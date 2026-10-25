@@ -65,6 +65,41 @@ function pairs(
   return node.entries.map(([k], i) => [k, found[i]?.comment ?? ""]);
 }
 
+/** Keys of the jobs that have a `uses:` key and no `steps:` key (spec 0287 R8). */
+function callerJobs(jobs: YqNode): Set<string> {
+  const out = new Set<string>();
+  if (!(jobs instanceof YqMap)) return out;
+  for (const [k, v] of jobs.entries) {
+    if (!(v instanceof YqMap)) continue;
+    const ks = v.entries.map(([key]) => key);
+    if (ks.includes("uses") && !ks.includes("steps")) out.add(k);
+  }
+  return out;
+}
+
+export const GROUPS = ["gate", "modules", "governance", "extensions", "integration", "windows"];
+
+/** Spec 0287 R11: every GitHub-engine capability has a valid `group`; callee file matches it. */
+export function groupChecks(state: ParityState): void {
+  const layered = workflowFiles(state.workflowsDir).some((f) => path.basename(f).startsWith("_ci-"));
+  for (const j of state.ghaJobs) {
+    const base = path.basename(j.workflow);
+    if (base !== "build.yml" && !base.startsWith("_ci-")) continue; // other workflows are not staged
+    const cap = state.caps.find((c) => c.id === j.id);
+    if (cap === undefined) continue;
+    if (cap.group === "") {
+      fail(state, `capability '${j.id}' runs on the GitHub engine but has no 'group' (R11)`);
+    } else if (!GROUPS.includes(cap.group)) {
+      fail(state, `capability '${j.id}' has group '${cap.group}', not one of ${GROUPS.join(", ")} (R11)`);
+    } else if (layered && base !== `_ci-${cap.group}.yml`) {
+      fail(
+        state,
+        `job '${j.jobKey}' is in ${base} but its group '${cap.group}' belongs in _ci-${cap.group}.yml (R11)`,
+      );
+    }
+  }
+}
+
 function harvestGha(state: ParityState): void {
   for (const wf of workflowFiles(state.workflowsDir)) {
     let text: string;
@@ -83,8 +118,10 @@ function harvestGha(state: ParityState): void {
     if (isYqFalsy(jobs)) continue;
     if (tag(jobs) !== "!!map" && tag(jobs) !== "!!seq")
       inputGap(wf, "`jobs` is a scalar, not a mapping");
+    const callers = callerJobs(jobs);
     for (const [jk, lc] of pairs(jobs, text, "jobs", wf)) {
       if (jk === "") continue;
+      if (callers.has(jk)) continue; // a caller job (`uses:`, no `steps:`) is not a capability (spec 0287 R8)
       const id = attribute(state, jk, lc);
       if (id === "") {
         fail(
@@ -147,6 +184,7 @@ export function traceability(state: ParityState): void {
   state.gitlabPresent = fs.existsSync(state.gitlabCi) && fs.statSync(state.gitlabCi).isFile();
   if (state.ghaPresent) harvestGha(state);
   if (state.gitlabPresent) harvestGitlab(state);
+  groupChecks(state);
 }
 
 /** Arm 3 (R6): both engines' exhibited portable sets must cover the reference's. */

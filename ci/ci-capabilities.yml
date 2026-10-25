@@ -15,6 +15,7 @@ capabilities:
   # --- Portable: build.yml jobs -------------------------------------------
 
   - id: build
+    group: extensions
     name: "Build all extensions"
     trigger:
       - on: pull-request
@@ -37,6 +38,7 @@ capabilities:
   # written here (R6/R7).
 
   - id: component-drift
+    group: extensions
     name: "Check community component drift and run build-component tests"
     trigger:
       - on: pull-request
@@ -104,6 +106,7 @@ capabilities:
       - task ci:component-drift
 
   - id: component-drift-selftest
+    group: extensions
     name: "Self-test the component assembly routing and canonical-repo build"
     trigger:
       - on: pull-request
@@ -148,6 +151,7 @@ capabilities:
       - task ci:component-drift-selftest
 
   - id: agent-profile-migration
+    group: governance
     name: "Run the agent-profile migration regression suite"
     trigger:
       - on: pull-request
@@ -197,6 +201,7 @@ capabilities:
   # keep the dev-toolchain suite (build-components-built-trees.test.ts, run in `lint-typescript`) out. The conformance,
   # differential and YAML corpus suites spawn `bash` and `yq` and retire with the shell script (PR D).
   - id: build-components-ts
+    group: modules
     name: "Run the TypeScript component-build core and shared library twin suites"
     trigger:
       - on: pull-request
@@ -259,6 +264,7 @@ capabilities:
   # ExperimentalWarning. No `paths:` filter, like mempalace-transcript-node-24-0 below: any shared-module change can
   # reintroduce a warning. The production install comes first, as the entry-form suite runs a build that loads js-yaml.
   - id: build-components-ts-node-24-0
+    group: modules
     name: "Component build entry is silent on Node.js 24.0.0"
     trigger:
       - on: pull-request
@@ -278,6 +284,7 @@ capabilities:
   # dependencies: the scaffold toolchain test (spec 0258 requirement 26) fails, rather than skips, when CI is set and tsc,
   # Oxlint or Oxfmt is absent.
   - id: extension-builders-ts
+    group: modules
     name: "Run the TypeScript extension and plugin builder suites, the golden proof and the real-tree check"
     trigger:
       - on: pull-request
@@ -329,6 +336,7 @@ capabilities:
   # Spec 0254 R4: the extension entries print nothing on the oldest Node.js 24 release. No `paths:` filter, like
   # build-components-ts-node-24-0: any shared-module change can reintroduce a warning.
   - id: extension-builders-ts-node-24-0
+    group: modules
     name: "Extension and plugin builder entries are silent on Node.js 24.0.0"
     trigger:
       - on: pull-request
@@ -347,6 +355,7 @@ capabilities:
   # dev-toolchain. On GitHub `yq` is pinned to v4.44.3 and its sha256 checked, the version the goldens were generated
   # with.
   - id: skill-scripts-ts
+    group: modules
     name: "Run the skill-script oracle and its YAML leg"
     trigger:
       - on: pull-request
@@ -380,6 +389,7 @@ capabilities:
   # `bash` is spawned on purpose by the two twin conformance suites and `jq` by the shell functions they call; both retire
   # with the shell libraries (row J4). Those suites skip on Windows, so this job runs on Linux only.
   - id: install-ts
+    group: modules
     name: "Run the TypeScript link-or-copy, component twin, manage and install module suites"
     trigger:
       - on: pull-request
@@ -477,6 +487,7 @@ capabilities:
   # Spec 0255 R3: the install, manage and link entries print nothing on the oldest Node.js 24 release. No `paths:` filter,
   # like extension-builders-ts-node-24-0: any shared-module change can reintroduce a warning.
   - id: install-ts-node-24-0
+    group: modules
     name: "Install, manage and link entries are silent on Node.js 24.0.0"
     trigger:
       - on: pull-request
@@ -494,6 +505,7 @@ capabilities:
   # HOME with stub CLIs and the resulting trees are compared with the committed goldens. `jq` and `git` are real. The
   # golden suites skip themselves off Linux and use no network. A change to the shell the oracle drives reruns it.
   - id: setup-oracle
+    group: integration
     name: "Run the setup entry-point oracle: sandbox, stubs, golden, prompt-inventory and mutation suites"
     trigger:
       - on: pull-request
@@ -540,6 +552,7 @@ capabilities:
   # the shell setup and the TypeScript entry and compared through the tagged deviations, and each TypeScript twin of a
   # shell library function against its original. Linux only; retired with the shell setups.
   - id: setup-differential
+    group: extensions
     name: "Run the shell-against-TypeScript parity proof of the four setups and the twin differential suites"
     trigger:
       - on: pull-request
@@ -574,6 +587,7 @@ capabilities:
       - task ci:setup-differential
 
   - id: setup-modules-ts
+    group: modules
     name: "Run the TypeScript setup module, TLS quoting and confirm remainder unit suites"
     trigger:
       - on: pull-request
@@ -709,6 +723,7 @@ capabilities:
   # modules (refusals, forge, mode, branch, identity, credentials, classification, engine-log
   # parsing, the release configuration and the prepare commands) and their unit suites. Linux only.
   - id: release-driver-modules-ts
+    group: modules
     name: "Run the TypeScript monorepo release driver module suites"
     trigger:
       - on: pull-request
@@ -762,6 +777,7 @@ capabilities:
   # differential suite spawns `bash`, `jq` and `tar`. They build in a sandbox copy of `scripts/`, hence the broad builder
   # paths.
   - id: packaging-modules-ts
+    group: modules
     name: "Run the TypeScript archive writer, documentation index and release packaging module suites"
     trigger:
       - on: pull-request
@@ -826,6 +842,7 @@ capabilities:
   # compares each file with the committed golden tree. No timing budget and no `paths:` filter: the proof must not skip
   # silently on a change it does not list.
   - id: windows-extension-builders
+    group: windows
     name: "Windows extension and plugin builders: production install, floor guard, golden proof and unit suites"
     trigger:
       - on: pull-request
@@ -857,6 +874,7 @@ capabilities:
   # (scripts/tests/lib/windows-install-proof.ts): thirteen entries against a sandbox HOME/USERPROFILE from pwsh (and
   # cmd.exe for unlink and link) with stub CLIs. No timing budget.
   - id: windows-install-entries
+    group: windows
     name: "Windows install, manage and link entries: production install, floor guard and the cross-system proof"
     trigger:
       - on: pull-request
@@ -886,6 +904,7 @@ capabilities:
   # Spec 0257 R27 (ticket #1336): the packaging and release entries from a non-POSIX interpreter: six entries through pwsh
   # or cmd.exe against a sandbox with stub tools and no bash. No timing budget.
   - id: windows-packaging-entries
+    group: windows
     name: "Windows packaging and release entries: production install, floor guard and the cross-system proof"
     trigger:
       - on: pull-request
@@ -917,6 +936,7 @@ capabilities:
   # budget per hook (2000 ms initially, then max(5 x the largest observed run, 750 ms) rounded up to 50 ms after the first
   # green run).
   - id: windows-extension-hooks
+    group: windows
     name: "Windows extension hooks: production install, floor guard, PowerShell and cmd.exe proof, no-deprecation channel and latency budgets"
     trigger:
       - on: pull-request
@@ -946,6 +966,7 @@ capabilities:
   # Spec 0258 R15, R27, R34 (ticket #1337): the Windows proof of the three harness-curator entries through pwsh and
   # cmd.exe against a stub `gh.cmd` and no bash. Timings are never asserted.
   - id: windows-harness-curator
+    group: windows
     name: "Windows harness-curator entries: production install, floor guard and the cross-system proof"
     trigger:
       - on: pull-request
@@ -975,6 +996,7 @@ capabilities:
   # Spec 0258 R23-R27 (ticket #1337): the extension scaffolder entry from a non-POSIX interpreter, against a hermetic
   # sandbox repository with no POSIX shell and no fzf on PATH. The dev toolchain is absent, so no `check-typescript` here.
   - id: windows-create-extension
+    group: windows
     name: "Windows extension scaffolder entry: production install, floor guard and the cross-system proof"
     trigger:
       - on: pull-request
@@ -1004,6 +1026,7 @@ capabilities:
   # Spec 0258 R27 (ticket #1337): the eleven skill entries (github-actions, gitlab-ci, pr-reviewer) from a non-POSIX
   # interpreter against stub wrapped tools and no bash; a direct leg runs the same assertions on any host.
   - id: windows-skill-scripts
+    group: windows
     name: "Windows skill script entries: production install, floor guard and the cross-system proof"
     trigger:
       - on: pull-request
@@ -1033,6 +1056,7 @@ capabilities:
   # Spec 0261 R17, R20, R21 (ticket #1342): the end-to-end harness entries (no vendor CLI) through pwsh and cmd.exe; a
   # direct leg runs the same assertions on any host.
   - id: windows-e2e-harness
+    group: windows
     name: "Windows end-to-end harness entries: production install, floor guard and the cross-system proof"
     trigger:
       - on: pull-request
@@ -1063,6 +1087,7 @@ capabilities:
   # switch PR (the shell originals are forwarding shims), so no jq or yq is needed. The floor guard runs after the
   # production dependency step.
   - id: governance-checks-ts
+    group: modules
     name: "Run the TypeScript governance-check suites and their shell oracle legs"
     trigger:
       - on: pull-request
@@ -1104,6 +1129,7 @@ capabilities:
   # Spec 0259 R26-R28 (ticket #1338), PR P0: the governance checks from PowerShell. Glob discovery of
   # scripts/tests/windows-governance-*.test.ts, so later PRs never edit this capability. No timing budget.
   - id: windows-governance-checks
+    group: windows
     name: "Windows governance checks: production install, floor guard and the PowerShell proof"
     trigger:
       - on: pull-request
@@ -1134,6 +1160,7 @@ capabilities:
   # only; `jq` and `yq` are installed so the differential suites find the pinned tools. Glob discovery: later PRs add
   # scripts/tests/model-ci-tooling-*.test.ts files and never edit this capability.
   - id: model-ci-tooling-ts
+    group: modules
     name: "Run the TypeScript model-CI-tooling suites and their shell differential legs"
     trigger:
       - on: pull-request
@@ -1159,6 +1186,7 @@ capabilities:
   # Spec 0262 R21-R23 (ticket #1339): merge-spec-pr.ts from PowerShell. Glob discovery of
   # scripts/tests/windows-model-ci-tooling-*.test.ts (later PRs never edit this capability). No timing budget.
   - id: windows-model-ci-tooling
+    group: windows
     name: "Windows model-CI-tooling checks: production install, floor guard and the PowerShell proof"
     trigger:
       - on: pull-request
@@ -1188,6 +1216,7 @@ capabilities:
   # Spec 0256 R40 (ticket #1335), PR B1, plan finding v1-F3: the Windows exercise of layer 1: the same unit suites as
   # `setup-modules-ts` under pwsh; the POSIX-only ones skip on win32. No timing budget, no `paths:` filter, as above.
   - id: windows-setup-units
+    group: windows
     name: "Windows setup module unit suites: production install, floor guard and the layer-1 suites"
     trigger:
       - on: pull-request
@@ -1218,6 +1247,7 @@ capabilities:
   # HOME/USERPROFILE with no POSIX shell on PATH, including the end-to-end "install CrewRig from PowerShell" run of the
   # Claude entry. Timings are never asserted.
   - id: windows-setup-entries
+    group: windows
     name: "Windows setup entries: production install, floor guard and the install-from-PowerShell proof"
     trigger:
       - on: pull-request
@@ -1245,6 +1275,7 @@ capabilities:
         other supported engines (spec 0240 R15, spec 0256 R34).
 
   - id: extension-render
+    group: extensions
     name: "Enforce no committed generated extension output, a fresh render, and the declared file set"
     trigger:
       - on: pull-request
@@ -1315,6 +1346,7 @@ capabilities:
 
 
   - id: extension-provenance
+    group: extensions
     name: "Enforce extension provenance"
     trigger:
       - on: pull-request
@@ -1339,6 +1371,7 @@ capabilities:
       - task ci:extension-provenance
 
   - id: extension-manifest
+    group: extensions
     name: "Enforce extension manifest single-version and version-bump"
     trigger:
       - on: pull-request
@@ -1364,6 +1397,7 @@ capabilities:
       - task ci:extension-manifest
 
   - id: extension-install
+    group: extensions
     name: "Test extension install and agent frontmatter contracts"
     trigger:
       - on: pull-request
@@ -1422,6 +1456,7 @@ capabilities:
       - task ci:extension-install
 
   - id: core-paths
+    group: extensions
     name: "Check core-paths resolve and sync-from-upstream"
     trigger:
       - on: pull-request
@@ -1455,6 +1490,7 @@ capabilities:
       - task ci:core-paths
 
   - id: ci-parity
+    group: governance
     name: "Test the CI generator and parity harness"
     trigger:
       - on: pull-request
@@ -1506,6 +1542,7 @@ capabilities:
       - task ci:ci-parity
 
   - id: docs-index
+    group: extensions
     name: "Check docs index drift"
     trigger:
       - on: pull-request
@@ -1543,6 +1580,7 @@ capabilities:
       - task ci:docs-index
 
   - id: docs-index-selftest
+    group: extensions
     name: "Self-test the docs index builder"
     trigger:
       - on: pull-request
@@ -1583,6 +1621,7 @@ capabilities:
       - task ci:docs-index-selftest
 
   - id: cli-matrix-fresh
+    group: extensions
     name: "Check the CLI matrix is regenerated"
     trigger:
       - on: pull-request
@@ -1605,6 +1644,7 @@ capabilities:
       - task ci:cli-matrix-fresh
 
   - id: cli-matrix-fresh-selftest
+    group: extensions
     name: "Self-test the CLI matrix generator"
     trigger:
       - on: pull-request
@@ -1628,6 +1668,7 @@ capabilities:
       - task ci:cli-matrix-fresh-selftest
 
   - id: figure-labels
+    group: integration
     name: "Check figure labels with OCR"
     trigger:
       - on: pull-request
@@ -1651,6 +1692,7 @@ capabilities:
       - task ci:figure-labels
 
   - id: mempalace
+    group: integration
     name: "Test mempalace transcript, pin, and runtime guards"
     trigger:
       - on: pull-request
@@ -1757,6 +1799,7 @@ capabilities:
       - task ci:mempalace
 
   - id: test-wiring
+    group: governance
     name: "Enforce test-wiring registration and suite syntax"
     trigger:
       - on: pull-request
@@ -1790,6 +1833,7 @@ capabilities:
       - task ci:test-wiring
 
   - id: test-wiring-selftest
+    group: governance
     name: "Self-test the test-wiring and test-strays guards"
     trigger:
       - on: pull-request
@@ -1817,6 +1861,7 @@ capabilities:
       - task ci:test-wiring-selftest
 
   - id: chroma-mcp
+    group: integration
     name: "Test chroma server, MCP daemon, and worktree claim"
     trigger:
       - on: pull-request
@@ -1874,6 +1919,7 @@ capabilities:
   # e2e is the heaviest group; it stays enforced on push/PR (changeset-gated) but is ALSO manually triggerable (spec 0147
   # R8). The `manual` trigger maps to GitLab `when: manual` and GHA `workflow_dispatch`.
   - id: e2e
+    group: integration
     name: "Run the e2e regression suite"
     trigger:
       - on: pull-request
@@ -1906,6 +1952,7 @@ capabilities:
       - task ci:e2e
 
   - id: setup
+    group: extensions
     name: "Test setup helpers and validation backend"
     trigger:
       - on: pull-request
@@ -1955,6 +2002,7 @@ capabilities:
       - task ci:setup
 
   - id: misc
+    group: governance
     name: "Run miscellaneous portability and reservation checks"
     trigger:
       - on: pull-request
@@ -2010,6 +2058,7 @@ capabilities:
   # `build-components.ts --list-output-dirs` exits in its list_output_dirs guard (scripts/build-components.ts:64-117)
   # before the yq prerequisite check (scripts/build-components.ts:120).
   - id: repository-scan
+    group: gate
     name: "Run repository-wide scans on every change"
     trigger:
       - on: pull-request
@@ -2026,6 +2075,7 @@ capabilities:
       - task ci:repository-scan
 
   - id: frontmatter
+    group: gate
     name: "Test frontmatter, skill-version, and assembly contracts"
     trigger:
       - on: pull-request
@@ -2074,6 +2124,7 @@ capabilities:
       - task ci:frontmatter
 
   - id: check-model-mappings
+    group: governance
     name: "Check model-mapping conformance and run its mutation test suite"
     trigger:
       - on: pull-request
@@ -2099,6 +2150,7 @@ capabilities:
       - task ci:check-model-mappings
 
   - id: check-agent-profiles
+    group: governance
     name: "Check agent capability-profile conformance and run its mutation test suite"
     trigger:
       - on: pull-request
@@ -2121,6 +2173,7 @@ capabilities:
       - task ci:check-agent-profiles
 
   - id: check-metadata-keys
+    group: governance
     name: "Check the component metadata: closed key set and run its mutation test suite"
     trigger:
       - on: pull-request
@@ -2145,6 +2198,7 @@ capabilities:
       - task ci:check-metadata-keys
 
   - id: check-claude-agent-layout
+    group: governance
     name: "Check the compiled Claude Code agent tree is flat and run its mutation test suite"
     trigger:
       - on: pull-request
@@ -2167,6 +2221,7 @@ capabilities:
       - task ci:check-claude-agent-layout
 
   - id: check-taskfile-commands
+    group: gate
     name: "Check the Taskfile tree names no POSIX-only command and run the tool-binary check suites"
     trigger:
       - on: pull-request
@@ -2196,6 +2251,7 @@ capabilities:
       - task ci:check-taskfile-commands
 
   - id: check-taskfile-commands-selftest
+    group: gate
     name: "Self-test the Taskfile command check and the tool-binary check"
     trigger:
       - on: pull-request
@@ -2229,6 +2285,7 @@ capabilities:
   # The tree guard's check (b) scans every scripts/**/*.{ts,js} source for a raw read of the root Taskfile, so this job
   # triggers on the whole scripts/** surface plus the Taskfile tree itself (spec 0278 R16, plan delta D6).
   - id: check-taskfile-tree
+    group: gate
     name: "Check the Taskfile tree guard and run its loader, reference and CI-wiring suites"
     trigger:
       - on: pull-request
@@ -2252,6 +2309,7 @@ capabilities:
       - task ci:check-taskfile-tree
 
   - id: check-taskfile-tree-selftest
+    group: gate
     name: "Self-test the Taskfile tree guard, loader, reference and CI-wiring suites"
     trigger:
       - on: pull-request
@@ -2294,6 +2352,7 @@ capabilities:
       - task ci:check-taskfile-tree-selftest
 
   - id: check-task-provisioning
+    group: gate
     name: "Check that Task is provisioned from the pinned, verified release on both engines"
     trigger:
       - on: pull-request
@@ -2325,6 +2384,7 @@ capabilities:
       - task ci:check-task-provisioning
 
   - id: check-task-provisioning-selftest
+    group: gate
     name: "Self-test the Task provisioning guard and the pinned action"
     trigger:
       - on: pull-request
@@ -2356,6 +2416,7 @@ capabilities:
   # changeset-gated (the nightly exhaustive run installs no `task` binary). Its paths filter covers what the replayed
   # tools read (spec 0251 R14).
   - id: ci-pre-push-replay
+    group: governance
     name: "Replay the pre-push wrapper against a fixture repository"
     trigger:
       - on: pull-request
@@ -2385,6 +2446,7 @@ capabilities:
       - task ci:ci-pre-push-replay
 
   - id: markdown-links
+    group: gate
     name: "Check relative Markdown link integrity"
     trigger:
       - on: pull-request
@@ -2431,6 +2493,7 @@ capabilities:
   # changeset-coverage-test keeps the exhaustive script's regression test on the pull-request path (spec 0147 delta-01
   # R23). It has never been path-filtered and is not changeset-gated.
   - id: changeset-coverage-test
+    group: governance
     name: "Test the exhaustive-run script"
     trigger:
       - on: pull-request
@@ -2452,6 +2515,7 @@ capabilities:
   # overlay ci/org/path-ownership-exemptions.txt). It reads only the working tree and this reference, so it has no
   # `paths:` filter and cannot be skipped. `npm ci` provides `js-yaml`.
   - id: path-ownership
+    group: governance
     name: "Check path ownership and stray-scan wiring"
     trigger:
       - on: pull-request
@@ -2467,6 +2531,7 @@ capabilities:
       - task ci:path-ownership
 
   - id: path-ownership-selftest
+    group: governance
     name: "Self-test the path-ownership and stray-scan wiring checks"
     trigger:
       - on: pull-request
@@ -2500,6 +2565,7 @@ capabilities:
       - task ci:path-ownership-selftest
 
   - id: lint-markdown
+    group: gate
     name: "Lint Markdown files"
     trigger:
       - on: pull-request
@@ -2518,6 +2584,7 @@ capabilities:
   # change may add a shell file. Its list-growth and Python arms diff against the merge-base with BASE_REF, hence
   # `history-depth: full`. Standard library only, so no `npm ci`.
   - id: ratchet
+    group: gate
     name: "Shell, JavaScript and Python footprint ratchet"
     trigger:
       - on: pull-request
@@ -2535,6 +2602,7 @@ capabilities:
       - task ci:ratchet
 
   - id: ratchet-selftest
+    group: gate
     name: "Self-test the footprint ratchet"
     trigger:
       - on: pull-request
@@ -2560,6 +2628,7 @@ capabilities:
   # destructive call. Its growth arm diffs ci/host-safety-allowlist.txt against the merge-base with BASE_REF, hence
   # `history-depth: full`. Unlike `ratchet` it imports `typescript` (the TS 7 programmatic API), so it needs `npm ci`.
   - id: host-safety
+    group: governance
     name: "Test-harness host-safety check"
     trigger:
       - on: pull-request
@@ -2578,6 +2647,7 @@ capabilities:
       - task ci:host-safety
 
   - id: host-safety-selftest
+    group: governance
     name: "Self-test the host-safety check"
     trigger:
       - on: pull-request
@@ -2607,6 +2677,7 @@ capabilities:
   # tracked *.ts outside the built-copy trees (and the JavaScript in ci/js-exceptions.txt, spec 0266 R16). No `paths:`
   # filter: a lockfile, tsconfig.json or lint-config change must re-run it.
   - id: lint-typescript
+    group: gate
     name: "TypeScript type-check, erasable syntax, lint and format"
     trigger:
       - on: pull-request
@@ -2622,6 +2693,7 @@ capabilities:
       - task ci:lint-typescript
 
   - id: lint-typescript-selftest
+    group: gate
     name: "Self-test the TypeScript checks"
     trigger:
       - on: pull-request
@@ -2661,6 +2733,7 @@ capabilities:
   # TypeScript modules with their node --test suites. No `paths:` filter, like `ratchet`: the suites are fast, and a
   # lockfile or setup-script change must re-run them. production-dependencies.test.ts skips itself when `npm ping` fails.
   - id: runtime-foundations
+    group: integration
     name: "Node.js floor guard, production-dependency step and shared TS modules"
     trigger:
       - on: pull-request
@@ -2854,6 +2927,7 @@ capabilities:
   # commands, so the job needs no TypeScript; the grep tokens are the guard's stable diagnostic contract
   # (node-floor-guard.js header).
   - id: node-floor-guard
+    group: governance
     name: "Node.js floor guard rejects a pre-24 release"
     trigger:
       - on: pull-request
@@ -2874,6 +2948,7 @@ capabilities:
   # runs of every CLI's slow path, v1-F5, under exactly 24.0.0). No `paths:` filter, like node-floor-guard: any
   # shared-module change can reintroduce a warning.
   - id: usage-capture-node-24-0
+    group: modules
     name: "Usage-capture hook entries are silent on Node.js 24.0.0"
     trigger:
       - on: pull-request
@@ -2891,6 +2966,7 @@ capabilities:
   # the differential test of the payload chain (R5), skipped with an explicit line where `jq` is absent. Deliberately NOT
   # changeset-gated (node@22 rule, see `changeset-coverage`): the fail-safe job carries no `jq`.
   - id: worktree-guard
+    group: integration
     name: "Validate the worktree git guard and worktree claim tool (TypeScript)"
     trigger:
       - on: pull-request
@@ -2921,6 +2997,7 @@ capabilities:
   # unstubbed silence runs of the guard and the claim tool under exactly 24.0.0). No `paths:` filter, like
   # usage-capture-node-24-0 above: any shared-module change can reintroduce a warning.
   - id: worktree-guard-node-24-0
+    group: modules
     name: "Worktree guard and claim entries are silent on Node.js 24.0.0"
     trigger:
       - on: pull-request
@@ -2937,6 +3014,7 @@ capabilities:
   # (hook-transcript-* suites). The Bash oracle keeps running through the shim in the `mempalace` capability above.
   # Deliberately NOT changeset-gated (node@22 rule, see `changeset-coverage`).
   - id: mempalace-transcript
+    group: integration
     name: "Validate the MemPalace transcript hook and its wiring (TypeScript)"
     trigger:
       - on: pull-request
@@ -2972,6 +3050,7 @@ capabilities:
   # Spec 0247 R1: the transcript hook entry prints nothing on the oldest Node.js 24 release. No `paths:` filter, like
   # usage-capture-node-24-0 above: any shared-module change can reintroduce a warning.
   - id: mempalace-transcript-node-24-0
+    group: modules
     name: "MemPalace transcript hook entry is silent on Node.js 24.0.0"
     trigger:
       - on: pull-request
@@ -2987,6 +3066,7 @@ capabilities:
   # The spec linter's base-branch `status: draft` check (spec 0109 R2) resolves the change's base ref, so the job needs
   # full source history: `history-depth: full`, same as the two version-bump guards below.
   - id: lint-specs
+    group: gate
     name: "Lint specification files"
     trigger:
       - on: pull-request
@@ -3009,6 +3089,7 @@ capabilities:
       - task ci:lint-specs
 
   - id: lint-specs-selftest
+    group: gate
     name: "Self-test the spec linter"
     trigger:
       - on: pull-request
@@ -3039,6 +3120,7 @@ capabilities:
       - task ci:lint-specs-selftest
 
   - id: test-harness-curate
+    group: governance
     name: "Smoke-test the harness curator"
     trigger:
       - on: pull-request
@@ -3055,6 +3137,7 @@ capabilities:
   # on `if: github.event_name == 'pull_request'` (.github/workflows/build.yml lines 173, 186), so the trigger is
   # pull-request only. They need `history-depth: full` (GHA `fetch-depth: 0`) to resolve the base ref (delta-02 R12).
   - id: check-skill-versions
+    group: governance
     name: "Enforce version bump on changed skill/agent sources"
     trigger:
       - on: pull-request
@@ -3072,6 +3155,7 @@ capabilities:
   # Spec 0269 R11: a skill or agent description is capped at 300 characters, on the
   # artifacts/ sources and on the compiled outputs of every CLI.
   - id: check-description-length
+    group: governance
     name: "Cap skill and agent descriptions at 300 characters"
     trigger:
       - on: pull-request
@@ -3101,6 +3185,7 @@ capabilities:
       - task ci:check-description-length
 
   - id: check-extension-version-bump
+    group: governance
     name: "Enforce carrier-version bump on changed extension sources"
     trigger:
       - on: pull-request
@@ -3126,6 +3211,7 @@ capabilities:
   # #1216 `git`/`diff` count as preinstalled on ubuntu-latest). The git line must carry NO nested `sudo` (`normalize_cmd`
   # strips only a *leading* one), or it would diverge from the declared command.
   - id: check-spec-id-reserved
+    group: governance
     name: "Verify every spec id added by the change was secured"
     trigger:
       - on: pull-request
@@ -3143,6 +3229,7 @@ capabilities:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-spec-id-reserved.ts
 
   - id: check-agents-size
+    group: gate
     name: "Check AGENTS.md file size"
     trigger:
       - on: pull-request
@@ -3157,6 +3244,7 @@ capabilities:
       - task ci:check-agents-size
 
   - id: check-comment-size
+    group: gate
     name: "Check the plan and verdict comment size tool against its fixtures"
     trigger:
       - on: pull-request
@@ -3171,6 +3259,7 @@ capabilities:
       - task ci:check-comment-size
 
   - id: check-seat-brief
+    group: governance
     name: "Check the seat brief linter against its fixtures"
     trigger:
       - on: pull-request
@@ -3192,6 +3281,7 @@ capabilities:
       - task ci:check-seat-brief
 
   - id: check-plan-review
+    group: governance
     name: "Check the plan review gate against its fixtures"
     trigger:
       - on: pull-request
@@ -3215,6 +3305,7 @@ capabilities:
       - task ci:check-plan-review
 
   - id: check-rules-size
+    group: gate
     name: "Check always-loaded core rules size"
     trigger:
       - on: pull-request
@@ -3229,6 +3320,7 @@ capabilities:
       - task ci:check-rules-size
 
   - id: check-feedback-routing
+    group: governance
     name: "Enforce upstream-tier feedback routing"
     trigger:
       - on: pull-request
@@ -3636,6 +3728,7 @@ capabilities:
   # verification surface is contract-described; it diffs the committed .gitlab-ci.yml against a fresh derivation and needs
   # yq (delta-02 R12).
   - id: gitlab-ci-check
+    group: governance
     name: "Verify the generated GitLab pipeline matches the contract"
     trigger:
       - on: pull-request
@@ -3655,6 +3748,7 @@ capabilities:
   # `yq` and composes `build-ci.ts --check` (also needs yq) for the reference↔GitLab arm; hence `tools: [yq]` (delta-02
   # R12).
   - id: check-ci-parity
+    group: governance
     name: "Verify the reference, GitHub Actions, and GitLab pipelines agree"
     trigger:
       - on: pull-request
@@ -3745,6 +3839,7 @@ capabilities:
       - task ci:alert-scheduled-failure
 
   - id: alert-scheduled-failure-selftest
+    group: governance
     name: "Self-test the scheduled-failure alert and its wiring check"
     trigger:
       - on: pull-request
@@ -3769,6 +3864,7 @@ capabilities:
       - task ci:alert-scheduled-failure-selftest
 
   - id: alert-scheduled-failure-check
+    group: governance
     name: "Check the scheduled-failure alert wiring"
     trigger:
       - on: pull-request
@@ -3797,6 +3893,7 @@ capabilities:
   # The reusable `windows-latest` job shape: Node.js 24 from a non-POSIX interpreter (pwsh), the portable shared-module
   # suites and the timing-budget harness on the floor guard. Later sub-specs copy the job and record each copy here.
   - id: windows-node-floor-guard
+    group: windows
     name: "Windows scaffolding: floor guard, shared modules and timing budget"
     trigger:
       - on: pull-request
@@ -3825,6 +3922,7 @@ capabilities:
 
   # Spec 0252 R24: the Windows service task proof, a copy of the template above, against the real Task Scheduler (`MEASURE:` lines).
   - id: windows-service-task
+    group: windows
     name: "Windows service task: Task Scheduler lifecycle, restart proof and refusal legs"
     trigger:
       - on: pull-request
@@ -3854,6 +3952,7 @@ capabilities:
 
   # Spec 0252 R24 (PR C): the ChromaDB trio proof, a copy of windows-service-task.
   - id: windows-chroma-trio
+    group: windows
     name: "Windows ChromaDB trio: start, stop and status entries and the Task Scheduler leg"
     trigger:
       - on: pull-request
@@ -3881,6 +3980,7 @@ capabilities:
         other supported engines (spec 0240 R15).
   # Spec 0252 R24 (PR D): the MCP daemon proof, a copy of windows-chroma-trio.
   - id: windows-mcp-daemon
+    group: windows
     name: "Windows MCP daemon: status report, owner verdicts and uninstall against the Task Scheduler"
     trigger:
       - on: pull-request
@@ -3909,6 +4009,7 @@ capabilities:
   # Spec 0252 R24 (PR E): the doctor's fourth section and the repair verbs on a real Windows host, a copy of
   # windows-mcp-daemon.
   - id: windows-doctor-repair
+    group: windows
     name: "Windows doctor and repair: the background service section against the Task Scheduler, and the repair verbs"
     trigger:
       - on: pull-request
@@ -3939,6 +4040,7 @@ capabilities:
   # surfaces in the guarded form, `cmd /c "<command>"`); the b1/b2/b3 legs prove the guard against a planted node.cmd and
   # node.bat; three timing budgets (R15) apply.
   - id: windows-usage-capture
+    group: windows
     name: "Windows usage capture: entries, per-CLI and per-surface command lines, guarded-form legs and timing budgets"
     trigger:
       - on: pull-request
@@ -3969,6 +4071,7 @@ capabilities:
   # entries from pwsh, offline, no Python and no `bash`, against an isolated temp HOME and usage root
   # (scripts/tests/usage-wrappers-windows.test.ts). Timings are recorded with a `timing:` line, never gated (R24).
   - id: windows-usage-wrappers
+    group: windows
     name: "Windows usage wrappers: the nine TypeScript entries run offline from pwsh, timings recorded"
     trigger:
       - on: pull-request
@@ -3999,6 +4102,7 @@ capabilities:
   # the guard from each CLI's command line through the invocation rows 37 and 37e/37f of docs/cli-matrix.md, the claim
   # tool through the R34(d) sequence; two timing budgets (R33) apply.
   - id: windows-worktree-git-guard
+    group: windows
     name: "Windows worktree git guard: entries, per-CLI command lines, claim tool and timing budgets"
     trigger:
       - on: pull-request
@@ -4029,6 +4133,7 @@ capabilities:
   # loopback stub daemon, each CLI's command line through the invocation rows 37 and 37f of docs/cli-matrix.md, and four
   # timing budgets (R19) apply to the `PostToolUse`, `Stop` (50 MB transcript) and `UserPromptSubmit` payloads.
   - id: windows-mempalace-transcript
+    group: windows
     name: "Windows MemPalace transcript hook: entry against a stub daemon, per-CLI command lines and timing budgets"
     trigger:
       - on: pull-request
@@ -4061,6 +4166,7 @@ capabilities:
   # `-names`, `-hardening-*-e2e`) and the shell-parity, conformance, differential and YAML corpus suites are left to Linux
   # (spec 0250 R28: not the suites that need `bash`). No timing budget (R29).
   - id: windows-build-components
+    group: windows
     name: "Windows component build: production install, floor guard, write-path proof and unit suites"
     trigger:
       - on: pull-request
@@ -4091,6 +4197,7 @@ capabilities:
   # sync-from-upstream entry runs from pwsh, offline, against a local upstream repository the suite creates, with Git for
   # Windows and no `bash`. Timings are recorded (R24), never gated.
   - id: windows-sync-from-upstream
+    group: windows
     name: "Windows sync from upstream: TypeScript entry against a local upstream repository, no bash"
     trigger:
       - on: pull-request
@@ -4118,6 +4225,7 @@ capabilities:
         other supported engines (spec 0240 R15, spec 0253 R27).
 
   - id: windows-history-import
+    group: windows
     name: "Windows history import: importer and prune-transcripts entries against a fake mempalace package, no bash"
     trigger:
       - on: pull-request

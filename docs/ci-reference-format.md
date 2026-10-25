@@ -301,6 +301,22 @@ anchor and then by alias. Anchor names are built from the job id and are unique
 per job. The parity reader resolves such aliases through the `resolve` accessor
 of `scripts/lib/yq-accessors`.
 
+### `group` — the stage of a job on both engines (spec 0287 R11, R15)
+
+An optional scalar naming the stage of the capability: one of `gate`, `modules`,
+`governance`, `extensions`, `integration`, `windows`. It is the single source of
+truth for the callee workflow file `.github/workflows/_ci-<group>.yml` that holds the
+job on GitHub and for the `stage:` of the generated job on GitLab. A capability run
+on the GitHub engine by `build.yml` or a `_ci-*.yml` callee MUST carry it; the
+parity check fails on a missing group, on a value outside the six names, and (once a
+`_ci-*.yml` exists) on a job whose file does not match its group. The generator emits
+`stages:` in the order above and `needs: []` on `windows` jobs only.
+
+Accepted gap: GitLab stages are sequential barriers, so `modules`, `governance` and
+`extensions` run one after the other there, whereas GitHub runs them in parallel after
+`gate`. Only `windows` is exempt. GitLab wall-clock is not an objective and the output is
+verified by the generator equality check, not on a live runner.
+
 ### GitLab generation
 
 The GitLab pipeline generator `scripts/build-ci.ts` (spec 0048) is the

@@ -118,3 +118,29 @@ describe("build-ci real tree (group R)", () => {
     });
   }
 });
+
+describe("build-ci stages (spec 0287 R11, R15)", () => {
+  const doc = yamlLib.load(outputText.replaceAll("!reference ", "")) as Record<string, { stage?: string; needs?: unknown }>;
+  it("emits stages in the shared taxonomy order", () => {
+    assert.deepEqual(doc["stages"], [
+      "gate",
+      "modules",
+      "governance",
+      "extensions",
+      "integration",
+      "windows",
+    ]);
+  });
+  it("emits stage: <group> on every grouped job and needs: [] on windows jobs only", () => {
+    const groups = new Map(
+      (reference.capabilities as { id: string; group?: string }[]).map((c) => [c.id, c.group]),
+    );
+    for (const [id, job] of Object.entries(doc)) {
+      const group = groups.get(id);
+      if (group === undefined) continue;
+      assert.equal(job.stage, group, `${id} stage`);
+      if (group === "windows") assert.deepEqual(job.needs, [], `${id} needs`);
+      else assert.equal(job.needs, undefined, `${id} has no needs`);
+    }
+  });
+});

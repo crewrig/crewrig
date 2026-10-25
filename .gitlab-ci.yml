@@ -13,6 +13,14 @@
 # CI verifies this file is in sync via:
 #   node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts --check
 
+stages:
+  - gate
+  - modules
+  - governance
+  - extensions
+  - integration
+  - windows
+
 workflow:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -29,6 +37,7 @@ workflow:
     - task --version
 
 build:
+  stage: extensions
   image: node:22
   script:
     - "npm install"
@@ -38,6 +47,7 @@ build:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 component-drift:
+  stage: extensions
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -103,6 +113,7 @@ component-drift:
       changes: *component-drift-changes-1
 
 component-drift-selftest:
+  stage: extensions
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -145,6 +156,7 @@ component-drift-selftest:
       changes: *component-drift-selftest-changes-1
 
 agent-profile-migration:
+  stage: governance
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -191,6 +203,7 @@ agent-profile-migration:
       changes: *agent-profile-migration-changes-1
 
 build-components-ts:
+  stage: modules
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -251,6 +264,7 @@ build-components-ts:
       changes: *build-components-ts-changes-1
 
 build-components-ts-node-24-0:
+  stage: modules
   image: node:24.0.0
   script:
     - "npm ci --omit=dev --workspaces=false"
@@ -260,6 +274,7 @@ build-components-ts-node-24-0:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 extension-builders-ts:
+  stage: modules
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -314,6 +329,7 @@ extension-builders-ts:
       changes: *extension-builders-ts-changes-1
 
 extension-builders-ts-node-24-0:
+  stage: modules
   image: node:24.0.0
   script:
     - "npm ci --omit=dev --workspaces=false"
@@ -323,6 +339,7 @@ extension-builders-ts-node-24-0:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 skill-scripts-ts:
+  stage: modules
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -357,6 +374,7 @@ skill-scripts-ts:
       changes: *skill-scripts-ts-changes-1
 
 install-ts:
+  stage: modules
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -453,6 +471,7 @@ install-ts:
       changes: *install-ts-changes-1
 
 install-ts-node-24-0:
+  stage: modules
   image: node:24.0.0
   script:
     - "npm ci --omit=dev --workspaces=false"
@@ -462,6 +481,7 @@ install-ts-node-24-0:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 setup-oracle:
+  stage: integration
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -503,6 +523,7 @@ setup-oracle:
       changes: *setup-oracle-changes-1
 
 setup-differential:
+  stage: extensions
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -538,6 +559,7 @@ setup-differential:
       changes: *setup-differential-changes-1
 
 setup-modules-ts:
+  stage: modules
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -667,6 +689,7 @@ setup-modules-ts:
       changes: *setup-modules-ts-changes-1
 
 release-driver-modules-ts:
+  stage: modules
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -713,6 +736,7 @@ release-driver-modules-ts:
       changes: *release-driver-modules-ts-changes-1
 
 packaging-modules-ts:
+  stage: modules
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -770,6 +794,7 @@ packaging-modules-ts:
       changes: *packaging-modules-ts-changes-1
 
 governance-checks-ts:
+  stage: modules
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -806,6 +831,7 @@ governance-checks-ts:
       changes: *governance-checks-ts-changes-1
 
 model-ci-tooling-ts:
+  stage: modules
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -833,6 +859,7 @@ model-ci-tooling-ts:
       changes: *model-ci-tooling-ts-changes-1
 
 extension-render:
+  stage: extensions
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -906,6 +933,7 @@ extension-render:
       changes: *extension-render-changes-1
 
 extension-provenance:
+  stage: extensions
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -926,6 +954,7 @@ extension-provenance:
       changes: *extension-provenance-changes-1
 
 extension-manifest:
+  stage: extensions
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -947,6 +976,7 @@ extension-manifest:
       changes: *extension-manifest-changes-1
 
 extension-install:
+  stage: extensions
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -1009,6 +1039,7 @@ extension-install:
       changes: *extension-install-changes-1
 
 core-paths:
+  stage: extensions
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -1042,6 +1073,7 @@ core-paths:
       changes: *core-paths-changes-1
 
 ci-parity:
+  stage: governance
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -1096,6 +1128,7 @@ ci-parity:
       changes: *ci-parity-files-1
 
 docs-index:
+  stage: extensions
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1131,6 +1164,7 @@ docs-index:
       changes: *docs-index-changes-1
 
 docs-index-selftest:
+  stage: extensions
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1169,6 +1203,7 @@ docs-index-selftest:
       changes: *docs-index-selftest-changes-1
 
 cli-matrix-fresh:
+  stage: extensions
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1187,6 +1222,7 @@ cli-matrix-fresh:
       changes: *cli-matrix-fresh-changes-1
 
 cli-matrix-fresh-selftest:
+  stage: extensions
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1206,6 +1242,7 @@ cli-matrix-fresh-selftest:
       changes: *cli-matrix-fresh-selftest-changes-1
 
 figure-labels:
+  stage: integration
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1226,6 +1263,7 @@ figure-labels:
       changes: *figure-labels-changes-1
 
 mempalace:
+  stage: integration
   image: python:3.12
   before_script:
     - curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
@@ -1338,6 +1376,7 @@ mempalace:
       changes: *mempalace-changes-1
 
 test-wiring:
+  stage: governance
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1365,6 +1404,7 @@ test-wiring:
       changes: *test-wiring-changes-1
 
 test-wiring-selftest:
+  stage: governance
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1388,6 +1428,7 @@ test-wiring-selftest:
       changes: *test-wiring-selftest-changes-1
 
 chroma-mcp:
+  stage: integration
   image: python:3.12
   before_script:
     - curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
@@ -1445,6 +1486,7 @@ chroma-mcp:
       changes: *chroma-mcp-changes-1
 
 e2e:
+  stage: integration
   image: python:3.12
   before_script:
     - curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
@@ -1480,6 +1522,7 @@ e2e:
     - when: manual
 
 setup:
+  stage: extensions
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -1532,6 +1575,7 @@ setup:
       changes: *setup-changes-1
 
 misc:
+  stage: governance
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1573,6 +1617,7 @@ misc:
       changes: *misc-changes-1
 
 repository-scan:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1583,6 +1628,7 @@ repository-scan:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 frontmatter:
+  stage: gate
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -1635,6 +1681,7 @@ frontmatter:
       changes: *frontmatter-changes-1
 
 check-model-mappings:
+  stage: governance
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -1660,6 +1707,7 @@ check-model-mappings:
       changes: *check-model-mappings-changes-1
 
 check-agent-profiles:
+  stage: governance
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -1682,6 +1730,7 @@ check-agent-profiles:
       changes: *check-agent-profiles-changes-1
 
 check-metadata-keys:
+  stage: governance
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1702,6 +1751,7 @@ check-metadata-keys:
       changes: *check-metadata-keys-changes-1
 
 check-claude-agent-layout:
+  stage: governance
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1720,6 +1770,7 @@ check-claude-agent-layout:
       changes: *check-claude-agent-layout-changes-1
 
 check-taskfile-commands:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1745,6 +1796,7 @@ check-taskfile-commands:
       changes: *check-taskfile-commands-changes-1
 
 check-taskfile-commands-selftest:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1772,6 +1824,7 @@ check-taskfile-commands-selftest:
       changes: *check-taskfile-commands-selftest-changes-1
 
 check-taskfile-tree:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1791,6 +1844,7 @@ check-taskfile-tree:
       changes: *check-taskfile-tree-changes-1
 
 check-taskfile-tree-selftest:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1829,6 +1883,7 @@ check-taskfile-tree-selftest:
       changes: *check-taskfile-tree-selftest-changes-1
 
 check-task-provisioning:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1856,6 +1911,7 @@ check-task-provisioning:
       changes: *check-task-provisioning-changes-1
 
 check-task-provisioning-selftest:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1880,6 +1936,7 @@ check-task-provisioning-selftest:
       changes: *check-task-provisioning-selftest-changes-1
 
 ci-pre-push-replay:
+  stage: governance
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1906,6 +1963,7 @@ ci-pre-push-replay:
       changes: *ci-pre-push-replay-changes-1
 
 markdown-links:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1951,6 +2009,7 @@ changeset-coverage:
     - when: manual
 
 changeset-coverage-test:
+  stage: governance
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -1967,6 +2026,7 @@ changeset-coverage-test:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 path-ownership:
+  stage: governance
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -1978,6 +2038,7 @@ path-ownership:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 path-ownership-selftest:
+  stage: governance
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -2007,6 +2068,7 @@ path-ownership-selftest:
       changes: *path-ownership-selftest-changes-1
 
 lint-markdown:
+  stage: gate
   image: node:22
   before_script:
     - !reference [.task-install, script]
@@ -2018,6 +2080,7 @@ lint-markdown:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 ratchet:
+  stage: gate
   image: node:24
   variables:
     GIT_DEPTH: "0"
@@ -2031,6 +2094,7 @@ ratchet:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 ratchet-selftest:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -2049,6 +2113,7 @@ ratchet-selftest:
       changes: *ratchet-selftest-changes-1
 
 host-safety:
+  stage: governance
   image: node:24
   variables:
     GIT_DEPTH: "0"
@@ -2063,6 +2128,7 @@ host-safety:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 host-safety-selftest:
+  stage: governance
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -2085,6 +2151,7 @@ host-safety-selftest:
       changes: *host-safety-selftest-changes-1
 
 lint-typescript:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -2096,6 +2163,7 @@ lint-typescript:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 lint-typescript-selftest:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -2128,6 +2196,7 @@ lint-typescript-selftest:
       changes: *lint-typescript-selftest-changes-1
 
 runtime-foundations:
+  stage: integration
   image: node:24
   script:
     - "npm ci"
@@ -2267,6 +2336,7 @@ spec-view:
       changes: *spec-view-changes-1
 
 node-floor-guard:
+  stage: governance
   image: node:20
   script:
     - "if node scripts/lib/node-floor-guard.js >guard.out 2>&1; then echo \"guard accepted Node $(node -v)\"; exit 1; fi"
@@ -2279,6 +2349,7 @@ node-floor-guard:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 usage-capture-node-24-0:
+  stage: modules
   image: node:24.0.0
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/hook-entry-form.test.ts"
@@ -2287,6 +2358,7 @@ usage-capture-node-24-0:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 worktree-guard:
+  stage: integration
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -2315,6 +2387,7 @@ worktree-guard:
       changes: *worktree-guard-changes-1
 
 worktree-guard-node-24-0:
+  stage: modules
   image: node:24.0.0
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-entry-form.test.ts"
@@ -2323,6 +2396,7 @@ worktree-guard-node-24-0:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 mempalace-transcript:
+  stage: integration
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -2353,6 +2427,7 @@ mempalace-transcript:
       changes: *mempalace-transcript-changes-1
 
 mempalace-transcript-node-24-0:
+  stage: modules
   image: node:24.0.0
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-transcript-entry-form.test.ts"
@@ -2361,6 +2436,7 @@ mempalace-transcript-node-24-0:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 lint-specs:
+  stage: gate
   image: node:24
   variables:
     GIT_DEPTH: "0"
@@ -2376,6 +2452,7 @@ lint-specs:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 lint-specs-selftest:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -2402,6 +2479,7 @@ lint-specs-selftest:
       changes: *lint-specs-selftest-changes-1
 
 test-harness-curate:
+  stage: governance
   image: node:24
   script:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/harness-curator-curate-fixture.test.ts scripts/tests/harness-curator-curate-units.test.ts scripts/tests/harness-curator-apply-dry-run.test.ts scripts/tests/harness-curator-apply-units.test.ts scripts/tests/harness-curator-setup-schedule.test.ts scripts/tests/harness-curator-real-palace.test.ts"
@@ -2410,6 +2488,7 @@ test-harness-curate:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 check-skill-versions:
+  stage: governance
   image: node:24
   variables:
     GIT_DEPTH: "0"
@@ -2422,6 +2501,7 @@ check-skill-versions:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
 
 check-description-length:
+  stage: governance
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -2447,6 +2527,7 @@ check-description-length:
       changes: *check-description-length-changes-1
 
 check-extension-version-bump:
+  stage: governance
   image: node:24
   variables:
     GIT_DEPTH: "0"
@@ -2457,6 +2538,7 @@ check-extension-version-bump:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
 
 check-spec-id-reserved:
+  stage: governance
   image: node:24
   variables:
     GIT_DEPTH: "0"
@@ -2470,6 +2552,7 @@ check-spec-id-reserved:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
 
 check-agents-size:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -2480,6 +2563,7 @@ check-agents-size:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 check-comment-size:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -2490,6 +2574,7 @@ check-comment-size:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 check-seat-brief:
+  stage: governance
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -2507,6 +2592,7 @@ check-seat-brief:
       changes: *check-seat-brief-changes-1
 
 check-plan-review:
+  stage: governance
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -2526,6 +2612,7 @@ check-plan-review:
       changes: *check-plan-review-changes-1
 
 check-rules-size:
+  stage: gate
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -2536,6 +2623,7 @@ check-rules-size:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 check-feedback-routing:
+  stage: governance
   image: node:24
   script:
     - "npm ci --omit=dev --workspaces=false"
@@ -2868,6 +2956,7 @@ usage-dashboard:
       changes: *usage-dashboard-changes-1
 
 gitlab-ci-check:
+  stage: governance
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -2883,6 +2972,7 @@ gitlab-ci-check:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 check-ci-parity:
+  stage: governance
   image: node:24
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends wget ca-certificates
@@ -2898,6 +2988,7 @@ check-ci-parity:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 alert-scheduled-failure-selftest:
+  stage: governance
   image: node:24
   before_script:
     - !reference [.task-install, script]
@@ -2918,6 +3009,7 @@ alert-scheduled-failure-selftest:
       changes: *alert-scheduled-failure-selftest-changes-1
 
 alert-scheduled-failure-check:
+  stage: governance
   image: node:24
   before_script:
     - !reference [.task-install, script]

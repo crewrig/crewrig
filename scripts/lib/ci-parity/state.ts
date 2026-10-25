@@ -15,6 +15,8 @@ export interface TriggerRecord {
 /** What the reference pass decodes per capability (the shell's CAP_* arrays and c_* locals). */
 export interface CapRecord {
   id: string;
+  /** The `group` field (spec 0287 R11): the stage of the job on both engines; "" when absent. */
+  group: string;
   port: string;
   ntrig: number;
   triggers: TriggerRecord[];

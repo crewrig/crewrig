@@ -118,6 +118,7 @@ export function readCapability(c: YqNode): CapRecord {
     cacheMap && isYqFalsy(ownFiles) && capPaths.tag === "!!seq" ? at(c, ["paths"]) : ownFiles;
   return {
     id: orEmpty(at(c, ["id"]), "id"),
+    group: orEmpty(at(c, ["group"]), "group"),
     port,
     ntrig: isYqFalsy(trigger) ? 0 : length(trigger),
     triggers: readTriggers(c, capPaths, capKeys.includes("paths")),

@@ -59,6 +59,10 @@ export class Capability {
   get id(): string {
     return text(this.at(["id"]));
   }
+  /** The `group` field: the stage of the job (spec 0287 R11); "" when omitted. */
+  get group(): string {
+    return this.orEmpty(["group"]);
+  }
   get runtimes(): string {
     const n = this.at(["requires", "runtime"]);
     return n instanceof YqSeq ? listText(n) : stripTrailingLf(text(n));

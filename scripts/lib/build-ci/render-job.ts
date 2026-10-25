@@ -107,7 +107,10 @@ export function emitJob(cap: Capability, pin: TaskPin, yqPins: YqPin = repoYqPin
   const nl = runtimes.indexOf("\n");
   const primary = nl < 0 ? runtimes : runtimes.slice(0, nl);
   const secondary = nl < 0 ? "" : runtimes.slice(nl + 1);
-  const out = ["", `${id}:`, `  image: ${runtimeToImage(primary)}`];
+  const out = ["", `${id}:`];
+  if (cap.group !== "") out.push(`  stage: ${cap.group}`);
+  if (cap.group === "windows") out.push("  needs: []");
+  out.push(`  image: ${runtimeToImage(primary)}`);
 
   const depthFull = cap.historyDepth === "full";
   const envKeys = cap.envKeys;
