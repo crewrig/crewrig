@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
-import yaml from "js-yaml";
+import { yamlLib as yaml } from "./lib/yaml-lib.ts";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
 // Composed so the root-reader guard stays quiet: the fixture root gets a copy, nothing is read here.
