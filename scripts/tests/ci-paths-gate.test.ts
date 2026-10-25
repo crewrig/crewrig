@@ -203,3 +203,56 @@ test("ci-job action: gate false leaves decide run=true and runs the production i
     /- if: inputs\.gate != 'false' \|\| inputs\.install == 'omit-dev'\n\s+shell: bash\n\s+run: npm ci --omit=dev/,
   );
 });
+
+// Spec 0287 R6: cancel-on-failure finds its job when a called workflow prefixes the name.
+const jqProbe = spawnSync("jq", ["--version"], { encoding: "utf8" });
+test("cancel-on-failure jq filter matches prefixed and matrix job names", { skip: jqProbe.status !== 0 }, () => {
+  const action = fs.readFileSync(".github/actions/cancel-on-failure/action.yml", "utf8");
+  const m = /--jq '([^']+)'/.exec(action);
+  assert.ok(m, "the action carries a --jq '...' expression");
+  const expr = m[1] ?? "";
+  const job = (name: string) => ({ name, steps: [{ name: `step of ${name}`, conclusion: "failure" }] });
+  const fixture = JSON.stringify({
+    jobs: [
+      job("x"),
+      job("x (a)"),
+      job("gate / x"),
+      job("gate / x (m)"),
+      job("gate / sibling"),
+      job("xy"),
+    ],
+  });
+  {
+    for (const [target, want] of [
+      ["x", "step of x"],
+      ["sibling", "step of gate / sibling"],
+    ] as const) {
+      const r = spawnSync("jq", ["-r", expr], {
+        input: fixture,
+        encoding: "utf8",
+        env: { ...process.env, GITHUB_JOB: target },
+      });
+      assert.equal(r.status, 0, `jq exits 0: ${r.stderr}`);
+      assert.equal(r.stdout.trim(), want);
+    }
+    // Every shape of the target job `x` matches: first failing step wins, so probe each alone.
+    for (const name of ["x", "x (a)", "gate / x", "gate / x (m)"]) {
+      const r = spawnSync("jq", ["-r", expr], {
+        input: JSON.stringify({ jobs: [job(name)] }),
+        encoding: "utf8",
+        env: { ...process.env, GITHUB_JOB: "x" },
+      });
+      assert.equal(r.status, 0, r.stderr);
+      assert.equal(r.stdout.trim(), `step of ${name}`);
+    }
+    for (const name of ["xy", "gate / sibling", "ax"]) {
+      const r = spawnSync("jq", ["-r", expr], {
+        input: JSON.stringify({ jobs: [job(name)] }),
+        encoding: "utf8",
+        env: { ...process.env, GITHUB_JOB: "x" },
+      });
+      assert.equal(r.status, 0, r.stderr);
+      assert.equal(r.stdout.trim(), "", `${name} must not match x`);
+    }
+  }
+});

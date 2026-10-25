@@ -17,7 +17,7 @@ runs:
       run: |
         # Record the real failure before the cancel rewrites it as `cancelled`.
         step="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/attempts/${GITHUB_RUN_ATTEMPT}/jobs" \
-          --jq '[.jobs[] | select(.name == env.GITHUB_JOB or (.name | startswith(env.GITHUB_JOB + " ("))) | .steps[] | select(.conclusion == "failure") | .name] | first // empty' 2>/dev/null || true)"
+          --jq '[.jobs[] | select(.name == env.GITHUB_JOB or (.name | startswith(env.GITHUB_JOB + " (")) or (.name | endswith(" / " + env.GITHUB_JOB)) or (.name | contains(" / " + env.GITHUB_JOB + " ("))) | .steps[] | select(.conclusion == "failure") | .name] | first // empty' 2>/dev/null || true)"
         msg="Job '${GITHUB_JOB}' failed at step '${step:-unknown}'; the run is cancelled, so this job will read 'cancelled'."
         echo "::error title=cancel-on-failure::${msg}"
         echo "### cancel-on-failure: ${GITHUB_JOB}" >> "${GITHUB_STEP_SUMMARY}"

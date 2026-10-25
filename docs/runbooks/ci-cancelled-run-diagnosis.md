@@ -7,7 +7,7 @@ Tracked in [issue #1742](https://github.com/crewrig/crewrig/issues/1742).
 ## Symptom
 
 A `Build & Validate` run ends as `cancelled` and every failing-looking check
-reads `cancelled`; the job-level view shows no `failure`.
+reads `cancelled` (in a called workflow the job reads `gate / <job>`); the job-level view shows no `failure`.
 
 ## Cause
 
