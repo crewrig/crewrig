@@ -50,7 +50,7 @@ and the pre-push requirements), in `docs/pre-push-guard.md`, in the
 `.githooks/pre-push` error text, and in `docs/cli-matrix/rows/45.md` (with
 `docs/cli-matrix.md` rebuilt in the same diff). Historical specs are left
 alone. Acceptance: `git grep -n "3\.39" -- ':!specs' ':!docs/audit'` returns
-no present-tense floor statement; the guard fails a staged tree whose one
+no hit other than an explicitly historical mention; the guard fails a staged tree whose one
 file declares `'3.39'`; `task ci:check-task-provisioning` still passes
 (spec 0282: the pin is not below the floor); and a manual check on Task
 3.53.x fails loudly with `Schema version (3.54.0) is greater than the
@@ -150,7 +150,9 @@ SHALL stop comparing `task.file` to the single constant `CI_FILE =
 it to every `ci:` task whose defining file is `taskfiles/ci.yml` or under
 `taskfiles/ci/`. The command-normalisation of 0279 R3 SHALL expand the
 file variables of R22 (b) (the literal `vars:` of the `ci` files) before
-comparing, so a variable never produces a parity finding. Acceptance: a
+comparing, so a variable never produces a parity finding; where the
+variable is defined (R22, settled in the PLAN) does not change this
+requirement, only the place the expansion reads from. Acceptance: a
 fixture task in a `taskfiles/ci/` file with an unanchored call to a name that
 also exists as `ci:<name>` fails the guard, and the anchored form passes;
 a task using the variable passes against a capability that spells the
@@ -311,20 +313,21 @@ R21 to R30 each carry their own acceptance sentence. In addition:
 pass; no file of `taskfiles/ci.yml` plus `taskfiles/ci/*.yml` exceeds 200
 lines; the 99 `ci:*` names and descriptions are unchanged.
 
-### Open questions
+### Resolved decisions
 
-- **[OPEN] Path filters sequencing with #1828 (R29).** The 15 `taskfiles/ci.yml`
+- **Path filters sequencing with #1828 (R29).** The 15 `taskfiles/ci.yml`
   entries of `ci/ci-capabilities.yml` need `taskfiles/ci/**` added, and that
-  file is rewritten by #1828. Proposed: the #1827 implementation PR adds the
+  file is rewritten by #1828. Decision: the #1827 implementation PR adds the
   line to each filter (a mechanical one-line change) and rebases on whichever
   ticket merges first; a coordinator decision is requested if the two PRs
   conflict.
-- **[OPEN] Spec 0279 amendment form.** R24 and R26 reinterpret 0279 R2 and R20
-  ("`taskfiles/ci.yml`") as the whole `ci` file sub-tree. This delta records
-  the amendment because the one-file spec-PR rule forbids a second file; the
-  coordinator may instead request a `0279-pre-push-guard.delta-04.md` in a
-  separate spec-PR, with no change to the requirements here.
-- **[OPEN] `windows.yml` size (R23).** Whether 24 `windows-*` tasks fit in 200
+- **Spec 0279 amendment form.** R24 and R26 reinterpret 0279 R2 and R20
+  ("`taskfiles/ci.yml`") as the whole `ci` file sub-tree. Decision: this delta
+  records the amendment, because the one-file spec-PR rule forbids a second
+  file; it is cross-referenced from here and the base text of 0279 is read
+  together with this delta (delta-cumulative rule of `docs/spec-pr-workflow.md`).
+  A separate `0279-pre-push-guard.delta-04.md` is not required.
+- **`windows.yml` size (R23).** Whether 24 `windows-*` tasks fit in 200
   lines after factorization cannot be known before the PLAN; the allowed
   fallback is a `windows-b.yml` of the same group.
 
