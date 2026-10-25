@@ -7,10 +7,17 @@
 // no name character `[A-Za-z0-9._-]` right after it. Only the first occurrence of a
 // line is judged, as the shell twin does. Otherwise the test must be named in
 // `ci/test-wiring-exemptions.txt` (`name<WS>reason`).
+// A `scripts/tests/*.test.ts` file (issue #1375) is WIRED iff an executed line of a CI surface
+// (the surfaces above plus `taskfiles/*.yml` and `Taskfile.yml`, where the Task CI contract
+// keeps the commands) names it, literally or through a `scripts/tests/<glob>` it matches, at
+// ANY occurrence of the line with no `#` before it. A line that is only a path-filter entry
+// (`- "scripts/tests/x.test.ts"`) selects when a job runs, not what it runs, and never wires.
 // Exit codes: 0 clean, 1 findings, 2 tests directory missing.
 // Finding-line format: the three FAILED blocks of the shell twin, on stderr.
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
+
+import { globToRegExp } from "../glob-engine.ts";
 
 export interface Outcome {
   code: number;
@@ -63,7 +70,10 @@ function readSurfaces(repo: string): string[] {
     for (const ext of [".yml", ".yaml"])
       for (const n of globNames(workflows, "", ext)) files.push(`${workflows}/${n}`);
   }
-  files.push(`${repo}/ci/ci-capabilities.yml`);
+  const taskfiles = `${repo}/taskfiles`;
+  if (isDir(taskfiles))
+    for (const n of globNames(taskfiles, "", ".yml")) files.push(`${taskfiles}/${n}`);
+  files.push(`${repo}/ci/ci-capabilities.yml`, `${repo}/Taskfile.yml`);
   return files.filter(isFile).map((f) => readFileSync(f, "utf8"));
 }
 
@@ -80,6 +90,49 @@ function isWired(token: string, surfaces: string[]): boolean {
     }
   }
   return false;
+}
+
+const PATH_FILTER_LINE = /^\s*-\s*["']?[^\s"']+["']?\s*$/;
+const TESTS_GLOB = /scripts\/tests\/[^\s"'`]*\*[^\s"'`]*/g;
+
+/** Every executed `scripts/tests/...` glob and the literal-token check, over all occurrences. */
+function wiredTsTests(names: string[], surfaces: string[]): Set<string> {
+  const wired = new Set<string>();
+  const globs: RegExp[] = [];
+  const lines: string[] = [];
+  for (const text of surfaces)
+    for (const line of text.split("\n")) {
+      if (PATH_FILTER_LINE.test(line)) continue;
+      lines.push(line);
+      for (const m of line.matchAll(TESTS_GLOB)) {
+        if (line.slice(0, m.index).includes("#")) continue;
+        try {
+          globs.push(globToRegExp(m[0]));
+        } catch {
+          // A glob outside the engine's forms wires nothing.
+        }
+      }
+    }
+  for (const name of names) {
+    const token = `scripts/tests/${name}`;
+    if (globs.some((g) => g.test(token))) {
+      wired.add(name);
+      continue;
+    }
+    for (const line of lines) {
+      let at = line.indexOf(token);
+      while (at >= 0) {
+        const next = line.charAt(at + token.length);
+        if (!line.slice(0, at).includes("#") && (next === "" || !NAME_CHAR.test(next))) {
+          wired.add(name);
+          break;
+        }
+        at = line.indexOf(token, at + 1);
+      }
+      if (wired.has(name)) break;
+    }
+  }
+  return wired;
 }
 
 interface Exemptions {
@@ -124,6 +177,14 @@ export function evaluateWiring(repo: string): Outcome {
   for (const name of globNames(testsDir, "test-", ".sh")) {
     if (!isFile(`${testsDir}/${name}`)) continue;
     if (isWired(`scripts/tests/${name}`, surfaces)) wired++;
+    else if (ex.names.has(name)) exempt++;
+    else orphans.push(name);
+  }
+
+  const tsNames = globNames(testsDir, "", ".test.ts").filter((n) => isFile(`${testsDir}/${n}`));
+  const tsWired = wiredTsTests(tsNames, surfaces);
+  for (const name of tsNames) {
+    if (tsWired.has(name)) wired++;
     else if (ex.names.has(name)) exempt++;
     else orphans.push(name);
   }

@@ -93,4 +93,51 @@ describe("check-test-wiring cases", () => {
     assert.equal(r.status, 1);
     assert.ok(r.stderr.includes("scripts/tests/test-commented.sh"), r.stderr);
   });
+
+  // Issue #1375: the `*.test.ts` population, wired through the Task CI contract.
+  const mkTs = (tests: string[], taskfile: string, workflow = "jobs: {}\n"): string => {
+    const dir = mkFixture([], workflow);
+    fs.mkdirSync(path.join(dir, "taskfiles"), { recursive: true });
+    for (const t of tests) fs.writeFileSync(path.join(dir, "scripts/tests", t), "");
+    fs.writeFileSync(path.join(dir, "taskfiles/ci.yml"), taskfile);
+    return dir;
+  };
+  const cmd = (args: string): string => `tasks:\n  x:\n    cmds:\n      - node --test ${args}\n`;
+
+  it("case-g: an unwired .test.ts fails (exit 1) and stderr names it", () => {
+    const r = check(mkTs(["alpha.test.ts"], "tasks: {}\n"));
+    assert.equal(r.status, 1);
+    assert.ok(r.stderr.includes("  - scripts/tests/alpha.test.ts\n"), r.stderr);
+  });
+
+  it("case-h: a .test.ts named at any position of a command line is wired", () => {
+    const line = "{{.REPO_DIR}}/scripts/tests/a.test.ts {{.REPO_DIR}}/scripts/tests/b.test.ts";
+    const r = check(mkTs(["a.test.ts", "b.test.ts"], cmd(line)));
+    assert.equal(r.status, 0, r.stderr);
+    assert.ok(r.stdout.includes("wired (2)"), r.stdout);
+  });
+
+  it("case-i: a quoted glob in a command wires the files it matches only", () => {
+    const r = check(mkTs(["grp-a.test.ts", "other.test.ts"], cmd("'scripts/tests/grp-*.test.ts'")));
+    assert.equal(r.status, 1);
+    assert.ok(r.stderr.includes("scripts/tests/other.test.ts"), r.stderr);
+    assert.ok(!r.stderr.includes("grp-a"), r.stderr);
+  });
+
+  it("case-j: a path-filter entry alone does not wire a .test.ts", () => {
+    const filter = 'on:\n  paths:\n    - "scripts/tests/alpha.test.ts"\n';
+    const r = check(mkTs(["alpha.test.ts"], "tasks: {}\n", filter));
+    assert.equal(r.status, 1);
+    assert.ok(r.stderr.includes("scripts/tests/alpha.test.ts"), r.stderr);
+  });
+
+  it("case-k: a commented-out .test.ts command does not wire it", () => {
+    const r = check(
+      mkTs(
+        ["alpha.test.ts"],
+        "tasks:\n  x:\n    cmds:\n      # node --test scripts/tests/alpha.test.ts\n",
+      ),
+    );
+    assert.equal(r.status, 1);
+  });
 });

@@ -1991,6 +1991,17 @@ capabilities:
       - "scripts/tests/lib/setup-declarations-*.ts"
       - "scripts/check-gemini-overlay-enrollment.ts"
       - "scripts/lib/governance/**"
+      - "scripts/tests/build-components-provenance-strip.test.ts"
+      - "scripts/tests/check-description-length-ci-wiring.test.ts"
+      - "scripts/tests/check-description-length.test.ts"
+      - "scripts/tests/extension-references.test.ts"
+      - "scripts/tests/model-ci-shims-wiring.test.ts"
+      - "scripts/tests/mutation-copy.test.ts"
+      - "scripts/tests/normal-diff-apply.test.ts"
+      - "scripts/tests/setup-hooks-stale-migration.test.ts"
+      - "scripts/tests/skill-size-budgets.test.ts"
+      - "scripts/tests/tls-exec-legacy-rewrite.test.ts"
+      - "scripts/tests/tls-exec.test.ts"
       - "scripts/check-no-machine-paths.ts"
     portability: portable
     changeset-gated: true
