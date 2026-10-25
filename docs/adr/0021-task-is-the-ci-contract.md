@@ -4,7 +4,9 @@
 
 **Status:** Proposed (issue #1777, epic #1761 WP-C). Supersedes
 [ADR-0012](0012-ci-reference-contract.md) in part. Decomposed by
-[spec 0280](../../specs/0280-task-ci-contract.md).
+[spec 0280](../../specs/0280-task-ci-contract.md). Amended 2026-10-25 by
+[spec 0287](../../specs/0287-staged-reusable-workflows.md) (issue #1828): see
+*Amendment: shared stage taxonomy*.
 
 ## Context
 
@@ -64,3 +66,43 @@ No big-bang rewrite. Five ordered slices (spec 0280): split checker self-tests f
 ## Devil's advocate
 
 The strongest counter-argument: this ADR deletes duplication by creating a single point of failure and a single point of opacity. If `taskfiles/ci.yml` is wrong, every engine is wrong in the same way, and a contributor debugging a red GitHub job now reads a one-line `run: task ci:x` and must go elsewhere to learn what ran. Meanwhile the engine-level concerns that cause most real CI pain (cache keys, path filters, OS matrix) are exactly the ones left unshared, so the 12,681-line figure may fall less than hoped and the repository would carry both a thinner engine file and an equally large capability reference. The answer is partial, not total: the single point of failure is already the case for the capability `command:` today, the opacity is bounded by `output: group` and by task names that equal capability ids, and the residual size is measured per slice so the bet can be stopped after slice 3 if the numbers do not move. If the slice 3 measurement shows a reduction below a threshold fixed in spec 0280's plan, slice 5 SHALL not start. (Assumption — verify: the threshold value is a PLAN decision.)
+
+## Amendment (2026-10-25): shared stage taxonomy
+
+Issue #1828, [spec 0287](../../specs/0287-staged-reusable-workflows.md) R14 and R15. The Task contract fixes what a job runs; this amendment fixes where a job sits in the pipeline, once, for every engine.
+
+### Stage taxonomy
+
+Six names, in pipeline order. Their meaning follows the owner decisions recorded on #1828.
+
+| Stage | Meaning |
+|---|---|
+| `gate` | Fast, cheap checks (under 60 s each) whose failure makes the rest of the Linux run pointless: Taskfile and provisioning checks, spec and markdown lint, TypeScript lint, `ratchet`, size guards |
+| `modules` | Unit and module suites of the TypeScript code, including the `*-node-24-0` twins of integration jobs |
+| `governance` | Repository-governance checks: path ownership, version bumps, test wiring, CI parity, spec-id reservation, feedback routing |
+| `extensions` | Component build, extension, setup and docs-index checks |
+| `integration` | Slow end-to-end and runtime suites (`setup-oracle`, `e2e`, MemPalace, worktree guard) |
+| `windows` | The `windows-*` jobs, which start immediately and are never gated on Linux |
+
+### The `group` field is the single source
+
+The optional `group` scalar of `ci/ci-capabilities.yml` (defined in `docs/ci-reference-format.md`) is the only place a job's stage is written. Both engines and the Taskfile split derive from it: the GitHub callee file `_ci-<group>.yml`, the `stage:` of the generated GitLab job, and the `taskfiles/ci/<group>.yml` split of #1827. A job's group changes only by a delta-spec.
+
+### GitHub model
+
+`build.yml` stays the caller and keeps the triggers, `concurrency` and `permissions`. It holds six `uses:` jobs and no steps, one per group, each pointing to a `workflow_call` file `.github/workflows/_ci-<group>.yml`. The `needs` graph: `modules`, `governance` and `extensions` need `gate`; `integration` needs `gate` (plus the middle three only if the wall-clock rule of spec 0287 R10 holds); `windows` has no `needs` and starts at once. No caller job carries an `if:`, so a skipped dependency can never silently skip a required check. Job keys stay equal to capability ids (contract C2, ADR-0012).
+
+### GitLab model and accepted gap
+
+The generator emits `stages:` in the taxonomy order, `stage: <group>` on every job, and `needs: []` on `windows` jobs only. GitLab stages are sequential barriers, so `modules`, `governance` and `extensions` run one after the other there, whereas GitHub runs them in parallel after `gate`. This is an accepted, documented gap, not a silent asymmetry: GitLab wall-clock is not an objective, and the GitLab output is verified by the generator equality check and lint, not on a live runner.
+
+### Rejected alternatives (this amendment)
+
+- **Leave GitLab unstaged.** Rejected: a silent asymmetry between engines that also loses fail-fast gating on GitLab.
+- **Per-job `needs:` lists of the gate jobs on GitLab.** Rejected: about +2,000 generated lines for a wall-clock gain that is not an objective.
+- **Merge the middle three groups into one GitLab stage.** Rejected: it breaks the one-group-one-stage identity of the shared field.
+- **Matrices for `windows-*` and `*-node-24-0`.** Rejected: a matrix collapses distinct jobs into one job key, which breaks contract C2 (job key equals capability id) and the per-job traceability of ADR-0012.
+
+### Consequence on branch protection
+
+A called workflow's jobs report as `<caller job id> / <job>`. The required contexts `ratchet` and `lint-typescript` of the `main-protected` and `release-protected` rulesets become `gate / ratchet` and `gate / lint-typescript`. The ruleset update is run by the coordinator or owner after the pull request has reported once under the new names and before it merges (spec 0287 R5).

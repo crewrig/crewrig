@@ -797,7 +797,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `scripts/usage-attribute.ts`, `scripts/usage-query.ts --rollup`) are **repository-level** and **identical on all four
   CLIs** — invoked through `task` or `node` with no per-CLI wiring or integration point; the nine
   `scripts/usage-<name>.sh` forwarding shims of spec 0253 were removed in #1344, including `usage-mirror.sh`. Windows
-  evidence: the `windows-usage-wrappers` job (`.github/workflows/build.yml`) runs the nine entries from pwsh, offline,
+  evidence: the `windows-usage-wrappers` job (`.github/workflows/_ci-windows.yml`) runs the nine entries from pwsh, offline,
   with no Python and no `bash`, and records each command's wall time without gating on it (spec 0253 R24, R27). The
   usage mirror's detached spawn runs `process.execPath` on `scripts/usage-mirror.ts --from-write` with no `bash`, proved
   on Linux and `windows-latest` by `scripts/tests/usage-mirror-spawn.test.ts` (spec 0253 delta-04, #1515; see *Parity

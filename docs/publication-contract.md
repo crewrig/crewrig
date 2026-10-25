@@ -181,8 +181,8 @@ writing) fails on any of:
    does not resolve to a file, or a published page absent from the committed
    manifest (drift).
 
-CI runs `node scripts/lib/node-floor-guard.js && node scripts/build-docs-index.ts --check` in the `check-components`
-job of `.github/workflows/build.yml`, mirroring the component-drift guard.
+CI runs `node scripts/lib/node-floor-guard.js && node scripts/build-docs-index.ts --check` in the `docs-index`
+job of `.github/workflows/_ci-extensions.yml` (called by `build.yml`), mirroring the component-drift guard.
 
 ## Organization overlay
 

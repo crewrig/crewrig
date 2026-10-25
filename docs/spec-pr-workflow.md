@@ -248,7 +248,7 @@ exact value `true` skips requirement 1 of spec 0168 (the `newDraftOffenders`
 check), with a non-failing `[NOTICE]` naming each tolerated file. Absent,
 empty, `false` or any other value leaves it enforced. Every other check runs
 unchanged. GitHub sets the variable from `github.event.pull_request.draft`;
-`build.yml` re-runs on `ready_for_review` and `converted_to_draft`.
+The `build.yml` caller (which fans out to the `_ci-<group>.yml` workflows) re-runs on `ready_for_review` and `converted_to_draft`.
 
 **GitHub residual.** A re-run replays the original event payload, so a re-run
 of a run created while the PR was draft keeps `CREWRIG_PR_DRAFT=true` and can
