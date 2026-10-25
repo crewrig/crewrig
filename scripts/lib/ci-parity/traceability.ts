@@ -81,7 +81,9 @@ export const GROUPS = ["gate", "modules", "governance", "extensions", "integrati
 
 /** Spec 0287 R11: every GitHub-engine capability has a valid `group`; callee file matches it. */
 export function groupChecks(state: ParityState): void {
-  const layered = workflowFiles(state.workflowsDir).some((f) => path.basename(f).startsWith("_ci-"));
+  const layered = workflowFiles(state.workflowsDir).some((f) =>
+    path.basename(f).startsWith("_ci-"),
+  );
   for (const j of state.ghaJobs) {
     const base = path.basename(j.workflow);
     if (base !== "build.yml" && !base.startsWith("_ci-")) continue; // other workflows are not staged
@@ -90,7 +92,10 @@ export function groupChecks(state: ParityState): void {
     if (cap.group === "") {
       fail(state, `capability '${j.id}' runs on the GitHub engine but has no 'group' (R11)`);
     } else if (!GROUPS.includes(cap.group)) {
-      fail(state, `capability '${j.id}' has group '${cap.group}', not one of ${GROUPS.join(", ")} (R11)`);
+      fail(
+        state,
+        `capability '${j.id}' has group '${cap.group}', not one of ${GROUPS.join(", ")} (R11)`,
+      );
     } else if (layered && base !== `_ci-${cap.group}.yml`) {
       fail(
         state,

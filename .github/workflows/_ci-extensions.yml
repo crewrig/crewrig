@@ -1,0 +1,160 @@
+# Reusable workflow: the `extensions` stage of Build & Validate (spec 0287).
+# Called by .github/workflows/build.yml; job bodies live here verbatim.
+name: CI extensions
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build all extensions
+        run: npm run build --workspaces --if-present
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  component-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: component-drift
+          cache: true
+
+  component-drift-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: component-drift-selftest
+          cache: true
+
+  # Spec 0256 requirement 10 (ticket #1335), PR C: the shell-against-TypeScript parity proof, one shard
+  # file per CLI, and the twin differential suites. Linux only; retired with the shell setups.
+  setup-differential:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: setup-differential
+
+  extension-render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: extension-render
+          yq: "4.54.1"
+
+  extension-provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: extension-provenance
+
+  extension-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: extension-manifest
+          install: none
+
+  extension-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: extension-install
+          yq: "4.54.1"
+
+  core-paths:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: core-paths
+          install: none
+          yq: "4.54.1"
+
+  docs-index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: docs-index
+          cache: true
+
+  docs-index-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: docs-index-selftest
+          cache: true
+
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      # The v1-F2 floor guard (spec 0243 R24) refuses to write the direct form on
+      # a Node.js below 24, and ubuntu-latest defaults to 22 (#1391 CI).
+      - uses: ./.github/actions/ci-job
+        with:
+          id: setup
+          yq: "4.54.1"
+
+  cli-matrix-fresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: cli-matrix-fresh
+          install: none
+
+  cli-matrix-fresh-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: cli-matrix-fresh-selftest
+          install: none

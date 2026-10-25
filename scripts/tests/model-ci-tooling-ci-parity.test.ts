@@ -104,7 +104,10 @@ describe("check-ci-parity twin", () => {
       1,
     ));
   test("a drifted workflow job fails arm 1", () =>
-    expectExit(fixture(sub(".github/workflows/build.yml", "run:", "run: echo drift #")), 1));
+    expectExit(
+      fixture(sub(".github/workflows/_ci-extensions.yml", "run:", "run: echo drift #")),
+      1,
+    ));
   // Spec delta-02 (h): the printed hunks must turn the committed file into the generated one.
   test("a stale gitlab file fails arm 2 and the printed diff repairs it", () => {
     const drifted = '    - "npm install"\n    - "echo drift"\n';

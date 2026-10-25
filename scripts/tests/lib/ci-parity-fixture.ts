@@ -83,6 +83,16 @@ export function runCheck(fixture: string, args: readonly string[] = []): CheckRe
 
 /** Replace the single occurrence of `from` in `file`; throws when absent, repeated or unchanged. */
 export function replaceOnce(file: string, from: string, to: string): void {
+  if (path.basename(file) === "build.yml" && !fs.readFileSync(file, "utf8").includes(from)) {
+    // Staged layout (spec 0287): the job bodies live in the `_ci-*.yml` callees beside `build.yml`.
+    const dir = path.dirname(file);
+    const hit = fs
+      .readdirSync(dir)
+      .filter((f) => f.startsWith("_ci-") && f.endsWith(".yml"))
+      .map((f) => path.join(dir, f))
+      .find((f) => fs.readFileSync(f, "utf8").includes(from));
+    if (hit !== undefined) file = hit;
+  }
   const text = fs.readFileSync(file, "utf8");
   const at = text.indexOf(from);
   if (at < 0) throw new Error(`replaceOnce: '${from}' is absent from ${file}`);
@@ -112,6 +122,7 @@ export function list(value: unknown, what = "value"): unknown[] {
 
 /** Load `file`, let `edit` mutate the document, dump it back (comments are dropped). */
 export function editYaml(file: string, edit: (doc: YMap) => void): void {
+  if (path.basename(file) === "build.yml" && editStagedBuild(file, edit)) return;
   const doc = map(yamlLib.load(fs.readFileSync(file, "utf8")), file);
   edit(doc);
   fs.writeFileSync(file, yamlLib.dump(doc, { lineWidth: -1, noRefs: true }));
@@ -136,4 +147,38 @@ export function refPaths(id: string, kind: string): string[] {
   // Spec 0283 R3: a trigger without its own paths inherits the capability-level list.
   const own = map(trigger)["paths"];
   return list(own ?? capOf(doc, id)["paths"], `paths of ${id}/${kind}`).map(String);
+}
+
+/**
+ * Staged layout (spec 0287): `build.yml` is a caller and the job bodies live in `_ci-*.yml`. Edit the
+ * merged document (caller header plus the union of the callee jobs) and write each job back to the file
+ * that held it. Returns false when `file` has no callee siblings (a flat workflow).
+ */
+function editStagedBuild(file: string, edit: (doc: YMap) => void): boolean {
+  const dir = path.dirname(file);
+  const callees = fs
+    .readdirSync(dir)
+    .filter((f) => f.startsWith("_ci-") && f.endsWith(".yml"))
+    .map((f) => path.join(dir, f));
+  if (callees.length === 0) return false;
+  const doc = map(yamlLib.load(fs.readFileSync(file, "utf8")), file);
+  const callers = map(doc["jobs"], "jobs");
+  const docs = callees.map((f) => ({ f, d: map(yamlLib.load(fs.readFileSync(f, "utf8")), f) }));
+  const merged: YMap = {};
+  for (const { d } of docs) Object.assign(merged, map(d["jobs"], "jobs"));
+  const origKeys = new Set(Object.keys(merged));
+  doc["jobs"] = merged;
+  edit(doc);
+  const after = map(doc["jobs"], "jobs");
+  for (const { f, d } of docs) {
+    const own = Object.keys(map(d["jobs"], "jobs"));
+    const added = docs[0]?.d === d ? Object.keys(after).filter((k) => !origKeys.has(k)) : [];
+    d["jobs"] = Object.fromEntries(
+      [...own, ...added].filter((k) => k in after).map((k) => [k, after[k]]),
+    );
+    fs.writeFileSync(f, yamlLib.dump(d, { lineWidth: -1, noRefs: true }));
+  }
+  doc["jobs"] = callers;
+  fs.writeFileSync(file, yamlLib.dump(doc, { lineWidth: -1, noRefs: true }));
+  return true;
 }

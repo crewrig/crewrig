@@ -151,6 +151,7 @@ component-drift-selftest:
         - "scripts/lib/node-floor-guard.js"
         - "taskfiles/**"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-extensions.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *component-drift-selftest-changes-1
@@ -1116,6 +1117,7 @@ ci-parity:
         - "ci/yq-pin.json"
         - ".gitlab-ci.yml"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-governance.yml"
         - "docs/ci-reference-format.md"
     paths:
       - .ci-cache/
@@ -1198,6 +1200,7 @@ docs-index-selftest:
         - "scripts/tests/lib/worktree-fixtures.ts"
         - "taskfiles/**"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-extensions.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *docs-index-selftest-changes-1
@@ -1237,6 +1240,7 @@ cli-matrix-fresh-selftest:
         - "scripts/lib/node-floor-guard.js"
         - "taskfiles/**"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-extensions.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *cli-matrix-fresh-selftest-changes-1
@@ -1422,6 +1426,7 @@ test-wiring-selftest:
         - "scripts/lib/ci-cache-guard/**"
         - "taskfiles/**"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-governance.yml"
         - "ci/ci-capabilities.yml"
         - "scripts/tests/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -1819,6 +1824,7 @@ check-taskfile-commands-selftest:
         - "scripts/lib/ci-cache-guard/**"
         - "taskfiles/**"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-gate.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *check-taskfile-commands-selftest-changes-1
@@ -1878,6 +1884,7 @@ check-taskfile-tree-selftest:
         - "scripts/tests/lib/**"
         - "taskfiles/**"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-gate.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *check-taskfile-tree-selftest-changes-1
@@ -1932,6 +1939,7 @@ check-task-provisioning-selftest:
         - "taskfiles/**"
         - "ci/ci-capabilities.yml"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-gate.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *check-task-provisioning-selftest-changes-1
 
@@ -2063,6 +2071,7 @@ path-ownership-selftest:
         - "package-lock.json"
         - "taskfiles/**"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-governance.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *path-ownership-selftest-changes-1
@@ -2108,6 +2117,7 @@ ratchet-selftest:
         - "scripts/tests/check-ratchet.test.ts"
         - "taskfiles/**"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-gate.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *ratchet-selftest-changes-1
@@ -2146,6 +2156,7 @@ host-safety-selftest:
         - "package-lock.json"
         - "taskfiles/**"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-governance.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *host-safety-selftest-changes-1
@@ -2191,6 +2202,7 @@ lint-typescript-selftest:
         - "package-lock.json"
         - "taskfiles/**"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-gate.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *lint-typescript-selftest-changes-1
@@ -2474,6 +2486,7 @@ lint-specs-selftest:
         - "scripts/lib/ci-cache-guard/**"
         - "taskfiles/**"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-gate.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *lint-specs-selftest-changes-1
@@ -3004,6 +3017,7 @@ alert-scheduled-failure-selftest:
         - ".github/workflows/changeset-coverage.yml"
         - "taskfiles/**"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-governance.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *alert-scheduled-failure-selftest-changes-1
@@ -3025,6 +3039,7 @@ alert-scheduled-failure-check:
         - ".github/workflows/changeset-coverage.yml"
         - "taskfiles/**"
         - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-governance.yml"
         - "ci/ci-capabilities.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *alert-scheduled-failure-check-changes-1

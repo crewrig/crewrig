@@ -1,0 +1,205 @@
+# Reusable workflow: the `gate` stage of Build & Validate (spec 0287).
+# Called by .github/workflows/build.yml; job bodies live here verbatim.
+name: CI gate
+
+on:
+  workflow_call:
+
+jobs:
+  check-taskfile-commands:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-taskfile-commands
+
+  check-taskfile-commands-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-taskfile-commands-selftest
+
+  check-taskfile-tree:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-taskfile-tree
+
+  check-taskfile-tree-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-taskfile-tree-selftest
+
+  check-task-provisioning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-task-provisioning
+
+  check-task-provisioning-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-task-provisioning-selftest
+
+  # Spec 0251 R1-R4: the repository-wide scans. No path filter (a catch-all
+  # `**` would make path-ownership vacuous), not changeset-gated, no test
+  # suite: they run on every pull request and push to main and release/**.
+  repository-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: repository-scan
+          install: none
+
+  frontmatter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: frontmatter
+          yq: "4.54.1"
+
+  markdown-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: markdown-links
+          install: none
+
+  lint-markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: lint-markdown
+          install: ci
+          node: 22
+
+  # Spec 0238 R1-R3: shell / JavaScript / Python footprint ratchet. No path
+  # filter: any change may add a shell file. Full history for the merge-base.
+  ratchet:
+    runs-on: ubuntu-latest
+    env:
+      # The list-growth and Python arms diff against the PR's target
+      # branch. On a push the empty value hands the check back to its own
+      # default derivation (first `crewrig|origin` remote + /main).
+      BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/ci-job
+        with:
+          id: ratchet
+          install: none
+
+  ratchet-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: ratchet-selftest
+          install: none
+
+  # Spec 0238 R4-R8: TypeScript type-check, erasable syntax, Oxlint
+  # type-aware strict typing and Oxfmt check mode. No path filter.
+  lint-typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: lint-typescript
+          install: ci
+
+  lint-typescript-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: lint-typescript-selftest
+          install: ci
+
+  lint-specs:
+    runs-on: ubuntu-latest
+    env:
+      # The base-branch `status: draft` check (spec 0109 R2) compares against
+      # the PR's *target* branch. On a push there is no PR context, so the
+      # empty value hands the linter back to its own default derivation
+      # (first `crewrig|origin` remote + /main).
+      BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || '' }}
+      # Spec 0168 delta-01 R9/R11: map the PR's draft state onto the one
+      # engine-neutral input the linter reads. Only the exact string
+      # 'true' skips R1; a non-draft PR (false) and a push (no PR context)
+      # both yield the empty string, so R1 stays enforced.
+      CREWRIG_PR_DRAFT: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'true' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/ci-job
+        with:
+          id: lint-specs
+          install: install
+
+  lint-specs-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: lint-specs-selftest
+          install: install
+
+  check-agents-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-agents-size
+          install: none
+
+  check-rules-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-rules-size
+          install: none
+
+  # Spec 0275 R-E2: author-side size tool; CI only checks the script against committed fixtures, never forge content.
+  check-comment-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-comment-size
+          install: none

@@ -1,0 +1,213 @@
+# Reusable workflow: the `modules` stage of Build & Validate (spec 0287).
+# Called by .github/workflows/build.yml; job bodies live here verbatim.
+name: CI modules
+
+on:
+  workflow_call:
+
+jobs:
+  # Spec 0250 R27: production install (spec 0240 R4), floor guard, `--check` on the
+  # real tree, the Linux run of the Windows proof script, then the named suites
+  # (the dev-toolchain suite runs in `lint-typescript`). Needs yq for the parity suites.
+  build-components-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: build-components-ts
+          yq: "4.54.1"
+
+  # Spec 0254 R22, R27: the TypeScript extension and plugin builder suites, the golden proof and
+  # the real-tree check.
+  extension-builders-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: extension-builders-ts
+          install: install
+          yq: "4.54.1"
+
+  # Spec 0258 R27-R29 (ticket #1337), PR A: the skill-script oracle and its YAML leg. Linux only: the
+  # goldens are Linux bytes. `jq` and `git` come with the runner image; `yq` is pinned to v4.44.3 (the
+  # version the goldens were generated with) and its sha256 is checked.
+  skill-scripts-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: skill-scripts-ts
+          yq: "4.44.3"
+
+  # Spec 0259 R26-R28 (ticket #1338), PR P0: the governance-check suites.
+  # Linux only. The shell oracle legs retired with the switch PR, so no jq or yq is installed.
+  governance-checks-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: governance-checks-ts
+
+  # Spec 0262 R21-R23 (ticket #1339): the model-CI-tooling suites and their shell differential legs.
+  # Linux only. `jq` comes with the runner image; `yq` is pinned to v4.44.3 and its sha256 is checked.
+  # Glob discovery: later PRs add scripts/tests/model-ci-tooling-*.test.ts files without editing this job.
+  model-ci-tooling-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: model-ci-tooling-ts
+          yq: "4.44.3"
+
+  # Spec 0255 (row F2), PR B: the dark link-or-copy, component twin and manage module suites.
+  # Linux only: the conformance suites spawn `bash` and `jq`.
+  install-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: install-ts
+
+  # Spec 0255 R3: the install, manage and link entries print nothing on the oldest Node.js 24 release.
+  # No path filter, like `extension-builders-ts-node-24-0`.
+  install-ts-node-24-0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.0.0
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+      - name: Test the install entries
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/install-entry-form.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0256 R40 (ticket #1335), PR B1: the portable unit suites of the TypeScript setup modules,
+  # the TLS environment quoting and writer, and the confirm remainder. The POSIX-only suites skip
+  # themselves off Linux; the Windows exercise is `windows-setup-units`.
+  setup-modules-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: setup-modules-ts
+
+  # Spec 0257 (row of epic #1231, ticket #1336), PR 4a: the TypeScript monorepo release driver
+  # modules (refusals, forge, mode, branch, identity, credentials, classification, engine-log
+  # parsing, the release configuration and the prepare commands) and their unit suites. Linux only.
+  release-driver-modules-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: release-driver-modules-ts
+
+  # Spec 0257 (ticket #1336), PRs 2 and 3: the deterministic tar.gz archive writer, the
+  # documentation index and the release packaging modules. The release differential suite spawns
+  # `bash`, `jq` and `tar`, the archive suite cross-checks with `tar` and `gzip`; all exist on the runner.
+  packaging-modules-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: packaging-modules-ts
+
+  # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
+  # release. No path filter, like `mempalace-transcript-node-24-0`.
+  build-components-ts-node-24-0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.0.0
+
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+
+      - name: Entry form and silence runs on Node.js 24.0.0
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-entry-form.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0254 R4: the extension entries print nothing on the oldest Node.js 24 release. No path
+  # filter, like `build-components-ts-node-24-0`.
+  extension-builders-ts-node-24-0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.0.0
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+      - name: Test the extension entries
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-entry-form.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0243 R5: the usage-capture hook entries print nothing on the oldest
+  # Node.js 24 release, where type stripping still emits an ExperimentalWarning.
+  usage-capture-node-24-0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.0.0
+
+      - name: Entry form and unstubbed silence runs on Node.js 24.0.0
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/hook-entry-form.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0248 R10: the guard and claim entries print nothing on the oldest
+  # Node.js 24 release, where type stripping still emits an ExperimentalWarning.
+  worktree-guard-node-24-0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.0.0
+
+      - name: Entry form and unstubbed silence runs on Node.js 24.0.0
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-entry-form.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0247 R1: the transcript hook entry prints nothing on the oldest
+  # Node.js 24 release, where type stripping still emits an ExperimentalWarning.
+  mempalace-transcript-node-24-0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.0.0
+
+      - name: Entry form and silence runs on Node.js 24.0.0
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-transcript-entry-form.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure

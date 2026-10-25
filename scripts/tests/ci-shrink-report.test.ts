@@ -20,8 +20,8 @@ const workflowSurfaces = (): string[] => [
     .map((f) => `${WORKFLOW_DIR}/${f}`),
 ];
 const SURFACES = [...workflowSurfaces(), "ci/ci-capabilities.yml", ".gitlab-ci.yml"];
-const FLOOR = 8880; // spec 0280 R10, not lowered
-const PIN = 8850; // measured 8849 with the `group` fields and GitLab stages (spec 0287 R13); 8651 before
+const FLOOR = 9000; // spec 0280 R10 floor 8880, raised by spec 0287 R13 (staged callees)
+const PIN = 8950; // measured 8948 with the six staged callees (spec 0287 R1); 8849 before the move
 const COMMENT_LIMIT = 322; // spec 0285 R2: half of the 644 comment lines of a67ca65e
 
 const lines = (rel: string): string[] => {

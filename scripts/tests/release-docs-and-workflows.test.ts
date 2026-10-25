@@ -23,6 +23,15 @@ import { realTmp, REPO } from "./lib/worktree-fixtures.ts";
 function mutant(rel: string, edit: (text: string) => string): string {
   const root = realTmp("release-docs-");
   const text = fs.readFileSync(path.join(REPO, rel), "utf8");
+  // Staged workflows (spec 0287): keep the sibling workflow files so union readers see every job.
+  const wf = path.join(".github", "workflows");
+  if (rel.startsWith(wf)) {
+    fs.mkdirSync(path.join(root, wf), { recursive: true });
+    for (const f of fs.readdirSync(path.join(REPO, wf))) {
+      if (f === "build.yml" || f.startsWith("_ci-"))
+        fs.copyFileSync(path.join(REPO, wf, f), path.join(root, wf, f));
+    }
+  }
   const out = edit(text);
   assert.notEqual(out, text, "the mutation changes the file");
   fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
@@ -75,10 +84,13 @@ describe("(g) #1379 — release workflow permissions and build.yml dispatch", ()
       ),
       false,
     );
-    for (const job of ["ratchet:", "lint-typescript:", "workflow_dispatch:"]) {
-      const edited = mutant(BUILD_WORKFLOW, (t) =>
-        t.replace(new RegExp(`^ {2}${job}`, "m"), `  x-${job}`),
-      );
+    const gate = ".github/workflows/_ci-gate.yml";
+    for (const [file, job] of [
+      [gate, "ratchet:"],
+      [gate, "lint-typescript:"],
+      [BUILD_WORKFLOW, "workflow_dispatch:"],
+    ] as const) {
+      const edited = mutant(file, (t) => t.replace(new RegExp(`^ {2}${job}`, "m"), `  x-${job}`));
       assert.equal(buildWorkflowPinned(edited), false, job);
     }
   });

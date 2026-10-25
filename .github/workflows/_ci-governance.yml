@@ -1,0 +1,402 @@
+# Reusable workflow: the `governance` stage of Build & Validate (spec 0287).
+# Called by .github/workflows/build.yml; job bodies live here verbatim.
+name: CI governance
+
+on:
+  workflow_call:
+
+jobs:
+  agent-profile-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: agent-profile-migration
+          yq: "4.54.1"
+          cache: true
+
+  ci-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: ci-parity
+          yq: "4.54.1"
+          cache: true
+
+  test-wiring:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: test-wiring
+          install: none
+
+  test-wiring-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: test-wiring-selftest
+          install: omit-dev
+
+  check-model-mappings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-model-mappings
+          yq: "4.54.1"
+
+  check-agent-profiles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-agent-profiles
+          yq: "4.54.1"
+
+  check-metadata-keys:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-metadata-keys
+
+  check-claude-agent-layout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-claude-agent-layout
+          install: none
+
+  ci-pre-push-replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: ci-pre-push-replay
+          install: ci
+
+  misc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: misc
+
+  # Spec 0147 delta-01 R21, R23: the exhaustive run lives in its own scheduled
+  # workflow (changeset-coverage.yml). Its script's regression test stays on the
+  # pull-request path here, with no path filter, like `ratchet`.
+  changeset-coverage-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
+          echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
+          sudo chmod +x /usr/local/bin/yq
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      - name: Test the exhaustive-run script (spec 0147 delta-01 R21)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-changeset-coverage.test.ts
+      - name: Test the exhaustive-run tool guard (spec 0147 delta-02 R31)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-changeset-coverage-tools.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0147 delta-01 R11-R18: static path-ownership check. No path filter and
+  # no base ref: every tracked file is owned or exempted, on every change.
+  path-ownership:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: path-ownership
+          install: ci
+
+  path-ownership-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: path-ownership-selftest
+          install: ci
+
+  # Spec 0267 R12, R13, R16-R19: test-harness host-safety check. No path
+  # filter: any scripts/** change can add a destructive call. Full history for
+  # the allowlist growth arm. Needs `npm ci`: the check imports `typescript`.
+  host-safety:
+    runs-on: ubuntu-latest
+    env:
+      # The allowlist growth arm diffs against the PR's target branch. On
+      # a push the empty value hands the check back to its own default
+      # derivation (first `crewrig|origin` remote + /main).
+      BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/ci-job
+        with:
+          id: host-safety
+          install: ci
+
+  host-safety-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: host-safety-selftest
+          install: ci
+
+  # Spec 0240 R3: the floor guard's failure path on a real pre-24 Node.js.
+  node-floor-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run the guard and expect a rejection
+        run: 'if node scripts/lib/node-floor-guard.js >guard.out 2>&1; then echo "guard accepted Node $(node -v)"; exit 1; fi'
+
+      - name: Diagnostic names the detected version
+        run: 'grep -F "$(node -v) detected" guard.out'
+
+      - name: Diagnostic names the required floor
+        run: 'grep -F "requires Node.js >= 24" guard.out'
+
+      - name: Diagnostic names where to obtain Node.js
+        run: 'grep -F "https://nodejs.org/en/download" guard.out'
+
+      - name: No module-loading or syntax error instead
+        run: 'if grep -E "SyntaxError|ERR_|Cannot find module" guard.out; then exit 1; fi'
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  test-harness-curate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Smoke-test harness curator
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/harness-curator-curate-fixture.test.ts scripts/tests/harness-curator-curate-units.test.ts scripts/tests/harness-curator-apply-dry-run.test.ts scripts/tests/harness-curator-apply-units.test.ts scripts/tests/harness-curator-setup-schedule.test.ts scripts/tests/harness-curator-real-palace.test.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  check-skill-versions:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    env:
+      BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-skill-versions
+          install: none
+
+  check-description-length:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-description-length
+
+  check-extension-version-bump:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so `git show BASE:path` resolves the old carrier
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Enforce carrier-version bump on changed extension sources (spec 0044)
+        env:
+          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-version-bump.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  check-spec-id-reserved:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so the base ref resolves (spec 0112)
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # `command -v git` is true on ubuntu-latest, so this step is a no-op here.
+      # It exists because the capability declares no `requires.tools`, and the
+      # GitLab job generated from that declaration runs on debian:stable-slim,
+      # which ships no git. Keeping the conditional install inside `command:`
+      # is what lets one declaration serve both engines without touching
+      # scripts/build-ci.ts or scripts/check-ci-parity.ts. No nested `sudo`:
+      # normalize_cmd strips only a leading one, so a nested `sudo` would make
+      # this step diverge from the declared command and fail parity Arm 1.
+      - name: Ensure git is available
+        run: command -v git >/dev/null || (apt-get update && apt-get install -y --no-install-recommends git ca-certificates)
+
+      - name: Verify every spec id added by the change was secured (spec 0112)
+        env:
+          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+          # Workflow CONTEXTS, not ambient environment — they only reach the
+          # process through this mapping. The guard compares the two to
+          # discriminate pull-request origin (R10): a same-repository unsecured
+          # id fails, a fork's is reported without blocking. It refuses to guess
+          # when either is missing, because guessing "fork" would silently
+          # disable the guard on every pull request. On GitLab CI the equivalent
+          # pair (CI_MERGE_REQUEST_SOURCE_PROJECT_PATH / CI_PROJECT_PATH) is
+          # already ambient, which is why the generated job needs no counterpart.
+          # Named CREWRIG_* rather than GITHUB_*: GitHub reserves the GITHUB_
+          # prefix, and there is no native head-repo variable to mirror anyway
+          # (GITHUB_HEAD_REF is the branch, not the repository) — which is
+          # precisely why this mapping has to exist.
+          CREWRIG_PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          CREWRIG_PR_BASE_REPO: ${{ github.repository }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-spec-id-reserved.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  # Spec 0276 R10-R11: author-side brief linter; CI only checks the script against committed fixtures, never a live brief.
+  check-seat-brief:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-seat-brief
+          install: none
+
+  # Spec 0277 R19-R20: author-side plan review gate; CI only checks the script against committed fixtures, never a live plan.
+  check-plan-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-plan-review
+
+  check-feedback-routing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install production dependencies
+        run: npm ci --omit=dev --workspaces=false
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      - name: Enforce upstream-tier feedback routing (spec 0030)
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-feedback-routing.ts
+      - name: Cancel workflow on job failure
+        if: failure()
+        uses: ./.github/actions/cancel-on-failure
+
+  gitlab-ci-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
+          echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
+          sudo chmod +x /usr/local/bin/yq
+      - uses: ./.github/actions/ci-job
+        with:
+          id: gitlab-ci-check
+
+  check-ci-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64
+          echo "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f  /usr/local/bin/yq" | sha256sum -c -
+          sudo chmod +x /usr/local/bin/yq
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-ci-parity
+
+  alert-scheduled-failure-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: alert-scheduled-failure-selftest
+
+  alert-scheduled-failure-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: alert-scheduled-failure-check
+

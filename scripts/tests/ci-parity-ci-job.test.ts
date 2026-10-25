@@ -226,7 +226,7 @@ test("gate: false on a capability that has paths: fails naming the job", () => {
 
 test("gate: false on a capability without paths: passes (the committed windows jobs)", () => {
   const root = makeFixture();
-  const text = fs.readFileSync(wf(root), "utf8");
+  const text = fs.readFileSync(path.join(root, ".github", "workflows", "_ci-windows.yml"), "utf8");
   assert.ok(text.includes("          id: windows-node-floor-guard\n          gate: false\n"));
   assert.ok(!runCheck(root).stderr.includes(GATE_MSG));
 });

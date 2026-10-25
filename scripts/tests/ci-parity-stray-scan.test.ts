@@ -10,6 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
+import { readWorkflowUnion } from "./lib/workflow-union.ts";
 import {
   capOf,
   editYaml,
@@ -106,7 +107,7 @@ test("SC1: scanned steps, bare (release-notes) and inside a cache layer (chroma-
     stepOf(load(NOTES_YML(fx)), "release-notes", /monorepo-release-notes-real-engine/)["run"],
   );
   const gotLayered = String(
-    stepOf(load(BUILD_YML(fx)), "chroma-mcp", /chroma-wrapper-source/)["run"],
+    stepOf({ jobs: readWorkflowUnion(fx) }, "chroma-mcp", /chroma-wrapper-source/)["run"],
   );
   // Preconditions: the reference declares the scanned form.
   assert.ok(

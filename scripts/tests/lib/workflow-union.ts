@@ -4,7 +4,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { dump, load } from "js-yaml";
+import { yamlLib } from "./yaml-lib.ts";
+
+const { dump, load } = yamlLib;
 
 const WORKFLOWS = path.join(".github", "workflows");
 
@@ -29,7 +31,9 @@ export function readWorkflowUnionText(root = "."): string {
 export function readWorkflowUnion(root = "."): Record<string, Record<string, unknown>> {
   const merged: Record<string, Record<string, unknown>> = {};
   for (const file of workflowFiles(root)) {
-    const doc = load(fs.readFileSync(file, "utf8")) as { jobs?: Record<string, Record<string, unknown>> } | null;
+    const doc = load(fs.readFileSync(file, "utf8")) as {
+      jobs?: Record<string, Record<string, unknown>>;
+    } | null;
     for (const [key, job] of Object.entries(doc?.jobs ?? {})) {
       if (Object.hasOwn(merged, key)) {
         throw new Error(`duplicate job key '${key}' (second definition in ${file})`);

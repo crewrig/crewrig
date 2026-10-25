@@ -126,6 +126,7 @@ capabilities:
       - "scripts/lib/node-floor-guard.js"
       - "taskfiles/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-extensions.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
     changeset-gated: true
@@ -860,7 +861,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-extension-builders`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-extension-builders`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -892,7 +893,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-install-entries`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-install-entries`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -922,7 +923,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-packaging-entries`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-packaging-entries`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -954,7 +955,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-extension-hooks`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-extension-hooks`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -984,7 +985,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-harness-curator`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-harness-curator`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -1014,7 +1015,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-create-extension`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-create-extension`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -1044,7 +1045,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-skill-scripts`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-skill-scripts`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -1074,7 +1075,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-e2e-harness`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-e2e-harness`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -1147,7 +1148,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-governance-checks`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-governance-checks`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -1204,7 +1205,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-model-ci-tooling`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-model-ci-tooling`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -1234,7 +1235,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-setup-units`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-setup-units`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -1265,7 +1266,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-setup-entries`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-setup-entries`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -1529,6 +1530,7 @@ capabilities:
       - "ci/yq-pin.json"
       - ".gitlab-ci.yml"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-governance.yml"
       - "docs/ci-reference-format.md"
     portability: portable
     changeset-gated: true
@@ -1598,6 +1600,7 @@ capabilities:
       - "scripts/tests/lib/worktree-fixtures.ts"
       - "taskfiles/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-extensions.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
     changeset-gated: true
@@ -1658,6 +1661,7 @@ capabilities:
       - "scripts/lib/node-floor-guard.js"
       - "taskfiles/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-extensions.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
     changeset-gated: true
@@ -1849,6 +1853,7 @@ capabilities:
       - "scripts/lib/ci-cache-guard/**"
       - "taskfiles/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-governance.yml"
       - "ci/ci-capabilities.yml"
       - "scripts/tests/**"
     portability: portable
@@ -2272,6 +2277,7 @@ capabilities:
       - "scripts/lib/ci-cache-guard/**"
       - "taskfiles/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-gate.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
     changeset-gated: true
@@ -2341,6 +2347,7 @@ capabilities:
       - "scripts/tests/lib/**"
       - "taskfiles/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-gate.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
     changeset-gated: true
@@ -2403,6 +2410,7 @@ capabilities:
       - "taskfiles/**"
       - "ci/ci-capabilities.yml"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-gate.yml"
     portability: portable
     changeset-gated: true
     requires:
@@ -2554,6 +2562,7 @@ capabilities:
       - "package-lock.json"
       - "taskfiles/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-governance.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
     changeset-gated: true
@@ -2615,6 +2624,7 @@ capabilities:
       - "scripts/tests/check-ratchet.test.ts"
       - "taskfiles/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-gate.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
     changeset-gated: true
@@ -2663,6 +2673,7 @@ capabilities:
       - "package-lock.json"
       - "taskfiles/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-governance.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
     changeset-gated: true
@@ -2719,6 +2730,7 @@ capabilities:
       - "package-lock.json"
       - "taskfiles/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-gate.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
     changeset-gated: true
@@ -3109,6 +3121,7 @@ capabilities:
       - "scripts/lib/ci-cache-guard/**"
       - "taskfiles/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-gate.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
     changeset-gated: true
@@ -3853,6 +3866,7 @@ capabilities:
       - ".github/workflows/changeset-coverage.yml"
       - "taskfiles/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-governance.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
     changeset-gated: true
@@ -3878,6 +3892,7 @@ capabilities:
       - ".github/workflows/changeset-coverage.yml"
       - "taskfiles/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-governance.yml"
       - "ci/ci-capabilities.yml"
     portability: portable
     changeset-gated: true
@@ -3911,7 +3926,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-node-floor-guard`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-node-floor-guard`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -3940,7 +3955,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-service-task`) because it
+        (.github/workflows/_ci-windows.yml, job `windows-service-task`) because it
         drives the real Windows Task Scheduler (`schtasks.exe`). GitLab CI, as
         configured for this repository, exposes no Windows runner: every
         generated GitLab job derives its `image` from `requires.runtime`
@@ -3970,7 +3985,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-chroma-trio`) because it
+        (.github/workflows/_ci-windows.yml, job `windows-chroma-trio`) because it
         drives the real Windows Task Scheduler (`schtasks.exe`). GitLab CI, as
         configured for this repository, exposes no Windows runner: every
         generated GitLab job derives its `image` from `requires.runtime`
@@ -3998,7 +4013,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-mcp-daemon`) because it
+        (.github/workflows/_ci-windows.yml, job `windows-mcp-daemon`) because it
         drives the real Windows Task Scheduler (`schtasks.exe`). GitLab CI, as
         configured for this repository, exposes no Windows runner: every
         generated GitLab job derives its `image` from `requires.runtime`
@@ -4027,7 +4042,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-doctor-repair`) because it
+        (.github/workflows/_ci-windows.yml, job `windows-doctor-repair`) because it
         drives the real Windows Task Scheduler (`schtasks.exe`). GitLab CI, as
         configured for this repository, exposes no Windows runner: every
         generated GitLab job derives its `image` from `requires.runtime`
@@ -4058,7 +4073,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-usage-capture`). GitLab CI,
+        (.github/workflows/_ci-windows.yml, job `windows-usage-capture`). GitLab CI,
         as configured for this repository, exposes no Windows runner: every
         generated GitLab job derives its `image` from `requires.runtime`
         through `runtime_to_image` (scripts/build-ci.ts lines 70-81), which
@@ -4089,7 +4104,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-usage-wrappers`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-usage-wrappers`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -4120,7 +4135,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-worktree-git-guard`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-worktree-git-guard`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -4151,7 +4166,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-mempalace-transcript`).
+        (.github/workflows/_ci-windows.yml, job `windows-mempalace-transcript`).
         GitLab CI, as configured for this repository, exposes no Windows
         runner: every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -4184,7 +4199,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-build-components`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-build-components`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -4215,7 +4230,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-sync-from-upstream`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-sync-from-upstream`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`
@@ -4243,7 +4258,7 @@ capabilities:
       engine: github-actions
       evidence: >
         Runs on the GitHub-hosted `windows-latest` runner
-        (.github/workflows/build.yml, job `windows-history-import`). GitLab
+        (.github/workflows/_ci-windows.yml, job `windows-history-import`). GitLab
         CI, as configured for this repository, exposes no Windows runner:
         every generated GitLab job derives its `image` from
         `requires.runtime` through `runtime_to_image`

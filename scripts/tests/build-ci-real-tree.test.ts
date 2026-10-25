@@ -120,7 +120,10 @@ describe("build-ci real tree (group R)", () => {
 });
 
 describe("build-ci stages (spec 0287 R11, R15)", () => {
-  const doc = yamlLib.load(outputText.replaceAll("!reference ", "")) as Record<string, { stage?: string; needs?: unknown }>;
+  const doc = yamlLib.load(outputText.replaceAll("!reference ", "")) as Record<
+    string,
+    { stage?: string; needs?: unknown }
+  >;
   it("emits stages in the shared taxonomy order", () => {
     assert.deepEqual(doc["stages"], [
       "gate",

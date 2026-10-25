@@ -1,0 +1,249 @@
+# Reusable workflow: the `windows` stage of Build & Validate (spec 0287).
+# Called by .github/workflows/build.yml; job bodies live here verbatim.
+name: CI windows
+
+on:
+  workflow_call:
+
+jobs:
+  windows-node-floor-guard:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-node-floor-guard
+          gate: false
+
+  windows-service-task:
+    runs-on: windows-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-service-task
+          gate: false
+
+  windows-chroma-trio:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-chroma-trio
+          gate: false
+
+  windows-mcp-daemon:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-mcp-daemon
+          gate: false
+
+  windows-doctor-repair:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-doctor-repair
+          gate: false
+
+  windows-usage-capture:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-usage-capture
+          gate: false
+          install: ci
+
+  windows-usage-wrappers:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-usage-wrappers
+          gate: false
+
+  windows-worktree-git-guard:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-worktree-git-guard
+          gate: false
+
+  windows-mempalace-transcript:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-mempalace-transcript
+          gate: false
+
+  windows-sync-from-upstream:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-sync-from-upstream
+          gate: false
+
+  windows-history-import:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-history-import
+          gate: false
+          python: "3.12"
+
+  windows-build-components:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-build-components
+          gate: false
+
+  windows-extension-builders:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-extension-builders
+          gate: false
+
+  windows-install-entries:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-install-entries
+          gate: false
+
+  windows-packaging-entries:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-packaging-entries
+          gate: false
+
+  windows-extension-hooks:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-extension-hooks
+          gate: false
+
+  windows-harness-curator:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-harness-curator
+          gate: false
+
+  windows-create-extension:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-create-extension
+          gate: false
+
+  windows-skill-scripts:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-skill-scripts
+          gate: false
+
+  windows-e2e-harness:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-e2e-harness
+          gate: false
+
+  windows-governance-checks:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-governance-checks
+          gate: false
+
+  windows-model-ci-tooling:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-model-ci-tooling
+          gate: false
+
+  windows-setup-units:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-setup-units
+          gate: false
+
+  windows-setup-entries:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-setup-entries
+          gate: false
