@@ -2342,6 +2342,7 @@ capabilities:
       - "scripts/tests/check-taskfile-tree-*.test.ts"
       - "scripts/tests/ci-pre-push-*.test.ts"
       - "scripts/tests/ci-selftest-split.test.ts"
+      - "scripts/tests/ci-task-group-location.test.ts"
       - "scripts/tests/git-env-helpers.test.ts"
       - "scripts/lib/git-env.ts"
       - "scripts/tests/lib/**"

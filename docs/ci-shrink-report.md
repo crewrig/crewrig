@@ -30,9 +30,9 @@ The 108 jobs of `build.yml` moved verbatim into six reusable callees, one per `g
 | `.github/workflows/_ci-extensions.yml` | 0 | 160 |
 | `.github/workflows/_ci-integration.yml` | 0 | 145 |
 | `.github/workflows/_ci-windows.yml` | 0 | 249 |
-| `ci/ci-capabilities.yml` | 4,260 | 4,381 |
-| `.gitlab-ci.yml` | 3,039 | 3,146 |
-| Total | 8,651 (8,849 with the `group` fields) | 8,948 |
+| `ci/ci-capabilities.yml` | 4,260 | 4,382 |
+| `.gitlab-ci.yml` | 3,039 | 3,147 |
+| Total | 8,651 (8,849 with the `group` fields) | 8,950 |
 
 The ratchet pin is 8,950 (the test floor moves from 8,880 to 9,000: spec 0287 R13 accepts the staged overhead).
 
