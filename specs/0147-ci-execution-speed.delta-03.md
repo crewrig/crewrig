@@ -66,9 +66,11 @@ union rule of requirement 25 to dependency installs and extends the guard to enf
   manifest and the lockfile disagree, so it is never weaker. An omitted key ranks as `none`.
 - **Gated install.** The highest install rank among the `requires.install` values of the
   capabilities with `changeset-gated: true` in `ci/ci-capabilities.yml`, read at check time.
-- **Performed install.** The highest install rank among the installs `changeset-coverage`
-  performs. These are its own `requires.install`, and every entry of its `command:` list that is
-  exactly one of the provisioning lines in the table above.
+- **Performed install.** The install in effect when the coverage script starts. It is the
+  **last** entry of `changeset-coverage`'s `command:` list that is exactly one of the provisioning
+  lines in the table above, because a later install replaces the tree an earlier one produced.
+  When that list holds no provisioning line, it is the `requires.install` of `changeset-coverage`
+  (which runs before its commands), or `none` when that key is omitted.
 
 ### Requirements
 
@@ -121,9 +123,11 @@ union rule of requirement 25 to dependency installs and extends the guard to enf
   - the real reference, after requirement 34, yields no install finding;
   - changing `changeset-coverage`'s first `command:` entry back to
     `npm ci --omit=dev --workspaces=false` yields exactly four install findings, in reference
-    order, naming `lint-specs-selftest` (`install`), `path-ownership-selftest`,
-    `host-safety-selftest` and `lint-typescript-selftest` (each `ci`), each with `omit-dev` as
-    the performed install;
+    order, naming `path-ownership-selftest`, `host-safety-selftest`,
+    `lint-typescript-selftest` (each `ci`) and `lint-specs-selftest` (`install`), each with
+    `omit-dev` as the performed install;
+  - appending `npm ci --omit=dev --workspaces=false` after `changeset-coverage`'s `npm ci` entry
+    yields the same four findings, because the last provisioning line is the performed install;
   - removing every provisioning line from `changeset-coverage` names the same four capabilities
     with `none` as the performed install;
   - a gated capability with `install` is satisfied by a performed `ci`, and one with `ci` by a
@@ -189,6 +193,13 @@ Then it fails
 And it prints `ci-changeset-coverage-tools: lint-specs-selftest needs requires.install install but changeset-coverage installs only omit-dev`
 And it prints the same form for `path-ownership-selftest`, `host-safety-selftest` and
 `lint-typescript-selftest`, each with `ci`
+
+**Scenario:** a later production install downgrades the run (regression)
+
+Given a copy of the reference in which `changeset-coverage` runs `npm ci` and then
+`npm ci --omit=dev --workspaces=false` before the coverage script
+When the coverage-tools guard runs against it
+Then it fails and names the four capabilities with `omit-dev` as the performed install
 
 **Scenario:** a gated capability raises its install
 
