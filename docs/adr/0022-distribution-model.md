@@ -70,8 +70,8 @@ The single enumeration that R13 requires is the *Public surfaces* section of thi
 
 - **Rule (R13).** A surface absent from this table is internal, even when an organization depends on it. Adding or removing a surface is a change to this table recorded by an ADR or a spec.
 - **Internal surfaces (R12).** `scripts/`, the `Taskfile.yml` targets, the archive's internal layout, the cache layout under `~/.crewrig/versions/`, specs, ADRs and the lifecycle carry no SemVer promise.
-- **How the table changes.** The WP3 or WP4 implementation PR that ships a named item edits its row in place, on `release/1822-distribution`, and appends one dated line to the change log below. No amendment adds a dated section to this ADR, so the table stays the one place of R13. A one-file spec-PR never carries this edit.
-- **Since.** Names the first stable framework version that ships the item; a prerelease (`-next.<N>`) never counts. It stays `—` on the release branch. The final-merge PR of spec 0288 R29 sets it to `1.0.0` (R9) for every row shipped by then; a row shipped later is set by the PR that ships it on `main`, naming the next stable version.
+- **How the table changes.** The WP3 or WP4 implementation PR that ships a named item edits its row in place, on `release/1822-distribution`, and appends one dated line to the change log below. *Since* cells follow the rule below. No amendment adds a dated section to this ADR, so the table stays the one place of R13. A one-file spec-PR never carries this edit.
+- **Since.** Names the first stable framework version that ships the item; a prerelease (`-next.<N>`) never counts. Every cell reads `—` until the final merge of spec 0288 R29. The last pull request merged on `release/1822-distribution` before the final-merge pull request sets it to `1.0.0` (R9) for every row shipped by then; a row shipped later is set by the release pull request on `main` that publishes the first stable version containing it. Each *Since* edit appends one change-log line.
 
 Change log:
 
