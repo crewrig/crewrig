@@ -2483,7 +2483,8 @@ capabilities:
   # (daily, default branch) and `manual`. It executes EVERY command of every `changeset-gated: true` capability
   # unconditionally, read from this reference (via yq); no diff, no base ref. The pull-request guarantee that used to be
   # its fail-safe is now the static `path-ownership` capability below. It provisions python@3.12, yq and node@24, so a
-  # `node@22` capability must never be changeset-gated.
+  # `node@22` capability must never be changeset-gated. Its install is the full `npm ci`, because gated capabilities
+  # declare `requires.install` `ci` or `install` (spec 0147 delta-03 R33).
   - id: changeset-coverage
     name: "Exhaustive run of every changeset-gated check"
     trigger:
@@ -2495,7 +2496,7 @@ capabilities:
       tools: [yq, jq, task, tesseract]
       history-depth: full
     command:
-      - npm ci --omit=dev --workspaces=false
+      - npm ci
       - node scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-changeset-coverage.ts
 

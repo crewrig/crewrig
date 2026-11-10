@@ -2010,7 +2010,7 @@ changeset-coverage:
     - !reference [.task-install, script]
     - apt-get update && apt-get install -y --no-install-recommends tesseract-ocr
   script:
-    - "npm ci --omit=dev --workspaces=false"
+    - "npm ci"
     - "node scripts/lib/node-floor-guard.js"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-changeset-coverage.ts"
   rules:
