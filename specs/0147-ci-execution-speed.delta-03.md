@@ -134,8 +134,9 @@ union rule of requirement 25 to dependency installs and extends the guard to enf
     performed `install`, so the two values rank equal;
   - a gated capability whose `requires.install` key is removed yields no install finding, even
     when `changeset-coverage` performs no install;
-  - a `requires.install` key on `changeset-coverage` itself counts toward the performed install,
-    so the guard keeps working after a future migration of that capability;
+  - when `changeset-coverage`'s `command:` holds no provisioning line, its own
+    `requires.install` key is the performed install, so the guard keeps working after a future
+    migration of that capability;
   - an unknown `requires.install` value on a gated capability yields a finding;
   - two different documents given to the guard yield different install results, which proves it
     reads the document it is given.
