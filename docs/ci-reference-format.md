@@ -327,7 +327,7 @@ it emits one job keyed by the capability `id` (the C2 primary path below), with
 entry → `image:`, any further `runtime` entry AND every `tools` entry →
 `before_script:` installs, `history-depth: full` →
 `variables: { GIT_DEPTH: "0" }` — and `command` becoming the job's `script:`.
-`requires.install` becomes the matching provisioning line at the end of `before_script:` (after the tool installs), and a migrated capability's `script:` is the single `task ci:<id>` entry. The GitHub Actions `ci-job` step must pass an `install` input equal to `requires.install` (omitted means `none`; the action's own default is `ci`, so a job relying on it fails the parity check when the reference omits the key). The boilerplate is the generator's own output; it is never written back into
+`requires.install` becomes the matching provisioning line at the end of `before_script:` (after the tool installs), and a migrated capability's `script:` is the single `task ci:<id>` entry. The GitHub Actions `ci-job` step must pass an `install` input equal to `requires.install` (omitted means `none`; the action's own default is `omit-dev`, so a job relying on it fails the parity check when the reference omits the key). The boilerplate is the generator's own output; it is never written back into
 the reference (the R12 need-vs-mechanism boundary). Engine-specific
 capabilities are skipped with no placeholder (spec 0048 R4), and the existing
 GitHub Actions workflows are **not** regenerated (spec 0048 R5) — they stay
