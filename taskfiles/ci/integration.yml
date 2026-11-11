@@ -11,6 +11,17 @@ tasks:
         msg: "Run: task lint-bootstrap"
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test '{{.REPO_DIR}}/scripts/tests/worktree-*.test.ts'
+  skill-evals-attestation:
+    desc: Check that every changed skill carries a fresh evals/results.json (no model call, no credential; pre-push mirror of the CI job)
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/skill-evals-attestation.ts
+  skill-evals-tests:
+    desc: Run the skill eval runner own suites in mock mode (no key, no network; pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test '{{.REPO_DIR}}/scripts/tests/skill-evals-*.test.ts'
   mempalace-transcript:
     desc: Run the mempalace-transcript CI capability (pre-push mirror of the CI job)
     preconditions: *needs-js-yaml

@@ -210,6 +210,11 @@
           "title": "Pre-push guard",
           "path": "docs/pre-push-guard.md",
           "nav_order": 160
+        },
+        {
+          "title": "Skill evals",
+          "path": "docs/skill-evals.md",
+          "nav_order": 165
         }
       ]
     },
@@ -336,6 +341,11 @@
           "title": "ADR 0022 — Distribution model",
           "path": "docs/adr/0022-distribution-model.md",
           "nav_order": 220
+        },
+        {
+          "title": "ADR 0023 — Skill eval executor, judge routing and attestation",
+          "path": "docs/adr/0023-skill-eval-executor.md",
+          "nav_order": 230
         }
       ]
     }

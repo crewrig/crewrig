@@ -8,6 +8,8 @@
 import fs from "node:fs";
 
 import { anthropicDriver } from "./llm_judge_drivers/anthropic.ts";
+import { anthropicCompleteDriver } from "./llm_judge_drivers/anthropic-complete.ts";
+import { claudeCliDriver } from "./llm_judge_drivers/claude-cli.ts";
 import { claudeCodeDriver } from "./llm_judge_drivers/claude-code.ts";
 import { geminiDriver } from "./llm_judge_drivers/gemini.ts";
 import { ollamaCloudDriver } from "./llm_judge_drivers/ollama-cloud.ts";
@@ -52,6 +54,16 @@ export interface Driver {
     subject: string,
     criterion: string,
   ): Promise<string | undefined>;
+  /**
+   * Evidence mode only (spec 0290 R13, R15): the raw model text for a complete message, or
+   * undefined on a persistent failure. Optional; the four verdict-only drivers do not implement it.
+   */
+  complete?(
+    ctx: Ctx,
+    token: string,
+    message: string,
+    maxTokens: number,
+  ): Promise<string | undefined>;
 }
 
 export interface JudgeResult {
@@ -72,6 +84,21 @@ function driverFor(name: string): Driver | undefined {
       return geminiDriver;
     case "ollama-cloud":
       return ollamaCloudDriver;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Drivers usable by `llmJudgeEvidence` only (spec 0290 R15): they implement `complete()`.
+ * `driverFor`, and so `llmJudge`, never resolves `claude-cli`.
+ */
+export function evidenceDriverFor(name: string): Driver | undefined {
+  switch (name) {
+    case "anthropic":
+      return anthropicCompleteDriver;
+    case "claude-cli":
+      return claudeCliDriver;
     default:
       return undefined;
   }
@@ -142,7 +169,7 @@ export function readable(file: string): boolean {
   }
 }
 
-function loadConfig(env: JudgeDeps["env"]): JudgeConfig {
+export function loadConfig(env: JudgeDeps["env"]): JudgeConfig {
   const cfg: JudgeConfig = {
     backend: "anthropic",
     model: "claude-sonnet-4-6",
@@ -178,6 +205,173 @@ function loadConfig(env: JudgeDeps["env"]): JudgeConfig {
   return cfg;
 }
 
+/** The judge context of one invocation: config, counter file, mock flag (shared by both entry points). */
+function makeContext(
+  deps: JudgeDeps,
+  cfg: JudgeConfig,
+  err: (s: string) => void,
+): { ctx: Ctx; readCount: () => number; reportDir: string } {
+  const reportDir = deps.env["E2E_REPORT_DIR"] ?? "";
+  const counter = reportDir === "" ? undefined : `${reportDir}/judge.count`;
+  const readCount = (): number => {
+    if (counter === undefined) return 0;
+    try {
+      return Number(fs.readFileSync(counter, "utf8").trim()) || 0;
+    } catch {
+      return 0;
+    }
+  };
+  const ctx: Ctx = {
+    cfg,
+    deps,
+    mock: deps.env["E2E_JUDGE_MOCK"] === "1",
+    err,
+    bump: () => {
+      if (counter !== undefined) fs.writeFileSync(counter, `${readCount() + 1}\n`);
+    },
+  };
+  return { ctx, readCount, reportDir };
+}
+
+interface Quorum {
+  readonly slots: string[];
+  /** Raw text of each call (undefined when the call failed), one entry per call made. */
+  readonly texts: (string | undefined)[];
+  readonly verdict: "PASS" | "FAIL" | "UNCERTAIN";
+  readonly confidence: string;
+}
+
+/**
+ * The 3-call early-exit quorum shared by `llmJudge` and `llmJudgeEvidence`. `callOnce` returns
+ * the text holding the `VERDICT=` line (or undefined); `stop` ends the loop early (cap breach).
+ */
+async function runQuorum(
+  callOnce: () => Promise<string | undefined>,
+  stop: () => boolean = () => false,
+): Promise<Quorum> {
+  const slots: string[] = [];
+  const confs: number[] = [];
+  const texts: (string | undefined)[] = [];
+  let pass = 0;
+  let fail = 0;
+  for (let i = 0; i < 3; i++) {
+    if (stop()) break;
+    const raw = await callOnce();
+    texts.push(raw);
+    if (raw !== undefined) {
+      const v = /VERDICT=([A-Z]+)/.exec(raw)?.[1] ?? "";
+      confs.push(Number(/CONF=(\d+(?:\.\d+)?)/.exec(raw)?.[1] ?? "0"));
+      slots.push(v);
+      if (v === "PASS") pass++;
+      else if (v === "FAIL") fail++;
+    } else {
+      slots.push("UNCERTAIN");
+      confs.push(0);
+    }
+    if (pass >= 2 || fail >= 2) break;
+  }
+  const verdict = pass >= 2 ? "PASS" : fail >= 2 ? "FAIL" : "UNCERTAIN";
+  const mean = confs.length > 0 ? confs.reduce((a, b) => a + b, 0) / confs.length : 0;
+  return { slots, texts, verdict, confidence: mean.toFixed(2) };
+}
+
+export type EvidenceJudgment =
+  | { readonly kind: "auth-missing"; readonly backend: string }
+  | {
+      readonly kind: "hard-failure";
+      readonly backend: string;
+      readonly rc: number;
+      readonly stderr: string;
+    }
+  | { readonly kind: "cap-exceeded"; readonly count: number; readonly maxCalls: number }
+  | {
+      readonly kind: "verdict";
+      readonly verdict: "PASS" | "FAIL" | "UNCERTAIN";
+      readonly confidence: string;
+      readonly slots: readonly string[];
+      /** True when the cap stopped the quorum before it decided. */
+      readonly capped: boolean;
+      /** Raw text of each call, in slot order; undefined for a call that failed. */
+      readonly texts: readonly (string | undefined)[];
+    };
+
+export type EvidencePreflight =
+  | { readonly kind: "ok"; readonly backend: string }
+  | { readonly kind: "auth-missing"; readonly backend: string }
+  | { readonly kind: "hard-failure"; readonly backend: string; readonly stderr: string };
+
+/**
+ * Judge credential preflight for the evidence entry point (spec 0290 R24, R33): lets the runner
+ * learn before any executor spawn that the judge cannot run. Makes no model call.
+ */
+export async function judgeEvidencePreflight(deps: JudgeDeps): Promise<EvidencePreflight> {
+  let stderr = "";
+  const cfg = loadConfig(deps.env);
+  const driver = evidenceDriverFor(cfg.backend);
+  if (driver === undefined || driver.complete === undefined)
+    return {
+      kind: "hard-failure",
+      backend: cfg.backend,
+      stderr: `judge backend ${cfg.backend} does not support evidence judging\n`,
+    };
+  const { ctx } = makeContext(deps, cfg, (s) => void (stderr += s));
+  const pf = await driver.preflight(ctx);
+  if (pf.rc === 0) return { kind: "ok", backend: cfg.backend };
+  if (pf.rc === 2) return { kind: "auth-missing", backend: cfg.backend };
+  return { kind: "hard-failure", backend: cfg.backend, stderr };
+}
+
+/**
+ * Evidence-mode entry point (spec 0290 R13, R15): one judged question through the same quorum,
+ * `max_calls` cap (`judge.count`) and mock mode as `llmJudge`, asking the driver for the raw model
+ * text via `complete()`. The cap is checked before every call and every call is counted, mock
+ * calls included. UNCERTAIN is returned as such, never mapped to an exit status.
+ */
+export async function llmJudgeEvidence(
+  deps: JudgeDeps,
+  message: string,
+  opts: { readonly maxTokens?: number } = {},
+): Promise<EvidenceJudgment> {
+  let stderr = "";
+  const cfg = loadConfig(deps.env);
+  const driver = evidenceDriverFor(cfg.backend);
+  if (driver === undefined || driver.complete === undefined)
+    return {
+      kind: "hard-failure",
+      backend: cfg.backend,
+      rc: 1,
+      stderr: `judge backend ${cfg.backend} does not support evidence judging\n`,
+    };
+  const complete = driver.complete.bind(driver);
+  const { ctx, readCount } = makeContext(deps, cfg, (s) => void (stderr += s));
+  const pf = await driver.preflight(ctx);
+  if (pf.rc === 2) return { kind: "auth-missing", backend: cfg.backend };
+  if (pf.rc !== 0) return { kind: "hard-failure", backend: cfg.backend, rc: pf.rc, stderr };
+  const token = pf.token;
+  let capped: { count: number } | undefined;
+  const q = await runQuorum(
+    async () => {
+      ctx.bump();
+      return complete(ctx, token, message, opts.maxTokens ?? 512);
+    },
+    () => {
+      const cur = readCount();
+      if (cur >= cfg.maxCalls) capped = { count: cur };
+      return capped !== undefined;
+    },
+  );
+  if (capped !== undefined && q.texts.length === 0)
+    return { kind: "cap-exceeded", count: capped.count, maxCalls: cfg.maxCalls };
+  return {
+    kind: "verdict",
+    verdict: q.verdict,
+    confidence: q.confidence,
+    slots: q.slots,
+    capped: capped !== undefined,
+    texts: q.texts,
+  };
+}
+
 export async function llmJudge(
   deps: JudgeDeps,
   promptFile: string,
@@ -206,26 +400,7 @@ export async function llmJudge(
     );
     return done(1);
   }
-  const reportDir = deps.env["E2E_REPORT_DIR"] ?? "";
-  const counter = reportDir === "" ? undefined : `${reportDir}/judge.count`;
-  const readCount = (): number => {
-    if (counter === undefined) return 0;
-    try {
-      return Number(fs.readFileSync(counter, "utf8").trim()) || 0;
-    } catch {
-      return 0;
-    }
-  };
-  const mock = deps.env["E2E_JUDGE_MOCK"] === "1";
-  const ctx: Ctx = {
-    cfg,
-    deps,
-    mock,
-    err: (s) => void (stderr += s),
-    bump: () => {
-      if (counter !== undefined) fs.writeFileSync(counter, `${readCount() + 1}\n`);
-    },
-  };
+  const { ctx, readCount, reportDir } = makeContext(deps, cfg, (s) => void (stderr += s));
 
   const pf = await driver.preflight(ctx);
   if (pf.rc === 2) {
@@ -258,27 +433,9 @@ export async function llmJudge(
   const cat = (f: string) => fs.readFileSync(f, "utf8").replace(/\n+$/, "");
   const prompt = cat(promptFile);
   const subject = cat(subjectFile);
-  const slots: string[] = [];
-  const confs: number[] = [];
-  let pass = 0;
-  let fail = 0;
-  for (let i = 0; i < 3; i++) {
-    const raw = await driver.call(ctx, pf.token, prompt, subject, criterion);
-    if (raw !== undefined) {
-      const v = /VERDICT=([A-Z]+)/.exec(raw)?.[1] ?? "";
-      confs.push(Number(/CONF=(\d+(?:\.\d+)?)/.exec(raw)?.[1] ?? "0"));
-      slots.push(v);
-      if (v === "PASS") pass++;
-      else if (v === "FAIL") fail++;
-    } else {
-      slots.push("UNCERTAIN");
-      confs.push(0);
-    }
-    if (pass >= 2 || fail >= 2) break;
-  }
-  const verdict = pass >= 2 ? "PASS" : fail >= 2 ? "FAIL" : "UNCERTAIN";
-  const mean = confs.length > 0 ? confs.reduce((a, b) => a + b, 0) / confs.length : 0;
-  const confidence = mean.toFixed(2);
+  const { slots, verdict, confidence } = await runQuorum(() =>
+    driver.call(ctx, pf.token, prompt, subject, criterion),
+  );
   stdout += `VERDICT=${verdict} confidence=${confidence}\n`;
   if (verdict === "PASS") return done(0);
   if (verdict === "FAIL") {

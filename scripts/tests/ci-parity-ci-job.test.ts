@@ -280,7 +280,7 @@ const R3_COUNTS: Record<string, number> = {
   modules: 15,
   governance: 28,
   extensions: 14,
-  integration: 8,
+  integration: 10,
   windows: 24,
 };
 const LINUX_MIDDLE = ["modules", "governance", "extensions"];

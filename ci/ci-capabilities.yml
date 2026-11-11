@@ -3031,6 +3031,46 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-entry-form.test.ts
 
+  # Spec 0290: attestation check (no model call, no secret); unfiltered like check-skill-versions, it selects changed skills itself.
+  - id: skill-evals-attestation
+    group: integration
+    name: "Check that changed skills carry a fresh evals/results.json attestation"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      history-depth: full
+      tools: [task]
+    env:
+      BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    command:
+      - task ci:skill-evals-attestation
+
+  - id: skill-evals-tests
+    group: integration
+    name: "Run the skill eval runner own suites (mock mode, no key, no network)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/skill-evals/**"
+      - "scripts/skill-evals*.ts"
+      - "scripts/tests/skill-evals-*.test.ts"
+      - "scripts/tests/lib/skill-evals-*.ts"
+      - "tests/e2e/lib/llm_judge*"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:skill-evals-tests
+
   # Spec 0247 R31, plan step 22(a): the black-box suites of the TypeScript MemPalace transcript hook and of its wiring
   # (hook-transcript-* suites). The Bash oracle keeps running through the shim in the `mempalace` capability above.
   # Deliberately NOT changeset-gated (node@22 rule, see `changeset-coverage`).
