@@ -116,6 +116,7 @@ test("a runtime judge cap stops the run: retries push the calls past max_calls, 
     evalsCount: 1,
     mock: false,
     env: { ANTHROPIC_API_KEY: "sk-test" },
+    useApiKey: true,
     settings: { judgeMaxCalls: 12 },
   });
   try {
@@ -149,7 +150,12 @@ test("a runtime judge cap stops the run: retries push the calls past max_calls, 
 });
 
 test("a judge that returns no verdict after its retries is an error, not a pass", async () => {
-  const rig = makeRig({ evalsCount: 1, mock: false, env: { ANTHROPIC_API_KEY: "sk-test" } });
+  const rig = makeRig({
+    evalsCount: 1,
+    mock: false,
+    env: { ANTHROPIC_API_KEY: "sk-test" },
+    useApiKey: true,
+  });
   try {
     const down = (async () => new Response("down", { status: 503 })) as unknown as typeof fetch;
     const r = await rig.run({ fetchImpl: down });
@@ -203,6 +209,7 @@ test("a run killed at the wall-clock limit with no result record is graded on pa
     evalsCount: 1,
     mock: false,
     env: { ANTHROPIC_API_KEY: "sk-test" },
+    useApiKey: true,
     change: (repo) =>
       fs.writeFileSync(
         path.join(repo.root, skillRel("demo"), "evals", "evals.json"),
@@ -271,6 +278,7 @@ test("measured cost: 0.40 and 0.35 sum to 0.75 in the report, per skill and for 
     evalsCount: 1,
     mock: false,
     env: { ANTHROPIC_API_KEY: "sk-test" },
+    useApiKey: true,
     change: (repo) =>
       fs.writeFileSync(
         path.join(repo.root, skillRel("demo"), "evals", "evals.json"),

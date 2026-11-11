@@ -30,9 +30,9 @@ export const PER_RUN_SECONDS = 300;
 export const PER_RUN_USD = 1;
 
 /** R31: the executor's model, a Sonnet-class model (rationale: docs/adr/0023-skill-eval-executor.md). */
-export const EXECUTOR_MODEL = "claude-sonnet-4-6";
-/** The judge's default model (the `[judge] model` of tests/e2e/defaults.toml). */
-export const JUDGE_MODEL = "claude-sonnet-4-6";
+export const EXECUTOR_MODEL = "claude-sonnet-5-5";
+/** The judge's model for the runner's effective configuration (tests/e2e/defaults.toml keeps its own pin). */
+export const JUDGE_MODEL = "claude-sonnet-5-5";
 /** Judge `max_tokens` for an evidence call (the library default of 256 cannot hold an excerpt). */
 export const JUDGE_MAX_TOKENS = 512;
 /** R23: share of the quorum-times-runs judge estimate added for retries. */
@@ -44,7 +44,7 @@ export const JUDGE_QUORUM = 3;
 export const EVIDENCE_MIN_CHARS = 12;
 
 /** Written to evals/results.json (R36). */
-export const RUNNER_VERSION = "1.0.0";
+export const RUNNER_VERSION = "1.1.0";
 
 /** Tools the executor may use: the main security boundary, kept in one place. */
 export const EXECUTOR_TOOLS = ["Bash", "Read", "Write", "Edit", "Skill"] as const;

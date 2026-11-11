@@ -14,11 +14,14 @@ import path from "node:path";
 import { test } from "node:test";
 
 import { DEFAULT_SETTINGS } from "../lib/skill-evals/run.ts";
+import { JUDGE_MODEL } from "../lib/skill-evals/settings.ts";
 import { declareUsage, resolveAsset } from "../lib/skill-evals/usage.ts";
 import { skillRel, tmpDir, writeSkill } from "./lib/skill-evals-fixtures.ts";
 import { judgeFetch, makeRig, plainEvals } from "./lib/skill-evals-run-rig.ts";
 
 const KEY_ENV = { ANTHROPIC_API_KEY: "sk-test" };
+/** `--use-api-key` with the key: no `claude` is started, whatever the stub says. */
+const KEY = { env: KEY_ENV, useApiKey: true } as const;
 
 const onlyEvalsChange = (repo: { root: string }) =>
   fs.writeFileSync(
@@ -29,7 +32,7 @@ const onlyEvalsChange = (repo: { root: string }) =>
 // ---------------------------------------------------------------------------------------- R23
 
 test("usage declaration (R23): forge-issue asset, declared before the first executor run, from --ticket or the branch name", async () => {
-  const rig = makeRig({ mock: false, env: KEY_ENV, change: onlyEvalsChange });
+  const rig = makeRig({ mock: false, ...KEY, change: onlyEvalsChange });
   try {
     const seen: { asset: string; executorCallsAtDeclare: number }[] = [];
     const declare = (asset: string) => {
@@ -49,7 +52,7 @@ test("usage declaration (R23): forge-issue asset, declared before the first exec
 });
 
 test("usage declaration (R23): no ticket to attribute, or a failed declaration, exits 3 with no model call; mock mode declares nothing", async () => {
-  const rig = makeRig({ mock: false, env: KEY_ENV, change: onlyEvalsChange });
+  const rig = makeRig({ mock: false, ...KEY, change: onlyEvalsChange });
   try {
     const noTicket = resolveAsset(rig.repo.root, undefined); // branch `main` carries no number
     assert.ok("error" in noTicket);
@@ -121,12 +124,14 @@ test("declared defaults: tolerance 0.05, both knobs false, caps 30 / 300 / 100 d
     perRunUsd: 1,
   });
   assert.match(executorModel, /sonnet/i);
+  assert.equal(executorModel, "claude-sonnet-5-5", "delta-03 model pin");
+  assert.equal(JUDGE_MODEL, "claude-sonnet-5-5");
 });
 
 test("the executor model and the per-run limits come from the settings: every run, metrics.json and results.json carry them (R27, R31)", async () => {
   const rig = makeRig({
     mock: false,
-    env: KEY_ENV,
+    ...KEY,
     change: onlyEvalsChange,
     settings: {
       executorModel: "claude-sonnet-test-9",
@@ -159,19 +164,20 @@ test("the executor model and the per-run limits come from the settings: every ru
 
 // -------------------------------------------------------------------------------- R3 and R9
 
-test("R3 and R9: each run gets only the eval's files at the workspace root under their base names, in a fresh workspace and home of its own", async () => {
+test("R3, R9 and R32: each run gets only the eval's files at the workspace root, in a fresh workspace of its own; the skill sits at <workspace>/.claude/skills/<name>/ for with_skill only; outputs/ never holds .claude/", async () => {
   const rig = makeRig({
     evalsCount: 2,
     script: (req) => {
+      const skill = path.join(req.workspaceDir, ".claude", "skills", "demo");
       seen.push({
         label: req.label,
         workspace: req.workspaceDir,
-        home: req.homeDir,
+        hasHomeDir: "homeDir" in req,
         listing: fs.readdirSync(req.workspaceDir).sort(),
         input: fs.readFileSync(path.join(req.workspaceDir, "in.txt"), "utf8"),
-        skillInstalled: fs.existsSync(
-          path.join(req.homeDir, ".claude", "skills", "demo", "SKILL.md"),
-        ),
+        skillFiles: fs.existsSync(skill)
+          ? fs.readdirSync(skill, { recursive: true }).map(String).sort()
+          : null,
       });
       return { files: { "answer.md": "x", "leftover.tmp": "state" } };
     },
@@ -179,27 +185,62 @@ test("R3 and R9: each run gets only the eval's files at the workspace root under
   const seen: {
     label: string;
     workspace: string;
-    home: string;
+    hasHomeDir: boolean;
     listing: string[];
     input: string;
-    skillInstalled: boolean;
+    skillFiles: string[] | null;
   }[] = [];
   try {
     const r = await rig.run();
     assert.equal(r.exitCode, 0, r.text);
     assert.equal(seen.length, 6, "3 runs per eval: head, base replay, without_skill");
     for (const s of seen) {
-      assert.deepEqual(s.listing, ["in.txt"], `${s.label}: nothing but the eval files at start`);
+      const without = s.label.includes("without_skill");
+      assert.equal(s.hasHomeDir, false, "no throwaway home any more");
+      assert.deepEqual(
+        s.listing.filter((p) => p !== ".claude"),
+        ["in.txt"],
+        `${s.label}: nothing but the eval files at start`,
+      );
+      assert.equal(
+        s.listing.includes(".claude"),
+        !without,
+        `${s.label}: .claude only with the skill`,
+      );
       assert.equal(s.input, "input\n");
-      assert.equal(s.skillInstalled, !s.label.includes("without_skill"), s.label);
+      if (without) assert.equal(s.skillFiles, null, "without_skill has no .claude/skills/<name>");
+      else {
+        assert.ok(s.skillFiles?.includes("SKILL.md"), s.label);
+        assert.ok(
+          s.skillFiles?.includes("scripts/run.sh") && s.skillFiles.includes("references/ref.md"),
+        );
+        assert.equal(
+          s.skillFiles?.some((p) => p.includes("evals")),
+          false,
+          "no evals/ path is installed",
+        );
+      }
+      assert.equal(
+        path.relative(rig.repo.root, s.workspace).startsWith(".."),
+        true,
+        "the workspace is outside the repository",
+      );
     }
     assert.equal(new Set(seen.map((s) => s.workspace)).size, 6, "no workspace is shared");
-    assert.equal(new Set(seen.map((s) => s.home)).size, 6, "no throwaway home is shared");
-    // the input file is not reported as a produced output; what the run produced is
-    const outputs = fs
-      .readdirSync(path.join(rig.out, "demo", "eval-1", "with_skill", "outputs"))
-      .sort();
-    assert.deepEqual(outputs, ["answer.md", "leftover.tmp"]);
+    // the input file is not reported as a produced output; what the run produced is; .claude/ is never an output
+    for (const cfg of ["with_skill", "without_skill"]) {
+      const outDir = path.join(rig.out, "demo", "eval-1", cfg, "outputs");
+      assert.deepEqual(fs.readdirSync(outDir, { recursive: true }).map(String).sort(), [
+        "answer.md",
+        "leftover.tmp",
+      ]);
+    }
+    assert.equal(
+      fs.existsSync(
+        path.join(rig.out, "demo", "base", "eval-1", "with_skill", "outputs", ".claude"),
+      ),
+      false,
+    );
   } finally {
     rig.cleanup();
   }
@@ -226,8 +267,9 @@ test("a symlink under scripts/ makes the runner report invalid naming the path, 
   const installed: string[][] = [];
   const clean = makeRig({
     script: (req) => {
+      const dir = path.join(req.workspaceDir, ".claude");
       installed.push(
-        fs.readdirSync(path.join(req.homeDir, ".claude"), { recursive: true }).map(String),
+        fs.existsSync(dir) ? fs.readdirSync(dir, { recursive: true }).map(String) : [],
       );
       return { files: { "answer.md": "x" } };
     },

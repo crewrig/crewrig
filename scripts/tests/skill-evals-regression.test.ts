@@ -1,8 +1,8 @@
 // skill-evals-regression.test.ts — regression arithmetic, knobs, results file (spec 0290 R19-R21, R30, R36, R25).
 //
-// Real (non-mock) runs with an injected mock executor and a recording judge endpoint: the
-// `anthropic` driver authenticates with ANTHROPIC_API_KEY against a stub `fetch`; nothing leaves the
-// process.
+// Real (non-mock) runs with an injected mock executor and a recording judge endpoint: under
+// `--use-api-key` the `anthropic` driver authenticates with ANTHROPIC_API_KEY against a stub `fetch`;
+// nothing leaves the process and `claude` is never started (the key source makes no login probe).
 
 /* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-call, typescript/no-unsafe-argument, typescript/no-unsafe-return -- the runner output files are read back as untyped JSON */
 
@@ -29,7 +29,7 @@ const script =
   (headFails: number[], baseFails: number[]): MockScript =>
   (req) => {
     const id = Number(/Task (\d+)/.exec(req.prompt)?.[1]);
-    const ref = path.join(req.homeDir, ".claude", "skills", "demo", "references", "ref.md");
+    const ref = path.join(req.workspaceDir, ".claude", "skills", "demo", "references", "ref.md");
     const installed = fs.existsSync(ref) ? fs.readFileSync(ref, "utf8") : "";
     const isHead = installed.includes("HEAD-VARIANT");
     const broken = req.label.includes("without")
@@ -62,6 +62,7 @@ const regressionRig = (extra: Partial<Parameters<typeof makeRig>[0]> = {}) =>
     },
     mock: false,
     env: { ANTHROPIC_API_KEY: "sk-test" },
+    useApiKey: true,
     script: script([9, 10], [10]),
     ...extra,
   });
@@ -148,7 +149,7 @@ test("a real pass writes results.json with the hash of the tree it ran on, the m
       "a scripts/references change is replayed against the base",
     );
     assert.equal(rec.status, "pass");
-    assert.equal(rec.executor_model, "claude-sonnet-4-6");
+    assert.equal(rec.executor_model, "claude-sonnet-5-5");
     assert.equal(rec.cost_usd.toFixed(1), "3.0");
     assert.deepEqual(Object.keys(rec).sort(), [
       "benchmark",
@@ -180,6 +181,7 @@ test("an evals-only change plans two runs per eval, reports pass with a null bas
       ),
     mock: false,
     env: { ANTHROPIC_API_KEY: "sk-test" },
+    useApiKey: true,
     script: () => ({
       files: { "answer.md": "x" },
       transcript: "Assistant: the quick brown fox",
@@ -206,6 +208,7 @@ test("a skill new on the base branch is reported new, not compared, and attested
     newSkill: true,
     mock: false,
     env: { ANTHROPIC_API_KEY: "sk-test" },
+    useApiKey: true,
     script: () => ({ files: { "answer.md": "x" }, transcript: "Assistant: the quick brown fox" }),
   });
   try {
@@ -240,7 +243,7 @@ test("a mock run leaves results.json absent and byte-identical, and produces no 
 });
 
 test("scripts changes are replayed: the base run installs the merge-base scripts, exit_code checks run the head scripts", async () => {
-  const seen: { label: string; script: string }[] = [];
+  const seen: { label: string; script: string; workspace: string }[] = [];
   const rig = makeRig({
     evalsCount: 1,
     change: (repo) => {
@@ -265,10 +268,15 @@ test("scripts changes are replayed: the base run installs the merge-base scripts
     },
     mock: false,
     env: { ANTHROPIC_API_KEY: "sk-test" },
+    useApiKey: true,
     script: (req) => {
-      const f = path.join(req.homeDir, ".claude", "skills", "demo", "scripts", "run.sh");
+      const f = path.join(req.workspaceDir, ".claude", "skills", "demo", "scripts", "run.sh");
       if (fs.existsSync(f)) {
-        seen.push({ label: req.label, script: fs.readFileSync(f, "utf8") });
+        seen.push({
+          label: req.label,
+          script: fs.readFileSync(f, "utf8"),
+          workspace: req.workspaceDir,
+        });
         assert.equal(
           fs.statSync(f).mode & 0o100,
           0o100,
@@ -286,6 +294,9 @@ test("scripts changes are replayed: the base run installs the merge-base scripts
     const head = seen.find((s) => s.label.includes("with_skill") && !s.label.includes("(base)"));
     assert.match(base?.script ?? "", /echo hello/);
     assert.match(head?.script ?? "", /echo head/);
+    // scenario "the base replay installs the merge-base skill the same way": each under its own workspace
+    assert.notEqual(base?.workspace, head?.workspace);
+    assert.ok(base !== undefined && head !== undefined, "both runs installed the skill they read");
     // the base replay installs the base script (exit 0) but its exit_code check runs the HEAD script (exit 5)
     const g = JSON.parse(
       fs.readFileSync(
@@ -306,6 +317,7 @@ test("evals.json is parsed from the single snapshot read: a change on disk after
     evalsCount: 1,
     mock: false,
     env: { ANTHROPIC_API_KEY: "sk-test" },
+    useApiKey: true,
     script: () => ({ files: { "answer.md": "x" }, transcript: "Assistant: the quick brown fox" }),
   });
   try {
@@ -317,6 +329,7 @@ test("evals.json is parsed from the single snapshot read: a change on disk after
         repoRoot: rig.repo.root,
         out: rig.out,
         mock: false,
+        useApiKey: true,
         env: cleanEnv({ ANTHROPIC_API_KEY: "sk-test" }),
         fetchImpl: judgeFetch().fetch,
         executor: rig.executor,

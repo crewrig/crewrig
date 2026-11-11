@@ -1,10 +1,11 @@
 // cli.ts — argument handling of `scripts/skill-evals.ts` (spec 0290 R16, R34, R33).
 //
 // Usage: task skill-evals -- <skill-name> | --changed [--out <dir>] [--mock] [--ticket <N>]
-//        [--base <ref>] [--judge-config <file>]
+//        [--base <ref>] [--judge-config <file>] [--use-api-key]
 // Exit: 0 ok, 1 a blocking outcome (invalid, error, and regression / no-evals under their
-// settings), 2 usage error or unknown skill, 3 failed precondition (no credentials, refused judge
-// configuration, no ticket to attribute the spend to).
+// settings), 2 usage error or unknown skill, 3 failed precondition (not logged in to Claude Code,
+// --use-api-key without ANTHROPIC_API_KEY, refused judge configuration, temporary directory inside
+// HOME or a git work tree, no ticket to attribute the spend to).
 // Finding-line format: see report.ts.
 
 import path from "node:path";
@@ -28,19 +29,27 @@ export interface ParsedArgs {
   ticket?: string;
   base: string;
   judgeConfig?: string;
+  useApiKey: boolean;
 }
 
 export const USAGE =
-  "Usage: task skill-evals -- <skill-name> | --changed [--out <dir>] [--mock] [--ticket <N>] [--base <ref>] [--judge-config <file>]";
+  "Usage: task skill-evals -- <skill-name> | --changed [--out <dir>] [--mock] [--ticket <N>] [--base <ref>] [--judge-config <file>] [--use-api-key]";
 
 export function parseArgs(argv: readonly string[]): ParsedArgs | { error: string } {
-  const a: ParsedArgs = { changed: false, out: DEFAULT_OUT_DIR, mock: false, base: "origin/main" };
+  const a: ParsedArgs = {
+    changed: false,
+    out: DEFAULT_OUT_DIR,
+    mock: false,
+    base: "origin/main",
+    useApiKey: false,
+  };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] as string;
     const value = (): string | undefined => argv[++i];
     if (arg === "--") continue;
     else if (arg === "--changed") a.changed = true;
     else if (arg === "--mock") a.mock = true;
+    else if (arg === "--use-api-key") a.useApiKey = true;
     else if (
       arg === "--out" ||
       arg === "--ticket" ||
@@ -104,6 +113,7 @@ export async function main(
       repoRoot,
       out: path.resolve(repoRoot, args.out),
       mock: args.mock,
+      useApiKey: args.useApiKey,
       env,
       ...(args.ticket !== undefined ? { ticket: args.ticket } : {}),
       ...(args.judgeConfig !== undefined ? { judgeConfigFile: args.judgeConfig } : {}),

@@ -2,7 +2,8 @@
 //
 // `mockRun` builds a repo whose skill `demo` changed against `origin/main`, runs `runEvals` with a
 // scripted mock executor and a scripted mock judge answer, and returns the report, the output
-// directory and the repo. No model call: no credential variable, a throwing `fetch`.
+// directory and the repo. No model call: no credential variable, a throwing `fetch`, and a `claude` that
+// is a stub (`cleanEnv`).
 
 import fs from "node:fs";
 import path from "node:path";
@@ -40,6 +41,10 @@ export interface RigOptions {
   readonly skills?: string[];
   readonly newSkill?: boolean;
   readonly mock?: boolean;
+  /** `--use-api-key` (default false: an `ANTHROPIC_API_KEY` in `env` is then an unrequested key). */
+  readonly useApiKey?: boolean;
+  /** Temporary root of the workspaces (default: the runner's `os.tmpdir()`). */
+  readonly tempRoot?: string;
   readonly env?: Record<string, string | undefined>;
   readonly settings?: Partial<RunSettings>;
 }
@@ -85,6 +90,8 @@ export function makeRig(opts: RigOptions = {}): Rig {
           repoRoot: repo.root,
           out,
           mock: opts.mock ?? true,
+          useApiKey: opts.useApiKey ?? false,
+          ...(opts.tempRoot !== undefined ? { tempRoot: opts.tempRoot } : {}),
           env: cleanEnv(opts.env as Record<string, string>),
           fetchImpl: throwingFetch,
           sleep: async () => undefined,

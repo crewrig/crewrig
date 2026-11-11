@@ -138,3 +138,126 @@ test("docs/skill-evals.md documents every declared setting, the provisional cali
   ])
     assert.match(doc, needle);
 });
+
+// ------------------------------------------------- delta-03 R44: residual risk and prerequisites
+
+/** The seven statements of delta-03 R44 (a)-(g), each a bullet with a plain bold topic lead-in. */
+const R44_LEAD_INS = [
+  "Prerequisite",
+  "API key opt-in and credential exposure",
+  "Filesystem reach",
+  "Shared state files and concurrency",
+  "Measured cost",
+  "Checked-out pull requests",
+  "Network variables",
+] as const;
+
+/** The text of the `## ...` section whose heading matches, up to the next `## ` heading. */
+function section(text: string, heading: RegExp): string {
+  const lines = text.split("\n");
+  const start = lines.findIndex((l) => l.startsWith("## ") && heading.test(l));
+  assert.ok(start >= 0, `no section matching ${String(heading)}`);
+  const end = lines.findIndex((l, i) => i > start && l.startsWith("## "));
+  return lines.slice(start, end < 0 ? undefined : end).join("\n");
+}
+
+const bullet = (sectionText: string, leadIn: string): string => {
+  const line = sectionText.split("\n").find((l) => l.startsWith(`- **${leadIn}.**`));
+  assert.ok(line !== undefined, `missing bullet "- **${leadIn}.**"`);
+  return line;
+};
+
+for (const [name, file] of [
+  ["docs/skill-evals.md", path.join("docs", "skill-evals.md")],
+  ["ADR 0023", path.join("docs", "adr", "0023-skill-eval-executor.md")],
+] as const) {
+  test(`R44: ${name} carries the seven statements as bullets with their topic lead-ins`, () => {
+    const text = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+    const sec = section(text, /Residual risk and prerequisites/);
+    for (const leadIn of R44_LEAD_INS) bullet(sec, leadIn);
+    const bullets = sec.split("\n").filter((l) => l.startsWith("- **"));
+    assert.equal(bullets.length, R44_LEAD_INS.length, "one bullet per statement, no more");
+    // (a) the logged-in prerequisite; setup-token and the key are optional overrides
+    const a = bullet(sec, "Prerequisite");
+    assert.match(a, /installed and logged in/i);
+    assert.match(a, /optional override/);
+    assert.match(a, /claude setup-token/);
+    assert.match(a, /ANTHROPIC_API_KEY/);
+    // (b) the key is used only with --use-api-key; the residual stated accurately
+    const b = bullet(sec, "API key opt-in and credential exposure");
+    assert.match(b, /only with `--use-api-key`/);
+    assert.match(b, /no longer in the agent's environment/);
+    assert.match(b, /file under the real configuration directory/);
+    assert.match(b, /keychain/);
+    assert.match(b, /`security` command/);
+    assert.match(b, /not unreachable/, "the keychain is not described as unreachable");
+    assert.match(b, /`CLAUDE_CODE_OAUTH_TOKEN`/);
+    assert.match(b, /previous residual stands unchanged/);
+    // (c) the real HOME, no false boundary
+    const c = bullet(sec, "Filesystem reach");
+    assert.match(c, /real `HOME`/);
+    assert.match(c, /`Bash`, `Read`, `Write` and `Edit`/);
+    assert.match(c, /false boundary/);
+    // (d) shared state files, concurrency of 4 to verify by the maintainer smoke run
+    const d = bullet(sec, "Shared state files and concurrency");
+    assert.match(d, /credential refresh/);
+    assert.match(d, /default of 4/);
+    assert.match(d, /maintainer smoke run/);
+    assert.match(d, /EXECUTOR_CONCURRENCY/);
+    // (e) the measured cost, an input to #1852
+    const e = bullet(sec, "Measured cost");
+    for (const n of ["0.03", "0.022", "0.028", "0.025", "#1852"]) assert.ok(e.includes(n), n);
+    assert.match(e, /Sonnet 5\.5/);
+    // (f) a checked-out pull request runs as the contributor
+    const f = bullet(sec, "Checked-out pull requests");
+    assert.match(f, /not (?:your own|the contributor's)/);
+    assert.match(f, /real `HOME`/);
+    assert.match(f, /scripts/);
+    // (g) the network variables may embed proxy credentials
+    const g = bullet(sec, "Network variables");
+    assert.match(g, /proxy URL may embed credentials/);
+    assert.match(g, /agent's `Bash`/);
+  });
+}
+
+test("R44, R26: the document names the logged-in prerequisite, --use-api-key and the model pin, and never lists `claude setup-token` as the preferred path", () => {
+  const doc = fs.readFileSync(path.join(REPO_ROOT, "docs", "skill-evals.md"), "utf8");
+  const adr = fs.readFileSync(
+    path.join(REPO_ROOT, "docs", "adr", "0023-skill-eval-executor.md"),
+    "utf8",
+  );
+  // the logged-in prerequisite comes first among the requirements
+  const requirements = section(doc, /Requirements and scope of the measurement/);
+  assert.match(bullet(requirements, "Prerequisite"), /installed[\s\S]*logged in/);
+  assert.match(bullet(requirements, "Prerequisite"), /`claude` binary/);
+  for (const [name, text] of [
+    ["document", doc],
+    ["ADR", adr],
+  ] as const) {
+    assert.match(text, /`--use-api-key`/, name);
+    assert.match(text, /claude-sonnet-5-5/, name);
+    assert.doesNotMatch(
+      text,
+      /claude-sonnet-4-6[^\n]*(?:pinned|default)/i,
+      `${name}: the old model pin is gone`,
+    );
+    const sentences = text.split(/(?<=[.!?])\s+|\n/).filter((x) => x.includes("setup-token"));
+    assert.ok(sentences.length > 0, name);
+    for (const sentence of sentences)
+      assert.doesNotMatch(
+        sentence.replace(/\bnot (?:the )?(?:preferred|recommended)\b/gi, ""),
+        /\b(?:preferred|recommended)\b/i,
+        `${name}: setup-token is presented as preferred: ${sentence}`,
+      );
+  }
+  // the credential table of the document: the session is the default, setup-token an optional override
+  const credentials = section(doc, /^## Credentials/);
+  assert.match(credentials, /logged-in Claude Code session: no variable is needed/);
+  const tokenRow = credentials.split("\n").find((l) => l.includes("claude setup-token"));
+  assert.ok(
+    tokenRow !== undefined && /Optional override/.test(tokenRow),
+    "token row is an optional override",
+  );
+  assert.match(doc, /Claude Code only/);
+  assert.match(doc, /docs\/cli-matrix\/rows/);
+});
