@@ -38,7 +38,8 @@ export function makeRepo(): Repo {
   return { root, git, cleanup: () => fs.rmSync(root, { recursive: true, force: true }) };
 }
 
-export const skillRel = (name: string, layer = "core"): string => `artifacts/${layer}/skills/${name}`;
+export const skillRel = (name: string, layer = "core"): string =>
+  `artifacts/${layer}/skills/${name}`;
 
 export function evalsJson(name: string, overrides: Record<string, unknown> = {}): string {
   return `${JSON.stringify(
@@ -122,8 +123,8 @@ export function selectionOf(repo: Repo, name: string): Selection {
 }
 
 /** A stub `claude` that records its invocation in $STUB_LOG and exits 99 (any model call fails). */
-export function writeStubClaude(dir: string, body?: string): string {
-  const file = path.join(dir, "claude-stub.js");
+export function writeStubClaude(dir: string, body?: string, name = "claude-stub.js"): string {
+  const file = path.join(dir, name);
   fs.writeFileSync(
     file,
     body ??
@@ -133,8 +134,16 @@ export function writeStubClaude(dir: string, body?: string): string {
   return file;
 }
 
-export function sink(): { out: string; err: string; io: { stdout: (s: string) => void; stderr: (s: string) => void } } {
-  const s = { out: "", err: "", io: { stdout: (x: string) => void (s.out += x), stderr: (x: string) => void (s.err += x) } };
+export function sink(): {
+  out: string;
+  err: string;
+  io: { stdout: (s: string) => void; stderr: (s: string) => void };
+} {
+  const s = {
+    out: "",
+    err: "",
+    io: { stdout: (x: string) => void (s.out += x), stderr: (x: string) => void (s.err += x) },
+  };
   return s;
 }
 
@@ -143,7 +152,9 @@ export const throwingFetch = (() => {
 }) as unknown as typeof fetch;
 
 /** An environment with no credential variable and no real PATH leakage of tokens. */
-export const cleanEnv = (extra: Record<string, string> = {}): Record<string, string | undefined> => ({
+export const cleanEnv = (
+  extra: Record<string, string> = {},
+): Record<string, string | undefined> => ({
   PATH: process.env["PATH"],
   LANG: "C",
   ...extra,

@@ -11,7 +11,17 @@ import { MockExecutor } from "../../lib/skill-evals/executor/mock.ts";
 import type { MockScript } from "../../lib/skill-evals/executor/mock.ts";
 import { runEvals } from "../../lib/skill-evals/run.ts";
 import type { RunOptions, RunReport, RunSettings } from "../../lib/skill-evals/run.ts";
-import { cleanEnv, commitAll, makeRepo, markOrigin, selectionOf, skillRel, throwingFetch, tmpDir, writeSkill } from "./skill-evals-fixtures.ts";
+import {
+  cleanEnv,
+  commitAll,
+  makeRepo,
+  markOrigin,
+  selectionOf,
+  skillRel,
+  throwingFetch,
+  tmpDir,
+  writeSkill,
+} from "./skill-evals-fixtures.ts";
 import type { Repo } from "./skill-evals-fixtures.ts";
 
 export interface Rig {
@@ -49,10 +59,15 @@ export function evalsWith(name: string, count: number, expectations = 1): string
 export function makeRig(opts: RigOptions = {}): Rig {
   const repo = makeRepo();
   const skills = opts.skills ?? ["demo"];
-  for (const s of skills) writeSkill(repo, s, { "evals/evals.json": evalsWith(s, opts.evalsCount ?? 1) });
+  for (const s of skills)
+    writeSkill(repo, s, { "evals/evals.json": evalsWith(s, opts.evalsCount ?? 1) });
   commitAll(repo, "base");
   markOrigin(repo);
-  if (opts.newSkill === true) for (const s of skills) writeSkill(repo, `${s}-new`, { "evals/evals.json": evalsWith(`${s}-new`, opts.evalsCount ?? 1) });
+  if (opts.newSkill === true)
+    for (const s of skills)
+      writeSkill(repo, `${s}-new`, {
+        "evals/evals.json": evalsWith(`${s}-new`, opts.evalsCount ?? 1),
+      });
   for (const s of skills) {
     if (opts.change !== undefined) opts.change(repo);
     else fs.appendFileSync(path.join(repo.root, skillRel(s), "SKILL.md"), "edit\n");
@@ -101,12 +116,18 @@ export function plainEvals(name: string, n: number): string {
 }
 
 /** A recording Messages API endpoint: PASS quoting the fixed phrase unless the message holds `failMarker`. */
-export function judgeFetch(failMarker = "BROKEN"): { fetch: typeof fetch; requests: { url: string; headers: Record<string, string>; message: string }[] } {
+export function judgeFetch(failMarker = "BROKEN"): {
+  fetch: typeof fetch;
+  requests: { url: string; headers: Record<string, string>; message: string }[];
+} {
   const requests: { url: string; headers: Record<string, string>; message: string }[] = [];
   const f = (async (url: string, init: { headers: Record<string, string>; body: string }) => {
-    const message = (JSON.parse(init.body) as { messages: { content: string }[] }).messages[0]?.content ?? "";
+    const message =
+      (JSON.parse(init.body) as { messages: { content: string }[] }).messages[0]?.content ?? "";
     requests.push({ url, headers: init.headers, message });
-    const text = message.includes(failMarker) ? `VERDICT=FAIL CONF=0.90\nEVIDENCE="not good"` : `VERDICT=PASS CONF=0.90\nEVIDENCE="the quick brown fox"`;
+    const text = message.includes(failMarker)
+      ? `VERDICT=FAIL CONF=0.90\nEVIDENCE="not good"`
+      : `VERDICT=PASS CONF=0.90\nEVIDENCE="the quick brown fox"`;
     return new Response(JSON.stringify({ content: [{ type: "text", text }] }), { status: 200 });
   }) as unknown as typeof fetch;
   return { fetch: f, requests };

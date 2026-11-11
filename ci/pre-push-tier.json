@@ -17,6 +17,7 @@
   "path-ownership": 1,
   "path-ownership-selftest": 16,
   "check-skill-versions": 1,
+  "skill-evals-attestation": 1,
   "check-description-length": 1,
   "check-agents-size": 1,
   "check-rules-size": 1,

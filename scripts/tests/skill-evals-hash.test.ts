@@ -6,7 +6,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
-import { contentHash, installedContentHash, installFiles, readRevision, readWorkingTree } from "../lib/skill-evals/hash.ts";
+import {
+  contentHash,
+  installedContentHash,
+  installFiles,
+  readRevision,
+  readWorkingTree,
+} from "../lib/skill-evals/hash.ts";
 import type { Snapshot } from "../lib/skill-evals/hash.ts";
 import { commitAll, makeRepo, skillRel, tmpDir, writeSkill } from "./lib/skill-evals-fixtures.ts";
 import type { Repo } from "./lib/skill-evals-fixtures.ts";
@@ -16,7 +22,10 @@ const hashOf = (repo: Repo, name = "demo"): string => {
   assert.equal(s.kind, "ok", JSON.stringify(s));
   return contentHash((s as Extract<Snapshot, { kind: "ok" }>).files);
 };
-const installedOf = (repo: Repo): string => installedContentHash((readWorkingTree(repo.root, skillRel("demo")) as Extract<Snapshot, { kind: "ok" }>).files);
+const installedOf = (repo: Repo): string =>
+  installedContentHash(
+    (readWorkingTree(repo.root, skillRel("demo")) as Extract<Snapshot, { kind: "ok" }>).files,
+  );
 const withRepo = (f: (repo: Repo) => void) => {
   const repo = makeRepo();
   try {
@@ -40,7 +49,18 @@ test("fixed vector: path NUL flag NUL size NUL bytes NUL, sorted by UTF-8 bytes"
     ] as const;
     for (const [rel, flag] of records) {
       const bytes = fs.readFileSync(path.join(repo.root, skillRel("demo"), rel));
-      h.update(Buffer.concat([Buffer.from(rel), Buffer.from([0]), Buffer.from(flag), Buffer.from([0]), Buffer.from(String(bytes.length)), Buffer.from([0]), bytes, Buffer.from([0])]));
+      h.update(
+        Buffer.concat([
+          Buffer.from(rel),
+          Buffer.from([0]),
+          Buffer.from(flag),
+          Buffer.from([0]),
+          Buffer.from(String(bytes.length)),
+          Buffer.from([0]),
+          bytes,
+          Buffer.from([0]),
+        ]),
+      );
     }
     assert.equal(contentHash(snap.files), `sha256:${h.digest("hex")}`);
     assert.match(contentHash(snap.files), /^sha256:[0-9a-f]{64}$/);
@@ -81,7 +101,7 @@ test("the installed-content hash ignores evals/evals.json and follows every othe
     const dir = path.join(repo.root, skillRel("demo"));
     const inst = installedOf(repo);
     const full = hashOf(repo);
-    fs.writeFileSync(path.join(dir, "evals", "evals.json"), "{\"changed\":true}\n");
+    fs.writeFileSync(path.join(dir, "evals", "evals.json"), '{"changed":true}\n');
     repo.git("add", "-A");
     assert.equal(installedOf(repo), inst);
     assert.notEqual(hashOf(repo), full);
@@ -112,7 +132,10 @@ test("the git index mode is hashed; the filesystem mode and core.fileMode are no
 test("the hash equals the same content read from a git revision, whatever the creation order", () => {
   withRepo((repo) => {
     const head = repo.git("rev-parse", "HEAD").trim();
-    const rev = readRevision(repo.root, head, skillRel("demo")) as Extract<Snapshot, { kind: "ok" }>;
+    const rev = readRevision(repo.root, head, skillRel("demo")) as Extract<
+      Snapshot,
+      { kind: "ok" }
+    >;
     assert.equal(contentHash(rev.files), hashOf(repo));
     const other = makeRepo();
     try {
@@ -207,7 +230,10 @@ test("install writes exactly the hashed files (never evals/), restoring the reco
 test("a revision install restores the exec bit from ls-tree, and a base symlink is invalid", () => {
   withRepo((repo) => {
     const head = repo.git("rev-parse", "HEAD").trim();
-    const snap = readRevision(repo.root, head, skillRel("demo")) as Extract<Snapshot, { kind: "ok" }>;
+    const snap = readRevision(repo.root, head, skillRel("demo")) as Extract<
+      Snapshot,
+      { kind: "ok" }
+    >;
     const dest = tmpDir();
     installFiles(snap.files, dest);
     assert.equal(fs.statSync(path.join(dest, "scripts", "run.sh")).mode & 0o100, 0o100);

@@ -2415,6 +2415,48 @@ worktree-guard-node-24-0:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
+skill-evals-attestation:
+  stage: integration
+  image: node:24
+  variables:
+    GIT_DEPTH: "0"
+    BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+  before_script:
+    - !reference [.task-install, script]
+  script:
+    - "task ci:skill-evals-attestation"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "artifacts/**/skills/**"
+
+skill-evals-tests:
+  stage: integration
+  image: node:24
+  before_script:
+    - !reference [.task-install, script]
+    - npm ci --omit=dev --workspaces=false
+  script:
+    - "task ci:skill-evals-tests"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes: &skill-evals-tests-changes-1
+        - "scripts/lib/skill-evals/**"
+        - "scripts/skill-evals.ts"
+        - "scripts/skill-evals-attestation.ts"
+        - "scripts/tests/skill-evals-*.test.ts"
+        - "scripts/tests/lib/skill-evals-*.ts"
+        - "tests/e2e/lib/llm_judge.ts"
+        - "tests/e2e/lib/llm_judge_drivers/**"
+        - "scripts/lib/governance/**"
+        - "scripts/lib/build-components/**"
+        - "scripts/check-skill-versions.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/fixtures/build-components/**"
+        - "artifacts/core/skills/pr-reviewer/scripts/lint-skill.ts"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes: *skill-evals-tests-changes-1
+
 mempalace-transcript:
   stage: integration
   image: node:24

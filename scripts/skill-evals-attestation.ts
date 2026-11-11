@@ -21,9 +21,7 @@ void (async () => {
   try {
     const { attestMain } = await import("./lib/skill-evals/attest-cli.ts");
     const path = await import("node:path");
-    const repoRoot =
-      process.env.CREWRIG_REPO_DIR ||
-      path.resolve(__dirname, "..");
+    const repoRoot = process.env.CREWRIG_REPO_DIR || path.resolve(__dirname, "..");
     process.exitCode = attestMain(process.argv.slice(2), process.env, repoRoot, {
       stdout: (s) => void process.stdout.write(s),
       stderr: (s) => void process.stderr.write(s),

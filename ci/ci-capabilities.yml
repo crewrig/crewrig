@@ -3031,6 +3031,61 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-entry-form.test.ts
 
+  # Spec 0290 delta-01 R17-R18, R37-R39: the pull-request pipeline only CHECKS that a changed skill carries a fresh
+  # evals/results.json (content hash recomputed; no model call, no credential, no secret). The evals themselves run on the
+  # contributor machine (task skill-evals). Pull-request only and full history, like check-skill-versions: it compares a
+  # change against a base ref, so it is not changeset-gated.
+  - id: skill-evals-attestation
+    group: integration
+    name: "Check that changed skills carry a fresh evals/results.json attestation"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+    paths:
+      - "artifacts/**/skills/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      history-depth: full
+      tools: [task]
+    env:
+      BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    command:
+      - task ci:skill-evals-attestation
+
+  # Spec 0290 R18, R25: the runner's own suites, in mock mode with no key and no network, whenever the runner sources
+  # change. The judge-library guards the evidence entry point must not disturb run in the e2e capability.
+  - id: skill-evals-tests
+    group: integration
+    name: "Run the skill eval runner own suites (mock mode, no key, no network)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/skill-evals/**"
+      - "scripts/skill-evals.ts"
+      - "scripts/skill-evals-attestation.ts"
+      - "scripts/tests/skill-evals-*.test.ts"
+      - "scripts/tests/lib/skill-evals-*.ts"
+      - "tests/e2e/lib/llm_judge.ts"
+      - "tests/e2e/lib/llm_judge_drivers/**"
+      - "scripts/lib/governance/**"
+      - "scripts/lib/build-components/**"
+      - "scripts/check-skill-versions.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/tests/fixtures/build-components/**"
+      - "artifacts/core/skills/pr-reviewer/scripts/lint-skill.ts"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:skill-evals-tests
+
   # Spec 0247 R31, plan step 22(a): the black-box suites of the TypeScript MemPalace transcript hook and of its wiring
   # (hook-transcript-* suites). The Bash oracle keeps running through the shim in the `mempalace` capability above.
   # Deliberately NOT changeset-gated (node@22 rule, see `changeset-coverage`).

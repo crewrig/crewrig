@@ -32,3 +32,15 @@ tasks:
   test-spec-view:
     desc: "Run the spec effective view suite, as CI does (spec 0273)"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-view.test.ts
+
+  # Spec 0290 R16: run the evals of one skill (`task skill-evals -- <skill-name>`) or of every changed skill
+  # (`task skill-evals -- --changed`) on this machine. Needs CLAUDE_CODE_OAUTH_TOKEN (claude setup-token) or
+  # ANTHROPIC_API_KEY unless --mock is given; see docs/skill-evals.md.
+  skill-evals:
+    desc: "Run the evals of one skill, or of every changed skill (--changed), locally (spec 0290); pass the arguments after --"
+    cmd: node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/skill-evals.ts {{.CLI_ARGS}}
+
+  # Spec 0290 R25: the exact CI command of the `skill-evals-tests` capability.
+  test-skill-evals:
+    desc: "Run the skill eval runner suites in mock mode (no key, no network), as CI does (spec 0290)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/skill-evals-*.test.ts

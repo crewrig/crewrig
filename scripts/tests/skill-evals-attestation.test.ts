@@ -1,5 +1,7 @@
 // skill-evals-attestation.test.ts — results file and attestation check (spec 0290 R36-R39, R25).
 
+/* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-call, typescript/no-unsafe-argument, typescript/no-unsafe-return -- the runner output files are read back as untyped JSON */
+
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -12,7 +14,16 @@ import { verifyResults, writeResults } from "../lib/skill-evals/results.ts";
 import type { ResultsRecord } from "../lib/skill-evals/results.ts";
 import { selectChanged } from "../lib/skill-evals/select.ts";
 import type { Selection } from "../lib/skill-evals/select.ts";
-import { cleanEnv, commitAll, makeRepo, markOrigin, selectionOf, sink, skillRel, writeSkill } from "./lib/skill-evals-fixtures.ts";
+import {
+  cleanEnv,
+  commitAll,
+  makeRepo,
+  markOrigin,
+  selectionOf,
+  sink,
+  skillRel,
+  writeSkill,
+} from "./lib/skill-evals-fixtures.ts";
 import type { Repo } from "./lib/skill-evals-fixtures.ts";
 
 const record = (sel: Selection, over: Partial<ResultsRecord> = {}): ResultsRecord => ({
@@ -23,7 +34,13 @@ const record = (sel: Selection, over: Partial<ResultsRecord> = {}): ResultsRecor
   judge_model: "j",
   date: "2026-01-01T00:00:00.000Z",
   status: "pass",
-  benchmark: { with_skill_mean: 1, without_skill_mean: 0.5, base_mean: null, delta_value: 0.5, tolerance: 0.05 },
+  benchmark: {
+    with_skill_mean: 1,
+    without_skill_mean: 0.5,
+    base_mean: null,
+    delta_value: 0.5,
+    tolerance: 0.05,
+  },
   executor_runs: 4,
   judge_calls: 6,
   cost_usd: 0.4,
@@ -49,10 +66,31 @@ test("the writer fixes the key order and the verifier accepts a fresh file", () 
     const sel = selectionOf(repo, "demo");
     writeResults(sel.skill.dirAbs, record(sel));
     const text = fs.readFileSync(path.join(sel.skill.dirAbs, "evals", "results.json"), "utf8");
-    assert.deepEqual(Object.keys(JSON.parse(text)), ["skill_name", "content_hash", "runner_version", "executor_model", "judge_model", "date", "status", "benchmark", "executor_runs", "judge_calls", "cost_usd"]);
-    assert.deepEqual(Object.keys(JSON.parse(text).benchmark), ["with_skill_mean", "without_skill_mean", "base_mean", "delta_value", "tolerance"]);
+    assert.deepEqual(Object.keys(JSON.parse(text)), [
+      "skill_name",
+      "content_hash",
+      "runner_version",
+      "executor_model",
+      "judge_model",
+      "date",
+      "status",
+      "benchmark",
+      "executor_runs",
+      "judge_calls",
+      "cost_usd",
+    ]);
+    assert.deepEqual(Object.keys(JSON.parse(text).benchmark), [
+      "with_skill_mean",
+      "without_skill_mean",
+      "base_mean",
+      "delta_value",
+      "tolerance",
+    ]);
     assert.equal(verifyResults(text, "demo", sel.headHash as string).ok, true);
-    assert.equal(fs.readdirSync(path.join(sel.skill.dirAbs, "evals")).some((f) => f.endsWith(".tmp")), false);
+    assert.equal(
+      fs.readdirSync(path.join(sel.skill.dirAbs, "evals")).some((f) => f.endsWith(".tmp")),
+      false,
+    );
   });
 });
 
@@ -112,17 +150,29 @@ test("mock results, an unrecognised status, a wrong skill and missing keys are s
     const h = sel.headHash as string;
     const text = (o: Record<string, unknown>) => JSON.stringify({ ...record(sel), ...o });
     assert.equal(verifyResults(text({ mock: true }), "demo", h).ok, false);
-    assert.match((verifyResults(text({ status: "error" }), "demo", h) as { reason: string }).reason, /status "error"/);
-    assert.match((verifyResults(text({ skill_name: "other" }), "demo", h) as { reason: string }).reason, /another skill/);
+    assert.match(
+      (verifyResults(text({ status: "error" }), "demo", h) as { reason: string }).reason,
+      /status "error"/,
+    );
+    assert.match(
+      (verifyResults(text({ skill_name: "other" }), "demo", h) as { reason: string }).reason,
+      /another skill/,
+    );
     const broken = JSON.parse(text({})) as Record<string, unknown>;
     delete broken["judge_calls"];
-    assert.match((verifyResults(JSON.stringify(broken), "demo", h) as { reason: string }).reason, /judge_calls/);
+    assert.match(
+      (verifyResults(JSON.stringify(broken), "demo", h) as { reason: string }).reason,
+      /judge_calls/,
+    );
     assert.match((verifyResults("{nope", "demo", h) as { reason: string }).reason, /parsed/);
     assert.match((verifyResults(undefined, "demo", h) as { reason: string }).reason, /absent/);
     fs.writeFileSync(path.join(sel.skill.dirAbs, "evals", "results.json"), text({ mock: true }));
     repo.git("add", "-A");
     assert.equal(attestSelection(selectionOf(repo, "demo")).status, "stale");
-    fs.writeFileSync(path.join(sel.skill.dirAbs, "evals", "results.json"), text({ status: "error" }));
+    fs.writeFileSync(
+      path.join(sel.skill.dirAbs, "evals", "results.json"),
+      text({ status: "error" }),
+    );
     assert.equal(attestSelection(selectionOf(repo, "demo")).status, "stale");
   });
 });
@@ -130,17 +180,44 @@ test("mock results, an unrecognised status, a wrong skill and missing keys are s
 test("recorded regression is reported and blocks only under regression-blocking", () => {
   changedSkill((repo) => {
     const sel = selectionOf(repo, "demo");
-    writeResults(sel.skill.dirAbs, record(sel, { status: "regression", benchmark: { with_skill_mean: 0.8, without_skill_mean: 0.5, base_mean: 0.9, delta_value: 0.3, tolerance: 0.05 } }));
+    writeResults(
+      sel.skill.dirAbs,
+      record(sel, {
+        status: "regression",
+        benchmark: {
+          with_skill_mean: 0.8,
+          without_skill_mean: 0.5,
+          base_mean: 0.9,
+          delta_value: 0.3,
+          tolerance: 0.05,
+        },
+      }),
+    );
     repo.git("add", "-A");
-    const off = attestSelection(selectionOf(repo, "demo"), { regressionBlocking: false, missingEvalsBlocking: false });
+    const off = attestSelection(selectionOf(repo, "demo"), {
+      regressionBlocking: false,
+      missingEvalsBlocking: false,
+    });
     assert.equal(off.status, "regression");
     assert.equal(off.blocking, false);
     assert.match(off.reason, /base mean 0\.9, head mean 0\.8, tolerance 0\.05/);
-    const on = attestSelection(selectionOf(repo, "demo"), { regressionBlocking: true, missingEvalsBlocking: false });
+    const on = attestSelection(selectionOf(repo, "demo"), {
+      regressionBlocking: true,
+      missingEvalsBlocking: false,
+    });
     assert.equal(on.blocking, true);
     const s = sink();
-    assert.equal(attestMain([], cleanEnv(), repo.root, s.io, { regressionBlocking: true, missingEvalsBlocking: false }), 1);
-    assert.match(s.out, /demo: regression: base mean 0\.9, head mean 0\.8, tolerance 0\.05 \[blocking\]/);
+    assert.equal(
+      attestMain([], cleanEnv(), repo.root, s.io, {
+        regressionBlocking: true,
+        missingEvalsBlocking: false,
+      }),
+      1,
+    );
+    assert.match(
+      s.out,
+      /demo: regression: base mean 0\.9, head mean 0\.8, tolerance 0\.05 \[blocking\]/,
+    );
   });
 });
 
@@ -157,8 +234,17 @@ test("no-evals warns and blocks only under missing-evals-blocking; invalid alway
     const plain = attestSelection(selectionOf(repo, "plain"));
     assert.equal(plain.status, "no-evals");
     assert.equal(plain.blocking, false);
-    assert.equal(attestSelection(selectionOf(repo, "plain"), { regressionBlocking: false, missingEvalsBlocking: true }).blocking, true);
-    const broken = attestSelection(selectionOf(repo, "broken"), { regressionBlocking: false, missingEvalsBlocking: false });
+    assert.equal(
+      attestSelection(selectionOf(repo, "plain"), {
+        regressionBlocking: false,
+        missingEvalsBlocking: true,
+      }).blocking,
+      true,
+    );
+    const broken = attestSelection(selectionOf(repo, "broken"), {
+      regressionBlocking: false,
+      missingEvalsBlocking: false,
+    });
     assert.equal(broken.status, "invalid");
     assert.equal(broken.blocking, true);
     // an evals/ directory without evals.json is invalid
@@ -194,7 +280,12 @@ test("the entry script runs without credentials, prints a line per skill and app
     const r = spawnSync(process.execPath, [entry], {
       cwd: repo.root,
       encoding: "utf8",
-      env: { PATH: process.env["PATH"] ?? "", CREWRIG_REPO_DIR: repo.root, BASE_REF: "origin/main", GITHUB_STEP_SUMMARY: summary },
+      env: {
+        PATH: process.env["PATH"] ?? "",
+        CREWRIG_REPO_DIR: repo.root,
+        BASE_REF: "origin/main",
+        GITHUB_STEP_SUMMARY: summary,
+      },
     });
     assert.equal(r.status, 0, r.stdout + r.stderr);
     assert.match(r.stdout, /^demo: pass/m);
@@ -204,6 +295,9 @@ test("the entry script runs without credentials, prints a line per skill and app
 });
 
 test("the attestation check never reads a credential variable and makes no model call", () => {
-  const src = fs.readFileSync(path.resolve(import.meta.dirname, "../lib/skill-evals/attest-cli.ts"), "utf8") + fs.readFileSync(path.resolve(import.meta.dirname, "../lib/skill-evals/attest.ts"), "utf8");
-  for (const name of ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "fetch(", "spawn("]) assert.equal(src.includes(name), false, name);
+  const src =
+    fs.readFileSync(path.resolve(import.meta.dirname, "../lib/skill-evals/attest-cli.ts"), "utf8") +
+    fs.readFileSync(path.resolve(import.meta.dirname, "../lib/skill-evals/attest.ts"), "utf8");
+  for (const name of ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "fetch(", "spawn("])
+    assert.equal(src.includes(name), false, name);
 });

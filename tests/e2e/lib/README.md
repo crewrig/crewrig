@@ -5,11 +5,11 @@ Governed by [ADR 0004](../../../docs/adr/0004-e2e-assertion-libs.md).
 
 The TypeScript twins (`assert.ts`, `structural.ts`, `llm_judge.ts`, ...) are the maintained implementation; the `.sh` libraries described below are retained until the suites that source them migrate.
 
-| Lib | When to use |
-|---|---|
-| `assert.sh` | **First choice.** Side-effect probes: file presence/content, exit codes, drawers in MemPalace, git refs pushed to a remote. Cheap, deterministic, easy to reason about. |
-| `structural.sh` | **Second choice.** Structural shape probes: regex over stdout, JSON paths via `jq`, gitmoji-formatted titles. Use when the assertion is about the shape of an artifact, not its existence. |
-| `llm_judge.sh` | **Last resort.** LLM-as-judge oracle for qualitative criteria a regex cannot express. Each call burns budget and adds non-determinism — reach for it only when the first two cannot answer the question. |
+| Lib             | When to use                                                                                                                                                                                              |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `assert.sh`     | **First choice.** Side-effect probes: file presence/content, exit codes, drawers in MemPalace, git refs pushed to a remote. Cheap, deterministic, easy to reason about.                                  |
+| `structural.sh` | **Second choice.** Structural shape probes: regex over stdout, JSON paths via `jq`, gitmoji-formatted titles. Use when the assertion is about the shape of an artifact, not its existence.               |
+| `llm_judge.sh`  | **Last resort.** LLM-as-judge oracle for qualitative criteria a regex cannot express. Each call burns budget and adds non-determinism — reach for it only when the first two cannot answer the question. |
 
 Every assertion returns `0` on PASS, `1` on FAIL; PASS is silent. FAIL emits a single TAP-compatible
 diagnostic block to stderr — a `# FAIL` header line plus `expected`, `actual`, and `report` lines, each
@@ -129,11 +129,11 @@ two `auth_mode` values:
 
 Env-var overrides:
 
-| Var | Default | Purpose |
-|---|---|---|
-| `OLLAMA_KEYPAIR_PATH` | `${CREWRIG_E2E_HOME}/ollama/id_ed25519` | Override keypair path |
-| `OLLAMA_TOKEN_ENDPOINT` | `https://api.ollama.ai/v1/auth/token` (UNVERIFIED) | Override token exchange URL |
-| `OLLAMA_COMPLETIONS_ENDPOINT` | `https://api.ollama.ai/v1/chat/completions` (UNVERIFIED) | Override completions URL |
+| Var                           | Default                                                  | Purpose                     |
+| ----------------------------- | -------------------------------------------------------- | --------------------------- |
+| `OLLAMA_KEYPAIR_PATH`         | `${CREWRIG_E2E_HOME}/ollama/id_ed25519`                  | Override keypair path       |
+| `OLLAMA_TOKEN_ENDPOINT`       | `https://api.ollama.ai/v1/auth/token` (UNVERIFIED)       | Override token exchange URL |
+| `OLLAMA_COMPLETIONS_ENDPOINT` | `https://api.ollama.ai/v1/chat/completions` (UNVERIFIED) | Override completions URL    |
 
 #### Prompt template
 

@@ -1,5 +1,7 @@
 // skill-evals-layout.test.ts — output layout and formats of a run (spec 0290 R10, R11, R12, R14, R24, R25).
 
+/* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-call, typescript/no-unsafe-argument, typescript/no-unsafe-return -- the runner output files are read back as untyped JSON */
+
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -23,12 +25,22 @@ test("a mock run writes the R10 layout, R11 grading.json and R14 benchmark.json,
       for (const cfg of ["with_skill", "without_skill"]) {
         const dir = path.join(skillOut, `eval-${id}`, cfg);
         assert.ok(fs.existsSync(path.join(dir, "transcript.md")), dir);
-        assert.ok(fs.existsSync(path.join(dir, "outputs", "answer.md")), "produced files live in outputs/");
-        assert.equal(fs.existsSync(path.join(dir, "outputs", "in.txt")), false, "an unchanged R3 input is not an output");
+        assert.ok(
+          fs.existsSync(path.join(dir, "outputs", "answer.md")),
+          "produced files live in outputs/",
+        );
+        assert.equal(
+          fs.existsSync(path.join(dir, "outputs", "in.txt")),
+          false,
+          "an unchanged R3 input is not an output",
+        );
         const grading = read(dir, "grading.json");
         assert.equal(grading.mock, true);
         // check first (R12), then the expectation (file order within each list)
-        assert.deepEqual(grading.expectations.map((e: { text: string }) => e.text), ["check file_exists: answer.md", "Expectation 1 holds"]);
+        assert.deepEqual(
+          grading.expectations.map((e: { text: string }) => e.text),
+          ["check file_exists: answer.md", "Expectation 1 holds"],
+        );
         assert.deepEqual(grading.summary, { passed: 2, failed: 0, total: 2, pass_rate: 1 });
         for (const e of grading.expectations) {
           assert.equal(typeof e.passed, "boolean");
@@ -38,15 +50,27 @@ test("a mock run writes the R10 layout, R11 grading.json and R14 benchmark.json,
         assert.equal(metrics.limit, null);
         assert.equal(metrics.cost_usd, 0.01);
       }
-    assert.ok(fs.existsSync(path.join(skillOut, "base", "eval-1", "with_skill", "grading.json")), "the base replay writes under base/");
+    assert.ok(
+      fs.existsSync(path.join(skillOut, "base", "eval-1", "with_skill", "grading.json")),
+      "the base replay writes under base/",
+    );
     const bench = read(skillOut, "benchmark.json");
     assert.equal(bench.mock, true);
     assert.equal(bench.runs.length, 4, "head runs only: 2 evals x 2 configurations");
-    assert.deepEqual(Object.keys(bench.runs[0]).sort(), ["configuration", "eval_id", "result", "summary"]);
+    assert.deepEqual(Object.keys(bench.runs[0]).sort(), [
+      "configuration",
+      "eval_id",
+      "result",
+      "summary",
+    ]);
     assert.deepEqual(bench.run_summary.with_skill.pass_rate, { mean: 1, stddev: 0 });
     assert.deepEqual(bench.run_summary.delta, { pass_rate: "+0.00" });
     assert.equal(bench.run_summary.delta_value, 0);
-    assert.equal(fs.existsSync(path.join(rig.repo.root, skillRel("demo"), "evals", "results.json")), false, "a mock run writes no results file");
+    assert.equal(
+      fs.existsSync(path.join(rig.repo.root, skillRel("demo"), "evals", "results.json")),
+      false,
+      "a mock run writes no results file",
+    );
   } finally {
     rig.cleanup();
   }
@@ -68,7 +92,10 @@ test("mean, population standard deviation, single-eval zero, and the signed delt
     ],
     { skill: "x", mock: false },
   ) as { run_summary: Record<string, unknown> };
-  assert.deepEqual((b.run_summary["with_skill"] as { pass_rate: unknown }).pass_rate, { mean: 0.5, stddev: 0.5 });
+  assert.deepEqual((b.run_summary["with_skill"] as { pass_rate: unknown }).pass_rate, {
+    mean: 0.5,
+    stddev: 0.5,
+  });
   assert.deepEqual(b.run_summary["delta"], { pass_rate: "+0.50" });
   assert.equal(b.run_summary["delta_value"], 0.5);
   assert.equal("mock" in b, false);
@@ -77,11 +104,19 @@ test("mean, population standard deviation, single-eval zero, and the signed delt
 test("a failed check is recorded with its observed value and the judge is called only for expectations", async () => {
   const rig = makeRig({
     evalsCount: 1,
-    script: (req) => ({ files: req.label.includes("without") ? {} : { "answer.md": "x" }, transcript: "Assistant: there is no answer file here at all" }),
+    script: (req) => ({
+      files: req.label.includes("without") ? {} : ({ "answer.md": "x" } as Record<string, string>),
+      transcript: "Assistant: there is no answer file here at all",
+    }),
   });
   try {
     let judged = 0;
-    const r = await rig.run({ mockAnswer: () => (judged++, 'VERDICT=PASS CONF=0.9\nEVIDENCE="there is no answer file here"') });
+    const r = await rig.run({
+      mockAnswer: () => (
+        judged++,
+        'VERDICT=PASS CONF=0.9\nEVIDENCE="there is no answer file here"'
+      ),
+    });
     assert.equal(r.exitCode, 0, r.text);
     const g = read(rig.out, "demo", "eval-1", "without_skill", "grading.json");
     assert.equal(g.expectations[0].passed, false);
@@ -97,14 +132,24 @@ test("a run whose outputs directory cannot be read gets no judge call", async ()
   const { gradeRun } = await import("../lib/skill-evals/grade.ts");
   let calls = 0;
   const g = await gradeRun({
-    evalCase: { id: 1, prompt: "p", expected_output: "o", files: [], expectations: ["e1", "e2"], checks: [] },
+    evalCase: {
+      id: 1,
+      prompt: "p",
+      expected_output: "o",
+      files: [],
+      expectations: ["e1", "e2"],
+      checks: [],
+    },
     outputsDir: path.join(os.tmpdir(), "skill-evals-does-not-exist-outputs"),
     skillDir: "/nonexistent",
     transcript: "t",
     judge: async () => (calls++, { verdict: "PASS", evidence: "x", confidence: "1.00" }),
   });
   assert.equal(calls, 0);
-  assert.deepEqual(g.expectations.map((e) => e.passed), [false, false]);
+  assert.deepEqual(
+    g.expectations.map((e) => e.passed),
+    [false, false],
+  );
   assert.match(g.expectations[0]?.evidence ?? "", /could not be read/);
 });
 

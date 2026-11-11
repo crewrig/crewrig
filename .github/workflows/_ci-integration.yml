@@ -130,6 +130,32 @@ jobs:
           id: worktree-guard
           install: none
 
+  # Spec 0290 delta-01 R17-R18, R39: the attestation check recomputes the content hash of
+  # every changed skill and compares it with evals/results.json. No model call, no secret.
+  skill-evals-attestation:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    env:
+      BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/ci-job
+        with:
+          id: skill-evals-attestation
+          install: none
+
+  # Spec 0290 R18, R25: the runner own suites, mock mode, no key, no network.
+  skill-evals-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: skill-evals-tests
+          install: omit-dev
+
   # Spec 0247 R31, plan step 22(a): black-box suites of the TypeScript
   # MemPalace transcript hook and of its wiring; the Bash oracle runs through
   # the shim in the `mempalace` job.
