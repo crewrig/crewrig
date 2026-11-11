@@ -8,6 +8,8 @@
 
 import fs from "node:fs";
 
+import { isProvenanceCarrying } from "./provenance-carrying.ts";
+
 /** Output sinks; one call per line, without a trailing newline. */
 export interface MigrateIo {
   out: (line: string) => void;
@@ -53,17 +55,9 @@ export function frontmatterName(file: string): string {
   return "";
 }
 
-/** True iff the leading frontmatter has an indented `provenance:` then a `canonical:` value. */
+/** True iff the leading frontmatter has `metadata.provenance.canonical` (spec 0053 delta-01 R26). */
 export function hasProvenance(file: string): boolean {
-  let seenProv = false;
-  for (const line of frontmatterLines(file)) {
-    if (/^\s+provenance:\s*$/.test(line)) {
-      seenProv = true;
-      continue;
-    }
-    if (seenProv && /^\s+canonical:\s*\S/.test(line)) return true;
-  }
-  return false;
+  return isProvenanceCarrying(file);
 }
 
 /** Sorted (byte order, like a C-locale glob) non-dot children of `dir`; [] when unreadable. */
