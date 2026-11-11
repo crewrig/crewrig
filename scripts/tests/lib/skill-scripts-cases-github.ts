@@ -166,6 +166,33 @@ export const CHECK_PINNED_ACTIONS: readonly SkillCase[] = [
       "  -   uses: actions/setup-node@v4",
     ),
   ),
+  // issue #1845: the step form and the job-level reusable-workflow form are both reported
+  file(
+    "step-and-reusable-forms",
+    lines(
+      "jobs:",
+      "  build:",
+      "    runs-on: ubuntu-latest",
+      "    steps:",
+      "      - uses: actions/checkout@v4",
+      `      - uses: "actions/cache@${SHA40}"`,
+      "  other:",
+      "    uses: org/repo/.github/workflows/x.yml@v1",
+    ),
+  ),
+  file(
+    "step-form-tab-indented",
+    lines("steps:", "\t- uses: actions/checkout@v4", " \t-\tuses: actions/cache@v3"),
+  ),
+  file(
+    "step-form-non-matching",
+    lines(
+      "steps:",
+      "  -uses: actions/glued@v1",
+      "  - - uses: actions/nested@v1",
+      "  - name: uses: x",
+    ),
+  ),
   file(
     "trailing-comment",
     wf(
