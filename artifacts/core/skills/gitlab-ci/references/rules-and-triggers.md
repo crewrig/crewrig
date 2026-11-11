@@ -221,8 +221,8 @@ unset variable is the empty string (falsy).
 | `pipeline` | Created by another pipeline's `trigger:` (multi-project, upstream). |
 | `parent_pipeline` | Created by a parent via `trigger:include` (child pipeline). |
 
-Mapping the neutral trigger vocabulary onto these is the job of
-`scripts/build-ci.ts` — see the cross-reference at the end.
+Mapping the neutral trigger vocabulary onto these is the job of the
+CrewRig repository's CI generator — see the cross-reference at the end.
 
 ## Expression operators in `rules:if`
 
@@ -449,8 +449,9 @@ workflow:
 
 ## Cross-reference — this repository
 
+This section applies to the CrewRig repository only.
 The generated `.gitlab-ci.yml` at the repo root is **derived**, not
-hand-authored: `scripts/build-ci.ts` (spec 0048) reads the neutral
+hand-authored: the generator (spec 0048) reads the neutral
 capability reference `ci/ci-capabilities.yml` and maps its
 engine-neutral trigger vocabulary — `push` / `pull-request` / `tag` /
 `scheduled` / `manual`, qualified by `branches` / `paths` /
@@ -462,3 +463,7 @@ in [`docs/ci-reference-format.md`](../../../../../docs/ci-reference-format.md)
 — do not redefine it here. This reference documents the GitLab target
 syntax the generator emits; the format doc owns the neutral source
 contract.
+
+<!-- crewrig-repo-only:start -->
+CrewRig repository only: the generator is `scripts/build-ci.ts`.
+<!-- crewrig-repo-only:end -->

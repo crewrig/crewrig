@@ -14,6 +14,12 @@ document wins.
 
 ### Ticket pickup check
 
+This step applies to the CrewRig repository only; the scripts it names do not
+ship with the skill. Manual equivalent for any other repository: read the
+issue's assignees (`gh issue view <related-issue> --json assignees`) and, if
+the issue is assigned to someone else, stop and tell the user instead of
+authoring on it.
+
 Before anything else — before the id is secured, and before any branch,
 filename, or frontmatter exists — the skill runs the cross-contributor
 ownership check of `docs/ticket-ownership.md`
@@ -24,10 +30,12 @@ spec and delta-spec mode alike:
 task -x ticket-pickup -- --issue <related-issue>
 ```
 
+<!-- crewrig-repo-only:start -->
 Without `task`, run `node scripts/lib/node-floor-guard.js`, then — only if
 it exits `0` — `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON
 scripts/ticket-pickup.ts --issue <related-issue>`, as two separate steps
 (never chained with `&&`).
+<!-- crewrig-repo-only:end -->
 
 Only exit `0` lets the skill continue. On any other exit the skill SHALL
 stop before securing an id or creating a branch, and relay the tool's stderr
@@ -40,9 +48,17 @@ the same session.
 
 ### ID allocation
 
-`<NNNN>` is **secured on the reference repository before the spec file is
-written**, by `scripts/reserve-spec-id.ts`. The skill SHALL NOT compute it
-from the local working tree.
+In the CrewRig repository, `<NNNN>` is **secured on the reference repository
+before the spec file is written**, by the reservation tool. The skill SHALL
+NOT compute it from the local working tree.
+
+<!-- crewrig-repo-only:start -->
+CrewRig repository only: the reservation tool is `scripts/reserve-spec-id.ts`.
+<!-- crewrig-repo-only:end -->
+
+Manual equivalent for a repository without the tool: take the next unused
+number from the specs directory after fetching the default branch, and check
+open pull requests and branches for the same number before using it.
 
 What this replaces, and why (`specs/0112-spec-id-reservation.md`): an
 unsynchronised `max(existing) + 1` hands the same number to two sessions
@@ -56,9 +72,11 @@ Run the tool FIRST, before the filename, the branch name, or the
 frontmatter exist (requirement 2 — so that all three agree from the first
 commit):
 
+<!-- crewrig-repo-only:start -->
 ```sh
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/reserve-spec-id.ts --issue <related-issue>
 ```
+<!-- crewrig-repo-only:end -->
 
 The first line of stdout is always the id. The exit code is the only thing
 the skill interprets:
@@ -92,7 +110,7 @@ Three obligations, each closing a tempting shortcut:
   retry budget already exhausted by lost races.
 - On exit `3` the mark is **not optional**. It is the machine-readable
   statement that the id may still be taken by another session, and it is
-  what `scripts/check-spec-id-reserved.ts` reports at pull-request time —
+  what the CrewRig CI check `check-spec-id-reserved` reports at pull-request time —
   blocking for a pull request from the reference repository, non-blocking
   for one from a fork, where a maintainer secures the id and removes the
   mark before merge (requirement 10).
@@ -173,10 +191,15 @@ mandatory sections with the three delta sections defined in
 ### Self-validation (best-effort)
 
 Before writing, the skill SHALL run the spec linter on the drafted file
-(`task spec:lint -- specs/<NNNN>-<slug>.md`, i.e.
-`scripts/lib/spec-linter.js`) and fix what it reports. It reads
-`docs/spec-format.md` only when the linter output requires it. The linter
-is the enforcement; this run replaces a manual re-read of the format.
+(CrewRig repository only: `task spec:lint -- specs/<NNNN>-<slug>.md`) and fix
+what it reports. It reads `docs/spec-format.md` only when the linter output
+requires it. The linter is the enforcement; this run replaces a manual
+re-read of the format.
+<!-- crewrig-repo-only:start -->
+The linter itself is `scripts/lib/spec-linter.js`.
+<!-- crewrig-repo-only:end -->
+Manual equivalent for a repository without the linter: re-read the drafted
+file against that repository's spec format and fix any mismatch.
 
 In addition, per R18 of spec 0002, the skill SHALL enforce a mandatory
 null-case and permitted-path self-check during the authoring phase. For

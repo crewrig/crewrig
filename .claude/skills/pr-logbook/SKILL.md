@@ -11,7 +11,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.4.0"
+    version: "1.4.1"
 ---
 
 
@@ -199,9 +199,12 @@ This is not a step in the composition lifecycle — it is a *rule*
 that applies to any PR you compose whose diff touches a
 `artifacts/core/skills/*/SKILL.md` or
 `artifacts/core/agents/*/AGENT.md` source. The PR MUST bump
-`provenance.version` in the same diff. The rule is enforced by
-`scripts/check-skill-versions.ts` in CI (and locally via
-`task check-skill-versions`).
+`provenance.version` in the same diff. The rule is enforced in CI by a
+version-bump check.
+<!-- crewrig-repo-only:start -->
+CrewRig repository only: the check is `scripts/check-skill-versions.ts`,
+run locally via `task check-skill-versions`.
+<!-- crewrig-repo-only:end -->
 
 SemVer applies:
 
