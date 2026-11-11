@@ -155,7 +155,10 @@ describe("installTierToHome, Copilot", () => {
   });
 
   it("skips a staged directory without SKILL.md and creates no empty target", () => {
-    stage("library", ".github", { "skills/nodoc/scripts/run.ts": "x\n", "skills/s/SKILL.md": "s\n" });
+    stage("library", ".github", {
+      "skills/nodoc/scripts/run.ts": "x\n",
+      "skills/s/SKILL.md": "s\n",
+    });
     installTierToHome({ ctx: ctxOf(), cli: "copilot", tier: "library" });
     assert.deepEqual(fs.readdirSync(path.join(home, ".copilot/skills")), ["s"]);
     assert.deepEqual(out, ["  Copied dir: library/s -> ~/.copilot/skills/s"]);
