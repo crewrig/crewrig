@@ -32,9 +32,7 @@ function run(script: string, args: string[], opts: { input?: string; cwd?: strin
 
 /** Only the citation and fence lines of the linter output (version/frontmatter legs excluded). */
 function citationLines(out: string): string[] {
-  return out
-    .split("\n")
-    .filter((l) => /unresolved script citation|crewrig-repo-only/.test(l));
+  return out.split("\n").filter((l) => /unresolved script citation|crewrig-repo-only/.test(l));
 }
 
 function lintFixture(name: string): { res: Run; lines: string[]; skill: string } {
