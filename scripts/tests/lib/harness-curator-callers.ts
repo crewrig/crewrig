@@ -40,7 +40,8 @@ export const CALLERS: readonly Caller[] = [
   // The text moved to references/ (spec 0269); the guard follows it.
   {
     file: "artifacts/library/skills/harness-report/references/operating-mode.md",
-    required: [`node ${SKILL}/scripts/curate.ts --apply`],
+    // Spec 0289 R7: no source-tree path; the step runs the installed skill's own entry through Node.
+    required: ["node <harness-curator-skill-dir>/scripts/curate.ts --apply"],
   },
   {
     file: "artifacts/library/skills/harness-report/references/identify-and-route.md",
