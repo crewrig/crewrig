@@ -85,6 +85,8 @@ Worst case for one skill: 30 runs of 1 dollar and 300 seconds each; with four ru
 
 The spend is attributed to a ticket through the usage subsystem before any model call: `node scripts/usage-task.ts set --channel explicit --asset forge-issue:<owner>/<repo>#<number>`. `<number>` is `--ticket`, else the number in the branch name `<prefix>/<NNNN>-<slug>`; with neither the run exits 3. `<owner>/<repo>` comes from the `origin` remote. Measured executor cost is read from the executor's result record into each `metrics.json`; a run killed at a limit may leave no result record, so its cost is `unknown` and totals are then printed as a lower bound.
 
+The turn limit is counted by the runner from the executor's stream: one turn is one assistant message, identified by its `message.id`, so a message split over several stream events counts once. The `--max-turns` flag is also passed to `claude`, but it is absent from `claude --help`: that is an assumption, to verify at the first maintainer smoke run, and the runner-side count is the primary guard.
+
 ## Statuses
 
 `pass`, `regression` (exit 0 unless `REGRESSION_BLOCKING`), `invalid` (the `evals.json` is invalid, or a symlink or a non-ignored untracked file sits under a hashed path), `no-evals` (warning; exit 0 unless `MISSING_EVALS_BLOCKING`), `new` (the skill does not exist on the base branch; not compared), `mock`, `error` (executor or judge failure with credentials present, a refused plan, a runtime cap). The attestation check adds `stale`. Mock mode reports `mock`, marks every `grading.json` and `benchmark.json` with `"mock": true`, writes no results file and never produces a regression or blocking outcome.
@@ -102,6 +104,10 @@ A non-mock run with status `pass`, `regression` or `new` writes `evals/results.j
 The pull-request pipeline runs `task ci:skill-evals-attestation`, which makes no model call and needs no credential. For every skill whose content hash differs from the base, or that is new, it decides one status: `no-evals`; `invalid`; `stale` (the results file is absent, unparseable, incomplete, a mock, for another skill, records a status other than `pass`, `regression` or `new`, or records a different content hash); else the recorded status. `invalid` and `stale` always block. A pull request that changes only `evals/evals.json` needs a fresh results file, because the hash includes that file. `task ci:pre-push` includes the same check.
 
 **Trust model.** The attestation is self-declared by a same-repository contributor: nothing proves the recorded results came from a run of the runner, so the file is forgeable by design, and a forged or hand-edited file is visible in code review. The check verifies freshness (the recorded hash matches the current content), not truth. Nothing here is a guarantee that a recorded result is genuine.
+
+## Known limitation: fixture files are not hashed
+
+The content hash covers `evals/evals.json` but not the fixture files its `files` entries name (for example `evals/files/diff.txt`). Editing a fixture alone therefore does **not** make `evals/results.json` stale, and the attestation check will not notice. After editing a fixture, re-run the evals and commit the new results file yourself.
 
 ## File contract
 

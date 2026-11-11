@@ -15,7 +15,8 @@ import { isRegression } from "../lib/skill-evals/benchmark.ts";
 import type { MockScript } from "../lib/skill-evals/executor/mock.ts";
 import { contentHash, readWorkingTree } from "../lib/skill-evals/hash.ts";
 import type { Snapshot } from "../lib/skill-evals/hash.ts";
-import { skillRel } from "./lib/skill-evals-fixtures.ts";
+import { cleanEnv, selectionOf, skillRel } from "./lib/skill-evals-fixtures.ts";
+import { runEvals } from "../lib/skill-evals/run.ts";
 import { judgeFetch, makeRig, plainEvals } from "./lib/skill-evals-run-rig.ts";
 
 const resultsFile = (repo: string) => path.join(repo, skillRel("demo"), "evals", "results.json");
@@ -295,6 +296,38 @@ test("scripts changes are replayed: the base run installs the merge-base scripts
     assert.equal(g.expectations[0].passed, true);
     assert.match(g.expectations[0].evidence, /exit code 5 \(expected 5\)/);
     assert.match(g.expectations[0].text, /scripts\/run\.sh/);
+  } finally {
+    rig.cleanup();
+  }
+});
+
+test("evals.json is parsed from the single snapshot read: a change on disk after the snapshot is not observed", async () => {
+  const rig = makeRig({
+    evalsCount: 1,
+    mock: false,
+    env: { ANTHROPIC_API_KEY: "sk-test" },
+    script: () => ({ files: { "answer.md": "x" }, transcript: "Assistant: the quick brown fox" }),
+  });
+  try {
+    const sel = selectionOf(rig.repo, "demo"); // the snapshot is read here
+    const file = path.join(rig.repo.root, skillRel("demo"), "evals", "evals.json");
+    fs.writeFileSync(file, "{ not json at all");
+    const r = await runEvals(
+      {
+        repoRoot: rig.repo.root,
+        out: rig.out,
+        mock: false,
+        env: cleanEnv({ ANTHROPIC_API_KEY: "sk-test" }),
+        fetchImpl: judgeFetch().fetch,
+        executor: rig.executor,
+        sleep: async () => undefined,
+        ticket: "1849",
+        declare: () => ({ ok: true }),
+      },
+      [sel],
+    );
+    assert.equal(r.results[0]?.status, "pass", r.text + r.stderr);
+    assert.ok(rig.executor.calls.length > 0, "the evals of the snapshot were run");
   } finally {
     rig.cleanup();
   }

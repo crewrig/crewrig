@@ -41,16 +41,28 @@ export const DEFAULT_ATTEST_SETTINGS: AttestSettings = {
 };
 
 /** The evals.json validity of a skill directory: the list of violations (empty when valid). */
-export function evalsViolations(skillDirAbs: string, skillName: string, relFile: string): string[] {
-  const file = path.join(skillDirAbs, "evals", "evals.json");
-  if (!fs.existsSync(file))
+export function evalsViolations(
+  skillDirAbs: string,
+  skillName: string,
+  relFile: string,
+  /** The evals.json bytes of the single snapshot read (undefined: the file is not in the snapshot). */
+  text: string | undefined,
+): string[] {
+  if (text === undefined)
     return [`${relFile}: $: R1: evals/ exists but evals/evals.json is missing`];
-  const { violations } = validateEvals(fs.readFileSync(file, "utf8"), {
+  const { violations } = validateEvals(text, {
     file: relFile,
     skillDir: skillDirAbs,
     skillName,
   });
   return violations.map(formatViolation);
+}
+
+/** evals/evals.json as read once into the snapshot that is hashed and installed (never re-read from disk). */
+export function snapshotEvalsText(sel: Selection): string | undefined {
+  if (sel.head.kind !== "ok") return undefined;
+  const f = sel.head.files.find((x) => x.rel === "evals/evals.json");
+  return f === undefined ? undefined : f.bytes.toString("utf8");
 }
 
 export function attestSelection(
@@ -75,7 +87,12 @@ export function attestSelection(
   if (sel.head.kind === "invalid") return mk("invalid", sel.head.problems.join("; "), true);
   if (sel.head.kind !== "ok" || sel.headHash === undefined)
     return mk("invalid", "the skill cannot be read", true);
-  const bad = evalsViolations(sel.skill.dirAbs, name, `${sel.skill.dirRel}/evals/evals.json`);
+  const bad = evalsViolations(
+    sel.skill.dirAbs,
+    name,
+    `${sel.skill.dirRel}/evals/evals.json`,
+    snapshotEvalsText(sel),
+  );
   if (bad.length > 0) return mk("invalid", bad.join("; "), true);
   const rf = resultsPath(sel.skill.dirAbs);
   const text = fs.existsSync(rf) ? fs.readFileSync(rf, "utf8") : undefined;

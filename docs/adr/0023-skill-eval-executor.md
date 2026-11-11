@@ -34,5 +34,5 @@ The attestation is self-declared: nothing proves a results file came from a run 
 ## Consequences
 
 - The runner needs the `claude` binary; Windows is unsupported for the executor.
-- The first live runs are a maintainer smoke: `total_cost_usd` in the result record, `--max-turns`, the pinned model name, `claude -p` as a judge with a fresh configuration directory.
+- The first live runs are a maintainer smoke: `total_cost_usd` in the result record, `--max-turns` (an assumption: absent from `claude --help`; the runner counts turns itself, one per assistant `message.id`), the pinned model name, `claude -p` as a judge with a fresh configuration directory.
 - The caps and the regression tolerance are provisional until the pilot has produced measured costs.

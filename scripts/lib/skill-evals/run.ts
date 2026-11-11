@@ -18,7 +18,7 @@ import { buildBenchmark, configMean, isRegression, mean } from "./benchmark.ts";
 import type { Configuration, RunRecord } from "./benchmark.ts";
 import { CostMeter, planSkill, preflight, RunBudget } from "./budget.ts";
 import type { Limits, SkillPlan } from "./budget.ts";
-import { evalsViolations } from "./attest.ts";
+import { evalsViolations, snapshotEvalsText } from "./attest.ts";
 import { planCredentials, readOverride } from "./credentials.ts";
 import { ClaudeCodeExecutor } from "./executor/claude-code.ts";
 import { MockExecutor } from "./executor/mock.ts";
@@ -217,21 +217,19 @@ export async function runEvals(
       continue;
     }
     const rel = `${sel.skill.dirRel}/evals/evals.json`;
-    const bad = evalsViolations(sel.skill.dirAbs, name, rel);
+    const evalsText = snapshotEvalsText(sel);
+    const bad = evalsViolations(sel.skill.dirAbs, name, rel, evalsText);
     if (sel.head.kind !== "ok" || sel.headHash === undefined || bad.length > 0) {
       results.push(
         blank(name, "invalid", true, bad.length > 0 ? bad : ["the skill cannot be read"]),
       );
       continue;
     }
-    const parsed = validateEvals(
-      fs.readFileSync(path.join(sel.skill.dirAbs, "evals", "evals.json"), "utf8"),
-      {
-        file: rel,
-        skillDir: sel.skill.dirAbs,
-        skillName: name,
-      },
-    );
+    const parsed = validateEvals(evalsText ?? "", {
+      file: rel,
+      skillDir: sel.skill.dirAbs,
+      skillName: name,
+    });
     if (parsed.evals === undefined) {
       results.push(
         blank(

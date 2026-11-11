@@ -65,7 +65,7 @@ interface StreamEvent {
   total_cost_usd?: number;
   usage?: TokenUsage;
   num_turns?: number;
-  message?: { content?: unknown };
+  message?: { id?: string; content?: unknown };
   result?: unknown;
 }
 
@@ -113,6 +113,7 @@ export class ClaudeCodeExecutor implements Executor {
       let buffer = "";
       let transcript = `# Transcript (${req.label})\n\nPrompt: ${req.prompt}\n\n`;
       let turns = 0;
+      const seenMessages = new Set<string>();
       let result: StreamEvent | undefined;
       let limit: LimitName | undefined;
       let killedBy: "limit" | "abort" | undefined;
@@ -195,7 +196,11 @@ export class ClaudeCodeExecutor implements Executor {
         if (ev.type === "result") result = ev;
         const rendered = renderEvent(ev);
         if (rendered !== "") transcript += `${rendered}\n\n`;
-        if (ev.type === "assistant") {
+        // A turn is one assistant MESSAGE: a message split over several stream events shares its
+        // message.id and counts once. An event with no id counts on its own.
+        const mid = ev.message?.id;
+        if (ev.type === "assistant" && (mid === undefined || !seenMessages.has(mid))) {
+          if (mid !== undefined) seenMessages.add(mid);
           turns++;
           if (turns > req.limits.turns && limit === undefined) {
             limit = "turns";

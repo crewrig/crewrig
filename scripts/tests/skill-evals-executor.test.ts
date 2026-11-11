@@ -195,6 +195,34 @@ test("a run past the turn limit is killed on the first turn beyond it and tagged
   }
 });
 
+test("a turn is one assistant message: events sharing a message.id count once", async () => {
+  const dir = tmpDir();
+  const ev = (id: string, text: string) => ({
+    type: "assistant",
+    message: { id, content: [{ type: "text", text }] },
+  });
+  const bin = stub(
+    dir,
+    `${stream(ev("m1", "a"), ev("m1", "b"), ev("m1", "c"), ev("m2", "d"), result())}`,
+  );
+  const split = request({ bin, limits: { turns: 2, seconds: 30, usd: 1 } });
+  const bin2 = stub(
+    dir,
+    stream(ev("m1", "a"), ev("m2", "b"), ev("m3", "c")) + "\nsetInterval(() => {}, 1000);",
+  );
+  const over = request({ bin: bin2, limits: { turns: 2, seconds: 30, usd: 1 } });
+  try {
+    const ok = await new ClaudeCodeExecutor().run(split.req);
+    assert.equal(ok.limit, undefined, "4 events but 2 messages: within the limit of 2");
+    assert.equal(ok.turns, 2);
+    const killed = await new ClaudeCodeExecutor().run(over.req);
+    assert.equal(killed.limit, "turns", "a third distinct message exceeds the limit");
+  } finally {
+    for (const r of [split, over]) fs.rmSync(r.root, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("a result record that reports a turn or budget limit is a limit, with its measured cost", async () => {
   for (const [subtype, limit] of [
     ["error_max_turns", "turns"],
