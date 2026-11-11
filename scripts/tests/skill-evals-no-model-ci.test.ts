@@ -39,7 +39,7 @@ test("skill-evals-attestation: pull-request only, full history, no secret, only 
     c.trigger?.map((t) => t.on),
     ["pull-request"],
   );
-  assert.deepEqual(c.paths, ["artifacts/**/skills/**"]);
+  assert.equal(c.paths, undefined, "unfiltered: the check selects changed skills itself");
   assert.equal(c.requires?.["history-depth"], "full");
   assert.deepEqual(Object.keys(c.env ?? {}), ["BASE_REF"]);
   assert.deepEqual(c.command, ["task ci:skill-evals-attestation"]);

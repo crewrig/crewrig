@@ -2427,8 +2427,6 @@ skill-evals-attestation:
     - "task ci:skill-evals-attestation"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
-        - "artifacts/**/skills/**"
 
 skill-evals-tests:
   stage: integration
@@ -2442,18 +2440,10 @@ skill-evals-tests:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &skill-evals-tests-changes-1
         - "scripts/lib/skill-evals/**"
-        - "scripts/skill-evals.ts"
-        - "scripts/skill-evals-attestation.ts"
+        - "scripts/skill-evals*.ts"
         - "scripts/tests/skill-evals-*.test.ts"
         - "scripts/tests/lib/skill-evals-*.ts"
-        - "tests/e2e/lib/llm_judge.ts"
-        - "tests/e2e/lib/llm_judge_drivers/**"
-        - "scripts/lib/governance/**"
-        - "scripts/lib/build-components/**"
-        - "scripts/check-skill-versions.ts"
-        - "scripts/tests/lib/build-fixture-tree.ts"
-        - "scripts/tests/fixtures/build-components/**"
-        - "artifacts/core/skills/pr-reviewer/scripts/lint-skill.ts"
+        - "tests/e2e/lib/llm_judge*"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *skill-evals-tests-changes-1
 
