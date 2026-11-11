@@ -11,7 +11,7 @@ version: 1.3.0
 # Skill- and extension-bundled scripts in TypeScript
 
 *Delta 03 of `specs/0258-skill-extension-bundled-scripts-typescript.md`. Source: issue
-#1850. Requirement 34 of the base spec records, as an existing asymmetry that it "SHALL NOT
+GitHub issue 1850. Requirement 34 of the base spec records, as an existing asymmetry that it "SHALL NOT
 change", that the Copilot CLI user-scope install places only the `SKILL.md` of a skill.
 That sentence is superseded: a skill that tells the model to run a bundled script would
 point at a file that does not exist in `~/.copilot/skills/<name>/`, and every script the
