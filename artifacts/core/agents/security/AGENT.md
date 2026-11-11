@@ -7,10 +7,11 @@ type: agent
 metadata:
   model:
     intelligence: high
+  tools: [read, search, web]
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.2.0"
+    version: "1.3.0"
 ---
 
 # Security Agent
@@ -43,4 +44,6 @@ When a recognition signal fires (see `config/TOOLS.md` →
 the `harness-report` skill
 (`artifacts/library/skills/harness-report/SKILL.md`). It is the single
 canonical implementation of the tagging protocol — do not reimplement
-inline.
+inline. Your tool set withholds the MCP tool that records a friction; when it
+does, report the friction (offender, signal, evidence) in your final reply for
+the delegating session to tag.

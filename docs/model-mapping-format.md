@@ -224,6 +224,41 @@ SHALL be present and non-empty (R30, R33, A14a) and its `holds` declaration's
 ground SHALL be a `citation`, never an `assumption` — R33's "not on the
 strength of an indeterminate or absent observation" (A14b, *coherence*).
 
+**The recorded guard (spec 0291).** `model-mappings/claude.yml` records the
+guard `directed`, with both terms `holds: false`. The two terms are
+`defect-not-established-fixed`, narrowed to a standard GitHub-hosted account
+and citing the probe of 2026-11-10 on GitHub Copilot CLI 1.0.109 recorded in
+issue 1851, and `copilot-reader-fails-on-unserved-model`, which states the
+hazard itself: that a Copilot CLI reader of `.claude/agents/` fails or
+silently misroutes a subagent whose `model:` it cannot serve. Term 1 concerns
+the specific upstream defect (github/copilot-cli#4437); term 2 concerns the
+observable outcome on a Copilot reader whatever the cause. The probe saw a
+warning and a fallback to the session model, so term 2 does not hold, and an
+adopter on a bring-your-own-key provider flips term 2, not term 1
+([`docs/org-model-mapping-override.md`](org-model-mapping-override.md)). The
+probe does not cover a bring-your-own-key provider nor an account on which
+Claude models are served: that is an accepted, unverified residual risk
+(spec 0291 R4).
+
+**One carrier at a time (spec 0291 R2).** The `model` item is directed onto
+the guidance surface only when it is not directed onto the frontmatter
+surface: under a `withheld` guard, or when the resolved value is outside the
+frontmatter key's declared domain. Under a `directed` guard with a readable
+value the `model:` key alone carries it and the guidance sentence
+`Run this agent on the <model> model.` is not written. The `reasoning` item
+is unchanged. This supersedes, as a resolver rule, the word "additionally"
+of spec 0197 R31.
+
+**Superseded text.** Spec 0291 supersedes, without editing those specs:
+spec 0143 delta-01 R8 (its bring-your-own-key clause, narrowed to a standard
+account); spec 0197 R30 (the second term); the word "additionally" in spec
+0197 R31; spec 0197 R37 (recorded `withheld`) and its scenario "the
+shared-read guard is directed"; spec 0197 delta-02 ("stays withheld"); and
+the statements in spec 0200 that the guard stays `withheld`. Spec 0197 R31's
+withheld clause, R32 and R35 stay in force: a `withheld` guard still writes
+no `model:` key, keeps the sentence, and emits one `guard-withheld` note per
+agent.
+
 ### `zero-offerings` and `observed-not-declared`
 
 ```yaml
@@ -410,7 +445,7 @@ reasoning item to exist (A17); an out-of-band surface may not declare `key`,
 `domain`, `projection`, or `template` (A18); a guidance template's
 placeholder set must equal its `carries` set (A20a) and respect the
 one-per-sentence rule (A20b); a guard's `state` must agree with its terms
-(A23); a `grounds` entry's `declares:` target must resolve and its aspect
+(A23, whichever state the committed file records: spec 0291 R4's rollback is one step); a `grounds` entry's `declares:` target must resolve and its aspect
 must be in the closed vocabulary (A25); every offering must declare
 `provides.intelligence` (A26); every `item:` value must be in the closed
 vocabulary (A27).

@@ -2,8 +2,9 @@
 name: security
 description: "Generic security review agent. Threat modeling, secret hygiene, realistic-threat code review, dependency audit. Findings only — does not implement fixes unless explicitly asked."
 model: gemini-3.1-pro-preview
+tools: [read_file, read_many_files, list_directory, grep_search, glob, web_fetch, google_web_search]
 ---
-<!-- crewrig-provenance: version="1.2.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.3.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Security Agent
 
@@ -35,4 +36,6 @@ When a recognition signal fires (see `config/TOOLS.md` →
 the `harness-report` skill
 (`artifacts/library/skills/harness-report/SKILL.md`). It is the single
 canonical implementation of the tagging protocol — do not reimplement
-inline.
+inline. Your tool set withholds the MCP tool that records a friction; when it
+does, report the friction (offender, signal, evidence) in your final reply for
+the delegating session to tag.

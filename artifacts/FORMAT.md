@@ -107,7 +107,7 @@ The `claude:` section adds Claude Code-specific frontmatter fields:
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `allowed-tools` | string[] | *(none)* | Tools the skill can use |
+| `allowed-tools` | string[] | *(none)* | Tools the skill or command can use. Skills and commands only: no agent emitter reads it, so an agent source declares its allowlist under `metadata.tools` (below) |
 | `user-invocable` | boolean | `true` | Can the user invoke with `/name`? |
 | `disable-model-invocation` | boolean | `false` | Prevent auto-invocation? |
 | `context` | string | *(none)* | Run context (`fork` for isolated subagent) |
@@ -137,9 +137,11 @@ inheritance). Skills and commands do not carry this field.
 `metadata.model:` is the **only** surface on which an agent source
 declares a model need — there is no other key, on any section, that
 states one. On the upstream-owned tiers (`artifacts/core/` and
-`artifacts/library/`), a source's `metadata:` block admits exactly two
-keys, `provenance` and `model`; `scripts/check-component-metadata-keys.ts`
-is the gate that rejects any other (spec 0200 requirement 8).
+`artifacts/library/`), a source's `metadata:` block admits exactly three
+keys, `provenance`, `model` and, on an `AGENT.md` only, `tools`;
+`scripts/check-component-metadata-keys.ts` is the gate that rejects any
+other, and `tools` on a skill or command source (spec 0200 requirement 8,
+spec 0291 R9).
 
 | Key | Type | Domain | Unconstrained state |
 |---|---|---|---|
@@ -188,6 +190,80 @@ above SHALL update this section and `scripts/check-agent-profiles.ts` in
 the same change — the same obligation
 [`docs/model-mapping-format.md`](../docs/model-mapping-format.md) → *Domains*
 already carries for the mapping side.
+
+### `metadata.tools:` (optional, agent sources only)
+
+An **agent** source MAY declare which classes of tool the agent needs under
+`metadata.tools:`, sibling of `metadata.model:` (spec 0291). It is a
+non-empty YAML list of strings drawn from a closed vocabulary, without
+duplicates, and CLI-agnostic like the capability profile: each emitter
+translates the classes to its own CLI's tool names, in the vocabulary's
+order whatever the order in the source. The key is opt-in: an agent that
+declares nothing gets no `tools` key on any CLI and compiles exactly as it
+did before. A top-level `tools:` key is never used, because the root
+frontmatter keeps to the agentskills.io fields.
+
+```yaml
+metadata:
+  model:
+    intelligence: high
+  tools: [read, search, web]
+```
+
+| Class | Claude Code | Copilot CLI | Gemini CLI |
+|---|---|---|---|
+| `read` | `Read` | `read` | `read_file`, `read_many_files`, `list_directory` |
+| `search` | `Grep`, `Glob` | `search` | `grep_search`, `glob` |
+| `edit` | `Edit`, `Write` | `edit` | `write_file`, `replace` |
+| `execute` | `Bash` | `execute` | `run_shell_command` |
+| `web` | `WebFetch`, `WebSearch` | `web` | `web_fetch`, `google_web_search` |
+| `agent` | `Agent` | `agent` | *(none)* |
+
+- Claude Code receives a comma-separated string, `tools: Read, Grep, Glob`.
+  Copilot CLI and Gemini CLI receive a one-line flow sequence, such as
+  `tools: [read, search]`. The line follows the directed `model:` line and
+  precedes the provenance block.
+- Gemini CLI documents that subagents cannot call other subagents, so the
+  `agent` class has no Gemini name: it is omitted with one `tools-drop`
+  record (reason `no-equivalent-on-cli`), and a declaration that leaves no
+  Gemini tool stops the build rather than write an empty list.
+- Antigravity CLI receives no `tools` key. Its tool names are unverified
+  and a misspelled name may hang the subagent, so none is guessed; the
+  build emits one `tools-drop` record (reason `unsupported-on-cli`) for each
+  declaring agent, and the gap is recorded in
+  [`docs/cli-matrix.md`](../docs/cli-matrix.md) (row 4c).
+- The build stops, naming the source file, the key, the offending value and
+  the six classes, when `metadata.tools` is not a list, is empty, holds a
+  string outside the vocabulary or holds a duplicate, whichever CLI targets
+  are selected.
+
+**What an allowlist withholds.** A tool allowlist withholds every tool it
+does not name. On Claude Code this includes the MCP tools, unless listed,
+and `SendMessage`, `Skill`, `ToolSearch` and `TodoWrite`, none of which the
+six classes can express (<https://code.claude.com/docs/en/sub-agents>, read
+2026-11-11; that page states that an allowlist excludes the MCP tools it
+does not list; that it also withholds `SendMessage`, `ToolSearch` and
+`TodoWrite` is an inference from it, not a statement). An agent whose body
+requires one of those SHALL NOT declare `metadata.tools` until the
+vocabulary covers it. An agent that declares an allowlist and carries a
+`harness-report` paragraph says, in its body, that it reports a friction in
+its final reply when its tool set withholds the MCP tool that records it.
+
+**The rule:** an allowlist is declared only for an agent whose classes exclude execute and edit.
+With `execute` the restriction protects nothing, since a shell can write files
+and mutate remote state, while the allowlist withholds every tool it does
+not name, MCP tools included. `scripts/check-component-metadata-keys.ts`
+enforces it on `artifacts/core/` and `artifacts/library/`, rejecting a
+`metadata.tools` that contains `execute` or `edit`; the adopter tiers
+(`artifacts/community/`, `artifacts/org/`) and the build itself are not
+bound by it and accept the whole vocabulary.
+
+**The shared `.claude/agents/` surface.** Copilot CLI also reads
+`.claude/agents/`. It treats `Bash`, `Read`, `Edit`, `Write`, `Grep`,
+`Glob`, `WebFetch`, `WebSearch` and `Task` as aliases of its own names, but
+`Agent` is not an alias and is ignored there. A declared `agent` class
+therefore reaches Claude Code but not a Copilot reader of that directory,
+which fails toward fewer tools.
 
 ## Build Outputs
 
@@ -315,9 +391,24 @@ Claude Code → `.claude/agents/<name>.md`
 ---
 name: <name>
 description: <description>
+license: <license>        # when the source declares it
+model: <model>            # directed by the model mapping when the source declares an intelligence rung
+tools: <Claude names>     # when the source declares metadata.tools
 ---
 <body>
 ```
+
+Copilot CLI → `.github/agents/<name>.md` carries the same `name`,
+`description`, directed lines and `tools:` (its own primary names, as a flow
+sequence); Antigravity CLI → `.agents/agents/<name>.md` carries `name`,
+`description` and the provenance block only. Gemini CLI's file above gains
+`model:` and `tools:` (native Gemini names) the same way.
+
+The model has one carrier at a time (spec 0291 R2): on Claude Code the
+`model:` key carries it, and the description no longer ends with
+`Run this agent on the <model> model.`; that sentence stays on the
+Antigravity description, whose target has no frontmatter model surface, and
+returns to Claude Code when the mapping's guard is `withheld`.
 
 ## Provenance & Forks
 

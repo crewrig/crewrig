@@ -52,7 +52,8 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
   // The stream is composed, not a constant (spec 0291 R7): 22 copilot model-drop lines, one
   // guard-withheld note per agent only while the committed guard is `withheld`, and one
   // antigravity tools-drop line per source that declares `metadata.tools`. The shipped tree
-  // gives 24 lines (28 with `--check`, which adds the 4 no-mapping notes of docs/agent-profile-migration.md).
+  // gives 24 lines; `--check` emits the same 24 (it no longer runs the assembly suite), and the 4
+  // no-mapping notes of that suite's own synthetic root make 28 (docs/agent-profile-migration.md).
   const declaring = sources.filter((f) => {
     const meta = (readFrontmatter(tree.read(f)).metadata ?? {}) as Record<string, unknown>;
     return Object.hasOwn(meta, "tools");

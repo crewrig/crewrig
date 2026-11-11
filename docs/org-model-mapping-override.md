@@ -128,6 +128,54 @@ offerings:
 `replaces-core: true` means the core Gemini mapping is not consulted at
 all for this target; only `internal-model-a` is a candidate.
 
+## Example — re-withholding the model on a bring-your-own-key provider
+
+The core Claude Code mapping records its `copilot-shared-read` guard
+`directed`: every compiled `.claude/agents/<name>.md` carries a `model:` key
+and no `Run this agent on the <model> model.` sentence (spec 0291). The
+evidence behind that is a probe on a standard GitHub-hosted account; it does
+not cover a bring-your-own-key provider, where github/copilot-cli#4437 was
+reported. An adopter whose Copilot readers run on such a provider re-withholds
+the guard from `model-mappings/claude.org.yml`, setting the state and flipping
+the second term, `copilot-reader-fails-on-unserved-model`, which states what
+that adopter's Copilot readers may do (the first term concerns the upstream
+defect on a standard account and is left alone):
+
+```yaml
+target: claude
+
+guard:
+  state: withheld
+  terms:
+    - id: copilot-reader-fails-on-unserved-model
+      statement: >-
+        A GitHub Copilot CLI reader of .claude/agents/ fails, or silently
+        misroutes a subagent, whose `model:` it cannot serve.
+      holds: true
+      evidence: >-
+        Observed on our bring-your-own-key provider: <what was observed>.
+      grounds:
+        - declares: holds
+          assumption: "observed on our provider, no upstream probe covers it"
+```
+
+A replaced term is a whole node, so it carries every key a term requires
+(`statement`, `holds`, `evidence`, `grounds`), not `holds` alone. The checker
+requires the state and the terms to agree (rule A23): `withheld` while a term
+holds. The mapping in force then passes the checker, and the build, for every
+Claude Code agent, writes no `model:` key, keeps the sentence in the
+description and emits one `model-note ... guard-withheld` line (spec 0197 R31
+withheld clause and R32). Apart from the lines the guard drives, the compiled
+Claude files are unchanged.
+
+### Migration: the retired term id
+
+Before spec 0291 the guard's second term was
+`copilot-reader-consumes-claude-surface`. An organization file that overrides
+that id is addressed `guard/terms/<id>`: the mapping in force then holds three
+terms, which the checker rejects under rule A22 (a guard carries exactly two).
+Rename the override to `copilot-reader-fails-on-unserved-model`, as above.
+
 ## The merge report
 
 Every override — an added offering, a replaced surface, a removed
