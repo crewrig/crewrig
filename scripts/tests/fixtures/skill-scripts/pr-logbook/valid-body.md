@@ -11,3 +11,5 @@ Run `task ci:skill-scripts-ts` and expect it to pass.
 ## Detailed description (for agents)
 
 Added a script. Folded bugs: not applicable.
+
+<!-- markdownlint-disable-file -->

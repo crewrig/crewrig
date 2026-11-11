@@ -16,7 +16,13 @@ export const SKILL_DIR = path.resolve(
   "skills",
   "pr-logbook",
 );
-export const FIXTURES = path.resolve(import.meta.dirname, "..", "fixtures", "skill-scripts", "pr-logbook");
+export const FIXTURES = path.resolve(
+  import.meta.dirname,
+  "..",
+  "fixtures",
+  "skill-scripts",
+  "pr-logbook",
+);
 
 export type ScriptName = "lint-pr-body" | "resolve-logbook-target" | "flip-spec-status";
 

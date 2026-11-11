@@ -20,7 +20,17 @@ function spec(text: string | Buffer): string {
 }
 const read = (p: string): string => fs.readFileSync(p, "utf8");
 const doc = (statusLine: string, nl = "\n"): string =>
-  ["---", 'id: "0001"', statusLine, "version: 1.0.0", "---", "", "# Title", "status: approved", ""].join(nl);
+  [
+    "---",
+    'id: "0001"',
+    statusLine,
+    "version: 1.0.0",
+    "---",
+    "",
+    "# Title",
+    "status: approved",
+    "",
+  ].join(nl);
 
 describe("flip-spec-status: flip", () => {
   test("approved becomes implemented and every other byte is unchanged", () => {

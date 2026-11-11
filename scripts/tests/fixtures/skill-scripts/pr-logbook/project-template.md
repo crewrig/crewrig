@@ -5,3 +5,5 @@
 ## Testing
 
 <How it was tested.>
+
+<!-- markdownlint-disable-file -->

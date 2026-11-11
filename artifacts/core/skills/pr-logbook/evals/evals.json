@@ -112,11 +112,11 @@
     },
     {
       "id": 4,
-      "prompt": "Run `sh make-repo.sh` first: it builds ./repo, a local git repository with no remote. My pull request implements the spec repo/specs/0007-retry.md, and the project's working rules are in conventions.md. Record the spec's status transition the way the project asks, working only inside ./repo. Do not push anything and do not run gh, glab or tea.",
+      "prompt": "Run `node make-repo.ts` first: it builds ./repo, a local git repository with no remote. My pull request implements the spec repo/specs/0007-retry.md, and the project's working rules are in conventions.md. Record the spec's status transition the way the project asks, working only inside ./repo. Do not push anything and do not run gh, glab or tea.",
       "expected_output": "In repo, the spec's status value is changed from approved to implemented and nothing else in the file changes, and the change is recorded as a new commit rather than an amend of an earlier one.",
       "files": [
         "evals/files/conventions.md",
-        "evals/files/make-repo.sh"
+        "evals/files/make-repo.ts"
       ],
       "expectations": [
         "The message of the new commit, as logged in repo/.git/logs/HEAD, names spec 0007 or the implemented status."

@@ -39,12 +39,26 @@ describe("resolve-logbook-target: feature-issue mode", () => {
 
   test("every GitHub closing keyword counts, in any case, as a whole word", () => {
     for (const kw of [
-      "close", "closes", "closed", "fix", "fixes", "fixed", "resolve", "resolves", "resolved",
-      "CLOSES", "Fixes", "rEsOlVeD",
+      "close",
+      "closes",
+      "closed",
+      "fix",
+      "fixes",
+      "fixed",
+      "resolve",
+      "resolves",
+      "resolved",
+      "CLOSES",
+      "Fixes",
+      "rEsOlVeD",
     ]) {
       const { data, status } = resolve(`${kw} #7`);
       assert.equal(status, 0, kw);
-      assert.deepEqual(data, { mode: "feature-issue", issue: 7, issues: [7], label_required: false }, kw);
+      assert.deepEqual(
+        data,
+        { mode: "feature-issue", issue: 7, issues: [7], label_required: false },
+        kw,
+      );
     }
   });
 
@@ -117,7 +131,10 @@ describe("resolve-logbook-target: interface", () => {
   test("usage errors exit 2: no option, unknown option, extra argument", () => {
     assert.equal(run("resolve-logbook-target", []).status, 2);
     assert.equal(run("resolve-logbook-target", ["--bogus"], { input: "" }).status, 2);
-    assert.equal(run("resolve-logbook-target", ["--body-file", "-", "extra"], { input: "" }).status, 2);
+    assert.equal(
+      run("resolve-logbook-target", ["--body-file", "-", "extra"], { input: "" }).status,
+      2,
+    );
   });
 
   test("a usage error with --json prints one envelope with ok false and a finding", () => {

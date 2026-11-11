@@ -159,7 +159,8 @@ describe("lint-pr-body: sections of the bundled template", () => {
 
 describe("lint-pr-body: CI skip directives", () => {
   test("scenario: missing section plus [skip ci] gives two findings and exit 1", () => {
-    const body = VALID.replace(/## How to test this PR\?[\s\S]*?(?=## Detailed)/, "") + "\n[skip ci]\n";
+    const body =
+      VALID.replace(/## How to test this PR\?[\s\S]*?(?=## Detailed)/, "") + "\n[skip ci]\n";
     const r = lint(GOOD_TITLE, body, ["--json"]);
     assert.equal(r.status, 1);
     const f = parseEnvelope(r).findings;
@@ -168,7 +169,14 @@ describe("lint-pr-body: CI skip directives", () => {
     assert.ok(f.some((x) => /skip ci/i.test(x.message)));
   });
 
-  for (const directive of ["[skip ci]", "[ci skip]", "[skip actions]", "[no ci]", "[SKIP CI]", "[No Ci]"]) {
+  for (const directive of [
+    "[skip ci]",
+    "[ci skip]",
+    "[skip actions]",
+    "[no ci]",
+    "[SKIP CI]",
+    "[No Ci]",
+  ]) {
     test(`${directive} in the body is a finding`, () => {
       assert.equal(lint(GOOD_TITLE, `${VALID}\nnote ${directive}\n`).status, 1);
     });
@@ -199,14 +207,25 @@ describe("lint-pr-body: --template", () => {
   const projectBody = path.join(FIXTURES, "project-body.md");
 
   test("scenario: a project template with ## Summary and ## Testing exits 0, no CrewRig heading required", () => {
-    const r = run("lint-pr-body", ["--title", GOOD_TITLE, "--body-file", projectBody, "--template", tpl]);
+    const r = run("lint-pr-body", [
+      "--title",
+      GOOD_TITLE,
+      "--body-file",
+      projectBody,
+      "--template",
+      tpl,
+    ]);
     assert.equal(r.status, 0, r.stdout + r.stderr);
   });
 
   test("the sections come from the template: a missing one is named", () => {
-    const r = run("lint-pr-body", ["--title", GOOD_TITLE, "--body-file", "-", "--template", tpl, "--json"], {
-      input: "## Summary\n\nx\n",
-    });
+    const r = run(
+      "lint-pr-body",
+      ["--title", GOOD_TITLE, "--body-file", "-", "--template", tpl, "--json"],
+      {
+        input: "## Summary\n\nx\n",
+      },
+    );
     assert.equal(r.status, 1);
     const f = parseEnvelope(r).findings;
     assert.equal(f.length, 1);
@@ -228,7 +247,10 @@ describe("lint-pr-body: usage errors (exit 2), preconditions (exit 3), --help", 
   });
 
   test("an unknown option is a usage error", () => {
-    assert.equal(run("lint-pr-body", ["--title", "x", "--body-file", "-", "--bogus"], { input: "" }).status, 2);
+    assert.equal(
+      run("lint-pr-body", ["--title", "x", "--body-file", "-", "--bogus"], { input: "" }).status,
+      2,
+    );
   });
 
   test("a missing title or a missing body is a usage error", () => {
