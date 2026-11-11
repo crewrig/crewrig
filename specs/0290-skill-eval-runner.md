@@ -25,7 +25,7 @@ A maintainer who changes a skill's `SKILL.md` learns, before the change merges, 
       "evals": [
         {
           "id": 1,
-          "prompt": "Open a PR for the change described in fixtures/diff.txt.",
+          "prompt": "Open a PR for the change described in diff.txt.",
           "expected_output": "A PR title and body that follow the project's PR format.",
           "files": ["evals/files/diff.txt"],
           "expectations": [
@@ -44,10 +44,10 @@ A maintainer who changes a skill's `SKILL.md` learns, before the change merges, 
     }
     ```
 
-3. **R3 (eval fields).** Each eval SHALL carry: `id` (unique positive integer within the file), `prompt` (non-empty string, the task given to the agent), `expected_output` (non-empty string, a human description of success), `files` (array of strings, possibly empty, each a path relative to the skill directory that resolves to an existing file), and `expectations` (array of non-empty strings, each a single verifiable statement about the run). An eval SHALL declare at least one expectation or at least one check.
+3. **R3 (eval fields).** Each eval SHALL carry: `id` (unique positive integer within the file), `prompt` (non-empty string, the task given to the agent), `expected_output` (non-empty string, a human description of success), `files` (array of strings, possibly empty, each a path relative to the skill directory that resolves to an existing file; the runner SHALL copy each into the root of the run's workspace under its base name before the run, so the agent under test sees it as `./<base name>`), and `expectations` (array of non-empty strings, each a single verifiable statement about the run). An eval SHALL declare at least one expectation or at least one check.
 4. **R4 (deterministic checks).** An eval MAY carry `checks`: an array of objects, each with a `type` from a closed set. `exit_code` takes `script` (a path under the skill's `scripts/` directory), optional `args` (array of strings) and `expected` (integer, default 0), and passes when the script exits with that code. `file_exists` takes `path` and passes when the run produced that file. `file_contains` takes `path` and `pattern` (a regular expression) and passes when the produced file matches it. A `path` SHALL be relative to the run's output directory and SHALL NOT escape it. An unknown `type` makes the file invalid.
 5. **R5 (trigger probes).** Each trigger probe SHALL be an object with `query` (non-empty string) and `should_trigger` (boolean). Probes SHALL NOT be counted in `grading.json` or in the `pass_rate` of R14; they are reported separately as the fraction of probes whose observed trigger decision matched `should_trigger`.
-6. **R6 (validity rules).** A file SHALL be valid if and only if it is well-formed JSON, satisfies R2 to R5, and its `skill_name` equals the name of the directory that holds it (the skill's directory name and the `name` in its `SKILL.md` frontmatter). The validator SHALL report every violation, naming the file, the JSON path and the rule, and SHALL fail without running any eval when the file is invalid.
+6. **R6 (validity rules).** A file SHALL be valid if and only if it is well-formed JSON, satisfies R2 to R5, and its `skill_name` equals the name of the skill's directory. Agreement between the directory name and the `name` in the `SKILL.md` frontmatter is checked by the existing skill-structure checks, not by this validator. The validator SHALL report every violation, naming the file, the JSON path and the rule, and SHALL fail without running any eval when the file is invalid.
 7. **R7 (never shipped).** `evals/` SHALL remain in the repository and SHALL NOT be copied to any CLI target, built output, staging directory, user-scope install or packaged archive. Today the build propagates only `scripts/`, `references/` and `assets/` of a skill (`scripts/lib/build-components/resources.ts`), so no build change is required; this requirement makes that behaviour a tested invariant, and any future change that would copy `evals/` SHALL exclude it. An automated check SHALL fail when a built skill directory contains an `evals/` path.
 8. **R8 (existing tooling tolerates evals).** The skill linter, the built-components drift check, the path-ownership check and the skill-version check SHALL accept a skill directory that contains `evals/`. A change that touches only files under a skill's `evals/` SHALL NOT require a `metadata.provenance.version` bump of that skill.
 
@@ -65,11 +65,11 @@ A maintainer who changes a skill's `SKILL.md` learns, before the change merges, 
 19. **R19 (regression metric).** For each changed skill that has valid evals, the runner SHALL compute the `with_skill` mean `pass_rate` (R14) for the head revision of `SKILL.md` and for the base revision of `SKILL.md`, both over the evals file of the head revision, in the same fresh-context conditions. The `without_skill` run does not depend on `SKILL.md`, so it SHALL be run once per eval, on the head revision only; only the `with_skill` run SHALL be replayed on the base `SKILL.md`. A skill SHALL be a regression when the head mean is lower than the base mean by more than the tolerance, which SHALL be a single declared, documented constant defaulting to 0.05 (five percentage points); the documentation SHALL state that this default is to be calibrated on the `pr-logbook` pilot (issue #1852) before regression is made blocking. A skill whose `SKILL.md` does not exist on the base branch SHALL be reported as new and not compared.
 20. **R20 (blocking outcomes).** The run SHALL exit non-zero, naming the skill and the reason, when a changed skill has an `evals/` directory and its `evals.json` is invalid (R6). A regression (R19) SHALL be reported, naming the skill and giving both means, the delta and the tolerance, and SHALL NOT make the run exit non-zero by default. Whether it does SHALL be controlled by exactly one declared, documented setting, `regression-blocking`, defaulting to false, following the same pattern as `missing-evals-blocking` (R21): flipping it SHALL be a one-line change and SHALL make the same condition exit non-zero.
 21. **R21 (skill without evals).** A changed skill that has no `evals/` directory SHALL be reported as a warning naming the skill, and the run SHALL exit 0 for that skill. Whether that warning blocks SHALL be controlled by exactly one declared, documented setting, `missing-evals-blocking`, defaulting to false until the skill migration waves (issues #1852 to #1855) have landed; flipping it SHALL be a one-line change and SHALL make the same condition exit non-zero. A skill that has an `evals/` directory but no `evals.json` SHALL be treated as invalid under R20.
-22. **R22 (report).** The runner SHALL print a per-skill summary (status, `with_skill` and `without_skill` means, delta, base mean, judge calls used, skipped reason when any) and, when running in the pull-request pipeline, SHALL write the same summary to the job summary. The status SHALL be one of `pass`, `regression` (reported with exit 0 unless `regression-blocking` is true), `invalid`, `no-evals`, `new`, `skipped`, `mock`, `error`.
+22. **R22 (report).** The runner SHALL print a per-skill summary (status, `with_skill` and `without_skill` means, delta, base mean, executor runs used, judge calls used, skipped reason when any) and, when running in the pull-request pipeline, SHALL write the same summary to the job summary. The status SHALL be one of `pass`, `regression` (reported with exit 0 unless `regression-blocking` is true), `invalid`, `no-evals`, `new`, `skipped`, `mock`, `error`.
 
-23. **R23 (cost guard and attribution).** A run SHALL stop calling the judge and SHALL exit non-zero with status `error` when the judge's `max_calls` cap would be exceeded, and SHALL report the calls used. The runner SHALL declare its usage through the existing usage subsystem before any model call, with `node scripts/usage-task.ts set --channel explicit --asset forge-issue:<owner>/<repo>#<number>`, where `<number>` is the pull-request number in CI and the ticket number locally; the asset kind `forge-issue` and its reference grammar are those of `docs/usage-record-format.md` (External asset kinds), and no new asset kind is introduced.
-24. **R24 (judge unavailable).** When the judge backend has no credentials, the runner SHALL report each affected skill as `skipped` with the missing-credentials reason and SHALL exit 0, so that pull requests without access to secrets are not blocked; this skip SHALL be visible in the report and the job summary and SHALL NOT be reported as `pass`. When credentials are present but the backend fails or returns no verdict after the judge's retries, the runner SHALL report `error` and exit non-zero. Mock mode SHALL report `mock`, SHALL mark every written `grading.json` and `benchmark.json` with `"mock": true`, and SHALL NOT produce a regression or blocking outcome from mocked verdicts.
-25. **R25 (offline tests).** The runner's own automated tests SHALL run with no API key and no network, using mock mode, and SHALL cover: schema validation (R6), check evaluation (R4), the evidence rule (R13), the output layout and formats (R10, R11, R14), the changed-skill selection (R17), the regression arithmetic, tolerance boundary and `regression-blocking` knob (R19, R20), the three missing-evals paths (R21) and the unavailable-judge paths (R24).
+23. **R23 (budget, cost guard and attribution).** Per invocation the runner SHALL enforce two caps, each a single declared, documented setting: `max-executor-runs`, the number of with_skill and without_skill runs (R9), and the judge's `max_calls` (R15). Documented defaults SHALL be sized so that a normal skill with a small eval set fits within both. Before the first model call the runner SHALL compute the planned executor runs (for each eval: one head `with_skill` run, one base `with_skill` replay (R19) and one `without_skill` run, or two runs for a skill new on the base branch) and the worst-case judge calls (expectations, times runs, times the quorum, plus retries); if either exceeds its cap it SHALL make no model call, SHALL exit non-zero with status `error` and SHALL report planned versus cap. Both caps SHALL also be enforced at runtime, because retries can exceed the plan: when a cap would be exceeded the runner SHALL stop calling the model, SHALL exit non-zero with status `error` and SHALL report the executor runs and judge calls used. The runner SHALL declare its usage through the existing usage subsystem before any model call, with `node scripts/usage-task.ts set --channel explicit --asset forge-issue:<owner>/<repo>#<number>`, where `<number>` is the pull-request number in CI and the ticket number locally; the asset kind `forge-issue` and its reference grammar are those of `docs/usage-record-format.md` (External asset kinds), and no new asset kind is introduced.
+24. **R24 (backend unavailable).** When the executor or the judge backend has no credentials, the runner SHALL report each affected skill as `skipped` with the missing-credentials reason naming which backend is missing and SHALL exit 0, so that pull requests without access to secrets are not blocked; this skip SHALL be visible in the report and the job summary and SHALL NOT be reported as `pass`. When credentials are present but the executor fails or the judge fails or returns no verdict after its retries, the runner SHALL report `error` and exit non-zero. Mock mode SHALL report `mock`, SHALL mark every written `grading.json` and `benchmark.json` with `"mock": true`, and SHALL NOT produce a regression or blocking outcome from mocked verdicts.
+25. **R25 (offline tests).** The runner's own automated tests SHALL run with no API key and no network, using mock mode, and SHALL cover: schema validation (R6), check evaluation (R4), the evidence rule (R13), the output layout and formats (R10, R11, R14), the changed-skill selection (R17), the regression arithmetic, tolerance boundary and `regression-blocking` knob (R19, R20), the three missing-evals paths (R21) and the unavailable-backend paths (R24) and the budget (R23).
 26. **R26 (CLI matrix finding).** Because the judge drivers call model APIs directly and no driver depends on which agent CLI is installed, the work SHALL NOT add or change a row under `docs/cli-matrix/rows/`; if the plan finds that a per-CLI difference does arise, it SHALL record the evidence per `docs/cli-matrix-maintenance.md` and add the row in the same change.
 
 ## Scenarios
@@ -188,12 +188,31 @@ Then  the status is error
 And   the run exits non-zero
 ```
 
-**Scenario:** cost cap stops the run
+**Scenario:** an over-budget plan is refused before any call
 
 ```text
-Given the judge's max_calls is 30 and the evals need more calls
+Given a changed skill whose planned executor runs exceed max-executor-runs
+When  the runner computes its plan
+Then  no model call is made
+And   the status is error with planned versus cap reported
+And   the run exits non-zero
+```
+
+**Scenario:** a runtime cap stops the run
+
+```text
+Given a plan within both caps and retries that push the judge calls past max_calls
 When  the cap would be exceeded
-Then  the runner stops calling the judge, reports the calls used and exits non-zero with status error
+Then  the runner stops calling the model, reports the executor runs and judge calls used and exits non-zero with status error
+```
+
+**Scenario:** executor without credentials is a visible skip
+
+```text
+Given judge credentials are present and executor credentials are not
+When  the runner processes a changed skill
+Then  the status is skipped naming the executor as missing
+And   the run exits 0
 ```
 
 **Scenario:** no SKILL.md change means no eval and no spend
