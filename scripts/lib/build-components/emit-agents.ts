@@ -9,7 +9,8 @@
 // reassigned, so each CLI composes its own (spec 0198 R5).
 //
 // Files. Claude Code, Copilot and Antigravity: `---`, frontmatter, `---`, an empty line,
-// the body, with the provenance block spliced in. Gemini CLI: the frontmatter carries no
+// the body, with the provenance block spliced in. A `metadata.tools` declaration becomes the
+// `tools:` line after the directed lines, in each CLI's own names (agent-tools.ts, spec 0291). Gemini CLI: the frontmatter carries no
 // `metadata:` (Gemini rejects it, issue #54), so the provenance travels as an HTML comment
 // on the line after the closing `---`, an empty line when there is none, and no splice
 // (the source argument of the write is `null`).
@@ -17,6 +18,7 @@
 import { resolveAgent } from "../model-resolve.ts";
 import type { ResolveContext, ResolveResult } from "../model-resolve.ts";
 import { joinRoot } from "./args.ts";
+import { noGeminiTool, readAgentTools, toolsDrop, toolsLine } from "./agent-tools.ts";
 import { emitDiagLine } from "./diagnostics.ts";
 import { emitAntigravityAgent } from "./emit-agent-antigravity.ts";
 import type { AgentJob } from "./emit-agent-antigravity.ts";
@@ -39,6 +41,21 @@ function resolveFor(ctx: Ctx, model: ResolveContext, job: AgentJob, cli: CliId):
   return resolved;
 }
 
+/**
+ * The `tools:` line of `cli`, after the directed lines (spec 0291 R11); none when the source
+ * declares none (R12). Gemini has no name for the `agent` class: it is dropped with a record,
+ * and the build fails when nothing else remains (R13).
+ */
+function toolsLines(ctx: Ctx, job: AgentJob, cli: "gemini" | "claude" | "copilot"): string[] {
+  if (job.tools === null) return [];
+  const { line, omitted } = toolsLine(cli, job.tools);
+  if (omitted.length === job.tools.length) throw noGeminiTool(job.source, job.tools);
+  if (omitted.length > 0) {
+    emitDiagLine(ctx, toolsDrop(job.name, cli, omitted, "no-equivalent-on-cli"));
+  }
+  return [line];
+}
+
 /** The `name`, `description` and directed lines every CLI's agent file starts from. */
 function head(job: AgentJob, resolved: ResolveResult): string[] {
   const description =
@@ -48,7 +65,11 @@ function head(job: AgentJob, resolved: ResolveResult): string[] {
 
 function emitGemini(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
   const resolved = resolveFor(ctx, model, job, "gemini");
-  const frontmatter = [...head(job, resolved), ...resolved.fmLines];
+  const frontmatter = [
+    ...head(job, resolved),
+    ...resolved.fmLines,
+    ...toolsLines(ctx, job, "gemini"),
+  ];
   const comment = geminiProvenanceComment(job.source);
   const content = `---\n${frontmatter.join("\n")}\n---\n${comment}\n${job.source.body}`;
   const target = joinRoot(ctx.platform, job.outRoot, `.gemini/agents/${job.name}.md`);
@@ -57,14 +78,23 @@ function emitGemini(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
 
 function emitClaude(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
   const resolved = resolveFor(ctx, model, job, "claude");
-  const frontmatter = [...head(job, resolved), ...licenseLines(job.source), ...resolved.fmLines];
+  const frontmatter = [
+    ...head(job, resolved),
+    ...licenseLines(job.source),
+    ...resolved.fmLines,
+    ...toolsLines(ctx, job, "claude"),
+  ];
   const target = joinRoot(ctx.platform, job.outRoot, `.claude/agents/${job.name}.md`);
   checkOrWrite(ctx, target, markdownFile(frontmatter, job.source.body), job.source, job.outRoot);
 }
 
 function emitCopilot(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
   const resolved = resolveFor(ctx, model, job, "copilot");
-  const frontmatter = [...head(job, resolved), ...resolved.fmLines];
+  const frontmatter = [
+    ...head(job, resolved),
+    ...resolved.fmLines,
+    ...toolsLines(ctx, job, "copilot"),
+  ];
   const target = joinRoot(ctx.platform, job.outRoot, `.github/agents/${job.name}.md`);
   checkOrWrite(ctx, target, markdownFile(frontmatter, job.source.body), job.source, job.outRoot);
 }
@@ -86,7 +116,16 @@ export function buildAgents(
     if (name === null) continue;
     ctx.io.out(`Building agent: ${name}`);
 
-    const job: AgentJob = { name, description: source.field("description"), source, outRoot };
+    // Validated for every agent whichever CLIs are selected (spec 0291 R10): an invalid
+    // declaration stops the build before any file of this agent is written.
+    const tools = readAgentTools(source);
+    const job: AgentJob = {
+      name,
+      description: source.field("description"),
+      source,
+      outRoot,
+      tools,
+    };
     if (selects(ctx, "gemini")) emitGemini(ctx, model, job);
     if (selects(ctx, "claude")) emitClaude(ctx, model, job);
     if (selects(ctx, "copilot")) emitCopilot(ctx, model, job);

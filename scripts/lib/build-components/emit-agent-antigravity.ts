@@ -8,12 +8,15 @@
 // directed lines are always empty and the model item reaches the description alone).
 //
 // The build never reads `antigravity.enable_*` (a source that still declares one builds
-// silently) and derives nothing from `claude.allowed-tools`, `Bash` included (R13). After the
+// silently) and derives nothing from `claude.allowed-tools`, `Bash` included (R13). A source that
+// declares `metadata.tools` gets no key either, and one `tools-drop` record (spec 0291 R14). After the
 // write, the retired `.agents/agents/<name>/` directory is reconciled (retire-agent.ts).
 
 import { resolveAgent } from "../model-resolve.ts";
 import type { ResolveContext } from "../model-resolve.ts";
 import { joinRoot } from "./args.ts";
+import { toolsDrop } from "./agent-tools.ts";
+import type { ToolClass } from "./agent-tools.ts";
 import { emitDiagLine } from "./diagnostics.ts";
 import { reconcileRetiredAgentDir } from "./retire-agent.ts";
 import { markdownFile } from "./tiers.ts";
@@ -27,6 +30,8 @@ export interface AgentJob {
   readonly description: string;
   readonly source: SourceDoc;
   readonly outRoot: string;
+  /** The validated `metadata.tools` classes in vocabulary order; `null` when not declared. */
+  readonly tools: readonly ToolClass[] | null;
 }
 
 /** Resolve the profile for `antigravity` and write `.agents/agents/<name>.md`. */
@@ -43,6 +48,10 @@ export function emitAntigravityAgent(ctx: Ctx, model: ResolveContext, job: Agent
     );
   }
   const frontmatter = [`name: ${name}`, `description: "${withProse}"`];
+  // Spec 0291 R14: no `tools` key (the class-to-name mapping is unverified and never guessed),
+  // and the gap is said, not silent.
+  if (job.tools !== null)
+    emitDiagLine(ctx, toolsDrop(name, "antigravity", job.tools, "unsupported-on-cli"));
 
   const target = joinRoot(ctx.platform, job.outRoot, `.agents/agents/${name}.md`);
   checkOrWrite(ctx, target, markdownFile(frontmatter, source.body), source, job.outRoot);
