@@ -427,3 +427,10 @@ test("the login probe never leaks the account: neither the runner's output nor a
     }
   }
 });
+
+test("R32: a directory whose name merely starts with two dots, inside HOME, is inside HOME", () => {
+  const base = temp();
+  const home = path.join(base, "home");
+  fs.mkdirSync(path.join(home, "..tmp"), { recursive: true });
+  assert.ok(checkTempRoot(path.join(home, "..tmp"), home) !== undefined);
+});
