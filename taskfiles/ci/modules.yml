@@ -56,7 +56,7 @@ tasks:
     preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/skill-scripts-oracle.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-yaml-leg.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-differential.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-layouts.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-copied-skill.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-mutation.test.ts {{.REPO_DIR}}/scripts/tests/skill-script-citations.test.ts {{.REPO_DIR}}/scripts/tests/callers-sweep.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/skill-scripts-oracle.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-yaml-leg.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-differential.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-layouts.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-copied-skill.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-mutation.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-pr-logbook-lint.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-pr-logbook-logbook-target.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-pr-logbook-flip-spec.test.ts {{.REPO_DIR}}/scripts/tests/skill-scripts-pr-logbook-copied.test.ts {{.REPO_DIR}}/scripts/tests/skill-script-citations.test.ts {{.REPO_DIR}}/scripts/tests/callers-sweep.test.ts
   model-ci-tooling-ts:
     desc: Run the model-ci-tooling-ts CI capability (pre-push mirror of the CI job)
     preconditions: *needs-js-yaml
