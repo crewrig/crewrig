@@ -5,12 +5,12 @@ status: draft
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1849
-version: 1.1.0
+version: 2.0.0
 ---
 
 # Skill eval runner: grade a skill from its evals.json when SKILL.md changes
 
-*Delta 01 of `specs/0290-skill-eval-runner.md`. Source: the approved PLAN of issue #1849 (v2 and v3), which found places where the base spec cannot be implemented as written or leaves a cost and layout decision open: R5 asks for an observed trigger decision that no part of the spec produces, R10 and R14 do not match the shapes skill-creator's results viewer loads, R23 is silent on a single run's cost, on several changed skills in one invocation and on measured spend, and R26's premise fails for the executor. This delta resolves each. Nothing is implemented yet, so the version is a MINOR bump. This delta opens no question.*
+*Delta 01 of `specs/0290-skill-eval-runner.md`. Sources: (1) the approved PLAN of issue #1849 (v2 and v3), which found places where the base spec cannot be implemented as written or leaves a layout and cost decision open: R5 asks for an observed trigger decision that nothing produces, R10 and R14 do not match the shapes skill-creator's results viewer loads, R23 is silent on a single run's cost, on several skills in one invocation and on measured spend, and R26's premise fails for the executor; (2) the user's scope decision that LLM-judged evals run on the contributor's machine and never in CI: the pull-request pipeline makes no model call and holds no model secret, as for every other check today, and instead verifies a committed, content-hashed results file produced by the local run. The version is a MAJOR bump: the CI execution contract of R17, R18, R22 and R24 (secrets, fork skip, job summary of a model run) is replaced, which invalidates the approved plan's CI steps. This delta opens no question.*
 
 ## ADDED
 
@@ -19,14 +19,14 @@ version: 1.1.0
 27. **Per-run executor limits.** The runner SHALL apply three declared, documented per-run settings to every executor run: a turn limit (default 25), a wall-clock limit (default 300 seconds) and a per-run budget (default 1 US dollar). A run that hits a limit SHALL be graded on the output it produced so far, SHALL be tagged with the limit reached in its `metrics.json`, SHALL be counted in `pass_rate` like any other run, and SHALL NOT be reported as `error`.
     Acceptance: a run killed at the wall-clock limit leaves a `metrics.json` naming that limit, a `grading.json` graded on the partial output, and does not turn the skill's status into `error`.
 
-28. **Aggregate cost bound.** The runner SHALL declare one documented setting, `max-invocation-usd`, defaulting to 100. After the credential check of R24 and before the first model call, the runner SHALL compute the worst-case executor cost as the planned executor runs across all selected skills multiplied by the per-run budget of requirement 27. When that cost exceeds `max-invocation-usd`, the runner SHALL make no model call, SHALL exit non-zero with status `error`, and SHALL report the planned cost versus the cap and the text "split the PR".
-    Acceptance: 210 planned runs at a 1 dollar per-run budget against the default of 100 make no model call, exit non-zero and print 210, 100 and "split the PR".
+28. **Aggregate cost bound.** The runner SHALL declare one documented setting, `max-invocation-usd`, defaulting to 100. After the credential check of R33 and before the first model call, the runner SHALL compute the worst-case executor cost as the planned executor runs across all selected skills multiplied by the per-run budget of requirement 27. When that cost exceeds `max-invocation-usd`, the runner SHALL make no model call, SHALL exit non-zero with status `error`, and SHALL report the planned cost versus the cap and advise selecting fewer skills per invocation.
+    Acceptance: 210 planned runs at a 1 dollar per-run budget against the default of 100 make no model call, exit non-zero and print 210 and 100.
 
-29. **Bounded concurrency.** The runner SHALL execute executor runs through a pool bounded by one documented setting, `executor-concurrency`, defaulting to 4. The executor-run cap of R23 SHALL be reserved before each run starts, so concurrent runs cannot exceed it, and a runtime cap breach SHALL start no new run and terminate the runs in flight.
+29. **Bounded concurrency.** The runner SHALL execute executor runs through a pool bounded by one documented local setting, `executor-concurrency`, defaulting to 4. The executor-run cap of R23 SHALL be reserved before each run starts, so concurrent runs cannot exceed it, and a runtime cap breach SHALL start no new run and terminate the runs in flight.
     Acceptance: with `executor-concurrency` of 4 no more than 4 executor runs are in flight at once, and a cap breach with 4 in flight starts no fifth run.
 
-30. **Measured executor cost.** The runner SHALL read the total cost in US dollars and the token usage from the executor's result record of every run and SHALL write them to that run's `metrics.json`. The report and the job summary of R22 SHALL show the measured executor cost per skill and per invocation. A run that ended at a limit of requirement 27, and so may leave no result record, SHALL record its cost as unknown and SHALL be graded under requirement 27, never as an executor failure. Only a run that did not start, or that ended abnormally without reaching a limit and left no result record, SHALL record its cost as unknown and count as an executor failure under R24.
-    Acceptance: for two skills of 6 and 4 runs, the summary lists the sum of each skill's run costs and the sum over all 10 runs; deleting a run's result record from the mock executor's output makes that run's cost `unknown` and the status `error`.
+30. **Measured executor cost.** The runner SHALL read the total cost in US dollars and the token usage from the executor's result record of every run and SHALL write them to that run's `metrics.json`. The runner's report SHALL show the measured executor cost per skill and per invocation, and the results file of requirement 36 SHALL record the skill's total. A run whose executor produced no result record SHALL record its cost as unknown and SHALL count as an executor failure under R24.
+    Acceptance: for two skills of 6 and 4 runs, the report lists the sum of each skill's run costs and the sum over all 10 runs; removing a run's result record from the mock executor's output makes that run's cost `unknown` and the status `error`.
 
 31. **Executor model pinned.** The executor's model SHALL be a Sonnet-class model selected through one declared, documented setting, and a run SHALL NOT silently use any other model. The rationale for the choice is recorded in an ADR, not in this spec.
     Acceptance: the model identifier given to the executor of every run equals the setting's value, and changing the setting changes it.
@@ -34,9 +34,35 @@ version: 1.1.0
 32. **Skill install contents.** For a `with_skill` run the runner SHALL install the skill into the agent under test by copying `SKILL.md` and the `scripts/`, `references/` and `assets/` directories of the skill when they exist, and SHALL NOT copy `evals/` or any other path, so the agent under test cannot read the expectations it is graded on.
     Acceptance: for a skill holding `SKILL.md`, `scripts/`, `evals/` and a stray `notes.md`, the installed skill directory contains the first two and neither of the others.
 
+33. **Local credentials.** Executor and judge SHALL use the credentials of the contributor's own Claude Code installation, read from the environment: `CLAUDE_CODE_OAUTH_TOKEN` (produced by `claude setup-token`, subscription) SHALL be preferred and `ANTHROPIC_API_KEY` SHALL be accepted when it is absent. The judge SHALL use the existing `claude-code` driver of R15 by default. The runner SHALL read no other credential variable. When neither variable is set and mock mode is off, the runner SHALL make no model call, SHALL print a message naming both variables and how to obtain the token, and SHALL exit 3.
+    Acceptance: with both variables unset the entry point exits 3, names both variables and makes no model call; with only `ANTHROPIC_API_KEY` set the planning proceeds; with both set the token is the one given to the executor.
+
+34. **Changed-skill selection.** `task skill-evals -- --changed` SHALL select exactly the skills whose shipped content differs between the working tree and the merge-base of the current branch with `origin/main`, or that do not exist at that merge-base. A skill's shipped content is the shipped hash of requirement 35. A change confined to `evals/` leaves the shipped hash unchanged and does not select the skill. When no skill is selected the entry point SHALL exit 0 and say that nothing changed.
+    Acceptance: a branch that edits one line of a skill's `scripts/` selects that skill; a branch that edits only that skill's `evals/evals.json` selects none; a branch that only reformats nothing and touches no skill selects none.
+
+35. **Content hash.** The runner SHALL compute a skill's hashes as follows. Select regular files only: `SKILL.md`, every file under `scripts/`, `references/` and `assets/` (recursively), and, for the attested hash only, `evals/evals.json`. Sort them by their path relative to the skill directory, written with `/` separators, in byte order of the UTF-8 encoding. Feed a SHA-256 digest, for each file in that order, the relative path, a NUL byte, the file size in bytes as decimal ASCII, a NUL byte, the file's bytes unmodified (no line-ending or whitespace normalisation) and a NUL byte. Record the digest as `sha256:` followed by 64 lowercase hexadecimal digits. The hash without `evals/evals.json` is the *shipped hash* and the hash with it is the *attested hash*. `evals/results.json` and any other file are never hashed.
+    Acceptance: changing one byte of any hashed file, adding or deleting a hashed file, or renaming one, changes the attested hash; changing `evals/results.json` or any unhashed file does not; the shipped hash ignores `evals/evals.json`; two checkouts holding the same files hash equal whatever the creation order.
+
+36. **Results file.** A non-mock run whose status is `pass`, `regression` or `new` SHALL write `evals/results.json` in the skill's source directory (replacing any previous one), a JSON object with exactly these keys: `skill_name`; `content_hash`, the attested hash of the skill as installed for that run; `runner_version`; `executor_model` and `judge_model`, the model identifiers used; `date`, an ISO 8601 UTC timestamp; `status`; `benchmark`, an object with `with_skill_mean`, `without_skill_mean`, `base_mean` (null when the skill is new or the base replay was skipped), `delta_value` and `tolerance`; `executor_runs` and `judge_calls`, the counts used; and `cost_usd`, the measured total of requirement 30, or null when any run's cost is unknown. A run with any other status, and every mock run, SHALL NOT write or modify `evals/results.json`. The file is committed by its author, is never shipped (R7) and, as a file under `evals/`, needs no `metadata.provenance.version` bump (R8: the skill-version check watches `SKILL.md` files only).
+    Acceptance: a mock run leaves `evals/results.json` byte-identical or absent; a real run with status `pass` writes all keys with `content_hash` equal to the attested hash computed from the tree it ran on; a change touching only `evals/results.json` passes the skill-version check.
+
+37. **Attestation check.** A deterministic checker SHALL make no model call and SHALL need no credential. For each skill whose shipped hash differs between the pull request's head and its base, or that is new, it SHALL decide one status: `no-evals` when the skill has no `evals/` directory; `invalid` when `evals.json` is missing or invalid under R6; `stale` when `evals/results.json` is absent, unparseable, lacks a key of requirement 36, carries `"mock": true`, names another `skill_name`, or records a `content_hash` different from the skill's current attested hash; otherwise the recorded `status` (`pass`, `regression` or `new`). Outcomes: `invalid` and `stale` SHALL be blocking (non-zero exit naming the skill and the reason) with no setting to relax them; `no-evals` and recorded `regression` SHALL be reported and SHALL block only under `missing-evals-blocking` and `regression-blocking` respectively (R20, R21).
+    Acceptance: see the scenarios *stale attestation blocks*, *fresh attestation passes*, *mock results are stale* and *recorded regression is reported*.
+
+38. **Trust model.** The attestation is self-declared by a same-repository contributor: nothing proves that the recorded results came from a run of the runner, so the file is forgeable by design, and any forged or edited file is visible in code review. The checker of requirement 37 verifies freshness (that the recorded hash matches the current content), not truth. The documentation of the runner SHALL state this trust model, and no requirement of this spec SHALL be read as a guarantee that a recorded result is genuine.
+
+39. **No model in CI.** No CI job defined or changed for this spec SHALL make a model call, SHALL be given a model credential, or SHALL declare a secret in `ci/ci-capabilities.yml`. The runner SHALL NOT read `ANTHROPIC_EXECUTOR_API_KEY`, `SKILL_EVALS_PR_NUMBER` or `SKILL_EVALS_REPO`; none of these names exists in this design.
+    Acceptance: the `skill-evals-attestation` capability entry declares no secret and its command runs with the credential variables of requirement 33 unset.
+
+40. **Out of scope.** Added to the base list: running or re-running evals in CI under any trigger; verifying that a results file was produced by the runner (signing, provenance, re-execution); CI-side execution settings such as a job timeout sized for runner execution.
+
 ## MODIFIED
 
+**Intent.** Original: "...one command runs them for one skill on a laptop or in the pull-request pipeline." Replacement: one command runs them for one skill, or for every changed skill, on the contributor's machine; the pull-request pipeline only checks that a fresh results file is committed.
+
 **R5 (trigger probes).** Original: "Probes SHALL NOT be counted in `grading.json` or in the `pass_rate` of R14; they are reported separately as the fraction of probes whose observed trigger decision matched `should_trigger`." Replacement: "Probes SHALL NOT be counted in `grading.json` or in the `pass_rate` of R14. Until live trigger execution exists (see Out of scope), probes SHALL be validated under R5 and R6 and counted, and the report SHALL show the number of probes per skill with no match fraction; no trigger decision is observed or scored."
+
+**R9 (paired runs).** Original last sentences: "...with a throwaway configuration that touches no user or repository configuration. ... Choosing the executor that satisfies this guarantee is left to PLAN." Replacement: the throwaway configuration SHALL touch no user or repository configuration and receives the credentials of requirement 33 through the environment only; the installed skill contents are those of requirement 32; the executor is Claude Code (R26).
 
 **R10 (output layout).** Original: "Each run SHALL write to its own directory `<out>/<skill>/eval-<id>/<with_skill|without_skill>/` containing the produced files, a `transcript.md` of the run, and `grading.json`." Replacement: "Each run SHALL write to its own directory `<out>/<skill>/eval-<id>/<with_skill|without_skill>/` containing `transcript.md` and `grading.json` at that directory's top level and every file the run produced under its `outputs/` subdirectory. The `with_skill` replay on the base `SKILL.md` (R19) SHALL write under `<out>/<skill>/base/` with the same per-eval layout. The skill-level `benchmark.json` is unchanged." R4's "run's output directory" is thereby the run's `outputs/` subdirectory: a check `path` SHALL be relative to it and SHALL NOT escape it.
 
@@ -44,17 +70,120 @@ version: 1.1.0
 
 **R14 (benchmark.json).** Original: "`runs` ... one entry per run carrying `eval_id`, `configuration` ... and that run's `summary` from `grading.json` ... plus a `delta` entry equal to the `with_skill` mean minus the `without_skill` mean." Replacement: each `runs` entry SHALL carry `eval_id`, `configuration`, that run's `summary` from `grading.json`, and a `result` object carrying the same figures in the shape skill-creator's results viewer reads. `run_summary` SHALL carry `delta` as an object `{"pass_rate": "<signed decimal>"}`, for example `"+0.10"` or `"-0.05"`, and SHALL carry the same difference, `with_skill` mean minus `without_skill` mean, as the number `delta_value`. Mean and population standard deviation are unchanged.
 
-**R19 (regression metric).** Original: "...for the head revision of `SKILL.md` and for the base revision of `SKILL.md`, both over the evals file of the head revision..." Replacement: the base replay SHALL run the base revision of `SKILL.md` installed over the head revision's other skill resources (`scripts/`, `references/`, `assets/`), per requirement 32. When the head `SKILL.md` is byte-identical to the base `SKILL.md`, as in a local run of an unchanged skill, the runner SHALL skip the base replay, run two executor runs per eval instead of three, and compare no means; its status SHALL be `pass` with the base mean reported as not applicable. Every other sentence of R19 is unchanged.
+**R16 (entry point).** Original: "A `task` entry point SHALL run the evals of exactly one named skill, `task skill-evals -- <skill-name>`, locally and in CI ..." Replacement: `task skill-evals -- <skill-name>` SHALL run the evals of exactly one named skill and `task skill-evals -- --changed` SHALL run those of every skill selected by requirement 34, both on the contributor's machine only. An unknown name SHALL exit non-zero naming it. The entry point SHALL accept an option that selects the output directory and an option that selects mock mode. Exit 3 is reserved for a failed precondition (requirement 33).
 
-**R23 (budget, cost guard and attribution).** Original: "Per invocation the runner SHALL enforce two caps ... `max-executor-runs` ... and the judge's `max_calls` (R15)." Replacement: the two caps SHALL apply per selected skill, not per invocation: each skill is planned, checked and enforced against its own `max-executor-runs` (default 30) and judge `max_calls` (default 300). The pre-flight plan, the runtime enforcement and the `error` outcome of R23 apply to each skill on that basis. The planned executor runs of a skill are, for each eval, three (head `with_skill`, base `with_skill`, `without_skill`), or two when the head `SKILL.md` is byte-identical to the base (R19) or the skill is new on the base branch. Those two defaults SHALL be documented as provisional, to be recalibrated from the measured costs of requirement 30 on the `pr-logbook` pilot (issue #1852). The usage declaration of R23 is unchanged. The runner reports the measured executor cost from the executor's result record, per requirement 30, and the aggregate bound and concurrency are requirements 28 and 29.
+**R17 (CI trigger).** Original: "The pull-request pipeline SHALL run the evals of a skill if and only if that skill's `SKILL.md` is modified ... a pull request that modifies no `SKILL.md` SHALL run no eval and SHALL make no judge call." Replacement: the pull-request pipeline SHALL run the attestation check of requirement 37, and only that, for the skills whose shipped hash differs from the base; a pull request that changes no skill's shipped content SHALL check no skill. The pipeline SHALL run no eval and make no model call under any trigger, and no scheduled or push-to-branch run SHALL exist.
+
+**R18 (capability and task wiring).** Original: "`ci/ci-capabilities.yml` SHALL gain a portable capability `skill-evals`, triggered on `pull-request` only, path-filtered to `artifacts/**/skills/*/SKILL.md` ... whose `command` is `task ci:skill-evals`; `taskfiles/ci/integration.yml` SHALL define that task." Replacement: `ci/ci-capabilities.yml` SHALL gain a portable capability `skill-evals-attestation`, triggered on `pull-request` only, path-filtered to `artifacts/**/skills/**`, requiring full history for the base comparison, declaring no secret (requirement 39), whose `command` is `task ci:skill-evals-attestation`; `taskfiles/ci/integration.yml` SHALL define that task. `task ci:pre-push` SHALL include the same check, so a contributor learns of a stale attestation before pushing. A second capability SHALL run the runner's own tests in mock mode (R25) whenever the runner's sources change. Both SHALL satisfy `docs/ci-reference-format.md` and the CI parity check.
+
+**R19 (regression metric).** Original: "...for the head revision of `SKILL.md` and for the base revision of `SKILL.md`, both over the evals file of the head revision..." Replacement: the base replay SHALL run the base revision of `SKILL.md` installed over the head revision's other skill resources (`scripts/`, `references/`, `assets/`), per requirement 32. When the head `SKILL.md` is byte-identical to the base `SKILL.md`, the runner SHALL skip the base replay, run two executor runs per eval instead of three, and compare no means. Every other sentence of R19 is unchanged; the base is the merge-base with `origin/main`.
+
+**R20 (blocking outcomes).** Original: "The run SHALL exit non-zero ... when a changed skill has an `evals/` directory and its `evals.json` is invalid (R6). A regression (R19) SHALL be reported ... and SHALL NOT make the run exit non-zero by default. Whether it does SHALL be controlled by exactly one declared, documented setting, `regression-blocking` ..." Replacement: unchanged for the runner and extended to the attestation check: an invalid `evals.json` blocks in both; a regression, measured by the runner or recorded in a results file, is reported and blocks only under `regression-blocking` (default false); a `stale` attestation (requirement 37) blocks always.
+
+**R21 (skill without evals).** Original: "...the run SHALL exit 0 for that skill. Whether that warning blocks SHALL be controlled by exactly one declared, documented setting, `missing-evals-blocking` ..." Replacement: the same sentence for both the runner and the attestation check; `missing-evals-blocking` governs both.
+
+**R22 (report).** Original: "...and, when running in the pull-request pipeline, SHALL write the same summary to the job summary. The status SHALL be one of `pass`, `regression` ..., `invalid`, `no-evals`, `new`, `skipped`, `mock`, `error`." Replacement: the runner SHALL print a per-skill summary (status, `with_skill` and `without_skill` means, delta, base mean, executor runs used, judge calls used, measured cost); the attestation check SHALL print, and write to the job summary, one line per checked skill with its status and, for `stale`, `invalid` and `no-evals`, the reason. No model run summary is written by CI. The status SHALL be one of `pass`, `regression` (reported with exit 0 unless `regression-blocking` is true), `invalid`, `no-evals`, `new`, `stale`, `mock`, `error`; `skipped` no longer exists.
+
+**R23 (budget, cost guard and attribution).** Original: "Per invocation the runner SHALL enforce two caps ... `max-executor-runs` ... and the judge's `max_calls` (R15)." Replacement: the two caps SHALL apply per selected skill, not per invocation: each skill is planned, checked and enforced against its own `max-executor-runs` (default 30) and judge `max_calls` (default 300), and the pre-flight, runtime enforcement and `error` outcome of R23 apply to each skill on that basis. The two defaults SHALL be documented as provisional, to be recalibrated from the measured costs of requirement 30 on the `pr-logbook` pilot (issue #1852). The aggregate bound and concurrency are requirements 28 and 29. The usage declaration is unchanged, except that its `<number>` is the ticket number (no pull-request number exists, since nothing runs in CI): `node scripts/usage-task.ts set --channel explicit --asset forge-issue:<owner>/<repo>#<number>`. The runner reports the measured executor cost from the executor's result record, per requirement 30.
+
+**R24 (backend unavailable).** Original: "When the executor or the judge backend has no credentials, the runner SHALL report each affected skill as `skipped` ... and SHALL exit 0, so that pull requests without access to secrets are not blocked." Replacement: missing credentials are a precondition failure, handled by requirement 33 (exit 3, no model call); there is no `skipped` status and no exit-0 skip. The remaining sentences stand: when credentials are present but the executor fails or the judge fails or returns no verdict after its retries, the runner SHALL report `error` and exit non-zero; mock mode SHALL report `mock`, SHALL mark every written `grading.json` and `benchmark.json` with `"mock": true`, SHALL NOT write `evals/results.json` (requirement 36), and SHALL NOT produce a regression or blocking outcome from mocked verdicts.
+
+**R25 (offline tests).** Original list of covered areas: "...the three missing-evals paths (R21) and the unavailable-backend paths (R24) and the budget (R23)." Replacement: the list SHALL replace the unavailable-backend paths by the credential preconditions of requirement 33 and SHALL add the content hash (requirement 35), the results file (requirement 36), the attestation outcomes (requirement 37) and the changed-skill selection (requirement 34). The tests run with no API key and no network, in mock mode.
 
 **R26 (CLI matrix finding).** Original: "...the work SHALL NOT add or change a row under `docs/cli-matrix/rows/`; if the plan finds that a per-CLI difference does arise, it SHALL record the evidence per `docs/cli-matrix-maintenance.md` and add the row in the same change." Replacement: the judge drivers remain independent of any installed agent CLI, but the executor of R9 is Claude Code only. The eval measures a skill on Claude Code, not on each of the four CLIs the skill ships to, and the documentation of the runner SHALL say so. No row is added or changed under `docs/cli-matrix/rows/`, because the runner is a repository development tool and deploys nothing to a CLI target.
 
+**Scenarios.** Replaced: *changed skill with healthy evals passes* (its `Given` and `When` name the pipeline running the evals) is restated below as *a local run writes the attestation*; the scenarios *regression versus base is reported and does not block by default*, *the regression-blocking knob flips the same condition*, *drop within tolerance does not block*, *invalid evals.json blocks before any model call*, *skill without evals warns and does not block by default* and *the blocking knob flips the same condition* stand, read as applying to the runner and to the attestation check alike.
+
 ## REMOVED
 
-None.
+Quoted scenario titles of the base spec, false under the local-execution design:
+
+- *no credentials is a visible skip* (a fork pull request skipped in CI with exit 0): removed with the `skipped` status; replaced by *missing credentials exit 3*.
+- *executor without credentials is a visible skip*: removed for the same reason; covered by *missing credentials exit 3*, which names either variable.
+- *no SKILL.md change means no eval and no spend*: removed; replaced by *a change confined to evals does not select the skill* and by requirement 39 (CI never spends).
+
+Also removed from the base requirements, as parts of R17, R18, R22 and R24 quoted above: CI execution of evals, the CI judge and executor secrets, the fork skip rule, the CI job summary of a model run and the CI attribution to a pull-request number.
 
 ## Scenarios
+
+**Scenario:** a local run writes the attestation
+
+```text
+Given a contributor changed skills/pr-logbook/SKILL.md, has CLAUDE_CODE_OAUTH_TOKEN set, and the skill has a valid evals/evals.json
+When  they run task skill-evals -- pr-logbook and the head with_skill mean equals the base mean
+Then  the report shows status pass with both means and the delta
+And   evals/results.json is written with the attested hash of the tree the run used and the measured cost
+And   the run exits 0
+```
+
+**Scenario:** stale attestation blocks
+
+```text
+Given a pull request changes scripts/ of a skill after its evals/results.json was written
+When  the attestation check runs
+Then  the recorded content_hash differs from the current attested hash
+And   the status is stale, the check names the skill and the reason, and exits non-zero
+And   no model call is made
+```
+
+**Scenario:** fresh attestation passes
+
+```text
+Given a pull request changes a skill's SKILL.md and its evals/results.json records the current attested hash with status pass
+When  the attestation check runs with no credential variable set
+Then  the status is pass and the check exits 0
+```
+
+**Scenario:** mock results are stale
+
+```text
+Given a changed skill whose evals/results.json carries "mock": true
+When  the attestation check runs
+Then  the status is stale and the check exits non-zero
+```
+
+**Scenario:** recorded regression is reported
+
+```text
+Given a fresh results file recording status regression and regression-blocking left at false
+When  the attestation check runs
+Then  the report names the skill, the base mean, the head mean and the tolerance
+And   the check exits 0
+```
+
+**Scenario:** the regression knob blocks recorded regressions
+
+```text
+Given the same results file and regression-blocking set to true
+When  the attestation check runs
+Then  the check exits non-zero naming the skill
+```
+
+**Scenario:** missing credentials exit 3
+
+```text
+Given neither CLAUDE_CODE_OAUTH_TOKEN nor ANTHROPIC_API_KEY is set and mock mode is off
+When  the contributor runs task skill-evals -- pr-logbook
+Then  no model call is made
+And   the message names both variables
+And   the run exits 3, and no results file is written
+```
+
+**Scenario:** changed-skill selection follows the shipped hash
+
+```text
+Given a branch that edits one line of a skill's references/ file and another skill's evals/evals.json only
+When  the contributor runs task skill-evals -- --changed
+Then  the first skill is selected and the second is not
+```
+
+**Scenario:** a change confined to evals does not select the skill
+
+```text
+Given a pull request that modifies only a skill's evals/evals.json and evals/results.json
+When  the attestation check runs
+Then  that skill is not checked and no skill-version bump is required
+```
 
 **Scenario:** a limit hit is graded on partial output
 
@@ -69,26 +198,27 @@ And   the run counts in pass_rate and the skill's status is not error
 **Scenario:** an over-cost plan is refused before any call
 
 ```text
-Given seven changed skills each planning 30 executor runs, 210 in total and the default max-invocation-usd of 100
+Given three selected skills whose planned executor runs total 210 and the default max-invocation-usd of 100
 When  the runner computes its plan
 Then  no model call is made
-And   the status is error with 210 dollars planned, the cap of 100 and the text "split the PR"
+And   the status is error with 210 dollars planned and the cap of 100
 And   the run exits non-zero
 ```
 
 **Scenario:** measured cost is reported
 
 ```text
-Given a changed skill whose executor result records report 0.40 and 0.35 dollars
+Given a skill whose executor result records report 0.40 and 0.35 dollars
 When  the runner prints its summary
 Then  each run's metrics.json holds its cost and token usage
-And   the report and the job summary show 0.75 dollars for the skill and the invocation total
+And   the report shows 0.75 dollars for the skill and the invocation total
+And   results.json records cost_usd 0.75
 ```
 
-**Scenario:** the unchanged skill skips the base replay
+**Scenario:** the unchanged SKILL.md skips the base replay
 
 ```text
-Given a local run of a skill whose SKILL.md equals its base revision, with 2 evals
+Given a run of a skill whose head SKILL.md equals the base SKILL.md, with 2 evals
 When  the runner plans the run
 Then  it plans 4 executor runs and no base replay
 ```
