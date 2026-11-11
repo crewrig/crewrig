@@ -106,13 +106,19 @@ describe("installAntigravityTier", () => {
       "AGENT.md",
       "NOTES.txt",
     ]);
-    assert.ok(err.some((l) => l.includes(path.join(agents(), "developer"))), err.join("\n"));
+    assert.ok(
+      err.some((l) => l.includes(path.join(agents(), "developer"))),
+      err.join("\n"),
+    );
     assert.ok(fs.existsSync(path.join(agents(), "developer.md")));
   });
 
   it("a body-only provenance AGENT.md is not removed", () => {
     stage("library", { "agents/developer.md": "new\n" });
-    put(path.join(agents(), "developer/AGENT.md"), "---\nname: developer\n---\n\nmetadata:\n  provenance:\n    canonical: x\n");
+    put(
+      path.join(agents(), "developer/AGENT.md"),
+      "---\nname: developer\n---\n\nmetadata:\n  provenance:\n    canonical: x\n",
+    );
     assert.equal(installAntigravityTier(ctxOf(), "library"), 0);
     assert.ok(fs.existsSync(path.join(agents(), "developer/AGENT.md")));
   });
@@ -121,7 +127,14 @@ describe("installAntigravityTier", () => {
     stage("library", { "agents/developer.md": "new\n" });
     fs.mkdirSync(path.join(agents(), "developer.md"), { recursive: true });
     assert.equal(installAntigravityTier(ctxOf(), "library"), 1);
-    assert.ok(err.some((l) => l.startsWith("  ERROR: tier 'library' staged 0 skill(s)") || l.includes("staged 1 agent(s) and placed none")), err.join("\n"));
+    assert.ok(
+      err.some(
+        (l) =>
+          l.startsWith("  ERROR: tier 'library' staged 0 skill(s)") ||
+          l.includes("staged 1 agent(s) and placed none"),
+      ),
+      err.join("\n"),
+    );
   });
 
   it("replaces an installed skill directory", () => {

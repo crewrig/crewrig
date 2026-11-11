@@ -21,7 +21,7 @@ describe("isProvenanceCarryingText", () => {
     assert.equal(isProvenanceCarryingText(doc(["name: a", ...prov])), true);
   });
   test("rejects a body that only mentions provenance", () => {
-    const body = "metadata:\n  provenance:\n    canonical: \"x\"\n";
+    const body = 'metadata:\n  provenance:\n    canonical: "x"\n';
     assert.equal(isProvenanceCarryingText(doc(["name: a"], body)), false);
   });
   test("rejects provenance without a canonical value", () => {

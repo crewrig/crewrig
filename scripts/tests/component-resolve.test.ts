@@ -178,11 +178,13 @@ describe("installedTargets on throwaway trees", () => {
   });
   test("collision key .agents/agents/<name>.md, set unchanged", () => {
     const a = build("library/agents/x/AGENT.md @dup; org/agents/y/AGENT.md @dup");
-    const keys = installedTargets(a).filter((t) => t.installTarget.includes("agents/")).map((t) => t.installTarget);
-    assert.deepEqual(keys.filter((k) => k.startsWith(".agents/")), [
-      ".agents/agents/dup.md",
-      ".agents/agents/dup.md",
-    ]);
+    const keys = installedTargets(a)
+      .filter((t) => t.installTarget.includes("agents/"))
+      .map((t) => t.installTarget);
+    assert.deepEqual(
+      keys.filter((k) => k.startsWith(".agents/")),
+      [".agents/agents/dup.md", ".agents/agents/dup.md"],
+    );
     const res = report(a);
     assert.equal(res.status, 1);
     assert.deepEqual(refused(a), ["dup", "dup", "dup", "dup"]);

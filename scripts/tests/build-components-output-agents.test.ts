@@ -205,11 +205,7 @@ describe("the Gemini provenance comment (R12)", () => {
       '---\nname: ag\ndescription: "An agent."\n---\n' +
         '<!-- crewrig-provenance: version="1.0" canonical="https://example.test/o/r" feedback="" -->\nAgent body.\n',
     );
-    for (const file of [
-      ".claude/agents/ag.md",
-      ".github/agents/ag.md",
-      ".agents/agents/ag.md",
-    ]) {
+    for (const file of [".claude/agents/ag.md", ".github/agents/ag.md", ".agents/agents/ag.md"]) {
       const text = tree.read(file);
       assert.match(
         text,
