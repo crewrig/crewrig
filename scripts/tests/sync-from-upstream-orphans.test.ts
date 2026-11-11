@@ -206,6 +206,22 @@ describe("regenerable entries", () => {
     assert.equal(read(adopter, ".claude/agents/tester.md"), "upstream tester content");
     assert.ok(out.stdout.includes(restored(".claude/agents/tester.md")), why(out));
   });
+
+  test("fork directory form removed, flat file present (.agents/agents, spec 0053 delta-01 R21)", () => {
+    const upstream = makeUpstream(sr, [
+      { ".agents/agents/developer.md": "upstream flat developer content" },
+    ]);
+    const adopter = makeAdopter(sr, {
+      upstream,
+      manifest: [".agents/agents\tregenerable"],
+      files: { ".agents/agents/developer/AGENT.md": "retired nested developer content" },
+    });
+    const out = runSync(sr, adopter);
+    assert.equal(out.status, 0, why(out));
+    assert.equal(read(adopter, ".agents/agents/developer.md"), "upstream flat developer content");
+    assert.ok(!exists(adopter, ".agents/agents/developer/AGENT.md"), "retired nested not removed");
+    assert.ok(out.stdout.includes(removed(".agents/agents/developer/AGENT.md")), why(out));
+  });
 });
 
 describe("organization-owned compiled outputs", () => {
