@@ -59,7 +59,9 @@ Exit codes: 0 resolved, 2 usage error, 3 precondition failed.
     const eq = raw.startsWith("--") ? raw.indexOf("=") : -1;
     const key = eq === -1 ? raw : raw.slice(0, eq);
     if (key !== "--body-file")
-      return usageError(raw.startsWith("-") && raw !== "-" ? `unknown option ${raw}` : `unexpected argument ${raw}`);
+      return usageError(
+        raw.startsWith("-") && raw !== "-" ? `unknown option ${raw}` : `unexpected argument ${raw}`,
+      );
     const value = eq !== -1 ? raw.slice(eq + 1) : argv[++i];
     if (value === undefined) return usageError("--body-file needs a value");
     bodyFile = value;
@@ -100,7 +102,7 @@ Exit codes: 0 resolved, 2 usage error, 3 precondition failed.
     }
     const text2 = kept.join("\n");
     let out = "";
-    for (let i = 0; i < text2.length; ) {
+    for (let i = 0; i < text2.length;) {
       if (text2[i] !== "`") {
         out += text2[i++];
         continue;
@@ -134,7 +136,8 @@ Exit codes: 0 resolved, 2 usage error, 3 precondition failed.
     return out;
   };
 
-  const re = /\b(?:closes|closed|close|fixes|fixed|fix|resolves|resolved|resolve)\b:?[ \t]+#(\d+)\b/gi;
+  const re =
+    /\b(?:closes|closed|close|fixes|fixed|fix|resolves|resolved|resolve)\b:?[ \t]+#(\d+)\b/gi;
   const issues: number[] = [];
   for (const m of withoutCode(body).matchAll(re)) {
     const n = Number.parseInt(m[1] as string, 10);

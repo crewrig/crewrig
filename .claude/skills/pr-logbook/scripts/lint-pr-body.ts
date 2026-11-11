@@ -71,14 +71,22 @@ Exit codes: 0 no finding, 1 finding, 2 usage error, 3 precondition failed.
   let bodyFile: string | undefined;
   let templateFile: string | undefined;
   let style: string | undefined;
-  const takesValue = new Set(["--title", "--title-file", "--body-file", "--template", "--title-style"]);
+  const takesValue = new Set([
+    "--title",
+    "--title-file",
+    "--body-file",
+    "--template",
+    "--title-style",
+  ]);
   for (let i = 0; i < argv.length; i++) {
     const raw = argv[i] as string;
     if (raw === "--json") continue;
     const eq = raw.startsWith("--") ? raw.indexOf("=") : -1;
     const key = eq === -1 ? raw : raw.slice(0, eq);
     if (!takesValue.has(key))
-      return usageError(raw.startsWith("-") && raw !== "-" ? `unknown option ${raw}` : `unexpected argument ${raw}`);
+      return usageError(
+        raw.startsWith("-") && raw !== "-" ? `unknown option ${raw}` : `unexpected argument ${raw}`,
+      );
     let value: string | undefined;
     if (eq !== -1) value = raw.slice(eq + 1);
     else {
@@ -104,7 +112,9 @@ Exit codes: 0 no finding, 1 finding, 2 usage error, 3 precondition failed.
     try {
       return fs.readFileSync(file === "-" ? 0 : file, "utf8");
     } catch (e) {
-      precondition(`cannot read ${what} ${file === "-" ? "(standard input)" : file}: ${(e as Error).message}`);
+      precondition(
+        `cannot read ${what} ${file === "-" ? "(standard input)" : file}: ${(e as Error).message}`,
+      );
       return undefined;
     }
   };
@@ -143,7 +153,12 @@ Exit codes: 0 no finding, 1 finding, 2 usage error, 3 precondition failed.
         } else flags.push(false);
       } else {
         flags.push(true);
-        if (m !== null && (m[1] as string)[0] === open.ch && (m[1] as string).length >= open.len && (m[2] ?? "").trim() === "")
+        if (
+          m !== null &&
+          (m[1] as string)[0] === open.ch &&
+          (m[1] as string).length >= open.len &&
+          (m[2] ?? "").trim() === ""
+        )
           open = undefined;
       }
     }
@@ -155,7 +170,7 @@ Exit codes: 0 no finding, 1 finding, 2 usage error, 3 precondition failed.
     const flags = fenceFlags(lines);
     const kept = lines.filter((_, i) => !flags[i]).join("\n");
     let out = "";
-    for (let i = 0; i < kept.length; ) {
+    for (let i = 0; i < kept.length;) {
       if (kept[i] !== "`") {
         out += kept[i++];
         continue;
@@ -230,11 +245,16 @@ Exit codes: 0 no finding, 1 finding, 2 usage error, 3 precondition failed.
     if (count === 0) add("section-missing", `the section "## ${h}" is missing`);
     else if (count > 1) add("section-duplicate", `the section "## ${h}" appears ${count} times`);
   }
-  const firsts = bod.headings.filter((h, i) => tpl.headings.includes(h) && bod.headings.indexOf(h) === i);
+  const firsts = bod.headings.filter(
+    (h, i) => tpl.headings.includes(h) && bod.headings.indexOf(h) === i,
+  );
   for (const h of firsts) {
     const idx = tpl.headings.indexOf(h);
     if (idx < highest)
-      add("section-order", `the section "## ${h}" comes after "## ${highestName}" but the template puts it before`);
+      add(
+        "section-order",
+        `the section "## ${h}" comes after "## ${highestName}" but the template puts it before`,
+      );
     else {
       highest = idx;
       highestName = h;
@@ -264,7 +284,10 @@ Exit codes: 0 no finding, 1 finding, 2 usage error, 3 precondition failed.
     const cc = /^[a-z]+(?:\([^)]*\))?:/;
     const lead = cc.exec(rest) ?? cc.exec(titleText);
     if (lead !== null)
-      add("title-conventional-commit", `the title carries the conventional-commit prefix "${lead[0]}"`);
+      add(
+        "title-conventional-commit",
+        `the title carries the conventional-commit prefix "${lead[0]}"`,
+      );
   }
 
   const data = {

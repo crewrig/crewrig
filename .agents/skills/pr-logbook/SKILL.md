@@ -60,9 +60,10 @@ the project defines its own body template, pass it to the linter.
 ### 3. Logbook entry
 
 Run `resolve-logbook-target.ts` on the final body. A feature issue is its
-own logbook, so comment on it through the forge CLI and do not add the
-`logbook` label to it. Only a PR with no feature issue gets a standalone
-logbook issue, labelled `logbook`. Forge access is CLI-only.
+own logbook, so comment on it through the forge CLI
+(`gh issue comment <issue> --body ...`). Do not add the `logbook` label to a pre-existing feature issue.
+Only a PR with no feature issue gets a standalone logbook issue, created
+with `gh issue create ... --label logbook`. Forge access is CLI-only.
 
 A logbook is the record the next agent reads to avoid your mistakes, not
 a status update. Use this shape and append, never rewrite; a reverted

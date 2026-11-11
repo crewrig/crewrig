@@ -74,7 +74,8 @@ Exit codes: 0 flipped or already implemented, 1 other status, 2 usage error, 3 p
   const text = bytes.toString("latin1");
   const lines = text.split("\n");
   const bare = (l: string): string => l.replace(/\r$/, "");
-  if (!/^---[ \t]*$/.test(bare(lines[0] as string))) return precondition(`${file} has no frontmatter`);
+  if (!/^---[ \t]*$/.test(bare(lines[0] as string)))
+    return precondition(`${file} has no frontmatter`);
   let at = -1;
   for (let i = 1; i < lines.length; i++) {
     const l = bare(lines[i] as string);
@@ -88,8 +89,11 @@ Exit codes: 0 flipped or already implemented, 1 other status, 2 usage error, 3 p
 
   const line = lines[at] as string;
   const cr = line.endsWith("\r") ? "\r" : "";
-  const m = /^(status:[ \t]*)(?:"([^"]*)"|'([^']*)'|([^ \t#'"][^ \t]*))([ \t]*(?:#.*)?)$/.exec(bare(line));
-  const value = m === null ? bare(line).slice("status:".length).trim() : ((m[2] ?? m[3] ?? m[4]) as string);
+  const m = /^(status:[ \t]*)(?:"([^"]*)"|'([^']*)'|([^ \t#'"][^ \t]*))([ \t]*(?:#.*)?)$/.exec(
+    bare(line),
+  );
+  const value =
+    m === null ? bare(line).slice("status:".length).trim() : ((m[2] ?? m[3] ?? m[4]) as string);
 
   const base = { path: file, status: value, changed: false, would_change: false, dry_run: dryRun };
   if (m !== null && value === "implemented")
@@ -98,7 +102,12 @@ Exit codes: 0 flipped or already implemented, 1 other status, 2 usage error, 3 p
     return emit(
       1,
       base,
-      [{ rule: "status-not-approved", message: `the frontmatter status is "${value}", not "approved"` }],
+      [
+        {
+          rule: "status-not-approved",
+          message: `the frontmatter status is "${value}", not "approved"`,
+        },
+      ],
       `${NAME}: ${file} has status "${value}", not "approved"; nothing written`,
     );
 
@@ -116,5 +125,10 @@ Exit codes: 0 flipped or already implemented, 1 other status, 2 usage error, 3 p
   } catch (e) {
     return precondition(`cannot write ${file}: ${(e as Error).message}`);
   }
-  emit(0, { ...base, changed: true }, [], `${NAME}: changed status "approved" to "implemented" in ${file}`);
+  emit(
+    0,
+    { ...base, changed: true },
+    [],
+    `${NAME}: changed status "approved" to "implemented" in ${file}`,
+  );
 })();
