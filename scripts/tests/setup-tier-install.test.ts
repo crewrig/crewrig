@@ -125,15 +125,22 @@ describe("installTierToHome, Gemini", () => {
 });
 
 describe("installTierToHome, Copilot", () => {
-  it("installs SKILL.md only and never an agent", () => {
+  it("installs the whole skill directory, keeps exec bits, drops stale files, never an agent", () => {
     stage("library", ".github", {
       "skills/s/SKILL.md": "s\n",
-      "skills/s/extra.md": "e\n",
+      "skills/s/references/r.md": "r\n",
+      "skills/s/scripts/run.ts": "#!/usr/bin/env node\n",
       "agents/a.md": "a\n",
     });
+    fs.chmodSync(path.join(repo, "dist/library/.github/skills/s/scripts/run.ts"), 0o755);
+    put(path.join(home, ".copilot/skills/s/stale.md"));
     installTierToHome({ ctx: ctxOf(), cli: "copilot", tier: "library" });
-    assert.deepEqual(out, ["  Copied: library/s/SKILL.md -> ~/.copilot/skills/s/SKILL.md"]);
-    assert.deepEqual(fs.readdirSync(path.join(home, ".copilot/skills/s")), ["SKILL.md"]);
+    assert.deepEqual(out, ["  Copied dir: library/s -> ~/.copilot/skills/s"]);
+    const dest = path.join(home, ".copilot/skills/s");
+    assert.deepEqual(fs.readdirSync(dest).sort(), ["SKILL.md", "references", "scripts"]);
+    assert.equal(fs.readFileSync(path.join(dest, "references/r.md"), "utf8"), "r\n");
+    if (process.platform !== "win32")
+      assert.equal(fs.statSync(path.join(dest, "scripts/run.ts")).mode & 0o111, 0o111);
     assert.equal(fs.existsSync(path.join(home, ".copilot/agents")), false);
   });
 

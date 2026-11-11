@@ -71,11 +71,10 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   spec 0266 (ticket #1344, slice 3b) once the Bash oracle `test.sh` was replaced; `docs/shell-removal.md` maps each
   removed path to its `node` command, while `curate.py` and `apply.py` stay Python. The eleven scripts of the
   `github-actions`, `gitlab-ci` and `pr-reviewer` skills (spec 0258) are also TypeScript entries, their `.sh` retired
-  outright, so the curator is not the first skill to ship entries; the claim of symmetry is scoped to the built tree,
-  which carries the skill `scripts/` for all four CLIs. It does not extend to a user directory: when a `TIER` install
-  copies a skill there (`scripts/lib/setup/tier-install.ts`), the Copilot CLI installs only the skill's `SKILL.md` into
-  `~/.copilot/skills/<name>/`, so a skill's `scripts/` reach a Copilot user directory only through the repository tree,
-  not through that install. Relative Markdown link ascent depths are adjusted symmetrically across all targets (issue #872). **Build-system
+  outright, so the curator is not the first skill to ship entries; the built tree carries the skill `scripts/` for all four CLIs, and so does a user
+  directory: when a `TIER` install copies a skill there (`scripts/lib/setup/tier-install.ts`), the Copilot CLI installs the whole
+  skill directory (`SKILL.md`, `scripts/`, `references/`, `assets/`, mode bits kept, a prior install replaced) into
+  `~/.copilot/skills/<name>/` through `installDir`, like the other CLI targets (issue #1850, spec 0258 delta 03). Relative Markdown link ascent depths are adjusted symmetrically across all targets (issue #872). **Build-system
   parity (spec 0250 R19):** the TypeScript build produces the 272 committed generated files identically on Linux and
   Windows (CI run 37940874726 on PR #1506, job `windows-build-proof`: 272 files identical on `linux` and `win32`) and on
   macOS (measured locally); the generated tree is one set of files shared by all four CLI columns, so no CLI column
@@ -157,10 +156,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   which retargeted every caller to `node scripts/<name>.ts`. `lint-skill` resolves `js-yaml` from the script directory,
   then from the working directory, and falls back to a line scan with a one-line note when neither has it. The four CLIs
   consume the same skill scripts: these three skills are `core`, and the committed built tree carries a skill's
-  `scripts/` on all four surfaces. The one asymmetry is a different path, not the build: the overlay-tier install of
-  non-`core` skills into a user directory (`scripts/lib/setup/tier-install.ts`) places `SKILL.md` only for Copilot CLI,
-  while Claude Code, Gemini CLI and Antigravity CLI receive the whole skill directory; it does not touch these `core`
-  skills. Recorded, not changed. Windows proof: the `windows-skill-scripts` job runs each entry from PowerShell and
+  `scripts/` on all four surfaces. The overlay-tier install of non-`core` skills into a user directory (`scripts/lib/setup/tier-install.ts`) now places the whole skill directory for all four CLIs, Copilot CLI included (issue #1850; it was `SKILL.md` only before). Windows proof: the `windows-skill-scripts` job runs each entry from PowerShell and
   `cmd.exe` with no `bash` on the child `PATH` (`scripts/tests/windows-skill-scripts.test.ts`)
 - **Source of truth:** `artifacts/core/skills/{github-actions,gitlab-ci,pr-reviewer}/scripts/*.ts`;
   `scripts/build-components.ts` `propagateSkillResources`
@@ -168,8 +164,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   skill directory
 - **Gemini CLI:** ✅ `.gemini/skills/<name>/scripts/<name>.ts` (core tree); overlay-tier install copies the whole skill
   directory
-- **Copilot CLI:** ✅ `.github/skills/<name>/scripts/<name>.ts` (core tree); ⚠️ overlay-tier install to
-  `~/.copilot` places `SKILL.md` only (non-`core` skills)
+- **Copilot CLI:** ✅ `.github/skills/<name>/scripts/<name>.ts` (core tree); ✅ overlay-tier install to
+  `~/.copilot` copies the whole skill directory (non-`core` skills; issue #1850)
 - **Antigravity CLI:** ✅ `.agents/skills/<name>/scripts/<name>.ts` (core tree)
 
 ### 5 — Slash-command directory
@@ -1906,8 +1902,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   user data; a hook that does real work SHALL NOT ship on an unmeasured cell (spec 0258 R21). Owner of the obligation:
   spec 0258; the measurement, run on the maintainer's Windows machine with `scripts/probe-windows-hook-parsing.ts`, is
   tracked by issue #1601 and replaces this row. Parity: the four CLIs consume the same hook source
-  (`extensions/core/hello-world/hooks/*.ts`); the Copilot CLI installs only the `SKILL.md` of a skill, never its
-  `scripts/` (`scripts/lib/setup/tier-install.ts`), an existing asymmetry this spec records and does not change.
+  (`extensions/core/hello-world/hooks/*.ts`); the Copilot CLI user-scope install also places a skill's whole directory,
+  `scripts/` included (`scripts/lib/setup/tier-install.ts`, issue #1850, spec 0258 delta 03).
 - **Source of truth:** `extensions/core/hello-world/hooks/prompt-logger.ts`,
   `extensions/core/hello-world/hooks/shell-logger.ts`, `extension-skeleton/hook/hooks/logger.ts`,
   `scripts/tests/extension-hooks-differential.test.ts`, `scripts/probe-windows-hook-parsing.ts`
