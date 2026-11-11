@@ -144,6 +144,23 @@ describe("installTierToHome, Copilot", () => {
     assert.equal(fs.existsSync(path.join(home, ".copilot/agents")), false);
   });
 
+  it("replaces a prior install with a link in link mode and labels it Linked dir", () => {
+    stage("library", ".github", { "skills/s/SKILL.md": "s\n", "skills/s/scripts/run.ts": "x\n" });
+    put(path.join(home, ".copilot/skills/s/stale.md"));
+    installTierToHome({ ctx: { ...ctxOf(), link: true }, cli: "copilot", tier: "library" });
+    const dest = path.join(home, ".copilot/skills/s");
+    assert.equal(fs.existsSync(path.join(dest, "stale.md")), false);
+    assert.equal(fs.existsSync(path.join(dest, "scripts/run.ts")), true);
+    assert.match(out[0] ?? "", /^ {2}(Linked|Copied) dir: library\/s -> ~\/\.copilot\/skills\/s$/);
+  });
+
+  it("skips a staged directory without SKILL.md and creates no empty target", () => {
+    stage("library", ".github", { "skills/nodoc/scripts/run.ts": "x\n", "skills/s/SKILL.md": "s\n" });
+    installTierToHome({ ctx: ctxOf(), cli: "copilot", tier: "library" });
+    assert.deepEqual(fs.readdirSync(path.join(home, ".copilot/skills")), ["s"]);
+    assert.deepEqual(out, ["  Copied dir: library/s -> ~/.copilot/skills/s"]);
+  });
+
   it("prints the no-built-skills line for an absent or empty skills staging", () => {
     const staging = path.join(repo, "dist/library/.github/skills");
     const line = `  Tier 'library' has no built skills (no ${staging}) — run 'node scripts/build-components.ts --target copilot' first.`;
