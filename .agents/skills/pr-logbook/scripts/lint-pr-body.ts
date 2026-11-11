@@ -215,10 +215,10 @@ Exit codes: 0 no finding, 1 finding, 2 usage error, 3 precondition failed.
     const pre: string[] = [];
     let seen = false;
     lines.forEach((line, i) => {
-      const m = flags[i] ? null : /^ {0,3}##[ \t]+(.*?)[ \t]*$/.exec(line.replace(/\r$/, ""));
+      const m = flags[i] ? null : /^ {0,3}##[ \t]+(.*)$/.exec(line.replace(/\r$/, ""));
       if (m !== null) {
         seen = true;
-        headings.push(m[1] as string);
+        headings.push((m[1] as string).trimEnd());
       } else if (!seen) pre.push(line);
     });
     return { preamble: pre.join("\n").trim(), headings };

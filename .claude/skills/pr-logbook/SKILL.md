@@ -23,7 +23,8 @@ checks live in bundled scripts; you supply the judgement.
 
 ## Scripts
 
-Run from the skill directory. Each takes `--json` for a machine-readable
+Run `node <skill-dir>/scripts/<name>.ts` from wherever the input files are;
+paths you pass stay relative to your current directory. Each takes `--json` for a machine-readable
 result and exits `0` (ok), `1` (finding), `2` (usage error) or `3`
 (precondition failed). Conventions shared by all scripts are in
 [`references/script-contract.md`](references/script-contract.md).
@@ -109,7 +110,8 @@ log`, so make it denser than the PR description rather than a paste of it:
 
 If the PR implements a spec, run `flip-spec-status.ts` on the spec file
 on the implementation branch before merge, then record it in a new commit
-(not an amend) and push. The spec then lands on the main branch already
+(not an amend), and push it when the PR branch is pushed, unless the user
+or the task says not to. The spec then lands on the main branch already
 marked implemented. The script changes the status line only; any other
 edit to the spec does not belong in this change.
 
@@ -121,7 +123,7 @@ is pushed.
 Text-only file writes silently drop the executable bit. If the diff
 touches executable files, check `git ls-files --stage -- <file>` shows
 `100755`, not `100644`. Restore with `git update-index --chmod=+x <file>`
-and amend before pushing.
+and record it in a new commit, as with the spec flip.
 
 ### 7. After merge
 

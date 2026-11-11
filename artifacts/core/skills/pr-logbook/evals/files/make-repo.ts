@@ -8,7 +8,6 @@ void (() => {
   const cp = process.getBuiltinModule("node:child_process");
 
   const repo = "repo";
-  fs.rmSync(repo, { recursive: true, force: true });
   fs.mkdirSync(repo);
 
   const git = (...args: string[]): void => {

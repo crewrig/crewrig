@@ -67,12 +67,12 @@
         {
           "type": "file_contains",
           "path": "logbook-command.sh",
-          "pattern": "gh issue comment 12\\b"
+          "pattern": "gh issue comment\\b[^\\n]*[ \\t/\"'#]12\\b"
         },
         {
           "type": "file_contains",
           "path": "logbook-command.sh",
-          "pattern": "^(?![\\s\\S]*(?:--(?:add-)?label[ =]|-l ?)logbook)"
+          "pattern": "^(?![\\s\\S]*(?:--(?:add-)?label[ =]|-l ?)[\"']?(?:[\\w-]+,)*logbook\\b)"
         },
         {
           "type": "file_contains",
@@ -106,7 +106,7 @@
         {
           "type": "file_contains",
           "path": "logbook-command.sh",
-          "pattern": "(?:--(?:add-)?label[ =]|-l ?)logbook"
+          "pattern": "(?:--(?:add-)?label[ =]|-l ?)[\"']?(?:[\\w-]+,)*logbook\\b"
         }
       ]
     },
