@@ -56,7 +56,7 @@ Shared memory daemon (spec 0113 delta-02): defaulting copilot to HTTP.
   MemPalace reaches shared memory through the HTTP daemon.
 
 Installing library skills to <HOME>/.copilot/skills (automatic)...
-  Copied: library/library-skill/SKILL.md -> ~/.copilot/skills/library-skill/SKILL.md
+  Copied dir: library/library-skill -> ~/.copilot/skills/library-skill
 
   'community' skills install skipped.
 
