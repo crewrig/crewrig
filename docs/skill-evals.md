@@ -35,7 +35,7 @@ With neither variable set (and no `--mock`) the runner makes no model call, name
 
 **The subscription token is never sent to the Messages API.** A judge configuration override is honoured (backend, model, `api_key_env`, `auth_mode`, `endpoint`) when supplied as a JSON file `{"judge": {...}}` through `--judge-config <file>` or the `SKILL_EVALS_JUDGE_CONFIG` variable, except that an effective configuration with backend `claude-code` (either authentication mode) or with an `api_key_env` of `CLAUDE_CODE_OAUTH_TOKEN` is refused with exit 3, naming the backend or variable. The supported judge backends are `claude-cli` (the default on the token path) and `anthropic` (the default on the API-key path); the runner writes the effective judge configuration itself in `<out>/<skill>/.judge/effective.json`.
 
-Whether a `setup-token` value may be used outside the `claude` binary is a terms-of-use question that is deliberately not answered here; the runner routes around it. It is tracked in its own issue.
+Whether a `setup-token` value may be used outside the `claude` binary is a terms-of-use question that is deliberately not answered here; the runner routes around it. The question is deliberately out of scope; the runner routes around it by judging through `claude -p`.
 
 ## What a run does
 
