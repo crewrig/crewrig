@@ -4,10 +4,19 @@
 // `writeSessionStub`, in a fake HOME and a temporary root that does not contain it, so a test can
 // assert on the argv, environment and working directory of every child. No model call, no network.
 
+/* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-call, typescript/no-unsafe-argument, typescript/no-unsafe-return -- the runner output files are read back as untyped JSON */
+
 import fs from "node:fs";
 import path from "node:path";
 
-import { DECOY_EMAIL, DECOY_ORG, isolatedDirs, skillRel, tmpDir, writeSessionStub } from "./skill-evals-fixtures.ts";
+import {
+  DECOY_EMAIL,
+  DECOY_ORG,
+  isolatedDirs,
+  skillRel,
+  tmpDir,
+  writeSessionStub,
+} from "./skill-evals-fixtures.ts";
 import type { StubCall } from "./skill-evals-fixtures.ts";
 import { makeRig, plainEvals } from "./skill-evals-run-rig.ts";
 
@@ -78,4 +87,3 @@ export const foreignVars = (c: StubCall) =>
   Object.keys(c.env).filter(
     (k) => !allowlisted.has(k) && !credentialVars(c).includes(k) && !k.startsWith("__CF"),
   );
-

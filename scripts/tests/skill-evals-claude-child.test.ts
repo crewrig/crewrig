@@ -65,12 +65,10 @@ test.after(() => {
 });
 
 test("R40: the isolation flags are exactly --setting-sources project, --strict-mcp-config and --no-session-persistence, and never --bare", () => {
-  assert.deepEqual([...ISOLATION_FLAGS], [
-    "--setting-sources",
-    "project",
-    "--strict-mcp-config",
-    "--no-session-persistence",
-  ]);
+  assert.deepEqual(
+    [...ISOLATION_FLAGS],
+    ["--setting-sources", "project", "--strict-mcp-config", "--no-session-persistence"],
+  );
   assert.equal(ISOLATION_FLAGS.includes("--bare"), false);
 });
 
@@ -86,7 +84,18 @@ test("R42: childBaseEnv passes exactly the allowlist members that are set, the n
     LOGNAME: "me",
   });
   assert.deepEqual(out, all);
-  for (const k of ["USER", "HTTPS_PROXY", "https_proxy", "NO_PROXY", "no_proxy", "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE", "SSL_CERT_DIR", "HTTP_PROXY", "http_proxy"])
+  for (const k of [
+    "USER",
+    "HTTPS_PROXY",
+    "https_proxy",
+    "NO_PROXY",
+    "no_proxy",
+    "NODE_EXTRA_CA_CERTS",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+    "HTTP_PROXY",
+    "http_proxy",
+  ])
     assert.equal(out[k], `v-${k}`, k);
   // a member that is unset (or undefined) is absent, not an empty string
   assert.deepEqual(childBaseEnv({ PATH: "/bin", HOME: undefined, USER: "u" }), {
@@ -115,7 +124,10 @@ test("claudeBinary: `claude` unless SKILL_EVALS_CLAUDE_BIN is set; the refusal m
   assert.equal(claudeBinary({}), "claude");
   assert.equal(claudeBinary({ SKILL_EVALS_CLAUDE_BIN: "" }), "claude");
   assert.equal(claudeBinary({ SKILL_EVALS_CLAUDE_BIN: "/x/claude" }), "/x/claude");
-  assert.match(cannotStartMessage({ SKILL_EVALS_CLAUDE_BIN: "/x/claude" }), /cannot start `\/x\/claude`.*No model call was made/);
+  assert.match(
+    cannotStartMessage({ SKILL_EVALS_CLAUDE_BIN: "/x/claude" }),
+    /cannot start `\/x\/claude`.*No model call was made/,
+  );
   assert.ok(cannotStartMessage({}).includes(INSTALL_HINT));
   const plain = notLoggedInMessage(false);
   assert.match(plain, /Run `claude` and log in/);
@@ -132,7 +144,10 @@ const probeOf = async (auth: AuthStub, env: Record<string, string> = {}) => {
   const dir = temp();
   const bin = writeStubClaude(dir, undefined, "claude-stub.js", auth);
   const cwd = temp();
-  const state = await probeLogin({ PATH: process.env["PATH"], SKILL_EVALS_CLAUDE_BIN: bin, ...env }, { tempRoot: cwd });
+  const state = await probeLogin(
+    { PATH: process.env["PATH"], SKILL_EVALS_CLAUDE_BIN: bin, ...env },
+    { tempRoot: cwd },
+  );
   return { state, bin, cwd };
 };
 
@@ -142,11 +157,23 @@ test("R41: the contributor is logged in only when the command exits 0 and prints
     ["exit 1, loggedIn false", { loggedIn: false }, "not-logged-in"],
     ["exit 0, loggedIn false", { loggedIn: false, exitCode: 0 }, "not-logged-in"],
     ["exit 1 wins over loggedIn true", { loggedIn: true, exitCode: 1 }, "not-logged-in"],
-    ["loggedIn absent", { loggedIn: true, raw: JSON.stringify({ email: DECOY_EMAIL }) }, "not-logged-in"],
-    ["loggedIn is the string true", { loggedIn: true, raw: JSON.stringify({ loggedIn: "true" }) }, "not-logged-in"],
+    [
+      "loggedIn absent",
+      { loggedIn: true, raw: JSON.stringify({ email: DECOY_EMAIL }) },
+      "not-logged-in",
+    ],
+    [
+      "loggedIn is the string true",
+      { loggedIn: true, raw: JSON.stringify({ loggedIn: "true" }) },
+      "not-logged-in",
+    ],
     ["junk output", { loggedIn: true, raw: "not json at all" }, "not-logged-in"],
     ["empty output", { loggedIn: true, raw: "" }, "not-logged-in"],
-    ["a JSON array", { loggedIn: true, raw: JSON.stringify([{ loggedIn: true }]) }, "not-logged-in"],
+    [
+      "a JSON array",
+      { loggedIn: true, raw: JSON.stringify([{ loggedIn: true }]) },
+      "not-logged-in",
+    ],
     ["JSON null", { loggedIn: true, raw: "null" }, "not-logged-in"],
   ];
   for (const [what, auth, expected] of cases) {
@@ -157,7 +184,10 @@ test("R41: the contributor is logged in only when the command exits 0 and prints
 
 test("R41: a binary that cannot be started is cannot-start, not not-logged-in", async () => {
   resetLoginProbe();
-  const state = await probeLogin({ SKILL_EVALS_CLAUDE_BIN: "/nonexistent/claude" }, { tempRoot: temp() });
+  const state = await probeLogin(
+    { SKILL_EVALS_CLAUDE_BIN: "/nonexistent/claude" },
+    { tempRoot: temp() },
+  );
   assert.equal(state, "cannot-start");
 });
 
@@ -167,7 +197,10 @@ test("R41: a probe that never answers times out as not-logged-in (the timer is f
   const bin = writeStubClaude(dir, undefined, "claude-stub.js", { loggedIn: true, hang: true });
   mock.timers.enable({ apis: ["setTimeout"] });
   try {
-    const pending = probeLogin({ PATH: process.env["PATH"], SKILL_EVALS_CLAUDE_BIN: bin }, { tempRoot: temp() });
+    const pending = probeLogin(
+      { PATH: process.env["PATH"], SKILL_EVALS_CLAUDE_BIN: bin },
+      { tempRoot: temp() },
+    );
     // the timer is armed synchronously by probeLogin; fire it well past any plausible limit
     mock.timers.tick(10 * 60_000);
     assert.equal(await pending, "not-logged-in");
@@ -197,7 +230,12 @@ test("R41, R42: the probe is `auth status --json` with no model call, the allowl
   assert.equal(calls[0]?.env["USER"], "contributor");
   assert.equal(calls[0]?.env["HTTPS_PROXY"], "http://p.invalid:1");
   assert.equal(calls[0]?.env["https_proxy"], "http://p.invalid:2");
-  for (const k of ["ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "SOME_OTHER", "SKILL_EVALS_CLAUDE_BIN"])
+  for (const k of [
+    "ANTHROPIC_API_KEY",
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "SOME_OTHER",
+    "SKILL_EVALS_CLAUDE_BIN",
+  ])
     assert.equal(calls[0]?.env[k], undefined, k);
   assert.equal(fs.realpathSync(calls[0]?.cwd ?? ""), fs.realpathSync(r.cwd));
   assert.deepEqual(readCalls(r.bin, "model"), [], "the model entry point is never reached");
@@ -210,7 +248,9 @@ test("F4: the probe is memoised per binary, HOME, USER and CLAUDE_CONFIG_DIR: co
   const bin = writeStubClaude(dir, undefined, "claude-stub.js", { loggedIn: true });
   const env = { PATH: process.env["PATH"], SKILL_EVALS_CLAUDE_BIN: bin, HOME: "/h1", USER: "u" };
   const root = temp();
-  const states = await Promise.all(Array.from({ length: 8 }, () => probeLogin(env, { tempRoot: root })));
+  const states = await Promise.all(
+    Array.from({ length: 8 }, () => probeLogin(env, { tempRoot: root })),
+  );
   assert.deepEqual([...new Set(states)], ["logged-in"]);
   assert.equal(await probeLogin(env, { tempRoot: root }), "logged-in");
   assert.equal(readCalls(bin, "auth").length, 1);
@@ -251,11 +291,18 @@ test("F3: the comparison is by real path and by path segment: a symlinked HOME o
   // temp root given through a symlink that points into HOME
   const sneaky = path.join(base, "innocent");
   fs.symlinkSync(path.join(realHome, "tmp"), sneaky);
-  assert.ok(checkTempRoot(sneaky, realHome) !== undefined, "the real path of the temp root decides");
+  assert.ok(
+    checkTempRoot(sneaky, realHome) !== undefined,
+    "the real path of the temp root decides",
+  );
   // a sibling whose name starts with HOME's name
   const lookalike = path.join(base, "real-home-2");
   fs.mkdirSync(lookalike);
-  assert.equal(checkTempRoot(lookalike, realHome), undefined, "real-home-2 is not inside real-home");
+  assert.equal(
+    checkTempRoot(lookalike, realHome),
+    undefined,
+    "real-home-2 is not inside real-home",
+  );
   // a directory that is not a git work tree: `git rev-parse` fails (exit 128) and that is not 'inside'
   assert.equal(checkTempRoot(lookalike, path.join(base, "elsewhere")), undefined);
   // a missing HOME directory does not throw
@@ -289,7 +336,10 @@ function runnerRig(auth: AuthStub, tempRoot: (iso: ReturnType<typeof isolatedDir
     tempRoot: tempRoot(iso),
     env: { SKILL_EVALS_CLAUDE_BIN: bin, HOME: iso.home, USER: "contributor" },
     change: (repo) =>
-      fs.writeFileSync(path.join(repo.root, skillRel("demo"), "evals", "evals.json"), plainEvals("demo", 1)),
+      fs.writeFileSync(
+        path.join(repo.root, skillRel("demo"), "evals", "evals.json"),
+        plainEvals("demo", 1),
+      ),
   });
   return {
     rig,
@@ -318,7 +368,10 @@ test("R32: with the temporary directory inside HOME the runner exits 3 naming TM
     assert.equal(readCalls(t.bin).length, 0, "no probe, no executor, no judge");
     assert.equal(t.rig.executor.calls.length, 0);
     assert.equal(fs.existsSync(path.join(t.rig.out, "demo")), false);
-    assert.equal(fs.existsSync(path.join(t.rig.repo.root, skillRel("demo"), "evals", "results.json")), false);
+    assert.equal(
+      fs.existsSync(path.join(t.rig.repo.root, skillRel("demo"), "evals", "results.json")),
+      false,
+    );
     assert.equal(r.credentialSource, undefined);
   } finally {
     t.cleanup();

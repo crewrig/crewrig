@@ -79,8 +79,7 @@ export function childEnv(
 
 export const claudeBinary = (base: Env): string => base["SKILL_EVALS_CLAUDE_BIN"] || "claude";
 
-export const INSTALL_HINT =
-  "install Claude Code: https://docs.claude.com/en/docs/claude-code";
+export const INSTALL_HINT = "install Claude Code: https://docs.claude.com/en/docs/claude-code";
 
 const cache = new Map<string, Promise<LoginState>>();
 
@@ -134,7 +133,9 @@ function runProbe(base: Env, tempRoot: string): Promise<LoginState> {
 
 /** R41: is the contributor logged in? Memoised; reads only `loggedIn`; makes no model call. */
 export function probeLogin(base: Env, opts: { tempRoot: string }): Promise<LoginState> {
-  const key = [claudeBinary(base), base["HOME"], base["USER"], base["CLAUDE_CONFIG_DIR"]].join("\0");
+  const key = [claudeBinary(base), base["HOME"], base["USER"], base["CLAUDE_CONFIG_DIR"]].join(
+    "\0",
+  );
   let p = cache.get(key);
   if (p === undefined) {
     p = runProbe(base, opts.tempRoot);

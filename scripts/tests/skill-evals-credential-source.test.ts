@@ -3,6 +3,8 @@
 // judge driver run against a recording stub `claude` (see `stubRig`); a recording `fetch` stands in for
 // the Messages API. No model call, no network.
 
+/* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-call, typescript/no-unsafe-argument, typescript/no-unsafe-return -- the runner output files are read back as untyped JSON */
+
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -193,4 +195,3 @@ test("R33: --use-api-key with ANTHROPIC_API_KEY unset or empty exits 3 naming th
     }
   }
 });
-
