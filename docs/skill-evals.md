@@ -2,7 +2,7 @@
 
 <!-- crewrig-doc: section=reference nav_order=165 published=true title="Skill evals" -->
 
-A skill owns a small set of evaluation cases next to its `SKILL.md`. One command runs them on your machine and grades each skill expectation by expectation, with and without the skill, and against the base branch. A passing run writes a committed, content-hashed `evals/results.json`; the pull-request pipeline only checks that this file is fresh. Specification: [spec 0290](../specs/0290-skill-eval-runner.md) and its [delta 01](../specs/0290-skill-eval-runner.delta-01.md); decisions: [ADR 0023](adr/0023-skill-eval-executor.md).
+A skill owns a small set of evaluation cases next to its `SKILL.md`. One command runs them on your machine and grades each skill expectation by expectation, with and without the skill, and against the base branch. A passing run writes a committed, content-hashed `evals/results.json`; the pull-request pipeline only checks that this file is fresh. Specification: [spec 0290](../specs/0290-skill-eval-runner.md) its [delta 01](../specs/0290-skill-eval-runner.delta-01.md) and its [delta 03](../specs/0290-skill-eval-runner.delta-03.md) (logged-in session, isolation by flags); decisions: [ADR 0023](adr/0023-skill-eval-executor.md).
 
 ## Run it
 
@@ -12,30 +12,52 @@ task skill-evals -- --changed             # every skill whose content differs fr
 task skill-evals -- pr-logbook --mock     # no process, no model call, no credential: for plumbing checks
 ```
 
-Options: `--out <dir>` (default `.skill-evals/`, git-ignored), `--mock`, `--ticket <N>`, `--base <ref>` (default `origin/main`), `--judge-config <file>`.
+Options: `--out <dir>` (default `.skill-evals/`, git-ignored), `--mock`, `--ticket <N>`, `--base <ref>` (default `origin/main`), `--judge-config <file>`, `--use-api-key` (bill `ANTHROPIC_API_KEY` instead of the login; see [Credentials](#credentials)).
 
-Exit codes: `0` ok, `1` a blocking outcome, `2` usage error or unknown skill, `3` failed precondition (no credentials, a refused judge configuration, no ticket to attribute the spend to).
+Exit codes: `0` ok, `1` a blocking outcome, `2` usage error or unknown skill, `3` failed precondition (not logged in to Claude Code, a requested API key that is unset, a temporary directory inside `HOME` or a git work tree, a refused judge configuration, no ticket to attribute the spend to).
 
 Everything runs on your machine. No CI job runs an eval, holds a model credential, or makes a model call.
 
 ## Requirements and scope of the measurement
 
-- The `claude` binary (Claude Code) must be on your `PATH`: it is the executor of every run and, on the token path, the judge. A missing binary is reported as an `error` with an install hint. Unix only: the executor needs process groups.
+- **Prerequisite.** Claude Code must be installed (the `claude` binary on your `PATH`) and you must be logged in to it (run `claude` once and log in). The binary is the executor of every run and, except under `--use-api-key`, the judge. A missing binary is reported with an install hint and exit 3. Unix only (macOS and Linux): the executor needs process groups.
 - The eval measures a skill **on Claude Code**, not on each of the four CLIs the skill ships to. The executor is Claude Code only (spec 0290 R26). The runner is a repository development tool and deploys nothing to a CLI target, so no row under `docs/cli-matrix/rows/` exists for it.
-- Each run starts from an empty conversation in a throwaway `HOME` and `CLAUDE_CONFIG_DIR`, in a throwaway workspace outside any repository, so no user or repository configuration is touched or read. A `with_skill` run installs the skill as a real skill (`SKILL.md`, `scripts/`, `references/`, `assets/`; never `evals/` or any other path, so the agent cannot read the expectations it is graded on); a `without_skill` run has no skill. The agent may use `Bash`, `Read`, `Write`, `Edit` and `Skill` only.
+- Each run starts from an empty conversation, in a throwaway workspace, and is isolated by flags rather than by a throwaway home: every `claude` child keeps your real `HOME` (and your `CLAUDE_CONFIG_DIR` when set) and receives `--setting-sources project --strict-mcp-config --no-session-persistence`, so no user or local settings, hooks, `CLAUDE.md`, MCP servers or user-scope skills are loaded and no session transcript is left behind. `--bare` is never used: it never reads the OAuth login or the keychain. The executor and the judge driver share this flag set.
+- The workspace is a temporary directory outside any repository and outside `HOME`, so no repository rule and no memory file of an ancestor directory is loaded. When the temporary directory resolves inside `HOME` or inside a git work tree, the runner makes no model call, names `TMPDIR` and exits 3: point `TMPDIR` elsewhere.
+- A `with_skill` run installs the skill at project scope, as `<workspace>/.claude/skills/<name>/` (`SKILL.md`, `scripts/`, `references/`, `assets/`; never `evals/` or any other path, so the agent cannot read the expectations it is graded on); a `without_skill` run has no `.claude/skills` directory, so the two arms differ only by the installed skill. The base replay installs the merge-base skill the same way. The top-level `.claude/` directory is the install location, not an output: it is excluded from `outputs/`. The agent may use `Bash`, `Read`, `Write`, `Edit` and `Skill` only.
+- The environment of each `claude` child is an allowlist: `PATH`, `HOME`, `LANG`, `LC_ALL`, `TMPDIR`, `USER`, `CLAUDE_CONFIG_DIR` when you set it, and, when set, the network variables `NODE_EXTRA_CA_CERTS`, `SSL_CERT_FILE`, `SSL_CERT_DIR`, `HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY` and their lowercase forms, plus at most one credential variable. `USER` is needed because on macOS the login is held in the keychain and `claude` reports not logged in without it; the network variables are passed so that a contributor behind a corporate certificate authority or proxy can reach the model. Nothing else reaches the child.
 
 ## Credentials
 
-| Variable | Use |
-|---|---|
-| `CLAUDE_CODE_OAUTH_TOKEN` | Preferred. A subscription token produced by `claude setup-token`. Given to the executor; the judge makes its calls through headless `claude -p` with the same token. |
-| `ANTHROPIC_API_KEY` | Accepted when the token is absent. The executor uses it; the judge uses the existing `anthropic` driver with this key (no judge-specific variable needed). |
+The default is your logged-in Claude Code session: no variable is needed. Two optional overrides exist. The source is chosen in this order:
 
-With neither variable set (and no `--mock`) the runner makes no model call, names both variables and how to obtain the token, and exits 3. The credential reaches the executor child through its environment only (an allowlist: `PATH`, `HOME`, `CLAUDE_CONFIG_DIR`, `LANG`, `LC_ALL`, `TMPDIR`, plus that one variable); it is never put on argv or in a file, and it is scrubbed from `transcript.md`. **Residual:** the agent's `Bash` tool can read its own environment, so the credential is exposed to the skill under test; it is your own credential on your own machine. `exit_code` checks run with no credential in their environment.
+| Order | Source | Use |
+|---|---|---|
+| 1 | `ANTHROPIC_API_KEY`, only with `--use-api-key` | Explicit opt-in. The executor uses the key; the judge uses the existing `anthropic` driver with it. With the option and an unset or empty variable the runner makes no model call, names the variable and exits 3. |
+| 2 | `CLAUDE_CODE_OAUTH_TOKEN` | Optional override: a subscription token produced by `claude setup-token`. Given to the executor; the judge makes its calls through headless `claude -p` with the same token. |
+| 3 | Logged-in Claude Code session | The default. The executor and the judge (headless `claude -p`) use the login; no credential variable is passed. |
 
-**The subscription token is never sent to the Messages API.** A judge configuration override is honoured (backend, model, `api_key_env`, `auth_mode`, `endpoint`) when supplied as a JSON file `{"judge": {...}}` through `--judge-config <file>` or the `SKILL_EVALS_JUDGE_CONFIG` variable, except that an effective configuration with backend `claude-code` (either authentication mode) or with an `api_key_env` of `CLAUDE_CODE_OAUTH_TOKEN` is refused with exit 3, naming the backend or variable. The supported judge backends are `claude-cli` (the default on the token path) and `anthropic` (the default on the API-key path); the runner writes the effective judge configuration itself in `<out>/<skill>/.judge/effective.json`.
+Without `--use-api-key`, `ANTHROPIC_API_KEY` is never used and is removed from the environment of every `claude` child (executor, judge driver and login probe), because `claude` prefers that variable to the login whenever it sees it and would bill the key silently. The report names the credential source in use (`logged-in Claude Code session`, `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY (--use-api-key)`) without printing any secret, so you see whom the run is billed to.
 
-Whether a `setup-token` value may be used outside the `claude` binary is a terms-of-use question that is deliberately not answered here; the runner routes around it. The question is deliberately out of scope; the runner routes around it by judging through `claude -p`.
+**Exit 3 when not logged in.** In session mode (no token, no `--use-api-key`, no `--mock`) the runner runs `claude auth status --json` before any model call; it is a local command that makes no model call. You are logged in only when it exits 0 and its `loggedIn` field is `true`; the runner reads no other field, since the output carries your e-mail address and organisation. Otherwise it makes no model call, writes no results file, prints a message telling you to run `claude` and log in (or to set `CLAUDE_CODE_OAUTH_TOKEN`, or to pass `--use-api-key` with `ANTHROPIC_API_KEY` set), and exits 3. When `ANTHROPIC_API_KEY` is set and was not requested, the message also says that the key exists but was not requested. A login that lapses during an invocation is not a precondition failure: the affected runs end as executor failures.
+
+A token or key reaches the executor child through its environment only; it is never put on argv or in a file, and it is scrubbed from `transcript.md`. `exit_code` checks run with no credential in their environment and a throwaway `HOME`.
+
+**The subscription token is never sent to the Messages API.** A judge configuration override is honoured (backend, model, `api_key_env`, `auth_mode`, `endpoint`) when supplied as a JSON file `{"judge": {...}}` through `--judge-config <file>` or the `SKILL_EVALS_JUDGE_CONFIG` variable, except that an effective configuration with backend `claude-code` (either authentication mode) or with an `api_key_env` of `CLAUDE_CODE_OAUTH_TOKEN` is refused with exit 3, naming the backend or variable. The supported judge backends are `claude-cli` (the default with the logged-in session or the token) and `anthropic` (used only under `--use-api-key`); the runner writes the effective judge configuration itself in `<out>/<skill>/.judge/effective.json`.
+
+Whether a `setup-token` value may be used outside the `claude` binary is a terms-of-use question that is deliberately not answered here; the runner routes around it by judging through `claude -p`. The same holds for the OAuth credential of the logged-in session.
+
+## Residual risk and prerequisites
+
+Spec 0290 delta 03 requirement 44 requires these seven statements.
+
+- **Prerequisite.** Claude Code installed and logged in. `claude setup-token` (`CLAUDE_CODE_OAUTH_TOKEN`) and `ANTHROPIC_API_KEY` are optional overrides, not the preferred path.
+- **API key opt-in and credential exposure.** `ANTHROPIC_API_KEY` is used only with `--use-api-key`. In session mode the credential is no longer in the agent's environment, so the agent's `Bash` cannot read it from there. Where Claude Code keeps the login in a file under the real configuration directory instead of the keychain, that file is reachable by the agent's `Read` and `Bash`, and the residual is not reduced. On macOS the login is held in the keychain, which the agent's `Bash` may still reach through the `security` command, subject to the operating system's own prompt, so the keychain is not unreachable. With `CLAUDE_CODE_OAUTH_TOKEN`, or with `ANTHROPIC_API_KEY` under `--use-api-key`, the credential is in the child's environment and the previous residual stands unchanged: the agent's `Bash` can read its own environment.
+- **Filesystem reach.** The agent runs as you, with your real `HOME`, so its `Bash`, `Read`, `Write` and `Edit` can reach your configuration directory and can modify it. The previous throwaway `HOME` never confined the filesystem (an absolute path always reached it); it only removed the default pointer to it. No tool-level deny rule is added, because `Bash` would bypass it and the rule would be a false boundary.
+- **Shared state files and concurrency.** `claude` may still update its own state files in the configuration directory (for example a credential refresh), as any invocation does, and several runs in flight share that directory. `EXECUTOR_CONCURRENCY` stays at its default of 4 in session mode, to be verified by the maintainer smoke run with four concurrent runs; lower it if concurrent credential refreshes prove to interfere.
+- **Measured cost.** An isolated run on Sonnet 5.5 costs about 0.03 US dollars: 0.022 for a one-word reply, 0.028 for a skill-triggered run of five turns, 0.025 without the skill (the same one-word reply cost 0.33 with the full user configuration loaded). These figures are an input to the recalibration of issue #1852; no cost default changes with delta 03.
+- **Checked-out pull requests.** Running the evals on a checked-out pull request that is not your own executes that pull request's skill and scripts as you, with your real `HOME`. Review the skill's scripts first, as for any code you run locally. (The trust model below covers the forgeability of results, not this.)
+- **Network variables.** The passed-through network variables are configuration, but a proxy URL may embed credentials, which the agent's `Bash` can then read. They are your own, at the same trust as the login.
 
 ## What a run does
 
@@ -63,7 +85,7 @@ The judge returns a verdict and evidence per expectation. A `PASS` counts only w
 
 ## Settings
 
-Every setting is one declared constant in `scripts/lib/skill-evals/settings.ts`, so recalibrating or flipping one is a one-line change. Defaults marked provisional are to be recalibrated from the measured costs on the `pr-logbook` pilot (issue #1852).
+Every setting is one declared constant in `scripts/lib/skill-evals/settings.ts`, so recalibrating or flipping one is a one-line change. Defaults marked provisional are to be recalibrated from the measured costs on the `pr-logbook` pilot (issue #1852), which also receives the isolated-run smoke costs recorded under [Residual risk and prerequisites](#residual-risk-and-prerequisites) as an input; none of the cost defaults changed with delta 03.
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -75,7 +97,8 @@ Every setting is one declared constant in `scripts/lib/skill-evals/settings.ts`,
 | `MAX_INVOCATION_USD` | `100` | Worst-case executor cost (planned runs x per-run budget) across all selected skills. |
 | `EXECUTOR_CONCURRENCY` | `4` | Executor runs in flight at once. |
 | `PER_RUN_TURNS` / `PER_RUN_SECONDS` / `PER_RUN_USD` | `25` / `300` / `1` | Per-run limits. A run that hits one is graded on the output it produced so far, tagged in `metrics.json`, counted in `pass_rate`, and never an `error`. |
-| `EXECUTOR_MODEL` | `claude-sonnet-4-6` | The executor model, a Sonnet-class model; a run never silently uses another one. |
+| `EXECUTOR_MODEL` | `claude-sonnet-5-5` | The executor model, a Sonnet-class model (accepted by `claude` 2.1.322 in the delta-03 smoke); a run never silently uses another one. |
+| `JUDGE_MODEL` | `claude-sonnet-5-5` | The judge model used by the runner, the same Sonnet-class model. |
 
 ### Budget and cost
 
@@ -85,7 +108,7 @@ Worst case for one skill: 30 runs of 1 dollar and 300 seconds each; with four ru
 
 The spend is attributed to a ticket through the usage subsystem before any model call: `node scripts/usage-task.ts set --channel explicit --asset forge-issue:<owner>/<repo>#<number>`. `<number>` is `--ticket`, else the number in the branch name `<prefix>/<NNNN>-<slug>`; with neither the run exits 3. `<owner>/<repo>` comes from the `origin` remote. Measured executor cost is read from the executor's result record into each `metrics.json`; a run killed at a limit may leave no result record, so its cost is `unknown` and totals are then printed as a lower bound.
 
-The turn limit is counted by the runner from the executor's stream: one turn is one assistant message, identified by its `message.id`, so a message split over several stream events counts once. The `--max-turns` flag is also passed to `claude`, but it is absent from `claude --help`: that is an assumption, to verify at the first maintainer smoke run, and the runner-side count is the primary guard.
+The turn limit is counted by the runner from the executor's stream: one turn is one assistant message, identified by its `message.id`, so a message split over several stream events counts once. The `--max-turns` flag is also passed to `claude`; the executor accepted it in the delta-03 smoke, but the runner-side count remains the primary guard. The judge driver does not pass it: the flag is absent from `claude --help`, so it stays unverified there.
 
 ## Statuses
 

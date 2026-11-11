@@ -6,7 +6,9 @@
 // regression, the skill, both means, the delta and the tolerance. Statuses: pass, regression,
 // invalid, no-evals, new, mock, error (and `stale`, reported by the attestation check only).
 //
-// Usage: formatReport(results, totals). Exit codes: not applicable (library).
+// R43: in a real run the report ends with `credential_source: <label>` (no secret value).
+//
+// Usage: formatReport(results, source?). Exit codes: not applicable (library).
 // Finding-line format: `<skill>: status=<status> ...`.
 
 export type RunStatus = "pass" | "regression" | "invalid" | "no-evals" | "new" | "mock" | "error";
@@ -28,6 +30,13 @@ export interface SkillResult {
   probes?: number;
   messages: string[];
 }
+
+/** R43 labels of the credential source. */
+export const CREDENTIAL_LABELS = {
+  session: "logged-in Claude Code session",
+  token: "CLAUDE_CODE_OAUTH_TOKEN",
+  "api-key": "ANTHROPIC_API_KEY (--use-api-key)",
+} as const;
 
 const fmt = (n: number | null | undefined): string =>
   n === null || n === undefined ? "n/a" : n.toFixed(2);
@@ -52,7 +61,10 @@ export function formatSkill(r: SkillResult): string {
   return lines.join("\n");
 }
 
-export function formatReport(results: readonly SkillResult[]): string {
+export function formatReport(
+  results: readonly SkillResult[],
+  source?: keyof typeof CREDENTIAL_LABELS,
+): string {
   const lines = results.map(formatSkill);
   const known = results.filter((r) => r.costUsd !== null).reduce((n, r) => n + (r.costUsd ?? 0), 0);
   const lower = results.reduce(
@@ -67,5 +79,6 @@ export function formatReport(results: readonly SkillResult[]): string {
       anyUnknown ? `unknown (at least ${lower.toFixed(2)})` : known.toFixed(2)
     }`,
   );
+  if (source !== undefined) lines.push(`credential_source: ${CREDENTIAL_LABELS[source]}`);
   return `${lines.join("\n")}\n`;
 }

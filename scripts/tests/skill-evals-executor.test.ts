@@ -1,5 +1,6 @@
 // skill-evals-executor.test.ts — the headless Claude Code executor against a stub `claude`
-// (spec 0290 R9, R27, R30, R32, R33, R25). The stub is a Node script: no model, no network.
+// (spec 0290 R9, R27, R30, R32, R33, R25 and delta-03 R40, R42). The stub is a Node script: no model, no
+// network.
 
 /* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-call, typescript/no-unsafe-argument, typescript/no-unsafe-return -- the runner output files are read back as untyped JSON */
 
@@ -15,22 +16,46 @@ import {
 } from "../lib/skill-evals/executor/claude-code.ts";
 import type { ExecRequest } from "../lib/skill-evals/executor/types.ts";
 import { judgeFetch, makeRig, plainEvals } from "./lib/skill-evals-run-rig.ts";
-import { cleanEnv, skillRel, tmpDir, writeStubClaude } from "./lib/skill-evals-fixtures.ts";
+import {
+  cleanEnv,
+  isolatedDirs,
+  readCalls,
+  skillRel,
+  tmpDir,
+  writeSessionStub,
+  writeStubClaude,
+} from "./lib/skill-evals-fixtures.ts";
+
+/** The R42 allowlist members this suite sets; everything else of the runner's environment must not reach the child. */
+const SET_ALLOWLIST = {
+  HOME: "/contributor/home",
+  USER: "contributor",
+  LANG: "C",
+  LC_ALL: "C",
+  TMPDIR: "/contributor/tmp",
+  CLAUDE_CONFIG_DIR: "/contributor/claude-config",
+  NODE_EXTRA_CA_CERTS: "/ca/extra.pem",
+  SSL_CERT_FILE: "/ca/cert.pem",
+  SSL_CERT_DIR: "/ca/certs",
+  HTTPS_PROXY: "http://proxy.invalid:3128",
+  https_proxy: "http://proxy-lower.invalid:3128",
+  HTTP_PROXY: "http://proxy.invalid:3128",
+  http_proxy: "http://proxy-lower.invalid:3128",
+  NO_PROXY: "localhost",
+  no_proxy: "localhost,127.0.0.1",
+} as const;
 
 function request(over: Partial<ExecRequest> & { bin: string }): { req: ExecRequest; root: string } {
   const root = tmpDir("skill-evals-exec-");
   const workspace = path.join(root, "workspace");
-  const home = path.join(root, "home");
   fs.mkdirSync(workspace, { recursive: true });
-  fs.mkdirSync(path.join(home, ".claude"), { recursive: true });
   const { bin, ...rest } = over;
   return {
     root,
     req: {
       prompt: "Do the task",
       workspaceDir: workspace,
-      homeDir: home,
-      model: "claude-sonnet-4-6",
+      model: "claude-sonnet-5-5",
       limits: { turns: 25, seconds: 30, usd: 1 },
       credential: { name: "CLAUDE_CODE_OAUTH_TOKEN", value: "tok-secret-value" },
       signal: new AbortController().signal,
@@ -39,6 +64,7 @@ function request(over: Partial<ExecRequest> & { bin: string }): { req: ExecReque
         SKILL_EVALS_CLAUDE_BIN: bin,
         ANTHROPIC_API_KEY: "must-not-leak",
         SOME_OTHER: "x",
+        ...SET_ALLOWLIST,
       },
       label: "t",
       ...rest,
@@ -72,7 +98,7 @@ const stub = (dir: string, body: string) =>
     `claude-stub-${stubCount++}.js`,
   );
 
-test("argv and environment: the pinned model, tool allowlist, limits, one credential, never the credential on argv", async () => {
+test("argv and environment: the pinned model, tool allowlist, limits, the isolation flags, one credential, never the credential on argv (R40, R42)", async () => {
   const dir = tmpDir();
   const log = path.join(dir, "log.json");
   const bin = stub(
@@ -93,49 +119,68 @@ ${stream(assistant("hello"), result())}`,
     assert.deepEqual(a.slice(0, 2), ["-p", "Do the task"]);
     const opt = (k: string) => a[a.indexOf(k) + 1];
     assert.equal(opt("--output-format"), "stream-json");
-    assert.equal(opt("--model"), "claude-sonnet-4-6");
+    assert.equal(opt("--model"), "claude-sonnet-5-5");
     assert.equal(opt("--tools"), "Bash,Read,Write,Edit,Skill");
     assert.equal(opt("--allowedTools"), "Bash Read Write Edit Skill");
     assert.equal(opt("--max-turns"), "25");
     assert.equal(opt("--max-budget-usd"), "1");
     assert.equal(opt("--permission-mode"), "dontAsk");
-    assert.ok(a.includes("--no-session-persistence"));
+    // R40: the isolation flags, once each, and never --bare
+    assert.equal(opt("--setting-sources"), "project");
+    assert.equal(a.filter((x) => x === "--setting-sources").length, 1);
+    assert.equal(a.filter((x) => x === "--strict-mcp-config").length, 1);
+    assert.equal(a.filter((x) => x === "--no-session-persistence").length, 1);
+    assert.equal(a.includes("--bare"), false);
     assert.equal(a.join(" ").includes("tok-secret-value"), false);
+    // R42: exactly the allowlist members that are set, plus the one credential; nothing else
+    const keys = Object.keys(seen.env).filter((k) => !k.startsWith("__CF"));
     assert.deepEqual(
-      Object.keys(seen.env).filter(
-        (k) =>
-          !k.startsWith("__CF") &&
-          ![
-            "PATH",
-            "HOME",
-            "CLAUDE_CONFIG_DIR",
-            "LANG",
-            "LC_ALL",
-            "TMPDIR",
-            "CLAUDE_CODE_OAUTH_TOKEN",
-          ].includes(k),
-      ),
-      [],
+      keys.sort(),
+      [...Object.keys(SET_ALLOWLIST), "CLAUDE_CODE_OAUTH_TOKEN", "PATH"].sort(),
       "only the allowlist plus one credential",
     );
+    for (const [k, v] of Object.entries(SET_ALLOWLIST)) assert.equal(seen.env[k], v, k);
     assert.equal(seen.env.CLAUDE_CODE_OAUTH_TOKEN, "tok-secret-value");
-    assert.equal(seen.env.HOME, req.homeDir);
-    assert.equal(seen.env.CLAUDE_CONFIG_DIR, path.join(req.homeDir, ".claude"));
+    assert.equal(seen.env.ANTHROPIC_API_KEY, undefined);
+    assert.equal(seen.env.SOME_OTHER, undefined);
+    assert.equal(seen.env.SKILL_EVALS_CLAUDE_BIN, undefined);
     assert.equal(fs.realpathSync(seen.cwd), fs.realpathSync(req.workspaceDir));
     assert.equal(fs.readFileSync(path.join(req.workspaceDir, "answer.md"), "utf8"), "produced");
     assert.match(out.transcript, /Assistant: hello/);
-    assert.deepEqual(Object.keys(buildEnv(req)).sort(), [
-      "CLAUDE_CODE_OAUTH_TOKEN",
-      "CLAUDE_CONFIG_DIR",
-      "HOME",
-      "LANG",
-      "PATH",
-    ]);
+    assert.deepEqual(
+      Object.keys(buildEnv(req)).sort(),
+      [...Object.keys(SET_ALLOWLIST), "CLAUDE_CODE_OAUTH_TOKEN", "PATH"].sort(),
+    );
     assert.equal(buildArgs(req).includes("--bare"), false);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("R42: session mode has no credential variable, a token adds only CLAUDE_CODE_OAUTH_TOKEN, --use-api-key adds only ANTHROPIC_API_KEY; the allowlist members that are unset are not passed", () => {
+  const baseEnv = {
+    PATH: "/bin",
+    HOME: "/h",
+    ANTHROPIC_API_KEY: "k",
+    CLAUDE_CODE_OAUTH_TOKEN: "t",
+  };
+  const mk = (credential: ExecRequest["credential"]): ExecRequest => ({
+    ...request({ bin: "/x" }).req,
+    credential,
+    baseEnv,
+  });
+  assert.deepEqual(buildEnv(mk(undefined)), { PATH: "/bin", HOME: "/h" });
+  assert.deepEqual(buildEnv(mk({ name: "CLAUDE_CODE_OAUTH_TOKEN", value: "t" })), {
+    PATH: "/bin",
+    HOME: "/h",
+    CLAUDE_CODE_OAUTH_TOKEN: "t",
+  });
+  assert.deepEqual(buildEnv(mk({ name: "ANTHROPIC_API_KEY", value: "k" })), {
+    PATH: "/bin",
+    HOME: "/h",
+    ANTHROPIC_API_KEY: "k",
+  });
 });
 
 test("the credential is scrubbed from the transcript", async () => {
@@ -287,23 +332,23 @@ test("an aborted run is reported aborted, not failed", async () => {
   }
 });
 
-test("a with_skill run installs the skill without evals/ into the throwaway config; without_skill has no skill; the user config is untouched", async () => {
+test("a with_skill run installs the skill at <workspace>/.claude/skills/<name> without evals/; without_skill has none; HOME is the contributor's and is left untouched (R32, R40)", async () => {
   const dir = tmpDir();
   const log = path.join(dir, "log.jsonl");
   const bin = stub(
     dir,
-    `const skills = path.join(process.env.CLAUDE_CONFIG_DIR, "skills");
+    `const path = require("path");
+const skills = path.join(process.cwd(), ".claude", "skills");
 const list = (d) => fs.existsSync(d) ? fs.readdirSync(d, { recursive: true }).map(String).sort() : null;
-fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify({ prompt: process.argv[3], skills: list(skills), exec: fs.existsSync(path.join(skills, "demo", "scripts", "run.sh")) && (fs.statSync(path.join(skills, "demo", "scripts", "run.sh")).mode & 0o100) !== 0, home: process.env.HOME }) + "\\n");
+fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify({ cwd: process.cwd(), skills: list(skills), exec: fs.existsSync(path.join(skills, "demo", "scripts", "run.sh")) && (fs.statSync(path.join(skills, "demo", "scripts", "run.sh")).mode & 0o100) !== 0, home: process.env.HOME }) + "\\n");
 fs.writeFileSync("answer.md", "x");
-${stream(assistant("the quick brown fox"), result())}`.replace(
-      "const skills",
-      'const path = require("path");\nconst skills',
-    ),
+${stream(assistant("the quick brown fox"), result())}`,
   );
+  const iso = isolatedDirs();
   const rig = makeRig({
     evalsCount: 1,
     mock: false,
+    tempRoot: iso.tempRoot,
     env: { CLAUDE_CODE_OAUTH_TOKEN: "tok", SKILL_EVALS_CLAUDE_BIN: bin },
     change: (repo) => {
       fs.writeFileSync(
@@ -314,8 +359,8 @@ ${stream(assistant("the quick brown fox"), result())}`.replace(
     },
   });
   try {
-    const home = process.env["HOME"];
-    const before = fs.existsSync(path.join(home ?? "", ".claude", "skills", "demo"));
+    const realHome = process.env["HOME"];
+    const before = fs.existsSync(path.join(realHome ?? "", ".claude", "skills", "demo"));
     const j = judgeFetch();
     // the judge goes through the Messages stub of an API-key judge override so that the claude stub only plays the executor
     const judgeCfg = path.join(dir, "judge.json");
@@ -332,6 +377,7 @@ ${stream(assistant("the quick brown fox"), result())}`.replace(
           CLAUDE_CODE_OAUTH_TOKEN: "tok",
           SKILL_EVALS_CLAUDE_BIN: bin,
           JUDGE_TEST_KEY: "jk",
+          HOME: iso.home,
         }),
       },
     });
@@ -349,7 +395,13 @@ ${stream(assistant("the quick brown fox"), result())}`.replace(
     const withSkill = calls.filter((c) => c.skills !== null);
     const without = calls.filter((c) => c.skills === null);
     assert.equal(withSkill.length, 1);
-    assert.equal(without.length, 1);
+    assert.equal(without.length, 1, "a without_skill workspace has no .claude/skills");
+    for (const c of calls) {
+      assert.equal(c.home, iso.home, "the child keeps the contributor's HOME");
+      // the recorded cwd is the OS's own (real) path of a workspace that no longer exists
+      const rel = path.relative(fs.realpathSync(iso.home), c.cwd);
+      assert.ok(rel.startsWith(".."), "the workspace is outside HOME");
+    }
     for (const c of withSkill) {
       assert.deepEqual(
         c.skills.filter((p: string) => !p.includes("/")),
@@ -367,9 +419,60 @@ ${stream(assistant("the quick brown fox"), result())}`.replace(
       );
       assert.equal(c.exec, true);
     }
-    assert.equal(fs.existsSync(path.join(home ?? "", ".claude", "skills", "demo")), before);
+    assert.deepEqual(fs.readdirSync(iso.home), [], "nothing was written to the contributor's HOME");
+    assert.equal(fs.existsSync(path.join(realHome ?? "", ".claude", "skills", "demo")), before);
   } finally {
     rig.cleanup();
+    iso.cleanup();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("R40, R42 end to end in session mode: the executor child of a real run holds the contributor's HOME, the isolation flags, no credential variable and, with an unrequested ANTHROPIC_API_KEY, no key", async () => {
+  const dir = tmpDir();
+  const bin = writeSessionStub(dir, { loggedIn: true });
+  const iso = isolatedDirs();
+  const rig = makeRig({
+    evalsCount: 1,
+    mock: false,
+    tempRoot: iso.tempRoot,
+    change: (repo) =>
+      fs.writeFileSync(
+        path.join(repo.root, skillRel("demo"), "evals", "evals.json"),
+        plainEvals("demo", 1),
+      ),
+  });
+  try {
+    const r = await rig.run({
+      executor: undefined,
+      env: cleanEnv({
+        SKILL_EVALS_CLAUDE_BIN: bin,
+        ANTHROPIC_API_KEY: "sk-unrequested",
+        SOME_OTHER: "x",
+        ...SET_ALLOWLIST,
+        HOME: iso.home,
+      }),
+    });
+    assert.equal(r.results[0]?.status, "pass", r.text + r.stderr);
+    const calls = readCalls(bin, "executor");
+    assert.equal(calls.length, 2);
+    for (const c of calls) {
+      assert.equal(c.env["HOME"], iso.home);
+      assert.equal(c.env["USER"], "contributor");
+      assert.equal(c.env["ANTHROPIC_API_KEY"], undefined);
+      assert.equal(c.env["CLAUDE_CODE_OAUTH_TOKEN"], undefined);
+      assert.equal(c.env["SOME_OTHER"], undefined);
+      assert.equal(c.env["https_proxy"], SET_ALLOWLIST.https_proxy);
+      assert.equal(c.env["HTTPS_PROXY"], SET_ALLOWLIST.HTTPS_PROXY);
+      const a = c.argv;
+      assert.equal(a[a.indexOf("--setting-sources") + 1], "project");
+      assert.ok(a.includes("--strict-mcp-config") && a.includes("--no-session-persistence"));
+      assert.equal(a.includes("--bare"), false);
+    }
+    assert.match(r.text, /^credential_source: logged-in Claude Code session$/m);
+  } finally {
+    rig.cleanup();
+    iso.cleanup();
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });

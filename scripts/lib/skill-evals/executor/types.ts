@@ -1,6 +1,7 @@
 // executor/types.ts — the executor contract (spec 0290 R9, R27, R30).
 //
-// An executor runs ONE paired-run arm in a throwaway workspace with a throwaway configuration and
+// An executor runs ONE paired-run arm in a throwaway workspace (a with_skill arm has the skill
+// installed at project scope in it) under the contributor's real HOME, isolated by flags, and
 // returns the transcript plus what the runner needs to grade and account for it. Limits (R27) are
 // applied by the executor; a run that hits one is NOT a failure: it returns `limit` and is graded
 // on its partial output. `failure` is reserved for a run that did not start, or ended abnormally
@@ -21,10 +22,8 @@ export interface ExecLimits {
 
 export interface ExecRequest {
   readonly prompt: string;
-  /** The run's workspace: holds only the eval's R3 files; the agent's working directory. */
+  /** The run's workspace: the eval's R3 files, plus `.claude/skills/<name>/` for a with_skill run; the agent's working directory. */
   readonly workspaceDir: string;
-  /** Throwaway HOME. The agent's config dir is `<homeDir>/.claude`; a with_skill run has the skill in it. */
-  readonly homeDir: string;
   readonly model: string;
   readonly limits: ExecLimits;
   readonly credential: Credential | undefined;

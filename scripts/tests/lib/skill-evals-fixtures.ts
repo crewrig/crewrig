@@ -122,16 +122,126 @@ export function selectionOf(repo: Repo, name: string): Selection {
   return describeSkill(repo.root, found.skill, mergeBase(repo.root, "origin/main"));
 }
 
-/** A stub `claude` that records its invocation in $STUB_LOG and exits 99 (any model call fails). */
-export function writeStubClaude(dir: string, body?: string, name = "claude-stub.js"): string {
+/** Account fields a real `claude auth status --json` prints and the runner must never keep (R41). */
+export const DECOY_EMAIL = "decoy.person@example.invalid";
+export const DECOY_ORG = "Decoy Organisation Name";
+
+/** How the stub answers `claude auth status --json` (it always logs argv and environment first). */
+export interface AuthStub {
+  readonly loggedIn: boolean;
+  /** Default: 0 when logged in, 1 otherwise. */
+  readonly exitCode?: number;
+  /** Replaces the JSON document (junk output, an array...). */
+  readonly raw?: string;
+  /** Never answers (the probe's timeout path). */
+  readonly hang?: boolean;
+}
+
+/** One recorded invocation of a stub: `auth` (the probe), `executor`, `judge` or `model` (default body). */
+export interface StubCall {
+  readonly kind: "auth" | "executor" | "judge" | "model";
+  readonly argv: string[];
+  readonly env: Record<string, string>;
+  readonly cwd: string;
+  readonly input?: string;
+  /** Executor only: every path of the workspace at start, relative, recursive. */
+  readonly listing?: string[];
+}
+
+const authPrelude = (auth: AuthStub): string => `
+const __fs = require("fs");
+const __argv = process.argv.slice(2);
+const __log = (rec) => __fs.appendFileSync(__filename + ".calls.jsonl", JSON.stringify(rec) + "\\n");
+if (__argv[0] === "auth" && __argv[1] === "status") {
+  __log({ kind: "auth", argv: __argv, env: process.env, cwd: process.cwd() });
+  ${
+    auth.hang === true
+      ? "setInterval(() => {}, 1000);"
+      : `const __out = ${JSON.stringify(
+          auth.raw ??
+            JSON.stringify({
+              loggedIn: auth.loggedIn,
+              email: DECOY_EMAIL,
+              orgName: DECOY_ORG,
+              authMethod: "claude.ai",
+            }),
+        )};
+  process.stdout.write(__out + "\\n", () => process.exit(${auth.exitCode ?? (auth.loggedIn ? 0 : 1)}));`
+  }
+} else {`;
+
+const defaultModelBody = `
+__log({ kind: "model", argv: __argv, env: process.env, cwd: process.cwd() });
+process.stderr.write("model call is forbidden in tests\\n");
+process.exit(99);`;
+
+/**
+ * A stub `claude`: `auth status --json` is answered per `auth` (default: not logged in, decoy
+ * account fields) and logged to `<bin>.calls.jsonl`; any other invocation runs `body` (default: log a
+ * `model` call and exit 99, so any model call fails).
+ */
+export function writeStubClaude(
+  dir: string,
+  body?: string,
+  name = "claude-stub.js",
+  auth: AuthStub = { loggedIn: false },
+): string {
   const file = path.join(dir, name);
   fs.writeFileSync(
     file,
-    body ??
-      `#!/usr/bin/env node\nrequire("fs").appendFileSync(process.env.STUB_LOG || "/dev/null", "called\\n");\nprocess.stderr.write("model call is forbidden in tests\\n");\nprocess.exit(99);\n`,
+    `#!/usr/bin/env node${authPrelude(auth)}\n${(body ?? defaultModelBody).replace(/^#!.*\n/, "")}\n}\n`,
     { mode: 0o755 },
   );
   return file;
+}
+
+/**
+ * A stub that plays all three children of the runner: the probe (per `auth`), the executor (argv holds
+ * `stream-json`: writes answer.md, answers "the quick brown fox") and the judge (a PASS verdict quoting
+ * it). Every call is recorded in `<bin>.calls.jsonl` (see `readCalls`).
+ */
+export function writeSessionStub(dir: string, auth: AuthStub, name = "claude-session.js"): string {
+  return writeStubClaude(
+    dir,
+    `
+let __input = "";
+process.stdin.on("data", (d) => (__input += d));
+process.stdin.on("end", () => {
+  const __exec = __argv.includes("stream-json");
+  __log({ kind: __exec ? "executor" : "judge", argv: __argv, env: process.env, cwd: process.cwd(), input: __input, listing: __exec ? __fs.readdirSync(".", { recursive: true }).map(String).sort() : undefined });
+  if (__exec) {
+    __fs.writeFileSync("answer.md", "x");
+    process.stdout.write(JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: "the quick brown fox" }] } }) + "\\n");
+    process.stdout.write(JSON.stringify({ type: "result", subtype: "success", is_error: false, total_cost_usd: 0.1, usage: { input_tokens: 1, output_tokens: 1 }, num_turns: 1, result: "done" }) + "\\n");
+  } else {
+    process.stdout.write('VERDICT=PASS CONF=0.90\\nEVIDENCE="the quick brown fox"\\n');
+  }
+});`,
+    name,
+    auth,
+  );
+}
+
+/** The calls a stub recorded, in order (empty when it was never run). */
+export function readCalls(bin: string, kind?: StubCall["kind"]): StubCall[] {
+  const file = `${bin}.calls.jsonl`;
+  if (!fs.existsSync(file)) return [];
+  return fs
+    .readFileSync(file, "utf8")
+    .split("\n")
+    .filter((l) => l !== "")
+    .map((l) => JSON.parse(l) as StubCall)
+    .filter((c) => kind === undefined || c.kind === kind);
+}
+
+/** A sibling pair of directories: a temporary root for workspaces and a fake HOME that does not contain it. */
+export function isolatedDirs(): { tempRoot: string; home: string; cleanup(): void } {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), "skill-evals-iso-"));
+  const tempRoot = path.join(parent, "troot");
+  const home = path.join(parent, "home");
+  fs.mkdirSync(tempRoot);
+  fs.mkdirSync(home);
+  return { tempRoot, home, cleanup: () => fs.rmSync(parent, { recursive: true, force: true }) };
 }
 
 export function sink(): {
@@ -151,12 +261,28 @@ export const throwingFetch = (() => {
   throw new Error("network access is forbidden in tests");
 }) as unknown as typeof fetch;
 
-/** An environment with no credential variable and no real PATH leakage of tokens. */
+let safetyBin: string | undefined;
+/** The shared stub every `cleanEnv` points `SKILL_EVALS_CLAUDE_BIN` at: not logged in, any model call exits 99. */
+function safetyStub(): string {
+  if (safetyBin === undefined) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "skill-evals-safety-"));
+    safetyBin = writeStubClaude(dir, undefined, "claude-safety.js");
+    process.on("exit", () => fs.rmSync(dir, { recursive: true, force: true }));
+  }
+  return safetyBin;
+}
+
+/**
+ * An environment with no credential variable and no real PATH leakage of tokens. `claude` is a stub
+ * that is not logged in and fails any model call, so a test that forgets its own seam never reaches
+ * the real binary.
+ */
 export const cleanEnv = (
   extra: Record<string, string> = {},
 ): Record<string, string | undefined> => ({
   PATH: process.env["PATH"],
   LANG: "C",
+  SKILL_EVALS_CLAUDE_BIN: safetyStub(),
   ...extra,
 });
 

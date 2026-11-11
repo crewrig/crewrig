@@ -1,10 +1,11 @@
 // executor/claude-code.ts — the headless Claude Code executor (spec 0290 R9, R26, R27, R30, R33).
 //
-// One run = one `claude -p --output-format stream-json` child in its own process group, with a
-// throwaway HOME and CLAUDE_CONFIG_DIR (the skill, when any, is already installed into
-// `<home>/.claude/skills/<name>/` by the caller), the workspace as working directory, stdin
-// ignored and an allowlisted environment: PATH, HOME, CLAUDE_CONFIG_DIR, LANG, LC_ALL, TMPDIR plus
-// exactly ONE credential variable. The credential is never put on argv, in a file or in the
+// One run = one `claude -p --output-format stream-json` child in its own process group, with the
+// contributor's real HOME, isolated by ISOLATION_FLAGS (`--setting-sources project`,
+// `--strict-mcp-config`, `--no-session-persistence`; never `--bare`). The skill, when any, is
+// already installed at project scope in `<workspace>/.claude/skills/<name>/` by the caller. The
+// workspace is the working directory, stdin is ignored and the environment is the allowlist of
+// claude-child.ts (R42) plus at most ONE credential variable (none in session mode). The credential is never put on argv, in a file or in the
 // transcript (it is scrubbed). Limits: the turn limit is counted from the stream (assistant
 // events) and the child is killed on the first turn past it; the wall clock kills the process
 // group (SIGTERM, then SIGKILL); the per-run budget is `--max-budget-usd`. A limit hit returns
@@ -16,6 +17,7 @@
 
 import { spawn } from "node:child_process";
 
+import { childEnv, ISOLATION_FLAGS } from "../claude-child.ts";
 import { EXECUTOR_TOOLS } from "../settings.ts";
 import type { ExecOutcome, ExecRequest, Executor, LimitName, TokenUsage } from "./types.ts";
 
@@ -32,7 +34,6 @@ export function buildArgs(req: ExecRequest): string[] {
     "--output-format",
     "stream-json",
     "--verbose",
-    "--no-session-persistence",
     "--model",
     req.model,
     "--tools",
@@ -45,17 +46,12 @@ export function buildArgs(req: ExecRequest): string[] {
     String(req.limits.turns),
     "--max-budget-usd",
     String(req.limits.usd),
+    ...ISOLATION_FLAGS,
   ];
 }
 
 export function buildEnv(req: ExecRequest): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { HOME: req.homeDir, CLAUDE_CONFIG_DIR: `${req.homeDir}/.claude` };
-  for (const k of ["PATH", "LANG", "LC_ALL", "TMPDIR"]) {
-    const v = req.baseEnv[k];
-    if (v !== undefined) env[k] = v;
-  }
-  if (req.credential !== undefined) env[req.credential.name] = req.credential.value;
-  return env;
+  return childEnv(req.baseEnv, req.credential);
 }
 
 interface StreamEvent {

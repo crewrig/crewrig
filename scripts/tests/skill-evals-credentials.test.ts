@@ -1,5 +1,7 @@
 // skill-evals-credentials.test.ts — local credentials and the judge configuration
-// (spec 0290 R33, R39, R25). No model call: a stub `claude` that exits 99, a recording `fetch`.
+// (spec 0290 R33, R39, R25 and delta-03 R33, R41, R42, R43). No model call: a stub `claude` that
+// answers `auth status --json` with decoy account fields and fails any model call or plays the
+// executor and judge, a recording `fetch`.
 
 /* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-call, typescript/no-unsafe-argument, typescript/no-unsafe-return -- the runner output files are read back as untyped JSON */
 
@@ -8,133 +10,101 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
-import { planCredentials, MISSING_MESSAGE } from "../lib/skill-evals/credentials.ts";
-import { skillRel, tmpDir, writeStubClaude } from "./lib/skill-evals-fixtures.ts";
-import { judgeFetch, makeRig, plainEvals } from "./lib/skill-evals-run-rig.ts";
+import * as credentials from "../lib/skill-evals/credentials.ts";
+import { planCredentials } from "../lib/skill-evals/credentials.ts";
+import { CREDENTIAL_LABELS, formatReport } from "../lib/skill-evals/report.ts";
+import { readCalls, tmpDir, writeSessionStub } from "./lib/skill-evals-fixtures.ts";
+import { decoy, evalsOnly, judgeCfg, noResults, stubRig } from "./lib/skill-evals-stub-rig.ts";
+import { judgeFetch, makeRig } from "./lib/skill-evals-run-rig.ts";
 import type { MockScript } from "../lib/skill-evals/executor/mock.ts";
 
 const fox: MockScript = () => ({
   files: { "answer.md": "x" },
   transcript: "Assistant: the quick brown fox",
 });
-const evalsOnly = (repo: { root: string }) =>
-  fs.writeFileSync(
-    path.join(repo.root, skillRel("demo"), "evals", "evals.json"),
-    plainEvals("demo", 1),
-  );
-const judgeCfg = (out: string) =>
-  JSON.parse(fs.readFileSync(path.join(out, "demo", ".judge", "effective.json"), "utf8")).judge;
 
-test("neither variable and no mock: exit 3, both variables named, no model call, no results file", async () => {
-  const rig = makeRig({ mock: false, env: {} });
+test("R41: not logged in (no token, no --use-api-key, no mock): exit 3, the login message, no model call, no results file, no account field in any output", async () => {
+  const t = stubRig({ loggedIn: false }, {});
+  try {
+    const r = await t.run();
+    assert.equal(r.exitCode, 3);
+    assert.match(r.stderr, /not logged in/i);
+    assert.match(r.stderr, /Run `claude` and log in/);
+    assert.match(r.stderr, /CLAUDE_CODE_OAUTH_TOKEN/);
+    assert.match(r.stderr, /--use-api-key/);
+    assert.doesNotMatch(r.stderr, /was not requested/, "no key was set: nothing to say about it");
+    assert.match(r.stderr, /No model call was made/);
+    assert.equal(r.credentialSource, undefined);
+    assert.doesNotMatch(r.text + r.stderr, decoy);
+    assert.deepEqual(
+      readCalls(t.bin).map((c) => c.kind),
+      ["auth"],
+      "the probe ran; the model entry point was never reached",
+    );
+    assert.equal(t.rig.executor.calls.length, 0);
+    assert.equal(noResults(t.rig.repo.root), true);
+    assert.equal(fs.existsSync(path.join(t.rig.out, "demo")), false, "nothing written");
+  } finally {
+    t.cleanup();
+  }
+});
+
+test("R41, R42: an ANTHROPIC_API_KEY that was not requested is named in the refusal and never reaches the probe", async () => {
+  const t = stubRig({ loggedIn: false }, { ANTHROPIC_API_KEY: "sk-not-requested" });
+  try {
+    const r = await t.run();
+    assert.equal(r.exitCode, 3);
+    assert.match(r.stderr, /ANTHROPIC_API_KEY is set but was not requested/);
+    assert.match(r.stderr, /--use-api-key/);
+    assert.doesNotMatch(r.stderr + r.text, /sk-not-requested/);
+    const probes = readCalls(t.bin, "auth");
+    assert.equal(probes.length, 1);
+    assert.equal(probes[0]?.env["ANTHROPIC_API_KEY"], undefined);
+    assert.equal(t.rig.executor.calls.length, 0);
+    assert.equal(noResults(t.rig.repo.root), true);
+  } finally {
+    t.cleanup();
+  }
+});
+
+test("R41: a `claude` that cannot be started exits 3 with the install hint and no model call", async () => {
+  const rig = makeRig({
+    mock: false,
+    env: { SKILL_EVALS_CLAUDE_BIN: "/nonexistent/claude" },
+    change: evalsOnly(),
+  });
   try {
     const r = await rig.run();
     assert.equal(r.exitCode, 3);
-    assert.match(r.stderr, /CLAUDE_CODE_OAUTH_TOKEN/);
-    assert.match(r.stderr, /ANTHROPIC_API_KEY/);
-    assert.match(r.stderr, /claude setup-token/);
+    assert.match(r.stderr, /cannot start `\/nonexistent\/claude`/);
+    assert.match(r.stderr, /install Claude Code/);
     assert.equal(rig.executor.calls.length, 0);
-    assert.equal(
-      fs.existsSync(path.join(rig.repo.root, skillRel("demo"), "evals", "results.json")),
-      false,
-    );
-    assert.equal(MISSING_MESSAGE.includes("No model call"), true);
+    assert.equal(noResults(rig.repo.root), true);
   } finally {
     rig.cleanup();
   }
 });
 
-test("only ANTHROPIC_API_KEY: planning proceeds, the judge uses the anthropic driver with that key and no judge-specific variable", async () => {
-  const rig = makeRig({
-    mock: false,
-    env: { ANTHROPIC_API_KEY: "sk-key" },
-    change: evalsOnly,
-    script: fox,
-  });
-  try {
-    const j = judgeFetch();
-    const r = await rig.run({ fetchImpl: j.fetch });
-    assert.equal(r.results[0]?.status, "pass", r.text + r.stderr);
-    assert.equal(rig.executor.calls[0]?.credential?.name, "ANTHROPIC_API_KEY");
-    const cfg = judgeCfg(rig.out);
-    assert.equal(cfg.backend, "anthropic");
-    assert.equal(cfg.api_key_env, "ANTHROPIC_API_KEY");
-    assert.equal(cfg.max_calls, 300);
-    assert.ok(j.requests.length > 0);
-    assert.ok(
-      j.requests.every(
-        (q) =>
-          q.url === "https://api.anthropic.com/v1/messages" && q.headers["x-api-key"] === "sk-key",
-      ),
-    );
-  } finally {
-    rig.cleanup();
-  }
-});
-
-test("both set: the token is the one given to the executor, and the judge follows it through headless claude -p, never the Messages API", async () => {
+test("mock mode makes no login probe and prints no credential_source, even with a stub that is not logged in", async () => {
   const dir = tmpDir();
-  const log = path.join(dir, "log.jsonl");
-  const stub = writeStubClaude(
-    dir,
-    `#!/usr/bin/env node
-let input = "";
-process.stdin.on("data", (d) => (input += d));
-process.stdin.on("end", () => {
-  require("fs").appendFileSync(${JSON.stringify(log)}, JSON.stringify({ argv: process.argv.slice(2), token: process.env.CLAUDE_CODE_OAUTH_TOKEN, envKeys: Object.keys(process.env).sort(), cwd: process.cwd(), home: process.env.HOME, hasExpectation: input.includes("EXPECTATION:") }) + "\\n");
-  process.stdout.write('VERDICT=PASS CONF=0.90\\nEVIDENCE="the quick brown fox"\\n');
-});
-`,
-  );
-  const rig = makeRig({
-    mock: false,
-    env: {
-      CLAUDE_CODE_OAUTH_TOKEN: "tok-secret",
-      ANTHROPIC_API_KEY: "sk-key",
-      SKILL_EVALS_CLAUDE_BIN: stub,
-    },
-    change: evalsOnly,
-    script: fox,
-  });
+  const bin = writeSessionStub(dir, { loggedIn: false });
+  const rig = makeRig({ mock: true, env: { SKILL_EVALS_CLAUDE_BIN: bin }, change: evalsOnly() });
   try {
-    const r = await rig.run(); // fetch is the throwing stub: any Messages API request would fail the run
-    assert.equal(r.results[0]?.status, "pass", r.text + r.stderr);
-    assert.equal(rig.executor.calls[0]?.credential?.name, "CLAUDE_CODE_OAUTH_TOKEN");
-    assert.equal(rig.executor.calls[0]?.credential?.value, "tok-secret");
-    assert.equal(judgeCfg(rig.out).backend, "claude-cli");
-    const calls = fs
-      .readFileSync(log, "utf8")
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l));
-    assert.ok(calls.length >= 2);
-    for (const c of calls) {
-      assert.deepEqual(c.argv.filter((a: string) => a === "-p").length, 1);
-      assert.ok(c.argv.includes("--tools") && c.argv[c.argv.indexOf("--tools") + 1] === "");
-      assert.ok(
-        c.argv.includes("--no-session-persistence") && c.argv.includes("--disable-slash-commands"),
-      );
-      assert.equal(c.argv.includes("tok-secret"), false, "the token is never on argv");
-      assert.equal(c.token, "tok-secret");
-      assert.equal(c.hasExpectation, true, "the judge prompt arrives on stdin");
-      assert.ok(
-        !c.envKeys.includes("ANTHROPIC_API_KEY") && !c.envKeys.includes("SKILL_EVALS_CLAUDE_BIN"),
-        c.envKeys.join(","),
-      );
-      assert.notEqual(c.home, process.env["HOME"]);
-    }
-    assert.doesNotMatch(
-      fs.readFileSync(path.join(rig.out, "demo", "eval-1", "with_skill", "grading.json"), "utf8"),
-      /tok-secret/,
-    );
+    const r = await rig.run();
+    assert.equal(r.exitCode, 0, r.stderr);
+    assert.equal(r.results[0]?.status, "mock");
+    assert.equal(r.credentialSource, undefined);
+    assert.doesNotMatch(r.text, /credential_source/);
+    assert.equal(readCalls(bin).length, 0, "mock mode never starts claude");
   } finally {
     rig.cleanup();
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("a judge override is honoured; one that would send the subscription credential is refused with exit 3", async () => {
+test("a judge override is honoured; one that would send the subscription credential, or use the key without --use-api-key, is refused with exit 3 before any model call (F1)", async () => {
   const dir = tmpDir();
+  const stub = writeSessionStub(dir, { loggedIn: true });
   const cfg = (judge: object) => {
     const f = path.join(dir, `judge-${Math.random().toString(36).slice(2)}.json`);
     fs.writeFileSync(f, JSON.stringify({ judge }));
@@ -142,8 +112,12 @@ test("a judge override is honoured; one that would send the subscription credent
   };
   const rig = makeRig({
     mock: false,
-    env: { ANTHROPIC_API_KEY: "sk-key", CLAUDE_CODE_OAUTH_TOKEN: "tok" },
-    change: evalsOnly,
+    env: {
+      ANTHROPIC_API_KEY: "sk-key",
+      CLAUDE_CODE_OAUTH_TOKEN: "tok",
+      SKILL_EVALS_CLAUDE_BIN: stub,
+    },
+    change: evalsOnly(),
     script: fox,
   });
   try {
@@ -162,16 +136,43 @@ test("a judge override is honoured; one that would send the subscription credent
       assert.match(r.stderr, /subscription credential to the Messages API/);
       assert.match(r.stderr, /No model call was made/);
     }
+    // F1: an anthropic judge naming ANTHROPIC_API_KEY without --use-api-key would use an unrequested key
+    for (const env of [
+      { ANTHROPIC_API_KEY: "sk-key" },
+      { ANTHROPIC_API_KEY: "sk-key", CLAUDE_CODE_OAUTH_TOKEN: "tok" },
+    ]) {
+      const f = makeRig({
+        mock: false,
+        env: { ...env, SKILL_EVALS_CLAUDE_BIN: stub },
+        change: evalsOnly(),
+        script: fox,
+      });
+      try {
+        const r = await f.run({
+          judgeConfigFile: cfg({ backend: "anthropic", api_key_env: "ANTHROPIC_API_KEY" }),
+          fetchImpl: judgeFetch().fetch,
+        });
+        assert.equal(r.exitCode, 3, r.stderr);
+        assert.match(r.stderr, /only with --use-api-key/);
+        assert.match(r.stderr, /No model call was made/);
+        assert.equal(f.executor.calls.length, 0);
+        assert.equal(noResults(f.repo.root), true);
+      } finally {
+        f.cleanup();
+      }
+    }
     assert.equal(rig.executor.calls.length, 0);
+    assert.equal(readCalls(stub).length, 0, "no child of any kind in any refused case");
     const bad = await rig.run({ judgeConfigFile: cfg({ backend: "gemini" }) });
     assert.equal(bad.exitCode, 3);
     assert.match(bad.stderr, /not supported/);
-    // a harmless override (model) is honoured
+    // a harmless override (model) is honoured, under --use-api-key with the anthropic driver
     const j = judgeFetch();
     const env2 = makeRig({
       mock: false,
+      useApiKey: true,
       env: { ANTHROPIC_API_KEY: "sk-key" },
-      change: evalsOnly,
+      change: evalsOnly(),
       script: fox,
     });
     try {
@@ -190,24 +191,79 @@ test("a judge override is honoured; one that would send the subscription credent
   }
 });
 
-test("planCredentials: the effective judge configuration follows the credential", () => {
-  const p = (env: Record<string, string>, override = {}) =>
-    planCredentials({ env, override, mock: false });
+test("planCredentials: the source is the key under --use-api-key, else the token, else the session; the judge follows it", () => {
+  const p = (
+    env: Record<string, string>,
+    over: { override?: Record<string, unknown>; useApiKey?: boolean; mock?: boolean } = {},
+  ) =>
+    planCredentials({
+      env,
+      override: over.override ?? {},
+      mock: over.mock ?? false,
+      useApiKey: over.useApiKey ?? false,
+    });
   const tok = p({ CLAUDE_CODE_OAUTH_TOKEN: "t" });
+  assert.ok(tok.ok && tok.source === "token" && tok.judge.backend === "claude-cli");
+  assert.ok(tok.ok && tok.credential?.name === "CLAUDE_CODE_OAUTH_TOKEN");
+  const session = p({});
+  assert.ok(session.ok && session.source === "session" && session.credential === undefined);
+  assert.ok(session.ok && session.judge.backend === "claude-cli");
+  // the key without the flag is never used
+  const unrequested = p({ ANTHROPIC_API_KEY: "k" });
   assert.ok(
-    tok.ok &&
-      tok.judge.backend === "claude-cli" &&
-      tok.credential?.name === "CLAUDE_CODE_OAUTH_TOKEN",
+    unrequested.ok && unrequested.source === "session" && unrequested.credential === undefined,
   );
-  const key = p({ ANTHROPIC_API_KEY: "k" });
+  assert.ok(unrequested.ok && unrequested.judge.backend === "claude-cli");
+  const withToken = p({ ANTHROPIC_API_KEY: "k", CLAUDE_CODE_OAUTH_TOKEN: "t" });
+  assert.ok(withToken.ok && withToken.source === "token");
+  // the flag selects the key over the token
+  const key = p({ ANTHROPIC_API_KEY: "k", CLAUDE_CODE_OAUTH_TOKEN: "t" }, { useApiKey: true });
+  assert.ok(key.ok && key.source === "api-key" && key.credential?.name === "ANTHROPIC_API_KEY");
+  assert.ok(key.ok && key.credential?.value === "k");
   assert.ok(
     key.ok && key.judge.backend === "anthropic" && key.judge.api_key_env === "ANTHROPIC_API_KEY",
   );
-  assert.equal(p({}).ok, false);
-  const mock = planCredentials({ env: {}, override: {}, mock: true });
+  // the flag with no key
+  for (const env of [{}, { ANTHROPIC_API_KEY: "" }] as Record<string, string>[]) {
+    const none = p(env, { useApiKey: true });
+    assert.ok(
+      !none.ok &&
+        /ANTHROPIC_API_KEY/.test(none.message) &&
+        /No model call was made/.test(none.message),
+    );
+  }
+  assert.ok(p({}, { useApiKey: true, mock: true }).ok, "mock mode needs no key");
+  const mock = p({}, { mock: true });
   assert.ok(mock.ok && mock.credential === undefined);
-  const refused = planCredentials({ env: {}, override: { backend: "claude-code" }, mock: true });
+  const refused = p({}, { override: { backend: "claude-code" }, mock: true });
   assert.equal(refused.ok, false, "the refusal applies in mock mode too");
+  assert.equal(p({}, { override: { api_key_env: "CLAUDE_CODE_OAUTH_TOKEN" } }).ok, false);
+  const keyOverride = p(
+    { ANTHROPIC_API_KEY: "k" },
+    { override: { backend: "anthropic", api_key_env: "ANTHROPIC_API_KEY" } },
+  );
+  assert.ok(!keyOverride.ok && /--use-api-key/.test(keyOverride.message), "F1");
+  assert.equal(
+    p(
+      { ANTHROPIC_API_KEY: "k" },
+      { override: { backend: "anthropic", api_key_env: "ANTHROPIC_API_KEY" }, useApiKey: true },
+    ).ok,
+    true,
+  );
+  assert.equal("MISSING_MESSAGE" in credentials, false, "the neither-variable message is gone");
+});
+
+test("R43: the report names each credential source by its label and ends there; no source in mock mode", () => {
+  assert.deepEqual(CREDENTIAL_LABELS, {
+    session: "logged-in Claude Code session",
+    token: "CLAUDE_CODE_OAUTH_TOKEN",
+    "api-key": "ANTHROPIC_API_KEY (--use-api-key)",
+  });
+  for (const [source, label] of Object.entries(CREDENTIAL_LABELS)) {
+    const text = formatReport([], source as keyof typeof CREDENTIAL_LABELS);
+    assert.ok(text.trimEnd().endsWith(`credential_source: ${label}`), text);
+  }
+  assert.doesNotMatch(formatReport([]), /credential_source/);
 });
 
 test("no executor or CI credential variable of the old design is read anywhere in the runner", () => {

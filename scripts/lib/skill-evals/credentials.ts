@@ -1,22 +1,28 @@
-// credentials.ts — local credentials and the judge configuration (spec 0290 R33, R39).
+// credentials.ts — local credentials and the judge configuration (spec 0290 R33, R39, delta-03).
 //
-// Executor and judge use the contributor's own Claude Code credentials, read from the environment:
-// `CLAUDE_CODE_OAUTH_TOKEN` (preferred) or `ANTHROPIC_API_KEY`. The judge follows the credential:
-// the token goes to headless `claude -p` (backend `claude-cli`); an API key alone goes to the
-// `anthropic` driver with `api_key_env = ANTHROPIC_API_KEY`. The runner builds the effective judge
-// configuration itself. A contributor override (`--judge-config <file>`, or the file named by
+// The credential source is chosen in this order: `ANTHROPIC_API_KEY` only when the contributor
+// passes `--use-api-key` (an explicit opt-in); else `CLAUDE_CODE_OAUTH_TOKEN` when set; else the
+// contributor's logged-in Claude Code session, which needs no variable (its presence is the login
+// probe of claude-child.ts, run by the runner). Without `--use-api-key` the key is never used and
+// never reaches a child. The judge follows the source: the token or the session goes to headless
+// `claude -p` (backend `claude-cli`); the key under `--use-api-key` goes to the `anthropic` driver
+// with `api_key_env = ANTHROPIC_API_KEY`. The runner builds the effective judge configuration
+// itself. A contributor override (`--judge-config <file>`, or the file named by
 // SKILL_EVALS_JUDGE_CONFIG, a JSON `{"judge": {...}}`) is honoured, except an effective
 // configuration that would send the subscription credential to the Messages API (backend
-// `claude-code`, or any `api_key_env` naming CLAUDE_CODE_OAUTH_TOKEN), which is refused (exit 3).
+// `claude-code`, or any `api_key_env` naming CLAUDE_CODE_OAUTH_TOKEN), or that would use
+// ANTHROPIC_API_KEY with the `anthropic` backend without `--use-api-key`: refused (exit 3).
 // No other credential variable is read; ANTHROPIC_EXECUTOR_API_KEY, SKILL_EVALS_PR_NUMBER and
 // SKILL_EVALS_REPO do not exist in this design (R39).
 //
-// Usage: const plan = planCredentials({ env, override, mock }); plan.ok ? plan.credential : plan.message.
+// Usage: const plan = planCredentials({ env, override, mock, useApiKey });
+//        plan.ok ? plan.credential / plan.source : plan.message.
 // Exit codes: not applicable (library); the entry maps a failed plan to exit 3.
 // Finding-line format: not applicable.
 
 import fs from "node:fs";
 
+import { childBaseEnv } from "./claude-child.ts";
 import { API_KEY_VAR, JUDGE_MAX_TOKENS, JUDGE_MODEL, TOKEN_VAR } from "./settings.ts";
 
 export interface Credential {
@@ -34,16 +40,19 @@ export interface JudgeSection {
   strict: boolean;
 }
 
+export type CredentialSource = "api-key" | "token" | "session";
+
 export type CredentialPlan =
-  | { readonly ok: true; readonly credential: Credential | undefined; readonly judge: JudgeSection }
+  | {
+      readonly ok: true;
+      readonly credential: Credential | undefined;
+      readonly source: CredentialSource;
+      readonly judge: JudgeSection;
+    }
   | { readonly ok: false; readonly message: string };
 
 const OVERRIDE_KEYS = ["backend", "model", "api_key_env", "auth_mode", "endpoint"] as const;
 const EVIDENCE_BACKENDS = ["anthropic", "claude-cli"];
-
-export const MISSING_MESSAGE =
-  `Neither ${TOKEN_VAR} nor ${API_KEY_VAR} is set. Set ${TOKEN_VAR} (a subscription token: run \`claude setup-token\`) ` +
-  `or ${API_KEY_VAR}, or run with --mock. No model call was made.`;
 
 /** Read the contributor's judge override file; `{}` when none, an error message when unreadable. */
 export function readOverride(
@@ -69,17 +78,23 @@ export function planCredentials(input: {
   env: Readonly<Record<string, string | undefined>>;
   override: Record<string, unknown>;
   mock: boolean;
+  useApiKey: boolean;
 }): CredentialPlan {
   const token = input.env[TOKEN_VAR] ?? "";
   const key = input.env[API_KEY_VAR] ?? "";
-  if (!input.mock && token === "" && key === "") return { ok: false, message: MISSING_MESSAGE };
+  if (input.useApiKey && key === "" && !input.mock)
+    return {
+      ok: false,
+      message: `--use-api-key needs ${API_KEY_VAR} to be set and non-empty. No model call was made.`,
+    };
+  const source: CredentialSource = input.useApiKey ? "api-key" : token !== "" ? "token" : "session";
   const credential: Credential | undefined =
-    token !== ""
-      ? { name: TOKEN_VAR, value: token }
-      : key !== ""
-        ? { name: API_KEY_VAR, value: key }
+    source === "api-key" && key !== ""
+      ? { name: API_KEY_VAR, value: key }
+      : source === "token"
+        ? { name: TOKEN_VAR, value: token }
         : undefined;
-  const tokenPath = credential?.name === TOKEN_VAR || (credential === undefined && input.mock);
+  const tokenPath = source !== "api-key";
   const judge: JudgeSection = tokenPath
     ? {
         backend: "claude-cli",
@@ -106,6 +121,11 @@ export function planCredentials(input: {
       ok: false,
       message: `judge backend claude-code would send the subscription credential to the Messages API (${TOKEN_VAR} or the OAuth credential of your Claude credentials file); refused. Use the default backend, or backend anthropic with an API key. No model call was made.`,
     };
+  if (judge.backend === "anthropic" && judge.api_key_env === API_KEY_VAR && !input.useApiKey)
+    return {
+      ok: false,
+      message: `judge backend anthropic with api_key_env ${API_KEY_VAR} is used only with --use-api-key; refused. No model call was made.`,
+    };
   if (judge.api_key_env === TOKEN_VAR)
     return {
       ok: false,
@@ -116,7 +136,7 @@ export function planCredentials(input: {
       ok: false,
       message: `judge backend ${judge.backend} is not supported by the skill eval runner (supported: ${EVIDENCE_BACKENDS.join(", ")}). No model call was made.`,
     };
-  return { ok: true, credential, judge };
+  return { ok: true, credential, source, judge };
 }
 
 /** The environment given to the judge library: only what the effective judge configuration reads. */
@@ -129,10 +149,15 @@ export function judgeEnv(opts: {
   mockResponse?: string;
 }): Record<string, string> {
   const out: Record<string, string> = { E2E_REPORT_DIR: opts.reportDir };
-  for (const k of ["PATH", "LANG", "LC_ALL", "TMPDIR", "SKILL_EVALS_CLAUDE_BIN"]) {
-    const v = opts.base[k];
-    if (v !== undefined) out[k] = v;
-  }
+  const bin = opts.base["SKILL_EVALS_CLAUDE_BIN"];
+  if (opts.judge.backend === "claude-cli" && !opts.mock)
+    Object.assign(out, childBaseEnv(opts.base));
+  else
+    for (const k of ["PATH", "LANG", "LC_ALL", "TMPDIR"]) {
+      const v = opts.base[k];
+      if (v !== undefined) out[k] = v;
+    }
+  if (bin !== undefined) out["SKILL_EVALS_CLAUDE_BIN"] = bin;
   if (opts.mock) {
     out["E2E_JUDGE_MOCK"] = "1";
     if (opts.mockResponse !== undefined) out["E2E_JUDGE_MOCK_RESPONSE"] = opts.mockResponse;

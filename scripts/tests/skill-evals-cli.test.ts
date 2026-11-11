@@ -9,20 +9,25 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
-import { main, parseArgs } from "../lib/skill-evals/cli.ts";
+import { main, parseArgs, USAGE } from "../lib/skill-evals/cli.ts";
 import {
   cleanEnv,
   commitAll,
+  DECOY_EMAIL,
+  DECOY_ORG,
   evalsJson,
   makeRepo,
   markOrigin,
+  readCalls,
   sink,
   skillRel,
   tmpDir,
   writeSkill,
+  writeStubClaude,
 } from "./lib/skill-evals-fixtures.ts";
 import type { Repo } from "./lib/skill-evals-fixtures.ts";
 import { MockExecutor } from "../lib/skill-evals/executor/mock.ts";
+import { judgeFetch } from "./lib/skill-evals-run-rig.ts";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
 const ENTRY = path.join(REPO_ROOT, "scripts", "skill-evals.ts");
@@ -45,13 +50,14 @@ function withRepo(f: (repo: Repo, out: string) => Promise<void> | void) {
   };
 }
 
-test("parseArgs: one skill or --changed, --out, --mock, --ticket, --base", () => {
+test("parseArgs: one skill or --changed, --out, --mock, --ticket, --base, --use-api-key", () => {
   assert.deepEqual(parseArgs(["demo", "--mock", "--out", "o"]), {
     name: "demo",
     changed: false,
     out: "o",
     mock: true,
     base: "origin/main",
+    useApiKey: false,
   });
   assert.deepEqual(parseArgs(["--", "--changed", "--ticket", "12"]), {
     changed: true,
@@ -59,7 +65,26 @@ test("parseArgs: one skill or --changed, --out, --mock, --ticket, --base", () =>
     mock: false,
     ticket: "12",
     base: "origin/main",
+    useApiKey: false,
   });
+  // delta-03 R33: the explicit opt-in is a boolean flag that takes no value
+  assert.deepEqual(parseArgs(["demo", "--use-api-key"]), {
+    name: "demo",
+    changed: false,
+    out: ".skill-evals",
+    mock: false,
+    base: "origin/main",
+    useApiKey: true,
+  });
+  assert.equal(
+    (parseArgs(["--use-api-key", "--changed"]) as { useApiKey: boolean }).useApiKey,
+    true,
+  );
+  assert.ok(
+    "error" in (parseArgs(["--use-api-key"]) as object),
+    "still needs a skill or --changed",
+  );
+  assert.match(USAGE, /\[--use-api-key\]/);
   for (const bad of [[], ["a", "b"], ["--changed", "a"], ["--nope"], ["--out"]])
     assert.ok("error" in (parseArgs(bad) as object), bad.join(" "));
 });
@@ -131,7 +156,7 @@ test("invalid evals.json blocks before any model call and reports both violation
     const executor = new MockExecutor();
     const s = sink();
     const code = await main(
-      ["demo", "--out", out],
+      ["demo", "--out", out, "--use-api-key"],
       cleanEnv({ ANTHROPIC_API_KEY: "k" }),
       repo.root,
       s.io,
@@ -205,25 +230,93 @@ test(
 );
 
 test(
-  "the task entry: missing credentials exit 3 naming both variables, no results file, nothing written",
+  "the task entry: a contributor who is not logged in exits 3 with the login message, no model call, no results file, nothing written, no account field printed",
   withRepo(async (repo) => {
-    const r = spawnSync(
-      process.execPath,
-      ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", ENTRY, "demo"],
-      {
-        cwd: repo.root,
-        encoding: "utf8",
-        env: { PATH: process.env["PATH"] ?? "", CREWRIG_REPO_DIR: repo.root },
-      },
-    );
-    assert.equal(r.status, 3, r.stdout + r.stderr);
-    assert.match(r.stderr, /CLAUDE_CODE_OAUTH_TOKEN/);
-    assert.match(r.stderr, /ANTHROPIC_API_KEY/);
-    assert.equal(
-      fs.existsSync(path.join(repo.root, skillRel("demo"), "evals", "results.json")),
-      false,
-    );
-    assert.equal(fs.existsSync(path.join(repo.root, ".skill-evals")), false);
+    const dir = tmpDir();
+    const bin = writeStubClaude(dir, undefined, "claude-stub.js", { loggedIn: false });
+    try {
+      const run = (extra: string[], env: Record<string, string> = {}) =>
+        spawnSync(
+          process.execPath,
+          ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", ENTRY, "demo", ...extra],
+          {
+            cwd: repo.root,
+            encoding: "utf8",
+            env: {
+              PATH: process.env["PATH"] ?? "",
+              CREWRIG_REPO_DIR: repo.root,
+              SKILL_EVALS_CLAUDE_BIN: bin,
+              ...env,
+            },
+          },
+        );
+      const r = run([]);
+      assert.equal(r.status, 3, r.stdout + r.stderr);
+      assert.match(r.stderr, /not logged in/i);
+      assert.match(r.stderr, /Run `claude` and log in/);
+      assert.match(r.stderr, /CLAUDE_CODE_OAUTH_TOKEN/);
+      assert.match(r.stderr, /--use-api-key/);
+      assert.doesNotMatch(r.stdout + r.stderr, new RegExp(`${DECOY_EMAIL}|${DECOY_ORG}`));
+      assert.deepEqual(
+        readCalls(bin).map((c) => c.kind),
+        ["auth"],
+        "the probe ran, the model entry never",
+      );
+      assert.equal(
+        fs.existsSync(path.join(repo.root, skillRel("demo"), "evals", "results.json")),
+        false,
+      );
+      assert.equal(fs.existsSync(path.join(repo.root, ".skill-evals")), false);
+      // the key exists but was not requested: said so, and not used
+      const keyed = run([], { ANTHROPIC_API_KEY: "sk-not-requested" });
+      assert.equal(keyed.status, 3);
+      assert.match(keyed.stderr, /was not requested/);
+      assert.match(keyed.stderr, /--use-api-key/);
+      assert.doesNotMatch(keyed.stdout + keyed.stderr, /sk-not-requested/);
+      // --use-api-key with no key: exit 3 naming the variable, no probe
+      const before = readCalls(bin).length;
+      const noKey = run(["--use-api-key"]);
+      assert.equal(noKey.status, 3);
+      assert.match(noKey.stderr, /ANTHROPIC_API_KEY/);
+      assert.equal(readCalls(bin).length, before, "no probe, no model call");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }),
+);
+
+test(
+  "--use-api-key reaches the runner through the entry: the report names the key source, the judge uses the Messages stub, the executor and the login probe are never started",
+  withRepo(async (repo, out) => {
+    const dir = tmpDir();
+    const bin = writeStubClaude(dir, undefined, "claude-stub.js", { loggedIn: true });
+    try {
+      const j = judgeFetch();
+      const s = sink();
+      const code = await main(
+        ["demo", "--use-api-key", "--out", out],
+        cleanEnv({ ANTHROPIC_API_KEY: "sk-requested", SKILL_EVALS_CLAUDE_BIN: bin }),
+        repo.root,
+        s.io,
+        {
+          executor: new MockExecutor(() => ({
+            files: { "answer.md": "x" },
+            transcript: "Assistant: the quick brown fox",
+          })),
+          fetchImpl: j.fetch,
+          ticket: "1849",
+          declare: () => ({ ok: true }),
+          sleep: async () => undefined,
+        },
+      );
+      assert.equal(code, 0, s.out + s.err);
+      assert.match(s.out, /^credential_source: ANTHROPIC_API_KEY \(--use-api-key\)$/m);
+      assert.doesNotMatch(s.out + s.err, /sk-requested/);
+      assert.ok(j.requests.length > 0);
+      assert.equal(readCalls(bin).length, 0, "no claude child at all");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   }),
 );
 

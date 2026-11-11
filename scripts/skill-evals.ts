@@ -2,8 +2,9 @@
 //
 // Usage: task skill-evals -- <skill-name> | --changed [--out <dir>] [--mock] [--ticket <N>]
 //   node scripts/skill-evals.ts <skill-name> | --changed [options]
-// Needs CLAUDE_CODE_OAUTH_TOKEN (preferred; `claude setup-token`) or ANTHROPIC_API_KEY, unless --mock.
-// Exit: 0 ok, 1 blocking outcome, 2 usage error or unknown skill, 3 failed precondition (credentials).
+// Needs Claude Code installed and logged in, unless --mock. CLAUDE_CODE_OAUTH_TOKEN (optional) overrides the
+// login; ANTHROPIC_API_KEY is used only with --use-api-key.
+// Exit: 0 ok, 1 blocking outcome, 2 usage error or unknown skill, 3 failed precondition (login, credentials).
 // CREWRIG_REPO_DIR overrides the repository root (default: the root of this script).
 // Spec 0290; docs/skill-evals.md. Run `node scripts/lib/node-floor-guard.js` first on an unverified
 // Node.js: the command needs Node.js 24 or later.

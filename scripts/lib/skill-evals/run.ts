@@ -7,7 +7,13 @@
 // write `evals/results.json` for a real run (R36). The head snapshot is read ONCE: the same bytes
 // are hashed and installed. Mock mode runs no process and no model call and writes no results file.
 //
-// Exit codes (the entry maps them): 0 ok, 1 blocking outcome, 3 failed precondition (R33).
+// Credential step (R33, R41, R32), skipped in mock mode: the credential source is chosen, the
+// temporary directory is checked (outside HOME and any git work tree), and in session mode the
+// login is probed once per invocation (no model call). Each run's workspace is a directory under
+// the temporary root; a with_skill run has the skill installed at project scope in it
+// (`<workspace>/.claude/skills/<name>/`), and the top-level `.claude/` is never collected as output.
+//
+// Exit codes (the entry maps them): 0 ok, 1 blocking outcome, 3 failed precondition (R33, R41, R32).
 // Usage: runEvals(options, selections). Finding-line format: see report.ts.
 
 import fs from "node:fs";
@@ -19,7 +25,15 @@ import type { Configuration, RunRecord } from "./benchmark.ts";
 import { CostMeter, planSkill, preflight, RunBudget } from "./budget.ts";
 import type { Limits, SkillPlan } from "./budget.ts";
 import { evalsViolations, snapshotEvalsText } from "./attest.ts";
+import {
+  cannotStartMessage,
+  checkTempRoot,
+  notLoggedInMessage,
+  probeLogin,
+  resetLoginProbe,
+} from "./claude-child.ts";
 import { planCredentials, readOverride } from "./credentials.ts";
+import type { CredentialSource } from "./credentials.ts";
 import { ClaudeCodeExecutor } from "./executor/claude-code.ts";
 import { MockExecutor } from "./executor/mock.ts";
 import type { Executor, ExecOutcome } from "./executor/types.ts";
@@ -74,6 +88,10 @@ export interface RunOptions {
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly ticket?: string;
   readonly judgeConfigFile?: string;
+  /** `--use-api-key`: use ANTHROPIC_API_KEY as the credential (R33). */
+  readonly useApiKey?: boolean;
+  /** Test seam: the temporary root of workspaces (default `os.tmpdir()`), subject to the R32 guard. */
+  readonly tempRoot?: string;
   readonly settings?: Partial<RunSettings>;
   readonly executor?: Executor;
   readonly mockAnswer?: (
@@ -92,6 +110,8 @@ export interface RunReport {
   readonly text: string;
   /** Printed to stderr (preconditions, refusals). */
   readonly stderr: string;
+  /** R43: the credential source in use; absent in mock mode and before the credential step succeeds. */
+  readonly credentialSource?: CredentialSource;
 }
 
 interface Task {
@@ -136,6 +156,7 @@ function collectOutputs(workspace: string, inputs: Map<string, Buffer>, outputsD
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const abs = path.join(dir, e.name);
       const rel = path.relative(workspace, abs).split(path.sep).join("/");
+      if (dir === workspace && e.name === ".claude") continue; // the install location, not an output
       if (e.isDirectory()) walk(abs);
       else if (e.isFile()) {
         const was = inputs.get(rel);
@@ -173,11 +194,14 @@ export async function runEvals(
 ): Promise<RunReport> {
   const cfg: RunSettings = { ...DEFAULT_SETTINGS, ...opts.settings };
   const results: SkillResult[] = [];
+  const tempRoot = opts.tempRoot ?? os.tmpdir();
+  let source: CredentialSource | undefined;
   const done = (exitCode: number, stderr = ""): RunReport => ({
     exitCode,
     results,
-    text: formatReport(results),
+    text: formatReport(results, source),
     stderr,
+    ...(source !== undefined ? { credentialSource: source } : {}),
   });
   const blank = (
     skill: string,
@@ -197,8 +221,25 @@ export async function runEvals(
   // 1. Credentials and judge configuration (R33): no model call is made if this fails.
   const ov = readOverride(opts.judgeConfigFile ?? opts.env["SKILL_EVALS_JUDGE_CONFIG"]);
   if ("error" in ov) return done(3, `${ov.error}\n`);
-  const cred = planCredentials({ env: opts.env, override: ov.override, mock: opts.mock });
+  const cred = planCredentials({
+    env: opts.env,
+    override: ov.override,
+    mock: opts.mock,
+    useApiKey: opts.useApiKey === true,
+  });
   if (!cred.ok) return done(3, `${cred.message}\n`);
+  if (!opts.mock) {
+    resetLoginProbe(); // the probe runs once per invocation
+    const bad = checkTempRoot(tempRoot, opts.env["HOME"] ?? os.homedir());
+    if (bad !== undefined) return done(3, `${bad}\n`);
+    if (cred.source === "session") {
+      const state = await probeLogin(opts.env, { tempRoot });
+      if (state === "cannot-start") return done(3, `${cannotStartMessage(opts.env)}\n`);
+      if (state === "not-logged-in")
+        return done(3, `${notLoggedInMessage((opts.env["ANTHROPIC_API_KEY"] ?? "") !== "")}\n`);
+    }
+    source = cred.source;
+  }
 
   // 2. Classification and planning of every skill (no model call).
   const ready: SkillState[] = [];
@@ -338,7 +379,7 @@ export async function runEvals(
     let outcome: ExecOutcome | undefined;
     let dir = "";
     let inputs = new Map<string, Buffer>();
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "skill-evals-run-"));
+    const root = fs.mkdtempSync(path.join(tempRoot, "skill-evals-run-"));
     try {
       await sem.acquire();
       try {
@@ -351,22 +392,19 @@ export async function runEvals(
         if (!s.budget.reserve())
           return breach(s, `max-executor-runs ${cfg.maxExecutorRuns} reached`);
         const workspace = path.join(root, "workspace");
-        const home = path.join(root, "home");
         fs.mkdirSync(workspace, { recursive: true });
-        fs.mkdirSync(path.join(home, ".claude"), { recursive: true });
         inputs = copyInputs(s.sel.skill.dirAbs, ev.files, workspace);
         if (t.configuration === "with_skill") {
           const files: readonly SnapFile[] =
             t.base && s.sel.base.kind === "ok"
               ? s.sel.base.files
               : (s.sel.head as { files: SnapFile[] }).files;
-          installFiles(files, path.join(home, ".claude", "skills", name));
+          installFiles(files, path.join(workspace, ".claude", "skills", name));
         }
         const signal = AbortSignal.any([s.controller.signal, invocation.signal]);
         outcome = await executor.run({
           prompt: ev.prompt,
           workspaceDir: workspace,
-          homeDir: home,
           model: cfg.executorModel,
           limits: { turns: cfg.perRunTurns, seconds: cfg.perRunSeconds, usd: cfg.perRunUsd },
           credential: cred.credential,
