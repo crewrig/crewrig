@@ -69,7 +69,7 @@ A maintainer who changes a skill's `SKILL.md` learns, before the change merges, 
 
 23. **R23 (cost guard and attribution).** A run SHALL stop calling the judge and SHALL exit non-zero with status `error` when the judge's `max_calls` cap would be exceeded, and SHALL report the calls used. The runner SHALL declare its usage through the existing usage subsystem before any model call, with `node scripts/usage-task.ts set --channel explicit --asset forge-issue:<owner>/<repo>#<number>`, where `<number>` is the pull-request number in CI and the ticket number locally; the asset kind `forge-issue` and its reference grammar are those of `docs/usage-record-format.md` (External asset kinds), and no new asset kind is introduced.
 24. **R24 (judge unavailable).** When the judge backend has no credentials, the runner SHALL report each affected skill as `skipped` with the missing-credentials reason and SHALL exit 0, so that pull requests without access to secrets are not blocked; this skip SHALL be visible in the report and the job summary and SHALL NOT be reported as `pass`. When credentials are present but the backend fails or returns no verdict after the judge's retries, the runner SHALL report `error` and exit non-zero. Mock mode SHALL report `mock`, SHALL mark every written `grading.json` and `benchmark.json` with `"mock": true`, and SHALL NOT produce a regression or blocking outcome from mocked verdicts.
-25. **R25 (offline tests).** The runner's own automated tests SHALL run with no API key and no network, using mock mode, and SHALL cover: schema validation (R6), check evaluation (R4), the evidence rule (R13), the output layout and formats (R10, R11, R14), the changed-skill selection (R17), the regression arithmetic and tolerance boundary (R19), the three missing-evals paths (R21) and the unavailable-judge paths (R24).
+25. **R25 (offline tests).** The runner's own automated tests SHALL run with no API key and no network, using mock mode, and SHALL cover: schema validation (R6), check evaluation (R4), the evidence rule (R13), the output layout and formats (R10, R11, R14), the changed-skill selection (R17), the regression arithmetic, tolerance boundary and `regression-blocking` knob (R19, R20), the three missing-evals paths (R21) and the unavailable-judge paths (R24).
 26. **R26 (CLI matrix finding).** Because the judge drivers call model APIs directly and no driver depends on which agent CLI is installed, the work SHALL NOT add or change a row under `docs/cli-matrix/rows/`; if the plan finds that a per-CLI difference does arise, it SHALL record the evidence per `docs/cli-matrix-maintenance.md` and add the row in the same change.
 
 ## Scenarios
@@ -233,3 +233,7 @@ Then  they pass and every grading.json and benchmark.json they produce carries "
 - Vendoring or porting skill-creator's Python scripts or its description-optimization loop.
 - Changing the judge's three-call quorum, its drivers or the end-to-end suites that call it, beyond R15.
 - Flipping `missing-evals-blocking` or `regression-blocking` to true; each is a later spec delta (the former once the migration waves land, the latter once the tolerance is calibrated on the `pr-logbook` pilot, issue #1852).
+
+## Open questions
+
+None. The regression tolerance, the missing-evals policy, the judge outage policy and the base-replay approach were settled at the SPECS gate.
