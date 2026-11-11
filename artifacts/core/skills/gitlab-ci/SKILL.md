@@ -7,7 +7,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.1"
+    version: "1.1.2"
 claude:
   allowed-tools:
     - Read

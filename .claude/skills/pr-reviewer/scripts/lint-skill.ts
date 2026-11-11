@@ -1,5 +1,8 @@
 // lint-skill.ts — SKILL.md frontmatter validator for PR review (spec 0258 R11).
-// Checks: required fields, version bumped vs base branch.
+// Checks: required fields, version bumped vs base branch, and (spec 0289) that every
+// `scripts/...` path cited in a SKILL.md body or its references/**/*.md resolves inside the
+// skill's own directory or sits inside a `<!-- crewrig-repo-only:start/end -->` fence.
+// The citation check needs no js-yaml and runs whichever frontmatter leg is active.
 // Usage: node lint-skill.ts <SKILL.md> [SKILL.md ...]
 // Env: BASE_REF (default: origin/main)
 // Exit 0 = no findings, 1 = findings. The leading `---` block is parsed with `js-yaml`,
@@ -139,6 +142,124 @@ void (async () => {
     return res.stdout.toString("latin1");
   }
 
+  const FENCE_START = "<!-- crewrig-repo-only:start -->";
+  const FENCE_END = "<!-- crewrig-repo-only:end -->";
+  const CITATION =
+    /(?:^|[\s`"'(])(?:\.\/)?(scripts\/[A-Za-z0-9_./-]*[A-Za-z0-9_-]\.(?:ts|js|mjs|py|sh))(?![A-Za-z0-9_-])/g;
+
+  /** Every `references/**` Markdown file under a skill directory, sorted. */
+  function referenceFiles(dir: string): string[] {
+    const out: string[] = [];
+    const walk = (d: string): void => {
+      let entries: string[] = [];
+      try {
+        entries = fs.readdirSync(d).sort();
+      } catch {
+        return;
+      }
+      for (const name of entries) {
+        const full = path.join(d, name);
+        try {
+          const st = fs.statSync(full);
+          if (st.isDirectory()) walk(full);
+          else if (st.isFile() && name.endsWith(".md")) out.push(full);
+        } catch {
+          // unreadable entry: skip
+        }
+      }
+    };
+    walk(path.join(dir, "references"));
+    return out;
+  }
+
+  /** Citation findings of one Markdown file: `<line>: <message>` strings in line order. */
+  function citationFindings(
+    skillDir: string,
+    skillName: string,
+    text: string,
+    skipFrontmatter: boolean,
+  ): { line: number; message: string }[] {
+    const found: { line: number; message: string }[] = [];
+    const lines = text.split("\n");
+    let i = 0;
+    if (skipFrontmatter && DELIM.test(lines[0] as string)) {
+      i = 1;
+      while (i < lines.length && !DELIM.test(lines[i] as string)) i++;
+      i++;
+    }
+    let fence = 0; // line number where the open repo-only fence started, 0 when none
+    let code: { ch: string; len: number; skip: boolean } | undefined;
+    for (; i < lines.length; i++) {
+      const raw = (lines[i] as string).replace(/\r$/, "");
+      const lineNo = i + 1;
+      const fm = /^ {0,3}(`{3,}|~{3,})[ \t]*([^\s`]*)/.exec(raw);
+      if (code !== undefined) {
+        const close = /^ {0,3}(`{3,}|~{3,})[ \t]*$/.exec(raw);
+        if (close !== undefined && close !== null) {
+          const run = close[1] as string;
+          if (run.startsWith(code.ch) && run.length >= code.len) code = undefined;
+          continue;
+        }
+      } else if (fm !== null) {
+        const run = fm[1] as string;
+        const lang = (fm[2] as string).toLowerCase();
+        code = {
+          ch: run.charAt(0),
+          len: run.length,
+          skip: lang === "yaml" || lang === "yml",
+        };
+        continue;
+      }
+      if (code === undefined) {
+        const trimmed = raw.trim();
+        if (trimmed === FENCE_START) {
+          if (fence !== 0)
+            found.push({
+              line: lineNo,
+              message: "nested crewrig-repo-only fence (start inside an open fence)",
+            });
+          else fence = lineNo;
+          continue;
+        }
+        if (trimmed === FENCE_END) {
+          if (fence === 0)
+            found.push({
+              line: lineNo,
+              message: "stray crewrig-repo-only end marker (no open fence)",
+            });
+          fence = 0;
+          continue;
+        }
+      } else if (code.skip) {
+        continue;
+      }
+      if (fence !== 0) continue;
+      CITATION.lastIndex = 0;
+      for (let m = CITATION.exec(raw); m !== null; m = CITATION.exec(raw)) {
+        const cited = m[1] as string;
+        let resolved = false;
+        if (!cited.includes("..")) {
+          try {
+            resolved = fs.statSync(path.join(skillDir, cited)).isFile();
+          } catch {
+            resolved = false;
+          }
+        }
+        if (!resolved)
+          found.push({
+            line: lineNo,
+            message: `unresolved script citation ${cited} (not in ${skillName}/scripts, not in a crewrig-repo-only fence)`,
+          });
+      }
+    }
+    if (fence !== 0)
+      found.push({
+        line: fence,
+        message: "unterminated crewrig-repo-only fence (no end marker)",
+      });
+    return found;
+  }
+
   const files = process.argv.slice(2);
   if (files.length === 0) {
     say(`${NAME}: no files supplied — nothing to check.\n`);
@@ -197,6 +318,31 @@ void (async () => {
         ),
       );
       findings = 1;
+    }
+
+    if (path.basename(file) === "SKILL.md") {
+      const skillDir = path.dirname(file);
+      const skillName = path.basename(path.resolve(skillDir));
+      const targets: { name: string; body: string; frontmatter: boolean }[] = [
+        { name: file, body: text, frontmatter: true },
+      ];
+      for (const ref of referenceFiles(skillDir)) {
+        try {
+          targets.push({
+            name: ref,
+            body: fs.readFileSync(ref).toString("latin1"),
+            frontmatter: false,
+          });
+        } catch {
+          // unreadable reference: nothing to scan
+        }
+      }
+      for (const t of targets) {
+        for (const f of citationFindings(skillDir, skillName, t.body, t.frontmatter)) {
+          say(`${t.name}:${f.line}: ${f.message}\n`);
+          findings = 1;
+        }
+      }
     }
   }
 

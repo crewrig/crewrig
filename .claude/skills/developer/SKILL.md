@@ -15,7 +15,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.8"
+    version: "1.1.9"
 ---
 
 
@@ -95,14 +95,16 @@ Before reporting a task as done, run:
   `artifacts/community/skills/<name>/scripts/`,
   `artifacts/core/agents/<name>/scripts/`,
   `artifacts/library/agents/<name>/scripts/`, or
-  `artifacts/community/agents/<name>/scripts/`): run
-  `node scripts/lib/node-floor-guard.js`, then `node scripts/build-components.ts`
-  (two separate steps, not chained with `&&`; Node.js 24 or later, `js-yaml`
-  from the setup dependency step) to regenerate the `.gemini/` and
-  `.claude/` mirrors, stage them in the same commit, then run
-  `node scripts/build-components.ts --check` to confirm drift-free.
-  This is non-optional — the CI `check-components` job rejects PRs
-  where source and bundles disagree.
+  `artifacts/community/agents/<name>/scripts/`): regenerate the `.gemini/`
+  and `.claude/` mirrors with the repository build, stage them in the same
+  commit, and confirm they are drift-free. This is non-optional — the CI
+  `check-components` job rejects PRs where source and bundles disagree.
+  <!-- crewrig-repo-only:start -->
+  CrewRig repository only: run `node scripts/lib/node-floor-guard.js`, then
+  `node scripts/build-components.ts` (two separate steps, not chained with
+  `&&`; Node.js 24 or later, `js-yaml` from the setup dependency step), stage
+  the outputs, then run `node scripts/build-components.ts --check`.
+  <!-- crewrig-repo-only:end -->
 - For changes that include executable files: after any push via the MCP
   `push_files` tool (which strips file modes), verify the executable
   bit survived with `git ls-files --stage -- <file>` (`100755`, not

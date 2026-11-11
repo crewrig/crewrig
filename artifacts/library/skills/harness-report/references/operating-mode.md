@@ -112,11 +112,17 @@ is now in the wing; the Curator will pick it up on its next run.
 
 When you file a `FRICTION:` payload with `severity: high`, you SHOULD
 surface it immediately rather than wait for the next scheduled curator
-sweep. After the `mempalace_add_drawer` call returns, run:
+sweep. After the `mempalace_add_drawer` call returns, if the
+`harness-curator` skill is installed, run its own `curate.ts` script, found in
+the `scripts` directory of that skill's installed location (the directory
+holding its `SKILL.md`):
 
 ```bash
-node artifacts/library/skills/harness-curator/scripts/curate.ts --apply --dedup --max-issues 5
+node <harness-curator-skill-dir>/scripts/curate.ts --apply --dedup --max-issues 5
 ```
+
+If the `harness-curator` skill is not installed, skip this step; the weekly
+sweep picks the friction up.
 
 Dedup is on, so re-running is safe — already-open clusters are skipped.
 The curator's high-severity bypass (`cluster_qualifies` in `curate.py`)
