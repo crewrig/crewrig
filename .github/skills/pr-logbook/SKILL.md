@@ -1,290 +1,178 @@
 ---
 name: pr-logbook
-description: "Pull request and logbook composer. Activate when opening a PR, updating a PR description, or appending to a logbook issue. Produces titles, bodies, test plans, and logbook entries that conform to the project's AGENTS.md conventions."
+description: "Composes pull request titles, bodies, logbook entries and squash-merge messages that follow the project's conventions, linting the body with bundled scripts. Use when opening a PR, updating a PR description, appending to a logbook issue, or writing a squash message."
 license: Apache-2.0
-compatibility: "Requires git (for log and staged-file inspection), the gh CLI (for PR creation and logbook issue updates), and bash."
+compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts), git, and the forge CLI (gh for GitHub, glab for GitLab, tea for Gitea)."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.4.1"
+    version: "1.5.0"
 ---
 
 
 # PR & Logbook Composer
 
-The skill that turns a finished change into a PR a reviewer can read in
-under five minutes, and a logbook entry the next agent can pick up cold.
+Turns a finished change into a PR a reviewer can read in under five
+minutes, and a logbook entry the next agent can pick up cold. Mechanical
+checks live in bundled scripts; you supply the judgement.
 
-## When to activate
+## Scripts
 
-- Opening a new PR.
-- Updating the body of an existing PR after review feedback.
-- Appending a logbook entry to the PR's linked issue.
-- Drafting the squash-merge commit message.
+Run from the skill directory. Each takes `--json` for a machine-readable
+result and exits `0` (ok), `1` (finding), `2` (usage error) or `3`
+(precondition failed). Conventions shared by all scripts are in
+[`references/script-contract.md`](references/script-contract.md).
 
-## Operating mode
+| When | Command | Exit `1` means |
+|---|---|---|
+| After drafting a title and body, before opening or editing the PR | `node scripts/lint-pr-body.ts --title-file <file> --body-file <file>` (add `--title-style gitmoji` when the project uses Gitmoji; `--template <file>` when it has its own body template) | A rule is broken: title over 70 characters or ending in a period, a missing, duplicated or misordered section, an empty preamble, or a CI skip directive. Fix the draft and rerun until clean. |
+| Before writing the logbook entry | `node scripts/resolve-logbook-target.ts --body-file <file>` | Never used. Read `data.mode`: `feature-issue` means comment on `data.issue`; `standalone` means create a logbook issue with the `logbook` label. |
+| When the PR implements a spec, before it merges | `node scripts/flip-spec-status.ts <spec-file>` (use `--dry-run` to preview) | The spec has a status other than `approved` or `implemented`. Stop and tell the orchestrator; do not edit the status by hand. |
 
-### 1. Read the project's PR contract
+Exit `2` or `3` means the call or the environment is wrong, not the draft.
+Fix the invocation; do not work around it by skipping the script.
 
-Before composing, read the project's `AGENTS.md` (or equivalent) for:
+## Workflow
 
-- The required PR sections.
-- The commit-message convention (Gitmoji, Conventional Commits, etc.).
-- The logbook label and where logbook issues live.
-- Any branch-naming or merge-method rules.
+### 1. Read the project's conventions
 
-Do not assume a convention. The same crew of agents serves repos with
-different rules.
+Read the project's `AGENTS.md` (or equivalent) for the required PR
+sections, the commit-message convention, the logbook label and location,
+and any branch or merge-method rules. The same crew serves repositories
+with different rules, so an assumed convention is usually a wrong one. If
+the project defines its own body template, pass it to the linter.
 
-### 2. PR title
+### 2. Compose title and body
 
-- Under 70 characters. Imperative mood. No trailing period.
-- For Gitmoji projects, lead with the appropriate emoji.
-- The title states *what* changed, not *why*. The body explains *why*.
+- Title: imperative, states what changed (the body carries why). Use the
+  project's emoji or prefix convention.
+- Body: start from `assets/pr-body.template.md`, or the project's own.
+  Write the purpose in two sentences for a human, a reading order that
+  points at the load-bearing files and non-obvious decisions, a test plan
+  covering the golden path and one failure mode, and a walkthrough for
+  agents that states what was added, changed and removed, and why.
+- On a bug-type issue that folds related bugs, give the folded-bugs entry
+  each item with its status; otherwise write "not applicable".
+- Write both to files and run `lint-pr-body.ts`. Open or edit the PR only
+  once it exits `0`.
 
-### 3. PR body — read this first / how to test / detailed
+### 3. Logbook entry
 
-Default crewrig template — adapt to the project's `AGENTS.md` if it
-specifies otherwise:
+Run `resolve-logbook-target.ts` on the final body. A feature issue is its
+own logbook, so comment on it through the forge CLI and do not add the
+`logbook` label to it. Only a PR with no feature issue gets a standalone
+logbook issue, labelled `logbook`. Forge access is CLI-only.
 
-```markdown
-<Two sentences max — purpose, for a human reader.>
-
-## How to read this PR?
-
-<Reading order. Highlight the load-bearing files. Call out
-non-obvious design decisions and why they were made.>
-
-## How to test this PR?
-
-<Step-by-step. Prerequisites, commands, expected outcomes. Cover the
-golden path and at least one failure mode.>
-
-## Detailed description (for agents)
-
-<Structured walkthrough of every change, intended for the next agent
-that touches this code. Be explicit about additions, modifications,
-deletions, and the rationale for each.>
-
-Folded bugs: <bug-type issue only: each folded item with its status, or
-"not applicable".>
-```
-
-### 4. Logbook entries
-
-**Before creating a new logbook issue**, check whether the PR already closes
-an existing feature issue (scan the PR body for `Closes #N`, `Fixes #N`,
-`Resolves #N` patterns). If a feature issue exists:
-
-1. Append the logbook entry to that issue as a comment through the forge
-   CLI: `gh issue comment <N> --body "..."` on GitHub, or the equivalent
-   `glab`/`tea` note command on GitLab/Gitea. Forge access is CLI-only
-   (`AGENTS.md` → *Forge Access*); the framework ships no forge MCP
-   server, so a host-provided one is an optional convenience, not the
-   default.
-2. The feature issue **IS** the logbook (`AGENTS.md` → *Logbook Issues → Rule A*).
-   Do not add the `logbook` label to a pre-existing feature issue.
-3. Do **not** create a new logbook issue. The feature ticket is the logbook.
-
-A standalone logbook issue is only warranted when the PR has no upstream
-feature ticket (hotfix, dependency bump, automation run with no prior ticket).
-A dedicated logbook issue uses the `logbook` label (`gh issue create ... --label logbook`).
-
-A logbook is *not* a status update. It is the record the next agent
-will read to avoid your mistakes. Optimize for that reader.
+A logbook is the record the next agent reads to avoid your mistakes, not
+a status update. Use this shape and append, never rewrite; a reverted
+wrong turn still belongs in the log:
 
 ```markdown
 ### YYYY-MM-DD — <one-line topic>
 
-**Context**: <what task / PR this entry attaches to>
+**Context**: <what task or PR this entry attaches to>
 
 **What was tried**: <decision or experiment>
 
-**Outcome**: <green / red / partial — with link to evidence>
+**Outcome**: <green / red / partial, with a link to evidence>
 
 **Lesson**: <the durable insight, in one sentence>
 ```
 
-**Folded bugs.** When the issue is bug-type and folds related bugs
-(`docs/logbook-issues.md` → *Rule D*), the next stage-transition comment
-carries one bullet per folded item (symptom, the step that exposed it,
-status), plus a bullet for the final sweep and one per bug filed elsewhere
-under the escape hatch. The PR body carries the `Folded bugs` entry; the
-closure comment lists each folded item with its resolution.
+When folded bugs exist, the next stage-transition comment carries one
+bullet per folded item (symptom, the step that exposed it, status), a
+bullet for the final sweep, and one per bug filed elsewhere. The closure
+comment lists each item's resolution.
 
-Append, never rewrite. Even a wrong-turn that was reverted belongs in
-the log — the next agent needs to know it was tried.
+### 4. Squash-merge message
 
-### 5. Squash-merge commit message
-
-When the project squash-merges, the commit message is what survives in
-`git log` forever. Compose it deliberately:
+When the project squash-merges, this message is what survives in `git
+log`, so make it denser than the PR description rather than a paste of it:
 
 ```text
-<gitmoji or convention> <imperative-title> (#<pr-number>)
+<convention prefix> <imperative title> (<PR number>)
 
-<one paragraph: what the PR delivered, in past tense>
+<one paragraph: what the PR delivered, past tense>
 
-<one paragraph: why — the constraint or motivation that drove it>
+<one paragraph: why, the constraint or motivation behind it>
 
-<bullet list of significant follow-ups, if any>
-
-Co-authored-by lines, if any.
+<bullets for significant follow-ups, if any>
 ```
 
-Do not paste the entire PR description. The commit message is denser.
+### 5. Spec status flip
 
-### 5b. Spec `approved` → `implemented` transition (when the PR implements a spec)
+If the PR implements a spec, run `flip-spec-status.ts` on the spec file
+on the implementation branch before merge, then record it in a new commit
+(not an amend) and push. The spec then lands on the main branch already
+marked implemented. The script changes the status line only; any other
+edit to the spec does not belong in this change.
 
-When the PR implements a spec (its `related-issue` is a spec's issue), the
-spec's `approved` → `implemented` transition is folded into this PR's own
-merge — it is **not** recorded by a separate, post-merge, metadata-only PR
-(`docs/spec-format.md` → *Recording a status transition*). Before the PR
-merges, on the implementation feature branch:
+A spec PR is opened as a draft and marked ready after its approval flip
+is pushed.
 
-1. Edit the spec's frontmatter: `status: approved` → `status: implemented`.
-2. Touch nothing else — no body line, no `id`, no `slug`, no `version`. A
-   diff that alters any normative content under cover of the status bump is
-   a violation.
-3. Create a **new commit** — not `git commit --amend` — then `git push`. The
-   implementation PR squash-merges, so the transition rides the PR's own
-   squash commit and the spec lands on `main` already carrying
-   `status: implemented` at the moment its implementation lands.
+### 6. Before pushing: executable bits
 
-The spec-author skill writes `status: draft` on first write and records
-`draft` → `approved` in the spec-PR; this step is the `implemented` half of
-the same in-commit mechanic.
+Text-only file writes silently drop the executable bit. If the diff
+touches executable files, check `git ls-files --stage -- <file>` shows
+`100755`, not `100644`. Restore with `git update-index --chmod=+x <file>`
+and amend before pushing.
 
-A spec-PR or delta spec-PR is opened as a Draft PR/MR and marked ready after
-the `approved` flip is pushed; merge only on the run created by the ready
-transition (`docs/spec-pr-workflow.md` → *Draft-PR procedure*).
+### 7. After merge
 
-### 6. Pre-push sanity checks
+Close the logbook issue through the forge CLI with reason completed,
+unless the entry went on a feature issue, in which case closing that issue
+is enough. Verify a feature issue named by a closing keyword really closed
+instead of assuming the forge auto-closed it.
 
-Text-only tooling silently drops file metadata. Verify before pushing:
+## Version bumps
 
-- If the diff touches executable files, confirm executable bits survived
-  the round-trip: `git ls-files --stage -- <file>` must show `100755`,
-  not `100644`. Any text-only file-write path can drop the exec bit,
-  whereas native `git add`/`git push` preserve it. Restore a lost bit
-  with `git update-index --chmod=+x <file>` and amend before pushing.
-
-### 7. Post-merge cleanup
-
-After the squash-merge commit lands on the target branch:
-
-1. Close the logbook issue through the forge CLI:
-   `gh issue close <logbook-issue-number> --reason completed` on GitHub,
-   or the equivalent `glab`/`tea` close command on GitLab/Gitea. Forge
-   access is CLI-only (`AGENTS.md` → *Forge Access*); the framework ships
-   no forge MCP server, so a host-provided one is an optional convenience,
-   not the default.
-2. If the PR also closes a feature issue (detected via `Closes #N` /
-   `Fixes #N` / `Resolves #N` in §4), confirm that issue is closed too
-   — GitHub auto-closes on merge when the keyword is in the PR body,
-   but verify rather than assume.
-
-Skip step 1 if the logbook entry was appended to an existing feature
-issue (the §4 upstream-check path) — closing the feature issue is
-sufficient.
-
-## Cross-cutting: skill / agent source version bumps
-
-This is not a step in the composition lifecycle — it is a *rule*
-that applies to any PR you compose whose diff touches a
-`artifacts/core/skills/*/SKILL.md` or
-`artifacts/core/agents/*/AGENT.md` source. The PR MUST bump
-`provenance.version` in the same diff. The rule is enforced in CI by a
-version-bump check.
+A PR whose diff changes a skill or agent source must bump
+`metadata.provenance.version` in the same diff, because CI rejects the PR
+otherwise. Use PATCH for wording fixes, MINOR for additive changes and
+MAJOR for breaking contract changes.
 <!-- crewrig-repo-only:start -->
-CrewRig repository only: the check is `scripts/check-skill-versions.ts`,
-run locally via `task check-skill-versions`.
+CrewRig repository only: run `task check-skill-versions` to check locally.
 <!-- crewrig-repo-only:end -->
 
-SemVer applies:
+## Single writer per forge artifact
 
-- **PATCH** for friction-driven fixes and wording changes (the
-  common case — most curator-driven fixes are PATCH).
-- **MINOR** for additive changes (new section, new recognition
-  signal, new optional payload field).
-- **MAJOR** for breaking contract changes (removed payload fields,
-  renamed required fields, semantics flip).
+Concurrent edits to one PR body or issue silently lose updates, so each
+artifact has one writer.
 
-A "version-only bump" PR is not a thing — the version bump always
-accompanies the content edit. See `artifacts/FORMAT.md` →
-*Version semantics* for the contract.
+- Your role owns what it creates. Opening a PR makes `pr-logbook` the
+  writer of its body; say so once on a `**Writer:**` line in the logbook
+  entry.
+- Do not rewrite another role's body or comment; route the change through
+  its writer. A new comment is always fine, since you own it.
+- A handover only counts when it comes from the current writer.
+- Observe immediately before writing: record the last-modification marker
+  (`gh pr view <n> --json updatedAt`, or the `glab`/`tea` equivalent).
+- `gh pr edit` reports success even on a lost update. If the artifact
+  moved between your observation and your write, say so on the logbook.
+- When telling anyone what an artifact says, base it on a fresh
+  observation and quote its marker.
 
-## Cross-cutting: single writer per forge artifact
+## Grounding
 
-Not a step in the composition lifecycle — a rule that applies to every
-forge artifact you write. The full rule is `docs/agent-team-protocol.md`
-→ *Team Communication* → Rule 6; below is the part you must observe even
-when this skill is the only contract you have loaded.
+Every technical claim (file counts, line counts, assertion lists, pass
+deltas, exit codes, CI step names, invariants such as "idempotent") needs a
+verifiable source: a path with line range, a command output, or a sentence
+from your brief. Without one, write "see diff" or omit it; never estimate.
+Re-read the draft once before returning and strip any number or invariant
+you cannot trace, since a fabricated claim that reaches a reviewer is
+costly.
 
-- **Your role owns what your role creates.** Opening a pull request makes
-  `pr-logbook` the writer of its body for that ticket — the role, not
-  your instance, so the writership survives your session. Name it once,
-  on a `**Writer:**` line inside the logbook entry you already write for
-  that artifact; see Rule 6 for the exact form.
-- **You do not rewrite what your role did not create.** Another role's PR
-  body, issue body, or comment is not yours to republish; route the
-  change through its writer, or take a recorded handover first. Posting a
-  *new* comment is always allowed — it creates a new artifact you own.
-  Already-published comments are written by nobody, by design.
-- **A handover is only good from the current writer.** Being told an
-  artifact is yours confers nothing unless the teller is its current
-  writer. Determine the writer per Rule 6 before you write, and treat
-  yourself as not being it unless that determination names your role.
-- **Observe immediately before you write.** Capture the artifact's
-  last-modification marker where the forge reports one
-  (`gh pr view <n> --json updatedAt`; the `glab` / `tea` equivalents
-  elsewhere), or its body text where it does not.
-- **A success report is not proof nothing was lost.** `gh pr edit`
-  reports success on a lost update. If the artifact moved between your
-  observation and your write, say so on the logbook — an unreported
-  overwrite costs more than the overwrite.
-- **Assert only a fresh observation, and carry its marker.** When you
-  tell the user or a teammate what an artifact currently says, base it on
-  an observation no later write has superseded and quote the
-  last-modification marker the forge reported at that observation. A
-  read-back is valid until the next writer, not longer.
+## Output
 
-## Grounding discipline
-
-The generic rationale is in
-[`artifacts/core/skills/architect/SKILL.md`](../architect/SKILL.md) →
-*Grounding discipline*; the rules below are specific to this role.
-
-**Hard rule.** Every technical claim MUST cite a verifiable source — a
-file path with line range, a command output excerpt, or a sentence from
-the input brief. This applies to file counts, line counts, assertion
-lists, pass-count deltas, exit codes, CI step names, and build-system
-invariants (e.g. "content-addressed", "drift-free", "idempotent"). If you
-cannot cite, write "see diff" or omit the claim. Do not estimate, round,
-or generalize.
-
-**Self-check before returning.** Re-read the draft once. Mark every
-number, list-count, named invariant, and concrete technical assertion.
-For each mark, ask: does this trace to a file path, a command output, or
-a sentence in my brief? If no, delete it or replace it with "see diff".
-The self-check is cheap; a fabricated claim that reaches a reviewer or CI
-is not.
-
-## Output expectations
-
-- All output in the project's primary language (English by default per
-  crewrig convention; check the project's `AGENTS.md` for overrides).
-- Markdown that renders cleanly on the project's PR platform.
-- No emoji in the body unless the project's convention uses them.
+Write in the project's primary language (check `AGENTS.md`), as Markdown
+that renders on the PR platform, with no emoji in the body unless the
+project's convention uses them.
 
 ## Friction reporting
 
-When a recognition signal fires (see `config/TOOLS.md` →
-*Friction Reporting → Recognition signals*), invoke the
-`harness-report` skill rather than reimplementing the protocol
-inline. The reporter walks you through identifying the offender,
-picking the room, and filling the payload.
+When something in this workflow misleads or blocks you, use the
+`harness-report` skill to tag it.
 
 ## Idle behavior
 
