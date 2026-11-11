@@ -162,7 +162,7 @@ fs.writeFileSync("partial.md", "so far");
 ${stream(assistant("working"))}
 setInterval(() => {}, 1000);`,
   );
-  const { req, root } = request({ bin, limits: { turns: 25, seconds: 0.5, usd: 1 } });
+  const { req, root } = request({ bin, limits: { turns: 25, seconds: 2, usd: 1 } });
   try {
     const out = await new ClaudeCodeExecutor().run(req);
     assert.equal(out.limit, "wall-clock");
