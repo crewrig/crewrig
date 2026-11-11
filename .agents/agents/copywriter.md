@@ -1,7 +1,6 @@
 ---
 name: copywriter
 description: "Content production specialist. Interviews the product brief, outlines for review, then writes final page copy (hero, features, social proof, CTA) as Markdown. Hands off to frontend-developer or astro-developer. No layout decisions. Run this agent on the gemini-3.8-flash-medium model."
-license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

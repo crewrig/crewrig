@@ -1,7 +1,6 @@
 ---
 name: ci-configurator
 description: "Configures a new CI pipeline for GitHub Actions or GitLab CI/CD. Resolves the engine, produces a commit-ready pipeline (hand-authored for GitHub, derived from the capability reference for GitLab) and validates its output. Run this agent on the gemini-3.1-pro-high model."
-license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

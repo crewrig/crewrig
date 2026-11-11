@@ -20,7 +20,7 @@ export const DESCRIPTION_GLOBS: readonly string[] = [
   ".github/skills/*/SKILL.md",
   ".github/agents/*.md",
   ".agents/skills/*/SKILL.md",
-  ".agents/agents/*/AGENT.md",
+  ".agents/agents/*.md",
 ];
 
 interface YamlNamespace {

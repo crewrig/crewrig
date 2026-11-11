@@ -241,3 +241,16 @@ acting either: the compiled agent trees carry the `regenerable` policy
 (`.crewrig/core-paths.txt`), so the next `scripts/sync-from-upstream.ts` run
 restores the new flat files, removes the retired nested ones as orphans, and
 reports rather than aborts on any member a fork had locally diverged.
+
+**Follow-up (spec 0053 delta-01, issue #1847).** The compiled Antigravity
+agent is now the flat `.agents/agents/<name>.md`, like the other three CLIs,
+carrying only `name`, `description` and the `metadata` provenance block
+(the `enable_*`, `license` and `compatibility` keys are no longer emitted).
+An adopter who installed the retired `~/.gemini/config/agents/<name>/AGENT.md`
+has that directory removed at their next Antigravity setup (`Migrated away:
+<path>`), but only when it holds nothing except a provenance-carrying
+`AGENT.md`; a directory with any other content is left in place with a
+warning. A synchronizing fork lands on the new layout without acting: the
+`.agents/agents` tree carries the `regenerable` policy, so the next
+`scripts/sync-from-upstream.ts` run restores the flat files and removes the
+retired nested ones as orphans.

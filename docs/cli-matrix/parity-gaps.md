@@ -127,7 +127,7 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   `~/.gemini/agents/`, listed twice while its unique-named siblings at the same two roots were each listed once (`agy` 1.1.11,
   2026-08-11, two runs; `docs/runbooks/antigravity-discovery-probe.md`). The live instance is `harness-curator`, which
   after spec 0123 exists at `~/.gemini/agents/harness-curator.md` from the Gemini setup and
-  `~/.gemini/config/agents/harness-curator/AGENT.md` from the Antigravity setup. Both are the same crewrig component
+  `~/.gemini/config/agents/harness-curator.md` from the Antigravity setup (flat since spec 0053 delta-01). Both are the same crewrig component
   rendered for two CLIs, so either resolution yields the same agent and the only effect is a doubled line in the
   listing. Recorded rather than worked around: renaming a shipped component to dodge a vendor listing artifact would
   cost more than the artifact does.
@@ -419,3 +419,16 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   cover it; it is attributed through the worktree/branch channel from the capturing process's cwd. Evidence and fixtures
   in row 44. Not an asymmetry of the keep-one-call kind: it fails only when the subagent runs outside a ticket worktree
   or branch, which the Pre-Edit Guard forbids for edits.
+
+- **[GAP, intentional] Antigravity compiled agent shape (rows 4, 28, 30, 38, spec 0053 delta-01, issue #1847).** All four
+  CLIs now compile an agent as a flat `<name>.md`. The remaining Antigravity asymmetries are intentional: no tool
+  restriction is emitted (the documented tool names are `view_file`, `replace_file_content`, `grep_search`,
+  `run_command`, and translating a Claude Code name such as `Bash` would invent vendor semantics), no `model` field,
+  and the extension-plugin packaging still copies agent directories whole. The change is documentation-driven.
+  Evidence: a live discovery probe of `agy` 1.5.5 on a case-sensitive file system discovered `AGENT.md`, `agent.md`,
+  `Agent.md` and the flat form, and an agent carrying unknown `enable_*` keys; runtime semantics were **not** verified
+  because no signed-in session was available. Unverified, each tracked by a follow-up issue opened separately from this
+  change: (1) the runtime effect of the removed `enable_write_tools`, `enable_mcp_tools` and `enable_subagent_tools`
+  keys (if `agy` honours `enable_write_tools`, `pr-reviewer`, whose Claude Code tool list includes `Bash`, loses write
+  ability; spec 0053 delta-01 R27 accepts that risk); (2) the vendor defaults of `tools`, `subagent` and `mainAgent`;
+  (3) the Antigravity plugin layout for agents.

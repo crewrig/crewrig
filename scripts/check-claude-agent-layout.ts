@@ -4,6 +4,8 @@
 // Usage: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-claude-agent-layout.ts
 // Override the repository root with CREWRIG_REPO_DIR (default: the parent of scripts/).
 //
+// Also guards `.agents/agents` (spec 0053 delta-01 R17).
+//
 // Exit: 0 `.claude/agents` is absent, empty or holds only flat `*.md` regular files (OK line on
 // stdout), 1 offenders (named on stderr).
 // Finding lines: `  - .claude/agents/<path>` under a `FAILED:` heading, on stderr.

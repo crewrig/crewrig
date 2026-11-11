@@ -92,6 +92,7 @@ tasks:
     preconditions: *needs-js-yaml
     cmds:
       - '{{.NODE_SCRIPTS}}/check-claude-agent-layout.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-agent-layout-cases.test.ts {{.REPO_DIR}}/scripts/tests/governance-check-claude-agent-layout.test.ts'
   ci-pre-push-replay:
     desc: Run the ci-pre-push-replay CI capability (pre-push mirror of the CI job)
     preconditions: *needs-js-yaml

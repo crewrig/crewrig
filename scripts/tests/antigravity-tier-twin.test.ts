@@ -36,9 +36,17 @@ const staging = (): string => path.join(base, "repo", "dist", "library", ".agent
 const hollow = (kind: string, name: string): string =>
   fs.mkdirSync(path.join(staging(), kind, name), { recursive: true }) as string;
 
+/** A staged flat agent whose install target is blocked by a directory of the same file name. */
+const blockedAgent = (name: string): void => {
+  stageAgent(staging(), name);
+  fs.mkdirSync(path.join(base, "home", ".gemini", "config", "agents", `${name}.md`), {
+    recursive: true,
+  });
+};
+
 describe("installAntigravityTier agent rows", () => {
-  it("names a hollow agent next to a real one: staged 0 skill(s) and 2 agent(s), placed 0 and 1", () => {
-    hollow("agents", "hollow-agent");
+  it("names an unplaceable agent next to a real one: staged 0 skill(s) and 2 agent(s), placed 0 and 1", () => {
+    blockedAgent("hollow-agent");
     stageAgent(staging(), "real-agent");
     assert.equal(installAntigravityTier(ctx(), "library"), 0);
     const all = [...out, ...err].join("\n");
@@ -50,8 +58,8 @@ describe("installAntigravityTier agent rows", () => {
   });
 
   it("fails with staged 2 agent(s) and placed none when no agent lands", () => {
-    hollow("agents", "hollow-one");
-    hollow("agents", "hollow-two");
+    blockedAgent("hollow-one");
+    blockedAgent("hollow-two");
     assert.equal(installAntigravityTier(ctx(), "library"), 1);
     const agents = path.join(base, "home", ".gemini", "config", "agents");
     assert.ok(

@@ -397,6 +397,7 @@ install-ts:
         - "scripts/lib/component-install.ts"
         - "scripts/lib/component-resolve.ts"
         - "scripts/lib/antigravity-migrate.ts"
+        - "scripts/lib/provenance-carrying.ts"
         - "scripts/lib/manage/**"
         - "scripts/lib/extension/**"
         - "scripts/lib/paths.ts"
@@ -405,6 +406,7 @@ install-ts:
         - "scripts/lib/worktree-claim/**"
         - "scripts/lib/node-floor-guard.js"
         - "scripts/tests/antigravity-migrate.test.ts"
+        - "scripts/tests/provenance-carrying.test.ts"
         - "scripts/tests/component-install.test.ts"
         - "scripts/tests/component-overlay.test.ts"
         - "scripts/tests/component-roots.test.ts"
@@ -1769,11 +1771,13 @@ check-claude-agent-layout:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &check-claude-agent-layout-changes-1
         - ".claude/agents/**"
+        - ".agents/agents/**"
         - "scripts/build-components.ts"
         - "scripts/build-components.ts"
         - "scripts/lib/build-components/**"
         - "scripts/check-claude-agent-layout.ts"
         - "scripts/lib/governance/**"
+        - "scripts/tests/governance-*agent-layout*.test.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *check-claude-agent-layout-changes-1
 

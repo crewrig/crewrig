@@ -108,12 +108,14 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Gemini CLI:** ✅ `.gemini/agents/<name>.md` (flat file)
 - **Copilot CLI:** ✅ `.github/agents/<name>.md` (flat file) **[GAP-confirmation]** — repo-level layout not in the
   public reference
-- **Antigravity CLI:** ✅ `.agents/agents/<name>/AGENT.md` (directory; spec 0053). Corrected in spec 0119: this cell
-  previously read `.antigravity/agents/<name>.md` (flat file), which contradicted both `build_agents` (now `buildAgents`
-  in the TypeScript build) and row 1's `.agents/` root. The spec 0119 collision key derives from these paths, so the
-  contradiction would have made that guard unauditable against its own reference table. Since spec 0201 flattened the
-  Claude cell of this row, this Antigravity path no longer mirrors it — both remain per-agent directories on their own
-  terms, but the parallelism this cell once described no longer holds.
+- **Antigravity CLI:** ✅ `.agents/agents/<name>.md` (flat file; spec 0053 delta-01, issue #1847). Frontmatter is
+  `name`, `description` and the `metadata` provenance block only; no `enable_*`, `license`, `compatibility` or `tools`
+  key is emitted. The compiled agent was the directory `.agents/agents/<name>/AGENT.md` (spec 0053) before delta-01; the
+  build removes that retired directory when it holds only a provenance-carrying `AGENT.md`, and `--check` reports it as
+  drift. The flat file replaces the documented lowercase `<name>/agent.md` form because a case-only rename aliases on
+  case-insensitive volumes. History: spec 0119 corrected this cell away from `.antigravity/agents/<name>.md`, and the
+  spec 0119 collision key derives from these paths, so it now reads `.agents/agents/<name>.md`. All four CLIs now
+  compile an agent as a flat `<name>.md`.
 
 ### 4b — Agent provenance carrier
 
@@ -1516,7 +1518,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Gemini CLI:** ✅ same contract via `.gemini/skills/spec-author/SKILL.md` + `.gemini/agents/spec-author.md`
 - **Copilot CLI:** ✅ same contract via `.github/skills/spec-author/SKILL.md` + `.github/agents/spec-author.md`
 - **Antigravity CLI:** ✅ same contract via `.agents/skills/spec-author/SKILL.md` +
-  `.agents/agents/spec-author/AGENT.md`
+  `.agents/agents/spec-author.md`
 
 ### 29 — Tool-boundary git worktree guard
 
@@ -1578,7 +1580,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   (built by `scripts/build-components.ts --target gemini`; row 3 core path)
 - **Copilot CLI:** ✅ `.github/agents/pr-reviewer.md` + `.github/skills/{pr-reviewer,architect,spec-author}/SKILL.md`
   (built by `scripts/build-components.ts --target copilot`; row 3 core path)
-- **Antigravity CLI:** ✅ `.agents/agents/pr-reviewer/AGENT.md` +
+- **Antigravity CLI:** ✅ `.agents/agents/pr-reviewer.md` +
   `.agents/skills/{pr-reviewer,architect,spec-author}/SKILL.md` (built by
   `scripts/build-components.ts --target antigravity`; row 3 core path)
 
@@ -1959,7 +1961,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   then `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ticket-pickup.ts --issue <N>` as two separate steps,
   never chained with `&&` — some CLIs' Windows shell is PowerShell 5.1, row 37) run through the CLI's shell tool;
   reached through `AGENTS.md` (row 7e entry points) and the compiled `spec-author` skill and agent
-  (`.agents/skills/spec-author/SKILL.md`, `.agents/agents/spec-author/AGENT.md`)
+  (`.agents/skills/spec-author/SKILL.md`, `.agents/agents/spec-author.md`)
 
 ### 39 — OS service management
 
@@ -2357,7 +2359,7 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   `~/.gemini/agents/`, listed twice while its unique-named siblings at the same two roots were each listed once (`agy` 1.1.11,
   2026-08-11, two runs; `docs/runbooks/antigravity-discovery-probe.md`). The live instance is `harness-curator`, which
   after spec 0123 exists at `~/.gemini/agents/harness-curator.md` from the Gemini setup and
-  `~/.gemini/config/agents/harness-curator/AGENT.md` from the Antigravity setup. Both are the same crewrig component
+  `~/.gemini/config/agents/harness-curator.md` from the Antigravity setup (flat since spec 0053 delta-01). Both are the same crewrig component
   rendered for two CLIs, so either resolution yields the same agent and the only effect is a doubled line in the
   listing. Recorded rather than worked around: renaming a shipped component to dodge a vendor listing artifact would
   cost more than the artifact does.
@@ -2649,6 +2651,19 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   cover it; it is attributed through the worktree/branch channel from the capturing process's cwd. Evidence and fixtures
   in row 44. Not an asymmetry of the keep-one-call kind: it fails only when the subagent runs outside a ticket worktree
   or branch, which the Pre-Edit Guard forbids for edits.
+
+- **[GAP, intentional] Antigravity compiled agent shape (rows 4, 28, 30, 38, spec 0053 delta-01, issue #1847).** All four
+  CLIs now compile an agent as a flat `<name>.md`. The remaining Antigravity asymmetries are intentional: no tool
+  restriction is emitted (the documented tool names are `view_file`, `replace_file_content`, `grep_search`,
+  `run_command`, and translating a Claude Code name such as `Bash` would invent vendor semantics), no `model` field,
+  and the extension-plugin packaging still copies agent directories whole. The change is documentation-driven.
+  Evidence: a live discovery probe of `agy` 1.5.5 on a case-sensitive file system discovered `AGENT.md`, `agent.md`,
+  `Agent.md` and the flat form, and an agent carrying unknown `enable_*` keys; runtime semantics were **not** verified
+  because no signed-in session was available. Unverified, each tracked by a follow-up issue opened separately from this
+  change: (1) the runtime effect of the removed `enable_write_tools`, `enable_mcp_tools` and `enable_subagent_tools`
+  keys (if `agy` honours `enable_write_tools`, `pr-reviewer`, whose Claude Code tool list includes `Bash`, loses write
+  ability; spec 0053 delta-01 R27 accepts that risk); (2) the vendor defaults of `tools`, `subagent` and `mainAgent`;
+  (3) the Antigravity plugin layout for agents.
 
 ## Adding a new CLI
 
