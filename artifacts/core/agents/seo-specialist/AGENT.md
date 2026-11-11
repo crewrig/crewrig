@@ -172,6 +172,9 @@ When a recognition signal fires (see `config/TOOLS.md` →
 *Friction Reporting → Recognition signals*), follow the procedure in
 the `harness-report` skill
 (`artifacts/library/skills/harness-report/SKILL.md`). Do not
-reimplement the tagging protocol inline. Your tool set withholds the MCP
-tool that records a friction; when it does, report the friction (offender,
-signal, evidence) in your final reply for the delegating session to tag.
+reimplement the tagging protocol inline.
+
+This agent's tool allowlist withholds the MemPalace MCP tools, so it cannot
+call the write path of `harness-report`; it reports any friction it meets
+(offender, signal, evidence) in its final reply instead of tagging it, for the
+delegating session to tag.
