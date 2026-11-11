@@ -181,11 +181,14 @@ Added to `## Requirements` (numbering continues from 0053 requirement 10):
     case-only twin. Shell code added SHALL run on bash 3.2.
 
 - **26. (Provenance-carrying, defined).** A file is *provenance-carrying* when
-    its leading frontmatter contains a `metadata` mapping holding a `provenance`
-    mapping with a non-empty `canonical` value — the detection of the existing
-    `hasProvenance` check of the Antigravity migration module
-    (`scripts/lib/antigravity-migrate.ts`), which the build and the setup SHALL
-    share rather than reimplement. The presence of the text `provenance` in the
+    its leading frontmatter (and only the frontmatter) holds, under a `metadata`
+    mapping, a `provenance` mapping with a non-empty `canonical` value. The build
+    and the setup SHALL share one helper implementing exactly that
+    frontmatter-scoped check. The existing `hasProvenance` of the Antigravity
+    migration module (`scripts/lib/antigravity-migrate.ts`) is today a line-level
+    test (an indented `provenance:` line followed by a `canonical:` value) that
+    does not verify the `metadata` parent; where it differs, it SHALL be aligned
+    to the shared helper, and the shared helper SHALL NOT be weaker than it. The presence of the text `provenance` in the
     body, or a `provenance` key without a `canonical` value, SHALL NOT qualify.
 - **27. (Risk acceptance for the `enable_*` removal).** The removal of
     `enable_write_tools`, `enable_mcp_tools`, and `enable_subagent_tools` from
