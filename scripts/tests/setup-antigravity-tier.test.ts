@@ -113,6 +113,33 @@ describe("installAntigravityTier", () => {
     assert.ok(fs.existsSync(path.join(agents(), "developer.md")));
   });
 
+  it("a symlinked stale <name>/ is left in place with a warning", () => {
+    stage("library", { "agents/developer.md": "new\n" });
+    const target = path.join(base, "elsewhere");
+    put(path.join(target, "AGENT.md"), PROV);
+    fs.mkdirSync(agents(), { recursive: true });
+    fs.symlinkSync(target, path.join(agents(), "developer"), "dir");
+    assert.equal(installAntigravityTier(ctxOf(), "library"), 0);
+    assert.equal(fs.lstatSync(path.join(agents(), "developer")).isSymbolicLink(), true);
+    assert.ok(fs.existsSync(path.join(target, "AGENT.md")));
+    assert.ok(
+      err.some((l) => l.includes(path.join(agents(), "developer"))),
+      err.join("\n"),
+    );
+  });
+
+  it("a stale <name>/ holding a nested directory is left with a warning", () => {
+    stage("library", { "agents/developer.md": "new\n" });
+    put(path.join(agents(), "developer/AGENT.md"), PROV);
+    put(path.join(agents(), "developer/sub/x.md"), "user\n");
+    assert.equal(installAntigravityTier(ctxOf(), "library"), 0);
+    assert.ok(fs.existsSync(path.join(agents(), "developer/sub/x.md")));
+    assert.ok(
+      err.some((l) => l.includes(path.join(agents(), "developer"))),
+      err.join("\n"),
+    );
+  });
+
   it("a body-only provenance AGENT.md is not removed", () => {
     stage("library", { "agents/developer.md": "new\n" });
     put(

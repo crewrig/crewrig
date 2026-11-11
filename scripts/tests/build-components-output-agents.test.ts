@@ -145,6 +145,15 @@ describe("retired Antigravity directory cleanup (spec 0053 delta-01 R14, R16, R2
     assert.match(res.stderr, /\.agents\/agents\/ag\b/);
   });
 
+  test("unterminated frontmatter fence left, warned", () => {
+    const body = "---\nname: ag\n\nmetadata:\n  provenance:\n    canonical: x\n";
+    const tree = seeded({ "AGENT.md": body });
+    const res = tree.run(["--target", "antigravity"]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(tree.read(".agents/agents/ag/AGENT.md"), body);
+    assert.match(res.stderr, /\.agents\/agents\/ag\b/);
+  });
+
   test("orphan dir untouched, not reported by --check", () => {
     const tree = seeded();
     tree.write(".agents/agents/gone/AGENT.md", PROV);

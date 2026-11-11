@@ -44,6 +44,10 @@ describe("isProvenanceCarryingText", () => {
       false,
     );
   });
+  test("rejects an unterminated frontmatter fence: body text never qualifies", () => {
+    const text = `---\nname: a\n\n${prov.join("\n")}\n`;
+    assert.equal(isProvenanceCarryingText(text), false);
+  });
   test("rejects a file with no leading frontmatter fence", () => {
     assert.equal(isProvenanceCarryingText(`\n${doc(["name: a", ...prov])}`), false);
   });

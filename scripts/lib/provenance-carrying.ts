@@ -11,12 +11,12 @@
 import fs from "node:fs";
 import path from "node:path";
 
-/** Leading `---` block lines; [] when line 1 is not exactly `---`. */
+/** Leading `---` block lines; [] when line 1 is not exactly `---` or the closing fence is missing. */
 function frontmatterOf(text: string): string[] {
   const lines = text.split(/\r?\n/);
   if (lines[0] !== "---") return [];
   const end = lines.indexOf("---", 1);
-  return lines.slice(1, end < 0 ? undefined : end);
+  return end < 0 ? [] : lines.slice(1, end);
 }
 
 const indentOf = (line: string): number => line.length - line.trimStart().length;
