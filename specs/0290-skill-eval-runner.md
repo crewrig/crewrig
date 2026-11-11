@@ -51,7 +51,7 @@ A maintainer who changes a skill's `SKILL.md` learns, before the change merges, 
 7. **R7 (never shipped).** `evals/` SHALL remain in the repository and SHALL NOT be copied to any CLI target, built output, staging directory, user-scope install or packaged archive. Today the build propagates only `scripts/`, `references/` and `assets/` of a skill (`scripts/lib/build-components/resources.ts`), so no build change is required; this requirement makes that behaviour a tested invariant, and any future change that would copy `evals/` SHALL exclude it. An automated check SHALL fail when a built skill directory contains an `evals/` path.
 8. **R8 (existing tooling tolerates evals).** The skill linter, the built-components drift check, the path-ownership check and the skill-version check SHALL accept a skill directory that contains `evals/`. A change that touches only files under a skill's `evals/` SHALL NOT require a `metadata.provenance.version` bump of that skill.
 
-9. **R9 (paired runs in fresh context).** For each eval the runner SHALL perform two runs: `with_skill`, whose context holds the skill's `SKILL.md` content and the eval's `prompt` and `files`, and `without_skill`, whose context holds the `prompt` and `files` only. Each run SHALL start from an empty conversation that shares no state with any other run.
+9. **R9 (paired runs in fresh context).** For each eval the runner SHALL perform two runs: `with_skill`, in which the skill is available as a whole directory (`SKILL.md`, `scripts/`, `references/` and `assets/`) together with the eval's `prompt` and `files`, and `without_skill`, which has the `prompt` and `files` only. In a `with_skill` run the agent under test SHALL be able to read the skill's references and assets and to execute the skill's scripts, so that a skill which delegates deterministic work to `scripts/` is exercised as it would run when installed; the skill SHALL be installed as a real skill in the agent under test, with a throwaway configuration that touches no user or repository configuration. Each run SHALL start from an empty conversation that shares no state with any other run. Choosing the executor that satisfies this guarantee is left to PLAN.
 10. **R10 (output layout).** Each run SHALL write to its own directory `<out>/<skill>/eval-<id>/<with_skill|without_skill>/` containing the produced files, a `transcript.md` of the run, and `grading.json`. The skill-level `benchmark.json` SHALL sit at `<out>/<skill>/benchmark.json`. The layout and file formats SHALL load unchanged in skill-creator's results viewer.
 11. **R11 (grading.json).** `grading.json` SHALL contain `expectations`, an array of objects `{text, passed, evidence}` with `text` a string, `passed` a boolean and `evidence` a non-empty string, and `summary`, an object `{passed, failed, total, pass_rate}` where `passed + failed = total` and `pass_rate = passed / total` (0 when `total` is 0). Every eval expectation and every check SHALL appear as exactly one entry, in file order, with a check's `text` derived from its type and arguments.
 12. **R12 (assertion order).** The runner SHALL evaluate all `checks` of a run before any judge call. A check failure SHALL be recorded with its observed value as evidence. The judge SHALL be called only for `expectations` entries, and SHALL NOT be called for a run whose output directory cannot be read.
@@ -62,10 +62,10 @@ A maintainer who changes a skill's `SKILL.md` learns, before the change merges, 
 16. **R16 (one skill locally).** A `task` entry point SHALL run the evals of exactly one named skill, `task skill-evals -- <skill-name>`, locally and in CI, and SHALL exit non-zero naming the unknown name when no such skill exists. It SHALL accept an option that selects the output directory and an option that selects mock mode.
 17. **R17 (CI trigger).** The pull-request pipeline SHALL run the evals of a skill if and only if that skill's `SKILL.md` is modified by the pull request relative to its base branch. A pull request that modifies no `SKILL.md` SHALL run no eval and SHALL make no judge call. No scheduled or push-to-branch run of the evals SHALL exist.
 18. **R18 (capability and task wiring).** `ci/ci-capabilities.yml` SHALL gain a portable capability `skill-evals`, triggered on `pull-request` only, path-filtered to `artifacts/**/skills/*/SKILL.md`, requiring full history for the base-branch comparison, whose `command` is `task ci:skill-evals`; `taskfiles/ci/integration.yml` SHALL define that task. A second capability SHALL run the runner's own tests in mock mode (R24) whenever the runner's sources change. Both SHALL satisfy `docs/ci-reference-format.md` and the CI parity check.
-19. **R19 (regression metric).** For each changed skill that has valid evals, the runner SHALL compute the `with_skill` mean `pass_rate` (R14) for the head revision of `SKILL.md` and for the base revision of `SKILL.md`, both over the evals file of the head revision, in the same fresh-context conditions. A skill SHALL be a regression when the head mean is lower than the base mean by more than the tolerance, which SHALL be a single declared, documented constant defaulting to 0.05 (five percentage points). A skill whose `SKILL.md` does not exist on the base branch SHALL be reported as new and not compared.
-20. **R20 (blocking outcomes).** The run SHALL exit non-zero, naming the skill and the reason, when a changed skill has an `evals/` directory and either its `evals.json` is invalid (R6) or it is a regression (R19). The report SHALL give both means, the delta and the tolerance for a regression.
+19. **R19 (regression metric).** For each changed skill that has valid evals, the runner SHALL compute the `with_skill` mean `pass_rate` (R14) for the head revision of `SKILL.md` and for the base revision of `SKILL.md`, both over the evals file of the head revision, in the same fresh-context conditions. The `without_skill` run does not depend on `SKILL.md`, so it SHALL be run once per eval, on the head revision only; only the `with_skill` run SHALL be replayed on the base `SKILL.md`. A skill SHALL be a regression when the head mean is lower than the base mean by more than the tolerance, which SHALL be a single declared, documented constant defaulting to 0.05 (five percentage points); the documentation SHALL state that this default is to be calibrated on the `pr-logbook` pilot (issue #1852) before regression is made blocking. A skill whose `SKILL.md` does not exist on the base branch SHALL be reported as new and not compared.
+20. **R20 (blocking outcomes).** The run SHALL exit non-zero, naming the skill and the reason, when a changed skill has an `evals/` directory and its `evals.json` is invalid (R6). A regression (R19) SHALL be reported, naming the skill and giving both means, the delta and the tolerance, and SHALL NOT make the run exit non-zero by default. Whether it does SHALL be controlled by exactly one declared, documented setting, `regression-blocking`, defaulting to false, following the same pattern as `missing-evals-blocking` (R21): flipping it SHALL be a one-line change and SHALL make the same condition exit non-zero.
 21. **R21 (skill without evals).** A changed skill that has no `evals/` directory SHALL be reported as a warning naming the skill, and the run SHALL exit 0 for that skill. Whether that warning blocks SHALL be controlled by exactly one declared, documented setting, `missing-evals-blocking`, defaulting to false until the skill migration waves (issues #1852 to #1855) have landed; flipping it SHALL be a one-line change and SHALL make the same condition exit non-zero. A skill that has an `evals/` directory but no `evals.json` SHALL be treated as invalid under R20.
-22. **R22 (report).** The runner SHALL print a per-skill summary (status, `with_skill` and `without_skill` means, delta, base mean, judge calls used, skipped reason when any) and, when running in the pull-request pipeline, SHALL write the same summary to the job summary. The status SHALL be one of `pass`, `regression`, `invalid`, `no-evals`, `new`, `skipped`, `mock`, `error`.
+22. **R22 (report).** The runner SHALL print a per-skill summary (status, `with_skill` and `without_skill` means, delta, base mean, judge calls used, skipped reason when any) and, when running in the pull-request pipeline, SHALL write the same summary to the job summary. The status SHALL be one of `pass`, `regression` (reported with exit 0 unless `regression-blocking` is true), `invalid`, `no-evals`, `new`, `skipped`, `mock`, `error`.
 
 23. **R23 (cost guard and attribution).** A run SHALL stop calling the judge and SHALL exit non-zero with status `error` when the judge's `max_calls` cap would be exceeded, and SHALL report the calls used. The runner SHALL declare its usage through the existing usage subsystem before any model call, with `node scripts/usage-task.ts set --channel explicit --asset forge-issue:<owner>/<repo>#<number>`, where `<number>` is the pull-request number in CI and the ticket number locally; the asset kind `forge-issue` and its reference grammar are those of `docs/usage-record-format.md` (External asset kinds), and no new asset kind is introduced.
 24. **R24 (judge unavailable).** When the judge backend has no credentials, the runner SHALL report each affected skill as `skipped` with the missing-credentials reason and SHALL exit 0, so that pull requests without access to secrets are not blocked; this skip SHALL be visible in the report and the job summary and SHALL NOT be reported as `pass`. When credentials are present but the backend fails or returns no verdict after the judge's retries, the runner SHALL report `error` and exit non-zero. Mock mode SHALL report `mock`, SHALL mark every written `grading.json` and `benchmark.json` with `"mock": true`, and SHALL NOT produce a regression or blocking outcome from mocked verdicts.
@@ -87,14 +87,32 @@ And   the report shows status pass with both means and the delta
 And   the run exits 0
 ```
 
-**Scenario:** regression versus base blocks
+**Scenario:** regression versus base is reported and does not block by default
 
 ```text
 Given a changed skill whose base with_skill mean is 0.90 and whose head mean is 0.80
 When  the runner compares them with the default tolerance of 0.05
 Then  the status is regression
 And   the report names the skill, 0.90, 0.80, the delta and the tolerance
-And   the run exits non-zero
+And   the run exits 0
+```
+
+**Scenario:** the regression-blocking knob flips the same condition
+
+```text
+Given the same regression and regression-blocking set to true
+When  the runner compares them
+Then  the status is regression
+And   the run exits non-zero naming the skill
+```
+
+**Scenario:** a with_skill run can execute the skill's scripts
+
+```text
+Given a skill whose scripts/ directory holds a script, and an eval whose expectation can only be met by running that script
+When  the runner performs the with_skill run
+Then  the agent under test runs the script and the expectation passes
+And   the same eval without the skill does not pass
 ```
 
 **Scenario:** drop within tolerance does not block
@@ -211,13 +229,7 @@ Then  they pass and every grading.json and benchmark.json they produce carries "
 - Measuring real skill-trigger behaviour in a live agent CLI; probes are stored and reported (R5) and their live execution is a later spec.
 - A nightly or scheduled run, a stored baseline of past results, and trend dashboards.
 - Per-skill cost breakdown in the usage dashboard; cost is attributed to the ticket only (R23).
-- Choosing the executor model and the judge backend for the paired runs; this is a PLAN decision constrained by R15 and R26.
+- Choosing the executor and the judge backend for the paired runs; this is a PLAN decision constrained by R9 (skill installed as a real skill, scripts runnable), R15 and R26.
 - Vendoring or porting skill-creator's Python scripts or its description-optimization loop.
 - Changing the judge's three-call quorum, its drivers or the end-to-end suites that call it, beyond R15.
-- Flipping `missing-evals-blocking` to true; that is a later spec delta once the migration waves land.
-
-## Open questions
-
-- Regression tolerance: confirm the default of 0.05 absolute on the `with_skill` mean `pass_rate`, given judge noise at three-call quorum on small eval sets.
-- Judge outage policy: confirm that a backend failure with credentials present is blocking (`error`), while absent credentials is a non-blocking visible skip (R24).
-- Base comparison cost: confirm that re-running the head evals against the base `SKILL.md` on every changed skill is acceptable versus comparing with a stored baseline, which would need a place to keep results.
+- Flipping `missing-evals-blocking` or `regression-blocking` to true; each is a later spec delta (the former once the migration waves land, the latter once the tolerance is calibrated on the `pr-logbook` pilot, issue #1852).
