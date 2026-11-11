@@ -73,13 +73,15 @@ Prompt content here — shared across all tools, written once.
 
 An agent source — and only an agent source — declares what its work needs from a model. It does so as a **capability profile** under `metadata.model:`, naming characteristics such as `intelligence`, never a concrete model, a vendor, or a CLI-namespaced key: the retired `metadata.claude.model` is no longer an available way to choose an agent's model.
 
-On the upstream-owned tiers (`core`, `library`), a source's `metadata:` block admits exactly two keys, `provenance` and `model`. A source that carries no `metadata.model:` block keeps session-model inheritance and needs no edit.
+On the upstream-owned tiers (`core`, `library`), a source's `metadata:` block admits exactly three keys, `provenance`, `model` and, on an `AGENT.md` only, `tools` (see *Declaring a tool allowlist* below). A source that carries no `metadata.model:` block keeps session-model inheritance and needs no edit.
+
+On Claude Code the declared need reaches the compiled agent as a `model:` frontmatter key, and as that key alone: the description no longer ends with `Run this agent on the <model> model.` (spec 0291 R1, R2). That sentence remains on the Antigravity description, whose target has no frontmatter model surface, and returns on Claude Code under a `withheld` guard, which is how an organization on a bring-your-own-key provider keeps it ([`docs/org-model-mapping-override.md`](org-model-mapping-override.md)).
 
 What a declared profile resolves to on each target, and how the build performs that resolution, is [`docs/model-mapping-format.md`](model-mapping-format.md)'s contract; how an adopting organization changes that outcome for its own fork is [`docs/org-model-mapping-override.md`](org-model-mapping-override.md)'s; what the migration of the core agents and of the compiled Claude Code layout asks of that organization is [`docs/agent-profile-migration.md`](agent-profile-migration.md)'s. The closed frontmatter shape itself is normative on [`artifacts/FORMAT.md`](../artifacts/FORMAT.md).
 
 ### Worked examples
 
-Every emission below was printed by `node scripts/build-components.ts --resolve <agent-source> <target>` against `main` at `18b026d`, not composed by hand — re-run the same command at that commit to re-derive it. At the current head the same emission is `node scripts/build-components.ts --resolve <agent-source> <target>`, run after `node scripts/lib/node-floor-guard.js` as a separate step.
+Every emission below comes from `node scripts/build-components.ts --resolve <agent-source> <target>`, not composed by hand; run it after `node scripts/lib/node-floor-guard.js`, as a separate step, to re-derive one. The Claude Code rows follow the guard lift of spec 0291; the other rows are unchanged from `main` at `18b026d`.
 
 `artifacts/core/agents/doc-writer/AGENT.md` declares:
 
@@ -91,7 +93,7 @@ metadata:
 
 | Target | Emission |
 |---|---|
-| Claude Code | guidance `Run this agent on the haiku model.` appended to `description`; no `model:` frontmatter field |
+| Claude Code | frontmatter `model: haiku`; the description carries no model sentence |
 | Gemini CLI | frontmatter `model: gemini-3.5-flash` |
 | GitHub Copilot CLI | *(nothing — `unsupported-on-cli`)* |
 | Antigravity CLI | guidance `Run this agent on the gemini-3.8-flash-low model.` |
@@ -100,7 +102,7 @@ metadata:
 
 | Target | Emission |
 |---|---|
-| Claude Code | guidance `Run this agent on the sonnet model.`; no `model:` frontmatter field |
+| Claude Code | frontmatter `model: sonnet`; the description carries no model sentence |
 | Gemini CLI | frontmatter `model: gemini-3.1-pro-preview` |
 | GitHub Copilot CLI | *(nothing — `unsupported-on-cli`)* |
 | Antigravity CLI | guidance `Run this agent on the gemini-3.1-pro-low model.` |
@@ -109,7 +111,7 @@ metadata:
 
 | Target | Emission |
 |---|---|
-| Claude Code | guidance `Run this agent on the opus model.`; no `model:` frontmatter field |
+| Claude Code | frontmatter `model: opus`; the description carries no model sentence |
 | Gemini CLI | frontmatter `model: gemini-3.1-pro-preview` |
 | GitHub Copilot CLI | *(nothing — `unsupported-on-cli`)* |
 | Antigravity CLI | guidance `Run this agent on the gemini-3.1-pro-low model.` |
@@ -117,6 +119,23 @@ metadata:
 `artifacts/library/agents/harness-curator/AGENT.md` carries no
 `metadata.model:` block — the **profile-less** case: all four targets emit
 nothing.
+
+## Declaring a tool allowlist
+
+An agent source MAY declare which classes of tool its work needs under `metadata.tools:`, a non-empty list drawn from `read`, `search`, `edit`, `execute`, `web` and `agent`, without duplicates (spec 0291):
+
+```yaml
+metadata:
+  model:
+    intelligence: high
+  tools: [read, search, web]
+```
+
+Each CLI that has a tool allowlist receives the declaration in its own tool names, in the vocabulary's order: Claude Code `tools: Read, Grep, Glob, WebFetch, WebSearch`, Copilot CLI `tools: [read, search, web]`, Gemini CLI the native `read_file`, `grep_search`, `web_fetch` family. The mapping table, the Gemini omission of `agent` and the Antigravity gap are normative in [`artifacts/FORMAT.md`](../artifacts/FORMAT.md). A source that declares nothing behaves exactly as before. A declaration the build cannot map (not a list, empty, a name outside the vocabulary, a duplicate) stops the build, naming the file, the key, the value and the six classes.
+
+A tool allowlist withholds every tool it does not name. On Claude Code that includes the MCP tools, unless listed, and `SendMessage`, `Skill`, `ToolSearch` and `TodoWrite` (<https://code.claude.com/docs/en/sub-agents>, read 2026-11-11; the page states that an allowlist excludes the MCP tools it does not list, and that `SendMessage`, `ToolSearch` and `TodoWrite` are withheld too is an inference from it). None of those can be expressed with the six classes, so an agent whose body requires one of them SHALL NOT declare `metadata.tools` until the vocabulary covers it. On the shared `.claude/agents/` surface, Copilot CLI treats `Bash`, `Read`, `Edit`, `Write`, `Grep`, `Glob`, `WebFetch`, `WebSearch` and `Task` as aliases of its own names; `Agent` is not an alias and is ignored there, so a declared `agent` class reaches Claude Code but not a Copilot reader of that directory, which fails toward fewer tools.
+
+The rule: an allowlist is declared only for an agent whose classes exclude execute and edit. With `execute` the restriction protects nothing, since a shell can write files and mutate remote state, while the allowlist withholds every tool it does not name, MCP tools included. `scripts/check-component-metadata-keys.ts` enforces it on `core` and `library` sources and rejects `metadata.tools` on a skill or command source; the adopter tiers (`community`, `org`) are outside the check. An agent that receives an allowlist and carries a `harness-report` paragraph says in its body that it reports a friction in its final reply when its tool set withholds the MCP tool that records it, as `security` and `seo-specialist` do.
 
 ## The build
 

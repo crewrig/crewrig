@@ -1,7 +1,8 @@
 ---
 name: astro-developer
-description: "Astro implementer. Scaffolds and configures projects, builds pages/layouts/components, wires Content Collections and integrations, deploys, diagnoses build failures. Hands off to seo-specialist and accessibility-auditor. Run this agent on the sonnet model."
+description: "Astro implementer. Scaffolds and configures projects, builds pages/layouts/components, wires Content Collections and integrations, deploys, diagnoses build failures. Hands off to seo-specialist and accessibility-auditor."
 license: Apache-2.0
+model: sonnet
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

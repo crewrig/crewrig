@@ -108,6 +108,67 @@ describe("S2 — tier scoping (R8 last clause)", () => {
   }
 });
 
+describe("S4 — metadata.tools on agents only, and the rule of R17 (spec 0291 R9, R17)", () => {
+  const tools = (list: string): string => `name: probe\nmetadata:\n  tools: ${list}\n${PROV}`;
+  const agentWith = (name: string, list: string, tier = "core"): string =>
+    fixture(`artifacts/${tier}/agents/${name}/AGENT.md`, tools(list));
+
+  test("S4 read, search, web and agent are accepted on an agent source", () => {
+    for (const [name, list] of [
+      ["probe-tools-ok", "[read, search, web]"],
+      ["probe-tools-agent", "[agent, read]"],
+    ] as const) {
+      const r = run(agentWith(name, list));
+      assert.equal(r.status, 0, r.stderr);
+      assert.equal(r.stderr, "");
+    }
+  });
+
+  test("S4 a declared execute is rejected, naming the file and the class", () => {
+    const f = agentWith("probe-tools-execute", "[read, execute]");
+    const r = run(f);
+    assert.equal(r.status, 1);
+    assert.ok(r.stderr.includes(`${f}: K2 metadata.tools declares the class execute;`), r.stderr);
+    assert.doesNotMatch(r.stderr, /class edit/);
+    assert.match(r.stderr, /\nFAILED: 1 rejection\(s\) across 1 source\(s\)/);
+  });
+
+  test("S4 a declared edit is rejected, and both banned classes are reported one by one", () => {
+    const edit = run(agentWith("probe-tools-edit", "[edit]"));
+    assert.equal(edit.status, 1);
+    assert.match(edit.stderr, /: K2 metadata\.tools declares the class edit;/);
+    const both = run(agentWith("probe-tools-both", "[read, execute, edit]"));
+    assert.equal(both.status, 1);
+    assert.match(both.stderr, /class execute;[\s\S]*class edit;/);
+    assert.match(both.stderr, /\nFAILED: 2 rejection\(s\)/);
+  });
+
+  test("S4 library agents are governed too", () => {
+    const r = run(agentWith("probe-tools-lib", "[execute]", "library"));
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /K2 metadata\.tools declares the class execute/);
+  });
+
+  test("S4 community and org agents are outside the check", () => {
+    for (const tier of ["community", "org"]) {
+      const r = run(agentWith(`probe-tools-${tier}`, "[read, execute, edit]", tier));
+      assert.equal(r.status, 0, r.stderr);
+      assert.equal(r.stderr, "");
+    }
+  });
+
+  test("S4 a SKILL.md or a command source carrying metadata.tools is rejected, naming file and key", () => {
+    const skill = fixture("artifacts/core/skills/probe-tools/SKILL.md", tools("[read]"));
+    const command = fixture("artifacts/core/commands/probe-tools.md", tools("[read]"));
+    for (const f of [skill, command]) {
+      const r = run(f);
+      assert.equal(r.status, 1, f);
+      assert.ok(r.stderr.includes(`${f}: K1 metadata.tools is not admitted`), r.stderr);
+      assert.match(r.stderr, /metadata\.tools on an AGENT\.md/);
+    }
+  });
+});
+
 describe("S3 — default glob over the real checkout, and prerequisite failure", () => {
   test("S3 default glob: no arguments reports 45 sources, clean", () => {
     const r = runEntry(ENTRY, { env: { CREWRIG_REPO_DIR: undefined } });

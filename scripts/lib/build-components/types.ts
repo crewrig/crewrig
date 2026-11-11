@@ -106,6 +106,8 @@ export interface SourceDoc {
   alt(path: YamlPath): string;
   /** `yq -r '<path> // [] | .[]'` read line by line: trailing blank lines dropped, `[]` when none. */
   lines(path: YamlPath): string[];
+  /** `yq -r '<path> // [] | .[]'` element texts in order, none dropped: `[]` when absent or not a sequence. */
+  seq(path: YamlPath): string[];
   /** `has(<last key>)` of the mapping at the rest of `path`: true when the key is present. */
   has(path: YamlPath): boolean;
   /** `<path> | to_entries | .[]`: key, kind and text of each entry, in document order. */

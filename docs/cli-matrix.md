@@ -140,14 +140,31 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 
 ### 4c — Agent tool mapping / capabilities
 
-- **Feature:** Agent tool mapping / capabilities — maps tool requirements/capabilities from source frontmatter to
-  output agent definitions
-- **Source of truth:** `scripts/build-components.ts` `buildAgents` (shell origin `build_agents`)
-- **Claude Code:** ❌ N/A (Claude Code does not use agent-level allowed-tools)
-- **Gemini CLI:** ❌ N/A (Gemini CLI has no agent-level tool requirements)
-- **Copilot CLI:** ❌ N/A (Copilot CLI has no agent-level tool requirements)
-- **Antigravity CLI:** ✅ Mapped: maps `Bash` from `claude.allowed-tools` to `enable_write_tools: true` and supports
-  explicit `antigravity` configuration block (`enable_write_tools`, `enable_mcp_tools`, `enable_subagent_tools`) (spec 0137)
+- **Feature:** Agent tool mapping / capabilities — maps the tool classes an agent source declares under
+  `metadata.tools` (`read`, `search`, `edit`, `execute`, `web`, `agent`; spec 0291) to each CLI's own tool allowlist in
+  the output agent definition. Opt-in: a source that declares nothing gets no `tools` key on any CLI. An allowlist
+  withholds every tool it does not name (MCP tools, `SendMessage`, `Skill`, `ToolSearch` and `TodoWrite` on Claude Code), so
+  it is declared only for an agent whose classes exclude `execute` and `edit`, enforced by
+  `scripts/check-component-metadata-keys.ts` on `artifacts/core/` and `artifacts/library/` (spec 0291 R17).
+- **Source of truth:** `scripts/lib/build-components/agent-tools.ts`, `scripts/lib/build-components/emit-agents.ts`
+  (`buildAgents`; shell origin `build_agents`), `scripts/lib/build-components/emit-agent-antigravity.ts`
+- **Claude Code:** ✅ Mapped: `tools: Read, Grep, Glob, …` (a comma-separated string, after `model:`), names per
+  <https://code.claude.com/docs/en/sub-agents> read 2026-11-11. The old `claude.allowed-tools` of an agent source is read
+  by no agent emitter (only skills and commands); the dead declaration was removed from `pr-reviewer` (spec 0291 R19)
+- **Gemini CLI:** ✅ Mapped: `tools: [read_file, read_many_files, list_directory, …]`, the native identifiers of
+  <https://geminicli.com/docs/reference/tools/> read 2026-11-11, under the strict `tools` key of row 43 (Gemini CLI
+  0.28.2). The `agent` class has no Gemini name (subagents cannot call other subagents): it is omitted with one
+  `tools-drop … no-equivalent-on-cli` record, and a declaration that leaves no tool stops the build
+- **Copilot CLI:** ✅ Mapped: `tools: [read, search, …]` in `.github/agents/`, the primary names of
+  <https://docs.github.com/en/copilot/reference/custom-agents-configuration> read 2026-11-11. Copilot also honors
+  `tools:` in the shared `.claude/agents/` (row 32), where it aliases `Bash`, `Read`, `Edit`, `Write`, `Grep`, `Glob`,
+  `WebFetch`, `WebSearch` and `Task`; `Agent` is not an alias there, so a declared `agent` class does not reach a
+  Copilot reader of that directory, which fails toward fewer tools
+- **Antigravity CLI:** ❌ Not emitted: no `tools` key is written (spec 0053 delta-01 R12, R13). Antigravity documents
+  `view_file`, `replace_file_content`, `grep_search` and `run_command` and warns that a misspelled name may hang the
+  subagent, so the class-to-name mapping is unverified and is not guessed; the build emits one `tools-drop …
+  unsupported-on-cli` record for each declaring agent instead. `[GAP-confirmation]` (`docs/cli-matrix/parity-gaps.md`),
+  lifted when each class's exact Antigravity name is established by a probe on a named ticket (spec 0291 R14)
 
 ### 4d — Skill bundled scripts
 
@@ -1632,6 +1649,12 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   surface. Consequence for spec 0201 (epic #1100 seam (g)): flattening the compiled Claude Code output does **not**
   remove Copilot's consumption of the `.claude/agents/` surface under either per-file layout — the requirement 8
   shared-read guard of `specs/0143-copilot-subagent-model-fallback.delta-01.md` remains necessary regardless.
+  **Probe of 2026-11-10, Copilot CLI 1.0.109** (issue #1851, standard GitHub-hosted account, agents in
+  `.claude/agents/`): Copilot **honors `tools:`** there. `tools: Read, Grep, Glob` exposed `glob`, `grep` and `view`
+  (plus Copilot's default `skill` and `sql`) and refused file creation and shell, through the alias table (`Bash`,
+  `Read`, `Edit`, `Write`, `Grep`, `Glob`, `WebFetch`, `WebSearch` and `Task`; `Agent` is not an alias and is ignored).
+  The same probe saw `model: sonnet`, `model: claude-sonnet-5-5` and `model: claude-sonnet-4.5` each produce a warning
+  and a fallback to the session model (row 33)
 - **Antigravity CLI:** ❌ N/A — not a consumer of epic #1100's compiled-layout seam (out of scope)
 
 ### 33 — Per-agent model-mapping declaration surface
@@ -1641,14 +1664,32 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   (row 34), and populated against a real declaring source since spec 0200 migrated the 22 core agent sources onto
   `metadata.model:` (docs/agent-profile-migration.md).
 - **Source of truth:** `model-mappings/<target>.yml`, `docs/model-mapping-format.md`, `scripts/check-model-mappings.ts`
-- **Claude Code:** ✅ frontmatter `model` and `effort`; the `model` item alone is withheld by the shared-read guard
-  (spec 0143 delta-01 R8, `resolveItem` in `scripts/lib/model-resolve/resolve-item.ts`) while its state is `withheld`,
-  with the declination stated on the guidance surface instead — `effort` reaches frontmatter regardless of the guard's
-  state
+- **Claude Code:** ✅ frontmatter `model` and `effort`; the shared-read guard `copilot-shared-read` is recorded
+  `directed` (spec 0291 R1) with both terms `holds: false`, so every compiled `.claude/agents/<name>.md` carries
+  `model:` and no `Run this agent on the <model> model.` sentence: the model has one carrier at a time (spec 0291 R2,
+  `resolveItem` in `scripts/lib/model-resolve/resolve-item.ts`), guidance only under a `withheld` guard or for a value
+  outside the key's domain. **Verified on Copilot CLI ≥ 1.0.109** (probe of 2026-11-10, issue #1851, standard
+  GitHub-hosted account): `model: sonnet`, `model: claude-sonnet-5-5` and `model: claude-sonnet-4.5` each produced a
+  warning and a fallback to the session model, a subagent spawned through the `task` tool answered on the session model,
+  and every run succeeded. **Residual risk, accepted and unverified (spec 0291 R4):** a bring-your-own-key provider,
+  where `github/copilot-cli#4437` was reported (Copilot 1.0.79, Ollama), and an account on which Claude models are
+  served. Rollback is one step: `guard.state` back to `withheld` and `copilot-reader-fails-on-unserved-model` back to
+  `holds: true`, then rebuild; an organization re-withholds through its own mapping
+  (`docs/org-model-mapping-override.md`). **Superseded, without editing those specs:** spec 0143 delta-01 R8 (its
+  BYOK clause, narrowed to a standard account), spec 0197 R30 (second term, now `copilot-reader-fails-on-unserved-model`),
+  the word "additionally" in R31, R37 (recorded `withheld`) and the scenario "the shared-read guard is directed", spec 0197
+  delta-02 ("stays withheld"), and the statements in spec 0200 that the guard stays `withheld`; R31's withheld clause, R32
+  and R35 stay in force
 - **Gemini CLI:** ✅ frontmatter `model`/`temperature`/`max_turns`; reasoning ⚠️ out-of-band in `settings.json`
   `modelConfigs.overrides` only, no guidance surface
 - **Copilot CLI:** ⚠️ zero offerings, unconfigured by design — the served model lineup is deployment knowledge the
-  core layer does not have (spec 0197 R41)
+  core layer does not have (spec 0197 R41). On Copilot the declared model, read from `model:` in `.claude/agents/`, is
+  **advisory**: the warning fires only on agent invocation, once per invocation, never at startup or discovery
+  (evidence: Copilot CLI 1.0.109 probe on 2026-11-11 by the maintainers, two agents with `model: sonnet` in
+  `.claude/agents/`; `copilot -p` without an agent gave zero warnings, `copilot --agent <name>` gave exactly one
+  `Warning: Custom agent "<name>" specifies model "sonnet" which is not available; using "<session model>" instead`, the
+  session model on that account being a Gemini model). Whether Copilot should instead receive a dotted Claude model id
+  such as `claude-sonnet-5.5` is out of scope here and tracked in issue #1877
 - **Antigravity CLI:** ⚠️ guidance surface only — no per-agent frontmatter surface exists on this target (spec
   0197 Premise 1)
 
@@ -1658,18 +1699,22 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   the 22 core agent sources migrated onto `metadata.model:` by spec 0200 (`docs/agent-profile-migration.md`); a
   resolution never fails a build (spec 0197 R15), degrading a mapping's unreadable cells and a target's unserved axes to
   drop records on the build's diagnostic stream instead. Since spec 0200, each migrated source's compiled output
-  consequently carries: guidance prose naming the resolved alias on Claude Code and Antigravity CLI, a `model:` field on
-  Gemini CLI, and no change on GitHub Copilot CLI (beyond the `metadata.provenance.version` line every version bump
+  consequently carries: guidance prose naming the resolved alias on Antigravity CLI, a `model:` field on Claude Code
+  (since spec 0291; before it, the same guidance prose, which a `withheld` guard still produces) and on Gemini CLI, and
+  no change on GitHub Copilot CLI (beyond the `metadata.provenance.version` line every version bump
   reaches).
 - **Source of truth:** `scripts/lib/model-resolve.ts` (`resolveAgent`, modules in `scripts/lib/model-resolve/`),
   `scripts/build-components.ts` `buildAgents`, `scripts/check-agent-profiles.ts`
-- **Claude Code:** ✅ writes `effort:` (frontmatter), and `model:` only while the guard's state is `directed`; while
-  `withheld`, the model item is directed onto the compiled `description` instead (row 33's guard)
+- **Claude Code:** ✅ writes `model:` and `effort:` (frontmatter) while the guard's state is `directed`, which is its
+  recorded state since spec 0291 (Copilot CLI ≥ 1.0.109 verified, row 33); the sentence `Run this agent on the <model>
+  model.` is then not written, since the model has one carrier at a time. While `withheld`, or for a value outside the
+  `model:` key's domain, the model item is directed onto the compiled `description` instead (row 33's guard)
 - **Gemini CLI:** ✅ writes `model:`/`temperature:`/`max_turns:` (frontmatter) — re-probed live for Gemini CLI 0.46.0
   (issue #1116, spec 0198 R22) confirming those three keys are accepted; withholds `reasoning` and every tuning knob the
   mapping's out-of-band surface alone names
 - **Copilot CLI:** ⚠️ withholds every item — `model-mappings/copilot.yml` declares zero offerings (row 33), so
-  every declared axis and knob drops `unsupported-on-cli`
+  every declared axis and knob drops `unsupported-on-cli` in `.github/agents/`. A Copilot reader of `.claude/agents/`
+  meets the Claude `model:` there and treats it as advisory (row 33; the dotted-id question is issue #1877)
 - **Antigravity CLI:** ✅ writes the model item onto the compiled `description` alone (no frontmatter surface exists on
   this target, row 33); withholds every tuning knob the same way
 
@@ -2050,7 +2095,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   can load a named skill at start, so the AGENT.md sentence "read the skill once at the start" could be dropped for that
   CLI. **Evidence:** Claude Code documents subagent frontmatter `skills:` upstream (not observed in this session);
   Gemini CLI 0.28.2 validates local agent frontmatter with a strict schema in `agentLoader.js` (`name`, `description`,
-  `display_name`, `tools`, `model`, `temperature`, `max_turns`, `timeout_mins`) and `docs/core/subagents.md` never
+  `display_name`, `tools`, `model`, `temperature`, `max_turns`, `timeout_mins`; the `tools` key it admits is now emitted
+  from `metadata.tools`, row 4c, spec 0291) and `docs/core/subagents.md` never
   mentions skills; Copilot CLI and Antigravity CLI were not determined (the Copilot binary was not inspected,
   Antigravity CLI is not installed here). **Decision:** KEEP the instruction in every AGENT.md and emit no field, since
   a per-CLI conditional would need a new emitter mechanism, which spec 0269 excludes.
@@ -2241,6 +2287,18 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   silent routing failure of `github/copilot-cli#4437`. Empirical reproduction: probe run `20260902T153919Z-0aa9` of
   issue #1103, verdict `BUG-PRESENT`, plus the unknown BYOK lineup recorded in the live-verification research report
   (issue #1111 comment 5523492666). Spec 0197 R42 states the condition a later delta must meet to lift this.
+- [GAP-confirmation] Bring-your-own-key guard (row 33) — spec 0291 lifted the `copilot-shared-read` guard on a probe
+  of a standard GitHub-hosted account (Copilot CLI 1.0.109, issue #1851). It does not cover a bring-your-own-key provider,
+  where `github/copilot-cli#4437` was reported (Copilot 1.0.79, Ollama), nor an account on which Claude models are served.
+  The maintainer accepted the residual risk (spec 0291 R4); an adopter on such a provider re-withholds through
+  `model-mappings/claude.org.yml` (`docs/org-model-mapping-override.md`), and the rollback is `guard.state: withheld`
+  with `copilot-reader-fails-on-unserved-model` back to `holds: true`. Lifted by a probe on a bring-your-own-key
+  provider.
+- [GAP-confirmation] Antigravity CLI agent `tools` allowlist (row 4c) — the build emits no `tools` key for Antigravity
+  and records one `tools-drop … unsupported-on-cli` per declaring agent (spec 0291 R14). Antigravity documents
+  `view_file`, `replace_file_content`, `grep_search` and `run_command` and warns that a misspelled name may hang the
+  subagent, so the class-to-name mapping is unverified and is not guessed. Lifted when each class's exact Antigravity
+  name is established by a probe on a named ticket.
 - [GAP] Antigravity CLI per-agent model frontmatter surface (row 33) — no per-agent `model:` field exists on this
   target; `model-mappings/antigravity.yml` states its declination on the guidance surface instead. Empirical
   reproduction: `agy --help`, `agy models`, `~/.gemini/antigravity-cli/settings.json`, and ten on-disk documentation

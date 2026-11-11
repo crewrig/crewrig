@@ -120,7 +120,10 @@ contradicting the conclusion above:
   <alias> model.` — the resolution's own emission under requirement 14,
   not an authoring instruction. The other three compiled agent trees stay
   at 0 hits: the Antigravity guidance prose names a Gemini offering, not a
-  Claude alias.
+  Claude alias. (Spec 0291 later moved that alias to a `model: <alias>`
+  frontmatter key and removed the sentence from the Claude description;
+  the 22 hits are then the `model:` lines, and the sentence returns under a
+  `withheld` guard.)
 - **This change set's own new and edited test files add further,
   deliberate alias mentions**, in the same spirit as class 6 above: the
   refreshed `C2(b)` literal of the since-retired `test-model-resolution.sh` now pins
@@ -186,30 +189,28 @@ requirement 22 obliges, and differ in no other byte.
 
 ## The diagnostic stream
 
-Measured on the migrated tree with all four targets built (run `node scripts/lib/node-floor-guard.js` first, as a separate step; the build needs Node.js 24 or newer, and `js-yaml` comes from the setup dependency step; the counts were first taken through `node scripts/build-components.ts`, which forwards to the same build):
+Re-measured at spec 0291 (the guard lift and `metadata.tools`) with all four targets built (run `node scripts/lib/node-floor-guard.js` first, as a separate step; the build needs Node.js 24 or newer, and `js-yaml` comes from the setup dependency step):
 
 | Invocation | Lines | Shapes |
 |---|---|---|
-| `node scripts/build-components.ts --target all` | **44** | 22 `model-note … claude guard-withheld …` (one per migrated agent, requirement 21) + 22 `model-drop … copilot metadata.model.intelligence <rung> unsupported-on-cli` (one per migrated agent, requirement 21). Nothing else |
-| `node scripts/build-components.ts --target all --check` | **48** | the same 44, plus **4** `model-note developer <target> no-mapping …` — one per target, for the single agent of the assembly test's synthetic root |
+| `node scripts/build-components.ts --target all` | **24** | 22 `model-drop … copilot metadata.model.intelligence <rung> unsupported-on-cli` (one per migrated agent, requirement 21) + 2 `tools-drop … antigravity metadata.tools <classes> unsupported-on-cli` (one per agent that declares `metadata.tools`: `security` and `seo-specialist`, spec 0291 R14). No `guard-withheld` line: the guard is `directed` (spec 0291 R1, R5). The plain run builds the library tier as well; `harness-curator` declares no rung and adds none |
+| `node scripts/build-components.ts --target all --check` | **24** | the same stream: `--check` does not run the assembly suite (spec 0250 R33, (c)) |
+| the 22-core-source root of `agent-profile-build.test.ts` | **24** | the same 22 + 2, counted from the sources (22 `model-drop`, plus one `tools-drop` per declaring source, plus 22 `guard-withheld` only while the committed guard is `withheld`) |
+| the assembly suite's synthetic root, added | **+4** | `model-note developer <target> no-mapping …` — one per target, for the single agent of `scripts/tests/build-assembly-routing.test.ts`'s root, which holds no `model-mappings/`: **28** lines when counted together with the stream above (spec 0291 R7) |
 
-**Mechanism.** `--check` ends by running a second, smaller build under a
-fresh `mktemp -d` root (`scripts/tests/build-assembly-routing.test.ts`) that
-holds no `model-mappings/` and only the `developer` skill and agent of
-`core` plus the fixture overlay, so the resolution finds no mapping in
-force and emits a `no-mapping` note for that one profiled agent on each of
-the four targets. Until issue #1432 that root held the whole `core` and
-`library` trees, which made the figure 88. This is a property of
-`--check`'s own second, synthetic build — not of "the migrated tree"
-requirement 21 binds — so requirement 21 is satisfied exactly by the
-44-line stream a plain build emits, and the 4 additional lines are a real,
-new-since-this-change-set observable on every CI run of the
-`component-drift` capability (which invokes `--check`): exit status stays
-0, and `build-assembly-routing.test.ts` still passes, since it verifies
-assembly structure rather than model emissions. No requirement of spec
-0200 binds that suite's synthetic root, and giving it one would change the
-root every assembly assertion runs against — a blast radius wider than
-this change set, left to a follow-up ticket if a reviewer wants it closed.
+Before spec 0291 the first two rows read **44** and **48**: 22 `model-note … claude guard-withheld …` lines were part of the stream, because the guard was `withheld` and every Claude Code agent kept the sentence in its description. An organization that re-withholds the guard (`docs/org-model-mapping-override.md`) gets those 22 `guard-withheld` notes back, one per Claude Code agent (spec 0197 R32).
+
+**Mechanism.** The 4 `no-mapping` notes belong to the assembly suite
+(`scripts/tests/build-assembly-routing.test.ts`), which builds a second,
+smaller root under a fresh `mktemp -d`: it holds no `model-mappings/` and
+only the `developer` skill and agent of `core` plus the fixture overlay, so
+the resolution finds no mapping in force and emits a `no-mapping` note for
+that one profiled agent on each of the four targets. Until issue #1432 that
+root held the whole `core` and `library` trees, which made the figure 88.
+This is a property of that suite's own synthetic build, not of "the migrated
+tree" requirement 21 binds, and no requirement of spec 0200 binds that
+root: giving it one would change the root every assembly assertion runs
+against, a blast radius wider than this change set.
 
 ## Decoupling record (requirements 32-34)
 

@@ -13,13 +13,19 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
-import { createFixtureTree, REPO, type FixtureTree } from "./lib/build-fixture-tree.ts";
+import {
+  claudeGuardState,
+  createFixtureTree,
+  REPO,
+  type FixtureTree,
+} from "./lib/build-fixture-tree.ts";
 import { baseEnv, copyFromHead, copyFromWorktree, readFrontmatter } from "./lib/build-sandbox.ts";
 
 process.env.GIT_CONFIG_NOSYSTEM = "1";
 
 const NOTE = /^model-note.*claude.*guard-withheld/;
 const DROP = /^model-drop.*copilot.*metadata\.model\.intelligence.*unsupported-on-cli/;
+const TOOLS_DROP = /^tools-drop\t[^\t]+\tantigravity\tmetadata\.tools\t[^\t]+\tunsupported-on-cli$/;
 const GUIDANCE = "Run this agent on the";
 const CONFIG = ["crewrig.config.toml", "model-mappings"];
 
@@ -43,16 +49,39 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
   );
   const built = build(tree);
 
-  test("T4 — a plain build over the 22-source root emits exactly 44 lines (22 guard-withheld + 22 unsupported-on-cli)", () => {
+  // The stream is composed, not a constant (spec 0291 R7): 22 copilot model-drop lines, one
+  // guard-withheld note per agent only while the committed guard is `withheld`, and one
+  // antigravity tools-drop line per source that declares `metadata.tools`. The shipped tree
+  // gives 24 lines; `--check` emits the same 24 (it no longer runs the assembly suite), and the 4
+  // no-mapping notes of that suite's own synthetic root make 28 (docs/agent-profile-migration.md).
+  const declaring = sources.filter((f) => {
+    const meta = (readFrontmatter(tree.read(f)).metadata ?? {}) as Record<string, unknown>;
+    return Object.hasOwn(meta, "tools");
+  });
+  test("T4 — a plain build over the 22-source root emits 22 model-drop, the guard notes the committed state implies, and one tools-drop per declaring source", () => {
     assert.equal(sources.length, 22, "the root is seeded with all 22 core AGENT.md");
     assert.equal(built.status, 0, built.stderr);
     const lines = stderrLines(built.stderr);
     const notes = lines.filter((l) => NOTE.test(l));
     const drops = lines.filter((l) => DROP.test(l));
-    const other = lines.filter((l) => !NOTE.test(l) && !DROP.test(l));
+    const toolsDrops = lines.filter((l) => TOOLS_DROP.test(l));
+    const other = lines.filter((l) => !NOTE.test(l) && !DROP.test(l) && !TOOLS_DROP.test(l));
+    const wantNotes = claudeGuardState() === "withheld" ? 22 : 0;
     assert.deepEqual(
-      { total: lines.length, notes: notes.length, drops: drops.length, other },
-      { total: 44, notes: 22, drops: 22, other: [] },
+      {
+        total: lines.length,
+        notes: notes.length,
+        drops: drops.length,
+        tools: toolsDrops.length,
+        other,
+      },
+      {
+        total: 22 + wantNotes + declaring.length,
+        notes: wantNotes,
+        drops: 22,
+        tools: declaring.length,
+        other: [],
+      },
     );
   });
 
@@ -63,6 +92,69 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
     assert.ok(compiled.length > 0, "the build produced compiled outputs");
     const hits = compiled.filter((f) => /model-note|model-drop/.test(fs.readFileSync(f, "utf8")));
     assert.deepEqual(hits, []);
+  });
+});
+
+describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
+  const tree = createFixtureTree();
+  const sources = copyFromWorktree(tree, ["artifacts/core/agents", ...CONFIG]).filter((f) =>
+    f.endsWith("/AGENT.md"),
+  );
+  // a replaced guard term is a whole node, so the override carries every required key
+  tree.write(
+    "model-mappings/claude.org.yml",
+    [
+      "target: claude",
+      "guard:",
+      "  state: withheld",
+      "  terms:",
+      "    - id: copilot-reader-fails-on-unserved-model",
+      "      statement: A Copilot reader of .claude/agents/ fails on a model it cannot serve.",
+      "      holds: true",
+      "      evidence: Observed on the adopter's bring-your-own-key provider.",
+      "      grounds:",
+      "        - declares: holds",
+      "          assumption: Observed on the adopter's bring-your-own-key provider.",
+      "",
+    ].join("\n"),
+  );
+  const built = build(tree);
+  // security and seo-specialist gain `tools` and pr-reviewer loses `claude:` (spec 0291 R18-R20)
+  const EDITED = new Set(["security", "seo-specialist", "pr-reviewer"]);
+  const names = sources.map((f) => path.basename(path.dirname(f)));
+
+  test("R5 — every Claude file has no model: key, keeps the sentence, and 22 guard-withheld notes are emitted", () => {
+    assert.equal(built.status, 0, built.stderr);
+    assert.equal(
+      stderrLines(built.stderr).filter((l) => NOTE.test(l)).length,
+      22,
+      "one guard-withheld note per agent",
+    );
+    for (const name of names) {
+      const fm = readFrontmatter(tree.read(`.claude/agents/${name}.md`));
+      assert.equal(Object.hasOwn(fm, "model"), false, `${name} has no model key`);
+      assert.match(String(fm.description), /Run this agent on the \S+ model\.$/, name);
+    }
+  });
+
+  test("R5 — each of the 19 unedited Claude files is the committed file with model: removed and the sentence restored", () => {
+    const unedited = names.filter((n) => !EDITED.has(n));
+    assert.equal(unedited.length, 19);
+    for (const name of unedited) {
+      const committed = fs.readFileSync(path.join(REPO, `.claude/agents/${name}.md`), "utf8");
+      const model = /^model: (\S+)$/m.exec(committed)?.[1];
+      // under a committed `withheld` guard the committed file already is the pre-change form
+      const preChange =
+        model === undefined
+          ? committed
+          : committed
+              .replace(/^model: \S+\n/m, "")
+              .replace(
+                /^(description: "(?:[^"\\]|\\.)*)"/m,
+                `$1 Run this agent on the ${model} model."`,
+              );
+      assert.equal(tree.read(`.claude/agents/${name}.md`), preChange, name);
+    }
   });
 });
 

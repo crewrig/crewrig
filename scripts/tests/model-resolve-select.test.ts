@@ -15,6 +15,7 @@ import { after, describe, test } from "node:test";
 import { INTELLIGENCE_RUNGS } from "../lib/model-resolve/ladders.ts";
 import {
   cleanupTmp,
+  coreGuard,
   makeRun,
   miniRoot,
   mkTmp,
@@ -27,13 +28,22 @@ import {
 
 after(cleanupTmp);
 const dir = mkTmp();
-const GUARD = tab(
-  "model-note",
-  "probe",
-  "claude",
-  "guard-withheld",
-  "terms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance",
-);
+// The committed claude guard decides whether the model reaches the frontmatter (directed) or the
+// guidance sentence (withheld), so these expectations follow `guard.state` and the one-step
+// rollback of spec 0291 R4 needs no test edit.
+const CORE_GUARD = coreGuard();
+const WITHHELD = CORE_GUARD.state === "withheld";
+const GUARD_NOTES = WITHHELD
+  ? [
+      tab(
+        "model-note",
+        "probe",
+        "claude",
+        "guard-withheld",
+        `terms=${CORE_GUARD.holding} surface=guidance`,
+      ),
+    ]
+  : [];
 const real = (target: string, ...profile: string[]) =>
   resolveProbe(makeRun(REPO), writeProfile(dir, ...profile), target);
 const O = (id: string, rank: string, level: string, more = ""): string =>
@@ -66,9 +76,10 @@ describe("C1, C3, C4, C13(i): selection on the real mappings", () => {
       [r.offeringId, r.fmLines, r.prose, r.diagLines],
       [
         "haiku",
-        ["effort: medium"],
-        "Run this agent on the haiku model. Give its work medium reasoning effort.",
-        [GUARD],
+        WITHHELD ? ["effort: medium"] : ["model: haiku", "effort: medium"],
+        (WITHHELD ? "Run this agent on the haiku model. " : "") +
+          "Give its work medium reasoning effort.",
+        GUARD_NOTES,
       ],
     );
   });
@@ -77,7 +88,12 @@ describe("C1, C3, C4, C13(i): selection on the real mappings", () => {
     const r = real("claude", "intelligence: medium");
     assert.deepEqual(
       [r.offeringId, r.fmLines, r.prose, r.diagLines],
-      ["haiku", [], "Run this agent on the haiku model.", [GUARD]],
+      [
+        "haiku",
+        WITHHELD ? [] : ["model: haiku"],
+        WITHHELD ? "Run this agent on the haiku model." : "",
+        GUARD_NOTES,
+      ],
     );
   });
 

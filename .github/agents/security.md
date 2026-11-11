@@ -1,11 +1,12 @@
 ---
 name: security
 description: "Generic security review agent. Threat modeling, secret hygiene, realistic-threat code review, dependency audit. Findings only — does not implement fixes unless explicitly asked."
+tools: [read, search, web]
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.0"
+    version: "1.3.0"
 ---
 
 
@@ -40,3 +41,8 @@ the `harness-report` skill
 (`artifacts/library/skills/harness-report/SKILL.md`). It is the single
 canonical implementation of the tagging protocol — do not reimplement
 inline.
+
+This agent's tool allowlist withholds the MemPalace MCP tools, so it cannot
+call the write path of `harness-report`; it reports any friction it meets
+(offender, signal, evidence) in its final reply instead of tagging it, for the
+delegating session to tag.

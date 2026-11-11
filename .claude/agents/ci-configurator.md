@@ -1,7 +1,8 @@
 ---
 name: ci-configurator
-description: "Configures a new CI pipeline for GitHub Actions or GitLab CI/CD. Resolves the engine, produces a commit-ready pipeline (hand-authored for GitHub, derived from the capability reference for GitLab) and validates its output. Run this agent on the sonnet model."
+description: "Configures a new CI pipeline for GitHub Actions or GitLab CI/CD. Resolves the engine, produces a commit-ready pipeline (hand-authored for GitHub, derived from the capability reference for GitLab) and validates its output."
 license: Apache-2.0
+model: sonnet
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

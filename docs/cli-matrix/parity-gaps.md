@@ -9,6 +9,18 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   silent routing failure of `github/copilot-cli#4437`. Empirical reproduction: probe run `20260902T153919Z-0aa9` of
   issue #1103, verdict `BUG-PRESENT`, plus the unknown BYOK lineup recorded in the live-verification research report
   (issue #1111 comment 5523492666). Spec 0197 R42 states the condition a later delta must meet to lift this.
+- [GAP-confirmation] Bring-your-own-key guard (row 33) — spec 0291 lifted the `copilot-shared-read` guard on a probe
+  of a standard GitHub-hosted account (Copilot CLI 1.0.109, issue #1851). It does not cover a bring-your-own-key provider,
+  where `github/copilot-cli#4437` was reported (Copilot 1.0.79, Ollama), nor an account on which Claude models are served.
+  The maintainer accepted the residual risk (spec 0291 R4); an adopter on such a provider re-withholds through
+  `model-mappings/claude.org.yml` (`docs/org-model-mapping-override.md`), and the rollback is `guard.state: withheld`
+  with `copilot-reader-fails-on-unserved-model` back to `holds: true`. Lifted by a probe on a bring-your-own-key
+  provider.
+- [GAP-confirmation] Antigravity CLI agent `tools` allowlist (row 4c) — the build emits no `tools` key for Antigravity
+  and records one `tools-drop … unsupported-on-cli` per declaring agent (spec 0291 R14). Antigravity documents
+  `view_file`, `replace_file_content`, `grep_search` and `run_command` and warns that a misspelled name may hang the
+  subagent, so the class-to-name mapping is unverified and is not guessed. Lifted when each class's exact Antigravity
+  name is established by a probe on a named ticket.
 - [GAP] Antigravity CLI per-agent model frontmatter surface (row 33) — no per-agent `model:` field exists on this
   target; `model-mappings/antigravity.yml` states its declination on the guidance surface instead. Empirical
   reproduction: `agy --help`, `agy models`, `~/.gemini/antigravity-cli/settings.json`, and ten on-disk documentation

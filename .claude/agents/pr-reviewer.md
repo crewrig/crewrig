@@ -1,11 +1,12 @@
 ---
 name: pr-reviewer
-description: "Independent PR reviewer. Spawns cold with a references-only brief (seat, artifact, examined revision, prior-verdicts, disposition). Activates the pr-reviewer skill, runs linters on changed files, posts a structured verdict via `gh`. Run this agent on the sonnet model."
+description: "Independent PR reviewer. Spawns cold with a references-only brief (seat, artifact, examined revision, prior-verdicts, disposition). Activates the pr-reviewer skill, runs linters on changed files, posts a structured verdict via `gh`."
+model: sonnet
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.5.1"
+    version: "1.5.2"
 ---
 
 

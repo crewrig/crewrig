@@ -30,6 +30,19 @@ import { fileURLToPath } from "node:url";
 /** The repository this helper lives in. */
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
+/**
+ * The guard state recorded by the committed `model-mappings/claude.yml`. Tests that observe the
+ * guard derive their expectation from it, so the one-step rollback of spec 0291 R4 (state back
+ * to `withheld`) needs no test edit.
+ */
+export function claudeGuardState(): "withheld" | "directed" {
+  const text = fs.readFileSync(path.join(REPO, "model-mappings", "claude.yml"), "utf8");
+  const found = /^guard:[\s\S]*?^ {2}state: (withheld|directed)$/m.exec(text);
+  if (found?.[1] !== "withheld" && found?.[1] !== "directed")
+    throw new Error("model-mappings/claude.yml records no guard state");
+  return found[1];
+}
+
 interface LockEntry {
   dependencies?: Record<string, string>;
   optionalDependencies?: Record<string, string>;

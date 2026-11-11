@@ -26,6 +26,7 @@ import {
   checkCase,
   diffOutcomes,
   limited,
+  oneCarrierOnly,
   replayGate,
   REPO,
   runShellResolve,
@@ -34,7 +35,13 @@ import {
   type Outcome,
   type ResolveCase,
 } from "./lib/shell-resolve-harness.ts";
-import { BUILDERS, casesOf, EXEMPT_LABELS, type Builder } from "./lib/mapping-fixtures.ts";
+import {
+  BUILDERS,
+  casesOf,
+  EXEMPT_LABELS,
+  oracleRoot,
+  type Builder,
+} from "./lib/mapping-fixtures.ts";
 
 const skip = replayGate();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "conformance-"));
@@ -50,6 +57,15 @@ const DOCUMENTED: readonly Documented[] = [
       "print `integer expected`; the twin selects the same offering and prints nothing",
     keys: ["x_rank_nonnumeric#0", "x_context#2"],
     verify: bashIntegerOnly,
+  },
+  {
+    id: "r2-one-carrier",
+    clause:
+      "spec 0291 R2 (supersedes the word 'additionally' of spec 0197 R31): under a directed " +
+      "guard the twin carries the model on the frontmatter alone, the frozen shell also writes " +
+      "'Run this agent on the <model> model.' into the guidance prose",
+    keys: ["M3_mut#0", "M7_directed#0"],
+    verify: oneCarrierOnly,
   },
 ];
 
@@ -89,7 +105,7 @@ const plain = BUILDERS.filter((b) => b.org !== true);
 if (skip === undefined) {
   const agentCase = (a: string, target: string): ResolveCase => ({
     label: `core agent ${a}/${target}`,
-    repoDir: REPO,
+    repoDir: oracleRoot(tmp),
     agent: a,
     source: path.join(agentsDir, a, "AGENT.md"),
     target,
@@ -151,7 +167,7 @@ describe("resolution: the shell library and its twin agree", describeSkip, () =>
     const listed = all.filter(
       (r) => problems([r]).length === 0 && diffOutcomes(r.shell, r.twin).length > 0,
     );
-    assert.equal(listed.length, 2, "the documented differences all fire (a vanished one fails)");
+    assert.equal(listed.length, 4, "the documented differences all fire (a vanished one fails)");
     t.diagnostic(
       `${all.length} pairs (${real.length} real), ${results.size} groups, ${listed.length} listed differences`,
     );

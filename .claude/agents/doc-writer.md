@@ -1,6 +1,7 @@
 ---
 name: doc-writer
-description: "Generic documentation agent. Drafts ADRs, READMEs, in-code docstrings, and reference material. Optimizes for documents that age well and stays close to the code where possible. Run this agent on the haiku model."
+description: "Generic documentation agent. Drafts ADRs, READMEs, in-code docstrings, and reference material. Optimizes for documents that age well and stays close to the code where possible."
+model: haiku
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
