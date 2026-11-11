@@ -1,7 +1,7 @@
 ---
 id: "0291"
 slug: agent-model-tools-allowlist
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1851
