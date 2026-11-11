@@ -92,7 +92,7 @@ describe("T5 — R20,R5: harness-curator stays the tree's profile-less witness",
       "dist/library/.claude/agents/harness-curator.md",
       "dist/library/.gemini/agents/harness-curator.md",
       "dist/library/.github/agents/harness-curator.md",
-      "dist/library/.agents/agents/harness-curator/AGENT.md",
+      "dist/library/.agents/agents/harness-curator.md",
     ];
     for (const out of outputs) {
       assert.ok(tree.exists(out), `${out} exists`);
@@ -125,7 +125,7 @@ describe("R40 mutation — a profile edit without regenerating reds component-dr
       for (const re of [
         /[\\/]?\.claude[\\/]agents[\\/]developer\.md differs from source/,
         /[\\/]?\.gemini[\\/]agents[\\/]developer\.md differs from source/,
-        /[\\/]?\.agents[\\/]agents[\\/]developer[\\/]AGENT\.md differs from source/,
+        /[\\/]?\.agents[\\/]agents[\\/]developer\.md differs from source/,
       ]) {
         assert.match(out, re);
       }

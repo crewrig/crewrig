@@ -76,13 +76,13 @@ describe("assembly: Antigravity (spec 0053)", () => {
   test("antigravity core skill", () => {
     assert.ok(tree.exists(`.agents/skills/${CORE_SKILL}/SKILL.md`));
   });
-  test("antigravity core agent directory", () => {
-    assert.ok(tree.exists(`.agents/agents/${CORE_AGENT}/AGENT.md`));
+  test("antigravity core agent flat file", () => {
+    assert.ok(tree.exists(`.agents/agents/${CORE_AGENT}.md`));
   });
   test("antigravity overlay skill staged", () => {
     assert.ok(tree.exists(`${OVERLAY_STAGING}/.agents/skills/${OVERLAY_SKILL}/SKILL.md`));
   });
-  test("antigravity overlay agent directory (strengthening, V5)", () => {
-    assert.ok(tree.exists(`${OVERLAY_STAGING}/.agents/agents/${OVERLAY_AGENT}/AGENT.md`));
+  test("antigravity overlay agent flat file (strengthening, V5)", () => {
+    assert.ok(tree.exists(`${OVERLAY_STAGING}/.agents/agents/${OVERLAY_AGENT}.md`));
   });
 });

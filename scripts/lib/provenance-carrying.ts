@@ -9,6 +9,7 @@
 // Standard library only.
 
 import fs from "node:fs";
+import path from "node:path";
 
 /** Leading `---` block lines; [] when line 1 is not exactly `---`. */
 function frontmatterOf(text: string): string[] {
@@ -64,6 +65,24 @@ export function isProvenanceCarryingText(text: string): boolean {
 export function isProvenanceCarrying(file: string): boolean {
   try {
     return isProvenanceCarryingText(fs.readFileSync(file, "utf8"));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * True when `dir` is a real directory (never a symbolic link) holding exactly one entry: a
+ * regular file named exactly `AGENT.md` that is provenance-carrying. The sole removal
+ * predicate of the retired Antigravity agent directory, in the build and in the setup
+ * (spec 0053 delta-01 R14, R19). Exact listing, no case-folded lookup (R25).
+ */
+export function isSoleProvenanceAgentDir(dir: string): boolean {
+  try {
+    if (!fs.lstatSync(dir).isDirectory()) return false;
+    const entries = fs.readdirSync(dir);
+    if (entries.length !== 1 || entries[0] !== "AGENT.md") return false;
+    const file = path.join(dir, "AGENT.md");
+    return fs.lstatSync(file).isFile() && isProvenanceCarrying(file);
   } catch {
     return false;
   }

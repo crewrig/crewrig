@@ -169,12 +169,24 @@ describe("installedTargets on throwaway trees", () => {
     assert.deepEqual(grouped(a), [
       `skills: ${CLI4("skills/s")}`,
       "commands: .claude/skills/c .gemini/commands/c.toml .github/skills/c .agents/skills/c",
-      "agents: .claude/agents/g.md .gemini/agents/g.md .github/agents/g.md .agents/agents/g",
+      "agents: .claude/agents/g.md .gemini/agents/g.md .github/agents/g.md .agents/agents/g.md",
       "policies: claude:rules/p.md gemini:policies/p.md antigravity:rules/p.md",
       "hooks: gemini:hooks/h.json",
       "themes: gemini:settings.themes.t",
       "mcp-servers: claude:mcpServers.m gemini:mcpServers.m copilot:mcpServers.m antigravity:mcpServers.m",
     ]);
+  });
+  test("collision key .agents/agents/<name>.md, set unchanged", () => {
+    const a = build("library/agents/x/AGENT.md @dup; org/agents/y/AGENT.md @dup");
+    const keys = installedTargets(a).filter((t) => t.installTarget.includes("agents/")).map((t) => t.installTarget);
+    assert.deepEqual(keys.filter((k) => k.startsWith(".agents/")), [
+      ".agents/agents/dup.md",
+      ".agents/agents/dup.md",
+    ]);
+    const res = report(a);
+    assert.equal(res.status, 1);
+    assert.deepEqual(refused(a), ["dup", "dup", "dup", "dup"]);
+    assert.match(res.text, /installing to \.agents\/agents\/dup\.md\n/);
   });
   test("tier class, and code-unit order of tiers and of entries within a kind", () => {
     const a = build(`

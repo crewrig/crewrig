@@ -21,9 +21,9 @@ artifacts/core/skills/*/ skill:*
 .gemini/skills/*/ skill:*
 .github/skills/*/ skill:*
 .agents/skills/*/ skill:*
-# Agents: directory layout (source, .agents) and flat-file layout (.claude, .gemini, .github).
+# Agents: directory layout (source) and flat-file layout (.agents, .claude, .gemini, .github).
 artifacts/core/agents/*/ agent:*
-.agents/agents/*/ agent:*
+.agents/agents/*.md agent:*
 .claude/agents/*.md agent:*
 .gemini/agents/*.md agent:*
 .github/agents/*.md agent:*

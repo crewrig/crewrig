@@ -71,6 +71,17 @@ describe("check-description-length", () => {
     assert.match(res.stdout, /FAIL \.gemini\/agents\/x\.md/);
   });
 
+  test("over-cap .agents/agents/x.md fails (spec 0053 delta-01 R22)", () => {
+    const res = run(
+      rootWith({
+        "artifacts/core/skills/x/SKILL.md": skill("short"),
+        ".agents/agents/x.md": skill("d".repeat(400)),
+      }),
+    );
+    assert.equal(res.status, 1);
+    assert.match(res.stdout, /FAIL \.agents\/agents\/x\.md/);
+  });
+
   test("the real tree is within the cap", () => {
     const res = run(REPO);
     assert.equal(res.status, 0, res.stdout + res.stderr);

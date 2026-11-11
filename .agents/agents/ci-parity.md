@@ -1,7 +1,6 @@
 ---
 name: ci-parity
 description: "Operates the CI drift-check harness and reconciles reported divergences. Runs it, interprets the fail-closed output, classifies each divergence; auto-applies only deterministic regenerate-and-re-verify, proposes otherwise. Run this agent on the gemini-3.1-pro-high model."
-license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

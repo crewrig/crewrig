@@ -41,7 +41,7 @@ const COVERED = [
   ".github/skills/spec-author/SKILL.md",
   ".github/agents/spec-author.md",
   ".agents/skills/spec-author/SKILL.md",
-  ".agents/agents/spec-author/AGENT.md",
+  ".agents/agents/spec-author.md",
   SCRIPT,
 ];
 

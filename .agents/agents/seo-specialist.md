@@ -1,7 +1,6 @@
 ---
 name: seo-specialist
 description: "SEO audit specialist. Audits <head>, Open Graph/Twitter tags, JSON-LD, heading hierarchy, sitemap/robots.txt, internal links, performance signals. Prioritized findings report. Does not write copy; hands off to copywriter. Run this agent on the gemini-3.8-flash-medium model."
-license: Apache-2.0
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

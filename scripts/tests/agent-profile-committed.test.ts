@@ -107,7 +107,7 @@ describe("T2 — R14,R16,R17,R18: one real committed source per rung, all four t
       assert.ok(!String(fm.description).includes(GUIDANCE), String(fm.description));
     });
     test(`T2 committed::rung ${r.name} antigravity: ${r.antigravity} guidance, no model`, () => {
-      const fm = frontOf(`.agents/agents/${r.name}/AGENT.md`);
+      const fm = frontOf(`.agents/agents/${r.name}.md`);
       assert.ok(
         String(fm.description).includes(`${GUIDANCE} ${r.antigravity} model.`),
         String(fm.description),
