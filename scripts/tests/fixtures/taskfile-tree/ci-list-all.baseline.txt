@@ -71,11 +71,13 @@ task: Available tasks for this project:
 * setup-claude-interactive:                  Interactive Claude Code setup with team/expertise/level selection (copy by default)
 * setup-copilot-interactive:                 Interactive GitHub Copilot CLI setup (workspace settings + optional transcript hooks)
 * setup-gemini-interactive:                  Interactive setup with team/expertise/level selection
+* skill-evals:                               Run the evals of one skill, or of every changed skill (--changed), locally (spec 0290); pass the arguments after --
 * test-components:                           Test the build-components canonical_repo validator
 * test-derive-spec-status:                   Run the merged-spec status derivation suite, as CI does (spec 0109 delta-04)
 * test-harness-curate:                       Smoke-test the Harness Curator against the bundled fixture
 * test-playwright-mcp:                       Run the Playwright MCP registration suites (model, JSONC scanner, config reader), as CI does (spec 0245)
 * test-runtime-foundations:                  Run the floor guard, dependency-step and shared-module suites, as CI does (spec 0240)
+* test-skill-evals:                          Run the skill eval runner suites in mock mode (no key, no network), as CI does (spec 0290)
 * test-spec-view:                            Run the spec effective view suite, as CI does (spec 0273)
 * test-ticket-pickup:                        Run the ticket-pickup check's suites (model, fake-forge end to end, interleavings), as CI does (spec 0244)
 * test-windows-hook-probe:                   Run the Windows hook command-line parsing probe's suite, as CI does (spec 0237)
@@ -156,6 +158,8 @@ task: Available tasks for this project:
 * ci:setup-differential:                     Run the setup-differential CI capability (pre-push mirror of the CI job)
 * ci:setup-modules-ts:                       Run the setup-modules-ts CI capability (pre-push mirror of the CI job)
 * ci:setup-oracle:                           Run the setup entry-point oracle (sandbox, stubs, golden, prompt-inventory and mutation suites)
+* ci:skill-evals-attestation:                Check that every changed skill carries a fresh evals/results.json (no model call, no credential; pre-push mirror of the CI job)
+* ci:skill-evals-tests:                      Run the skill eval runner own suites in mock mode (no key, no network; pre-push mirror of the CI job)
 * ci:skill-scripts-ts:                       Run the skill-scripts-ts CI capability (pre-push mirror of the CI job)
 * ci:test-wiring:                            Check every test is wired into CI and no stray test exists (pre-push mirror of the CI job)
 * ci:test-wiring-selftest:                   Run the test-wiring and test-strays guard self-tests (pre-push mirror of the CI job)
