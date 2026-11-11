@@ -32,7 +32,9 @@ an agent carrying unknown `enable_*` keys is still discovered. The probe
 therefore did **not** reproduce the headline risk of the issue (the uppercase
 file name failing to be discovered): the CLI matches the file name
 case-insensitively. This delta is consequently a **documentation-alignment**
-change, not a discovery fix. The runtime effect of the `enable_*` keys could not
+change, not a discovery fix; it is nonetheless a **behavioural change** for any
+agent whose output used to carry `enable_*` keys, a risk accepted explicitly by
+requirement 27. The runtime effect of the `enable_*` keys could not
 be verified, because the `agy` OAuth session was expired and no model turn was
 possible; that stays unverified and is tracked by a follow-up (requirement 24).
 
@@ -43,6 +45,14 @@ possible; that stays unverified and is tracked by a follow-up (requirement 24).
   aliases on case-insensitive volumes — the macOS default and Windows CI
   runners — so a cleanup of the retired `AGENT.md` could delete the file just
   written. A flat file has no case-only twin and no sub-directory.
+- Spec 0201 kept Antigravity nested for three reasons, one of which was that the
+  installed CLI itself writes nested lowercase `agent.md` for its own subagents.
+  That reason is superseded: the official vendor documentation, which that spec
+  could not cite (it found no agent customization type documented), now also
+  documents the flat `<name>.md` form, and the live probe discovered the flat
+  form. What the CLI writes for its own session scratch space is not a
+  documented authoring contract, so it is not the better precedent, and the
+  case-alias risk above weighs against copying it.
 - Keeping `AGENT.md` is rejected: it is undocumented, and it is found only
   because the CLI happens to match case-insensitively.
 - A `tools` list is not emitted. The documented tool names are `view_file`,
@@ -79,8 +89,8 @@ Added to `## Requirements` (numbering continues from 0053 requirement 10):
 - **14. (Retired-layout cleanup in write mode).** In write mode, for each agent it
     emits, the build SHALL remove the retired directory
     `<output-root>/.agents/agents/<name>/` when, and only when, that directory
-    holds nothing but a single file named `AGENT.md` that carries a provenance
-    block. When the directory holds anything else (another file, a nested
+    holds nothing but a single file named `AGENT.md` that is
+    provenance-carrying (requirement 26). When the directory holds anything else (another file, a nested
     directory, an `AGENT.md` without provenance), the build SHALL leave it
     untouched and print a warning naming the path. The removal SHALL be a silent
     no-op when no such directory exists, so a second run changes nothing and
@@ -119,18 +129,19 @@ Added to `## Requirements` (numbering continues from 0053 requirement 10):
     discrepancy and does not complete as though installed).
 - **19. (Setup migration).** For each agent name installed in the run, the setup
     SHALL remove a same-name directory `~/.gemini/config/agents/<name>/` when,
-    and only when, it holds nothing but a single provenance-carrying `AGENT.md`,
-    and SHALL print `Migrated away: <path>` for each removal. When that
+    and only when, it holds nothing but a single provenance-carrying `AGENT.md`
+    (requirement 26), and SHALL print `Migrated away: <path>` for each removal. When that
     directory holds anything else, the setup SHALL leave it and print a warning
     naming the path. The setup SHALL NOT touch any entry whose name is not that
-    of an agent installed in the same run. This is the stricter rule of spec
-    0255, applied to spec 0123 requirements 8 and 9: framework-installed content
+    of an agent installed in the same run. This rule is stated on its
+    own and refines spec 0123 requirements 8 and 9: framework-installed content
     at the superseded location goes, content the framework did not install
     stays.
 - **20. (Resolver collision key).** The install-target key that the shared
     component resolver emits for an Antigravity agent SHALL be
     `.agents/agents/<name>.md`, the `.crewrig/plan-components.txt` entry for
-    compiled Antigravity agents SHALL name that flat shape, and the set of name
+    compiled Antigravity agents (today the glob `.agents/agents/*/` mapped to
+    `agent:*`) SHALL name that flat shape, and the set of name
     collisions the build reports SHALL be unchanged by this edit.
 - **21. (Committed outputs and fork sync).** The 22 committed compiled Antigravity
     agent outputs SHALL be present at the path of requirement 11 and absent at
@@ -168,6 +179,43 @@ Added to `## Requirements` (numbering continues from 0053 requirement 10):
     flat `<name>.md` SHALL do so at different base names, and SHALL read back by
     exact directory listing rather than by a case-sensitive existence check on a
     case-only twin. Shell code added SHALL run on bash 3.2.
+
+- **26. (Provenance-carrying, defined).** A file is *provenance-carrying* when
+    its leading frontmatter contains a `metadata` mapping holding a `provenance`
+    mapping with a non-empty `canonical` value — the detection of the existing
+    `hasProvenance` check of the Antigravity migration module
+    (`scripts/lib/antigravity-migrate.ts`), which the build and the setup SHALL
+    share rather than reimplement. The presence of the text `provenance` in the
+    body, or a `provenance` key without a `canonical` value, SHALL NOT qualify.
+- **27. (Risk acceptance for the `enable_*` removal).** The removal of
+    `enable_write_tools`, `enable_mcp_tools`, and `enable_subagent_tools` from
+    compiled output is **accepted as documentation-driven**, with its runtime
+    effect unverified. The residual risk is named: if `agy` honours
+    `enable_write_tools`, an agent that declared it (at present `pr-reviewer`,
+    whose Claude Code tool list includes `Bash`) loses write ability, because the
+    vendor default of `tools` is not verified. The change set SHALL be
+    accompanied by a follow-up issue, opened separately, to probe that effect in
+    a signed-in session, and the implementation PR body SHALL state this risk and
+    cite the follow-up. This delta does not make the probe a merge precondition.
+- **28. (Related specs, effect).** Specs 0265, 0121 delta-01, 0200, 0197
+    delta-01, and 0201 name the nested Antigravity path `.agents/agents/<name>/AGENT.md`
+    as illustration or context (0265 in an assembly row and a test line, 0121
+    delta-01, 0200 and 0197 delta-01 in scenarios, 0201 in the statement that
+    0053 R3 was live and honoured). For Antigravity the path literals in those
+    specs are superseded by requirement 11 of this delta; no behaviour those
+    specs require changes, and none of them is edited. Spec 0201's decision to
+    leave Antigravity nested is superseded by the reasoning in the preamble.
+- **29. (Surfaces and orphans).** The implementation SHALL update, in the same
+    diff: `.crewrig/plan-components.txt`; the setup golden fixtures for
+    Antigravity (`scripts/tests/fixtures/setup-golden/antigravity/**` and
+    `setup-declarations/antigravity.txt.golden`) wherever they name an agent
+    path. The probe-antigravity sentinels
+    (`scripts/lib/probe-antigravity/sentinels.ts`) SHALL be left unchanged,
+    because they exercise both the nested and the flat form. A retired
+    directory `.agents/agents/<name>/` for an agent that is **no longer
+    emitted** (removed from the sources) is out of scope for the build cleanup
+    and for `--check`: it is left alone by them, and is flagged only by the
+    layout guard of requirement 17 when committed.
 
 Added to `## Scenarios`:
 
@@ -272,7 +320,27 @@ When  the description-length check runs
 Then  it fails naming `.agents/agents/x.md`
 ```
 
+**Scenario:** Provenance detection
+
+```text
+Given `.agents/agents/x/AGENT.md` whose body mentions provenance but whose frontmatter has no `metadata.provenance.canonical`
+When  the build or the setup considers it for removal
+Then  it is not provenance-carrying and the directory is left with a warning
+```
+
+**Scenario:** Orphaned stale directory
+
+```text
+Given a committed `.agents/agents/gone/AGENT.md` for an agent no longer emitted
+When  the build runs in write mode and in `--check` mode
+Then  neither touches or reports it
+And   the layout guard fails naming `.agents/agents/gone`
+```
+
 Added to `## Out of scope`:
+
+- **Cleaning orphaned retired directories** of agents no longer emitted, by the
+  build, `--check`, or the setup (requirements 14, 19, 29).
 
 - **A `tools` list or any tool restriction for Antigravity agents.** Not emitted
   (see the decisions above); revisited only with verified vendor semantics.
