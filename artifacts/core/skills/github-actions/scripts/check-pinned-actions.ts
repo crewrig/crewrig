@@ -4,7 +4,8 @@
 // Usage: node check-pinned-actions.ts <workflow-file-or-directory>
 //
 // Local actions (./path, ../path) and docker:// references are ignored. Limitation: only inline
-// `uses: owner/repo@ref` values are matched; the dash form `- uses:` is not (as in the shell).
+// `uses: owner/repo@ref` values on one line are matched, as the first token or right after a list
+// marker (`- uses:`, spec 0258 delta-04); a `uses:` line inside a `run: |` block matches too.
 //
 // Self-contained on purpose: the skill's scripts/ folder is copied out of the checkout, so this
 // file imports nothing and loads Node built-ins with process.getBuiltinModule.
@@ -81,7 +82,7 @@ void (async () => {
     }
 
     const SP = "[ \\t\\n\\v\\f\\r]";
-    const usesRe = new RegExp(`^${SP}*uses:${SP}*([^ \\t\\n\\v\\f\\r#]+)`);
+    const usesRe = new RegExp(`^${SP}*(?:-${SP}+)?uses:${SP}*([^ \\t\\n\\v\\f\\r#]+)`);
     const shaRe = /@[0-9a-fA-F]{40}$/;
     let violations = 0;
     for (const f of files) {
