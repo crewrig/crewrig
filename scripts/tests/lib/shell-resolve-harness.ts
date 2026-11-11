@@ -182,5 +182,6 @@ export {
   checkCase,
   differing,
   diffOutcomes,
+  oneCarrierOnly,
   type Documented,
 } from "./shell-resolve-compare.ts";

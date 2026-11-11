@@ -1,7 +1,8 @@
 ---
 name: scenario-author
-description: "Writes automated test scenarios from a natural-language description of a user journey. Generates Playwright TypeScript or RobotFramework .robot files with page-object model, fixtures, and meaningful assertions. Run this agent on the haiku model."
+description: "Writes automated test scenarios from a natural-language description of a user journey. Generates Playwright TypeScript or RobotFramework .robot files with page-object model, fixtures, and meaningful assertions."
 license: Apache-2.0
+model: haiku
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

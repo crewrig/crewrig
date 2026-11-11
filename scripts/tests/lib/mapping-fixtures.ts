@@ -48,11 +48,28 @@ export function agentSource(lines: readonly string[]): string {
   );
 }
 
+/**
+ * The shell oracle is frozen at the pre-0291 behaviour (spec 0291 R2 changed the twin only), so
+ * its input is a byte copy of the `claude.yml` committed before the guard lift (`withheld`,
+ * the two retired terms), never the live mapping. The goldens are not edited.
+ */
+const FROZEN_CLAUDE = path.join(
+  REPO,
+  "scripts/tests/fixtures/build-components/oracle-mappings/claude.yml",
+);
+
 function copyMappings(tmp: string, name: string): string {
   const dir = path.join(tmp, name, "model-mappings");
   fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(MM)) fs.copyFileSync(path.join(MM, f), path.join(dir, f));
+  fs.copyFileSync(FROZEN_CLAUDE, path.join(dir, "claude.yml"));
   return path.dirname(dir);
+}
+
+/** A `REPO_DIR` root whose mappings are the real ones, with the frozen `claude.yml` (see above). */
+export function oracleRoot(tmp: string): string {
+  const root = path.join(tmp, "oracle-root");
+  return fs.existsSync(root) ? root : copyMappings(tmp, "oracle-root");
 }
 const put = (dir: string, file: string, text: string): void =>
   fs.writeFileSync(path.join(dir, "model-mappings", file), text);
@@ -95,7 +112,7 @@ function parse(table: string): Builder[] {
     const isOrg = kind.startsWith("org:") || kind === "silent";
     const groups = profiles === "" ? ["i=medium;r=medium", "i=max"] : profiles.split(";;");
     const build = (tmp: string): string => {
-      if (kind === "-") return REPO;
+      if (kind === "-") return oracleRoot(tmp);
       const [dir, target] = [copyMappings(tmp, name), list[0] ?? ""];
       if (kind.startsWith("yq:")) {
         execFileSync("yq", [

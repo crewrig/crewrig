@@ -11,6 +11,7 @@ import { after, describe, test } from "node:test";
 
 import {
   cleanupTmp,
+  coreGuard,
   idsOf,
   loadFile,
   makeRun,
@@ -153,6 +154,8 @@ describe("guard", () => {
   });
 
   test("each term is its own replace-or-add by id", () => {
+    const untouched = coreGuard().terms.find((t) => t.id !== "defect-not-established-fixed");
+    assert.ok(untouched !== undefined, "the core guard keeps a second term");
     const m = org(
       "guard:\n  terms:\n    - id: defect-not-established-fixed\n      holds: false\n    - id: brandnew\n      holds: true\n",
     );
@@ -164,7 +167,8 @@ describe("guard", () => {
       terms(m.handle).map((t) => [t["id"], t["holds"]]),
       [
         ["defect-not-established-fixed", false],
-        ["copilot-reader-consumes-claude-surface", true],
+        // the untouched term keeps whatever the core file records (spec 0291 renamed it)
+        [untouched.id, untouched.holds],
         ["brandnew", true],
       ],
     );

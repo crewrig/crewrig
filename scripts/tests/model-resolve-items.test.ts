@@ -80,7 +80,8 @@ describe("resolveItem: D16, a knob is frontmatter-only even when guidance declar
       "  - id: gd\n    kind: guidance\n    template: |\n      Run on {{model}}.\n    items:\n      - {item: model}\n      - {item: top-p}";
     const r = go(miniRoot([O("true")], "", [FM_ENTRY, guidance]), knob("top-p", "0.9"));
     assert.deepEqual(reasons(r.diagLines), ["metadata.model.tuning.top-p|0.9|unsupported-on-cli"]);
-    assert.deepEqual([r.fmLines, r.prose], [["model: n-a"], "Run on n-a."]);
+    // spec 0291 R2: the model is carried by the frontmatter alone, so no model sentence.
+    assert.deepEqual([r.fmLines, r.prose], [["model: n-a"], ""]);
   });
 });
 
@@ -147,6 +148,17 @@ describe("resolveItem: the withheld guard and unreadable cells", () => {
   test("a guard directed (not withheld) behaves as no guard", () => {
     const r = go(miniRoot([O("true")], GUARD.replace("withheld", "directed"), [FM_ENTRY, GD]));
     assert.deepEqual([r.fmLines, r.diagLines], [["model: n-a"], []]);
+  });
+
+  test("R2: with a readable value the model has one carrier, the frontmatter (directed or no guard)", () => {
+    for (const extra of [GUARD.replace("withheld", "directed"), ""]) {
+      const r = go(miniRoot([O("true")], extra, [FM_ENTRY, GD]), "reasoning: medium");
+      assert.deepEqual(
+        [r.fmLines, r.prose, r.diagLines],
+        [["model: n-a", "effort: medium"], "Effort medium.", []],
+        extra === "" ? "no guard" : "guard directed",
+      );
+    }
   });
 
   const DOMAIN =

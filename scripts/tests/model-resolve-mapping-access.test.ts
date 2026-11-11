@@ -14,6 +14,7 @@ import { describe, test } from "node:test";
 import * as A from "../lib/model-resolve/mapping-access.ts";
 import { loadMapping } from "../lib/model-resolve/yaml-nodes.ts";
 import {
+  coreGuard,
   docOf,
   REPO,
   TARGETS,
@@ -43,7 +44,7 @@ const expected: Record<string, Expect> = {
     keys: ["model", "effort", "", ""],
     values: ["haiku sonnet opus fable", "low medium high xhigh max", "", ""],
     ranges: ["", "", "", ""],
-    guard: "withheld",
+    guard: coreGuard().state, // the committed state, so the guard rollback of spec 0291 R4 needs no test edit
     order: VOCAB,
     offerings: [
       "haiku:1:medium:true",
@@ -159,10 +160,7 @@ describe("accessors over the four real mappings", () => {
       A.guidanceTemplate(y, doc, "surfaces/guidance"),
       "Run this agent on the {{model}} model.\nGive its work {{reasoning}} reasoning effort.",
     );
-    assert.equal(
-      A.guardHoldingTerms(y, doc),
-      "defect-not-established-fixed,copilot-reader-consumes-claude-surface",
-    );
+    assert.equal(A.guardHoldingTerms(y, doc), coreGuard().holding);
   });
 
   test("antigravity: an offering's encoded reasoning rung is read, defaults fill the rest", () => {

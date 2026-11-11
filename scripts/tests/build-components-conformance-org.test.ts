@@ -26,6 +26,7 @@ import {
   differing,
   diffOutcomes,
   limited,
+  oneCarrierOnly,
   parityGate,
   runShellResolve,
   runTwinResolve,
@@ -81,6 +82,15 @@ const DOCUMENTED: readonly Documented[] = [
         ? null
         : `${shell.stderr}`;
     },
+  },
+  {
+    id: "r2-one-carrier",
+    clause:
+      "spec 0291 R2 (supersedes the word 'additionally' of spec 0197 R31): an organisation " +
+      "file that records the guard directed makes the twin carry the model on the frontmatter " +
+      "alone, while the frozen shell also writes 'Run this agent on the <model> model.'",
+    keys: ["xo_guard-id#0", "xo_guard-id#1"],
+    verify: oneCarrierOnly,
   },
 ];
 

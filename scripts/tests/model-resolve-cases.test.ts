@@ -13,6 +13,7 @@ import { after, describe, test } from "node:test";
 
 import {
   cleanupTmp,
+  coreGuard,
   listOf,
   makeRun,
   mkTmp,
@@ -31,6 +32,9 @@ const drop = (target: string, path: string, value: string, reason: string): stri
   tab("model-drop", "probe", target, path, value, reason);
 const first = (doc: Record<string, unknown>, i: number) =>
   listOf(doc, "offerings")[i] as Record<string, unknown>;
+// The committed claude guard decides which carrier the model takes (spec 0291 R2); the
+// expectations below follow it, so the one-step rollback of R4 needs no test edit.
+const WITHHELD = coreGuard().state === "withheld";
 const noChecker: string | undefined = undefined; // the TypeScript checker needs no yq
 
 describe("degradation cases", () => {
@@ -68,18 +72,20 @@ describe("degradation cases", () => {
     assert.match(run.stdout + run.stderr, /: A9 /);
   });
 
-  test("C10 retiring the guidance surface: no prose anywhere, model dropped unsupported-on-cli", () => {
+  test("C10 retiring the guidance surface: no prose anywhere; a withheld guard drops model unsupported-on-cli, a directed one keeps it on the frontmatter", () => {
     const root = mutatedRoot("claude", (doc) => {
       doc["surfaces"] = listOf(doc, "surfaces").filter((s) => s["id"] !== "guidance");
     });
     const r = go(root, "claude", "intelligence: medium", "reasoning: medium");
     assert.equal(r.offeringId, "haiku");
     assert.equal(r.prose, "");
-    assert.ok(
+    assert.equal(
       r.diagLines.includes(
         drop("claude", "metadata.model.intelligence", "medium", "unsupported-on-cli"),
       ),
+      WITHHELD,
     );
+    assert.equal(r.fmLines.includes("model: haiku"), !WITHHELD);
   });
 
   test("D12/D17 no offering selected at all still drops reasoning unsupported-on-model", () => {
@@ -113,7 +119,9 @@ describe("mutations of the claude mapping", () => {
     });
     const withReasoning = go(root, "claude", "intelligence: medium", "reasoning: medium");
     const without = go(root, "claude", "intelligence: medium");
-    assert.deepEqual([withReasoning.diagLines.length, without.diagLines.length], [2, 1]);
+    // plus the one guard-withheld note while the committed guard withholds
+    const note = WITHHELD ? 1 : 0;
+    assert.deepEqual([withReasoning.diagLines.length, without.diagLines.length], [1 + note, note]);
     assert.ok(
       withReasoning.diagLines.includes(
         drop("claude", "metadata.model.reasoning", "medium", "unsupported-on-model"),
@@ -252,7 +260,7 @@ describe("rules (d), (e) and (g) on the real mappings", () => {
 
   test("(g)(5) reasoning: none is unmapped on claude and dropped, never resolved to low", () => {
     const r = real("claude", "intelligence: high", "reasoning: none");
-    assert.deepEqual([r.offeringId, r.fmLines], ["sonnet", []]);
+    assert.deepEqual([r.offeringId, r.fmLines], ["sonnet", WITHHELD ? [] : ["model: sonnet"]]);
     assert.ok(
       r.diagLines.includes(
         drop("claude", "metadata.model.reasoning", "none", "out-of-range-for-target"),

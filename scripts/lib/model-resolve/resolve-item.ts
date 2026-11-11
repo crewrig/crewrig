@@ -137,5 +137,7 @@ export function resolveItem(scope: ItemScope, state: ResolveState, item: string)
     state.value[idx] = item === "reasoning" ? projection : declared;
   }
   state.fm[idx] = fmOk;
-  state.gd[idx] = expressedGd;
+  // Spec 0291 R2: one carrier at a time. `model` goes to guidance only when the frontmatter
+  // surface cannot carry it (withheld guard, or a value outside the key's domain).
+  state.gd[idx] = expressedGd && !(item === "model" && fmOk);
 }

@@ -1,7 +1,8 @@
 ---
 name: ci-parity
-description: "Operates the CI drift-check harness and reconciles reported divergences. Runs it, interprets the fail-closed output, classifies each divergence; auto-applies only deterministic regenerate-and-re-verify, proposes otherwise. Run this agent on the sonnet model."
+description: "Operates the CI drift-check harness and reconciles reported divergences. Runs it, interprets the fail-closed output, classifies each divergence; auto-applies only deterministic regenerate-and-re-verify, proposes otherwise."
 license: Apache-2.0
+model: sonnet
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

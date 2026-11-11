@@ -61,7 +61,18 @@ const once =
     return t.replace(from, to);
   };
 
-const DIRECTED = once("state: withheld", "state: directed");
+// The committed guard may record either state (spec 0291 R4: the rollback is one step), so each
+// mutation below states the guard it builds instead of flipping what the file happens to hold.
+const STATE = /state: (withheld|directed)/;
+const GUARD_STATE = (/state: (withheld|directed)/.exec(
+  fs.readFileSync(path.join(REPO, "model-mappings", "claude.yml"), "utf8"),
+) ?? [])[1];
+const DIRECTED = (t: string): string => {
+  assert.ok(STATE.test(t), "no guard state to rewrite");
+  return t.replace(STATE, "state: directed").replace(/holds: true/g, "holds: false");
+};
+const WITHHELD_NONE_HOLDING = (t: string): string =>
+  t.replace(STATE, "state: withheld").replace(/holds: true/g, "holds: false");
 const ORG = (body: string): Record<string, string> => ({
   "claude.org.yml": `target: claude\n${body}`,
 });
@@ -89,19 +100,14 @@ const CASES: Case[] = [
     "A14a",
     {
       "claude.yml": (t) =>
-        DIRECTED(t)
-          .replace(/holds: true/g, "holds: false")
-          .replace(/      evidence: >-\n/g, '      evidence: " "\n      old: >-\n'),
+        DIRECTED(t).replace(/      evidence: >-\n/g, '      evidence: " "\n      old: >-\n'),
     },
   ],
   [
     "A14b directed guard with a non-citation holds ground",
     "A14b",
     {
-      "claude.yml": (t) =>
-        DIRECTED(t)
-          .replace(/holds: true/g, "holds: false")
-          .replace(/(declares: holds\n\s+)citation/g, "$1assumption"),
+      "claude.yml": (t) => DIRECTED(t).replace(/(declares: holds\n\s+)citation/g, "$1assumption"),
     },
   ],
   [
@@ -114,17 +120,13 @@ const CASES: Case[] = [
       ),
     },
   ],
+  ["A22 guard state outside the vocabulary", "A22", { "claude.yml": once(STATE, "state: maybe") }],
+  ["A23 withheld guard with no holding term", "A23", { "claude.yml": WITHHELD_NONE_HOLDING }],
   [
-    "A22 guard state outside the vocabulary",
-    "A22",
-    { "claude.yml": once("state: withheld", "state: maybe") },
-  ],
-  [
-    "A23 withheld guard with no holding term",
+    "A23 directed guard with a holding term",
     "A23",
-    { "claude.yml": once(/holds: true/g, "holds: false") },
+    { "claude.yml": (t) => DIRECTED(t).replace("holds: false", "holds: true") },
   ],
-  ["A23 directed guard with a holding term", "A23", { "claude.yml": DIRECTED }],
   [
     "A26 and A11 no offering selectable",
     "A11",
@@ -157,7 +159,7 @@ const CASES: Case[] = [
     {},
     ORG("surfaces:\n  - items: []\n"),
   ],
-  ["org guard state override only", "none", {}, ORG("guard:\n  state: withheld\n")],
+  ["org guard state override only", "none", {}, ORG(`guard:\n  state: ${GUARD_STATE}\n`)],
 ];
 
 describe("projection, guard, totality and org passes", { concurrency: 6 }, () => {

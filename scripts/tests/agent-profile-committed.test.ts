@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
-import { REPO } from "./lib/build-fixture-tree.ts";
+import { claudeGuardState, REPO } from "./lib/build-fixture-tree.ts";
 import { readFrontmatter } from "./lib/build-sandbox.ts";
 import { ciTaskCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
@@ -92,13 +92,16 @@ describe("T1 — R36: component-drift's --check command is still wired", () => {
 
 describe("T2 — R14,R16,R17,R18: one real committed source per rung, all four targets", () => {
   for (const r of RUNGS) {
-    test(`T2 committed::rung ${r.name} claude: ${r.claude} guidance, no model/effort`, () => {
+    // Spec 0291 R2: one carrier at a time, decided by the committed guard state.
+    test(`T2 committed::rung ${r.name} claude: ${r.claude} on the one carrier the guard directs, no effort`, () => {
       const fm = frontOf(`.claude/agents/${r.name}.md`);
-      assert.ok(
+      const directed = claudeGuardState() === "directed";
+      assert.equal(
         String(fm.description).includes(`${GUIDANCE} ${r.claude} model.`),
+        !directed,
         String(fm.description),
       );
-      assert.equal(has(fm, "model"), false);
+      assert.equal(fm.model, directed ? r.claude : undefined);
       assert.equal(has(fm, "effort"), false);
     });
     test(`T2 committed::rung ${r.name} gemini: model ${r.gemini}, no guidance`, () => {

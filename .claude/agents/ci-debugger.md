@@ -2,8 +2,9 @@
 name: ci-debugger
 description: "Specialist agent for diagnosing and fixing failing GitHub Actions
 pipelines. Systematically produces a
-symptom → hypothesis → evidence → fix chain. Run this agent on the sonnet model."
+symptom → hypothesis → evidence → fix chain."
 license: Apache-2.0
+model: sonnet
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

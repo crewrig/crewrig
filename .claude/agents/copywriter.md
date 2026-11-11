@@ -1,7 +1,8 @@
 ---
 name: copywriter
-description: "Content production specialist. Interviews the product brief, outlines for review, then writes final page copy (hero, features, social proof, CTA) as Markdown. Hands off to frontend-developer or astro-developer. No layout decisions. Run this agent on the haiku model."
+description: "Content production specialist. Interviews the product brief, outlines for review, then writes final page copy (hero, features, social proof, CTA) as Markdown. Hands off to frontend-developer or astro-developer. No layout decisions."
 license: Apache-2.0
+model: haiku
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

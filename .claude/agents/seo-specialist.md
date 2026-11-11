@@ -1,7 +1,8 @@
 ---
 name: seo-specialist
-description: "SEO audit specialist. Audits <head>, Open Graph/Twitter tags, JSON-LD, heading hierarchy, sitemap/robots.txt, internal links, performance signals. Prioritized findings report. Does not write copy; hands off to copywriter. Run this agent on the haiku model."
+description: "SEO audit specialist. Audits <head>, Open Graph/Twitter tags, JSON-LD, heading hierarchy, sitemap/robots.txt, internal links, performance signals. Prioritized findings report. Does not write copy; hands off to copywriter."
 license: Apache-2.0
+model: haiku
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
