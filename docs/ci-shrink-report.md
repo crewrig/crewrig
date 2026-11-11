@@ -36,6 +36,23 @@ The 108 jobs of `build.yml` moved verbatim into six reusable callees, one per `g
 
 The ratchet pin is 8,960 (the test floor moves from 8,880 to 9,000: spec 0287 R13 accepts the staged overhead).
 
+## Skill eval runner capabilities (spec 0290, issue #1849)
+
+Two portable capabilities were added: `skill-evals-attestation` (pull-request only, no model call, no secret) and `skill-evals-tests` (the runner's own mock-mode suites). Spec 0287 R13 authorizes raising the pin to the measured total rounded up to the next ten, and the floor when the rounded pin would exceed it, within the hard cap of 9,100 lines: the pin and the floor are now 9,070 (measured 9,062). The justification is that the capabilities are required by spec 0290 R18 and compacted (no comments, five path globs, the attestation unfiltered like `check-skill-versions`); a total above 9,100 would require a smaller design.
+
+| Surface | Before (`origin/main`, 8,967) | After (9,062) |
+|---|---|---|
+| `.github/workflows/build.yml` | 78 | 78 |
+| `.github/workflows/_ci-gate.yml` | 176 | 176 |
+| `.github/workflows/_ci-modules.yml` | 213 | 213 |
+| `.github/workflows/_ci-governance.yml` | 402 | 402 |
+| `.github/workflows/_ci-extensions.yml` | 160 | 160 |
+| `.github/workflows/_ci-integration.yml` | 145 | 168 |
+| `.github/workflows/_ci-windows.yml` | 249 | 249 |
+| `ci/ci-capabilities.yml` | 4,390 | 4,430 |
+| `.gitlab-ci.yml` | 3,154 | 3,186 |
+| Total | 8,967 | 9,062 |
+
 ## Outside the floor
 
 | Surface | Before slice 5 | After slice 5 |

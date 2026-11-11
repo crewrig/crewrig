@@ -20,8 +20,8 @@ const workflowSurfaces = (): string[] => [
     .map((f) => `${WORKFLOW_DIR}/${f}`),
 ];
 const SURFACES = [...workflowSurfaces(), "ci/ci-capabilities.yml", ".gitlab-ci.yml"];
-const FLOOR = 9000; // spec 0280 R10 floor 8880, raised by spec 0287 R13 (staged callees)
-const PIN = 8967; // measured 8952 with the six staged callees and the two top-level jobs (spec 0287 R1, R21); +8 by #1847 over a main of 8959 (flat Antigravity agent guard and provenance helper paths)
+const FLOOR = 9070; // spec 0280 R10 floor 8880, raised by spec 0287 R13 (staged callees) to 9000, then to the rounded pin of 9070 by spec 0290 (#1849: two capabilities, 95 lines); spec 0287 R13 hard cap 9100
+const PIN = 9070; // measured 9062 (spec 0287 R13: the measured total rounded up to the next ten); was 8967, +95 by spec 0290 (#1849: skill-evals-attestation and skill-evals-tests)
 const COMMENT_LIMIT = 322; // spec 0285 R2: half of the 644 comment lines of a67ca65e
 
 const lines = (rel: string): string[] => {
@@ -31,6 +31,7 @@ const lines = (rel: string): string[] => {
 
 test("R1: the total of the three CI surfaces stays at or under the pin and the floor", () => {
   const total = SURFACES.reduce((sum, rel) => sum + lines(rel).length, 0);
+  assert.ok(PIN <= 9100, `the pin ${PIN} must stay within the hard cap of 9100 (spec 0287 R13)`);
   assert.ok(PIN <= FLOOR, `the pin ${PIN} must not exceed the floor ${FLOOR}`);
   assert.ok(total <= PIN, `the three surfaces total ${total} lines, above the pin ${PIN}`);
 });
