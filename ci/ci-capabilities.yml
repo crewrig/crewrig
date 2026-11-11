@@ -1333,7 +1333,6 @@ capabilities:
       - "scripts/lib/component-overlay.ts"
       - "scripts/lib/component-install.ts"
       - "scripts/lib/antigravity-migrate.ts"
-      - "scripts/lib/provenance-carrying.ts"
       - "scripts/lib/extension-legacy-shape.json"
       - "scripts/migrate-extension.ts"
       - "scripts/release-package-extension.ts"
@@ -1451,7 +1450,6 @@ capabilities:
       - "scripts/lib/component-overlay.ts"
       - "scripts/lib/component-install.ts"
       - "scripts/lib/antigravity-migrate.ts"
-      - "scripts/lib/provenance-carrying.ts"
       - "extensions/**"
       - "artifacts/**"
     portability: portable
@@ -2225,8 +2223,7 @@ capabilities:
       - "scripts/lib/build-components/**"
       - "scripts/check-claude-agent-layout.ts"
       - "scripts/lib/governance/**"
-      - "scripts/tests/governance-agent-layout-cases.test.ts"
-      - "scripts/tests/governance-check-claude-agent-layout.test.ts"
+      - "scripts/tests/governance-*agent-layout*.test.ts"
     portability: portable
     changeset-gated: true
     requires:

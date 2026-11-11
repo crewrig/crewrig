@@ -157,7 +157,7 @@ function grouped(a: string): string[] {
 }
 
 describe("installedTargets on throwaway trees", () => {
-  test("every kind in the R17 order; hidden and malformed entries are skipped", () => {
+  test("every kind in the R17 order (agent key .agents/agents/<name>.md, spec 0053 delta-01 R20); hidden and malformed entries are skipped", () => {
     const a = build(`
       core/skills/s/SKILL.md @s; core/skills/nofile/; core/skills/loose.md
       core/commands/c.md @c; core/commands/dir.md/x; core/commands/.hid.md; core/commands/note.txt
@@ -175,20 +175,6 @@ describe("installedTargets on throwaway trees", () => {
       "themes: gemini:settings.themes.t",
       "mcp-servers: claude:mcpServers.m gemini:mcpServers.m copilot:mcpServers.m antigravity:mcpServers.m",
     ]);
-  });
-  test("collision key .agents/agents/<name>.md, set unchanged", () => {
-    const a = build("library/agents/x/AGENT.md @dup; org/agents/y/AGENT.md @dup");
-    const keys = installedTargets(a)
-      .filter((t) => t.installTarget.includes("agents/"))
-      .map((t) => t.installTarget);
-    assert.deepEqual(
-      keys.filter((k) => k.startsWith(".agents/")),
-      [".agents/agents/dup.md", ".agents/agents/dup.md"],
-    );
-    const res = report(a);
-    assert.equal(res.status, 1);
-    assert.deepEqual(refused(a), ["dup", "dup", "dup", "dup"]);
-    assert.match(res.text, /installing to \.agents\/agents\/dup\.md\n/);
   });
   test("tier class, and code-unit order of tiers and of entries within a kind", () => {
     const a = build(`
