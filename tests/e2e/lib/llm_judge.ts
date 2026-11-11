@@ -289,6 +289,8 @@ export type EvidenceJudgment =
       readonly verdict: "PASS" | "FAIL" | "UNCERTAIN";
       readonly confidence: string;
       readonly slots: readonly string[];
+      /** True when the cap stopped the quorum before it decided. */
+      readonly capped: boolean;
       /** Raw text of each call, in slot order; undefined for a call that failed. */
       readonly texts: readonly (string | undefined)[];
     };
@@ -365,6 +367,7 @@ export async function llmJudgeEvidence(
     verdict: q.verdict,
     confidence: q.confidence,
     slots: q.slots,
+    capped: capped !== undefined,
     texts: q.texts,
   };
 }

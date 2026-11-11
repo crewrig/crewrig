@@ -23,8 +23,21 @@ async function complete(
     temperature: ctx.cfg.temperature,
     messages: [{ role: "user", content: message }],
   });
+  // Every HTTP attempt after the first (a retry) counts toward max_calls too (spec 0290 R23).
+  let attempts = 0;
+  const doFetch = ctx.deps.fetch ?? fetch;
+  const counted: Ctx = {
+    ...ctx,
+    deps: {
+      ...ctx.deps,
+      fetch: ((...args: Parameters<typeof fetch>) => {
+        if (++attempts > 1) ctx.bump();
+        return doFetch(...args);
+      }) as typeof fetch,
+    },
+  };
   const raw = await postWithRetry(
-    ctx,
+    counted,
     ctx.cfg.endpoint,
     { "x-api-key": token, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body,
