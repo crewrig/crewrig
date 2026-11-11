@@ -63,19 +63,65 @@ const skills = (): string => path.join(home, ".gemini/config/skills");
 const agents = (): string => path.join(home, ".gemini/config/agents");
 
 describe("installAntigravityTier", () => {
-  it("installs directory-shaped skills and agents under ~/.gemini/config, verified before the line", () => {
-    stage("library", {
-      "skills/s/SKILL.md": "s\n",
-      "agents/a/AGENT.md": "a\n",
-      "agents/a/extra.md": "e\n",
-    });
+  it("installs directory-shaped skills and flat agents under ~/.gemini/config, verified before the line", () => {
+    stage("library", { "skills/s/SKILL.md": "s\n", "agents/developer.md": "a\n" });
     assert.equal(installAntigravityTier(ctxOf(), "library"), 0);
     assert.deepEqual(out, [
       `  Installed skill: library/s -> ${path.join(skills(), "s")}`,
-      `  Installed agent: library/a -> ${path.join(agents(), "a")}`,
+      `  Installed agent: library/developer -> ${path.join(agents(), "developer.md")}`,
     ]);
-    assert.equal(fs.readFileSync(path.join(agents(), "a/extra.md"), "utf8"), "e\n");
+    assert.equal(fs.readFileSync(path.join(agents(), "developer.md"), "utf8"), "a\n");
     assert.deepEqual(err, []);
+  });
+
+  const PROV = [
+    "---",
+    "name: developer",
+    "metadata:",
+    "  provenance:",
+    '    canonical: "https://example.test/o/r"',
+    "---",
+    "",
+    "old",
+    "",
+  ].join("\n");
+
+  it("Migrated away: retired developer/AGENT.md goes, mine/agent.md is untouched", () => {
+    stage("library", { "agents/developer.md": "new\n" });
+    put(path.join(agents(), "developer/AGENT.md"), PROV);
+    put(path.join(agents(), "mine/agent.md"), "mine\n");
+    assert.equal(installAntigravityTier(ctxOf(), "library"), 0);
+    assert.ok(out.includes(`  Migrated away: ${path.join(agents(), "developer")}`), out.join("\n"));
+    assert.equal(fs.existsSync(path.join(agents(), "developer")), false);
+    assert.deepEqual(fs.readdirSync(path.join(agents(), "mine")), ["agent.md"]);
+    assert.equal(fs.readFileSync(path.join(agents(), "developer.md"), "utf8"), "new\n");
+  });
+
+  it("modified stale dir left, warned, flat agent still installed", () => {
+    stage("library", { "agents/developer.md": "new\n" });
+    put(path.join(agents(), "developer/AGENT.md"), PROV);
+    put(path.join(agents(), "developer/NOTES.txt"), "user\n");
+    assert.equal(installAntigravityTier(ctxOf(), "library"), 0);
+    assert.deepEqual(fs.readdirSync(path.join(agents(), "developer")).sort(), [
+      "AGENT.md",
+      "NOTES.txt",
+    ]);
+    assert.ok(err.some((l) => l.includes(path.join(agents(), "developer"))), err.join("\n"));
+    assert.ok(fs.existsSync(path.join(agents(), "developer.md")));
+  });
+
+  it("a body-only provenance AGENT.md is not removed", () => {
+    stage("library", { "agents/developer.md": "new\n" });
+    put(path.join(agents(), "developer/AGENT.md"), "---\nname: developer\n---\n\nmetadata:\n  provenance:\n    canonical: x\n");
+    assert.equal(installAntigravityTier(ctxOf(), "library"), 0);
+    assert.ok(fs.existsSync(path.join(agents(), "developer/AGENT.md")));
+  });
+
+  it("none placed exits 1: a staged agent whose target is blocked", () => {
+    stage("library", { "agents/developer.md": "new\n" });
+    fs.mkdirSync(path.join(agents(), "developer.md"), { recursive: true });
+    assert.equal(installAntigravityTier(ctxOf(), "library"), 1);
+    assert.ok(err.some((l) => l.startsWith("  ERROR: tier 'library' staged 0 skill(s)") || l.includes("staged 1 agent(s) and placed none")), err.join("\n"));
   });
 
   it("replaces an installed skill directory", () => {

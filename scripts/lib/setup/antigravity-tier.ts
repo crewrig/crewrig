@@ -1,8 +1,8 @@
 // antigravity-tier.ts — `install_antigravity_tier_to_home` and the supersession migration of
 // scripts/setup-antigravity-interactive.ts (spec 0256 requirement 24, plan v2 step B2b.6). Twin of
 // the retired scripts/lib/common.sh `install_antigravity_tier_to_home` (the messages were
-// byte for byte). Both kinds are directory-shaped (`<name>/SKILL.md`, `<name>/AGENT.md`) and land
-// in `~/.gemini/config/{skills,agents}`; presence at the destination is asserted BEFORE the
+// byte for byte). Skills are directory-shaped (`<name>/SKILL.md`); agents are flat regular files
+// (`<name>.md`, spec 0053 delta-01 R18); both land in `~/.gemini/config/{skills,agents}`; presence at the destination is asserted BEFORE the
 // `Installed ...` line is printed (R5), a shortfall is named (R4), and a kind that staged
 // components and placed none fails the install (R6): the install returns 1 and the run
 // ends with `SetupExit(1)` (the shell's `|| exit 1`). The migration of components left at the
@@ -12,6 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { migrateAntigravitySupersededComponents } from "../antigravity-migrate.ts";
+import { isSoleProvenanceAgentDir } from "../provenance-carrying.ts";
 import { SetupExit } from "./exit.ts";
 import type { PromptSession } from "./prompt.ts";
 import { ensureTierBuilt, isDirectory, stagingGate, stagingRoot } from "./tier-build.ts";
@@ -31,10 +32,9 @@ interface KindTally {
 }
 
 /** Copy every `<name>/` of `source` into `destHome`, counting what was staged and what arrived. */
-function placeKind(
+function placeSkills(
   ctx: TierCtx,
   tier: string,
-  kind: "skill" | "agent",
   source: string,
   destHome: string,
   missing: string[],
@@ -42,7 +42,6 @@ function placeKind(
   const tally: KindTally = { staged: 0, placed: 0 };
   if (!isDirectory(source)) return tally;
   fs.mkdirSync(destHome, { recursive: true });
-  const marker = kind === "skill" ? "SKILL.md" : "AGENT.md";
   for (const item of globNames(source)) {
     if (!isDirectory(path.join(source, item))) continue;
     tally.staged += 1;
@@ -53,11 +52,76 @@ function placeKind(
     } catch {
       // the presence check below is the single source of truth for "placed"
     }
-    if (fs.existsSync(path.join(dest, marker))) {
+    if (fs.existsSync(path.join(dest, "SKILL.md"))) {
       tally.placed += 1;
-      ctx.io.out(`  Installed ${kind}: ${tier}/${item} -> ${dest}`);
+      ctx.io.out(`  Installed skill: ${tier}/${item} -> ${dest}`);
     } else {
-      missing.push(`${kind} ${tier}/${item}`);
+      missing.push(`skill ${tier}/${item}`);
+    }
+  }
+  return tally;
+}
+
+const isRegularFile = (p: string): boolean => {
+  try {
+    return fs.lstatSync(p).isFile();
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Remove the retired `<destHome>/<name>/` of an agent just installed flat, only when it holds a
+ * single provenance-carrying `AGENT.md` (spec 0053 delta-01 R19); otherwise warn and leave it.
+ */
+function migrateRetiredAgentDir(ctx: TierCtx, destHome: string, name: string): void {
+  const dir = path.join(destHome, name);
+  let present = true;
+  try {
+    fs.lstatSync(dir);
+  } catch {
+    present = false;
+  }
+  if (!present) return;
+  if (isSoleProvenanceAgentDir(dir)) {
+    fs.rmSync(dir, { recursive: true });
+    ctx.io.out(`  Migrated away: ${dir}`);
+    return;
+  }
+  ctx.io.err(
+    `  WARNING: ${dir} is a retired agent layout but not a framework-installed single AGENT.md; ` +
+      `left untouched (remove it by hand if it is yours to remove)`,
+  );
+}
+
+/** Copy every flat `<name>.md` of `source` into `destHome`, then retire a same-name directory. */
+function placeAgents(
+  ctx: TierCtx,
+  tier: string,
+  source: string,
+  destHome: string,
+  missing: string[],
+): KindTally {
+  const tally: KindTally = { staged: 0, placed: 0 };
+  if (!isDirectory(source)) return tally;
+  fs.mkdirSync(destHome, { recursive: true });
+  for (const item of globNames(source)) {
+    if (!item.endsWith(".md") || !isRegularFile(path.join(source, item))) continue;
+    tally.staged += 1;
+    const name = item.slice(0, -".md".length);
+    const dest = path.join(destHome, item);
+    try {
+      fs.rmSync(dest, { force: true });
+      fs.copyFileSync(path.join(source, item), dest);
+    } catch {
+      // the presence check below is the single source of truth for "placed"
+    }
+    if (isRegularFile(dest)) {
+      tally.placed += 1;
+      ctx.io.out(`  Installed agent: ${tier}/${name} -> ${dest}`);
+      migrateRetiredAgentDir(ctx, destHome, name);
+    } else {
+      missing.push(`agent ${tier}/${name}`);
     }
   }
   return tally;
@@ -78,8 +142,8 @@ export function installAntigravityTier(ctx: TierCtx, tier: string): number {
   }
   const homes = antigravityHomes(ctx.home);
   const missing: string[] = [];
-  const skills = placeKind(ctx, tier, "skill", path.join(staging, "skills"), homes.skills, missing);
-  const agents = placeKind(ctx, tier, "agent", path.join(staging, "agents"), homes.agents, missing);
+  const skills = placeSkills(ctx, tier, path.join(staging, "skills"), homes.skills, missing);
+  const agents = placeAgents(ctx, tier, path.join(staging, "agents"), homes.agents, missing);
 
   if (skills.staged !== skills.placed || agents.staged !== agents.placed) {
     ctx.io.err(

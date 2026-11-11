@@ -57,7 +57,7 @@ export const stageAgent = (
   name: string,
   prov = true,
   body: "plain" | "canonical" = "plain",
-): void => writeComponent(path.join(root, "agents", name, "AGENT.md"), name, prov, body);
+): void => writeComponent(path.join(root, "agents", `${name}.md`), name, prov, body);
 
 /** A real-path scratch directory, removed by `cleanupAll` of worktree-fixtures. */
 export const scratch = (prefix: string): string => realTmp(prefix);

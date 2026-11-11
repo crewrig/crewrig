@@ -69,7 +69,7 @@ Done.
   Tier 'library' not built (no <REPO>/dist/library/.agents) — run 'node scripts/build-components.ts' first.
 
   Installed skill: community/demo-community -> <HOME>/.gemini/config/skills/demo-community
-  Installed agent: community/demo-community -> <HOME>/.gemini/config/agents/demo-community
+  Installed agent: community/demo-community -> <HOME>/.gemini/config/agents/demo-community.md
 
 Migrating components left at the superseded placement...
 
