@@ -2211,7 +2211,7 @@ capabilities:
 
   - id: check-claude-agent-layout
     group: governance
-    name: "Check the compiled Claude Code agent tree is flat and run its mutation test suite"
+    name: "Check the compiled Claude Code and Antigravity agent trees are flat and run their mutation test suites"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
@@ -2219,11 +2219,14 @@ capabilities:
         branches: [main, "release/**"]
     paths:
       - ".claude/agents/**"
+      - ".agents/agents/**"
       - "scripts/build-components.ts"
       - "scripts/build-components.ts"
       - "scripts/lib/build-components/**"
       - "scripts/check-claude-agent-layout.ts"
       - "scripts/lib/governance/**"
+      - "scripts/tests/governance-agent-layout-cases.test.ts"
+      - "scripts/tests/governance-check-claude-agent-layout.test.ts"
     portability: portable
     changeset-gated: true
     requires:

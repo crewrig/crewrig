@@ -1,5 +1,6 @@
-// agent-layout.ts — flat `.claude/agents` layout logic (spec 0259; replaces the logic of
-// scripts/check-claude-agent-layout.ts, spec 0201 requirements 6-7).
+// agent-layout.ts — flat `.claude/agents` and `.agents/agents` layout logic (spec 0259; replaces the
+// logic of scripts/check-claude-agent-layout.ts, spec 0201 requirements 6-7; the `.agents/agents`
+// tree was added by spec 0053 delta-01 R17). Each tree is checked independently.
 //
 // Usage: checkLayout(repoDir, io) -> exit code
 // Inspects the WORKING TREE (not git). An entry directly inside `.claude/agents` is legal iff it
@@ -49,8 +50,32 @@ function nestedFiles(dir: string): string[] {
   return out;
 }
 
-export function checkLayout(repoDir: string, io: Io): number {
-  const agentsDir = `${repoDir}/.claude/agents`;
+/** One compiled-agent tree to guard: where it lives and what its failure footer says. */
+interface TreeSpec {
+  readonly tree: string;
+  readonly footer: readonly string[];
+}
+
+const TREES: readonly TreeSpec[] = [
+  {
+    tree: ".claude/agents",
+    footer: [
+      "The compiled Claude Code agent tree must hold only regular files named",
+      "<name>.md directly inside .claude/agents/ (spec 0201 requirements 1-2, 6).",
+    ],
+  },
+  {
+    tree: ".agents/agents",
+    footer: [
+      "The compiled Antigravity agent tree must hold only regular files named",
+      "<name>.md directly inside .agents/agents/ (spec 0053 delta-01 requirements 11, 17).",
+    ],
+  },
+];
+
+function checkTree(repoDir: string, io: Io, spec: TreeSpec): number {
+  const { tree } = spec;
+  const agentsDir = `${repoDir}/${tree}`;
   if (!followsToDirectory(agentsDir)) {
     io.out(`OK: ${agentsDir} is absent — nothing to check.`);
     return 0;
@@ -70,13 +95,23 @@ export function checkLayout(repoDir: string, io: Io): number {
 
   if (offenders.length > 0) {
     io.err("");
-    io.err(`FAILED: ${offenders.length} offending entr(y/ies) under .claude/agents:`);
+    io.err(`FAILED: ${offenders.length} offending entr(y/ies) under ${tree}:`);
     for (const p of offenders) io.err(`  - ${p}`);
     io.err("");
-    io.err("The compiled Claude Code agent tree must hold only regular files named");
-    io.err("<name>.md directly inside .claude/agents/ (spec 0201 requirements 1-2, 6).");
+    for (const line of spec.footer) io.err(line);
     return 1;
   }
-  io.out("OK: .claude/agents/ holds only flat *.md files.");
+  io.out(`OK: ${tree}/ holds only flat *.md files.`);
   return 0;
+}
+
+/**
+ * Check every compiled-agent tree, each independently (an absent `.claude/agents` never skips
+ * `.agents/agents`): `.claude/agents` first, then `.agents/agents` (spec 0053 delta-01 R17).
+ * Exit 1 when either has offenders.
+ */
+export function checkLayout(repoDir: string, io: Io): number {
+  let code = 0;
+  for (const spec of TREES) code = Math.max(code, checkTree(repoDir, io, spec));
+  return code;
 }

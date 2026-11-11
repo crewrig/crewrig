@@ -1773,11 +1773,14 @@ check-claude-agent-layout:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &check-claude-agent-layout-changes-1
         - ".claude/agents/**"
+        - ".agents/agents/**"
         - "scripts/build-components.ts"
         - "scripts/build-components.ts"
         - "scripts/lib/build-components/**"
         - "scripts/check-claude-agent-layout.ts"
         - "scripts/lib/governance/**"
+        - "scripts/tests/governance-agent-layout-cases.test.ts"
+        - "scripts/tests/governance-check-claude-agent-layout.test.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *check-claude-agent-layout-changes-1
 
