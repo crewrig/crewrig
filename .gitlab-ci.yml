@@ -2581,6 +2581,7 @@ check-description-length:
         - "scripts/lib/skill-*/**"
         - "scripts/lib/paths.ts"
         - "scripts/tests/check-skill-quality*.test.ts"
+        - "scripts/tests/lib/skill-quality-fixture.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *check-description-length-changes-1
 

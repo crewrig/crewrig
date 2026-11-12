@@ -48,6 +48,7 @@ const COVERED = [
   "scripts/lib/skill-citations/grammar.ts",
   "scripts/lib/skill-evals/schema.ts",
   "scripts/lib/paths.ts",
+  "scripts/tests/lib/skill-quality-fixture.ts",
 ];
 
 function loadCapability(): Capability {

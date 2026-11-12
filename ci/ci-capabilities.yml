@@ -3242,6 +3242,7 @@ capabilities:
       - "scripts/lib/skill-*/**"
       - "scripts/lib/paths.ts"
       - "scripts/tests/check-skill-quality*.test.ts"
+      - "scripts/tests/lib/skill-quality-fixture.ts"
     portability: portable
     changeset-gated: true
     requires:
