@@ -21,6 +21,8 @@ export interface MockResult {
   readonly limit?: LimitName;
   readonly failure?: string;
   readonly turns?: number;
+  /** Skill names the run "loaded" (reported as skillsLoaded); default none. */
+  readonly skillsLoaded?: readonly string[];
   /** Resolve after this many milliseconds (concurrency tests). */
   readonly delayMs?: number;
 }
@@ -53,7 +55,15 @@ export class MockExecutor implements Executor {
           req.signal.addEventListener("abort", () => (clearTimeout(t), resolve()), { once: true });
         });
       if (req.signal.aborted)
-        return { transcript: "", costUsd: null, usage: null, turns: 0, seconds: 0, aborted: true };
+        return {
+          transcript: "",
+          costUsd: null,
+          usage: null,
+          turns: 0,
+          seconds: 0,
+          skillsLoaded: [],
+          aborted: true,
+        };
       for (const [rel, content] of Object.entries(r.files ?? {})) {
         const abs = path.join(req.workspaceDir, rel);
         fs.mkdirSync(path.dirname(abs), { recursive: true });
@@ -66,6 +76,7 @@ export class MockExecutor implements Executor {
         usage: cost === null ? null : { input_tokens: 100, output_tokens: 20 },
         turns: r.turns ?? 1,
         seconds: 0,
+        skillsLoaded: r.skillsLoaded ?? [],
         ...(r.limit !== undefined ? { limit: r.limit } : {}),
         ...(r.failure !== undefined ? { failure: r.failure } : {}),
       };

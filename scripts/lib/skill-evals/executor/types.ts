@@ -25,6 +25,10 @@ export interface ExecRequest {
   /** The run's workspace: the eval's R3 files, plus `.claude/skills/<name>/` for a with_skill run; the agent's working directory. */
   readonly workspaceDir: string;
   readonly model: string;
+  /** The tool list passed as `--tools` and pre-approved; default EXECUTOR_TOOLS (the eval list). */
+  readonly tools?: readonly string[];
+  /** Reasoning effort passed as `--effort`; omitted from argv when unset. */
+  readonly effort?: string;
   readonly limits: ExecLimits;
   readonly credential: Credential | undefined;
   readonly signal: AbortSignal;
@@ -45,6 +49,8 @@ export interface ExecOutcome {
   readonly usage: TokenUsage | null;
   readonly turns: number;
   readonly seconds: number;
+  /** Skill names observed as `Skill` tool_use calls in assistant messages, in order (delta-04 R48). */
+  readonly skillsLoaded: readonly string[];
   /** Set only for an executor failure (R24): did not start, or ended abnormally with no limit and no record. */
   readonly failure?: string;
   /** True when the runner cancelled the run (cap breach); the run is not graded. */
