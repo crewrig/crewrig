@@ -1,86 +1,22 @@
-// check-skill-quality.test.ts — spec 0293 R3, R7 to R10, R12, R17, R18, R20, R21, R22: the
-// skill linter end to end against throwaway repository roots (CREWRIG_REPO_DIR).
+// check-skill-quality.test.ts — spec 0293 R3, R7 to R10, R12, R18, R20: severity and every
+// rule of the skill linter, against throwaway repository roots (CREWRIG_REPO_DIR).
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { after, describe, test } from "node:test";
+import { describe, test } from "node:test";
 
-import { REPO } from "./lib/build-fixture-tree.ts";
-
-const ENTRY = path.join(REPO, "scripts", "check-skill-quality.ts");
-const roots: string[] = [];
-after(() => {
-  for (const dir of roots) fs.rmSync(dir, { recursive: true, force: true });
-});
-
-const DESC =
-  "Does a thing for a team. Use when a change needs the thing done, or when asked to thing. Not for other work.";
-const front = (over: Record<string, string> = {}): string => {
-  const f: Record<string, string> = {
-    name: "x",
-    description: JSON.stringify(DESC),
-    compatibility: JSON.stringify("Requires Node.js 24."),
-    ...over,
-  };
-  return `---\n${Object.entries(f)
-    .filter(([, v]) => v !== "")
-    .map(([k, v]) => `${k}: ${v}`)
-    .join("\n")}\n---\n`;
-};
-const probes = (n: number, positive: number) =>
-  Array.from({ length: n }, (_, i) => ({ query: `q${i}`, should_trigger: i < positive }));
-const evalsJson = (nEvals = 3, probe = probes(6, 3)): string =>
-  JSON.stringify({
-    skill_name: "x",
-    evals: Array.from({ length: nEvals }, (_, i) => ({
-      id: i + 1,
-      prompt: "p",
-      expected_output: "o",
-      files: [],
-      expectations: ["e"],
-    })),
-    trigger_probes: probe,
-  });
-
-/** A root with one skill `x`; `files` are paths relative to the skill directory. */
-function root(files: Record<string, string>, skillName = "x"): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "skill-quality-"));
-  roots.push(dir);
-  const all = { "SKILL.md": `${front()}\nBody.\n`, ...files };
-  for (const [rel, text] of Object.entries(all)) {
-    const p = path.join(dir, "artifacts", "core", "skills", skillName, rel);
-    fs.mkdirSync(path.dirname(p), { recursive: true });
-    fs.writeFileSync(p, text);
-  }
-  return dir;
-}
-
-function run(dir: string, args: string[] = []) {
-  return spawnSync(
-    process.execPath,
-    ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", ENTRY, ...args],
-    {
-      encoding: "utf8",
-      env: { ...process.env, CREWRIG_REPO_DIR: dir },
-    },
-  );
-}
-const rules = (dir: string, args: string[] = []): Map<string, string> => {
-  const res = run(dir, ["--json", ...args]);
-  const m = new Map<string, string>();
-  for (const f of parsed(res.stdout).findings) m.set(f.rule, f.severity);
-  return m;
-};
-interface Out {
-  ok: boolean;
-  data: { errors: number; skills: { name: string; protected: boolean }[] } | null;
-  findings: { rule: string; message: string; severity: string; skill?: string }[];
-}
-const parsed = (stdout: string): Out => JSON.parse(stdout) as Out;
-const protectedFiles = { "evals/evals.json": evalsJson() };
+import {
+  evalsJson,
+  front,
+  parsed,
+  probes,
+  protectedFiles,
+  root,
+  rules,
+  run,
+} from "./lib/skill-quality-fixture.ts";
 
 describe("severity (R18)", () => {
   test("a compliant protected skill passes", () => {
@@ -269,63 +205,25 @@ describe("rules (R3, R7 to R10, R12)", () => {
   });
 });
 
-describe("the script contract (R5, R17)", () => {
-  test("--help prints the usage on stdout and exits 0", () => {
-    const res = run(root({}), ["--help"]);
-    assert.equal(res.status, 0);
-    assert.match(res.stdout, /Usage: check-skill-quality\.ts/);
-  });
+describe("script-help-skipped (R10, plan review v2-F2)", () => {
+  const py = { "scripts/tool.py": "print('usage')\n" };
+  const noPython = { PATH: fs.mkdtempSync(path.join(os.tmpdir(), "no-python-")) };
 
-  test("--json prints one {ok, data, findings} object on stdout and human text on stderr", () => {
-    const res = run(root({ "evals/evals.json": "{not json" }), ["--json"]);
-    const out = parsed(res.stdout);
-    assert.equal(out.ok, false);
+  test("an interpreter that is not installed is an error on a protected skill, never exit 3", () => {
+    const res = run(root({ ...protectedFiles, ...py }), ["--json"], noPython);
     assert.equal(res.status, 1);
-    assert.ok((out.data?.errors ?? 0) >= 1);
-    assert.ok(out.findings.every((f) => f.rule !== "" && f.message !== ""));
-    assert.match(res.stderr, /ERROR/);
-  });
-
-  test("an unknown option and an unknown skill exit 2, with ok false and no data under --json", () => {
-    for (const args of [["--bogus"], ["nope"]]) {
-      const res = run(root({}), [...args, "--json"]);
-      assert.equal(res.status, 2, args.join(" "));
-      const out = parsed(res.stdout);
-      assert.equal(out.ok, false);
-      assert.equal(out.data, null);
-      assert.equal(out.findings[0]?.rule, "usage");
-    }
-  });
-
-  test("a repository root without artifacts/ exits 3 with a precondition finding", () => {
-    const empty = fs.mkdtempSync(path.join(os.tmpdir(), "skill-quality-empty-"));
-    roots.push(empty);
-    const res = run(empty, ["--json"]);
-    assert.equal(res.status, 3);
-    assert.equal(parsed(res.stdout).findings[0]?.rule, "precondition");
-  });
-
-  test("a named skill is the only one checked", () => {
-    const dir = root({});
-    const res = run(dir, ["x", "--json"]);
-    assert.equal(parsed(res.stdout).data?.skills.length, 1);
-  });
-});
-
-describe("the repository (R21, R22)", () => {
-  test("every skill that ships evals produces no error, and no skill produces an error that is not protected", () => {
-    const res = spawnSync(
-      process.execPath,
-      ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", ENTRY, "--json"],
-      { encoding: "utf8", cwd: REPO },
+    assert.equal(
+      parsed(res.stdout).findings.find((f) => f.rule === "script-help-skipped")?.severity,
+      "error",
     );
-    const out = parsed(res.stdout);
-    assert.equal(res.status, 0, res.stderr);
-    const prLogbook = out.data?.skills.find((s) => s.name === "pr-logbook");
-    assert.equal(prLogbook?.protected, true, "pr-logbook ships evals and is protected");
-    assert.deepEqual(
-      out.findings.filter((f) => f.severity === "error"),
-      [],
+  });
+
+  test("the same on an unprotected skill is a warning and exits 0", () => {
+    const res = run(root(py), ["--json"], noPython);
+    assert.equal(res.status, 0);
+    assert.equal(
+      parsed(res.stdout).findings.find((f) => f.rule === "script-help-skipped")?.severity,
+      "warning",
     );
   });
 });

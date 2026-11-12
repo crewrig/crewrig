@@ -231,6 +231,5 @@
   "ci:windows-model-ci-tooling": "taskfiles/ci/windows-b.yml",
   "ci:windows-setup-units": "taskfiles/ci/windows-b.yml",
   "ci:windows-setup-entries": "taskfiles/ci/windows-b.yml",
-  "check-skill-quality": "taskfiles/governance.yml",
-  "ci:check-skill-quality": "taskfiles/ci/governance.yml"
+  "check-skill-quality": "taskfiles/governance.yml"
 }

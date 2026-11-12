@@ -19,7 +19,6 @@
   "check-skill-versions": 1,
   "skill-evals-attestation": 1,
   "check-description-length": 1,
-  "check-skill-quality": 2,
   "check-agents-size": 1,
   "check-rules-size": 1,
   "check-comment-size": 1,

@@ -128,10 +128,6 @@
     "desc": "Fail when a skill or agent description exceeds the length cap (pre-push mirror of the CI job)"
   },
   {
-    "name": "ci:check-skill-quality",
-    "desc": "Lint skill sources against the authoring standard and run its tests (pre-push mirror of the CI job)"
-  },
-  {
     "name": "ci:check-rules-size",
     "desc": "Fail when the rules size budget is exceeded (pre-push mirror of the CI job)"
   },

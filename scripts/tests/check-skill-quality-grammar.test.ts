@@ -1,4 +1,4 @@
-// skill-citations-grammar.test.ts — spec 0293 R9, R11, R12: the one definition of a citation
+// check-skill-quality-grammar.test.ts — spec 0293 R9, R11, R12: the one definition of a citation
 // that both the skill linter and the component build use.
 
 import assert from "node:assert/strict";

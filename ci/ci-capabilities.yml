@@ -3215,11 +3215,11 @@ capabilities:
     command:
       - task ci:check-skill-versions
 
-  # Spec 0269 R11: a skill or agent description is capped at 1,024 characters (spec 0293 R2), on the
-  # artifacts/ sources and on the compiled outputs of every CLI.
+  # Spec 0269 R11, amended by spec 0293 R2: a skill or agent description is capped at 1,024 characters, on the
+  # artifacts/ sources and on the compiled outputs of every CLI. Spec 0293 R19: the same job lints the skill sources.
   - id: check-description-length
     group: governance
-    name: "Cap skill and agent descriptions at 1024 characters"
+    name: "Cap skill and agent descriptions at 1024 characters and lint skill sources"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
@@ -3238,6 +3238,10 @@ capabilities:
       - "scripts/check-description-length.ts"
       - "scripts/lib/governance/**"
       - "scripts/lib/require-dependency.ts"
+      - "scripts/check-skill-quality.ts"
+      - "scripts/lib/skill-*/**"
+      - "scripts/lib/paths.ts"
+      - "scripts/tests/check-skill-quality*.test.ts"
     portability: portable
     changeset-gated: true
     requires:
@@ -3246,37 +3250,6 @@ capabilities:
       install: omit-dev
     command:
       - task ci:check-description-length
-
-  # Spec 0293 R19: the skill linter runs on every change to a skill source, a shared reference,
-  # the linter itself or the runner's evals schema it reuses; no hook runs it.
-  - id: check-skill-quality
-    group: governance
-    name: "Lint skill sources against the authoring standard"
-    trigger:
-      - on: pull-request
-        branches: [main, "release/**"]
-      - on: push
-        branches: [main, "release/**"]
-    paths:
-      - "artifacts/*/skills/**"
-      - "artifacts/core/shared/**"
-      - "scripts/check-skill-quality.ts"
-      - "scripts/lib/skill-quality/**"
-      - "scripts/lib/skill-citations/**"
-      - "scripts/lib/skill-evals/schema.ts"
-      - "scripts/lib/governance/description-length.ts"
-      - "scripts/lib/paths.ts"
-      - "scripts/lib/require-dependency.ts"
-      - "scripts/tests/check-skill-quality*.test.ts"
-      - "scripts/tests/skill-citations-grammar.test.ts"
-    portability: portable
-    changeset-gated: true
-    requires:
-      runtime: node@24
-      tools: [task]
-      install: omit-dev
-    command:
-      - task ci:check-skill-quality
 
   - id: check-extension-version-bump
     group: governance

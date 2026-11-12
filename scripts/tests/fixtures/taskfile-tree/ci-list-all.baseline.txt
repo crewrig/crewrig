@@ -104,7 +104,6 @@ task: Available tasks for this project:
 * ci:check-plan-review:                      Check the plan review gate against its fixtures (pre-push mirror of the CI job)
 * ci:check-rules-size:                       Fail when the rules size budget is exceeded (pre-push mirror of the CI job)
 * ci:check-seat-brief:                       Run the check-seat-brief CI capability (pre-push mirror of the CI job)
-* ci:check-skill-quality:                    Lint skill sources against the authoring standard and run its tests (pre-push mirror of the CI job)
 * ci:check-skill-versions:                   Enforce the provenance version bump on changed skill and agent sources (pre-push mirror of the CI job)
 * ci:check-task-provisioning:                Check the pinned Task provisioning (pre-push mirror of the CI job)
 * ci:check-task-provisioning-selftest:       Run the Task provisioning self-tests (pre-push mirror of the CI job)

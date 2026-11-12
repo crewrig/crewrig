@@ -43,6 +43,11 @@ const COVERED = [
   ".agents/skills/spec-author/SKILL.md",
   ".agents/agents/spec-author.md",
   SCRIPT,
+  "scripts/check-skill-quality.ts",
+  "scripts/lib/skill-quality/run.ts",
+  "scripts/lib/skill-citations/grammar.ts",
+  "scripts/lib/skill-evals/schema.ts",
+  "scripts/lib/paths.ts",
 ];
 
 function loadCapability(): Capability {
@@ -105,6 +110,11 @@ function assertJob(job: string): void {
 describe("check-description-length CI wiring", () => {
   test("the capability is wired", () => assertCapability(loadCapability()));
   test("the GitHub job is wired", () => assertJob(workflowJob()));
+
+  test("the job also lints the skill sources (spec 0293 R19): the capability's task runs the linter", () => {
+    const delegated = ciTaskDelegatedCommands(ID).join("\n");
+    assert.ok(delegated.includes("scripts/check-skill-quality.ts"), "the chain reaches the linter");
+  });
 
   test("mutation: a capability without a compiled tree in its paths is rejected", () => {
     const cap = structuredClone(loadCapability()) as unknown as {
