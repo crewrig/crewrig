@@ -2,7 +2,14 @@
 
 <!-- crewrig-doc: section=reference nav_order=165 published=true title="Skill evals" -->
 
-A skill owns a small set of evaluation cases next to its `SKILL.md`. One command runs them on your machine and grades each skill expectation by expectation, with and without the skill, and against the base branch. A passing run writes a committed, content-hashed `evals/results.json`; the pull-request pipeline only checks that this file is fresh. Specification: [spec 0290](../specs/0290-skill-eval-runner.md) its [delta 01](../specs/0290-skill-eval-runner.delta-01.md) and its [delta 03](../specs/0290-skill-eval-runner.delta-03.md) (logged-in session, isolation by flags); decisions: [ADR 0023](adr/0023-skill-eval-executor.md).
+A skill owns a small set of evaluation cases next to its `SKILL.md`. One command runs each case once, non-interactively, on Claude Code with Sonnet 5.5 at effort `medium`, and compares the answer with what the case expects. A passing run writes a committed, content-hashed `evals/results.json`; the pull-request pipeline only checks that this file is fresh. Specification: [spec 0290](../specs/0290-skill-eval-runner.md) and its deltas [01](../specs/0290-skill-eval-runner.delta-01.md), [03](../specs/0290-skill-eval-runner.delta-03.md) and [04](../specs/0290-skill-eval-runner.delta-04.md) (one run and one judge call per eval); decisions: [ADR 0023](adr/0023-skill-eval-executor.md).
+
+## What a run costs
+
+- **Executor runs** = evals + trigger probes, one run each, with the skill installed. Nothing runs without the skill or on the base revision.
+- **Judge calls** = evals that have at least one expectation, one call each, plus at most 25 percent of retries. Probes are never judged.
+- **Order of magnitude.** An isolated Sonnet 5.5 run measured about 0.03 US dollars in the delta-03 smoke, so 3 evals and 5 probes (8 runs, at most 3 judge calls) cost well under one dollar. The effect of `--effort medium` on cost is not measured yet; the `pr-logbook` pilot measures it.
+- **Hard bounds.** At most 20 executor runs and 20 judge calls per skill, 1 US dollar and 300 seconds per run, 100 US dollars of worst-case cost per invocation. See [Budget](#budget).
 
 ## Run it
 
@@ -24,7 +31,7 @@ Everything runs on your machine. No CI job runs an eval, holds a model credentia
 - The eval measures a skill **on Claude Code**, not on each of the four CLIs the skill ships to. The executor is Claude Code only (spec 0290 R26). The runner is a repository development tool and deploys nothing to a CLI target, so no row under `docs/cli-matrix/rows/` exists for it.
 - Each run starts from an empty conversation, in a throwaway workspace, and is isolated by flags rather than by a throwaway home: every `claude` child keeps your real `HOME` (and your `CLAUDE_CONFIG_DIR` when set) and receives `--setting-sources project --strict-mcp-config --no-session-persistence`, so no user or local settings, hooks, `CLAUDE.md`, MCP servers or user-scope skills are loaded and no session transcript is left behind. `--bare` is never used: it never reads the OAuth login or the keychain. The executor and the judge driver share this flag set.
 - The workspace is a temporary directory outside any repository and outside `HOME`, so no repository rule and no memory file of an ancestor directory is loaded. When the temporary directory resolves inside `HOME` or inside a git work tree, the runner makes no model call, names `TMPDIR` and exits 3: point `TMPDIR` elsewhere.
-- A `with_skill` run installs the skill at project scope, as `<workspace>/.claude/skills/<name>/` (`SKILL.md`, `scripts/`, `references/`, `assets/`; never `evals/` or any other path, so the agent cannot read the expectations it is graded on); a `without_skill` run has no `.claude/skills` directory, so the two arms differ only by the installed skill. The base replay installs the merge-base skill the same way. The top-level `.claude/` directory is the install location, not an output: it is excluded from `outputs/`. The agent may use `Bash`, `Read`, `Write`, `Edit` and `Skill` only.
+- Every run (eval or probe) installs the skill at project scope, as `<workspace>/.claude/skills/<name>/` (`SKILL.md`, `scripts/`, `references/`, `assets/`; never `evals/` or any other path, so the agent cannot read the expectations it is graded on). The top-level `.claude/` directory is the install location, not an output: it is excluded from `outputs/`. An eval run may use `Bash`, `Read`, `Write`, `Edit` and `Skill` only; a probe run may use `Skill` only.
 - The environment of each `claude` child is an allowlist: `PATH`, `HOME`, `LANG`, `LC_ALL`, `TMPDIR`, `USER`, `CLAUDE_CONFIG_DIR` when you set it, and, when set, the network variables `NODE_EXTRA_CA_CERTS`, `SSL_CERT_FILE`, `SSL_CERT_DIR`, `HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY` and their lowercase forms, plus at most one credential variable. `USER` is needed because on macOS the login is held in the keychain and `claude` reports not logged in without it; the network variables are passed so that a contributor behind a corporate certificate authority or proxy can reach the model. Nothing else reaches the child.
 
 ## Credentials
@@ -61,70 +68,93 @@ Spec 0290 delta 03 requirement 44 requires these seven statements.
 
 ## What a run does
 
-For each eval the runner performs paired runs in fresh context:
+For each eval the runner performs one run in a fresh context, with the skill installed, in `<out>/<skill>/eval-<id>/`. For each trigger probe it performs one probe run in `<out>/<skill>/probe-<n>/`. Every `claude` argv holds `--model claude-sonnet-5-5` and `--effort medium` (the `EFFORT` setting). The `evals.json`, the eval `files` and the scripts of `exit_code` checks come from the working tree.
 
-| Run | Skill installed | Location |
-|---|---|---|
-| `with_skill` (head) | the working tree | `<out>/<skill>/eval-<id>/with_skill/` |
-| `without_skill` | none | `<out>/<skill>/eval-<id>/without_skill/` |
-| `with_skill` (base replay) | the skill as of the merge-base with `origin/main` | `<out>/<skill>/base/eval-<id>/with_skill/` |
+Each eval directory holds `transcript.md`, `grading.json`, `metrics.json` (measured cost, token usage, turns, seconds, the limit reached or `null`, and `skill_loaded`) and `outputs/` (every file the run produced). Each probe directory holds `transcript.md`, `metrics.json` and `probe.json` (`query`, `should_trigger`, `observed`, `passed`).
 
-The `evals.json`, the eval `files` and the scripts of `exit_code` checks always come from the head, in every run. The base replay is skipped, and two runs per eval are planned instead of three, when the installed content (everything but `evals/evals.json`) is identical at base and head, or when the skill is new on the base branch.
+Grading order: every `checks` entry first (deterministic), then one judge call for all of the eval's `expectations`. In `grading.json` the checks therefore come first, then the expectations, each list in file order. A failed check does not prevent the judge call. The judge is not called for an eval with no expectation, or whose output directory cannot be read (its expectations are then recorded failed).
 
-Each run directory holds `transcript.md`, `grading.json`, `metrics.json` (measured cost, token usage, turns, seconds, the limit reached or `null`) and `outputs/` (every file the run produced). Layout and files load unchanged in skill-creator's results viewer; `benchmark.json` sits at `<out>/<skill>/benchmark.json`.
+`skill_loaded` is informational: it records whether the agent called the `Skill` tool for this skill during the run, is not scored and affects no status. With no run without the skill, it is the only indication that an eval passed because of the skill rather than from the model's own knowledge. The report counts the eval runs that loaded the skill.
 
-Grading order: every `checks` entry first (deterministic), then every `expectations` entry through the judge. In `grading.json` the checks therefore come first, then the expectations, each list in file order.
+### Judge call
 
-### Judge evidence
+The judge returns one line per expectation: `<n> VERDICT=<PASS|FAIL> EVIDENCE=<JSON string>`. A `PASS` counts only when the evidence is valid: at least 12 non-whitespace characters and either an exact substring of the run's `transcript.md` or of a produced file (line endings normalised), or a `path:line` reference naming a produced file and an existing line. Otherwise the expectation is recorded `passed: false` with evidence stating the verdict was unsupported. An expectation with no line, or an unreadable one, is recorded `passed: false` with evidence stating the judge gave no verdict. An answer with no usable line at all is a judge failure: the skill's status is `error`.
 
-The judge returns a verdict and evidence per expectation. A `PASS` counts only when the evidence is valid: at least 12 non-whitespace characters and either an exact substring of the run's `transcript.md` or of a produced file (line endings normalised), or a `path:line` reference naming a produced file and an existing line. Otherwise the expectation is recorded `passed: false` with evidence stating the verdict was unsupported; `UNCERTAIN` is recorded `passed: false` too. The judge goes through the shared judge library (`tests/e2e/lib/llm_judge.ts`, entry point `llmJudgeEvidence`): same three-call quorum, same `max_calls` cap, same mock mode; its existing callers are unchanged and guarded by byte-pinned goldens. When a quorum passes, the evidence of the first `PASS` answer is the one graded.
+The call goes through the shared judge library (`tests/e2e/lib/llm_judge.ts`, entry point `llmJudgeEvidence`): one model call counted against `max_calls`, plus transport retries. The library's other callers keep their three-call quorum and are guarded by byte-pinned goldens.
 
 ### Trigger probes
 
-`trigger_probes` are validated and counted. Until live trigger execution exists nothing is observed or scored: the report shows the number of probes and no match fraction.
+Each `trigger_probes` entry is one run whose prompt is the probe's `query`, with `--tools Skill --max-turns 1` and the skill installed. The probe observes whether the first assistant message calls the `Skill` tool naming this skill, and passes when that equals `should_trigger`. The single turn is the early stop, not a failure: it is not tagged as a limit and is not an error. No judge call is made.
+
+Only the skill under test is installed, so no other skill competes. A `should_trigger: false` probe tests restraint against no competitor, and a `true` probe is easier than in real use. A passing probe is not a guarantee of trigger quality in a full installation.
 
 ## Settings
 
-Every setting is one declared constant in `scripts/lib/skill-evals/settings.ts`, so recalibrating or flipping one is a one-line change. Defaults marked provisional are to be recalibrated from the measured costs on the `pr-logbook` pilot (issue #1852), which also receives the isolated-run smoke costs recorded under [Residual risk and prerequisites](#residual-risk-and-prerequisites) as an input; none of the cost defaults changed with delta 03.
+Every setting is one declared constant in `scripts/lib/skill-evals/settings.ts`, so recalibrating or flipping one is a one-line change. Defaults marked provisional are recalibrated from the measured costs of the `pr-logbook` pilot (issue #1880, calibration tracked in #1852), which also receives the isolated-run costs recorded under [Residual risk and prerequisites](#residual-risk-and-prerequisites).
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `TOLERANCE` | `0.05` | A skill regresses when its head `with_skill` mean is lower than the base mean by **more than** this. Provisional: calibrate on the pilot before regression is made blocking. |
+| `PASS_THRESHOLD` | `0.8` | The eval pass rate, and the probe pass rate when the skill has probes, must each reach this for the skill to be `pass`. |
+| `FAIL_BLOCKING` | `false` | When `true`, a `fail` makes the run and the attestation check exit non-zero. |
+| `TOLERANCE` | `0.05` | A skill regresses when its head eval pass rate is lower than the base's recorded one by **more than** this. Provisional: calibrate on the pilot before regression is made blocking. |
 | `REGRESSION_BLOCKING` | `false` | When `true`, a regression (measured, or recorded in a results file) makes the run and the attestation check exit non-zero. |
 | `MISSING_EVALS_BLOCKING` | `false` | When `true`, a changed skill without `evals/` makes the run and the attestation check exit non-zero. Stays `false` until the migration waves (issues #1852 to #1855) have landed. |
-| `MAX_EXECUTOR_RUNS` | `30` | Executor runs per selected skill. Provisional. |
-| `JUDGE_MAX_CALLS` | `300` | The judge `max_calls` per selected skill. Provisional. |
+| `EFFORT` | `medium` | The `--effort` level of the executor, the probe runs and the judge call. Not applied under `--use-api-key`: the `anthropic` judge driver has no effort level. |
+| `MAX_EXECUTOR_RUNS` | `20` | Executor runs (evals + probes) per selected skill. Provisional. |
+| `JUDGE_MAX_CALLS` | `20` | The judge `max_calls` per selected skill. Provisional. |
 | `MAX_INVOCATION_USD` | `100` | Worst-case executor cost (planned runs x per-run budget) across all selected skills. |
 | `EXECUTOR_CONCURRENCY` | `4` | Executor runs in flight at once. |
-| `PER_RUN_TURNS` / `PER_RUN_SECONDS` / `PER_RUN_USD` | `25` / `300` / `1` | Per-run limits. A run that hits one is graded on the output it produced so far, tagged in `metrics.json`, counted in `pass_rate`, and never an `error`. |
-| `EXECUTOR_MODEL` | `claude-sonnet-5-5` | The executor model, a Sonnet-class model (accepted by `claude` 2.1.322 in the delta-03 smoke); a run never silently uses another one. |
+| `PER_RUN_TURNS` / `PER_RUN_SECONDS` / `PER_RUN_USD` | `25` / `300` / `1` | Per-run limits. A run that hits one is graded on the output it produced so far, tagged in `metrics.json`, and counted like any other run. A probe's single turn is not a limit hit. |
+| `EXECUTOR_MODEL` | `claude-sonnet-5-5` | The executor model, a Sonnet-class model; a run never silently uses another one. |
 | `JUDGE_MODEL` | `claude-sonnet-5-5` | The judge model used by the runner, the same Sonnet-class model. |
 
-### Budget and cost
+### Budget
 
-After the credential check and before the first model call, the runner plans every selected skill: three runs per eval (two with no base replay) against `MAX_EXECUTOR_RUNS`, the worst-case judge calls (expectations x runs x quorum, plus 25 percent for retries) against `JUDGE_MAX_CALLS`, and across all skills the planned runs multiplied by `PER_RUN_USD` against `MAX_INVOCATION_USD`. Any breach makes no model call, exits `1` with status `error` and prints planned versus cap. At runtime the caps are enforced again: executor runs are reserved before each starts so concurrent runs cannot exceed the cap; every judge attempt, retries included, counts toward `max_calls`; and the summed measured cost stops new runs at `MAX_INVOCATION_USD`. A runtime breach starts no new run, terminates the runs in flight and ends with status `error`, reporting the executor runs and judge calls used.
+After the credential check and before the first model call, the runner plans every selected skill: evals plus probes against `MAX_EXECUTOR_RUNS`, the evals with expectations plus the retry allowance (25 percent) against `JUDGE_MAX_CALLS`, and across all skills the planned runs multiplied by `PER_RUN_USD` against `MAX_INVOCATION_USD`. Any breach makes no model call, exits `1` with status `error` and prints planned versus cap. At runtime the caps are enforced again: executor runs are reserved before each starts; every judge attempt, a driver retry included, counts toward `max_calls`; and the summed measured cost stops new runs at `MAX_INVOCATION_USD`. A runtime breach starts no new run, terminates the runs in flight and ends with status `error`, reporting the executor runs and judge calls used.
 
-Worst case for one skill: 30 runs of 1 dollar and 300 seconds each; with four runs in flight about 38 minutes of executor wall time. The default `MAX_INVOCATION_USD` therefore allows 8 skills of 12 runs (the pilot size) per invocation, or about 3 skills at the per-skill cap: **a pull request that changes more skills than that must be split** (run `task skill-evals -- <skill>` per skill, or select fewer skills), or the setting raised in the same change.
+Worst case for one skill: 20 runs of 1 dollar and 300 seconds each; with four runs in flight about 25 minutes of wall time. **A pull request that changes more skills than the invocation cap allows must be split** (run `task skill-evals -- <skill>` per skill), or the setting raised in the same change.
 
 The spend is attributed to a ticket through the usage subsystem before any model call: `node scripts/usage-task.ts set --channel explicit --asset forge-issue:<owner>/<repo>#<number>`. `<number>` is `--ticket`, else the number in the branch name `<prefix>/<NNNN>-<slug>`; with neither the run exits 3. `<owner>/<repo>` comes from the `origin` remote. Measured executor cost is read from the executor's result record into each `metrics.json`; a run killed at a limit may leave no result record, so its cost is `unknown` and totals are then printed as a lower bound.
 
-The turn limit is counted by the runner from the executor's stream: one turn is one assistant message, identified by its `message.id`, so a message split over several stream events counts once. The `--max-turns` flag is also passed to `claude`; the executor accepted it in the delta-03 smoke, but the runner-side count remains the primary guard. The judge driver does not pass it: the flag is absent from `claude --help`, so it stays unverified there.
+The turn limit is counted by the runner from the executor's stream: one turn is one assistant message, identified by its `message.id`. The `--max-turns` flag is also passed to `claude`, but the runner-side count is the primary guard.
 
 ## Statuses
 
-`pass`, `regression` (exit 0 unless `REGRESSION_BLOCKING`), `invalid` (the `evals.json` is invalid, or a symlink or a non-ignored untracked file sits under a hashed path), `no-evals` (warning; exit 0 unless `MISSING_EVALS_BLOCKING`), `new` (the skill does not exist on the base branch; not compared), `mock`, `error` (executor or judge failure with credentials present, a refused plan, a runtime cap). The attestation check adds `stale`. Mock mode reports `mock`, marks every `grading.json` and `benchmark.json` with `"mock": true`, writes no results file and never produces a regression or blocking outcome.
+The eval pass rate is the evals that passed divided by the evals; an eval passes when all its checks and expectations pass. The probe pass rate is the probes that passed divided by the probes, absent when the skill has none. The two are graded separately so that cheap probes cannot mask failing evals. `grading.json`'s `summary.pass_rate` is the per-eval fraction of checks and expectations passed and is informational.
+
+- `pass`: the eval pass rate, and the probe pass rate when there are probes, are each at least `PASS_THRESHOLD`.
+- `fail`: otherwise. Reported; exit 0 unless `FAIL_BLOCKING`.
+- `regression`: the head eval pass rate is lower than the base's by more than `TOLERANCE` (exit 0 unless `REGRESSION_BLOCKING`). When both `fail` and `regression` hold, the status is `fail` and the regression line is printed too; each blocks only under its own setting.
+- `invalid`: the `evals.json` is invalid, or a symlink or a non-ignored untracked file sits under a hashed path. Always blocks.
+- `no-evals`: warning; exit 0 unless `MISSING_EVALS_BLOCKING`.
+- `mock`, and `error` (executor or judge failure with credentials present, a refused plan, a runtime cap).
+- `stale`: added by the attestation check; always blocks.
+
+A skill with no valid base results shows `base=n/a` and the line `not compared: no valid evals/results.json at the merge-base`; this is not a status, and its status comes from the threshold alone.
+
+The report prints one line per skill, `<skill>: status=<status> eval_pass_rate=<rate> (<passed>/<total>) probe_pass_rate=<rate> (<passed>/<total>) threshold=<t> base=<rate> diff=<d> skill_loaded=<n>/<evals> executor_runs=<n> judge_calls=<n> cost_usd=<usd>`, where an absent figure is `n/a`, then an `invocation:` line with the totals and, in a real run, `credential_source:`.
+
+Mock mode reports `mock`, marks every `grading.json` and `probe.json` with `"mock": true`, writes no results file and never produces a regression or blocking outcome.
+
+### Regression
+
+Nothing is run on the base revision. The base figure is the `eval_pass_rate` of the `evals/results.json` committed at the merge-base with the base ref (`git show`), valid when it is of the current format, not a mock, names this skill and holds a numeric `eval_pass_rate`; its content hash is not compared. Caveats:
+
+- The head and base rates may cover different sets of evals, because the base's cases are not re-run.
+- Probes are not compared.
+- A skill whose merge-base has no valid file (new, never attested, a file of an older format) is not compared.
 
 ## Content hash
 
 The content hash identifies exactly what was evaluated. It is a SHA-256 over `SKILL.md`, every file under `scripts/`, `references/` and `assets/`, and `evals/evals.json`, read **once** at run start from the working tree (a dirty tree is allowed: the hash is over content, not commits) and also used for the install, so the installed bytes equal the hashed bytes. Files are sorted by their `/`-separated relative path in UTF-8 byte order; each contributes `path NUL mode-flag NUL size NUL bytes NUL`, where the mode flag is `1` when the git **index** mode is `100755` and `0` otherwise. Bytes are never normalised. The mode is read through git (`git ls-files -s`, and `git ls-tree` at the merge-base), never from the filesystem, so the hash is identical on Windows, on Linux and with `core.fileMode=false`. The result is `sha256:` followed by 64 lowercase hexadecimal digits.
 
-Only tracked files are hashed (a staged, uncommitted file counts). A git-ignored untracked file under a hashed path (`__pycache__/`, `.DS_Store`) is excluded from the hash and from the install; an untracked, non-ignored file or any symbolic link makes the skill `invalid`, naming the path, with no hash and no model call. `evals/results.json` is never hashed. The installed-content hash is the same computation without `evals/evals.json`; it decides whether the base replay can be skipped.
+Only tracked files are hashed (a staged, uncommitted file counts). A git-ignored untracked file under a hashed path (`__pycache__/`, `.DS_Store`) is excluded from the hash and from the install; an untracked, non-ignored file or any symbolic link makes the skill `invalid`, naming the path, with no hash and no model call. `evals/results.json` is never hashed.
 
 ## The attestation
 
-A non-mock run with status `pass`, `regression` or `new` writes `evals/results.json` in the skill directory: `skill_name`, `content_hash`, `runner_version`, `executor_model`, `judge_model`, `date`, `status`, `benchmark` (`with_skill_mean`, `without_skill_mean`, `base_mean`, `delta_value`, `tolerance`), `executor_runs`, `judge_calls` and `cost_usd` (`null` when a run's cost is unknown). You commit it with your change. It is never shipped, and as a file under `evals/` it needs no `metadata.provenance.version` bump.
+A non-mock run with status `pass`, `fail` or `regression` writes `evals/results.json` in the skill directory, with these keys in this order: `skill_name`, `content_hash`, `runner_version`, `executor_model`, `judge_model`, `effort`, `date`, `status`, `eval_pass_rate`, `probe_pass_rate` (`null` without probes), `base_eval_pass_rate` (`null` when not compared), `threshold`, `tolerance`, `evals_passed`, `evals_total`, `probes_passed`, `probes_total`, `executor_runs`, `judge_calls` and `cost_usd` (`null` when a run's cost is unknown). You commit it with your change. It is never shipped, and as a file under `evals/` it needs no `metadata.provenance.version` bump.
 
-The pull-request pipeline runs `task ci:skill-evals-attestation`, which makes no model call and needs no credential. For every skill whose content hash differs from the base, or that is new, it decides one status: `no-evals`; `invalid`; `stale` (the results file is absent, unparseable, incomplete, a mock, for another skill, records a status other than `pass`, `regression` or `new`, or records a different content hash); else the recorded status. `invalid` and `stale` always block. A pull request that changes only `evals/evals.json` needs a fresh results file, because the hash includes that file. `task ci:pre-push` includes the same check.
+The pull-request pipeline runs `task ci:skill-evals-attestation`, which makes no model call and needs no credential. For every skill whose content hash differs from the base, or that is new, it decides one status: `no-evals`; `invalid`; `stale` (the results file is absent, unparseable, incomplete, a mock, for another skill, of the former shape with a `benchmark` key or the status `new`, records a status other than `pass`, `fail` or `regression`, or records a different content hash); else the recorded status. `fail` and `regression` are decided from the recorded figures with the same function as the runner, and block only under `FAIL_BLOCKING` and `REGRESSION_BLOCKING`. `invalid` and `stale` always block. A pull request that changes only `evals/evals.json` needs a fresh results file, because the hash includes that file. `task ci:pre-push` includes the same check.
 
 **Trust model.** The attestation is self-declared by a same-repository contributor: nothing proves the recorded results came from a run of the runner, so the file is forgeable by design, and a forged or hand-edited file is visible in code review. The check verifies freshness (the recorded hash matches the current content), not truth. Nothing here is a guarantee that a recorded result is genuine.
 

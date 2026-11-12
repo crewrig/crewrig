@@ -32,6 +32,8 @@ export interface JudgeConfig {
   maxTokens: unknown;
   temperature: unknown;
   gcpProject: string;
+  /** Optional `--effort` level of the claude-cli evidence driver (spec 0290 R47). */
+  effort: string;
 }
 
 export interface Ctx {
@@ -40,6 +42,8 @@ export interface Ctx {
   readonly mock: boolean;
   err(s: string): void;
   bump(): void;
+  /** The current `judge.count` (the caller's counter). */
+  count(): number;
 }
 
 export type Preflight = { rc: 0; token: string } | { rc: 1 | 2 };
@@ -181,6 +185,7 @@ export function loadConfig(env: JudgeDeps["env"]): JudgeConfig {
     maxTokens: 256,
     temperature: 0.0,
     gcpProject: "",
+    effort: "",
   };
   const dir = env["E2E_REPORT_DIR"] ?? "";
   const file = `${dir}/effective.json`;
@@ -200,6 +205,7 @@ export function loadConfig(env: JudgeDeps["env"]): JudgeConfig {
     cfg.maxTokens = pick("max_tokens", 256);
     cfg.temperature = dig(j, "temperature") ?? 0.0;
     cfg.gcpProject = str(dig(j, "gcp_project"));
+    cfg.effort = str(dig(j, "effort"));
   }
   if (env["E2E_JUDGE_STRICT"] === "1") cfg.strict = true;
   return cfg;
@@ -226,6 +232,7 @@ function makeContext(
     deps,
     mock: deps.env["E2E_JUDGE_MOCK"] === "1",
     err,
+    count: readCount,
     bump: () => {
       if (counter !== undefined) fs.writeFileSync(counter, `${readCount() + 1}\n`);
     },
@@ -284,16 +291,7 @@ export type EvidenceJudgment =
       readonly stderr: string;
     }
   | { readonly kind: "cap-exceeded"; readonly count: number; readonly maxCalls: number }
-  | {
-      readonly kind: "verdict";
-      readonly verdict: "PASS" | "FAIL" | "UNCERTAIN";
-      readonly confidence: string;
-      readonly slots: readonly string[];
-      /** True when the cap stopped the quorum before it decided. */
-      readonly capped: boolean;
-      /** Raw text of each call, in slot order; undefined for a call that failed. */
-      readonly texts: readonly (string | undefined)[];
-    };
+  | { readonly kind: "answer"; readonly text: string };
 
 export type EvidencePreflight =
   | { readonly kind: "ok"; readonly backend: string }
@@ -322,10 +320,10 @@ export async function judgeEvidencePreflight(deps: JudgeDeps): Promise<EvidenceP
 }
 
 /**
- * Evidence-mode entry point (spec 0290 R13, R15): one judged question through the same quorum,
- * `max_calls` cap (`judge.count`) and mock mode as `llmJudge`, asking the driver for the raw model
- * text via `complete()`. The cap is checked before every call and every call is counted, mock
- * calls included. UNCERTAIN is returned as such, never mapped to an exit status.
+ * Evidence-mode entry point (spec 0290 R13, R15 as modified by delta-04): ONE model call through
+ * the driver's `complete()`, returning the raw answer text. The `max_calls` cap (`judge.count`) is
+ * checked before the call and the call is counted, mock calls included; a driver that retries
+ * counts each retry itself. No quorum: the caller parses one answer holding every verdict.
  */
 export async function llmJudgeEvidence(
   deps: JudgeDeps,
@@ -342,34 +340,15 @@ export async function llmJudgeEvidence(
       rc: 1,
       stderr: `judge backend ${cfg.backend} does not support evidence judging\n`,
     };
-  const complete = driver.complete.bind(driver);
   const { ctx, readCount } = makeContext(deps, cfg, (s) => void (stderr += s));
   const pf = await driver.preflight(ctx);
   if (pf.rc === 2) return { kind: "auth-missing", backend: cfg.backend };
   if (pf.rc !== 0) return { kind: "hard-failure", backend: cfg.backend, rc: pf.rc, stderr };
-  const token = pf.token;
-  let capped: { count: number } | undefined;
-  const q = await runQuorum(
-    async () => {
-      ctx.bump();
-      return complete(ctx, token, message, opts.maxTokens ?? 512);
-    },
-    () => {
-      const cur = readCount();
-      if (cur >= cfg.maxCalls) capped = { count: cur };
-      return capped !== undefined;
-    },
-  );
-  if (capped !== undefined && q.texts.length === 0)
-    return { kind: "cap-exceeded", count: capped.count, maxCalls: cfg.maxCalls };
-  return {
-    kind: "verdict",
-    verdict: q.verdict,
-    confidence: q.confidence,
-    slots: q.slots,
-    capped: capped !== undefined,
-    texts: q.texts,
-  };
+  const count = readCount();
+  if (count >= cfg.maxCalls) return { kind: "cap-exceeded", count, maxCalls: cfg.maxCalls };
+  ctx.bump();
+  const text = await driver.complete(ctx, pf.token, message, opts.maxTokens ?? 512);
+  return { kind: "answer", text: text ?? "" };
 }
 
 export async function llmJudge(

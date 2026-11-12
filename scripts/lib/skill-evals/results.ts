@@ -1,17 +1,20 @@
-// results.ts — `evals/results.json`, the committed attestation (spec 0290 R36, R37, R38).
+// results.ts — `evals/results.json`, the committed attestation (spec 0290 R19, R20, R36, R37, R38,
+// delta-04), and the decision both the runner and the attestation take from its figures.
 //
-// The writer fixes the key order and writes only for a non-mock run whose status is `pass`,
-// `regression` or `new` (temp file then rename). The verifier reports why a results file is
-// `stale`. The file is self-declared: the verifier proves freshness (the recorded content hash
-// matches the current content), not truth (R38).
+// The writer fixes the key order and writes only for a non-mock run whose status is `pass`, `fail`
+// or `regression` (temp file then rename). The verifier reports why a results file is `stale`; with
+// no hash it reads the merge-base's file for the regression comparison instead. The file is
+// self-declared: the verifier proves freshness (the recorded content hash matches the current
+// content), not truth (R38).
 //
-// Usage: writeResults(skillDirAbs, record); verifyResults(text, skillName, currentHash).
+// Usage: writeResults(skillDirAbs, record); verifyResults(text, skillName, currentHash?);
+//        decide(figures); blocks(decision, { failBlocking, regressionBlocking }).
 // Exit codes: not applicable (library). Finding-line format: not applicable.
 
 import fs from "node:fs";
 import path from "node:path";
 
-export const RESULT_STATUSES = ["pass", "regression", "new"] as const;
+export const RESULT_STATUSES = ["pass", "fail", "regression"] as const;
 export type ResultStatus = (typeof RESULT_STATUSES)[number];
 
 export interface ResultsRecord {
@@ -20,53 +23,103 @@ export interface ResultsRecord {
   runner_version: string;
   executor_model: string;
   judge_model: string;
+  effort: string;
   date: string;
   status: ResultStatus;
-  benchmark: {
-    with_skill_mean: number;
-    without_skill_mean: number;
-    base_mean: number | null;
-    delta_value: number;
-    tolerance: number;
-  };
+  eval_pass_rate: number;
+  probe_pass_rate: number | null;
+  base_eval_pass_rate: number | null;
+  threshold: number;
+  tolerance: number;
+  evals_passed: number;
+  evals_total: number;
+  probes_passed: number;
+  probes_total: number;
   executor_runs: number;
   judge_calls: number;
   cost_usd: number | null;
 }
 
-const TOP_KEYS = [
+const KEYS = [
   "skill_name",
   "content_hash",
   "runner_version",
   "executor_model",
   "judge_model",
+  "effort",
   "date",
   "status",
-  "benchmark",
+  "eval_pass_rate",
+  "probe_pass_rate",
+  "base_eval_pass_rate",
+  "threshold",
+  "tolerance",
+  "evals_passed",
+  "evals_total",
+  "probes_passed",
+  "probes_total",
   "executor_runs",
   "judge_calls",
   "cost_usd",
-] as const;
-const BENCH_KEYS = [
-  "with_skill_mean",
-  "without_skill_mean",
-  "base_mean",
-  "delta_value",
-  "tolerance",
-] as const;
+] as const satisfies readonly (keyof ResultsRecord)[];
+
+/** The figures `decide` works from; recorded in the results file, so the attestation can recompute. */
+export interface Figures {
+  readonly evalPassRate: number;
+  /** null when the skill has no probe. */
+  readonly probePassRate: number | null;
+  /** null when not compared (R19). */
+  readonly baseEvalPassRate: number | null;
+  readonly threshold: number;
+  readonly tolerance: number;
+}
+
+export interface Decision {
+  /** R46: an eval or probe pass rate is below the threshold. */
+  readonly fail: boolean;
+  /** R19: the eval pass rate is below the base's by more than the tolerance. */
+  readonly regression: boolean;
+  /** `fail` wins over `regression` (R46). */
+  readonly status: ResultStatus;
+}
+
+/** R19: a regression is a head rate lower than the base rate by MORE than the tolerance. */
+export function isRegression(head: number, base: number, tolerance: number): boolean {
+  return base - head - tolerance > 1e-9;
+}
+
+/** R20, R46: the one function that decides `fail` and `regression`, for the runner and the attestation. */
+export function decide(f: Figures): Decision {
+  const fail =
+    f.threshold - f.evalPassRate > 1e-9 ||
+    (f.probePassRate !== null && f.threshold - f.probePassRate > 1e-9);
+  const regression =
+    f.baseEvalPassRate !== null && isRegression(f.evalPassRate, f.baseEvalPassRate, f.tolerance);
+  return { fail, regression, status: fail ? "fail" : regression ? "regression" : "pass" };
+}
+
+/** R20: each condition blocks only under its own setting. */
+export function blocks(
+  d: Decision,
+  s: { readonly failBlocking: boolean; readonly regressionBlocking: boolean },
+): boolean {
+  return (d.fail && s.failBlocking) || (d.regression && s.regressionBlocking);
+}
+
+export const figuresOf = (r: ResultsRecord): Figures => ({
+  evalPassRate: r.eval_pass_rate,
+  probePassRate: r.probe_pass_rate,
+  baseEvalPassRate: r.base_eval_pass_rate,
+  threshold: r.threshold,
+  tolerance: r.tolerance,
+});
 
 export const resultsPath = (skillDirAbs: string): string =>
   path.join(skillDirAbs, "evals", "results.json");
 
 export function writeResults(skillDirAbs: string, r: ResultsRecord): void {
   const ordered: Record<string, unknown> = {};
-  for (const k of TOP_KEYS) {
-    if (k === "benchmark") {
-      const b: Record<string, unknown> = {};
-      for (const bk of BENCH_KEYS) b[bk] = r.benchmark[bk];
-      ordered[k] = b;
-    } else ordered[k] = r[k];
-  }
+  for (const k of KEYS) ordered[k] = r[k];
   const file = resultsPath(skillDirAbs);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.tmp`;
@@ -78,10 +131,11 @@ export type Verification =
   | { readonly ok: true; readonly record: ResultsRecord }
   | { readonly ok: false; readonly reason: string };
 
+/** `currentHash` undefined skips the freshness check: the merge-base's file is read for its rate only. */
 export function verifyResults(
   text: string | undefined,
   skillName: string,
-  currentHash: string,
+  currentHash?: string,
 ): Verification {
   if (text === undefined) return { ok: false, reason: "evals/results.json is absent" };
   let doc: unknown;
@@ -94,14 +148,8 @@ export function verifyResults(
     return { ok: false, reason: "evals/results.json is not a JSON object" };
   const o = doc as Record<string, unknown>;
   if (o["mock"] === true) return { ok: false, reason: "evals/results.json records a mock run" };
-  for (const k of TOP_KEYS)
+  for (const k of KEYS)
     if (!(k in o)) return { ok: false, reason: `evals/results.json lacks the key ${k}` };
-  const b = o["benchmark"];
-  if (typeof b !== "object" || b === null)
-    return { ok: false, reason: "evals/results.json benchmark is not an object" };
-  for (const k of BENCH_KEYS)
-    if (!(k in (b as object)))
-      return { ok: false, reason: `evals/results.json lacks the key benchmark.${k}` };
   if (o["skill_name"] !== skillName)
     return {
       ok: false,
@@ -110,9 +158,15 @@ export function verifyResults(
   if (!(RESULT_STATUSES as readonly unknown[]).includes(o["status"]))
     return {
       ok: false,
-      reason: `evals/results.json records the status ${JSON.stringify(o["status"])}, which is not pass, regression or new`,
+      reason: `evals/results.json records the status ${JSON.stringify(o["status"])}, which is not pass, fail or regression`,
     };
-  if (o["content_hash"] !== currentHash)
+  for (const k of ["eval_pass_rate", "threshold", "tolerance"] as const)
+    if (typeof o[k] !== "number")
+      return { ok: false, reason: `evals/results.json ${k} is not a number` };
+  for (const k of ["probe_pass_rate", "base_eval_pass_rate"] as const)
+    if (o[k] !== null && typeof o[k] !== "number")
+      return { ok: false, reason: `evals/results.json ${k} is neither a number nor null` };
+  if (currentHash !== undefined && o["content_hash"] !== currentHash)
     return {
       ok: false,
       reason: `recorded content_hash ${String(o["content_hash"])} differs from the current ${currentHash}`,

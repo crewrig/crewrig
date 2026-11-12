@@ -28,6 +28,7 @@ function scrub(text: string, secret: string | undefined): string {
 }
 
 export function buildArgs(req: ExecRequest): string[] {
+  const tools = req.tools ?? EXECUTOR_TOOLS;
   return [
     "-p",
     req.prompt,
@@ -36,12 +37,13 @@ export function buildArgs(req: ExecRequest): string[] {
     "--verbose",
     "--model",
     req.model,
+    ...(req.effort === undefined ? [] : ["--effort", req.effort]),
     "--tools",
-    EXECUTOR_TOOLS.join(","),
+    tools.join(","),
     "--permission-mode",
     "dontAsk",
     "--allowedTools",
-    EXECUTOR_TOOLS.join(" "),
+    tools.join(" "),
     "--max-turns",
     String(req.limits.turns),
     "--max-budget-usd",
@@ -102,6 +104,7 @@ export class ClaudeCodeExecutor implements Executor {
           usage: null,
           turns: 0,
           seconds: 0,
+          skillsLoaded: [],
           failure: "the executor needs process groups and is not supported on Windows",
         });
         return;
@@ -109,6 +112,7 @@ export class ClaudeCodeExecutor implements Executor {
       let buffer = "";
       let transcript = `# Transcript (${req.label})\n\nPrompt: ${req.prompt}\n\n`;
       let turns = 0;
+      const skillsLoaded: string[] = [];
       const seenMessages = new Set<string>();
       let result: StreamEvent | undefined;
       let limit: LimitName | undefined;
@@ -165,6 +169,7 @@ export class ClaudeCodeExecutor implements Executor {
           usage: result?.usage ?? null,
           turns,
           seconds,
+          skillsLoaded,
         };
         if (killedBy === "abort") return resolve({ ...base, aborted: true });
         if (spawnError !== undefined) return resolve({ ...base, failure: spawnError });
@@ -190,6 +195,16 @@ export class ClaudeCodeExecutor implements Executor {
           return;
         }
         if (ev.type === "result") result = ev;
+        if (ev.type === "assistant" && Array.isArray(ev.message?.content))
+          for (const p of ev.message.content as Record<string, unknown>[]) {
+            const input = p["input"] as { skill?: unknown } | null | undefined;
+            if (
+              p["type"] === "tool_use" &&
+              p["name"] === "Skill" &&
+              typeof input?.skill === "string"
+            )
+              skillsLoaded.push(input.skill);
+          }
         const rendered = renderEvent(ev);
         if (rendered !== "") transcript += `${rendered}\n\n`;
         // A turn is one assistant MESSAGE: a message split over several stream events shares its

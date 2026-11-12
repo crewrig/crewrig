@@ -14,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { runGit } from "../governance/git-run.ts";
-import { contentHash, installedContentHash, readRevision, readWorkingTree } from "./hash.ts";
+import { contentHash, readRevision, readWorkingTree } from "./hash.ts";
 import type { Snapshot } from "./hash.ts";
 
 export interface SkillRef {
@@ -28,15 +28,12 @@ export interface SkillRef {
 export interface Selection {
   readonly skill: SkillRef;
   readonly head: Snapshot;
-  /** `absent` when the skill does not exist at the merge-base (or cannot be read there). */
-  readonly base: Snapshot;
+  /** True when the skill does not exist at the merge-base (or cannot be read there). */
   readonly isNew: boolean;
   readonly headHash?: string;
   readonly baseHash?: string;
-  readonly headInstalledHash?: string;
-  readonly baseInstalledHash?: string;
-  /** True when base and head installed content are identical (no base replay, R19). */
-  readonly installedEqual: boolean;
+  /** `evals/results.json` as committed at the merge-base, for the regression comparison (R19). */
+  readonly baseResultsText?: string;
 }
 
 export function listSkills(repoRoot: string): SkillRef[] {
@@ -80,7 +77,17 @@ export function mergeBase(repoRoot: string, baseRef: string): string | undefined
   return r.status === 0 && sha !== "" ? sha : undefined;
 }
 
-/** Load head and base snapshots of one skill and the comparison facts the planner needs. */
+/** The skill's `evals/results.json` as committed at `rev` (`git show`); undefined when absent there. */
+export function readBaseResults(
+  repoRoot: string,
+  rev: string,
+  skillDirRel: string,
+): string | undefined {
+  const r = runGit(["show", `${rev}:${skillDirRel}/evals/results.json`], { cwd: repoRoot });
+  return r.status === 0 ? r.stdout.toString("utf8") : undefined;
+}
+
+/** Load the head snapshot of one skill and the comparison facts the planner needs. */
 export function describeSkill(
   repoRoot: string,
   skill: SkillRef,
@@ -89,31 +96,18 @@ export function describeSkill(
   const head = readWorkingTree(repoRoot, skill.dirRel);
   const baseSnap: Snapshot =
     base === undefined ? { kind: "absent" } : readRevision(repoRoot, base, skill.dirRel);
-  const baseUsable = baseSnap.kind === "ok";
-  const isNew = !baseUsable;
-  if (head.kind !== "ok")
-    return {
-      skill,
-      head,
-      base: isNew ? { kind: "absent" } : baseSnap,
-      isNew,
-      installedEqual: false,
-    };
-  const headHash = contentHash(head.files);
-  const headInstalledHash = installedContentHash(head.files);
+  const isNew = baseSnap.kind !== "ok";
+  if (head.kind !== "ok") return { skill, head, isNew };
   const baseHash = baseSnap.kind === "ok" ? contentHash(baseSnap.files) : undefined;
-  const baseInstalledHash =
-    baseSnap.kind === "ok" ? installedContentHash(baseSnap.files) : undefined;
+  const baseResultsText =
+    base === undefined || isNew ? undefined : readBaseResults(repoRoot, base, skill.dirRel);
   return {
     skill,
     head,
-    base: baseSnap.kind === "ok" ? baseSnap : { kind: "absent" },
     isNew,
-    headHash,
-    headInstalledHash,
+    headHash: contentHash(head.files),
     ...(baseHash !== undefined ? { baseHash } : {}),
-    ...(baseInstalledHash !== undefined ? { baseInstalledHash } : {}),
-    installedEqual: baseInstalledHash !== undefined && baseInstalledHash === headInstalledHash,
+    ...(baseResultsText !== undefined ? { baseResultsText } : {}),
   };
 }
 

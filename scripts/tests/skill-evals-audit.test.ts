@@ -14,10 +14,10 @@ import path from "node:path";
 import { test } from "node:test";
 
 import { DEFAULT_SETTINGS } from "../lib/skill-evals/run.ts";
-import { JUDGE_MODEL } from "../lib/skill-evals/settings.ts";
+import * as S from "../lib/skill-evals/settings.ts";
 import { declareUsage, resolveAsset } from "../lib/skill-evals/usage.ts";
 import { skillRel, tmpDir, writeSkill } from "./lib/skill-evals-fixtures.ts";
-import { judgeFetch, makeRig, plainEvals } from "./lib/skill-evals-run-rig.ts";
+import { foxScript, judgeFetch, makeRig, plainEvals } from "./lib/skill-evals-run-rig.ts";
 
 const KEY_ENV = { ANTHROPIC_API_KEY: "sk-test" };
 /** `--use-api-key` with the key: no `claude` is started, whatever the stub says. */
@@ -32,7 +32,7 @@ const onlyEvalsChange = (repo: { root: string }) =>
 // ---------------------------------------------------------------------------------------- R23
 
 test("usage declaration (R23): forge-issue asset, declared before the first executor run, from --ticket or the branch name", async () => {
-  const rig = makeRig({ mock: false, ...KEY, change: onlyEvalsChange });
+  const rig = makeRig({ mock: false, ...KEY, change: onlyEvalsChange, script: foxScript });
   try {
     const seen: { asset: string; executorCallsAtDeclare: number }[] = [];
     const declare = (asset: string) => {
@@ -109,23 +109,34 @@ test("declareUsage runs `usage-task.ts set --channel explicit --asset <asset>` i
 
 // ------------------------------------------------------------------- R19, R23, R27-R29, R31
 
-test("declared defaults: tolerance 0.05, both knobs false, caps 30 / 300 / 100 dollars, 4 concurrent, limits 25 turns / 300 s / 1 dollar, a Sonnet-class model", () => {
-  const { executorModel, ...rest } = DEFAULT_SETTINGS;
-  assert.deepEqual(rest, {
-    tolerance: 0.05,
-    regressionBlocking: false,
-    missingEvalsBlocking: false,
-    maxExecutorRuns: 30,
-    judgeMaxCalls: 300,
-    maxInvocationUsd: 100,
-    executorConcurrency: 4,
-    perRunTurns: 25,
-    perRunSeconds: 300,
-    perRunUsd: 1,
+test("declared defaults: each field of DEFAULT_SETTINGS is its settings.ts constant; only the non-provisional values are pinned as literals (#1882)", () => {
+  // every field comes from its declared constant, so recalibrating a provisional value is a
+  // one-line change in settings.ts that no test needs to follow
+  assert.deepEqual(DEFAULT_SETTINGS, {
+    tolerance: S.TOLERANCE,
+    regressionBlocking: S.REGRESSION_BLOCKING,
+    missingEvalsBlocking: S.MISSING_EVALS_BLOCKING,
+    maxExecutorRuns: S.MAX_EXECUTOR_RUNS,
+    judgeMaxCalls: S.JUDGE_MAX_CALLS,
+    maxInvocationUsd: S.MAX_INVOCATION_USD,
+    executorConcurrency: S.EXECUTOR_CONCURRENCY,
+    perRunTurns: S.PER_RUN_TURNS,
+    perRunSeconds: S.PER_RUN_SECONDS,
+    perRunUsd: S.PER_RUN_USD,
+    executorModel: S.EXECUTOR_MODEL,
+    effort: S.EFFORT,
+    passThreshold: S.PASS_THRESHOLD,
+    failBlocking: S.FAIL_BLOCKING,
   });
-  assert.match(executorModel, /sonnet/i);
-  assert.equal(executorModel, "claude-sonnet-5-5", "delta-03 model pin");
-  assert.equal(JUDGE_MODEL, "claude-sonnet-5-5");
+  // the literals that are not provisional: the knobs, the threshold, the effort and the model (R20, R31, R46, R47)
+  assert.equal(DEFAULT_SETTINGS.regressionBlocking, false);
+  assert.equal(DEFAULT_SETTINGS.missingEvalsBlocking, false);
+  assert.equal(DEFAULT_SETTINGS.failBlocking, false);
+  assert.equal(DEFAULT_SETTINGS.passThreshold, 0.8);
+  assert.equal(DEFAULT_SETTINGS.effort, "medium");
+  assert.match(DEFAULT_SETTINGS.executorModel, /sonnet/i);
+  assert.equal(DEFAULT_SETTINGS.executorModel, "claude-sonnet-5-5", "delta-03 model pin");
+  assert.equal(S.JUDGE_MODEL, "claude-sonnet-5-5");
 });
 
 test("the executor model and the per-run limits come from the settings: every run, metrics.json and results.json carry them (R27, R31)", async () => {
@@ -133,6 +144,7 @@ test("the executor model and the per-run limits come from the settings: every ru
     mock: false,
     ...KEY,
     change: onlyEvalsChange,
+    script: foxScript,
     settings: {
       executorModel: "claude-sonnet-test-9",
       perRunTurns: 7,
@@ -143,12 +155,12 @@ test("the executor model and the per-run limits come from the settings: every ru
   try {
     const r = await rig.run({ fetchImpl: judgeFetch().fetch });
     assert.equal(r.results[0]?.status, "pass", r.text + r.stderr);
-    assert.equal(rig.executor.calls.length, 2);
+    assert.equal(rig.executor.calls.length, 1, "one run per eval, no paired run");
     for (const c of rig.executor.calls) {
       assert.equal(c.model, "claude-sonnet-test-9");
       assert.deepEqual(c.limits, { turns: 7, seconds: 11, usd: 0.5 });
     }
-    const dir = path.join(rig.out, "demo", "eval-1", "with_skill");
+    const dir = path.join(rig.out, "demo", "eval-1");
     assert.equal(
       JSON.parse(fs.readFileSync(path.join(dir, "metrics.json"), "utf8")).model,
       "claude-sonnet-test-9",
@@ -164,7 +176,7 @@ test("the executor model and the per-run limits come from the settings: every ru
 
 // -------------------------------------------------------------------------------- R3 and R9
 
-test("R3, R9 and R32: each run gets only the eval's files at the workspace root, in a fresh workspace of its own; the skill sits at <workspace>/.claude/skills/<name>/ for with_skill only; outputs/ never holds .claude/", async () => {
+test("R3, R9 and R32: each run gets only the eval's files at the workspace root, in a fresh workspace of its own, with the skill at <workspace>/.claude/skills/<name>/; outputs/ never holds .claude/", async () => {
   const rig = makeRig({
     evalsCount: 2,
     script: (req) => {
@@ -174,7 +186,9 @@ test("R3, R9 and R32: each run gets only the eval's files at the workspace root,
         workspace: req.workspaceDir,
         hasHomeDir: "homeDir" in req,
         listing: fs.readdirSync(req.workspaceDir).sort(),
-        input: fs.readFileSync(path.join(req.workspaceDir, "in.txt"), "utf8"),
+        input: fs.existsSync(path.join(req.workspaceDir, "in.txt"))
+          ? fs.readFileSync(path.join(req.workspaceDir, "in.txt"), "utf8")
+          : null,
         skillFiles: fs.existsSync(skill)
           ? fs.readdirSync(skill, { recursive: true }).map(String).sort()
           : null,
@@ -187,60 +201,48 @@ test("R3, R9 and R32: each run gets only the eval's files at the workspace root,
     workspace: string;
     hasHomeDir: boolean;
     listing: string[];
-    input: string;
+    input: string | null;
     skillFiles: string[] | null;
   }[] = [];
   try {
     const r = await rig.run();
     assert.equal(r.exitCode, 0, r.text);
-    assert.equal(seen.length, 6, "3 runs per eval: head, base replay, without_skill");
+    assert.equal(seen.length, 3, "one run per eval (2) and one per probe (1)");
     for (const s of seen) {
-      const without = s.label.includes("without_skill");
+      const probe = s.label.includes("probe");
       assert.equal(s.hasHomeDir, false, "no throwaway home any more");
       assert.deepEqual(
         s.listing.filter((p) => p !== ".claude"),
-        ["in.txt"],
+        probe ? [] : ["in.txt"],
         `${s.label}: nothing but the eval files at start`,
       );
-      assert.equal(
-        s.listing.includes(".claude"),
-        !without,
-        `${s.label}: .claude only with the skill`,
+      assert.ok(s.listing.includes(".claude"), `${s.label}: no run without the skill (R9)`);
+      assert.equal(s.input, probe ? null : "input\n");
+      assert.ok(s.skillFiles?.includes("SKILL.md"), s.label);
+      assert.ok(
+        s.skillFiles?.includes("scripts/run.sh") && s.skillFiles.includes("references/ref.md"),
       );
-      assert.equal(s.input, "input\n");
-      if (without) assert.equal(s.skillFiles, null, "without_skill has no .claude/skills/<name>");
-      else {
-        assert.ok(s.skillFiles?.includes("SKILL.md"), s.label);
-        assert.ok(
-          s.skillFiles?.includes("scripts/run.sh") && s.skillFiles.includes("references/ref.md"),
-        );
-        assert.equal(
-          s.skillFiles?.some((p) => p.includes("evals")),
-          false,
-          "no evals/ path is installed",
-        );
-      }
+      assert.equal(
+        s.skillFiles?.some((p) => p.includes("evals")),
+        false,
+        "no evals/ path is installed",
+      );
       assert.equal(
         path.relative(rig.repo.root, s.workspace).startsWith(".."),
         true,
         "the workspace is outside the repository",
       );
     }
-    assert.equal(new Set(seen.map((s) => s.workspace)).size, 6, "no workspace is shared");
+    assert.equal(new Set(seen.map((s) => s.workspace)).size, 3, "no workspace is shared");
     // the input file is not reported as a produced output; what the run produced is; .claude/ is never an output
-    for (const cfg of ["with_skill", "without_skill"]) {
-      const outDir = path.join(rig.out, "demo", "eval-1", cfg, "outputs");
+    for (const id of [1, 2]) {
+      const outDir = path.join(rig.out, "demo", `eval-${id}`, "outputs");
       assert.deepEqual(fs.readdirSync(outDir, { recursive: true }).map(String).sort(), [
         "answer.md",
         "leftover.tmp",
       ]);
     }
-    assert.equal(
-      fs.existsSync(
-        path.join(rig.out, "demo", "base", "eval-1", "with_skill", "outputs", ".claude"),
-      ),
-      false,
-    );
+    assert.equal(fs.existsSync(path.join(rig.out, "demo", "eval-1", "outputs", ".claude")), false);
   } finally {
     rig.cleanup();
   }

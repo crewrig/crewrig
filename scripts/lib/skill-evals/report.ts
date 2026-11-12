@@ -1,33 +1,43 @@
-// report.ts — the per-skill summary the runner prints (spec 0290 R22 as modified).
+// report.ts — the per-skill summary the runner prints (spec 0290 R22 as modified by delta-04).
 //
-// One block per skill: status, with_skill and without_skill means, delta, base mean (n/a when the
-// base replay was skipped or the skill is new), executor runs used, judge calls used, measured
-// cost, number of trigger probes (counted, never scored: R5), plus the reason and, for a
-// regression, the skill, both means, the delta and the tolerance. Statuses: pass, regression,
-// invalid, no-evals, new, mock, error (and `stale`, reported by the attestation check only).
+// One block per skill: status, the eval pass rate with evals passed/total, the probe pass rate with
+// probes passed/total (n/a without probes), the threshold, the base eval pass rate and the
+// difference (n/a when not compared, with a line saying so), the number of eval runs that loaded
+// the skill (R48), executor runs used, judge calls used and measured cost, plus the reason and,
+// when the regression condition holds, the regression line. Statuses: pass, fail, regression,
+// invalid, no-evals, mock, error (and `stale`, reported by the attestation check only).
 //
 // R43: in a real run the report ends with `credential_source: <label>` (no secret value).
 //
 // Usage: formatReport(results, source?). Exit codes: not applicable (library).
 // Finding-line format: `<skill>: status=<status> ...`.
 
-export type RunStatus = "pass" | "regression" | "invalid" | "no-evals" | "new" | "mock" | "error";
+export type RunStatus = "pass" | "fail" | "regression" | "invalid" | "no-evals" | "mock" | "error";
 
 export interface SkillResult {
   skill: string;
   status: RunStatus;
   blocking: boolean;
-  withSkillMean?: number;
-  withoutSkillMean?: number;
-  baseMean?: number | null;
-  deltaValue?: number;
+  evalPassRate?: number;
+  evalsPassed?: number;
+  evalsTotal?: number;
+  /** null when the skill has no probe. */
+  probePassRate?: number | null;
+  probesPassed?: number;
+  probesTotal?: number;
+  threshold?: number;
+  /** null when not compared (R19). */
+  baseEvalPassRate?: number | null;
   tolerance?: number;
+  /** The R19 regression condition holds (it can hold under status `fail`). */
+  regression?: boolean;
+  /** Eval runs that loaded the skill (R48), informational. */
+  skillLoaded?: number;
   executorRuns: number;
   judgeCalls: number;
   /** Sum of measured run costs; null when any run's cost is unknown (a lower bound is printed). */
   costUsd: number | null;
   costLowerBound?: number;
-  probes?: number;
   messages: string[];
 }
 
@@ -41,21 +51,32 @@ export const CREDENTIAL_LABELS = {
 const fmt = (n: number | null | undefined): string =>
   n === null || n === undefined ? "n/a" : n.toFixed(2);
 
+const ratio = (rate: number | null | undefined, n?: number, of?: number): string =>
+  rate === null || rate === undefined ? "n/a" : `${rate.toFixed(2)} (${n}/${of})`;
+
 export function formatSkill(r: SkillResult): string {
   const lines: string[] = [];
+  const diff =
+    r.baseEvalPassRate === null || r.baseEvalPassRate === undefined || r.evalPassRate === undefined
+      ? "n/a"
+      : (r.evalPassRate - r.baseEvalPassRate >= 0 ? "+" : "") +
+        (r.evalPassRate - r.baseEvalPassRate).toFixed(2);
   const head =
-    `${r.skill}: status=${r.status} with_skill=${fmt(r.withSkillMean)} without_skill=${fmt(r.withoutSkillMean)} ` +
-    `delta=${r.deltaValue === undefined ? "n/a" : (r.deltaValue >= 0 ? "+" : "") + r.deltaValue.toFixed(2)} base=${fmt(r.baseMean)} ` +
+    `${r.skill}: status=${r.status} eval_pass_rate=${ratio(r.evalPassRate, r.evalsPassed, r.evalsTotal)} ` +
+    `probe_pass_rate=${ratio(r.probePassRate, r.probesPassed, r.probesTotal)} threshold=${fmt(r.threshold)} ` +
+    `base=${fmt(r.baseEvalPassRate)} diff=${diff} ` +
+    `skill_loaded=${r.skillLoaded === undefined ? "n/a" : `${r.skillLoaded}/${r.evalsTotal}`} ` +
     `executor_runs=${r.executorRuns} judge_calls=${r.judgeCalls} cost_usd=${
       r.costUsd === null
         ? `unknown (at least ${(r.costLowerBound ?? 0).toFixed(2)})`
         : r.costUsd.toFixed(2)
-    }` +
-    (r.probes !== undefined ? ` trigger_probes=${r.probes}` : "");
+    }`;
   lines.push(head);
-  if (r.status === "regression")
+  if (r.baseEvalPassRate === null)
+    lines.push("  not compared: no valid evals/results.json at the merge-base");
+  if (r.regression === true)
     lines.push(
-      `  regression: ${r.skill} base mean ${fmt(r.baseMean)}, head mean ${fmt(r.withSkillMean)}, delta ${(r.baseMean !== null && r.baseMean !== undefined && r.withSkillMean !== undefined ? r.withSkillMean - r.baseMean : 0).toFixed(2)}, tolerance ${fmt(r.tolerance)}`,
+      `  regression: ${r.skill} base eval pass rate ${fmt(r.baseEvalPassRate)}, head ${fmt(r.evalPassRate)}, diff ${diff}, tolerance ${fmt(r.tolerance)}`,
     );
   for (const m of r.messages) lines.push(`  ${m}`);
   return lines.join("\n");

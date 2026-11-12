@@ -12,6 +12,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
+import { DEFAULT_SETTINGS } from "../lib/skill-evals/run.ts";
 import { readCalls } from "./lib/skill-evals-fixtures.ts";
 import type { StubCall } from "./lib/skill-evals-fixtures.ts";
 import {
@@ -40,8 +41,8 @@ test("R33, R40, R41, R42, R43, F2, F4: a logged-in contributor needs no variable
     const calls = readCalls(t.bin);
     const by = (k: StubCall["kind"]) => calls.filter((c) => c.kind === k);
     assert.equal(by("auth").length, 1, "F4: one probe per invocation");
-    assert.equal(by("executor").length, 6, "3 evals x (with_skill, without_skill)");
-    assert.ok(by("judge").length >= 4, "many judge calls, still one probe");
+    assert.equal(by("executor").length, 3, "one run per eval");
+    assert.equal(by("judge").length, 3, "one judge call per eval, still one probe");
     assert.equal(by("model").length, 0);
     for (const c of calls) {
       assert.deepEqual(credentialVars(c), [], `${c.kind}: no credential variable, no key`);
@@ -106,8 +107,8 @@ test("R33, R42: with a token the executor and judge hold only that token, the ke
       0,
       "a token is a presence check: no login probe",
     );
-    assert.ok(calls.filter((c) => c.kind === "executor").length >= 2);
-    assert.ok(calls.filter((c) => c.kind === "judge").length >= 2);
+    assert.equal(calls.filter((c) => c.kind === "executor").length, 1);
+    assert.equal(calls.filter((c) => c.kind === "judge").length, 1);
     for (const c of calls) {
       assert.deepEqual(credentialVars(c), ["CLAUDE_CODE_OAUTH_TOKEN"], c.kind);
       assert.equal(c.env["CLAUDE_CODE_OAUTH_TOKEN"], "tok-secret");
@@ -115,7 +116,7 @@ test("R33, R42: with a token the executor and judge hold only that token, the ke
       assert.equal(c.env["HOME"], t.iso.home);
     }
     assert.doesNotMatch(
-      fs.readFileSync(path.join(t.rig.out, "demo", "eval-1", "with_skill", "grading.json"), "utf8"),
+      fs.readFileSync(path.join(t.rig.out, "demo", "eval-1", "grading.json"), "utf8"),
       /tok-secret/,
     );
   } finally {
@@ -135,7 +136,8 @@ test("R33, R43: --use-api-key selects the key: the judge uses the anthropic driv
     const cfg = judgeCfg(t.rig.out);
     assert.equal(cfg.backend, "anthropic");
     assert.equal(cfg.api_key_env, "ANTHROPIC_API_KEY");
-    assert.equal(cfg.max_calls, 300);
+    assert.equal(cfg.max_calls, DEFAULT_SETTINGS.judgeMaxCalls);
+    assert.equal(cfg.effort, DEFAULT_SETTINGS.effort);
     assert.ok(j.requests.length > 0);
     assert.ok(
       j.requests.every(
@@ -167,7 +169,7 @@ test("s3-F1: --use-api-key with the token and the key both set: the executor chi
     assert.equal(r.results[0]?.status, "pass", r.text + r.stderr);
     assert.equal(r.credentialSource, "api-key");
     const exec = readCalls(t.bin, "executor");
-    assert.ok(exec.length >= 2);
+    assert.equal(exec.length, 1);
     for (const c of exec) {
       assert.equal(c.env["ANTHROPIC_API_KEY"], "sk-key");
       assert.equal(c.env["CLAUDE_CODE_OAUTH_TOKEN"], undefined, "exactly one credential variable");

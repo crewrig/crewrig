@@ -45,7 +45,7 @@ const plan = (sel: Selection, evalsCount = 1): number => {
     skillName: sel.skill.name,
   });
   assert.ok(v.evals, JSON.stringify(v.violations));
-  return planSkill(sel.skill.name, v.evals, !sel.isNew && !sel.installedEqual).executorRuns;
+  return planSkill(sel.skill.name, v.evals).executorRuns;
 };
 
 test("no change selects nothing; --changed says so through the empty selection", () => {
@@ -75,26 +75,7 @@ test("unhashed files and compiled mirrors select nothing", () => {
   });
 });
 
-test("a scripts-only change plans 3 runs per eval; an evals-only change plans 2", () => {
-  twoSkills((repo) => {
-    fs.appendFileSync(path.join(repo.root, skillRel("alpha"), "scripts", "run.sh"), "echo x\n");
-    fs.writeFileSync(
-      path.join(repo.root, skillRel("beta"), "evals", "evals.json"),
-      evalsJson("beta", { trigger_probes: [] }),
-    );
-    commitAll(repo, "change");
-    const r = selectChanged(repo.root, "origin/main");
-    assert.ok(!("error" in r));
-    const by = (n: string) =>
-      (r as { selections: Selection[] }).selections.find((s) => s.skill.name === n) as Selection;
-    assert.equal(by("alpha").installedEqual, false);
-    assert.equal(plan(by("alpha"), 2), 6);
-    assert.equal(by("beta").installedEqual, true);
-    assert.equal(plan(by("beta"), 2), 4);
-  });
-});
-
-test("a skill new on the base branch is selected, planned at 2 runs per eval and marked new", () => {
+test("a skill new on the base branch is selected and marked new", () => {
   twoSkills((repo) => {
     writeSkill(repo, "gamma");
     commitAll(repo, "new skill");
@@ -102,7 +83,6 @@ test("a skill new on the base branch is selected, planned at 2 runs per eval and
     assert.deepEqual(names(r), ["gamma"]);
     const s = (r as { selections: Selection[] }).selections[0] as Selection;
     assert.equal(s.isNew, true);
-    assert.equal(plan(s, 2), 4);
   });
 });
 

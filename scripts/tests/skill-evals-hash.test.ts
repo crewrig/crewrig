@@ -8,7 +8,6 @@ import { test } from "node:test";
 
 import {
   contentHash,
-  installedContentHash,
   installFiles,
   readRevision,
   readWorkingTree,
@@ -22,10 +21,6 @@ const hashOf = (repo: Repo, name = "demo"): string => {
   assert.equal(s.kind, "ok", JSON.stringify(s));
   return contentHash((s as Extract<Snapshot, { kind: "ok" }>).files);
 };
-const installedOf = (repo: Repo): string =>
-  installedContentHash(
-    (readWorkingTree(repo.root, skillRel("demo")) as Extract<Snapshot, { kind: "ok" }>).files,
-  );
 const withRepo = (f: (repo: Repo) => void) => {
   const repo = makeRepo();
   try {
@@ -96,25 +91,9 @@ test("one byte, an added, a deleted and a renamed hashed file change the hash; u
   });
 });
 
-test("the installed-content hash ignores evals/evals.json and follows every other change", () => {
-  withRepo((repo) => {
-    const dir = path.join(repo.root, skillRel("demo"));
-    const inst = installedOf(repo);
-    const full = hashOf(repo);
-    fs.writeFileSync(path.join(dir, "evals", "evals.json"), '{"changed":true}\n');
-    repo.git("add", "-A");
-    assert.equal(installedOf(repo), inst);
-    assert.notEqual(hashOf(repo), full);
-    fs.writeFileSync(path.join(dir, "scripts", "run.sh"), "#!/bin/sh\necho changed\n");
-    repo.git("add", "-A");
-    assert.notEqual(installedOf(repo), inst);
-  });
-});
-
 test("the git index mode is hashed; the filesystem mode and core.fileMode are not", () => {
   withRepo((repo) => {
     const base = hashOf(repo);
-    const inst = installedOf(repo);
     const file = path.join(repo.root, skillRel("demo"), "scripts", "run.sh");
     fs.chmodSync(file, 0o644); // filesystem permission change, index mode untouched
     assert.equal(hashOf(repo), base);
@@ -123,7 +102,6 @@ test("the git index mode is hashed; the filesystem mode and core.fileMode are no
     repo.git("config", "core.fileMode", "true");
     repo.git("update-index", "--chmod=-x", `${skillRel("demo")}/scripts/run.sh`);
     assert.notEqual(hashOf(repo), base);
-    assert.notEqual(installedOf(repo), inst);
     repo.git("update-index", "--chmod=+x", `${skillRel("demo")}/scripts/run.sh`);
     assert.equal(hashOf(repo), base);
   });

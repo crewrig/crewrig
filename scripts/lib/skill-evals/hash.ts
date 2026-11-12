@@ -156,11 +156,6 @@ export function contentHash(files: readonly SnapFile[]): string {
   return digest(files.filter((f) => isSelected(f.rel)));
 }
 
-/** R35 installed-content hash: the same without evals/evals.json. */
-export function installedContentHash(files: readonly SnapFile[]): string {
-  return digest(files.filter((f) => isSelected(f.rel) && f.rel !== EVALS_JSON));
-}
-
 /** R32: write the installed content (never evals/) into `dest`, restoring the recorded exec bit. */
 export function installFiles(files: readonly SnapFile[], dest: string): void {
   for (const f of files) {

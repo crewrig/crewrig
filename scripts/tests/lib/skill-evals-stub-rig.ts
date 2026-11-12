@@ -17,16 +17,18 @@ import {
   tmpDir,
   writeSessionStub,
 } from "./skill-evals-fixtures.ts";
-import type { StubCall } from "./skill-evals-fixtures.ts";
+import type { SessionStubOptions, StubCall } from "./skill-evals-fixtures.ts";
 import { makeRig, plainEvals } from "./skill-evals-run-rig.ts";
 
-/** Only evals.json changes: two executor runs (with_skill, without_skill) per eval and no base replay. */
+/** Only evals.json changes: one executor run per eval (plus one per probe, of which `plainEvals` has none). */
 export const evalsOnly =
-  (n = 1) =>
+  (n = 1, probes: readonly { query: string; should_trigger: boolean }[] = []) =>
   (repo: { root: string }) =>
     fs.writeFileSync(
       path.join(repo.root, skillRel("demo"), "evals", "evals.json"),
-      plainEvals("demo", n),
+      probes.length === 0
+        ? plainEvals("demo", n)
+        : `${JSON.stringify({ ...JSON.parse(plainEvals("demo", n)), trigger_probes: probes }, null, 2)}\n`,
     );
 export const judgeCfg = (out: string) =>
   JSON.parse(fs.readFileSync(path.join(out, "demo", ".judge", "effective.json"), "utf8")).judge;
@@ -38,17 +40,31 @@ export const decoy = new RegExp(`${DECOY_EMAIL}|${DECOY_ORG}`);
 export function stubRig(
   auth: { loggedIn: boolean },
   env: Record<string, string>,
-  opts: { evals?: number; useApiKey?: boolean } = {},
+  opts: {
+    evals?: number;
+    probes?: readonly { query: string; should_trigger: boolean }[];
+    /** Replaces the generated evals.json text. */
+    evalsText?: string;
+    useApiKey?: boolean;
+    stub?: SessionStubOptions;
+  } = {},
 ) {
   const dir = tmpDir();
-  const bin = writeSessionStub(dir, auth);
+  const bin = writeSessionStub(dir, auth, undefined, opts.stub);
   const iso = isolatedDirs();
   const rig = makeRig({
     mock: false,
     useApiKey: opts.useApiKey ?? false,
     tempRoot: iso.tempRoot,
     env: { SKILL_EVALS_CLAUDE_BIN: bin, HOME: iso.home, USER: "contributor", ...env },
-    change: evalsOnly(opts.evals ?? 1),
+    change:
+      opts.evalsText === undefined
+        ? evalsOnly(opts.evals ?? 1, opts.probes)
+        : (repo: { root: string }) =>
+            fs.writeFileSync(
+              path.join(repo.root, skillRel("demo"), "evals", "evals.json"),
+              opts.evalsText as string,
+            ),
   });
   return {
     rig,

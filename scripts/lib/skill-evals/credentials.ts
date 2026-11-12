@@ -37,6 +37,8 @@ export interface JudgeSection {
   auth_mode: string;
   max_tokens: number;
   endpoint?: string;
+  /** `--effort` level of the claude-cli judge call; absent means the CLI default. */
+  effort?: string;
   strict: boolean;
 }
 

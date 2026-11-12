@@ -1,17 +1,17 @@
 // budget.ts — planning and enforcing the caps of a run (spec 0290 R23 as modified, R28, R29).
 //
 // Pre-flight (after credentials, before the first model call): per selected skill, planned
-// executor runs (3 per eval, or 2 when the installed content is identical between base and head
-// or the skill is new) against `max-executor-runs`, worst-case judge calls (expectations x runs x
-// quorum, plus a retry allowance) against the judge `max_calls`, and across all skills the
-// worst-case executor cost (planned runs x per-run budget) against `max-invocation-usd`.
+// executor runs (one per eval and one per probe) against `max-executor-runs`, worst-case judge
+// calls (one per eval that has expectations, plus a retry allowance) against the judge
+// `max_calls`, and across all skills the worst-case executor cost (planned runs x per-run budget)
+// against `max-invocation-usd`.
 // Runtime: executor runs are reserved BEFORE each starts, so concurrent runs cannot exceed the cap;
 // the summed measured cost stops new runs once it reaches `max-invocation-usd`.
 //
 // Usage: planSkill(...), preflight(plans, limits), new RunBudget(limits).
 // Exit codes: not applicable (library). Finding-line format: not applicable.
 
-import { JUDGE_QUORUM, JUDGE_RETRY_ALLOWANCE } from "./settings.ts";
+import { JUDGE_RETRY_ALLOWANCE } from "./settings.ts";
 import type { EvalsFile } from "./schema.ts";
 
 export interface Limits {
@@ -24,21 +24,19 @@ export interface Limits {
 export interface SkillPlan {
   readonly skill: string;
   readonly evals: number;
-  readonly runsPerEval: 2 | 3;
+  readonly probes: number;
   readonly executorRuns: number;
   readonly judgeCalls: number;
 }
 
-export function planSkill(skill: string, evals: EvalsFile, replay: boolean): SkillPlan {
-  const runsPerEval = replay ? 3 : 2;
-  const expectations = evals.evals.reduce((n, e) => n + e.expectations.length, 0);
-  const base = expectations * runsPerEval * JUDGE_QUORUM;
+export function planSkill(skill: string, evals: EvalsFile): SkillPlan {
+  const judged = evals.evals.filter((e) => e.expectations.length > 0).length;
   return {
     skill,
     evals: evals.evals.length,
-    runsPerEval,
-    executorRuns: evals.evals.length * runsPerEval,
-    judgeCalls: base + Math.ceil(base * JUDGE_RETRY_ALLOWANCE),
+    probes: evals.trigger_probes.length,
+    executorRuns: evals.evals.length + evals.trigger_probes.length,
+    judgeCalls: judged + Math.ceil(judged * JUDGE_RETRY_ALLOWANCE),
   };
 }
 

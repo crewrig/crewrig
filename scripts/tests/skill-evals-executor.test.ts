@@ -56,6 +56,7 @@ function request(over: Partial<ExecRequest> & { bin: string }): { req: ExecReque
       prompt: "Do the task",
       workspaceDir: workspace,
       model: "claude-sonnet-5-5",
+      effort: "medium",
       limits: { turns: 25, seconds: 30, usd: 1 },
       credential: { name: "CLAUDE_CODE_OAUTH_TOKEN", value: "tok-secret-value" },
       signal: new AbortController().signal,
@@ -120,6 +121,7 @@ ${stream(assistant("hello"), result())}`,
     const opt = (k: string) => a[a.indexOf(k) + 1];
     assert.equal(opt("--output-format"), "stream-json");
     assert.equal(opt("--model"), "claude-sonnet-5-5");
+    assert.equal(opt("--effort"), "medium");
     assert.equal(opt("--tools"), "Bash,Read,Write,Edit,Skill");
     assert.equal(opt("--allowedTools"), "Bash Read Write Edit Skill");
     assert.equal(opt("--max-turns"), "25");
@@ -332,7 +334,7 @@ test("an aborted run is reported aborted, not failed", async () => {
   }
 });
 
-test("a with_skill run installs the skill at <workspace>/.claude/skills/<name> without evals/; without_skill has none; HOME is the contributor's and is left untouched (R32, R40)", async () => {
+test("an eval run installs the skill at <workspace>/.claude/skills/<name> without evals/, in every run; HOME is the contributor's and is left untouched (R9, R32, R40)", async () => {
   const dir = tmpDir();
   const log = path.join(dir, "log.jsonl");
   const bin = stub(
@@ -389,13 +391,11 @@ ${stream(assistant("the quick brown fox"), result())}`,
       .map((l) => JSON.parse(l));
     assert.equal(
       calls.length,
-      2,
-      "only evals.json changed: with_skill and without_skill, no base replay",
+      1,
+      "only evals.json changed: one run per eval, no paired run, no replay",
     );
     const withSkill = calls.filter((c) => c.skills !== null);
-    const without = calls.filter((c) => c.skills === null);
-    assert.equal(withSkill.length, 1);
-    assert.equal(without.length, 1, "a without_skill workspace has no .claude/skills");
+    assert.equal(withSkill.length, calls.length, "no run has a workspace without the skill (R9)");
     for (const c of calls) {
       assert.equal(c.home, iso.home, "the child keeps the contributor's HOME");
       // the recorded cwd is the OS's own (real) path of a workspace that no longer exists
@@ -455,7 +455,7 @@ test("R40, R42 end to end in session mode: the executor child of a real run hold
     });
     assert.equal(r.results[0]?.status, "pass", r.text + r.stderr);
     const calls = readCalls(bin, "executor");
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 1);
     for (const c of calls) {
       assert.equal(c.env["HOME"], iso.home);
       assert.equal(c.env["USER"], "contributor");
@@ -474,5 +474,41 @@ test("R40, R42 end to end in session mode: the executor child of a real run hold
     rig.cleanup();
     iso.cleanup();
     fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("skillsLoaded: Skill tool_use names are collected; text-only runs yield none; a probe request carries its own tools (delta-04 R45, R47, R48)", async () => {
+  const dir = tmpDir();
+  const log = path.join(dir, "log.json");
+  const skillUse = (skill: string) => ({
+    type: "assistant",
+    message: {
+      content: [{ type: "tool_use", name: "Skill", input: { skill } }],
+    },
+  });
+  const otherUse = {
+    type: "assistant",
+    message: { content: [{ type: "tool_use", name: "Bash", input: { skill: "nope" } }] },
+  };
+  const bin = stub(
+    dir,
+    `fs.writeFileSync(${JSON.stringify(log)}, JSON.stringify(process.argv.slice(2)));
+${stream(skillUse("alpha"), otherUse, skillUse("beta"), result({ subtype: "error_max_turns" }))}`,
+  );
+  const { req, root } = request({ bin, tools: ["Skill"] });
+  const { req: plain, root: root2 } = request({
+    bin: stub(dir, stream(assistant("hi"), result())),
+  });
+  try {
+    const out = await new ClaudeCodeExecutor().run(req);
+    assert.deepEqual(out.skillsLoaded, ["alpha", "beta"]);
+    assert.equal(out.limit, "turns");
+    const a: string[] = JSON.parse(fs.readFileSync(log, "utf8"));
+    assert.equal(a[a.indexOf("--tools") + 1], "Skill");
+    assert.equal(a[a.indexOf("--allowedTools") + 1], "Skill");
+    assert.deepEqual((await new ClaudeCodeExecutor().run(plain)).skillsLoaded, []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(root2, { recursive: true, force: true });
   }
 });

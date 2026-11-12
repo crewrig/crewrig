@@ -1,6 +1,6 @@
 // evidence.ts — the evidence rule of the judge (spec 0290 R13 as modified by delta-01).
 //
-// The judge answers each expectation with `VERDICT=.. CONF=..` then `EVIDENCE=<JSON string>`.
+// The judge answers each expectation with a line `<n> VERDICT=<word> EVIDENCE=<JSON string>`.
 // An expectation is `passed: true` only when the verdict is PASS and the evidence is valid:
 // at least 12 non-whitespace characters and either an exact substring of the run's transcript.md
 // or of a file the run produced (line endings normalised), or a `path:line` reference naming a

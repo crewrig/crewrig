@@ -1,4 +1,4 @@
-// skill-evals-cli.test.ts — the entry points (spec 0290 R16, R20, R21, R22, R25 and the
+// skill-evals-cli.test.ts — the entry points (spec 0290 R16, R20, R21, R22 as modified by delta-04, R25 and the
 // invalid / no-evals scenarios). Mock mode or failing preconditions only: no model call.
 
 /* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-call, typescript/no-unsafe-argument, typescript/no-unsafe-return -- the runner output files are read back as untyped JSON */
@@ -100,7 +100,7 @@ test(
 );
 
 test(
-  "a mock run of one skill prints the per-skill summary with status mock, writes the layout and exits 0",
+  "a mock run of one skill prints the R22 per-skill line with status mock, writes the eval-<id>/ and probe-<n>/ layout and exits 0",
   withRepo(async (repo, out) => {
     const s = sink();
     const code = await main(["demo", "--mock", "--out", out], cleanEnv(), repo.root, s.io, {
@@ -109,18 +109,21 @@ test(
     assert.equal(code, 0, s.out + s.err);
     assert.match(
       s.out,
-      /^demo: status=mock with_skill=1\.00 without_skill=1\.00 delta=\+0\.00 base=1\.00 executor_runs=3 judge_calls=\d+ cost_usd=0\.03 trigger_probes=1/m,
+      /^demo: status=mock eval_pass_rate=1\.00 \(1\/1\) probe_pass_rate=0\.00 \(0\/1\) threshold=0\.80 base=n\/a diff=n\/a skill_loaded=0\/1 executor_runs=2 judge_calls=1 cost_usd=0\.02$/m,
     );
-    assert.match(s.out, /^invocation: skills=1 executor_runs=3/m);
+    assert.match(s.out, /^  not compared: no valid evals\/results\.json at the merge-base$/m);
+    assert.match(s.out, /^invocation: skills=1 executor_runs=2 judge_calls=1 cost_usd=0\.02$/m);
     for (const f of [
-      "benchmark.json",
-      "eval-1/with_skill/grading.json",
-      "eval-1/without_skill/transcript.md",
-      "base/eval-1/with_skill/grading.json",
+      "eval-1/grading.json",
+      "eval-1/metrics.json",
+      "eval-1/transcript.md",
+      "probe-1/probe.json",
     ])
       assert.ok(fs.existsSync(path.join(out, "demo", f)), f);
+    for (const gone of ["benchmark.json", "base", "eval-1/with_skill", "eval-1/without_skill"])
+      assert.equal(fs.existsSync(path.join(out, "demo", gone)), false, `${gone} no longer exists`);
     assert.equal(
-      JSON.parse(fs.readFileSync(path.join(out, "demo", "benchmark.json"), "utf8")).mock,
+      JSON.parse(fs.readFileSync(path.join(out, "demo", "eval-1", "grading.json"), "utf8")).mock,
       true,
     );
   }),
@@ -358,14 +361,12 @@ test(
       );
       assert.equal(code, 0, s.out + s.err);
       assert.equal(fs.existsSync(marker), false, "mock mode never spawns claude");
-      for (const f of ["with_skill", "without_skill"])
-        for (const j of ["grading.json"])
-          assert.equal(
-            JSON.parse(fs.readFileSync(path.join(out, "demo", "eval-1", f, j), "utf8")).mock,
-            true,
-          );
       assert.equal(
-        JSON.parse(fs.readFileSync(path.join(out, "demo", "benchmark.json"), "utf8")).mock,
+        JSON.parse(fs.readFileSync(path.join(out, "demo", "eval-1", "grading.json"), "utf8")).mock,
+        true,
+      );
+      assert.equal(
+        JSON.parse(fs.readFileSync(path.join(out, "demo", "probe-1", "probe.json"), "utf8")).mock,
         true,
       );
     } finally {

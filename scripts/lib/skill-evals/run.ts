@@ -1,16 +1,19 @@
-// run.ts — orchestration of a skill eval run (spec 0290 R9-R14, R19-R24, R27-R33, R36).
+// run.ts — orchestration of a skill eval run (spec 0290 R9-R13, R19-R24, R27-R33, R36, R45-R48).
 //
 // For each selected skill: classify (no-evals / invalid / ready), plan (R23, R28), then, after the
-// credential and judge preflight and the usage declaration, execute the paired runs through a pool
-// bounded by `executor-concurrency`, grade each run (checks first, then the judge), write
-// grading.json / metrics.json / benchmark.json, compare head with the merge-base replay (R19) and
-// write `evals/results.json` for a real run (R36). The head snapshot is read ONCE: the same bytes
-// are hashed and installed. Mock mode runs no process and no model call and writes no results file.
+// credential and judge preflight and the usage declaration, execute ONE run per eval and ONE run
+// per trigger probe through a pool bounded by `executor-concurrency`. An eval run is graded (checks
+// first, then one judge call) into grading.json / metrics.json; a probe run only observes whether
+// the skill was loaded (probe.json, no judge call). The skill's status comes from `decide()` over
+// the eval and probe pass rates and the base eval pass rate read from the merge-base's committed
+// results.json (R19, R46), and a real run writes `evals/results.json` (R36). The head snapshot is
+// read ONCE: the same bytes are hashed and installed. Mock mode runs no process and no model call
+// and writes no results file.
 //
 // Credential step (R33, R41, R32), skipped in mock mode: the credential source is chosen, the
 // temporary directory is checked (outside HOME and any git work tree), and in session mode the
 // login is probed once per invocation (no model call). Each run's workspace is a directory under
-// the temporary root; a with_skill run has the skill installed at project scope in it
+// the temporary root; each run has the skill installed at project scope in it
 // (`<workspace>/.claude/skills/<name>/`), and the top-level `.claude/` is never collected as output.
 //
 // Exit codes (the entry maps them): 0 ok, 1 blocking outcome, 3 failed precondition (R33, R41, R32).
@@ -20,8 +23,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { buildBenchmark, configMean, isRegression, mean } from "./benchmark.ts";
-import type { Configuration, RunRecord } from "./benchmark.ts";
 import { CostMeter, planSkill, preflight, RunBudget } from "./budget.ts";
 import type { Limits, SkillPlan } from "./budget.ts";
 import { evalsViolations, snapshotEvalsText } from "./attest.ts";
@@ -43,10 +44,10 @@ import { installFiles } from "./hash.ts";
 import type { SnapFile } from "./hash.ts";
 import { createJudge } from "./judge.ts";
 import type { Judge } from "./judge.ts";
-import { outputsDirOf, runDir, skillOutDir, writeJson } from "./layout.ts";
+import { evalDir, outputsDirOf, probeDir, skillOutDir, writeJson } from "./layout.ts";
 import { formatReport } from "./report.ts";
 import type { RunStatus, SkillResult } from "./report.ts";
-import { writeResults } from "./results.ts";
+import { blocks, decide, verifyResults, writeResults } from "./results.ts";
 import { validateEvals } from "./schema.ts";
 import type { EvalsFile } from "./schema.ts";
 import type { Selection } from "./select.ts";
@@ -65,6 +66,9 @@ export interface RunSettings {
   perRunSeconds: number;
   perRunUsd: number;
   executorModel: string;
+  effort: string;
+  passThreshold: number;
+  failBlocking: boolean;
 }
 
 export const DEFAULT_SETTINGS: RunSettings = {
@@ -79,6 +83,9 @@ export const DEFAULT_SETTINGS: RunSettings = {
   perRunSeconds: S.PER_RUN_SECONDS,
   perRunUsd: S.PER_RUN_USD,
   executorModel: S.EXECUTOR_MODEL,
+  effort: S.EFFORT,
+  passThreshold: S.PASS_THRESHOLD,
+  failBlocking: S.FAIL_BLOCKING,
 };
 
 export interface RunOptions {
@@ -95,7 +102,7 @@ export interface RunOptions {
   readonly settings?: Partial<RunSettings>;
   readonly executor?: Executor;
   readonly mockAnswer?: (
-    expectation: string,
+    expectations: readonly string[],
     m: { transcript: string; files: readonly { rel: string; content: string }[] },
   ) => string;
   readonly fetchImpl?: typeof fetch;
@@ -114,22 +121,27 @@ export interface RunReport {
   readonly credentialSource?: CredentialSource;
 }
 
+/** One run: an eval (graded) or a trigger probe (observed), by 0-based index in evals.json. */
 interface Task {
-  readonly evalIndex: number;
-  readonly configuration: Configuration;
-  readonly base: boolean;
+  readonly kind: "eval" | "probe";
+  readonly index: number;
+}
+
+interface EvalRecord {
+  readonly passed: boolean;
+  readonly skillLoaded: boolean;
 }
 
 interface SkillState {
   readonly sel: Selection;
   readonly evals: EvalsFile;
   readonly plan: SkillPlan;
-  readonly replay: boolean;
   readonly budget: RunBudget;
   readonly judge: Judge;
   readonly controller: AbortController;
-  readonly runs: RunRecord[];
-  readonly baseRuns: RunRecord[];
+  readonly evalRuns: EvalRecord[];
+  /** One entry per probe run: did the observed decision equal `should_trigger`. */
+  readonly probeRuns: boolean[];
   readonly costs: (number | null)[];
   readonly errors: string[];
 }
@@ -282,13 +294,13 @@ export async function runEvals(
       );
       continue;
     }
-    const replay = !sel.isNew && !sel.installedEqual;
-    const plan = planSkill(name, parsed.evals, replay);
+    const plan = planSkill(name, parsed.evals);
     const judge = createJudge({
       dir: path.join(skillOutDir(opts.out, name), ".judge"),
       judge: cred.judge,
       credential: cred.credential,
       maxCalls: cfg.judgeMaxCalls,
+      effort: cfg.effort,
       baseEnv: opts.env,
       mock: opts.mock,
       ...(opts.mockAnswer !== undefined ? { mockAnswer: opts.mockAnswer } : {}),
@@ -299,12 +311,11 @@ export async function runEvals(
       sel,
       evals: parsed.evals,
       plan,
-      replay,
       budget: new RunBudget(cfg.maxExecutorRuns),
       judge,
       controller: new AbortController(),
-      runs: [],
-      baseRuns: [],
+      evalRuns: [],
+      probeRuns: [],
       costs: [],
       errors: [],
     });
@@ -374,8 +385,10 @@ export async function runEvals(
 
   const runTask = async (s: SkillState, t: Task): Promise<void> => {
     const name = s.sel.skill.name;
-    const ev = s.evals.evals[t.evalIndex]!;
-    const label = `${name}/eval-${ev.id}/${t.configuration}${t.base ? " (base)" : ""}`;
+    const isProbe = t.kind === "probe";
+    const ev = isProbe ? undefined : s.evals.evals[t.index]!;
+    const probe = isProbe ? s.evals.trigger_probes[t.index]! : undefined;
+    const label = isProbe ? `${name}/probe-${t.index + 1}` : `${name}/eval-${ev!.id}`;
     let outcome: ExecOutcome | undefined;
     let dir = "";
     let inputs = new Map<string, Buffer>();
@@ -393,29 +406,34 @@ export async function runEvals(
           return breach(s, `max-executor-runs ${cfg.maxExecutorRuns} reached`);
         const workspace = path.join(root, "workspace");
         fs.mkdirSync(workspace, { recursive: true });
-        inputs = copyInputs(s.sel.skill.dirAbs, ev.files, workspace);
-        if (t.configuration === "with_skill") {
-          const files: readonly SnapFile[] =
-            t.base && s.sel.base.kind === "ok"
-              ? s.sel.base.files
-              : (s.sel.head as { files: SnapFile[] }).files;
-          installFiles(files, path.join(workspace, ".claude", "skills", name));
-        }
+        if (ev !== undefined) inputs = copyInputs(s.sel.skill.dirAbs, ev.files, workspace);
+        installFiles(
+          (s.sel.head as { files: SnapFile[] }).files,
+          path.join(workspace, ".claude", "skills", name),
+        );
         const signal = AbortSignal.any([s.controller.signal, invocation.signal]);
         outcome = await executor.run({
-          prompt: ev.prompt,
+          prompt: ev?.prompt ?? probe!.query,
           workspaceDir: workspace,
           model: cfg.executorModel,
-          limits: { turns: cfg.perRunTurns, seconds: cfg.perRunSeconds, usd: cfg.perRunUsd },
+          // R45: a probe has no tool but Skill and is bounded to one assistant turn.
+          ...(isProbe ? { tools: ["Skill"] } : {}),
+          effort: cfg.effort,
+          limits: {
+            turns: isProbe ? 1 : cfg.perRunTurns,
+            seconds: cfg.perRunSeconds,
+            usd: cfg.perRunUsd,
+          },
           credential: cred.credential,
           signal,
           baseEnv: opts.env,
           label,
         });
-        dir = runDir(opts.out, name, ev.id, t.configuration, t.base);
+        dir = isProbe ? probeDir(opts.out, name, t.index + 1) : evalDir(opts.out, name, ev!.id);
         fs.rmSync(dir, { recursive: true, force: true });
         fs.mkdirSync(dir, { recursive: true });
-        if (outcome.aborted !== true) collectOutputs(workspace, inputs, outputsDirOf(dir));
+        if (outcome.aborted !== true && !isProbe)
+          collectOutputs(workspace, inputs, outputsDirOf(dir));
       } finally {
         sem.release();
       }
@@ -426,16 +444,18 @@ export async function runEvals(
         path.join(dir, "transcript.md"),
         outcome.transcript.endsWith("\n") ? outcome.transcript : `${outcome.transcript}\n`,
       );
+      const loaded = outcome.skillsLoaded.includes(name);
+      // R45: reaching the one-turn bound is the early stop of a probe, not a limit.
+      const limit = isProbe && outcome.limit === "turns" ? null : (outcome.limit ?? null);
       writeJson(path.join(dir, "metrics.json"), {
-        eval_id: ev.id,
-        configuration: t.configuration,
-        base: t.base,
+        ...(ev !== undefined ? { eval_id: ev.id, skill_loaded: loaded } : {}),
         model: cfg.executorModel,
+        effort: cfg.effort,
         cost_usd: outcome.costUsd,
         usage: outcome.usage,
         turns: outcome.turns,
         seconds: outcome.seconds,
-        limit: outcome.limit ?? null,
+        limit,
         ...(opts.mock ? { mock: true } : {}),
       });
       if (outcome.failure !== undefined) {
@@ -443,10 +463,22 @@ export async function runEvals(
         s.controller.abort();
         return;
       }
+      if (probe !== undefined) {
+        const passed = loaded === probe.should_trigger;
+        writeJson(path.join(dir, "probe.json"), {
+          query: probe.query,
+          should_trigger: probe.should_trigger,
+          observed: loaded,
+          passed,
+          ...(opts.mock ? { mock: true } : {}),
+        });
+        s.probeRuns.push(passed);
+        return;
+      }
       let grading: Grading;
       try {
         grading = await gradeRun({
-          evalCase: ev,
+          evalCase: ev!,
           outputsDir: outputsDirOf(dir),
           skillDir: s.sel.skill.dirAbs,
           transcript: outcome.transcript,
@@ -462,11 +494,10 @@ export async function runEvals(
         throw e;
       }
       writeJson(path.join(dir, "grading.json"), grading);
-      (t.base ? s.baseRuns : s.runs).push({
-        evalId: ev.id,
-        configuration: t.configuration,
-        summary: grading.summary,
-        timeSeconds: outcome.seconds,
+      // R46: an eval passes when every one of its checks and expectations passes.
+      s.evalRuns.push({
+        passed: grading.summary.total > 0 && grading.summary.failed === 0,
+        skillLoaded: loaded,
       });
     } catch (e) {
       s.errors.push(`${label}: ${(e as Error).message}`);
@@ -477,13 +508,12 @@ export async function runEvals(
   };
 
   const pending: Promise<void>[] = [];
-  for (const s of ready)
-    s.evals.evals.forEach((_, i) => {
-      pending.push(runTask(s, { evalIndex: i, configuration: "with_skill", base: false }));
-      if (s.replay)
-        pending.push(runTask(s, { evalIndex: i, configuration: "with_skill", base: true }));
-      pending.push(runTask(s, { evalIndex: i, configuration: "without_skill", base: false }));
-    });
+  for (const s of ready) {
+    s.evals.evals.forEach((_, index) => pending.push(runTask(s, { kind: "eval", index })));
+    s.evals.trigger_probes.forEach((_, index) =>
+      pending.push(runTask(s, { kind: "probe", index })),
+    );
+  }
   await Promise.all(pending);
 
   // 6. Per-skill outcome.
@@ -499,10 +529,9 @@ export async function runEvals(
       judgeCalls,
       costUsd: unknown > 0 ? null : known,
       costLowerBound: known,
-      probes: s.evals.trigger_probes.length,
     };
     const errors = [...s.errors, ...(invocationError !== undefined ? [invocationError] : [])];
-    if (errors.length > 0 || s.runs.length + s.baseRuns.length < s.plan.executorRuns) {
+    if (errors.length > 0 || s.evalRuns.length + s.probeRuns.length < s.plan.executorRuns) {
       const msgs = errors.length > 0 ? errors : ["not every planned run completed"];
       results.push({
         ...base,
@@ -512,49 +541,63 @@ export async function runEvals(
       });
       continue;
     }
-    const bench = buildBenchmark(s.runs, { skill: name, mock: opts.mock });
-    writeJson(path.join(skillOutDir(opts.out, name), "benchmark.json"), bench);
-    const withMean = configMean(s.runs, "with_skill");
-    const withoutMean = configMean(s.runs, "without_skill");
-    const baseMean = s.replay ? mean(s.baseRuns.map((r) => r.summary.pass_rate)) : null;
-    const delta = withMean - withoutMean;
-    let status: RunStatus;
-    if (opts.mock) status = "mock";
-    else if (s.sel.isNew) status = "new";
-    else if (baseMean !== null && isRegression(withMean, baseMean, cfg.tolerance))
-      status = "regression";
-    else status = "pass";
-    const blocking = status === "regression" && cfg.regressionBlocking;
+    const evalsPassed = s.evalRuns.filter((r) => r.passed).length;
+    const evalsTotal = s.evalRuns.length;
+    const probesPassed = s.probeRuns.filter(Boolean).length;
+    const probesTotal = s.probeRuns.length;
+    const evalPassRate = evalsPassed / evalsTotal;
+    const probePassRate = probesTotal === 0 ? null : probesPassed / probesTotal;
+    // R19: the base is the eval pass rate committed at the merge-base; nothing is run on the base.
+    const baseFile = verifyResults(s.sel.baseResultsText, name);
+    const baseEvalPassRate = baseFile.ok ? baseFile.record.eval_pass_rate : null;
+    const figures = {
+      evalPassRate,
+      probePassRate,
+      baseEvalPassRate,
+      threshold: cfg.passThreshold,
+      tolerance: cfg.tolerance,
+    };
+    const d = decide(figures);
+    const status: RunStatus = opts.mock ? "mock" : d.status;
     const messages: string[] = [];
     if (unknown > 0)
       messages.push(`cost unknown for ${unknown} run(s); the total is a lower bound`);
     results.push({
       ...base,
       status,
-      blocking,
-      withSkillMean: withMean,
-      withoutSkillMean: withoutMean,
-      baseMean,
-      deltaValue: delta,
+      blocking: !opts.mock && blocks(d, cfg),
+      evalPassRate,
+      evalsPassed,
+      evalsTotal,
+      probePassRate,
+      probesPassed,
+      probesTotal,
+      threshold: cfg.passThreshold,
+      baseEvalPassRate,
       tolerance: cfg.tolerance,
+      regression: d.regression,
+      skillLoaded: s.evalRuns.filter((r) => r.skillLoaded).length,
       messages,
     });
-    if (!opts.mock && (status === "pass" || status === "regression" || status === "new"))
+    if (!opts.mock)
       writeResults(s.sel.skill.dirAbs, {
         skill_name: name,
         content_hash: s.sel.headHash!,
         runner_version: S.RUNNER_VERSION,
         executor_model: cfg.executorModel,
         judge_model: cred.judge.model,
+        effort: cfg.effort,
         date,
-        status,
-        benchmark: {
-          with_skill_mean: withMean,
-          without_skill_mean: withoutMean,
-          base_mean: baseMean,
-          delta_value: delta,
-          tolerance: cfg.tolerance,
-        },
+        status: d.status,
+        eval_pass_rate: evalPassRate,
+        probe_pass_rate: probePassRate,
+        base_eval_pass_rate: baseEvalPassRate,
+        threshold: cfg.passThreshold,
+        tolerance: cfg.tolerance,
+        evals_passed: evalsPassed,
+        evals_total: evalsTotal,
+        probes_passed: probesPassed,
+        probes_total: probesTotal,
         executor_runs: s.budget.used,
         judge_calls: judgeCalls,
         cost_usd: unknown > 0 ? null : known,
