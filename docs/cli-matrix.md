@@ -1523,6 +1523,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   plain `git`-only Bash 3.2 scripts (spec 0111) invoked from the shell, with no per-CLI surface, no MCP tool, and no
   forge API — requirement 4 makes forge-independence a requirement, and `AGENTS.md` → *Forge Access* keeps the
   credential the one the contributor already holds for `git`. The behavioural contract each CLI's `spec-author` consumes
+  (through the skill's bundled `scripts/scaffold-spec.ts`, which runs this tool, not through the agent prompt)
   is the exit code only: `0` secured, `3` allocated-but-unsecured (stdout carries `unsecured-id: true` verbatim), `1`
   genuine failure. **Enforcement is CI-side, not CLI-side:** the `check-spec-id-reserved` capability in
   `ci/ci-capabilities.yml` (portable, `history-depth: full`, no `tools:` key — git is installed conditionally as
@@ -1980,7 +1981,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 ### 38 — Ticket-pickup ownership check
 
 - **Feature:** Ticket-pickup ownership check (spec 0244) — before any branch, spec id, or worktree for a ticket, the
-  agent runs one forge-agnostic tool that determines the owner from the forge assignment record (first taker since last
+  agent (through the `spec-author` skill's bundled `scripts/scaffold-spec.ts`, which wraps the pickup check and the id
+  reservation, and by hand before a delta-spec) runs one forge-agnostic tool that determines the owner from the forge assignment record (first taker since last
   free), self-assigns a free ticket, repairs displacements without ever emptying the set, and fails closed (exit codes
   `0`/`1`/`2`/`3`/`4`/`5`, `docs/ticket-ownership.md`). Parity is **uniform, not per-CLI**: the same command on every
   CLI, no hook, no CLI-exclusive primitive. Forge sub-note — GitHub: `gh api` timeline `assigned`/`unassigned` events,
