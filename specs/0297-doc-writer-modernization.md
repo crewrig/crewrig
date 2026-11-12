@@ -1,7 +1,7 @@
 ---
 id: "0297"
 slug: doc-writer-modernization
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1903

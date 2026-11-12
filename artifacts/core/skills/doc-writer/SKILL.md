@@ -1,16 +1,14 @@
 ---
 name: doc-writer
-description: "Documentation skill for ADRs, READMEs, in-code docstrings, and
-  reference material. Activate when the user asks for documentation, when a
-  public contract changes without docs, or when an ADR is needed per the
-  architect skill's output. Optimized for documents that age well."
+description: "Writes and updates project documentation for a named reader: ADRs (numbered by a bundled script and checked for shape), READMEs, in-code docstrings that state the contract, and reference docs, preferring text that lives next to the code. Use when asked to write or update a README, an ADR, docstrings or reference docs, when a public contract (CLI flags, API surface, config schema) changed and the docs no longer match, or when an architect recommendation must be recorded as an ADR. Not for PR descriptions, commit messages, inline code comments, implementation plans, specs, design alternatives (architect) or recaps of work just done."
 type: skill
 license: Apache-2.0
+compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts)."
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.2"
+    version: "1.2.0"
 claude:
   allowed-tools:
     - Read
@@ -18,100 +16,108 @@ claude:
     - Edit
     - Grep
     - Glob
+    - Bash
   user-invocable: true
 ---
 
 # Documentation Writer
 
-A skill for writing documentation that survives the first refactor.
-Bias toward documents the next reader will actually read.
+Writes documentation that survives the first refactor, for the reader who
+will actually open it. A document with no named reader goes unread, and a
+document that drifts from the code is worse than none.
 
 ## When to activate
 
-- The user asks for a README, ADR, architecture doc, or in-code
-  reference.
-- A change shifts a public contract (CLI flags, API surface, config
-  schema) and the existing docs no longer match.
+- The user asks for a README, an ADR, an architecture document or reference
+  material, or for docstrings that state a contract.
+- A change shifts a public contract (CLI flags, API surface, config schema)
+  and the existing docs no longer match.
 - The architect skill produced a recommendation that warrants an ADR.
-- A new module or component lacks a top-of-file docstring.
+- A new module lacks a top-of-file docstring that its role needs.
 
-Do not activate for:
+Do not activate for these, and say why when the user asked for them:
 
-- Trailing summaries of "what I just did" — those belong in the PR
-  body, not in standalone docs.
-- Inline comments about *what* the code does — code already does that.
-- Documentation that nobody asked for, just to look thorough.
+- A recap of what you just did. It belongs in the pull request description,
+  where reviewers look; a standalone recap is read once and then rots.
+- A comment that says *what* the code does. The code already says it.
+- Documentation nobody asked for, written to look thorough.
+
+## Scripts
+
+Run `node <skill-dir>/scripts/<name>.ts` from the repository; add `--json` for a
+machine-readable result. Each exits `0` (ok), `1` (finding), `2` (usage error) or
+`3` (precondition failed: unreadable directory, template or file).
+
+| When | Command | Exit `1` means |
+|---|---|---|
+| Starting an ADR | `node scripts/new-adr.ts --title "<the decision>"` (`--dir <path>` when ADRs are not in `docs/adr`; `--status Accepted` for an already settled decision; `--dry-run` to preview) | Empty title, a title with no letter or digit, an unknown status. Fix the input and rerun. |
+| After filling an ADR | `node scripts/lint-adr.ts <file>` | A rule is broken: heading, section order, status value, a leftover placeholder, a missing consequence bullet. Fix the ADR and rerun until clean. A Context over five sentences is a warning: tighten it or accept it knowingly. |
+
+`new-adr.ts` takes the next number from the files in the local directory, so it
+cannot see a number reserved on another branch or in an open pull request. Check
+the open pull requests for the same number before keeping it, and renumber if it
+is taken.
+
+`lint-adr.ts` is a tool for the ADR you are writing, not a repository gate: older
+ADRs of a project may use other layouts and would fail it, so run it on your own
+file only.
+
+Exit `2` or `3` means the call or the environment is wrong, not the document.
 
 ## Operating mode
 
 ### 1. Identify the reader
 
-Documents written for an unspecified reader become unread. Before
-writing, name the reader concretely:
+Name the reader before writing, and match length and tone to them:
 
-- **Future maintainer** — knows the codebase, needs the *why* and the
-  invariants. Short, dense.
-- **Onboarding contributor** — new to the codebase, needs the *what*
-  and the *how to run it*. Longer, with examples.
-- **External integrator** — does not have repo access, needs only the
-  contract. API-doc style.
-- **Reviewer of an architecture decision** — needs context, the
-  decision, and the consequences. ADR style.
-
-Match the doc's length and tone to the reader. A README for an
-external integrator and a README for a maintainer are not the same doc.
+- **Future maintainer**: knows the codebase, needs the *why* and the invariants.
+  Short, dense.
+- **Onboarding contributor**: new to the codebase, needs the *what* and how to
+  run it. Longer, with examples.
+- **External integrator**: has no repository access, needs only the contract.
+  API-doc style.
+- **Reviewer of an architecture decision**: needs context, the decision and its
+  consequences. ADR style.
 
 ### 2. ADRs
 
-Standard sections:
+Run `new-adr.ts`, then fill the four sections it laid out:
 
-```markdown
-# ADR-NNNN: <decision>
+- **Context**: what forces this decision now (a constraint, a deadline, an
+  incident, drift), in three to five sentences. If it needs more, the decision
+  is not crisp enough to record.
+- **Decision**: one paragraph, declarative voice.
+- **Consequences**: a positive, a negative and a neutral bullet. Be honest about
+  the negative one: it is what the next reader needs most.
+- **Status**: Proposed, Accepted, Deprecated, or `Superseded by ADR-NNNN`.
 
-## Status
-<Proposed | Accepted | Deprecated | Superseded by ADR-MMMM>
-
-## Context
-<What forces this decision now? Constraint, deadline, incident, drift.
-Three to five sentences. If you cannot fit the context in five
-sentences, the decision is not crisp enough to record.>
-
-## Decision
-<One paragraph: what was decided, in declarative voice.>
-
-## Consequences
-- Positive: <what improves>
-- Negative: <what worsens or constrains future moves>
-- Neutral: <changes that are neither good nor bad but matter>
-```
-
-Number ADRs sequentially. Never edit an accepted ADR — supersede it
-with a new one and update the Status line of the old one.
+Number ADRs in sequence. Never rewrite an accepted ADR: its value is that it
+records what was decided and why at the time. To reverse it, write a new ADR that
+names the one it supersedes, then change only the Status line of the old one.
+Then run `lint-adr.ts` on the new file.
 
 ### 3. READMEs
 
-Section order, in priority:
+Order sections by the reader's priority, and skip those that do not apply:
 
-1. **One-sentence pitch** — what the project does, for whom.
-2. **Quick start** — three commands that produce a visible result.
-3. **Install / prerequisites** — exact versions where it matters.
-4. **Usage** — the two or three most common workflows.
-5. **Reference** — links to deeper docs, not inline.
-6. **Contributing** — link to `AGENTS.md` or `CONTRIBUTING.md`.
-7. **License** — one line.
+1. A one-sentence pitch: what the project does, for whom.
+2. Quick start: three commands that produce a visible result.
+3. Install and prerequisites, with exact versions where they matter.
+4. Usage: the two or three most common workflows.
+5. Reference: links to deeper docs, not inline copies.
+6. Contributing: a link to `AGENTS.md` or `CONTRIBUTING.md`.
+7. License: one line.
 
-Skip sections that do not apply. A README that ends on section 3
-because the project genuinely needs nothing more is correct.
+A README that ends at section 3 because the project needs nothing more is
+correct. Take every fact from the project; an invented command or option is
+worse than a gap.
 
 ### 4. In-code docstrings
 
-Module / file top-of-file: one paragraph stating the module's role
-and the invariant it enforces, if any. Skip if obvious from the name.
-
-Function / method docstrings: state the contract — pre-conditions,
-post-conditions, side effects, error modes. Do not restate the
-parameter types if the language already encodes them. Do not
-paraphrase the function name.
+At the top of a module, one paragraph stating its role and the invariant it
+enforces; skip it when the name already says so. For a function, state the
+contract: pre-conditions, post-conditions, side effects, error modes. Do not
+restate parameter types the language encodes, and do not paraphrase the name.
 
 ```python
 def transfer(amount, from_acct, to_acct):
@@ -124,26 +130,17 @@ def transfer(amount, from_acct, to_acct):
 
 ### 5. Aging well
 
-Before committing the doc, ask:
-
-- What in this doc will be wrong in six months?
-- Could that part live closer to the code (where it ages with the
-  code) instead of in this doc?
-
-If the answer is yes, prefer in-code docs over a standalone document.
-Standalone docs that drift silently are worse than no docs.
+Before finishing, ask what in the document will be wrong in six months. Anything
+that can live next to the code, where it ages with the code, should: a
+standalone document that drifts silently misleads its readers.
 
 ## Output expectations
 
-- Markdown, with proper heading hierarchy (no skipped levels).
-- Line wrap to ~80 characters for prose; do not wrap code or tables.
-- Internal links by relative path; external links with full URL.
+- Markdown with a proper heading hierarchy, no skipped levels.
+- Prose wrapped near 80 characters; code and tables are not wrapped.
+- Internal links by relative path, external links with the full URL.
 - No emoji in body text unless the project's convention uses them.
 
-## Friction reporting
+## Friction
 
-When a recognition signal fires (see `config/TOOLS.md` →
-*Friction Reporting → Recognition signals*), invoke the
-`harness-report` skill rather than reimplementing the protocol
-inline. The reporter walks you through identifying the offender,
-picking the room, and filling the payload.
+See `references/shared-friction-reporting.md`.
