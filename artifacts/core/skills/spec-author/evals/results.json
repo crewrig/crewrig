@@ -1,0 +1,22 @@
+{
+  "skill_name": "spec-author",
+  "content_hash": "sha256:c7ebf3c21956b9fb712a810408d7cb7f673837c4bd83131254d6f2c2b69c5038",
+  "runner_version": "2.1.0",
+  "executor_model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "date": "2026-11-12T22:11:20.236Z",
+  "status": "fail",
+  "eval_pass_rate": 1,
+  "probe_pass_rate": 0.7777777777777778,
+  "base_eval_pass_rate": null,
+  "threshold": 0.8,
+  "tolerance": 0.05,
+  "evals_passed": 5,
+  "evals_total": 5,
+  "probes_passed": 7,
+  "probes_total": 9,
+  "executor_runs": 14,
+  "judge_calls": 5,
+  "cost_usd": null
+}
