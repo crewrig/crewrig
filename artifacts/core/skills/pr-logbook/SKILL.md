@@ -98,7 +98,7 @@ When the project squash-merges, this message is what survives in `git
 log`, so make it denser than the PR description rather than a paste of it:
 
 ```text
-<convention prefix> <imperative title> (<PR number>)
+<convention prefix> <imperative title> (#<pr-number>)
 
 <one paragraph: what the PR delivered, past tense>
 
@@ -106,6 +106,9 @@ log`, so make it denser than the PR description rather than a paste of it:
 
 <bullets for significant follow-ups, if any>
 ```
+
+The `#` reference is the forge-native one: GitHub and Gitea use `#`, GitLab
+uses `!` (`(!<mr-number>)`).
 
 ### 5. Spec status flip
 

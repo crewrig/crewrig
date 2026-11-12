@@ -138,6 +138,35 @@
           "pattern": "^(?![\\s\\S]*commit \\(amend\\))"
         }
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "Pull request #57 for my change is approved and the project will squash-merge it. The pull request body is in pr-feature.md and the project's working rules are in conventions.md. Write the squash-merge commit message for it to squash-msg.txt. Do not run gh, glab, tea or git, and do not create, edit, comment on, merge or close any pull request, issue or other forge artifact: only write the file asked for, in the current directory.",
+      "expected_output": "squash-msg.txt holds a squash-merge commit message whose subject line ends with the pull request reference (#57), followed by a past-tense paragraph on what was delivered and a paragraph on why; the pull request body is not pasted into it.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/pr-feature.md"
+      ],
+      "expectations": [
+        "squash-msg.txt has a paragraph after the subject line that says what the pull request delivered, written in the past tense.",
+        "squash-msg.txt has a separate paragraph that says why the change was made, naming the constraint or motivation rather than repeating what was delivered."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "squash-msg.txt"
+        },
+        {
+          "type": "file_contains",
+          "path": "squash-msg.txt",
+          "pattern": "^[^\\n]*\\(#57\\)\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "squash-msg.txt",
+          "pattern": "^(?![\\s\\S]*\\n## )"
+        }
+      ]
     }
   ],
   "trigger_probes": [
