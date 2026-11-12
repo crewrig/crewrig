@@ -32,7 +32,12 @@ interface Envelope {
     tool: string;
     subcommand: string | null;
     available: boolean;
-    probes: { command: string; outcome: string; exit_code: number | null; stderr_first_line: string }[];
+    probes: {
+      command: string;
+      outcome: string;
+      exit_code: number | null;
+      stderr_first_line: string;
+    }[];
   } | null;
   findings: { rule: string; message: string }[];
 }
@@ -44,21 +49,38 @@ const tool = (name: string, body: string, mode = 0o755): void => {
   fs.writeFileSync(path.join(bin, name), `#!/bin/sh\n${body}\n`);
   fs.chmodSync(path.join(bin, name), mode);
 };
-tool("fullcli", 'case "$1" in\n  --help|--version) echo "fullcli 1.0"; exit 0;;\n  export) [ "$2" = "--help" ] && echo "usage: fullcli export" && exit 0;;\nesac\necho "fullcli: unknown command" >&2\nexit 2');
-tool("versiononly", 'case "$1" in\n  --version) echo "1.0"; exit 0;;\nesac\necho "usage: versiononly --version" >&2\nexit 2');
+tool(
+  "fullcli",
+  'case "$1" in\n  --help|--version) echo "fullcli 1.0"; exit 0;;\n  export) [ "$2" = "--help" ] && echo "usage: fullcli export" && exit 0;;\nesac\necho "fullcli: unknown command" >&2\nexit 2',
+);
+tool(
+  "versiononly",
+  'case "$1" in\n  --version) echo "1.0"; exit 0;;\nesac\necho "usage: versiononly --version" >&2\nexit 2',
+);
 tool("nohelp", 'echo "usage: nohelp <thing>" >&2\nexit 2');
 tool("slow", "exec /bin/sleep 5");
 fs.writeFileSync(path.join(bin, "plainfile"), "not executable\n");
 fs.chmodSync(path.join(bin, "plainfile"), 0o644);
 
-const ENV = { HOME: root, PATH: `${bin}${path.delimiter}${path.dirname(process.execPath)}`, LC_ALL: "C" };
-const run = (args: readonly string[], opts: { skillDir?: string; env?: Record<string, string> } = {}): Run => {
-  const r = spawnSync(process.execPath, [path.join(opts.skillDir ?? SKILL_DIR, "scripts", "probe-tool.ts"), ...args], {
-    cwd: root,
-    env: opts.env ?? ENV,
-    encoding: "utf8",
-    timeout: 30_000,
-  });
+const ENV = {
+  HOME: root,
+  PATH: `${bin}${path.delimiter}${path.dirname(process.execPath)}`,
+  LC_ALL: "C",
+};
+const run = (
+  args: readonly string[],
+  opts: { skillDir?: string; env?: Record<string, string> } = {},
+): Run => {
+  const r = spawnSync(
+    process.execPath,
+    [path.join(opts.skillDir ?? SKILL_DIR, "scripts", "probe-tool.ts"), ...args],
+    {
+      cwd: root,
+      env: opts.env ?? ENV,
+      encoding: "utf8",
+      timeout: 30_000,
+    },
+  );
   return { status: r.status, stdout: r.stdout, stderr: r.stderr };
 };
 const envelope = (r: Run): Envelope => {
@@ -106,12 +128,19 @@ describe("probe-tool: probe outcomes", () => {
     const env = envelope(r);
     assert.equal(env.ok, false);
     assert.equal(env.data?.available, false);
-    assert.deepEqual(env.findings.map((f) => f.rule), ["unavailable"]);
+    assert.deepEqual(
+      env.findings.map((f) => f.rule),
+      ["unavailable"],
+    );
     const m = env.findings[0]?.message ?? "";
     assert.match(m, /`nohelp --version` gave exit 2/);
     assert.match(m, /stderr: "usage: nohelp <thing>"/);
     assert.match(m, /minimal real invocation/);
-    assert.equal(env.data?.probes.at(-1)?.outcome, "found", "the PATH lookup is a precursor, not proof");
+    assert.equal(
+      env.data?.probes.at(-1)?.outcome,
+      "found",
+      "the PATH lookup is a precursor, not proof",
+    );
   });
 
   test("an unknown subcommand of an existing tool is unavailable", () => {
@@ -178,7 +207,14 @@ describe("probe-tool: output and usage", () => {
   });
 
   test("no tool, an empty tool, an unknown option, a bad timeout and an extra argument exit 2", () => {
-    for (const args of [[], [""], ["--nope", "git"], ["git", "--timeout", "0"], ["git", "--timeout"], ["a", "b", "c"]]) {
+    for (const args of [
+      [],
+      [""],
+      ["--nope", "git"],
+      ["git", "--timeout", "0"],
+      ["git", "--timeout"],
+      ["a", "b", "c"],
+    ]) {
       const r = run(args);
       assert.equal(r.status, 2, JSON.stringify(args));
       assert.equal(r.stdout, "", JSON.stringify(args));
@@ -192,7 +228,10 @@ describe("probe-tool: output and usage", () => {
     const env = envelope(r);
     assert.equal(env.ok, false);
     assert.equal(env.data, null);
-    assert.deepEqual(env.findings.map((f) => f.rule), ["usage"]);
+    assert.deepEqual(
+      env.findings.map((f) => f.rule),
+      ["usage"],
+    );
   });
 
   test("a bare tool name with PATH unset exits 3 with rule precondition", () => {
@@ -201,7 +240,10 @@ describe("probe-tool: output and usage", () => {
     const env = envelope(r);
     assert.equal(env.ok, false);
     assert.equal(env.data, null);
-    assert.deepEqual(env.findings.map((f) => f.rule), ["precondition"]);
+    assert.deepEqual(
+      env.findings.map((f) => f.rule),
+      ["precondition"],
+    );
   });
 
   test("the script writes nothing", () => {
@@ -223,7 +265,10 @@ describe("probe-tool from a copy of the whole skill directory", () => {
       const r = run(["nohelp", "--json"], { skillDir: dir });
       assert.equal(r.status, 1, r.stdout + r.stderr);
       assert.doesNotMatch(r.stderr, WARNING);
-      assert.deepEqual(envelope(r).findings.map((f) => f.rule), ["unavailable"]);
+      assert.deepEqual(
+        envelope(r).findings.map((f) => f.rule),
+        ["unavailable"],
+      );
       const help = run(["--help"], { skillDir: dir });
       assert.equal(help.status, 0);
       assert.equal(help.stderr, "");
