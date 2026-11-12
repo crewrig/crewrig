@@ -48,8 +48,10 @@ declared mode, then the default **INTERMEDIATE**. AUTO asks no question.
 
 1. **Interview.** Read `references/interview-script.md` before asking anything.
 2. **Ownership and id** (new spec): run the script below with `--id-only`.
-   For a delta-spec, run `task -x ticket-pickup -- --issue <N>` yourself first
-   and stop on any non-zero exit (the script makes no call in delta mode).
+   For a delta-spec the script makes no call, so check ownership yourself first:
+   in the CrewRig repository run `task -x ticket-pickup -- --issue <N>` and stop
+   on any non-zero exit; elsewhere read the issue's assignees and stop if
+   someone else owns it.
 3. **Branch.** Cut `spec/<NNNN>-<slug>` in its worktree with that id.
 4. **Ground.** Read `references/pre-write-grounding.md` before drafting.
 5. **Write.** Run the script again without `--id-only`, then fill the
