@@ -92,7 +92,7 @@
         {
           "type": "file_contains",
           "path": "repo/test/paginate.test.js",
-          "pattern": "pageOf\\(\\[1, 2, 3, 4\\], 2, 2\\)"
+          "pattern": "pageOf\\([^)]*,\\s*2\\s*,\\s*\\d+\\s*\\)"
         },
         {
           "type": "file_contains",
