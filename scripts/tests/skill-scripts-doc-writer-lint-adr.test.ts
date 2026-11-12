@@ -74,6 +74,21 @@ describe("lint-adr: findings", () => {
     );
     assert.equal(lint(text).r.status, 0);
   });
+  test("comparison operators and plain HTML are prose, a TODO marker and template text are not", () => {
+    const prose = GOOD_ADR.replace(
+      "stored in PostgreSQL.",
+      'stored in PostgreSQL when p99 latency < 200ms and error rate > 0.1%, see <br> and <a href="x">.',
+    );
+    assert.equal(lint(prose).r.status, 0);
+    assert.ok(
+      rules(GOOD_ADR.replace("stored in PostgreSQL.", "stored in <TODO>.")).includes("placeholder"),
+    );
+    assert.ok(
+      rules(GOOD_ADR.replace("stored in PostgreSQL.", "<one paragraph here>")).includes(
+        "placeholder",
+      ),
+    );
+  });
   test("a long Context is a warning and does not change the exit code", () => {
     const long = GOOD_ADR.replace(/The ledger needs.*\n/, "One. Two. Three. Four. Five. Six.\n");
     const { r, env } = lint(long);

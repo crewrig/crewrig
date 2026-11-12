@@ -43,7 +43,7 @@ machine-readable result. Each exits `0` (ok), `1` (finding), `2` (usage error) o
 
 | When | Command | Exit `1` means |
 |---|---|---|
-| Starting an ADR | `node scripts/new-adr.ts --title "<the decision>"` (`--dir <path>` when ADRs are not in `docs/adr`; `--status Accepted` for an already settled decision; `--dry-run` to preview) | Empty title, a title with no letter or digit, an unknown status. Fix the input and rerun. |
+| Starting an ADR | `node scripts/new-adr.ts --title "<the decision>"` (`--dir <path>` when ADRs are not in `docs/adr`; `--status Accepted` for an already settled decision; `--dry-run` to preview) | Empty title, a title with no letter or digit, an unknown status, a target that already exists, or no free number. Fix the input and rerun. |
 | After filling an ADR | `node scripts/lint-adr.ts <file>` | A rule is broken: heading, section order, status value, a leftover placeholder, a missing consequence bullet. Fix the ADR and rerun until clean. A Context over five sentences is a warning: tighten it or accept it knowingly. |
 
 `new-adr.ts` takes the next number from the files in the local directory, so it
@@ -90,10 +90,9 @@ misleads the next reader more than a short one.
 
 Number ADRs in sequence. Never rewrite an accepted ADR: its value is that it
 records what was decided and why at the time. To reverse it, write a new ADR that
-names the one it supersedes, then change only the Status line of the old one.
-Then run `lint-adr.ts` on the new file. The old ADR keeps its
-body and its decision text word for word; only its Status line changes, to
-`Superseded by ADR-NNNN`.
+names the one it supersedes, then change only the Status line of the old one, to
+`Superseded by ADR-NNNN`; its body and decision text stay word for word.
+Then run `lint-adr.ts` on the new file.
 
 ### 3. READMEs
 

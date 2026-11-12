@@ -64,6 +64,9 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error, 3 unreadable inp
     return usageError("- (standard input) cannot be combined with other files");
 
   const SECTIONS = ["Status", "Context", "Decision", "Consequences"];
+  // A placeholder is angle-bracketed words that start with a letter and contain a space (the
+  // template's own style), or a TODO/TBD marker. `a < b and c > d`, `<br>` and `<a href="x">` pass.
+  const PLACEHOLDER = /<(?:[A-Za-z][^<>\n=]* [^<>\n=]*|TODO|TBD|FIXME)>/i;
   const STATUS = /^(Proposed|Accepted|Deprecated|Superseded by ADR-[0-9]{4})$/;
 
   /** Lines outside fenced code, each with inline code spans blanked. */
@@ -127,7 +130,7 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error, 3 unreadable inp
       );
 
     for (const l of body) {
-      if (/<[^<>\n]{3,}>/.test(l.text) || /\{\{[A-Z]+\}\}/.test(l.text))
+      if (PLACEHOLDER.test(l.text) || /\{\{[A-Z]+\}\}/.test(l.text))
         add(
           "placeholder",
           `line ${l.n} still holds template placeholder text: replace it with content`,
