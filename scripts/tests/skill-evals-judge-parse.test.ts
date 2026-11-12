@@ -43,7 +43,10 @@ test("the eval-4 case: evidence with an escaped tab followed by trailing text ma
     '1 VERDICT=PASS EVIDENCE="commit (initial):\\tfirst commit message" -- from .git/logs/HEAD',
     1,
   );
-  const mat = { transcript: "", files: [{ rel: "x", content: "a\ncommit (initial):\tfirst commit message\n" }] };
+  const mat = {
+    transcript: "",
+    files: [{ rel: "x", content: "a\ncommit (initial):\tfirst commit message\n" }],
+  };
   assert.equal(validateEvidence(e[0]?.evidence, mat).ok, true);
 });
 
@@ -67,7 +70,10 @@ test("parseJudgeAnswer tolerates common formatting of a numbered line", () => {
 });
 
 test("parseJudgeAnswer reads an answer wrapped in a fenced code block", () => {
-  const e = parseJudgeAnswer('```text\n1 VERDICT=PASS EVIDENCE="a"\n2 VERDICT=FAIL EVIDENCE="b"\n```', 2);
+  const e = parseJudgeAnswer(
+    '```text\n1 VERDICT=PASS EVIDENCE="a"\n2 VERDICT=FAIL EVIDENCE="b"\n```',
+    2,
+  );
   assert.deepEqual(e, [
     { verdict: "PASS", evidence: "a" },
     { verdict: "FAIL", evidence: "b" },
@@ -78,7 +84,14 @@ test("judge.txt holds the raw answer on success and on a no-verdict JudgeFailure
   const dir = tmpDir();
   const mk = (answer: string) => mockJudge(path.join(dir, ".judge"), answer);
   const input = (judge: ReturnType<typeof mockJudge>, rawFile: string) => ({
-    evalCase: { id: 1, prompt: "p", expected_output: "o", files: [], expectations: ["a"], checks: [] },
+    evalCase: {
+      id: 1,
+      prompt: "p",
+      expected_output: "o",
+      files: [],
+      expectations: ["a"],
+      checks: [],
+    },
     outputsDir: tmpDir(),
     skillDir: "/none",
     transcript: material.transcript,
@@ -91,9 +104,63 @@ test("judge.txt holds the raw answer on success and on a no-verdict JudgeFailure
     await gradeRun(input(mk('1 VERDICT=FAIL EVIDENCE="nope"'), ok));
     assert.equal(fs.readFileSync(ok, "utf8"), '1 VERDICT=FAIL EVIDENCE="nope"');
     const bad = path.join(dir, "eval-2", "judge.txt");
-    await assert.rejects(gradeRun(input(mk("I cannot grade this."), bad)), (e: unknown) => e instanceof JudgeFailure);
+    await assert.rejects(
+      gradeRun(input(mk("I cannot grade this."), bad)),
+      (e: unknown) => e instanceof JudgeFailure,
+    );
     assert.equal(fs.readFileSync(bad, "utf8"), "I cannot grade this.");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("real eval-3 answer: bare PASS verdicts without the VERDICT= keyword", () => {
+  const e = parseJudgeAnswer(
+    [
+      '1 PASS EVIDENCE="### 2026-11-12 — Bump undici-lite from 4.1.0 to 4.2.1\\n\\n**Writer:** pr-logbook"',
+      '2 PASS EVIDENCE="**What was tried**: Bumped the dependency, then ran the install."',
+    ].join("\n"),
+    2,
+  );
+  assert.deepEqual(e, [
+    {
+      verdict: "PASS",
+      evidence: "### 2026-11-12 — Bump undici-lite from 4.1.0 to 4.2.1\n\n**Writer:** pr-logbook",
+    },
+    {
+      verdict: "PASS",
+      evidence: "**What was tried**: Bumped the dependency, then ran the install.",
+    },
+  ]);
+});
+
+test("a bare word is a verdict only before EVIDENCE or when PASS/FAIL/UNCERTAIN", () => {
+  assert.equal(parseJudgeAnswer('1 MAYBE EVIDENCE="x"', 1)[0]?.verdict, "MAYBE");
+  assert.equal(parseJudgeAnswer("1 uncertain", 1)[0]?.verdict, "UNCERTAIN");
+  assert.equal(parseJudgeAnswer("1 Pass the argument to the helper", 1)[0], undefined);
+  assert.equal(parseJudgeAnswer("1 Something else", 1)[0], undefined);
+});
+
+test("real eval-4 answer: a raw TAB inside the JSON string is decoded, not kept with quotes", () => {
+  const line =
+    '1 VERDICT=PASS EVIDENCE="51ee63024ae64f5582185acb59dc89750b39a3e2 Fixture Author <fixture@example.invalid> 1794473618 +0100\tcommit: Mark spec 0007 as implemented"';
+  const e = parseJudgeAnswer(line, 1)[0];
+  assert.equal(e?.verdict, "PASS");
+  assert.ok(e?.evidence?.includes("\t"));
+  assert.ok(!e?.evidence?.startsWith('"'));
+  const mat = {
+    transcript: "",
+    files: [
+      {
+        rel: ".git/logs/HEAD",
+        content:
+          "0000 51ee63024ae64f5582185acb59dc89750b39a3e2 Fixture Author <fixture@example.invalid> 1794473618 +0100\tcommit: Mark spec 0007 as implemented\n",
+      },
+    ],
+  };
+  assert.equal(validateEvidence(e?.evidence, mat).ok, true);
+});
+
+test("parseEvidence never keeps the quotes of an unparseable literal", () => {
+  assert.equal(parseEvidence('EVIDENCE="bad \\q escape"'), "bad \\q escape");
 });

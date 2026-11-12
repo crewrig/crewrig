@@ -38,12 +38,18 @@ export function parseEvidence(text: string): string | undefined {
   const rest = (m[1] ?? "").trim();
   const lit = /"(?:[^"\\]|\\.)*"/.exec(rest);
   if (lit !== null) {
-    try {
-      const v: unknown = JSON.parse(lit[0]);
-      if (typeof v === "string") return v;
-    } catch {
-      // not a valid JSON string: fall through to the raw remainder
+    const escapeControls = (t: string) =>
+      // eslint-disable-next-line no-control-regex
+      t.replace(/[\u0000-\u001f]/g, (c) => JSON.stringify(c).slice(1, -1));
+    for (const candidate of [lit[0], escapeControls(lit[0])]) {
+      try {
+        const v: unknown = JSON.parse(candidate);
+        if (typeof v === "string") return v;
+      } catch {
+        // not a valid JSON string: try the next candidate
+      }
     }
+    return lit[0].slice(1, -1);
   }
   return rest === "" ? undefined : rest;
 }
