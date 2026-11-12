@@ -483,6 +483,7 @@ export async function runEvals(
           skillDir: s.sel.skill.dirAbs,
           transcript: outcome.transcript,
           judge: s.judge.fn,
+          judgeRawFile: path.join(dir, "judge.txt"),
           mock: opts.mock,
         });
       } catch (e) {

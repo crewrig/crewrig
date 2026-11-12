@@ -27,16 +27,29 @@ export interface EvidenceMaterial {
 
 const norm = (s: string) => s.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
 
-/** The `EVIDENCE=<JSON string>` value of a judge answer; undefined when there is none. */
+/**
+ * The `EVIDENCE=<JSON string>` (or `EVIDENCE: ...`) value of a judge answer; undefined when there
+ * is none. The first JSON string literal wins and trailing text is ignored; without a quoted
+ * literal the trimmed remainder is returned.
+ */
 export function parseEvidence(text: string): string | undefined {
-  const m = /^[ \t]*EVIDENCE=(.*)$/m.exec(text);
+  const m = /^[ \t]*[*_`]*EVIDENCE[*_`]*[ \t]*[=:](.*)$/im.exec(text);
   if (m === null) return undefined;
   const rest = (m[1] ?? "").trim();
-  try {
-    const v: unknown = JSON.parse(rest);
-    if (typeof v === "string") return v;
-  } catch {
-    // not a JSON string: fall through to the raw remainder
+  const lit = /"(?:[^"\\]|\\.)*"/.exec(rest);
+  if (lit !== null) {
+    const escapeControls = (t: string) =>
+      // eslint-disable-next-line no-control-regex
+      t.replace(/[\u0000-\u001f]/g, (c) => JSON.stringify(c).slice(1, -1));
+    for (const candidate of [lit[0], escapeControls(lit[0])]) {
+      try {
+        const v: unknown = JSON.parse(candidate);
+        if (typeof v === "string") return v;
+      } catch {
+        // not a valid JSON string: try the next candidate
+      }
+    }
+    return lit[0].slice(1, -1);
   }
   return rest === "" ? undefined : rest;
 }

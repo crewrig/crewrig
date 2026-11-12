@@ -1,0 +1,194 @@
+{
+  "skill_name": "pr-logbook",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I finished a change in the example/widgets repository; its diff is change.diff and its working rules are in conventions.md. The change implements the retry feature tracked by issue #12. Prepare the pull request: write the title to pr-title.txt, the body to pr-body.md, and the exact `gh pr create` command you would run, using those two files, to pr-command.sh. Do not run gh, glab, tea or git push, and do not create, edit, comment on or close any pull request, issue or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "pr-title.txt holds a gitmoji title of at most 70 characters in the imperative, without a trailing period; pr-body.md follows the project's body layout and is grounded in change.diff; pr-command.sh holds a `gh pr create` command.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/change.diff"
+      ],
+      "expectations": [
+        "pr-title.txt holds a single title of at most 70 characters that starts with one gitmoji, is written in the imperative mood and has no trailing period.",
+        "The opening paragraph of pr-body.md states the purpose in at most two sentences and comes before the first second-level heading.",
+        "The test section of pr-body.md gives steps a reader can run and covers the golden path and at least one failure mode drawn from change.diff, such as the retries being exhausted.",
+        "Every technical claim in pr-body.md, such as a file, a default value or a behaviour, can be traced to change.diff; none is invented."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "pr-title.txt"
+        },
+        {
+          "type": "file_exists",
+          "path": "pr-body.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "pr-body.md",
+          "pattern": "\\n## How to read this PR\\?\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "pr-body.md",
+          "pattern": "\\n## How to test this PR\\?\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "pr-body.md",
+          "pattern": "\\n## Detailed description \\(for agents\\)\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "pr-command.sh",
+          "pattern": "gh pr create"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The pull request body for my change is in pr-feature.md and the project's working rules are in conventions.md. Decide where the logbook entry for this pull request must go and write it. What happened: a fixed 200 ms delay between attempts made the new tests flaky in CI, so I replaced it with exponential backoff with full jitter, after which both new tests passed. Write the entry text to logbook-entry.md and the exact command you would run to publish it, using --body-file logbook-entry.md, to logbook-command.sh. Do not run gh, glab, tea or git push, and do not create, edit, comment on or close any pull request, issue or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "The entry is appended as a comment to the feature issue #12 that the pull request closes; no new issue is created and no logbook label is added. logbook-entry.md follows the entry layout and records the discarded fixed-delay attempt.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/pr-feature.md"
+      ],
+      "expectations": [
+        "logbook-entry.md follows the four-field entry layout: a dated heading, then Context, What was tried, Outcome and Lesson, with the Lesson in a single sentence.",
+        "logbook-entry.md records the discarded fixed 200 ms delay as well as the final exponential backoff, rather than only the final design.",
+        "Every claim in logbook-entry.md traces to the prompt or to pr-feature.md; no figure or event is invented."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "logbook-entry.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "logbook-command.sh",
+          "pattern": "gh issue comment\\b[^\\n]*[ \\t/\"'#]12\\b"
+        },
+        {
+          "type": "file_contains",
+          "path": "logbook-command.sh",
+          "pattern": "^(?![\\s\\S]*(?:--(?:add-)?label[ =]|-l ?)[\"']?(?:[\\w-]+,)*logbook\\b)"
+        },
+        {
+          "type": "file_contains",
+          "path": "logbook-command.sh",
+          "pattern": "^(?![\\s\\S]*issue create)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The pull request body for my change is in pr-bump.md and the project's working rules are in conventions.md. Decide where the logbook entry for this pull request must go and write it. What happened: I bumped the dependency, the install and the full test suite passed on the first attempt, and nothing else was tried. Write the entry text to logbook-entry.md and the exact command you would run to publish it, using --body-file logbook-entry.md, to logbook-command.sh. Do not run gh, glab, tea or git push, and do not create, edit, comment on or close any pull request, issue or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "A standalone logbook issue is opened with the logbook label, since the pull request closes no issue. logbook-entry.md follows the entry layout and claims nothing beyond the prompt.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/pr-bump.md"
+      ],
+      "expectations": [
+        "logbook-entry.md follows the four-field entry layout: a dated heading, then Context, What was tried, Outcome and Lesson.",
+        "Every claim in logbook-entry.md traces to the prompt or to pr-bump.md; no failure, figure or experiment is invented."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "logbook-entry.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "logbook-command.sh",
+          "pattern": "gh issue create"
+        },
+        {
+          "type": "file_contains",
+          "path": "logbook-command.sh",
+          "pattern": "(?:--(?:add-)?label[ =]|-l ?)[\"']?(?:[\\w-]+,)*logbook\\b"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Run `node make-repo.ts` first: it builds ./repo, a local git repository with no remote. My pull request implements the spec repo/specs/0007-retry.md, and the project's working rules are in conventions.md. Record the spec's status transition the way the project asks, working only inside ./repo. Do not push anything and do not run gh, glab or tea.",
+      "expected_output": "In repo, the spec's status value is changed from approved to implemented and nothing else in the file changes, and the change is recorded as a new commit rather than an amend of an earlier one.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/make-repo.ts"
+      ],
+      "expectations": [
+        "The message of the new commit, as logged in repo/.git/logs/HEAD, names spec 0007 or the implemented status."
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "repo/specs/0007-retry.md",
+          "pattern": "^---\nid: \"0007\"\nslug: retry\nstatus: \"implemented\"  # lifecycle\ncomplexity: small\nrelated-issue: 12\nversion: 1\\.0\\.0\n---\n\n# Retry transient failures in the widget client\n\n## Intent\n\nThe widget client retries HTTP 429 and 5xx responses so that a brief outage\nof the widgets service does not fail the caller\\.\n\n## Requirements\n\n1\\. \\*\\*R1\\.\\*\\* `getWidget` SHALL retry a 429 or 5xx response up to `maxRetries`\n   times with exponential backoff\\.\n2\\. \\*\\*R2\\.\\*\\* `getWidget` SHALL NOT retry any other HTTP error\\.\n$"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/.git/logs/HEAD",
+          "pattern": "\\tcommit: [\\s\\S]*\\tcommit: "
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/.git/logs/HEAD",
+          "pattern": "^(?![\\s\\S]*commit \\(amend\\))"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Pull request #57 for my change is approved and the project will squash-merge it. The pull request body is in pr-feature.md and the project's working rules are in conventions.md. Write the squash-merge commit message for it to squash-msg.txt. Do not run gh, glab, tea or git, and do not create, edit, comment on, merge or close any pull request, issue or other forge artifact: only write the file asked for, in the current directory.",
+      "expected_output": "squash-msg.txt holds a squash-merge commit message whose subject line ends with the pull request reference (#57), followed by a past-tense paragraph on what was delivered and a paragraph on why; the pull request body is not pasted into it.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/pr-feature.md"
+      ],
+      "expectations": [
+        "squash-msg.txt has a paragraph after the subject line that says what the pull request delivered, written in the past tense.",
+        "squash-msg.txt has a separate paragraph that says why the change was made, naming the constraint or motivation rather than repeating what was delivered."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "squash-msg.txt"
+        },
+        {
+          "type": "file_contains",
+          "path": "squash-msg.txt",
+          "pattern": "^[^\\n]*\\(#57\\)\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "squash-msg.txt",
+          "pattern": "^(?![\\s\\S]*\\n## )"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "I'm done with the change. Open a pull request for it and write the description.",
+      "should_trigger": true
+    },
+    {
+      "query": "Add a logbook entry for this PR to the issue it closes.",
+      "should_trigger": true
+    },
+    {
+      "query": "This PR implements spec 0007, so mark that spec as implemented before it merges.",
+      "should_trigger": true
+    },
+    {
+      "query": "Review this pull request cold and tell me whether to approve it or request changes.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write a commit message for my local change; I have not pushed it and there is no pull request.",
+      "should_trigger": false
+    }
+  ]
+}

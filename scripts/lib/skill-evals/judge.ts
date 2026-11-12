@@ -55,19 +55,34 @@ export function buildJudgeMessage(
   );
 }
 
+const LINE_RE =
+  /^\s*(?:[-*+>]\s*)*[*_`]*(?:#|\[)?(\d+)[\]\.):]?[*_`]*(?![\w])(?:.*?)\bVERDICT[*_`]*\s*[=:]\s*[*_`]*([A-Za-z]+)/i;
+
+// Bare form: `<index> <word>` with no `VERDICT=`; the word is a verdict only when it is
+// PASS/FAIL/UNCERTAIN, or any word that is followed by `EVIDENCE` (so prose is never an entry).
+const BARE_RE =
+  /^\s*(?:[-*+>]\s*)*[*_`]*(?:#|\[)?(\d+)[\]\.):]?[*_`]*\s+[*_`]*([A-Za-z]+)[*_`]*(?:(\s+[*_`]*EVIDENCE\b)|\s*$)/i;
+
 /**
  * Parse the judge's answer into one entry per expectation (undefined for a missing index). A line
- * is an entry when it starts with an index; VERDICT= and EVIDENCE= are found anywhere on it. The
- * first line wins on a repeated index; an index outside 1..n is ignored.
+ * is an entry when it starts with an index (`1`, `1.`, `1)`, `1:`, `#1`, `[1]`, optionally after a
+ * list marker or inside bold/backticks); `VERDICT=` or `VERDICT:` (any case) and `EVIDENCE=` are
+ * found anywhere on it; a bare `<index> PASS|FAIL|UNCERTAIN|<word> EVIDENCE` is accepted too. The first line wins on a repeated index; an index outside 1..n is ignored.
+ * Fenced code blocks need no special handling: the fence lines carry no index.
  */
 export function parseJudgeAnswer(text: string, n: number): (JudgeAnswer | undefined)[] {
   const out: (JudgeAnswer | undefined)[] = Array.from({ length: n }, () => undefined);
   for (const line of text.split(/\r?\n/)) {
-    const m = /^\s*(\d+)\b.*?\bVERDICT=([A-Za-z]+)/.exec(line);
+    let m = LINE_RE.exec(line);
+    if (m === null) {
+      const b = BARE_RE.exec(line);
+      if (b !== null && (b[3] !== undefined || /^(?:PASS|FAIL|UNCERTAIN)$/i.test(b[2] ?? "")))
+        m = b;
+    }
     if (m === null) continue;
     const i = Number(m[1]) - 1;
     if (i < 0 || i >= n || out[i] !== undefined) continue;
-    const at = line.indexOf("EVIDENCE=");
+    const at = line.search(/[*_`]*EVIDENCE[*_`]*\s*[=:]/i);
     out[i] = {
       verdict: (m[2] ?? "").toUpperCase(),
       evidence: at < 0 ? undefined : parseEvidence(line.slice(at)),
@@ -107,6 +122,11 @@ export interface Judge {
   >;
 }
 
+function writeRaw(file: string, text: string): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, text);
+}
+
 export function createJudge(setup: JudgeSetup): Judge {
   fs.mkdirSync(setup.dir, { recursive: true });
   fs.writeFileSync(
@@ -136,7 +156,7 @@ export function createJudge(setup: JudgeSetup): Judge {
     queue = next.catch(() => undefined);
     return next;
   };
-  const fn: JudgeFn = (expectations, material) =>
+  const fn: JudgeFn = (expectations, material, opts) =>
     serial(async () => {
       const mockResponse = setup.mock
         ? (setup.mockAnswer ?? defaultMockAnswer)(expectations, material)
@@ -157,6 +177,7 @@ export function createJudge(setup: JudgeSetup): Judge {
         case "cap-exceeded":
           throw new JudgeFailure("cap", `judge max_calls ${r.maxCalls} reached (count ${r.count})`);
         case "answer": {
+          if (opts?.rawFile !== undefined) writeRaw(opts.rawFile, r.text);
           const entries = parseJudgeAnswer(r.text, expectations.length);
           if (entries.every((e) => e === undefined))
             throw new JudgeFailure("no-verdict", "the judge returned no parseable verdict line");

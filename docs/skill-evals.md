@@ -70,7 +70,7 @@ Spec 0290 delta 03 requirement 44 requires these seven statements.
 
 For each eval the runner performs one run in a fresh context, with the skill installed, in `<out>/<skill>/eval-<id>/`. For each trigger probe it performs one probe run in `<out>/<skill>/probe-<n>/`. Every `claude` argv holds `--model claude-sonnet-5-5` and `--effort medium` (the `EFFORT` setting). The `evals.json`, the eval `files` and the scripts of `exit_code` checks come from the working tree.
 
-Each eval directory holds `transcript.md`, `grading.json`, `metrics.json` (measured cost, token usage, turns, seconds, the limit reached or `null`, and `skill_loaded`) and `outputs/` (every file the run produced). Each probe directory holds `transcript.md`, `metrics.json` and `probe.json` (`query`, `should_trigger`, `observed`, `passed`).
+Each eval directory holds `transcript.md`, `judge.txt` (the raw judge answer, written before it is parsed, so it survives a judge failure), `grading.json`, `metrics.json` (measured cost, token usage, turns, seconds, the limit reached or `null`, and `skill_loaded`) and `outputs/` (every file the run produced). Each probe directory holds `transcript.md`, `metrics.json` and `probe.json` (`query`, `should_trigger`, `observed`, `passed`).
 
 Grading order: every `checks` entry first (deterministic), then one judge call for all of the eval's `expectations`. In `grading.json` the checks therefore come first, then the expectations, each list in file order. A failed check does not prevent the judge call. The judge is not called for an eval with no expectation, or whose output directory cannot be read (its expectations are then recorded failed).
 
