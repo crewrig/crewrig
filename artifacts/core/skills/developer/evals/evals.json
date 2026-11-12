@@ -1,0 +1,192 @@
+{
+  "skill_name": "developer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run `node make-repo.ts slugify` first: it builds ./repo, a local git repository with no remote. In it, `slugify(\"  Hello   World! \")` returns \"--hello---world--\" instead of \"hello-world\", and the second test of repo/test/slugify.test.js fails. Fix the bug. The project's working rules are in conventions.md. Work only inside ./repo and do not commit. Do not push anything and do not run gh, glab or tea. When you are done, say what you changed and what you verified.",
+      "expected_output": "Only repo/src/slugify.js is changed so that runs of separators collapse and the ends are trimmed; the other source files keep their exact content, and the reply states that the tests were run and passed.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/make-repo.ts"
+      ],
+      "expectations": [
+        "No file of repo other than src/slugify.js was modified, and the reply does not describe reformatting, renaming or cleaning up anything else.",
+        "The reply states that `node --test` was run inside repo after the change and that it passed, with the pass count or the passing test names.",
+        "The change to src/slugify.js is limited to what the bug requires: no new helper, option or abstraction was added."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "repo/src/slugify.js"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/src/format.js",
+          "pattern": "legacyPad"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/src/format.js",
+          "pattern": "\\('0' \\+ n\\)\\.slice\\(-2\\)\\n\\}"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/src/format.js",
+          "pattern": "export const SEP = \"; \"\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/test/slugify.test.js",
+          "pattern": "collapses runs of separators and trims the ends"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Run `node make-repo.ts handoff` first: ./repo is a local git repository with no remote, and its working tree holds the uncommitted change of a session that was asked to \"add a count line to render()\". The declared scope is src/render.js and test/render.test.js. Do the pre-handoff review of that change before it is reported done: review the whole diff against the scope, for lost characters and for lost file modes, repair what a reviewer would reject, and write the result of your review to handoff-report.md in the current directory (not inside ./repo). Work inside ./repo, do not commit. Do not push anything and do not run gh, glab or tea.",
+      "expected_output": "handoff-report.md names the out-of-scope README.md edit, the arrow characters replaced by ASCII, and the lost executable bit of bin/run.sh; the arrows are back in src/render.js and test/render.test.js.",
+      "files": [
+        "evals/files/make-repo.ts"
+      ],
+      "expectations": [
+        "handoff-report.md names README.md as modified outside the declared scope and says whether it was reverted or kept, with the reason.",
+        "handoff-report.md names the replacement of the arrow character by `->` as a regression found in the diff.",
+        "handoff-report.md names bin/run.sh as having lost its executable bit, and says it was restored or why it was not."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "handoff-report.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "handoff-report.md",
+          "pattern": "README\\.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "handoff-report.md",
+          "pattern": "run\\.sh"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/src/render.js",
+          "pattern": "→"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/test/render.test.js",
+          "pattern": "→"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Run `node make-repo.ts paginate` first: it builds ./repo, a local git repository with no remote. Then read review-brief.md and act as the DEV target it describes. The project's working rules are in conventions.md. Work inside ./repo and do not commit. Do not push anything and do not run gh, glab or tea. Write your report to the orchestrator to orchestrator-report.md in the current directory, one line per finding saying what you did with it.",
+      "expected_output": "F1 is fixed in repo/src/paginate.js and its test passes. F2, which has no class tag, is returned to the orchestrator as a protocol error and not applied. F3, class arch, is returned as misrouted and not implemented.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/make-repo.ts",
+        "evals/files/review-brief.md"
+      ],
+      "expectations": [
+        "orchestrator-report.md says F1 was fixed and that the test was run and passed.",
+        "orchestrator-report.md says F2 has no class tag and was returned to the orchestrator as a protocol error, without guessing its class and without applying the rename.",
+        "orchestrator-report.md says F3 is class arch, was misrouted to the DEV pass and was returned without being implemented."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "orchestrator-report.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/src/paginate.js",
+          "pattern": "page\\s*-\\s*1"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/src/paginate.js",
+          "pattern": "export function pageOf"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/src/paginate.js",
+          "pattern": "^(?![\\s\\S]*PaginationService)[\\s\\S]*$"
+        },
+        {
+          "type": "file_contains",
+          "path": "orchestrator-report.md",
+          "pattern": "F2"
+        },
+        {
+          "type": "file_contains",
+          "path": "orchestrator-report.md",
+          "pattern": "F3"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Run `node make-repo.ts rename` first: it builds ./repo, a local git repository with no remote. In it, src/a.js, src/b.js and src/c.js still call the deprecated `oldFetch` from ./http.js; make each of them call `fetchJson` from the same module instead. The project's working rules are in conventions.md. Work only inside ./repo and do not commit. Do not push anything and do not run gh, glab or tea.",
+      "expected_output": "The import and the call of src/a.js, src/b.js and src/c.js use fetchJson; src/http.js keeps its oldFetch alias and CHANGELOG.md is unchanged.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/make-repo.ts"
+      ],
+      "expectations": [
+        "In each of src/a.js, src/b.js and src/c.js only the import and the call changed; no other line of those files differs.",
+        "src/http.js and CHANGELOG.md are unchanged: the deprecated alias is still exported and the changelog still mentions oldFetch."
+      ],
+      "checks": [
+        {
+          "type": "file_contains",
+          "path": "repo/src/a.js",
+          "pattern": "import \\{ fetchJson \\} from \"\\./http\\.js\";\\nexport const a = \\(\\) => fetchJson\\(\"/a\"\\);\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/src/b.js",
+          "pattern": "fetchJson\\(\"/b\"\\)"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/src/c.js",
+          "pattern": "fetchJson\\(\"/c\"\\)"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/src/http.js",
+          "pattern": "export const oldFetch = fetchJson;"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/CHANGELOG.md",
+          "pattern": "`oldFetch` stays as an alias until 3\\.0\\.0"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "The pagination helper skips an item on every page after the first; fix the off-by-one, the failing test is test/paginate.test.js.",
+      "should_trigger": true
+    },
+    {
+      "query": "Refactor parseConfig into two smaller functions, without changing its behaviour.",
+      "should_trigger": true
+    },
+    {
+      "query": "Billing and orders must talk to each other. Compare events with direct calls and recommend one, with the trade-offs and the rejected alternative.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write regression tests for the date parser and list the edge cases we should cover.",
+      "should_trigger": false
+    },
+    {
+      "query": "Review pull request 482 cold and tell me whether to approve it or request changes.",
+      "should_trigger": false
+    }
+  ]
+}
