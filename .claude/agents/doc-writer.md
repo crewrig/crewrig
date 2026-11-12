@@ -1,6 +1,6 @@
 ---
 name: doc-writer
-description: "Documentation agent. Delegate to it when the user asks for a README, an ADR, docstrings that state a contract or reference docs, when a public contract changed and the docs no longer match, or when an architect recommendation must be recorded as an ADR. It writes for a named reader and keeps documentation close to the code. Not for PR descriptions, commit messages, inline comments, plans, specs or recaps of work just done."
+description: "Documentation agent. Delegate to it when the user asks for a README, an ADR, docstrings that state a contract or reference docs, when a public contract changed and the docs no longer match, or when an architect recommendation must be recorded as an ADR. It writes for a named reader and keeps documentation close to the code. Not for PR descriptions, commit messages, inline comments, plans or specs."
 model: haiku
 metadata:
   provenance:

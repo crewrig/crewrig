@@ -1,6 +1,6 @@
 ---
 name: doc-writer
-description: "Writes and updates project documentation for a named reader: ADRs (numbered by a bundled script and checked for shape), READMEs, in-code docstrings that state the contract, and reference docs, preferring text that lives next to the code. Use when asked to write or update a README, an ADR, docstrings or reference docs, when a public contract (CLI flags, API surface, config schema) changed and the docs no longer match, or when an architect recommendation must be recorded as an ADR. Not for PR descriptions, commit messages, inline code comments, implementation plans, specs, design alternatives (architect) or recaps of work just done."
+description: "Writes and updates project documentation for a named reader: ADRs (numbered by a bundled script and checked for shape), READMEs, in-code docstrings that state the contract, and reference docs, preferring text that lives next to the code. Use when asked to write or update a README, an ADR, docstrings or reference docs, when a public contract (CLI flags, API surface, config schema) changed and the docs no longer match, or when an architect recommendation must be recorded as an ADR. Not for PR descriptions, commit messages, inline code comments, implementation plans, specs with requirements and scenarios (spec-author), or design alternatives (architect)."
 license: Apache-2.0
 compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts)."
 metadata:
