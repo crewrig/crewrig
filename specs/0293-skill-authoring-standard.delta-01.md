@@ -1,7 +1,7 @@
 ---
 id: "0293"
 slug: skill-authoring-standard
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1848
@@ -25,7 +25,7 @@ Then  the work stops, a spec-class finding names the rule and the skill, and no 
 ## MODIFIED
 
 - R7 said "at least three evals and at least six trigger probes of which each of the positive and the negative kinds is at least 40 percent". It now reads: "at least three evals and at least five trigger probes of which each of the positive and the negative kinds is at least 40 percent". The skill that the pilot already protects ships five probes, three positive and two negative, so a minimum of six would make the pilot fail the standard it informed; the standard keeps advising more probes and at least five evals as guidance.
-- R8 said the linter reports "a citation of the forms `spec <NNNN>`, `R<N>` and `#<N>` outside code spans and fences". It now reads: "a citation of the forms `spec <NNNN>`, `R<N>`, a number sign and digits introduced by one of the words `issue`, `ticket`, `PR`, `pull request`, `bug`, `refs`, `closes`, `fixes` (matched case-insensitively), and a number sign and digits alone in parentheses, outside code spans and fences". A runtime example such as `Task #2` or the placeholder `#N` is therefore not a citation, because it names no issue or specification.
+- R8 said the linter reports "a citation of the forms `spec <NNNN>`, `R<N>` and `#<N>` outside code spans and fences". It now reads: "a citation of the forms `spec <NNNN>` and `R<N>`, and a number sign followed by at least three digits (`#\d{3,}`), outside code spans and fences". A bare `see #1234` is the commonest traceability leak and is caught; a runtime example such as `Task #2` or the placeholder `#N` is not a citation, since repository issue numbers have four digits.
 
 ## REMOVED
 
