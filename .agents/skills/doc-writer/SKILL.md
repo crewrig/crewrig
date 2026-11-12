@@ -80,13 +80,13 @@ Run `new-adr.ts`, then fill the four sections it laid out:
   incident, drift), in three to five sentences. If it needs more, the decision
   is not crisp enough to record.
 - **Decision**: one paragraph, declarative voice.
+- **Consequences**: a positive, a negative and a neutral bullet. Be honest about
+  the negative one: it is what the next reader needs most.
+- **Status**: Proposed, Accepted, Deprecated, or `Superseded by ADR-NNNN`.
 
 Take every fact from what the user told you, the code or the repository. A reason
 you cannot source is left out, not invented: a record with a made-up rationale
 misleads the next reader more than a short one.
-- **Consequences**: a positive, a negative and a neutral bullet. Be honest about
-  the negative one: it is what the next reader needs most.
-- **Status**: Proposed, Accepted, Deprecated, or `Superseded by ADR-NNNN`.
 
 Number ADRs in sequence. Never rewrite an accepted ADR: its value is that it
 records what was decided and why at the time. To reverse it, write a new ADR that
