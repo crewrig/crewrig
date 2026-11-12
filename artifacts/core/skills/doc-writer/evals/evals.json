@@ -1,0 +1,202 @@
+{
+  "skill_name": "doc-writer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run `node make-adrs.ts` first: it builds ./docs/adr with the project's three accepted ADRs. Then record this decision as the next ADR in that directory, in the project's ADR format, using the file name docs/adr/0004-postgres-ledger.md. Decision: the payments ledger will be stored in PostgreSQL. Why now: the ledger needs transactions and the team already operates PostgreSQL for two other services; the alternative looked at was DynamoDB, which was ruled out because the ledger needs multi-row transactions. A cost is that the team must size and back up one more PostgreSQL cluster. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "docs/adr/0004-postgres-ledger.md follows the ADR layout with Status, Context, Decision and Consequences, is grounded in the prompt, and keeps the three existing ADRs unchanged.",
+      "files": [
+        "evals/files/make-adrs.ts"
+      ],
+      "expectations": [
+        "The Context section of the new ADR is at most five sentences and names the forces behind the decision rather than restating it.",
+        "The Decision section is one paragraph in declarative voice that states the decision to store the ledger in PostgreSQL.",
+        "The Consequences section lists a positive, a negative and a neutral consequence, and the negative one is the extra PostgreSQL cluster to size and back up.",
+        "Every claim in the new ADR traces to the prompt; it invents no figure, date, name or fact about the team."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "docs/adr/0004-postgres-ledger.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "docs/adr/0004-postgres-ledger.md",
+          "pattern": "^# ADR[- ]0004[:— -]"
+        },
+        {
+          "type": "file_contains",
+          "path": "docs/adr/0004-postgres-ledger.md",
+          "pattern": "\\n## Status\\n[\\s\\S]*\\n## Context\\n[\\s\\S]*\\n## Decision\\n[\\s\\S]*\\n## Consequences\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "docs/adr/0002-rest-for-internal-apis.md",
+          "pattern": "Accepted"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Run `node make-adrs.ts` first: it builds ./docs/adr with the project's three accepted ADRs. The team has now decided to use gRPC instead of REST for internal service APIs, because the services exchange large binary payloads and want generated clients. Record this the way the project's ADR rules require for a decision that reverses an accepted one, using the file name docs/adr/0004-grpc-internal-apis.md. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "A new ADR 0004 states that it supersedes ADR 0002, and the Status line of ADR 0002 now says it is superseded by ADR 0004; the body of ADR 0002 is not rewritten.",
+      "files": [
+        "evals/files/make-adrs.ts"
+      ],
+      "expectations": [
+        "The new ADR names ADR-0002 as the decision it supersedes and gives the reason for the reversal drawn from the prompt.",
+        "The Status of docs/adr/0002-rest-for-internal-apis.md was updated to say it is superseded by ADR 0004, and no other part of that file was rewritten."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "docs/adr/0004-grpc-internal-apis.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "docs/adr/0004-grpc-internal-apis.md",
+          "pattern": "ADR[- ]0002"
+        },
+        {
+          "type": "file_contains",
+          "path": "docs/adr/0004-grpc-internal-apis.md",
+          "pattern": "\\n## Status\\n[\\s\\S]*\\n## Context\\n[\\s\\S]*\\n## Decision\\n[\\s\\S]*\\n## Consequences\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "docs/adr/0002-rest-for-internal-apis.md",
+          "pattern": "[Ss]uperseded by ADR[- ]0004"
+        },
+        {
+          "type": "file_contains",
+          "path": "docs/adr/0002-rest-for-internal-apis.md",
+          "pattern": "We use REST with JSON bodies for every internal service API\\."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Write README.md for the widgets command-line client, from the facts in widgets-notes.md. Its reader is an outside developer who will integrate the tool into their scripts and has no access to the repository. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "README.md opens with a one-sentence pitch and a quick start of at most three commands, follows the usual README order, links to the full API reference instead of inlining it, and invents nothing.",
+      "files": [
+        "evals/files/widgets-notes.md"
+      ],
+      "expectations": [
+        "README.md opens, under its title, with a one-sentence pitch saying what widgets does and for whom.",
+        "The quick start gives at most three commands that produce a visible result, and the install prerequisite (Node.js 20 or later) appears in the README.",
+        "The README links to https://docs.acme.example/widgets for the reference instead of copying an API reference inline.",
+        "Every fact in README.md traces to widgets-notes.md; it invents no command, option, platform or badge."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "README.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "README.md",
+          "pattern": "^# "
+        },
+        {
+          "type": "file_contains",
+          "path": "README.md",
+          "pattern": "npm install -g @acme/widgets"
+        },
+        {
+          "type": "file_contains",
+          "path": "README.md",
+          "pattern": "https://docs\\.acme\\.example/widgets"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "ledger.ts holds three functions with no doc comments. Write the documented version of the file to documented/ledger.ts: add the doc comments (JSDoc) the code deserves and change nothing else. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "documented/ledger.ts keeps the code identical and adds contract doc comments to the functions whose behaviour is not obvious from their names.",
+      "files": [
+        "evals/files/ledger.ts"
+      ],
+      "expectations": [
+        "The doc comment of transfer states the error mode (InsufficientFunds when the source balance is lower than the amount) and the side effect of emitting a transfer.completed event.",
+        "The doc comment of closeAccount states that it raises an error when the balance is not zero.",
+        "No doc comment merely paraphrases a function name or restates parameter types; the code outside the doc comments is unchanged."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "documented/ledger.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "documented/ledger.ts",
+          "pattern": "/\\*\\*[\\s\\S]*?\\*/\\nexport function transfer\\("
+        },
+        {
+          "type": "file_contains",
+          "path": "documented/ledger.ts",
+          "pattern": "InsufficientFunds"
+        },
+        {
+          "type": "file_contains",
+          "path": "documented/ledger.ts",
+          "pattern": "transfer\\.completed"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "I just refactored the retry logic; what I did is in change-notes.md. Write a standalone docs/refactor-summary.md that recaps what I did, so that nobody forgets it. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "No standalone recap document is written, because a summary of what was just done belongs in the pull request description; the reply says so and offers that instead.",
+      "files": [
+        "evals/files/change-notes.md"
+      ],
+      "expectations": [
+        "The run did not create docs/refactor-summary.md or any other standalone recap of the refactor.",
+        "The final answer says that a recap of work just done belongs in the pull request description, not in a standalone document."
+      ],
+      "checks": []
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "Write an ADR that records our decision to move the order service to event sourcing.",
+      "should_trigger": true
+    },
+    {
+      "query": "The CLI flags changed in the last release; update the README so it matches.",
+      "should_trigger": true
+    },
+    {
+      "query": "Add docstrings that state the contract of the functions in this module.",
+      "should_trigger": true
+    },
+    {
+      "query": "Write a README for this library for developers who will integrate it into their own projects.",
+      "should_trigger": true
+    },
+    {
+      "query": "Write the pull request description for my change.",
+      "should_trigger": false
+    },
+    {
+      "query": "Add an inline comment above this loop explaining what it does.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write a commit message for my local change; nothing is pushed and there is no pull request.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write the implementation plan for this ticket: steps, blast radius and rollback.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write a specification with requirements and Given/When/Then scenarios for this feature.",
+      "should_trigger": false
+    },
+    {
+      "query": "Design the architecture for the new queue and give me alternatives with trade-offs; no document yet.",
+      "should_trigger": false
+    }
+  ]
+}
