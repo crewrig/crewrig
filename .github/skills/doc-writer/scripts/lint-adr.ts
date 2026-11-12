@@ -87,7 +87,10 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error, 3 unreadable inp
 
     const first = body.find((l) => l.text.trim() !== "");
     if (first === undefined || !/^# ADR-[0-9]{4}: \S/.test(first.text))
-      add("heading", 'the first line must be "# ADR-NNNN: <title>" with a four-digit number and a title');
+      add(
+        "heading",
+        'the first line must be "# ADR-NNNN: <title>" with a four-digit number and a title',
+      );
 
     const at = new Map<string, number[]>();
     for (const l of body) {
@@ -101,7 +104,8 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error, 3 unreadable inp
     for (const s of SECTIONS) {
       const list = at.get(s) ?? [];
       if (list.length === 0) add("section-missing", `the section "## ${s}" is missing`);
-      if (list.length > 1) add("section-duplicate", `the section "## ${s}" appears ${list.length} times`);
+      if (list.length > 1)
+        add("section-duplicate", `the section "## ${s}" appears ${list.length} times`);
     }
     const present = SECTIONS.filter((s) => (at.get(s) ?? []).length > 0);
     const firstAt = present.map((s) => (at.get(s) as number[])[0] as number);
@@ -124,7 +128,10 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error, 3 unreadable inp
 
     for (const l of body) {
       if (/<[^<>\n]{3,}>/.test(l.text) || /\{\{[A-Z]+\}\}/.test(l.text))
-        add("placeholder", `line ${l.n} still holds template placeholder text: replace it with content`);
+        add(
+          "placeholder",
+          `line ${l.n} still holds template placeholder text: replace it with content`,
+        );
     }
 
     if (at.has("Consequences")) {
@@ -132,7 +139,10 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error, 3 unreadable inp
       for (const kind of ["Positive", "Negative", "Neutral"]) {
         const re = new RegExp(`^\\s*[-*] ${kind}:\\s*(\\S.*)$`);
         if (!cons.some((l) => re.test(l.text)))
-          add("consequence-missing", `the Consequences need a "- ${kind}: ..." bullet with content`);
+          add(
+            "consequence-missing",
+            `the Consequences need a "- ${kind}: ..." bullet with content`,
+          );
       }
     }
 
