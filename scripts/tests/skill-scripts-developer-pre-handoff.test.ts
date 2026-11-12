@@ -29,17 +29,25 @@ interface Run {
 }
 interface Envelope {
   ok: boolean;
-  data: { base: string; scope: string[] | null; changed: { path: string; status: string }[] } | null;
+  data: {
+    base: string;
+    scope: string[] | null;
+    changed: { path: string; status: string }[];
+  } | null;
   findings: { rule: string; message: string; severity?: string }[];
 }
 
 const run = (cwd: string, args: readonly string[], skillDir = SKILL_DIR): Run => {
-  const r = spawnSync(process.execPath, [path.join(skillDir, "scripts", "pre-handoff.ts"), ...args], {
-    cwd,
-    env: ENV,
-    encoding: "utf8",
-    timeout: 30_000,
-  });
+  const r = spawnSync(
+    process.execPath,
+    [path.join(skillDir, "scripts", "pre-handoff.ts"), ...args],
+    {
+      cwd,
+      env: ENV,
+      encoding: "utf8",
+      timeout: 30_000,
+    },
+  );
   return { status: r.status, stdout: r.stdout, stderr: r.stderr };
 };
 const envelope = (r: Run): Envelope => {
@@ -160,7 +168,10 @@ describe("pre-handoff: scope", () => {
     put(dir, "src/a.txt", "one\ntwo\n");
     put(dir, "README.md", "readme\nmore\n");
     put(dir, "bin/new.sh", "x\n");
-    assert.equal(run(dir, ["--scope", "src/a.txt", "--scope", "README.md", "--scope", "bin/*.sh"]).status, 0);
+    assert.equal(
+      run(dir, ["--scope", "src/a.txt", "--scope", "README.md", "--scope", "bin/*.sh"]).status,
+      0,
+    );
     assert.equal(run(dir, ["--scope=src", "--scope=README.md", "--scope=bin/**"]).status, 0);
     assert.deepEqual(rules(run(dir, ["--scope", "src/*.txt", "--json"])), ["scope", "scope"]);
   });
@@ -301,9 +312,17 @@ describe("pre-handoff: usage and precondition errors", () => {
   test("the script writes nothing: the tree and the index are unchanged by a run", () => {
     const dir = repo();
     put(dir, "src/doc.md", "key -> value\n");
-    const before = spawnSync("git", ["status", "--porcelain=v2"], { cwd: dir, env: ENV, encoding: "utf8" }).stdout;
+    const before = spawnSync("git", ["status", "--porcelain=v2"], {
+      cwd: dir,
+      env: ENV,
+      encoding: "utf8",
+    }).stdout;
     run(dir, ["--scope", "src/"]);
-    const after = spawnSync("git", ["status", "--porcelain=v2"], { cwd: dir, env: ENV, encoding: "utf8" }).stdout;
+    const after = spawnSync("git", ["status", "--porcelain=v2"], {
+      cwd: dir,
+      env: ENV,
+      encoding: "utf8",
+    }).stdout;
     assert.equal(after, before);
   });
 });

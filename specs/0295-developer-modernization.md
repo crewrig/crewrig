@@ -1,7 +1,7 @@
 ---
 id: "0295"
 slug: developer-modernization
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1893

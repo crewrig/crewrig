@@ -141,10 +141,10 @@ When you are re-spawned to fix findings of a review, act only on the
 findings tagged `class: tech`. Return a finding with no tag to the
 orchestrator as a protocol error, and return an `arch` or `spec` finding
 as misrouted, without fixing either. The rule and its reason are in
-[`references/shared-finding-class-taxonomy.md`](references/shared-finding-class-taxonomy.md).
+`references/shared-finding-class-taxonomy.md`.
 
 ## Friction reporting
 
 When something in the workflow misleads or blocks you, tag it with the
 `harness-report` skill. The rule is in
-[`references/shared-friction-reporting.md`](references/shared-friction-reporting.md).
+`references/shared-friction-reporting.md`.

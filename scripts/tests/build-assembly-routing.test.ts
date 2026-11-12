@@ -30,6 +30,8 @@ before(() => {
   copyFromWorktree(tree, [
     `artifacts/core/skills/${CORE_SKILL}`,
     `artifacts/core/agents/${CORE_AGENT}`,
+    // The skill cites shared references, which the build copies from here.
+    "artifacts/core/shared",
   ]);
   tree.config(fs.readFileSync(`${REPO}/crewrig.config.toml`, "utf8"));
   for (const rel of copyFromWorktree(tree, [OVERLAY_SRC], REPO)) {
