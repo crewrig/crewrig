@@ -1,7 +1,7 @@
 ---
 id: "0292"
 slug: pr-logbook-pilot
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1880
