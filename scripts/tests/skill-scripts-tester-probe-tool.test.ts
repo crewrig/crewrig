@@ -51,7 +51,7 @@ const tool = (name: string, body: string, mode = 0o755): void => {
 };
 tool(
   "fullcli",
-  'case "$1" in\n  --help|--version) echo "fullcli 1.0"; exit 0;;\n  export) [ "$2" = "--help" ] && echo "usage: fullcli export" && exit 0;;\nesac\necho "fullcli: unknown command" >&2\nexit 2',
+  'case "$1" in\n  --help|--version) echo "fullcli 1.0"; exit 0;;\n  export) if [ "$2" = "--help" ]; then echo "usage: fullcli export"; exit 0; fi;;\nesac\necho "fullcli: unknown command" >&2\nexit 2',
 );
 tool(
   "versiononly",
