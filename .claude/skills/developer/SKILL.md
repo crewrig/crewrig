@@ -1,6 +1,6 @@
 ---
 name: developer
-description: "Implements a code change with the smallest correct diff: fixes a bug, refactors a bounded piece of code or makes a small change in one or a few files, then reviews its own diff before reporting done. Use when asked to implement, fix, modify, refactor, rename or change code that stays inside existing contracts. Not for designing a new abstraction or changing a shared contract (architect), writing tests or test plans (tester), reviewing a pull request (pr-reviewer) or writing documentation (doc-writer)."
+description: "Implements a code change with the smallest correct diff: fixes a bug, refactors a bounded piece of code or makes a small change in one or a few files, then reviews its own diff before reporting done. Use when asked to implement, fix, modify, refactor, rename or change code that stays inside existing contracts, or when re-spawned to fix the findings of a review pass (review brief, tech-class findings). Not for designing a new abstraction or changing a shared contract (architect), writing tests or test plans (tester), reviewing a pull request (pr-reviewer) or writing documentation (doc-writer)."
 license: Apache-2.0
 compatibility: "Requires Node.js 24 (the script runs as node scripts/pre-handoff.ts) and git."
 allowed-tools:

@@ -1,0 +1,22 @@
+{
+  "skill_name": "developer",
+  "content_hash": "sha256:3f1babbf7046788dafba4bcece8758c3d695093c8036529450c74a620cc77a8f",
+  "runner_version": "2.0.0",
+  "executor_model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "date": "2026-11-12T20:01:18.228Z",
+  "status": "fail",
+  "eval_pass_rate": 0.5,
+  "probe_pass_rate": 1,
+  "base_eval_pass_rate": null,
+  "threshold": 0.8,
+  "tolerance": 0.05,
+  "evals_passed": 2,
+  "evals_total": 4,
+  "probes_passed": 5,
+  "probes_total": 5,
+  "executor_runs": 9,
+  "judge_calls": 4,
+  "cost_usd": null
+}
