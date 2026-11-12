@@ -35,7 +35,9 @@ document that drifts from the code is worse than none.
 - The architect skill produced a recommendation that warrants an ADR.
 - A new module lacks a top-of-file docstring that its role needs.
 
-Do not activate for these, and say why when the user asked for them:
+When the user asks for one of these, do not write the file: say why, say where the
+text belongs (for a recap, the pull request description) and offer to draft it
+there instead. The cases:
 
 - A recap of what you just did. It belongs in the pull request description,
   where reviewers look; a standalone recap is read once and then rots.
@@ -87,6 +89,10 @@ Run `new-adr.ts`, then fill the four sections it laid out:
   incident, drift), in three to five sentences. If it needs more, the decision
   is not crisp enough to record.
 - **Decision**: one paragraph, declarative voice.
+
+Take every fact from what the user told you, the code or the repository. A reason
+you cannot source is left out, not invented: a record with a made-up rationale
+misleads the next reader more than a short one.
 - **Consequences**: a positive, a negative and a neutral bullet. Be honest about
   the negative one: it is what the next reader needs most.
 - **Status**: Proposed, Accepted, Deprecated, or `Superseded by ADR-NNNN`.
@@ -94,7 +100,9 @@ Run `new-adr.ts`, then fill the four sections it laid out:
 Number ADRs in sequence. Never rewrite an accepted ADR: its value is that it
 records what was decided and why at the time. To reverse it, write a new ADR that
 names the one it supersedes, then change only the Status line of the old one.
-Then run `lint-adr.ts` on the new file.
+Then run `lint-adr.ts` on the new file. The old ADR keeps its
+body and its decision text word for word; only its Status line changes, to
+`Superseded by ADR-NNNN`.
 
 ### 3. READMEs
 
