@@ -203,11 +203,13 @@ describe("scaffold-spec: delta mode", () => {
     );
     assert.ok(!text.includes("## Intent"));
   });
-  test("a missing --parent is a usage error (exit 2)", () => {
+  test("a missing --parent exits 1 with a parent-missing finding and writes nothing", () => {
     const r = withParent();
     const res = run(["--delta", "--issue", "7", "--json"], { cwd: r.dir });
-    assert.equal(res.status, 2);
-    assert.equal(parseEnvelope(res).findings[0]?.rule, "usage");
+    assert.equal(res.status, 1);
+    assert.equal(parseEnvelope(res).findings[0]?.rule, "parent-missing");
+    assert.deepEqual(r.calls(), []);
+    assert.deepEqual(fs.readdirSync(path.join(r.dir, "specs")), ["0100-demo.md"]);
   });
   test("an unknown parent exits 1 and writes nothing", () => {
     const r = withParent();

@@ -5,7 +5,7 @@
 //          [--mode <mode>] [--dry-run] [--json]
 // Exit codes: 0 done, 1 a finding (refused input, pickup refused, reservation failed, target
 // exists, id and branch disagree), 2 usage error, 3 precondition failed (repository tools absent).
-// Contract: references/script-contract.md. Self-contained on purpose: no import, built-ins
+// Contract: docs/skill-authoring-standard.md (the script contract). Self-contained on purpose: no import, built-ins
 // through process.getBuiltinModule.
 
 process.removeAllListeners("warning");
@@ -97,7 +97,11 @@ Exit codes: 0 done, 1 finding, 2 usage error, 3 precondition failed.
   if (!/^[1-9][0-9]*$/.test(opts["--issue"])) return usageError("--issue must be a number");
   const issue = opts["--issue"];
   if (delta) {
-    if (opts["--parent"] === undefined) return usageError("--delta requires --parent <NNNN>");
+    if (opts["--parent"] === undefined)
+      return refuse(
+        "parent-missing",
+        "--delta requires --parent <NNNN>, the id of the parent spec",
+      );
     if (idOnly) return usageError("--id-only cannot be combined with --delta");
   } else {
     if (opts["--parent"] !== undefined) return usageError("--parent only applies with --delta");

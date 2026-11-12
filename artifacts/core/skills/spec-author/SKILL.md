@@ -35,8 +35,9 @@ choice pre-empts them.
 3. A `class: spec` review finding re-invokes you. You then author a
    **delta-spec only**: the approved spec on `main` is immutable, so a
    correction travels as `specs/<NNNN>-<slug>.delta-<NN>.md`. If the request
-   has no `class:` tag, or asks you to re-author an existing spec, say so and
-   stop: the routing was wrong, and fixing it silently hides the defect.
+   has no `class:` tag, say in your reply that the routing step should have set
+   it (hiding the defect would let it recur) and still author the delta. If it
+   asks you to re-author the existing spec instead of a delta, decline that part.
 
 Inputs: a free-form intent, or `--issue <N>` (read it with
 `gh issue view <N> --json title,body,comments`), or the orchestrator's context.
@@ -69,15 +70,16 @@ of its worktrees; add `--json` for a machine-readable result.
 | `--delta --parent <NNNN> --issue <N>` | Write the next delta-spec of that parent. No tool is called. |
 | add `--dry-run` | Run no tool and write nothing; print the path, the content and the commands. |
 
-The slug is ASCII kebab-case, 40 characters at most. Rerunning is safe: the
-pickup check passes again for the ticket's owner and the reservation returns
-the issue's existing id.
+The slug is ASCII kebab-case, 40 characters at most. Running `--id-only`
+and then the writing call is safe: the pickup check passes again for the
+ticket's owner and the reservation returns the issue's existing id. Once the
+file exists, a third call refuses with `target-exists`; edit the file instead.
 
 | Exit | Meaning | What you do |
 |---|---|---|
 | `0` | Done. `data.unsecured` is true when the id could not be secured; the file then carries `unsecured-id: true`. | Continue. Leave that line in place: CI reads it. |
 | `1` | A finding, named in `findings[].rule`. `ticket-pickup`: the ticket belongs to someone else or its owner is unknown. `id-reservation`: the reservation failed. `branch-mismatch`: the branch id or slug differs from the reserved one (an unsecured reservation computes a fresh id each time). | Stop and tell the user. Never retry hoping for a different answer, never compute `max(existing) + 1` yourself, never assign or unassign anyone. For `branch-mismatch`, rename the branch to the reserved id and slug, or ask the user. |
-| `1` | A refused input: `slug`, `complexity`, `mode`, `target-exists`, `parent-missing`. | Nothing was written and no tool ran. Correct the input and rerun. For `parent-missing` the parent spec is not under `specs/` of this checkout: check the id; if the parent was given to you as a file, write the delta yourself from the output contract. |
+| `1` | A refused input: `slug`, `complexity`, `mode`, `target-exists`, `parent-missing` (also when `--delta` has no `--parent`). | Nothing was written and no tool ran. Correct the input and rerun. For `parent-missing` the parent spec is not under `specs/` of this checkout: check the id; if the parent was given to you as a file, write the delta yourself from the output contract. |
 | `2` | Usage error. | Fix the call. |
 | `3` | The repository tools are absent (not the CrewRig repository, or no repository). | Do the manual equivalent: read the issue's assignees and stop if someone else owns it; take the next unused number after fetching the default branch and checking open pull requests and branches. If the caller gave you the id, use it. Then run with `--dry-run` and write that file yourself with the id in place of `NNNN`; add `unsecured-id: true` to the frontmatter unless the id is known to be secured. |
 
