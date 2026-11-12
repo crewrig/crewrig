@@ -1,7 +1,7 @@
 ---
 id: "0293"
 slug: skill-authoring-standard
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1848
@@ -121,4 +121,4 @@ Then  the first two exit 2 and the third exits 3, and with `--json` each prints 
 
 ## Open questions
 
-- Should a finding become blocking per skill as soon as it ships `evals/evals.json` (R18, the coordinator's recommendation, which protects `pr-logbook` immediately), or only once the whole wave of the skill is migrated, as the issue says? R18 is drafted to the first; the owner decides at the SPECS gate.
+- Resolved (owner, SPECS gate): a finding is blocking per skill as soon as that skill ships `evals/evals.json` (R18), not per migrated wave.
