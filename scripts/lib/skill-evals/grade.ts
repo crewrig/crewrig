@@ -50,6 +50,8 @@ export interface JudgeMaterial {
 export type JudgeFn = (
   expectations: readonly string[],
   material: JudgeMaterial,
+  /** `rawFile`: where to persist the raw judge answer, before it is parsed. */
+  opts?: { readonly rawFile?: string },
 ) => Promise<readonly (JudgeAnswer | undefined)[]>;
 
 export class JudgeFailure extends Error {
@@ -74,6 +76,8 @@ export interface GradeInput {
   readonly skillDir: string;
   readonly transcript: string;
   readonly judge: JudgeFn;
+  /** The eval's `judge.txt`: the raw judge answer is written there, even when parsing fails. */
+  readonly judgeRawFile?: string;
   readonly mock?: boolean;
 }
 
@@ -99,7 +103,11 @@ export async function gradeRun(input: GradeInput): Promise<Grading> {
       });
   } else if (texts.length > 0) {
     const files = readProducedFiles(input.outputsDir);
-    const answers = await input.judge(texts, { transcript: input.transcript, files });
+    const answers = await input.judge(
+      texts,
+      { transcript: input.transcript, files },
+      input.judgeRawFile !== undefined ? { rawFile: input.judgeRawFile } : undefined,
+    );
     texts.forEach((text, i) => {
       const answer = answers[i];
       if (answer === undefined)
