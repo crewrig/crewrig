@@ -1,0 +1,176 @@
+{
+  "skill_name": "tester",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Test-authoring task, regression test for a bug fix. Run `node make-repo.ts bugfix` first: it builds ./repo, a local git repository with no remote. The bug: `applyDiscount(200, 25)` returns 175 but a 25 percent discount must give 150. The project's working rules are in conventions.md. Verify the fix the way a tester does: write the regression test first, run it and confirm it fails for the right reason, apply the fix, run it again, then run the whole suite. Write the commands you ran and what each printed (failure first, then success) to tester-log.md in the current directory, not inside ./repo. Work inside ./repo and do not commit. Do not push anything and do not run gh, glab or tea.",
+      "expected_output": "A regression test for the 25 percent case is added to repo/test/discount.test.js, named after the behaviour; tester-log.md shows it failing with an assertion error before the fix and passing after, then the whole suite passing; src/discount.js computes a percentage.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/make-repo.ts"
+      ],
+      "expectations": [
+        "tester-log.md shows the new test run before the fix and failing with an assertion error about the discounted price, not a setup or import error.",
+        "tester-log.md shows the new test passing after the fix and then the whole suite run with no failure.",
+        "The new test in repo/test/discount.test.js is named after the behaviour it checks, such as a percentage discount, and not after the function alone."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "tester-log.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/test/discount.test.js",
+          "pattern": "applyDiscount\\(200, 25\\)"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/test/discount.test.js",
+          "pattern": "150"
+        },
+        {
+          "type": "file_contains",
+          "path": "tester-log.md",
+          "pattern": "fail"
+        },
+        {
+          "type": "file_contains",
+          "path": "tester-log.md",
+          "pattern": "pass"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Test-authoring task, tool availability. Run `node make-repo.ts tool` first: it builds ./repo, a local git repository with no remote, holding notes.md and the executable repo/bin/widgetctl. A note in repo/notes.md says `widgetctl export` is not supported by this CLI, so the end-to-end test of the export command would be skipped. Decide, as a tester, whether to write that test or to skip it, with whatever evidence the decision needs; add repo/bin to PATH when you run the tool. Write the decision and its evidence to decision.md in the current directory, not inside ./repo. Do not modify anything under ./repo. Do not push anything and do not run gh, glab or tea.",
+      "expected_output": "decision.md says the export test must be written, not skipped, and quotes the probe of `widgetctl export --help` and its successful result.",
+      "files": [
+        "evals/files/make-repo.ts"
+      ],
+      "expectations": [
+        "decision.md states that the export test is written and not skipped, because `widgetctl export` exists.",
+        "decision.md quotes the command that was run to probe the tool and what it printed or its exit code, rather than relying on the note.",
+        "decision.md does not treat the note in notes.md as evidence that the command is unavailable."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "decision.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "decision.md",
+          "pattern": "widgetctl export --help"
+        },
+        {
+          "type": "file_contains",
+          "path": "decision.md",
+          "pattern": "usage: widgetctl export"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Test-authoring task, findings of a review. Run `node make-repo.ts paginate` first: it builds ./repo, a local git repository with no remote. Then read review-brief.md and act as the test target it describes. The project's working rules are in conventions.md. Work inside ./repo and do not commit. Do not push anything and do not run gh, glab or tea. Write your report to the orchestrator to orchestrator-report.md in the current directory, one line per finding saying what you did with it.",
+      "expected_output": "F1 is done: a page 2 test is added to repo/test/paginate.test.js and passes. F2, which has no class tag, is returned to the orchestrator as a protocol error and not applied. F3, class arch, is returned as misrouted and not implemented.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/make-repo.ts",
+        "evals/files/review-brief.md"
+      ],
+      "expectations": [
+        "orchestrator-report.md says F1 was done and that the test was run and passed.",
+        "orchestrator-report.md says F2 has no class tag and was returned to the orchestrator as a protocol error, without guessing its class and without renaming the tests.",
+        "orchestrator-report.md says F3 is class arch, was misrouted to the test pass and was returned without being implemented."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "orchestrator-report.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/test/paginate.test.js",
+          "pattern": "pageOf\\(\\[1, 2, 3, 4\\], 2, 2\\)"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/test/paginate.test.js",
+          "pattern": "page 1 starts at the first item"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/package.json",
+          "pattern": "^(?![\\s\\S]*(?:jest|mocha|vitest))[\\s\\S]*$"
+        },
+        {
+          "type": "file_contains",
+          "path": "orchestrator-report.md",
+          "pattern": "F2"
+        },
+        {
+          "type": "file_contains",
+          "path": "orchestrator-report.md",
+          "pattern": "F3"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Test-authoring task, edge cases. Run `node make-repo.ts duration` first: it builds ./repo, a local git repository with no remote, whose `parseDuration` in repo/src/duration.js turns text such as \"1h30m\" into milliseconds. The project's working rules are in conventions.md. Write the tests for it into repo/test/duration.test.js: the golden path and the failure modes that matter, and stop when the next case would be contrived. Run them. Work inside ./repo and do not commit. Do not push anything and do not run gh, glab or tea.",
+      "expected_output": "repo/test/duration.test.js holds a small set of tests (at least three, at most six): the golden path, the empty input, and one or two boundary cases, all passing, with no contrived case.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/make-repo.ts"
+      ],
+      "expectations": [
+        "The tests cover the golden path and the empty-input failure, each named after the behaviour it checks.",
+        "No test is contrived: none exercises behaviour the function was not meant to have, such as units that do not exist or non-string input."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "repo/test/duration.test.js"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/test/duration.test.js",
+          "pattern": "test\\([\\s\\S]*test\\([\\s\\S]*test\\("
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/test/duration.test.js",
+          "pattern": "^(?![\\s\\S]*(?:\\btest\\([\\s\\S]*){7})[\\s\\S]*$"
+        },
+        {
+          "type": "file_contains",
+          "path": "repo/test/duration.test.js",
+          "pattern": "\"\""
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "Write a regression test for this bug and show that it fails before the fix and passes after.",
+      "should_trigger": true
+    },
+    {
+      "query": "List the edge cases we should test for this CSV parser and write the priority ones.",
+      "should_trigger": true
+    },
+    {
+      "query": "The parseDate function returns the wrong month. Fix it.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write Playwright end-to-end tests for the checkout page of our web application.",
+      "should_trigger": false
+    },
+    {
+      "query": "Review pull request 482 cold and tell me whether to approve it or request changes.",
+      "should_trigger": false
+    }
+  ]
+}
