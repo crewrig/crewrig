@@ -10,13 +10,15 @@ version: 3.0.0
 
 # Pilot the pr-logbook modernization with frozen evals, bundled scripts and a measured delta
 
-*Delta 02 of `specs/0292-pr-logbook-pilot.md`, building on delta-01. Source: spec 0290 delta-04 (issue #1884, merged in PR #1886), which the owner decided after rejecting, at the spend gate of this ticket, the paired runs and the judge quorum of the eval runner. The runner now makes one run per eval with the skill installed and one run per trigger probe. It sends one judge call per eval, grades a skill `pass` when its eval pass rate and its probe pass rate each reach `pass-threshold` (0.8), and has no `base_mean` or `without_skill` mean any more. The acceptance and the report of this pilot named those removed figures, so they are realigned here. Version 3.0.0, a MAJOR bump: the acceptance criterion changes. Requirements modified: R3, R23, R24, R26, R27, R28, the Intent as restated by delta-01, and two scenarios. This delta opens no question.*
+*Delta 02 of `specs/0292-pr-logbook-pilot.md`, building on delta-01. Source: spec 0290 delta-04 (issue #1884, merged in PR #1886), which the owner decided after rejecting, at the spend gate of this ticket, the paired runs and the judge quorum of the eval runner. The runner now makes one run per eval with the skill installed and one run per trigger probe. It sends one judge call per eval, grades a skill `pass` when its eval pass rate and its probe pass rate each reach `pass-threshold` (0.8), and has no `base_mean` or `without_skill` mean any more. The acceptance and the report of this pilot named those removed figures, so they are realigned here. Version 3.0.0, a MAJOR bump: the acceptance criterion changes. Requirements modified: R2, R3, R23, R24, R26, R27, R28, the Intent as restated by delta-01, and two scenarios. This delta opens no question.*
 
 ## ADDED
 
 None.
 
 ## MODIFIED
+
+**R2 (cases), as modified by delta-01.** Original (delta-01): "the file SHALL hold three or four evals". Replacement: the file SHALL hold three to five evals. Reason: with the 0.8 threshold, four evals leave no room for a single failure (3 of 4 is 0.75), while five allow one (4 of 5 is 0.8); the owner chose to give the pilot that margin. The coverage of behaviours (a), (b) and (c) stands.
 
 **R3 (no check that presumes the rewrite).** Original reason: "because the skill measured as the baseline has no `scripts/` directory". Replacement reason: because an `exit_code` check runs the head's script directly and says nothing about the agent's behaviour. The rule itself, no `exit_code` check, stands.
 
