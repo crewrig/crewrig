@@ -1,7 +1,7 @@
 ---
 id: "0295"
 slug: developer-modernization
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1893
@@ -26,10 +26,10 @@ The `developer` skill and agent are brought to the skill authoring standard v2 (
 8. **R8 (agent).** The agent SHALL keep its role, tool access, model intelligence and hand-off boundaries (architect, security, tester) and drop every sentence that restates the skill (the lifecycle, the diff-as-output rule, the parallelisation rule, the verification rule). Its friction paragraph SHALL become a one-line pointer to the `harness-report` skill with no mention of `config/TOOLS.md`. The sentence about `artifacts/community/` SHALL be removed (R2). The agent SHALL NOT receive a `tools` allowlist: it edits files and runs commands.
 9. **R9 (evals).** `evals/evals.json` SHALL hold three or four evals and five trigger probes under spec 0290: expectations stated on the observable output, `file_exists` and `file_contains` checks only, fixtures under `evals/files/`, no eval that writes to a forge. The evals SHALL cover at least: a bounded fix that must not touch what it was not asked to touch, a pre-handoff review that must catch a lost non-ASCII character, and a `tech` finding with a missing `class:` tag that must be surfaced back rather than guessed. The probes SHALL be at least two positive and at least two near-miss negatives that share vocabulary with the skill (design a contract change, write regression tests, review a pull request, write documentation).
 10. **R10 (frozen cases).** `evals.json` and the fixtures SHALL NOT change after the first non-mock run, except under R12.
-11. **R11 (measurement and spend).** Agents run the eval runner in mock mode only. The owner approves the spend once, on the plan the runner prints for one measurement, and launches each non-mock run in their own terminal. The cost model, from the pilot, is about 0.25 to 0.37 USD of executor cost per run, 17 model runs per measurement and up to seven judge calls per eval; the planned cap is three measurements.
-12. **R12 (acceptance and regression path).** The pull request SHALL be merged only when the committed `evals/results.json` is of a non-mock run on its head and its status is not `regression` under the `TOLERANCE` on `main`. After three non-mock runs without that outcome, the work stops and the owner chooses between revising the description, revising the cases (which restarts the count and needs R11's approval again) and abandoning the rewrite. A trigger probe that fails is answered by revising the description before the body.
+11. **R11 (measurement and spend).** The owner pre-approved the eval spend for this ticket, through the wave coordinator. The implementing agent runs `task skill-evals -- developer` itself in its logged-in Claude Code session, never with `--use-api-key`, within the runner's hard bounds. Three non-mock measurements are allowed: a baseline on the unchanged skill with the committed cases, a final measurement on the rewritten skill, and one retry. A fourth needs the coordinator's approval first. The cost of every measurement is reported on the logbook. The cost model, from the pilot, is about 0.25 to 0.37 USD of executor cost per run, 17 model runs per measurement and up to seven judge calls per eval.
+12. **R12 (acceptance and regression path).** The pull request SHALL be merged only when the committed `evals/results.json` is of a non-mock run on its head and its status is not `regression` under the `TOLERANCE` on `main`. After the three measurements of R11 without that outcome, the work stops and the coordinator chooses between revising the description, revising the cases (which restarts the count and needs the approval of R11 again) and abandoning the rewrite. A trigger probe that fails is answered by revising the description before the body.
 13. **R13 (zero findings).** `task check-skill-quality -- developer` SHALL report zero errors and zero warnings, `metadata.provenance.version` of the skill and the agent SHALL be bumped, and the built components SHALL be regenerated in the same commit.
-14. **R14 (report and follow-ups).** A comment on issue #1852 SHALL report the measured figures, the choices of R2 and R5, and these follow-ups: the `check-exec-bits` duplication in `pr-logbook` is removed in a later edit of that skill that is re-measured anyway; and the standard's no-network clause leaves a branch-start script unwritable, which the standard may amend.
+14. **R14 (report and follow-ups).** A comment on issue #1852 SHALL report the measured figures, the cost of each measurement, the choices of R2 and R5, the gap that rebuild detection is left to the `check-components` job, and these follow-ups: the `check-exec-bits` duplication in `pr-logbook` is removed in a later edit of that skill that is re-measured anyway; and the standard's no-network clause leaves a branch-start script unwritable, which the standard may amend.
 
 ## Scenarios
 
@@ -65,9 +65,9 @@ The `developer` skill and agent are brought to the skill authoring standard v2 (
 
 ### Failure path — regression after three runs
 
-- **Given** three non-mock runs whose status is `regression`,
+- **Given** three measurements whose status is `regression`,
 - **When** the third ends,
-- **Then** the work stops and the owner is offered the three choices of R12.
+- **Then** the work stops and the coordinator is offered the three choices of R12.
 
 ## Out of scope
 
