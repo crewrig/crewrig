@@ -13,7 +13,7 @@
 // Credential step (R33, R41, R32), skipped in mock mode: the credential source is chosen, the
 // temporary directory is checked (outside HOME and any git work tree), and in session mode the
 // login is probed once per invocation (no model call). Each run's workspace is a directory under
-// the temporary root; a with_skill run has the skill installed at project scope in it
+// the temporary root; each run has the skill installed at project scope in it
 // (`<workspace>/.claude/skills/<name>/`), and the top-level `.claude/` is never collected as output.
 //
 // Exit codes (the entry maps them): 0 ok, 1 blocking outcome, 3 failed precondition (R33, R41, R32).

@@ -12,14 +12,14 @@ export const TOLERANCE = 0.05;
 export const REGRESSION_BLOCKING = false;
 /** R21: when true, a changed skill without evals/ makes the run or the check exit non-zero. */
 export const MISSING_EVALS_BLOCKING = false;
-/** R46: an eval's pass-rate must reach this for it to count as passed. */
+/** R46: the skill-level pass threshold, applied to the eval pass rate and to the probe pass rate. */
 export const PASS_THRESHOLD = 0.8;
 /** R46: when true, a skill whose result is `fail` makes the run or the check exit non-zero. */
 export const FAIL_BLOCKING = false;
 /** R47: the `--effort` level of the executor, the probe and the judge call. */
 export const EFFORT = "medium";
 
-/** R23 (per skill): executor runs (with_skill and without_skill) allowed per invocation. */
+/** R23 (per skill): executor runs (one per eval, one per probe) allowed per invocation. */
 export const MAX_EXECUTOR_RUNS = 20;
 /** R23 (per skill): the judge's `max_calls` for the invocation. */
 export const JUDGE_MAX_CALLS = 20;
