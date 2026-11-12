@@ -215,6 +215,11 @@
           "title": "Skill evals",
           "path": "docs/skill-evals.md",
           "nav_order": 165
+        },
+        {
+          "title": "Skill authoring standard",
+          "path": "docs/skill-authoring-standard.md",
+          "nav_order": 166
         }
       ]
     },

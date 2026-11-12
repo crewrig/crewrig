@@ -1,4 +1,4 @@
-// description-length.ts — cap on a skill or agent `description` (spec 0269 R11).
+// description-length.ts — cap on a skill or agent `description` (spec 0269 R11, amended to 1,024 by spec 0293 R2).
 //
 // A description is loaded into every session for routing, so it is held to
 // MAX_DESCRIPTION_CHARS. Checked on the sources under artifacts/ and on every compiled
@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export const MAX_DESCRIPTION_CHARS = 300;
+export const MAX_DESCRIPTION_CHARS = 1024;
 
 /** Globs, relative to the repository root, of every file whose description is capped. */
 export const DESCRIPTION_GLOBS: readonly string[] = [

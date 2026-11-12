@@ -1,4 +1,4 @@
-// check-description-length.test.ts — spec 0269 R11: the 300-character description cap,
+// check-description-length.test.ts — spec 0293 R2 (amending spec 0269 R11): the 1,024-character description cap,
 // end to end against a throwaway repository root (CREWRIG_REPO_DIR).
 
 import assert from "node:assert/strict";
@@ -37,33 +37,33 @@ function run(dir: string) {
 }
 
 describe("check-description-length", () => {
-  test("exactly 300 characters passes", () => {
-    const res = run(rootWith({ "artifacts/core/skills/x/SKILL.md": skill("a".repeat(300)) }));
+  test("exactly 1024 characters passes", () => {
+    const res = run(rootWith({ "artifacts/core/skills/x/SKILL.md": skill("a".repeat(1024)) }));
     assert.equal(res.status, 0, res.stdout + res.stderr);
   });
 
-  test("301 characters fails on a source and names file and length", () => {
-    const res = run(rootWith({ "artifacts/core/skills/x/SKILL.md": skill("a".repeat(301)) }));
+  test("1025 characters fails on a source and names file and length", () => {
+    const res = run(rootWith({ "artifacts/core/skills/x/SKILL.md": skill("a".repeat(1025)) }));
     assert.equal(res.status, 1);
     assert.match(
       res.stdout,
-      /FAIL artifacts\/core\/skills\/x\/SKILL\.md — description 301 chars \(max 300\)/,
+      /FAIL artifacts\/core\/skills\/x\/SKILL\.md — description 1025 chars \(max 1024\)/,
     );
   });
 
   test("a folded multi-line description is measured as the parsed string", () => {
-    const folded = `>-\n  ${"word ".repeat(70)}`;
+    const folded = `>-\n  ${"word ".repeat(210)}`;
     const res = run(rootWith({ "artifacts/core/agents/y/AGENT.md": skill(folded) }));
     assert.equal(res.status, 1);
-    assert.match(res.stdout, /AGENT\.md — description 349 chars/);
+    assert.match(res.stdout, /AGENT\.md — description 1049 chars/);
   });
 
   test("a compiled output over the cap fails whatever its source says", () => {
     const res = run(
       rootWith({
         "artifacts/core/skills/x/SKILL.md": skill("short"),
-        ".claude/skills/x/SKILL.md": skill("b".repeat(400)),
-        ".gemini/agents/x.md": skill("c".repeat(400)),
+        ".claude/skills/x/SKILL.md": skill("b".repeat(1100)),
+        ".gemini/agents/x.md": skill("c".repeat(1100)),
       }),
     );
     assert.equal(res.status, 1);
@@ -75,7 +75,7 @@ describe("check-description-length", () => {
     const res = run(
       rootWith({
         "artifacts/core/skills/x/SKILL.md": skill("short"),
-        ".agents/agents/x.md": skill("d".repeat(400)),
+        ".agents/agents/x.md": skill("d".repeat(1100)),
       }),
     );
     assert.equal(res.status, 1);

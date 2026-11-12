@@ -220,6 +220,7 @@ build-components-ts:
       changes: &build-components-ts-changes-1
         - "scripts/build-components.*"
         - "scripts/lib/build-components/**"
+        - "scripts/lib/skill-citations/**"
         - "scripts/lib/render-command.ts"
         - "scripts/lib/component-resolve.ts"
         - "scripts/lib/model-resolve.ts"
@@ -2576,6 +2577,11 @@ check-description-length:
         - "scripts/check-description-length.ts"
         - "scripts/lib/governance/**"
         - "scripts/lib/require-dependency.ts"
+        - "scripts/check-skill-quality.ts"
+        - "scripts/lib/skill-*/**"
+        - "scripts/lib/paths.ts"
+        - "scripts/tests/check-skill-quality*.test.ts"
+        - "scripts/tests/lib/skill-quality-fixture.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *check-description-length-changes-1
 

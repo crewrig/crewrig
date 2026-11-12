@@ -4,7 +4,8 @@
 // :590-658, Copilot :660-690, Antigravity :692-723. The four files share one shape
 // (`name`, `description`, `license`, `compatibility`); Claude Code adds its own fields
 // after those. In tier `core` the body's relative links lose one `../` (:557). Each
-// built skill then receives the skill's `scripts/`, `references/` and `assets/`.
+// built skill then receives the skill's `scripts/`, `references/` and `assets/`, and the
+// shared references its body cites (shared-references.ts, spec 0293 R11).
 //
 // A source with no name is skipped with the shell's warning (tiers.ts `componentName`).
 // `description` is written between double quotes and never escaped, as the shell wrote it.
@@ -12,6 +13,7 @@
 import { joinRoot } from "./args.ts";
 import { rewriteSkillBodyLinks } from "./links.ts";
 import { propagateSkillResources } from "./resources.ts";
+import { propagateSharedReferences } from "./shared-references.ts";
 import {
   allowedToolsLines,
   componentName,
@@ -87,6 +89,7 @@ export function buildSkills(ctx: Ctx, tier: string, tierDir: string, outRoot: st
         outRoot,
       );
       propagateSkillResources(ctx, skillDir, outDir, outRoot);
+      propagateSharedReferences(ctx, skillDir, source.body, outDir, outRoot);
     }
   }
 }
