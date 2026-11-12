@@ -1,0 +1,4 @@
+lint-python: unknown option -x
+Usage: node lint-python [--json] [--require-tools] [--] <file.py>...
+  Runs ruff (or flake8) and a bare print() check. Exit 0 clean, 1 findings, 2 usage error,
+  3 unreadable input or (with --require-tools) no linter installed.

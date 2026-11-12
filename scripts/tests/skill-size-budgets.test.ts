@@ -32,7 +32,7 @@ const BUDGETS: readonly Budget[] = [
   {
     dir: "artifacts/core/skills/pr-reviewer",
     max: 10240,
-    unconditional: ["references/step-1-preflight.md"],
+    unconditional: [],
   },
   {
     dir: "artifacts/library/skills/harness-report",

@@ -1,1 +1,0 @@
-ruff <check> <a.py> <my dir/b.py> <-x>
