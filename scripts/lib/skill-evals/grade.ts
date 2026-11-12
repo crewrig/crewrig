@@ -1,10 +1,10 @@
 // grade.ts — grading of one run into `grading.json` (spec 0290 R11, R12, R13).
 //
 // Order: every check first (R12), in file order, then every expectation, in file order. The judge
-// is called only for `expectations` entries, and not at all for a run whose outputs directory
-// cannot be read. A PASS needs valid evidence (evidence.ts); an unsupported PASS and an UNCERTAIN
-// verdict are recorded `passed: false`. A judge that cannot answer raises `JudgeFailure`, which the
-// caller turns into status `error`.
+// is called ONCE, only when the eval has `expectations` and its outputs directory can be read. A
+// PASS needs valid evidence (evidence.ts); an unsupported PASS, any other verdict word and a missing
+// entry ("no verdict") are recorded `passed: false`. A judge that cannot answer raises
+// `JudgeFailure`, which the caller turns into status `error`.
 //
 // Usage: const g = await gradeRun({ evalCase, outputsDir, skillDir, transcript, judge });
 // Exit codes: not applicable (library). Finding-line format: not applicable.
@@ -36,9 +36,9 @@ export interface Grading {
 }
 
 export interface JudgeAnswer {
-  readonly verdict: "PASS" | "FAIL" | "UNCERTAIN";
+  /** The verdict word, upper-cased; only `PASS` can pass. */
+  readonly verdict: string;
   readonly evidence: string | undefined;
-  readonly confidence: string;
 }
 
 export interface JudgeMaterial {
@@ -46,7 +46,11 @@ export interface JudgeMaterial {
   readonly files: readonly ProducedFile[];
 }
 
-export type JudgeFn = (expectation: string, material: JudgeMaterial) => Promise<JudgeAnswer>;
+/** One call for all of an eval's expectations; one entry per expectation, undefined when missing. */
+export type JudgeFn = (
+  expectations: readonly string[],
+  material: JudgeMaterial,
+) => Promise<readonly (JudgeAnswer | undefined)[]>;
 
 export class JudgeFailure extends Error {
   readonly reason: "no-verdict" | "cap" | "hard-failure" | "auth-missing" | "unsupported-backend";
@@ -85,39 +89,42 @@ export async function gradeRun(input: GradeInput): Promise<Grading> {
   } catch {
     readable = false;
   }
-  const files = readable ? readProducedFiles(input.outputsDir) : [];
-  for (const text of input.evalCase.expectations) {
-    if (!readable) {
+  const texts = input.evalCase.expectations;
+  if (texts.length > 0 && !readable) {
+    for (const text of texts)
       entries.push({
         text,
         passed: false,
         evidence: "the run's output directory could not be read; the judge was not called",
       });
-      continue;
-    }
-    const answer = await input.judge(text, { transcript: input.transcript, files });
-    if (answer.verdict === "UNCERTAIN")
-      entries.push({
-        text,
-        passed: false,
-        evidence: `the judge verdict was uncertain (confidence ${answer.confidence})`,
-      });
-    else if (answer.verdict === "FAIL")
-      entries.push({
-        text,
-        passed: false,
-        evidence: `the judge verdict was FAIL (confidence ${answer.confidence})${answer.evidence ? `: ${answer.evidence}` : ""}`,
-      });
-    else {
-      const v = validateEvidence(answer.evidence, { transcript: input.transcript, files });
-      if (v.ok) entries.push({ text, passed: true, evidence: answer.evidence ?? "" });
-      else
+  } else if (texts.length > 0) {
+    const files = readProducedFiles(input.outputsDir);
+    const answers = await input.judge(texts, { transcript: input.transcript, files });
+    texts.forEach((text, i) => {
+      const answer = answers[i];
+      if (answer === undefined)
         entries.push({
           text,
           passed: false,
-          evidence: `the PASS verdict was unsupported: ${v.reason}${answer.evidence ? ` (evidence given: ${JSON.stringify(answer.evidence.slice(0, 200))})` : ""}`,
+          evidence: "the judge gave no verdict for this expectation",
         });
-    }
+      else if (answer.verdict !== "PASS")
+        entries.push({
+          text,
+          passed: false,
+          evidence: `the judge verdict was ${answer.verdict}${answer.evidence ? `: ${answer.evidence}` : ""}`,
+        });
+      else {
+        const v = validateEvidence(answer.evidence, { transcript: input.transcript, files });
+        if (v.ok) entries.push({ text, passed: true, evidence: answer.evidence ?? "" });
+        else
+          entries.push({
+            text,
+            passed: false,
+            evidence: `the PASS verdict was unsupported: ${v.reason}${answer.evidence ? ` (evidence given: ${JSON.stringify(answer.evidence.slice(0, 200))})` : ""}`,
+          });
+      }
+    });
   }
   const grading: Grading = { expectations: entries, summary: summarize(entries) };
   if (input.mock === true) grading.mock = true;

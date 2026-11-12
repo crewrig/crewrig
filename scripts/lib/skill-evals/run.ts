@@ -95,7 +95,7 @@ export interface RunOptions {
   readonly settings?: Partial<RunSettings>;
   readonly executor?: Executor;
   readonly mockAnswer?: (
-    expectation: string,
+    expectations: readonly string[],
     m: { transcript: string; files: readonly { rel: string; content: string }[] },
   ) => string;
   readonly fetchImpl?: typeof fetch;

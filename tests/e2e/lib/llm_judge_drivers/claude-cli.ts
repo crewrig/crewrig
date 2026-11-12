@@ -39,7 +39,7 @@ async function preflight(ctx: Ctx): Promise<Preflight> {
 }
 
 /** The argv of one judge call: no tools, no slash commands, plus the isolation flags. */
-export function buildJudgeArgs(model: string): string[] {
+export function buildJudgeArgs(model: string, effort = ""): string[] {
   return [
     "-p",
     "--output-format",
@@ -49,6 +49,7 @@ export function buildJudgeArgs(model: string): string[] {
     "--tools",
     "",
     "--disable-slash-commands",
+    ...(effort === "" ? [] : ["--effort", effort]),
     ...ISOLATION_FLAGS,
   ];
 }
@@ -98,9 +99,18 @@ async function complete(
       ctx.deps.env,
       token === "" ? undefined : { name: TOKEN_ENV, value: token },
     );
-    const res = await runClaude(binary, buildJudgeArgs(ctx.cfg.model), env, cwd, message);
-    if (res.code !== 0 || res.stdout.trim() === "") return undefined;
-    return res.stdout;
+    const args = buildJudgeArgs(ctx.cfg.model, ctx.cfg.effort);
+    // One retry on a non-zero exit, a timeout or an empty output (spec 0290 R15). It is a call of
+    // its own: refused when the cap is reached, counted in `judge.count` otherwise.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) {
+        if (ctx.count() >= ctx.cfg.maxCalls) return undefined;
+        ctx.bump();
+      }
+      const res = await runClaude(binary, args, env, cwd, message);
+      if (res.code === 0 && res.stdout.trim() !== "") return res.stdout;
+    }
+    return undefined;
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

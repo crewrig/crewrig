@@ -71,8 +71,8 @@ test("R15, R40, R42: the token reaches the child through its environment only; t
       }),
       "JUDGE MESSAGE BODY",
     );
-    assert.equal(r.kind, "verdict");
-    if (r.kind === "verdict") assert.equal(r.verdict, "PASS");
+    assert.equal(r.kind, "answer");
+    if (r.kind === "answer") assert.match(r.text, /VERDICT=PASS/);
     const seen = JSON.parse(fs.readFileSync(s.log, "utf8"));
     assert.equal(seen.stdin, "JUDGE MESSAGE BODY");
     assert.equal(seen.env.CLAUDE_CODE_OAUTH_TOKEN, "tok-judge");
@@ -97,6 +97,42 @@ test("R15, R40, R42: the token reaches the child through its environment only; t
     assert.equal(readCalls(s.bin, "auth").length, 0, "a token needs no login probe");
   } finally {
     fs.rmSync(s.dir, { recursive: true, force: true });
+  }
+});
+
+test("buildJudgeArgs adds --effort only when the config sets it", () => {
+  assert.equal(buildJudgeArgs("m").includes("--effort"), false);
+  const a = buildJudgeArgs("m", "medium");
+  assert.equal(a[a.indexOf("--effort") + 1], "medium");
+});
+
+test("v1-F2: one retry on a failed call, counted in judge.count; none once the cap is reached", async () => {
+  const flaky = (max: number) => {
+    const s = setup(
+      `const fs = require("fs");\nconst n = fs.existsSync(LOG) ? Number(fs.readFileSync(LOG, "utf8")) : 0;\nfs.writeFileSync(LOG, String(n + 1));\nif (n === 0) process.exit(1);\nprocess.stdout.write('1 VERDICT=PASS EVIDENCE="an excerpt"\\n');`,
+    );
+    fs.writeFileSync(
+      path.join(s.dir, "report", "effective.json"),
+      JSON.stringify({ judge: { backend: "claude-cli", model: JUDGE_MODEL, max_calls: max } }),
+    );
+    return s;
+  };
+  const s = flaky(5);
+  try {
+    const r = await llmJudgeEvidence(s.deps({ CLAUDE_CODE_OAUTH_TOKEN: "t" }), "m");
+    assert.equal(r.kind === "answer" && r.text.includes("VERDICT=PASS"), true);
+    assert.equal(fs.readFileSync(s.log, "utf8"), "2", "failed once, retried once");
+    assert.equal(fs.readFileSync(path.join(s.dir, "report", "judge.count"), "utf8").trim(), "2");
+  } finally {
+    fs.rmSync(s.dir, { recursive: true, force: true });
+  }
+  const c = flaky(1);
+  try {
+    const r = await llmJudgeEvidence(c.deps({ CLAUDE_CODE_OAUTH_TOKEN: "t" }), "m");
+    assert.deepEqual(r, { kind: "answer", text: "" });
+    assert.equal(fs.readFileSync(c.log, "utf8"), "1", "the retry is refused at the cap");
+  } finally {
+    fs.rmSync(c.dir, { recursive: true, force: true });
   }
 });
 
@@ -139,7 +175,12 @@ test("no token and not logged in means auth-missing before any model call; a fai
       "only the login probe ran",
     );
     const r = await llmJudgeEvidence(s.deps({ CLAUDE_CODE_OAUTH_TOKEN: "t" }), "m");
-    assert.ok(r.kind === "verdict" && r.texts.every((t) => t === undefined));
+    assert.deepEqual(
+      r,
+      { kind: "answer", text: "" },
+      "a failed call (after its one retry) is empty text",
+    );
+    assert.equal(fs.readFileSync(path.join(s.dir, "report", "judge.count"), "utf8").trim(), "2");
   } finally {
     fs.rmSync(s.dir, { recursive: true, force: true });
   }
@@ -153,8 +194,8 @@ test("R33, R41: without a token the preflight is the login probe; a logged-in se
     const deps = s.deps({ ANTHROPIC_API_KEY: "key-not-requested" });
     for (let i = 0; i < 4; i++) {
       const r = await llmJudgeEvidence(deps, `message ${i}`);
-      assert.equal(r.kind, "verdict");
-      if (r.kind === "verdict") assert.equal(r.verdict, "PASS");
+      assert.equal(r.kind, "answer");
+      if (r.kind === "answer") assert.match(r.text, /VERDICT=PASS/);
     }
     const seen = fs
       .readFileSync(s.log, "utf8")

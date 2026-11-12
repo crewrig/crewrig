@@ -112,10 +112,7 @@ test("a failed check is recorded with its observed value and the judge is called
   try {
     let judged = 0;
     const r = await rig.run({
-      mockAnswer: () => (
-        judged++,
-        'VERDICT=PASS CONF=0.9\nEVIDENCE="there is no answer file here"'
-      ),
+      mockAnswer: () => (judged++, '1 VERDICT=PASS EVIDENCE="there is no answer file here"'),
     });
     assert.equal(r.exitCode, 0, r.text);
     const g = read(rig.out, "demo", "eval-1", "without_skill", "grading.json");
@@ -143,7 +140,7 @@ test("a run whose outputs directory cannot be read gets no judge call", async ()
     outputsDir: path.join(os.tmpdir(), "skill-evals-does-not-exist-outputs"),
     skillDir: "/nonexistent",
     transcript: "t",
-    judge: async () => (calls++, { verdict: "PASS", evidence: "x", confidence: "1.00" }),
+    judge: async () => (calls++, [{ verdict: "PASS", evidence: "x" }]),
   });
   assert.equal(calls, 0);
   assert.deepEqual(

@@ -11,7 +11,7 @@
 // Usage: planSkill(...), preflight(plans, limits), new RunBudget(limits).
 // Exit codes: not applicable (library). Finding-line format: not applicable.
 
-import { JUDGE_QUORUM, JUDGE_RETRY_ALLOWANCE } from "./settings.ts";
+import { JUDGE_RETRY_ALLOWANCE } from "./settings.ts";
 import type { EvalsFile } from "./schema.ts";
 
 export interface Limits {
@@ -31,8 +31,8 @@ export interface SkillPlan {
 
 export function planSkill(skill: string, evals: EvalsFile, replay: boolean): SkillPlan {
   const runsPerEval = replay ? 3 : 2;
-  const expectations = evals.evals.reduce((n, e) => n + e.expectations.length, 0);
-  const base = expectations * runsPerEval * JUDGE_QUORUM;
+  // One judge call per run of an eval that has expectations (spec 0290 delta-04 R15).
+  const base = evals.evals.filter((e) => e.expectations.length > 0).length * runsPerEval;
   return {
     skill,
     evals: evals.evals.length,

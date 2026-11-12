@@ -1,11 +1,12 @@
 // judge.ts — the runner's judge: prompt, call through the shared judge library, answer parsing
 // (spec 0290 R12, R13, R15, R33).
 //
-// One expectation = one `llmJudgeEvidence` call (3-call quorum, `max_calls` cap via `judge.count`,
-// mock mode) in the runner's own judge directory `<out>/<skill>/.judge/` holding the
-// `effective.json` the runner wrote. Calls are serialised through one queue per skill so the
-// counter file is race-free. The evidence of a PASS is taken from the FIRST PASS slot; if it fails
-// the evidence rule the expectation is recorded unsupported, the other slots are not searched.
+// One eval = ONE `llmJudgeEvidence` call (one `max_calls` count, mock mode) in the runner's own
+// judge directory `<out>/<skill>/.judge/` holding the `effective.json` the runner wrote. The prompt
+// numbers the eval's expectations and asks for one line per expectation:
+// `<n> VERDICT=<word> EVIDENCE=<JSON string>`. Calls are serialised through one queue per skill so
+// the counter file is race-free. Only PASS can pass (grade.ts checks its evidence); any other word
+// is a failed expectation, and a missing index is a failed "no verdict".
 //
 // Usage: const j = createJudge({...}); j.fn is a JudgeFn; j.callsUsed() reads the counter.
 // Exit codes: not applicable (library). Finding-line format: not applicable.
@@ -20,13 +21,16 @@ import type { Credential, JudgeSection } from "./credentials.ts";
 import { parseEvidence } from "./evidence.ts";
 import { JudgeFailure } from "./grade.ts";
 import type { JudgeAnswer, JudgeFn, JudgeMaterial } from "./grade.ts";
-import { JUDGE_MAX_TOKENS } from "./settings.ts";
+import { EFFORT, JUDGE_MAX_TOKENS } from "./settings.ts";
 
 const MAX_TRANSCRIPT = 60_000;
 const MAX_FILE = 8_000;
 const MAX_FILES_TOTAL = 40_000;
 
-export function buildJudgeMessage(expectation: string, material: JudgeMaterial): string {
+export function buildJudgeMessage(
+  expectations: readonly string[],
+  material: JudgeMaterial,
+): string {
   let transcript = material.transcript;
   if (transcript.length > MAX_TRANSCRIPT)
     transcript = `${transcript.slice(0, MAX_TRANSCRIPT / 2)}\n[... transcript truncated ...]\n${transcript.slice(-MAX_TRANSCRIPT / 2)}`;
@@ -39,15 +43,37 @@ export function buildJudgeMessage(expectation: string, material: JudgeMaterial):
     files.push(`--- FILE ${f.rel} ---\n${body}`);
   }
   return (
-    "You are grading one run of an AI agent against ONE expectation.\n" +
-    "Respond with EXACTLY two lines and nothing else:\n\n" +
-    "  VERDICT=<PASS|FAIL|UNCERTAIN> CONF=<0.00-1.00>\n" +
-    "  EVIDENCE=<a JSON string>\n\n" +
-    "For PASS, EVIDENCE MUST be a verbatim excerpt of at least 12 non-whitespace characters, copied " +
-    "exactly from the TRANSCRIPT or from a PRODUCED FILE, or a reference `path:line` naming a produced " +
-    "file and an existing line of it. For FAIL or UNCERTAIN, EVIDENCE is a short reason.\n\n" +
-    `EXPECTATION:\n${expectation}\n\nTRANSCRIPT:\n${transcript}\n\nPRODUCED FILES:\n${files.length > 0 ? files.join("\n") : "(none)"}`
+    "You are grading one run of an AI agent against a numbered list of EXPECTATIONS.\n" +
+    "Respond with exactly one line per expectation and nothing else:\n\n" +
+    "  <n> VERDICT=<PASS|FAIL> EVIDENCE=<a JSON string>\n\n" +
+    "where <n> is the expectation's number. For PASS, EVIDENCE MUST be a verbatim excerpt of at least " +
+    "12 non-whitespace characters, copied exactly from the TRANSCRIPT or from a PRODUCED FILE, or a " +
+    "reference `path:line` naming a produced file and an existing line of it. For FAIL, EVIDENCE is " +
+    "a short reason.\n\n" +
+    `EXPECTATIONS:\n${expectations.map((e, i) => `${i + 1}. ${e}`).join("\n")}\n\n` +
+    `TRANSCRIPT:\n${transcript}\n\nPRODUCED FILES:\n${files.length > 0 ? files.join("\n") : "(none)"}`
   );
+}
+
+/**
+ * Parse the judge's answer into one entry per expectation (undefined for a missing index). A line
+ * is an entry when it starts with an index; VERDICT= and EVIDENCE= are found anywhere on it. The
+ * first line wins on a repeated index; an index outside 1..n is ignored.
+ */
+export function parseJudgeAnswer(text: string, n: number): (JudgeAnswer | undefined)[] {
+  const out: (JudgeAnswer | undefined)[] = Array.from({ length: n }, () => undefined);
+  for (const line of text.split(/\r?\n/)) {
+    const m = /^\s*(\d+)\b.*?\bVERDICT=([A-Za-z]+)/.exec(line);
+    if (m === null) continue;
+    const i = Number(m[1]) - 1;
+    if (i < 0 || i >= n || out[i] !== undefined) continue;
+    const at = line.indexOf("EVIDENCE=");
+    out[i] = {
+      verdict: (m[2] ?? "").toUpperCase(),
+      evidence: at < 0 ? undefined : parseEvidence(line.slice(at)),
+    };
+  }
+  return out;
 }
 
 export interface JudgeSetup {
@@ -58,16 +84,16 @@ export interface JudgeSetup {
   readonly maxCalls: number;
   readonly baseEnv: Readonly<Record<string, string | undefined>>;
   readonly mock: boolean;
-  /** Mock mode: the raw judge answer for an expectation (default: PASS quoting the transcript). */
-  readonly mockAnswer?: (expectation: string, material: JudgeMaterial) => string;
+  /** Mock mode: the raw judge answer for the eval's expectations (default: PASS quoting the transcript). */
+  readonly mockAnswer?: (expectations: readonly string[], material: JudgeMaterial) => string;
   readonly fetchImpl?: typeof fetch;
   /** Retry back-off of the judge transport (default: real timers). */
   readonly sleep?: (ms: number) => Promise<void>;
 }
 
-export const defaultMockAnswer = (_e: string, m: JudgeMaterial): string => {
-  const quote = m.transcript.replace(/\s+/g, " ").trim().slice(0, 40);
-  return `VERDICT=PASS CONF=0.90\nEVIDENCE=${JSON.stringify(quote)}`;
+export const defaultMockAnswer = (e: readonly string[], m: JudgeMaterial): string => {
+  const quote = JSON.stringify(m.transcript.replace(/\s+/g, " ").trim().slice(0, 40));
+  return e.map((_, i) => `${i + 1} VERDICT=PASS EVIDENCE=${quote}`).join("\n");
 };
 
 export interface Judge {
@@ -83,7 +109,7 @@ export function createJudge(setup: JudgeSetup): Judge {
   fs.mkdirSync(setup.dir, { recursive: true });
   fs.writeFileSync(
     path.join(setup.dir, "effective.json"),
-    effectiveJson({ ...setup.judge, max_tokens: JUDGE_MAX_TOKENS }, setup.maxCalls),
+    effectiveJson({ ...setup.judge, max_tokens: JUDGE_MAX_TOKENS, effort: EFFORT }, setup.maxCalls),
   );
   fs.rmSync(path.join(setup.dir, "judge.count"), { force: true });
   const depsFor = (mockResponse?: string): JudgeDeps => ({
@@ -105,15 +131,15 @@ export function createJudge(setup: JudgeSetup): Judge {
     queue = next.catch(() => undefined);
     return next;
   };
-  const fn: JudgeFn = (expectation, material) =>
-    serial(async (): Promise<JudgeAnswer> => {
+  const fn: JudgeFn = (expectations, material) =>
+    serial(async () => {
       const mockResponse = setup.mock
-        ? (setup.mockAnswer ?? defaultMockAnswer)(expectation, material)
+        ? (setup.mockAnswer ?? defaultMockAnswer)(expectations, material)
         : undefined;
       const r = await llmJudgeEvidence(
         depsFor(mockResponse),
-        buildJudgeMessage(expectation, material),
-        { maxTokens: JUDGE_MAX_TOKENS },
+        buildJudgeMessage(expectations, material),
+        { maxTokens: JUDGE_MAX_TOKENS * expectations.length },
       );
       switch (r.kind) {
         case "auth-missing":
@@ -125,21 +151,11 @@ export function createJudge(setup: JudgeSetup): Judge {
           );
         case "cap-exceeded":
           throw new JudgeFailure("cap", `judge max_calls ${r.maxCalls} reached (count ${r.count})`);
-        case "verdict": {
-          if (r.capped)
-            throw new JudgeFailure(
-              "cap",
-              `judge max_calls ${setup.maxCalls} reached before a verdict`,
-            );
-          if (r.texts.every((t) => t === undefined))
-            throw new JudgeFailure("no-verdict", "the judge returned no verdict after its retries");
-          const idx = r.slots.indexOf(r.verdict);
-          const text = idx >= 0 ? r.texts[idx] : undefined;
-          return {
-            verdict: r.verdict,
-            evidence: text === undefined ? undefined : parseEvidence(text),
-            confidence: r.confidence,
-          };
+        case "answer": {
+          const entries = parseJudgeAnswer(r.text, expectations.length);
+          if (entries.every((e) => e === undefined))
+            throw new JudgeFailure("no-verdict", "the judge returned no parseable verdict line");
+          return entries;
         }
       }
     });
