@@ -17,6 +17,7 @@ version: 2.0.0
 <!-- markdownlint-disable MD029 -->
 
 25. **R25 (no red push).** The branch SHALL NOT be pushed while its head fails `task check-skill-quality -- pr-reviewer`; the intermediate commits (1) and (2) of R1 carry findings by design and are pushed only as part of a head that is clean. The pre-push hook SHALL NOT be bypassed.
+26. **R26 (existing linters: precedence and goldens).** The six existing scripts SHALL check every input before linting any of them: an input that is not a readable regular file (a missing path, a directory, an empty name, `-`) makes the script exit `3` with nothing linted, and this takes precedence over a finding and over a tool-absent note. An unknown option exits `2` and is never forwarded to an external tool. The differential cases of `scripts/tests/fixtures/skill-scripts/pr-reviewer/` whose status or output this requirement moves are updated as **base goldens** in the same change; these are base goldens, not overlays, and no deviation letter is added, as `specs/0258-skill-extension-bundled-scripts-typescript.delta-04.md` R47 did when the shell leg was retired. The moved cases are listed in the plan and every other case stays byte-identical. The Windows expectations in `scripts/tests/lib/windows-skill-cases.ts` are updated for the same cases.
 
 ## MODIFIED
 
