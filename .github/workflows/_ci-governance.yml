@@ -253,6 +253,14 @@ jobs:
         with:
           id: check-description-length
 
+  check-skill-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: check-skill-quality
+
   check-extension-version-bump:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'

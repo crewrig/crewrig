@@ -2,7 +2,7 @@
 
 <!-- crewrig-doc: section=reference nav_order=165 published=true title="Skill evals" -->
 
-A skill owns a small set of evaluation cases next to its `SKILL.md`. One command runs each case once, non-interactively, on Claude Code with Sonnet 5.5 at effort `medium`, and compares the answer with what the case expects. A passing run writes a committed, content-hashed `evals/results.json`; the pull-request pipeline only checks that this file is fresh. Specification: [spec 0290](../specs/0290-skill-eval-runner.md) and its deltas [01](../specs/0290-skill-eval-runner.delta-01.md), [03](../specs/0290-skill-eval-runner.delta-03.md) and [04](../specs/0290-skill-eval-runner.delta-04.md) (one run and one judge call per eval); decisions: [ADR 0023](adr/0023-skill-eval-executor.md).
+A skill owns a small set of evaluation cases next to its `SKILL.md`. One command runs each case once, non-interactively, on Claude Code with Sonnet 5.5 at effort `medium`, and compares the answer with what the case expects. A passing run writes a committed, content-hashed `evals/results.json`; the pull-request pipeline only checks that this file is fresh. The rules a skill and its evals follow are in the [Skill authoring standard](skill-authoring-standard.md). Specification: [spec 0290](../specs/0290-skill-eval-runner.md) and its deltas [01](../specs/0290-skill-eval-runner.delta-01.md), [03](../specs/0290-skill-eval-runner.delta-03.md) and [04](../specs/0290-skill-eval-runner.delta-04.md) (one run and one judge call per eval); decisions: [ADR 0023](adr/0023-skill-eval-executor.md).
 
 ## What a run costs
 

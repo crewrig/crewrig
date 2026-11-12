@@ -49,7 +49,11 @@
   },
   {
     "name": "check-description-length",
-    "desc": "Fail when a skill or agent description exceeds 300 characters (spec 0269 R11)"
+    "desc": "Fail when a skill or agent description exceeds 1024 characters (spec 0293)"
+  },
+  {
+    "name": "check-skill-quality",
+    "desc": "Lint skill sources against the authoring standard; a skill that ships evals is protected (spec 0293). Author-side: task check-skill-quality -- <skill> [--strict] [--json]"
   },
   {
     "name": "check-extension-manifest-version",
@@ -122,6 +126,10 @@
   {
     "name": "ci:check-description-length",
     "desc": "Fail when a skill or agent description exceeds the length cap (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-skill-quality",
+    "desc": "Lint skill sources against the authoring standard and run its tests (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:check-rules-size",

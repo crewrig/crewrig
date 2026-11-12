@@ -45,6 +45,12 @@ tasks:
         msg: "Run: task lint-bootstrap"
     cmds:
       - task: :check-description-length
+  check-skill-quality:
+    desc: Lint skill sources against the authoring standard and run its tests (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - task: :check-skill-quality
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-skill-quality.test.ts {{.REPO_DIR}}/scripts/tests/check-skill-quality-ci-wiring.test.ts {{.REPO_DIR}}/scripts/tests/skill-citations-grammar.test.ts
   test-wiring:
     desc: Check every test is wired into CI and no stray test exists (pre-push mirror of the CI job)
     cmds:

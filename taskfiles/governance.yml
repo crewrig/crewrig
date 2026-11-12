@@ -17,8 +17,12 @@ tasks:
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-skill-versions.ts
 
   check-description-length:
-    desc: "Fail when a skill or agent description exceeds 300 characters (spec 0269 R11)"
+    desc: "Fail when a skill or agent description exceeds 1024 characters (spec 0293)"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-description-length.ts
+
+  check-skill-quality:
+    desc: "Lint skill sources against the authoring standard; a skill that ships evals is protected (spec 0293). Author-side: task check-skill-quality -- <skill> [--strict] [--json]"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-skill-quality.ts {{.CLI_ARGS}}
 
   check-comment-size:
     desc: "Fail when a plan or verdict comment body exceeds 12288 bytes (spec 0275 R-E2). Author-side: task check-comment-size -- <file> (or pipe the body on stdin)"

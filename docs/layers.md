@@ -139,6 +139,7 @@ SDLC lifecycle tools:
 | `artifacts/core/skills/spec-author/` | Lifecycle skill — qualification stage author. |
 | `artifacts/core/skills/pr-logbook/` | Lifecycle skill — PR and logbook composer. |
 | `artifacts/core/skills/pr-reviewer/` | Lifecycle skill — independent PR reviewer. |
+| `artifacts/core/shared/references/` | Shared reference text that skills cite as `references/shared-<topic>.md`; the build copies it into each citing skill (spec 0293). |
 | `artifacts/core/agents/spec-author/` | Lifecycle agent — spec-author specialist. |
 | `artifacts/core/agents/pr-logbook/` | Lifecycle agent — logbook composer specialist. |
 | `artifacts/core/agents/pr-reviewer/` | Lifecycle agent — PR reviewer specialist. |
