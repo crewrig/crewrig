@@ -1,0 +1,8 @@
+diff --git a/docs/errors.md b/docs/errors.md
+--- a/docs/errors.md
++++ b/docs/errors.md
+@@ -8,3 +8,5 @@ Validation errors
+ | `E-NAME-LEN` | rule 2 |
+ | `E-NAME-START` | rule 3 |
++| `E-NAME-RESERVED` | rule 6 |
++| `E-NAME-REJECT` | rule 7 |

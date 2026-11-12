@@ -1,0 +1,9 @@
+diff --git a/src/widgets/retry.py b/src/widgets/retry.py
+--- a/src/widgets/retry.py
++++ b/src/widgets/retry.py
+@@ -15,4 +15,4 @@ def retry(call, attempts=3, delay=0.2):
+         except Exception as exc:
+             last = exc
+             time.sleep(delay)
+-    return None
++    raise last

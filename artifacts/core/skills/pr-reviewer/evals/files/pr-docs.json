@@ -1,0 +1,10 @@
+{
+  "number": 79,
+  "title": "📝 Document the reserved-name and rejection errors",
+  "body": "Adds the two missing error codes to `docs/errors.md`, each pointing at the rule of `docs/rules.md` it reports.",
+  "headRefName": "docs/79-error-codes",
+  "baseRefName": "main",
+  "labels": [{ "name": "iter:1" }],
+  "author": { "login": "dev-a" },
+  "files": [{ "path": "docs/errors.md" }]
+}
