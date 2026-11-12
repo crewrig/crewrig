@@ -229,6 +229,22 @@ describe("pre-handoff: non-ASCII characters", () => {
     assert.deepEqual(rules(r), ["non-ascii-added"]);
   });
 
+  test("a content line that starts with ++ or -- is not mistaken for a file header", () => {
+    const dir = repo();
+    put(dir, "src/a.txt", "-- caf\u00e9 removed later\n++ \u00e9 kept\n");
+    git(dir, "commit", "-q", "-am", "add lines with operators");
+    put(dir, "src/a.txt", "++ \u00e9 kept\n++ na\u00efve\n");
+    const r = run(dir, ["--scope", "src/", "--json"]);
+    assert.equal(r.status, 1, r.stdout);
+    const f = envelope(r).findings;
+    assert.deepEqual(
+      f.map((x) => x.rule),
+      ["non-ascii-lost", "non-ascii-added"],
+    );
+    assert.match(f[0]?.message ?? "", /U\+00E9/);
+    assert.match(f[1]?.message ?? "", /\u00ef/);
+  });
+
   test("a staged change is reviewed like an unstaged one", () => {
     const dir = repo();
     put(dir, "src/doc.md", "key -> value\n");

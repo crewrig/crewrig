@@ -147,16 +147,24 @@ Exit codes: 0 no error finding, 1 at least one error finding, 2 usage error, 3 p
   const patch = git("diff", "--no-renames", "--no-color", "--no-ext-diff", "-U0", base);
   if (patch.status !== 0) return precondition(`git diff failed: ${patch.err.trim()}`);
   let current: string | undefined;
+  // File headers (`--- a/x`, `+++ b/x`) are read only before the first hunk of a file: inside a
+  // hunk every `+` or `-` line is content, even one that starts with `++ ` or `-- `.
+  let inHunk = false;
   for (const line of patch.out.split("\n")) {
-    if (line.startsWith("diff --git ")) current = undefined;
-    else if (line.startsWith("+++ "))
+    if (line.startsWith("diff --git ")) {
+      current = undefined;
+      inHunk = false;
+    } else if (!inHunk && line.startsWith("@@")) inHunk = true;
+    else if (inHunk) {
+      if (current !== undefined && line.startsWith("+"))
+        count(line.slice(1), bucket(added, current));
+      else if (current !== undefined && line.startsWith("-"))
+        count(line.slice(1), bucket(removed, current));
+    } else if (line.startsWith("+++ "))
       current = line === "+++ /dev/null" ? undefined : line.slice(6);
     else if (line.startsWith("--- ")) {
       if (line !== "--- /dev/null") current ??= line.slice(6);
-    } else if (current !== undefined && line.startsWith("+"))
-      count(line.slice(1), bucket(added, current));
-    else if (current !== undefined && line.startsWith("-"))
-      count(line.slice(1), bucket(removed, current));
+    }
   }
   // `--- a/x` precedes `+++ b/x`; the loop above keys both on the b/ path, which is the same
   // string for a modified file. A deleted file has no `+++` path, so its removals are not counted.
