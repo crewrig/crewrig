@@ -106,6 +106,35 @@ test("buildJudgeArgs adds --effort only when the config sets it", () => {
   assert.equal(a[a.indexOf("--effort") + 1], "medium");
 });
 
+test("R47: a judge call passes --effort from the effective configuration; none is passed when it is unset", async () => {
+  const run = async (judge: Record<string, unknown>) => {
+    const s = setup(
+      `require("fs").writeFileSync(LOG, JSON.stringify(process.argv.slice(2)));\nprocess.stdout.write('1 VERDICT=PASS EVIDENCE="an excerpt"\\n');`,
+    );
+    try {
+      fs.writeFileSync(
+        path.join(s.dir, "report", "effective.json"),
+        JSON.stringify({
+          judge: { backend: "claude-cli", model: JUDGE_MODEL, max_calls: 5, ...judge },
+        }),
+      );
+      await llmJudgeEvidence(s.deps({ CLAUDE_CODE_OAUTH_TOKEN: "t" }), "m");
+      return JSON.parse(fs.readFileSync(s.log, "utf8")) as string[];
+    } finally {
+      fs.rmSync(s.dir, { recursive: true, force: true });
+    }
+  };
+  const withEffort = await run({ effort: "medium" });
+  assert.equal(withEffort[withEffort.indexOf("--effort") + 1], "medium");
+  assert.equal(withEffort[withEffort.indexOf("--model") + 1], JUDGE_MODEL);
+  assert.equal(
+    (await run({ effort: "high" })).includes("high"),
+    true,
+    "the setting changes the value",
+  );
+  assert.equal((await run({})).includes("--effort"), false);
+});
+
 test("v1-F2: one retry on a failed call, counted in judge.count; none once the cap is reached", async () => {
   const flaky = (max: number) => {
     const s = setup(

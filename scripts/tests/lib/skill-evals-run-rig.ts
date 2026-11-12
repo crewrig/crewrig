@@ -110,6 +110,12 @@ export function makeRig(opts: RigOptions = {}): Rig {
   };
 }
 
+/** A mock-executor script whose transcript holds the phrase `judgeFetch` quotes, so its PASS is supported. */
+export const foxScript: MockScript = () => ({
+  files: { "answer.md": "x" },
+  transcript: "Assistant: the quick brown fox",
+});
+
 /** `n` evals with one expectation each and no check (each run scores 0 or 1). */
 export function plainEvals(name: string, n: number): string {
   const evals = Array.from({ length: n }, (_, i) => ({
@@ -122,7 +128,11 @@ export function plainEvals(name: string, n: number): string {
   return `${JSON.stringify({ skill_name: name, evals }, null, 2)}\n`;
 }
 
-/** A recording Messages API endpoint: PASS quoting the fixed phrase unless the message holds `failMarker`. */
+/**
+ * A recording Messages API endpoint. The judge is asked once per eval for one numbered line per
+ * expectation (spec 0290 R13 as modified by delta-04): every line is a PASS quoting the fixed phrase
+ * unless the message holds `failMarker`, in which case every line is a FAIL.
+ */
 export function judgeFetch(failMarker = "BROKEN"): {
   fetch: typeof fetch;
   requests: { url: string; headers: Record<string, string>; message: string }[];
@@ -132,10 +142,23 @@ export function judgeFetch(failMarker = "BROKEN"): {
     const message =
       (JSON.parse(init.body) as { messages: { content: string }[] }).messages[0]?.content ?? "";
     requests.push({ url, headers: init.headers, message });
-    const text = message.includes(failMarker)
-      ? `VERDICT=FAIL CONF=0.90\nEVIDENCE="not good"`
-      : `VERDICT=PASS CONF=0.90\nEVIDENCE="the quick brown fox"`;
+    const text = judgeAnswerFor(message, message.includes(failMarker));
     return new Response(JSON.stringify({ content: [{ type: "text", text }] }), { status: 200 });
   }) as unknown as typeof fetch;
   return { fetch: f, requests };
+}
+
+/** The number of expectations a judge message lists (its `EXPECTATIONS:` block, one `<n>. ` line each). */
+export function expectationCount(message: string): number {
+  const block = /EXPECTATIONS:\n([\s\S]*?)\n\nTRANSCRIPT:/.exec(message)?.[1] ?? "";
+  return block.split("\n").filter((l) => /^\d+\. /.test(l)).length;
+}
+
+/** A well-formed judge answer for a judge message: one line per expectation, all PASS or all FAIL. */
+export function judgeAnswerFor(message: string, fail = false): string {
+  return Array.from({ length: expectationCount(message) }, (_, i) =>
+    fail
+      ? `${i + 1} VERDICT=FAIL EVIDENCE="not good"`
+      : `${i + 1} VERDICT=PASS EVIDENCE="the quick brown fox"`,
+  ).join("\n");
 }

@@ -195,26 +195,55 @@ export function writeStubClaude(
   return file;
 }
 
+/** How the session stub behaves beyond its defaults (all optional). */
+export interface SessionStubOptions {
+  /** Executor and probe runs emit a `Skill` tool_use naming this skill (default: no tool call, text only). */
+  readonly loadSkill?: string;
+  /** Probe runs end with an `error_max_turns` result after their first message (the one-turn bound). */
+  readonly probeMaxTurns?: boolean;
+  /** 0-based indices of the judge process calls that exit non-zero (the transport failure the driver retries once). */
+  readonly judgeFailCalls?: readonly number[];
+  /** Replaces the judge's answer; the default is one PASS line per listed expectation. */
+  readonly judgeAnswer?: string;
+}
+
 /**
  * A stub that plays all three children of the runner: the probe (per `auth`), the executor (argv holds
- * `stream-json`: writes answer.md, answers "the quick brown fox") and the judge (a PASS verdict quoting
- * it). Every call is recorded in `<bin>.calls.jsonl` (see `readCalls`).
+ * `stream-json`: writes answer.md, answers "the quick brown fox") and the judge (one numbered PASS line
+ * per listed expectation, quoting it). A probe run is an executor run whose `--tools` is `Skill`. Every
+ * call is recorded in `<bin>.calls.jsonl` (see `readCalls`).
  */
-export function writeSessionStub(dir: string, auth: AuthStub, name = "claude-session.js"): string {
+export function writeSessionStub(
+  dir: string,
+  auth: AuthStub,
+  name = "claude-session.js",
+  opts: SessionStubOptions = {},
+): string {
   return writeStubClaude(
     dir,
     `
+const __opts = ${JSON.stringify(opts)};
 let __input = "";
 process.stdin.on("data", (d) => (__input += d));
 process.stdin.on("end", () => {
   const __exec = __argv.includes("stream-json");
+  const __probe = __exec && __argv[__argv.indexOf("--tools") + 1] === "Skill";
   __log({ kind: __exec ? "executor" : "judge", argv: __argv, env: process.env, cwd: process.cwd(), input: __input, listing: __exec ? __fs.readdirSync(".", { recursive: true }).map(String).sort() : undefined });
   if (__exec) {
-    __fs.writeFileSync("answer.md", "x");
-    process.stdout.write(JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text: "the quick brown fox" }] } }) + "\\n");
-    process.stdout.write(JSON.stringify({ type: "result", subtype: "success", is_error: false, total_cost_usd: 0.1, usage: { input_tokens: 1, output_tokens: 1 }, num_turns: 1, result: "done" }) + "\\n");
+    if (!__probe) __fs.writeFileSync("answer.md", "x");
+    const __content = [{ type: "text", text: "the quick brown fox" }];
+    if (__opts.loadSkill) __content.push({ type: "tool_use", id: "t1", name: "Skill", input: { skill: __opts.loadSkill } });
+    process.stdout.write(JSON.stringify({ type: "assistant", message: { id: "m1", content: __content } }) + "\\n");
+    const __maxTurns = __probe && __opts.probeMaxTurns;
+    process.stdout.write(JSON.stringify({ type: "result", subtype: __maxTurns ? "error_max_turns" : "success", is_error: __maxTurns ? true : false, total_cost_usd: 0.1, usage: { input_tokens: 1, output_tokens: 1 }, num_turns: 1, result: "done" }) + "\\n");
   } else {
-    process.stdout.write('VERDICT=PASS CONF=0.90\\nEVIDENCE="the quick brown fox"\\n');
+    const __cf = __filename + ".judgecount";
+    const __n = __fs.existsSync(__cf) ? Number(__fs.readFileSync(__cf, "utf8")) : 0;
+    __fs.writeFileSync(__cf, String(__n + 1));
+    if ((__opts.judgeFailCalls || []).includes(__n)) { process.stderr.write("transient judge failure\\n"); process.exit(1); }
+    const __block = /EXPECTATIONS:\\n([\\s\\S]*?)\\n\\nTRANSCRIPT:/.exec(__input);
+    const __count = __block ? __block[1].split("\\n").filter((l) => /^\\d+\\. /.test(l)).length : 1;
+    process.stdout.write(__opts.judgeAnswer !== undefined ? __opts.judgeAnswer : Array.from({ length: __count }, (_, i) => (i + 1) + ' VERDICT=PASS EVIDENCE="the quick brown fox"').join("\\n") + "\\n");
   }
 });`,
     name,

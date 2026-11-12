@@ -118,7 +118,6 @@ test("docs/skill-evals.md documents every declared setting, the provisional cali
         "EVIDENCE_MIN_CHARS",
         "JUDGE_MAX_TOKENS",
         "JUDGE_RETRY_ALLOWANCE",
-        "JUDGE_QUORUM",
         "EXECUTOR_TOOLS",
         "DEFAULT_OUT_DIR",
         "JUDGE_MODEL",

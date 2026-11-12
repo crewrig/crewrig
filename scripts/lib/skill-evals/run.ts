@@ -300,6 +300,7 @@ export async function runEvals(
       judge: cred.judge,
       credential: cred.credential,
       maxCalls: cfg.judgeMaxCalls,
+      effort: cfg.effort,
       baseEnv: opts.env,
       mock: opts.mock,
       ...(opts.mockAnswer !== undefined ? { mockAnswer: opts.mockAnswer } : {}),

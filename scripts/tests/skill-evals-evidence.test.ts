@@ -1,5 +1,5 @@
 // skill-evals-evidence.test.ts — the evidence rule and the judge entry point
-// (spec 0290 R12, R13, R15, R25). No model call: mock mode and a scripted `fetch`.
+// (spec 0290 R12, R13, R15, R25 as modified by delta-04). No model call: mock mode and a scripted `fetch`.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -9,8 +9,8 @@ import { test } from "node:test";
 import { llmJudgeEvidence, judgeEvidencePreflight } from "../../tests/e2e/lib/llm_judge.ts";
 import type { JudgeDeps } from "../../tests/e2e/lib/llm_judge.ts";
 import { parseEvidence, validateEvidence } from "../lib/skill-evals/evidence.ts";
-import { gradeRun } from "../lib/skill-evals/grade.ts";
-import { createJudge } from "../lib/skill-evals/judge.ts";
+import { gradeRun, JudgeFailure } from "../lib/skill-evals/grade.ts";
+import { createJudge, parseJudgeAnswer } from "../lib/skill-evals/judge.ts";
 import { tmpDir } from "./lib/skill-evals-fixtures.ts";
 
 const material = {
@@ -271,6 +271,107 @@ test("a mock verdict with a valid and with an absent excerpt, end to end through
     assert.equal(good.mock, true);
     const absent = await run('1 VERDICT=PASS EVIDENCE="an excerpt that is nowhere to be found"');
     assert.equal(absent.expectations[0]?.passed, false);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/** A judge in mock mode that answers `answer` to the one call an eval makes. */
+function mockJudge(dir: string, answer: string) {
+  return createJudge({
+    dir,
+    judge: {
+      backend: "claude-cli",
+      model: "m",
+      api_key_env: "X",
+      auth_mode: "api_key",
+      max_tokens: 512,
+      strict: false,
+    },
+    credential: undefined,
+    maxCalls: 300,
+    baseEnv: {},
+    mock: true,
+    mockAnswer: () => answer,
+  });
+}
+
+const gradeFour = (judge: ReturnType<typeof mockJudge>) =>
+  gradeRun({
+    evalCase: {
+      id: 1,
+      prompt: "p",
+      expected_output: "o",
+      files: [],
+      expectations: ["a", "b", "c", "d"],
+      checks: [],
+    },
+    outputsDir: tmpDir(),
+    skillDir: "/none",
+    transcript: material.transcript,
+    judge: judge.fn,
+    mock: true,
+  });
+
+test("one judge call holds PASS, FAIL, a missing entry and an UNCERTAIN word: each is graded on its own, in one call", async () => {
+  const dir = tmpDir();
+  try {
+    const judge = mockJudge(
+      dir,
+      [
+        '1 VERDICT=PASS EVIDENCE="The title is a single gitmoji."',
+        '2 VERDICT=FAIL EVIDENCE="the body has no section"',
+        // 3 is missing
+        '4 VERDICT=UNCERTAIN EVIDENCE="cannot tell"',
+      ].join("\n"),
+    );
+    const g = await gradeFour(judge);
+    assert.deepEqual(
+      g.expectations.map((e) => e.passed),
+      [true, false, false, false],
+    );
+    assert.equal(g.expectations[0]?.evidence, "The title is a single gitmoji.");
+    assert.match(g.expectations[1]?.evidence ?? "", /verdict was FAIL: the body has no section/);
+    assert.match(g.expectations[2]?.evidence ?? "", /no verdict/);
+    assert.match(g.expectations[3]?.evidence ?? "", /verdict was UNCERTAIN: cannot tell/);
+    assert.deepEqual(g.summary, { passed: 1, failed: 3, total: 4, pass_rate: 0.25 });
+    assert.equal(judge.callsUsed(), 1, "one call for the four expectations, not one each");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a repeated index: the first line wins, even when a later one says PASS; an index out of range is ignored", () => {
+  const e = parseJudgeAnswer(
+    [
+      '2 VERDICT=FAIL EVIDENCE="first"',
+      '2 VERDICT=PASS EVIDENCE="later"',
+      '9 VERDICT=PASS EVIDENCE="outside"',
+      "noise",
+    ].join("\n"),
+    3,
+  );
+  assert.equal(e[0], undefined);
+  assert.deepEqual(e[1], { verdict: "FAIL", evidence: "first" });
+  assert.equal(e[2], undefined);
+});
+
+test("an answer of UNCERTAIN lines only is a graded failure, never an error; an answer with no entry at all is the R13 error", async () => {
+  const dir = tmpDir();
+  try {
+    const unsure = await gradeFour(
+      mockJudge(
+        dir,
+        ["1", "2", "3", "4"].map((i) => `${i} VERDICT=UNCERTAIN EVIDENCE=unsure`).join("\n"),
+      ),
+    );
+    assert.deepEqual(unsure.summary, { passed: 0, failed: 4, total: 4, pass_rate: 0 });
+    for (const answer of ["", "I cannot grade this.", 'VERDICT=PASS EVIDENCE="no index"'])
+      await assert.rejects(
+        gradeFour(mockJudge(dir, answer)),
+        (e: unknown) => e instanceof JudgeFailure && e.reason === "no-verdict",
+        JSON.stringify(answer),
+      );
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

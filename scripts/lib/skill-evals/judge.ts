@@ -82,6 +82,8 @@ export interface JudgeSetup {
   readonly judge: JudgeSection;
   readonly credential: Credential | undefined;
   readonly maxCalls: number;
+  /** The `--effort` level of the claude-cli judge call (R47); default the declared `EFFORT` setting. */
+  readonly effort?: string;
   readonly baseEnv: Readonly<Record<string, string | undefined>>;
   readonly mock: boolean;
   /** Mock mode: the raw judge answer for the eval's expectations (default: PASS quoting the transcript). */
@@ -109,7 +111,10 @@ export function createJudge(setup: JudgeSetup): Judge {
   fs.mkdirSync(setup.dir, { recursive: true });
   fs.writeFileSync(
     path.join(setup.dir, "effective.json"),
-    effectiveJson({ ...setup.judge, max_tokens: JUDGE_MAX_TOKENS, effort: EFFORT }, setup.maxCalls),
+    effectiveJson(
+      { ...setup.judge, max_tokens: JUDGE_MAX_TOKENS, effort: setup.effort ?? EFFORT },
+      setup.maxCalls,
+    ),
   );
   fs.rmSync(path.join(setup.dir, "judge.count"), { force: true });
   const depsFor = (mockResponse?: string): JudgeDeps => ({

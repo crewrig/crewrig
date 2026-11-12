@@ -130,7 +130,9 @@ The eval pass rate is the evals that passed divided by the evals; an eval passes
 - `mock`, and `error` (executor or judge failure with credentials present, a refused plan, a runtime cap).
 - `stale`: added by the attestation check; always blocks.
 
-A skill with no valid base results shows `base=n/a` and a line saying it is new and not compared; this is not a status.
+A skill with no valid base results shows `base=n/a` and the line `not compared: no valid evals/results.json at the merge-base`; this is not a status, and its status comes from the threshold alone.
+
+The report prints one line per skill, `<skill>: status=<status> eval_pass_rate=<rate> (<passed>/<total>) probe_pass_rate=<rate> (<passed>/<total>) threshold=<t> base=<rate> diff=<d> skill_loaded=<n>/<evals> executor_runs=<n> judge_calls=<n> cost_usd=<usd>`, where an absent figure is `n/a`, then an `invocation:` line with the totals and, in a real run, `credential_source:`.
 
 Mock mode reports `mock`, marks every `grading.json` and `probe.json` with `"mock": true`, writes no results file and never produces a regression or blocking outcome.
 

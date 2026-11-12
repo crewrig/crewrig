@@ -75,7 +75,7 @@ test("unhashed files and compiled mirrors select nothing", () => {
   });
 });
 
-test("a skill new on the base branch is selected, planned at 2 runs per eval and marked new", () => {
+test("a skill new on the base branch is selected and marked new", () => {
   twoSkills((repo) => {
     writeSkill(repo, "gamma");
     commitAll(repo, "new skill");
