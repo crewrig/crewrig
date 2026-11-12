@@ -1,6 +1,6 @@
 ---
 name: pr-logbook
-description: "Delegate to compose or update a pull request title and body, a logbook issue entry, or a squash-merge message from a finished change. Use when opening a PR, editing a PR description, or logging a stage transition."
+description: "Delegate to compose or update a PR title and body, a logbook entry, a PR squash-merge message, or to mark a spec implemented. Use when opening or editing a PR, logging a stage transition, or flipping a spec to implemented. Not for local commit messages."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

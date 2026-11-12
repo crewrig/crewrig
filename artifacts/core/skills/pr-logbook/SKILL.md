@@ -1,6 +1,6 @@
 ---
 name: pr-logbook
-description: "Composes pull request titles, bodies, logbook entries and squash-merge messages that follow the project's conventions, linting the body with bundled scripts. Use when opening a PR, updating a PR description, appending to a logbook issue, or writing a squash message."
+description: "Composes PR titles and bodies, logbook entries and a PR's squash-merge message, and marks a spec implemented in its PR. Use when opening or updating a PR, logging to an issue, writing a PR squash-merge message, or flipping a spec to implemented. Not for local commit messages."
 type: skill
 license: Apache-2.0
 compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts), git, and the forge CLI (gh for GitHub, glab for GitLab, tea for Gitea)."
@@ -100,12 +100,16 @@ log`, so make it denser than the PR description rather than a paste of it:
 ```text
 <convention prefix> <imperative title> (#<pr-number>)
 
-<one paragraph: what the PR delivered, past tense>
+<one paragraph: what the PR delivered, in the past tense>
 
 <one paragraph: why, the constraint or motivation behind it>
 
 <bullets for significant follow-ups, if any>
 ```
+
+Write the first paragraph in the past tense: the message records a change
+already made. "Added retries to the sync client", not "Adds retries to the
+sync client" or "The sync client now retries".
 
 The `#` reference is the forge-native one: GitHub and Gitea use `#`, GitLab
 uses `!` (`(!<mr-number>)`).
