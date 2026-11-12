@@ -1,7 +1,7 @@
 ---
 id: "0294"
 slug: spec-author-modernization
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 1894
@@ -23,7 +23,7 @@ The `spec-author` skill and its agent are rewritten to the skill authoring stand
 5. **R5 (measurement).** The contributor SHALL run `task skill-evals -- spec-author` once on the unchanged skill and once on the rewritten skill, and SHALL report both pass rates, the probe results, the cost and the number of runs on the logbook. The rewrite SHALL be kept only when the final status is not `regression`. A probe failure SHALL be fixed by revising the description before the body. The pull request SHALL commit the `evals/results.json` of a non-mock run on the final skill.
 6. **R6 (script).** The skill SHALL bundle `scripts/scaffold-spec.ts`, a single-file TypeScript program that follows the script contract of the standard (Node.js 24, no import, `--help`, `--json` object `{ok, data, findings}`, exit codes 0/1/2/3, `--dry-run`). Given `--issue <N>`, `--slug <kebab-case>`, `--complexity <tier>` and `--mode <mode>`, it SHALL run the preflight of R7, then write `specs/<NNNN>-<slug>.md` with the frontmatter of `docs/spec-format.md` (`status: draft`, `version: 1.0.0`, the slug matching the filename) and the five mandatory headings, verbatim and in order. It SHALL refuse a slug that is not ASCII kebab-case of at most 40 characters, a complexity or a mode outside the allowed values, and an existing target file, each as a finding with exit 1.
 7. **R7 (preflight in the script).** When it is not in `--dry-run` and not in delta mode, `scaffold-spec.ts` SHALL first run the repository's ticket-pickup check and stop on any non-zero exit with a finding that relays the check's reason, then reserve the id through the repository's reservation tool and read its exit code: `0` use the id, `3` use the id and write the line `unsecured-id: true` into the frontmatter, `1` stop and relay the reason. It SHALL never compute `max(existing) + 1` over the local tree, never pass `--id` or `--corpus` to the reservation tool, and never assign or unassign a ticket. When the repository does not ship these tools, it SHALL exit 3 with a message naming the manual equivalent (read the issue's assignees and stop when it is assigned to someone else; take the next unused number after fetching the default branch and checking open pull requests and branches).
-8. **R8 (delta mode).** With `--delta`, `scaffold-spec.ts` SHALL make no preflight call and no reservation, SHALL find the parent spec of the issue's id, and SHALL write `specs/<NNNN>-<slug>.delta-<NN>.md` with `<NN>` the next free two-digit delta number and the three headings `## ADDED`, `## MODIFIED` and `## REMOVED`, all present even when empty. With no parent spec it SHALL exit 1 with a finding.
+8. **R8 (delta mode).** With `--delta --parent <NNNN>`, `scaffold-spec.ts` SHALL make no preflight call and no reservation, SHALL take the parent spec id from `--parent` and never derive it from the issue (an issue can relate to several specs, and a delta's `related-issue` differs from its parent's), and SHALL write `specs/<NNNN>-<slug>.delta-<NN>.md` with `<NN>` the next free two-digit delta number and the three headings `## ADDED`, `## MODIFIED` and `## REMOVED`, all present even when empty. With `--delta` and no `--parent`, or a `--parent` that matches no spec on disk, it SHALL exit 1 with a finding, writing nothing.
 9. **R9 (dry run).** With `--dry-run` the script SHALL write nothing, run neither the pickup check nor the reservation, use the placeholder `NNNN` for the id, and print the path and the file it would write.
 10. **R10 (script tests).** The script SHALL have automated tests that run with no network and cover its success path, each refusal of R6, the three reservation exits of R7 against a fake tool, the missing-tool precondition, the delta path, `--dry-run`, the `--json` shape and `--help`. A test SHALL run the script from a copy of the built skill directory outside the repository.
 11. **R11 (skill body).** `SKILL.md` SHALL tell the model when to run `scaffold-spec.ts` and what each exit code means, and SHALL keep in prose what the script cannot decide: the interview, the pre-write grounding, the content of each section, the open-questions discipline, the null-case and permitted-path self-check, and the mode choice. The ticket-pickup and reservation text of `references/output-contract.md` SHALL be replaced by the script's exit-code table. Every behaviour of the current skill SHALL remain, in prose or as a script call; a behaviour dropped on purpose SHALL be listed on the logbook with its reason.
@@ -50,7 +50,7 @@ The `spec-author` skill and its agent are rewritten to the skill authoring stand
 ### Happy path — delta
 
 - **Given** a parent spec `specs/0100-demo.md` and `specs/0100-demo.delta-01.md`,
-- **When** the script runs with `--delta` for that id,
+- **When** the script runs with `--delta --parent 0100`,
 - **Then** it writes `specs/0100-demo.delta-02.md` with `## ADDED`, `## MODIFIED` and `## REMOVED`, and calls no tool.
 
 ### Failure path — ticket owned by someone else
