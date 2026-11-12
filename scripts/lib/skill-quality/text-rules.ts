@@ -23,33 +23,57 @@ export function frontRules(doc: SkillDoc, dirName: string, file: string): Raw[] 
   const out: Raw[] = [];
   const add = (rule: string, message: string): number => out.push({ rule, message, file });
   if (doc.front === null) {
-    add("frontmatter", "SKILL.md has no readable YAML frontmatter; add a `---` block with `name`, `description` and `compatibility`");
+    add(
+      "frontmatter",
+      "SKILL.md has no readable YAML frontmatter; add a `---` block with `name`, `description` and `compatibility`",
+    );
     return out;
   }
   const name = doc.front["name"];
   if (typeof name !== "string" || name.length === 0 || name.length > 64 || !NAME.test(name))
-    add("name", "`name` must be 1 to 64 characters of lowercase letters, digits and single hyphens, with no hyphen at either end");
+    add(
+      "name",
+      "`name` must be 1 to 64 characters of lowercase letters, digits and single hyphens, with no hyphen at either end",
+    );
   else if (name !== dirName)
     add("name", `\`name\` is "${name}" but the directory is "${dirName}"; make them equal`);
   const description = doc.front["description"];
   if (typeof description !== "string" || description.trim() === "") {
-    add("description-missing", "`description` is missing or empty; state what the skill does, `Use when` and its trigger terms");
+    add(
+      "description-missing",
+      "`description` is missing or empty; state what the skill does, `Use when` and its trigger terms",
+    );
   } else {
     const text = description.trim();
     const length = [...text].length;
     if (length > MAX_DESCRIPTION_CHARS)
-      add("description-length", `description is ${length} characters; the cap is ${MAX_DESCRIPTION_CHARS}`);
+      add(
+        "description-length",
+        `description is ${length} characters; the cap is ${MAX_DESCRIPTION_CHARS}`,
+      );
     if (!/\bUse when\b/i.test(text))
-      add("description-use-when", "description has no `Use when` clause; add one naming the situations that call for the skill");
+      add(
+        "description-use-when",
+        "description has no `Use when` clause; add one naming the situations that call for the skill",
+      );
     const pronoun = text.match(PERSON);
     if (pronoun !== null)
-      add("description-person", `description is not in the third person (found "${pronoun[0]}"); state what the skill does, not what "you" or "I" do`);
+      add(
+        "description-person",
+        `description is not in the third person (found "${pronoun[0]}"); state what the skill does, not what "you" or "I" do`,
+      );
   }
   const compat = doc.front["compatibility"];
   if (typeof compat !== "string" || compat.trim() === "" || compat.length > 500)
-    add("compatibility", "`compatibility` must be present, non-empty and at most 500 characters; name the runtime and tools the skill needs");
+    add(
+      "compatibility",
+      "`compatibility` must be present, non-empty and at most 500 characters; name the runtime and tools the skill needs",
+    );
   if (doc.lineCount > MAX_BODY_LINES)
-    add("body-length", `SKILL.md has ${doc.lineCount} lines; the limit is ${MAX_BODY_LINES}; move detail into references/`);
+    add(
+      "body-length",
+      `SKILL.md has ${doc.lineCount} lines; the limit is ${MAX_BODY_LINES}; move detail into references/`,
+    );
   return out;
 }
 
@@ -84,5 +108,11 @@ export function referenceShape(text: string, file: string): Raw[] {
   if (count <= TOC_THRESHOLD) return [];
   const head = lines.slice(0, TOC_WINDOW);
   if (head.some((l) => /^#{1,6}\s*(?:Contents|Table of contents)\s*$/i.test(l.trim()))) return [];
-  return [{ rule: "reference-toc", message: `reference has ${count} lines and no \`Contents\` heading in its first ${TOC_WINDOW}; add a table of contents`, file }];
+  return [
+    {
+      rule: "reference-toc",
+      message: `reference has ${count} lines and no \`Contents\` heading in its first ${TOC_WINDOW}; add a table of contents`,
+      file,
+    },
+  ];
 }

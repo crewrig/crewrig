@@ -55,7 +55,13 @@ function parse(argv: readonly string[]): Args {
   return a;
 }
 
-function emit(args: Args, ok: boolean, data: unknown, findings: readonly unknown[], text: string): void {
+function emit(
+  args: Args,
+  ok: boolean,
+  data: unknown,
+  findings: readonly unknown[],
+  text: string,
+): void {
   if (args.json) {
     process.stdout.write(`${JSON.stringify({ ok, data, findings })}\n`);
     if (text !== "") process.stderr.write(`${text}\n`);
@@ -79,7 +85,8 @@ if (args.help) {
   let repo = "";
   try {
     repo = env !== undefined && env !== "" ? env : path.resolve(repoRootFrom(import.meta.url));
-    if (!fs.existsSync(path.join(repo, "artifacts"))) throw new Error(`no artifacts/ directory in ${repo}`);
+    if (!fs.existsSync(path.join(repo, "artifacts")))
+      throw new Error(`no artifacts/ directory in ${repo}`);
   } catch (err) {
     failure(args, 3, "precondition", `repository root not found: ${(err as Error).message}`);
   }
@@ -90,7 +97,12 @@ if (args.help) {
       const wanted = args.names.map((n) => all.find((s) => s.name === n || s.rel === n));
       const unknown = args.names.filter((_, i) => wanted[i] === undefined);
       if (unknown.length > 0) {
-        failure(args, 2, "usage", `unknown skill ${unknown.join(", ")}; known: ${all.map((s) => s.name).join(", ")}`);
+        failure(
+          args,
+          2,
+          "usage",
+          `unknown skill ${unknown.join(", ")}; known: ${all.map((s) => s.name).join(", ")}`,
+        );
       } else {
         const chosen = args.names.length === 0 ? all : wanted.filter((s) => s !== undefined);
         const { findings, skills } = lintSkills(repo, yaml, chosen, args.strict);

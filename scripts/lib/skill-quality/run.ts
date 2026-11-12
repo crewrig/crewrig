@@ -24,10 +24,15 @@ export interface SkillResult {
 
 /** Every skill source under `artifacts/<tier>/skills/<name>/` that holds a SKILL.md, sorted by name. */
 export function discover(repo: string): SkillDir[] {
-  const dirs = fs
-    .globSync("artifacts/*/skills/*/SKILL.md", { cwd: repo })
-    .map((rel) => rel.split(path.sep).join("/").replace(/\/SKILL\.md$/, ""));
-  return dirs.sort().map((rel) => ({ name: rel.split("/").pop() as string, dir: path.join(repo, rel), rel }));
+  const dirs = fs.globSync("artifacts/*/skills/*/SKILL.md", { cwd: repo }).map((rel) =>
+    rel
+      .split(path.sep)
+      .join("/")
+      .replace(/\/SKILL\.md$/, ""),
+  );
+  return dirs
+    .sort()
+    .map((rel) => ({ name: rel.split("/").pop() as string, dir: path.join(repo, rel), rel }));
 }
 
 function rawFindings(skill: SkillDir, repo: string, yaml: YamlNamespace): Raw[] {
@@ -41,7 +46,11 @@ function rawFindings(skill: SkillDir, repo: string, yaml: YamlNamespace): Raw[] 
   for (const abs of referenceFiles(skill.dir)) {
     const rel = `${skill.rel}/${path.relative(skill.dir, abs).split(path.sep).join("/")}`;
     const ref = fs.readFileSync(abs, "utf8");
-    out.push(...referenceShape(ref, rel), ...promptRules(ref, rel, false), ...citationRules(skill, repo, ref, rel, true));
+    out.push(
+      ...referenceShape(ref, rel),
+      ...promptRules(ref, rel, false),
+      ...citationRules(skill, repo, ref, rel, true),
+    );
   }
   out.push(...evalsRules(skill, repo), ...scriptHelpRules(skill));
   return out;

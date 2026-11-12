@@ -10,7 +10,8 @@ import { createFixtureTree } from "./lib/build-fixture-tree.ts";
 import { CONFIG, skill } from "./fixtures/build-components/entry-kit.ts";
 
 // Carriage returns and a relative link: a link rewrite or a line-ending fold would change them.
-const SHARED = "# Friction\r\n\r\nSee [doc](../../../../docs/x.md).\r\n<!-- provenance: keep -->\r\n";
+const SHARED =
+  "# Friction\r\n\r\nSee [doc](../../../../docs/x.md).\r\n<!-- provenance: keep -->\r\n";
 const OUTPUTS = [".gemini", ".claude", ".github", ".agents"].map((d) => `${d}/skills/x/references`);
 
 function tree(body: string) {
@@ -61,8 +62,14 @@ describe("shared references at build time (R11)", () => {
     t.write(".github/skills/x/references/shared-gone.md", "orphan\n");
     const drift = t.run(["--check"]);
     assert.equal(drift.status, 1, drift.stdout + drift.stderr);
-    assert.match(drift.stdout, /\.claude\/skills\/x\/references\/shared-friction-reporting\.md differs/);
-    assert.match(drift.stdout, /\.gemini\/skills\/x\/references\/shared-friction-reporting\.md does not exist/);
+    assert.match(
+      drift.stdout,
+      /\.claude\/skills\/x\/references\/shared-friction-reporting\.md differs/,
+    );
+    assert.match(
+      drift.stdout,
+      /\.gemini\/skills\/x\/references\/shared-friction-reporting\.md does not exist/,
+    );
     assert.match(drift.stdout, /shared-gone\.md is a shared reference the skill no longer cites/);
     assert.equal(t.run([]).status, 0);
     assert.equal(t.exists(".github/skills/x/references/shared-gone.md"), false);
@@ -70,7 +77,9 @@ describe("shared references at build time (R11)", () => {
   });
 
   test("a citation inside a yaml fence or a placeholder path does not count", () => {
-    const t = tree("```yaml\nx: references/shared-friction-reporting.md\n```\nAnd `references/shared-<topic>.md`.\n");
+    const t = tree(
+      "```yaml\nx: references/shared-friction-reporting.md\n```\nAnd `references/shared-<topic>.md`.\n",
+    );
     assert.equal(t.run([]).status, 0);
     for (const dir of OUTPUTS) assert.equal(t.exists(`${dir}/shared-friction-reporting.md`), false);
   });
