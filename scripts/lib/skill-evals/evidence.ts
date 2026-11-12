@@ -10,6 +10,8 @@
 //      and digits) found whole-word and in order;
 //   3. the longest verbatim word run of the evidence holds at least EVIDENCE_WINDOW_CHARS letters
 //      and digits and at least EVIDENCE_WINDOW_SHARE of the evidence's letters and digits.
+// The result names the rule that accepted the evidence (spec 0290 R50): `exact`, `normalised`,
+// `window` (with the share of the evidence the longest verbatim run covers) or `path_line`.
 // The rules only widen acceptance. Rule 3 proves the quote is grounded in real output, not that it
 // entails the expectation.
 //
@@ -89,11 +91,11 @@ function matchNormalised(evidence: string, haystack: string): boolean {
   return true;
 }
 
-/** R49 rule 3: the longest verbatim word run of the evidence, in letters and digits and as a share. */
-function matchWindow(evidence: string, haystack: string): boolean {
+/** R49 rule 3: the share of the evidence covered by its longest verbatim word run, when both floors hold. */
+function matchWindow(evidence: string, haystack: string): number | undefined {
   const e = words(evidence);
   const total = alnum(e);
-  if (total === 0) return false;
+  if (total === 0) return undefined;
   let bestStart = 0;
   let bestLen = 0;
   for (let i = 0; i + bestLen < e.length; i++) {
@@ -105,13 +107,24 @@ function matchWindow(evidence: string, haystack: string): boolean {
     bestLen = j - i;
   }
   const run = alnum(e.slice(bestStart, bestStart + bestLen));
-  return run >= EVIDENCE_WINDOW_CHARS && run >= EVIDENCE_WINDOW_SHARE * total;
+  return run >= EVIDENCE_WINDOW_CHARS && run >= EVIDENCE_WINDOW_SHARE * total
+    ? run / total
+    : undefined;
 }
+
+/** The rule that accepted a piece of evidence (spec 0290 R50). */
+export type EvidenceMatch =
+  | { readonly rule: "exact" | "normalised" | "path_line" }
+  | { readonly rule: "window"; readonly share: number };
+
+export type EvidenceVerdict =
+  | ({ readonly ok: true } & EvidenceMatch)
+  | { readonly ok: false; readonly reason: string };
 
 export function validateEvidence(
   evidence: string | undefined,
   material: EvidenceMaterial,
-): { ok: true } | { ok: false; reason: string } {
+): EvidenceVerdict {
   if (evidence === undefined || evidence.trim() === "")
     return { ok: false, reason: "no evidence was given" };
   if (evidence.replace(/\s/g, "").length < EVIDENCE_MIN_CHARS)
@@ -120,20 +133,22 @@ export function validateEvidence(
       reason: `evidence has fewer than ${EVIDENCE_MIN_CHARS} non-whitespace characters`,
     };
   const needle = norm(evidence);
-  if (norm(material.transcript).includes(needle)) return { ok: true };
-  for (const f of material.files) if (norm(f.content).includes(needle)) return { ok: true };
+  if (norm(material.transcript).includes(needle)) return { ok: true, rule: "exact" };
+  for (const f of material.files)
+    if (norm(f.content).includes(needle)) return { ok: true, rule: "exact" };
   const haystacks = [material.transcript, ...material.files.map((f) => f.content)].map((t) =>
     padded(words(t)),
   );
-  if (haystacks.some((h) => matchNormalised(evidence, h))) return { ok: true };
-  if (haystacks.some((h) => matchWindow(evidence, h))) return { ok: true };
+  if (haystacks.some((h) => matchNormalised(evidence, h))) return { ok: true, rule: "normalised" };
+  const shares = haystacks.flatMap((h) => matchWindow(evidence, h) ?? []);
+  if (shares.length > 0) return { ok: true, rule: "window", share: Math.max(...shares) };
   const ref = /^(.+):(\d+)$/.exec(evidence.trim());
   if (ref !== null) {
     const rel = (ref[1] ?? "").replace(/^\.?\/?(outputs\/)?/, "");
     const line = Number(ref[2]);
     const file = material.files.find((f) => f.rel === rel);
     if (file !== undefined && line >= 1 && line <= norm(file.content).split("\n").length)
-      return { ok: true };
+      return { ok: true, rule: "path_line" };
   }
   return {
     ok: false,

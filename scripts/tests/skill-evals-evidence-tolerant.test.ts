@@ -12,14 +12,17 @@ import type { EvidenceMaterial } from "../lib/skill-evals/evidence.ts";
 import { gradeRun } from "../lib/skill-evals/grade.ts";
 import { EVIDENCE_WINDOW_CHARS, EVIDENCE_WINDOW_SHARE } from "../lib/skill-evals/settings.ts";
 import { parseJudgeAnswer } from "../lib/skill-evals/judge.ts";
+import { formatSkill } from "../lib/skill-evals/report.ts";
 import { tmpDir } from "./lib/skill-evals-fixtures.ts";
+import { makeRig } from "./lib/skill-evals-run-rig.ts";
 
 const FIX = path.join(import.meta.dirname, "fixtures", "skill-evals-judge-evidence");
 const load = (dir: string) => {
   const spec = fs.readFileSync(path.join(FIX, dir, "produced-spec.md"), "utf8");
-  const answers = parseJudgeAnswer(fs.readFileSync(path.join(FIX, dir, "judge.txt"), "utf8"), 4).flatMap(
-    (a) => (a?.evidence === undefined ? [] : [a.evidence]),
-  );
+  const answers = parseJudgeAnswer(
+    fs.readFileSync(path.join(FIX, dir, "judge.txt"), "utf8"),
+    4,
+  ).flatMap((a) => (a?.evidence === undefined ? [] : [a.evidence]));
   const material: EvidenceMaterial = {
     transcript: "Assistant: done.",
     files: [{ rel: "specs/0042-widget-csv-export.md", content: spec }],
@@ -71,7 +74,10 @@ test("fabricated quotes stay rejected", () => {
   assert.notEqual(why("Given the widgets service succeeds after part of the list", m5), "ok");
   // a real first piece, an invented second one
   assert.notEqual(
-    why("### Failure path: service failure ... the command quietly retries the export three times", m4),
+    why(
+      "### Failure path: service failure ... the command quietly retries the export three times",
+      m4,
+    ),
     "ok",
   );
   // two real short pieces in the wrong order
@@ -79,7 +85,10 @@ test("fabricated quotes stay rejected", () => {
   assert.equal(ok("Failure path: missing path ... the command prints a usage error", m4), true);
   // a pure paraphrase
   assert.equal(
-    ok("The spec adds no extra columns, no column selection, no filtering, sorting or date-range options beyond the ticket", m5),
+    ok(
+      "The spec adds no extra columns, no column selection, no filtering, sorting or date-range options beyond the ticket",
+      m5,
+    ),
     false,
   );
   // a short piece next to an ellipsis (fewer than 12 letters and digits)
@@ -136,11 +145,21 @@ test("gradeRun: a fabricated PASS is still recorded failed as unsupported; a tol
   const { material, answers } = load("m5-eval-1");
   const run = async (evidence: string) =>
     gradeRun({
-      evalCase: { id: 1, prompt: "p", expected_output: "o", files: [], expectations: ["x"], checks: [] },
+      evalCase: {
+        id: 1,
+        prompt: "p",
+        expected_output: "o",
+        files: [],
+        expectations: ["x"],
+        checks: [],
+      },
       outputsDir: (() => {
         const d = tmpDir();
         fs.mkdirSync(path.join(d, "specs"), { recursive: true });
-        fs.writeFileSync(path.join(d, "specs", "0042-widget-csv-export.md"), material.files[0]?.content ?? "");
+        fs.writeFileSync(
+          path.join(d, "specs", "0042-widget-csv-export.md"),
+          material.files[0]?.content ?? "",
+        );
         return d;
       })(),
       skillDir: "/none",
@@ -149,7 +168,96 @@ test("gradeRun: a fabricated PASS is still recorded failed as unsupported; a tol
     });
   const tolerant = await run(answers[2] as string);
   assert.equal(tolerant.expectations[0]?.passed, true);
-  const fabricated = await run("the widgets service never fails and the command always exits with success quietly");
+  const fabricated = await run(
+    "the widgets service never fails and the command always exits with success quietly",
+  );
   assert.equal(fabricated.expectations[0]?.passed, false);
   assert.match(fabricated.expectations[0]?.evidence ?? "", /the PASS verdict was unsupported/);
+});
+
+// --- R50: the rule that accepted each evidence is recorded and counted -------------------------
+
+const gradeWith = async (
+  fixture: string,
+  evidence: string,
+  file = "specs/0042-widget-csv-export.md",
+) => {
+  const { material } = load(fixture);
+  const d = tmpDir();
+  fs.mkdirSync(path.dirname(path.join(d, file)), { recursive: true });
+  fs.writeFileSync(path.join(d, file), material.files[0]?.content ?? "");
+  const g = await gradeRun({
+    evalCase: {
+      id: 1,
+      prompt: "p",
+      expected_output: "o",
+      files: [],
+      expectations: ["x"],
+      checks: [],
+    },
+    outputsDir: d,
+    skillDir: "/none",
+    transcript: material.transcript,
+    judge: async () => [{ verdict: "PASS", evidence }],
+  });
+  return g.expectations[0];
+};
+
+test("grading.json records the accepting rule, and the window share for rule 3 only", async () => {
+  const m5 = load("m5-eval-1").answers;
+  const exactE = await gradeWith("m5-eval-1", m5[1] as string);
+  assert.equal(exactE?.evidence_match, "exact");
+  assert.equal("window_share" in (exactE ?? {}), false);
+  const normalised = await gradeWith("m5-eval-1", m5[2] as string);
+  assert.equal(normalised?.evidence_match, "normalised");
+  assert.equal("window_share" in (normalised ?? {}), false);
+  const window = await gradeWith("m5-eval-1", m5[3] as string);
+  assert.equal(window?.evidence_match, "window");
+  assert.equal(window?.window_share, 0.38);
+  const ref = await gradeWith("m5-eval-1", "specs/0042-widget-csv-export.md:3");
+  assert.equal(ref?.evidence_match, "path_line");
+  const failed = await gradeWith(
+    "m5-eval-1",
+    "the widgets service never fails and always exits quietly",
+  );
+  assert.equal(failed?.passed, false);
+  assert.equal("evidence_match" in (failed ?? {}), false);
+  assert.equal("window_share" in (failed ?? {}), false);
+});
+
+test("a mock run records the rule on judged entries only, and the report prints evidence_window", async () => {
+  const rig = makeRig({ evalsCount: 2 });
+  try {
+    const r = await rig.run();
+    assert.equal(r.exitCode, 0, r.text + r.stderr);
+    const g = JSON.parse(
+      fs.readFileSync(path.join(rig.out, "demo", "eval-1", "grading.json"), "utf8"),
+    ) as { expectations: Array<Record<string, unknown>> };
+    assert.equal("evidence_match" in (g.expectations[0] ?? {}), false, "a check carries no rule");
+    assert.equal(g.expectations[1]?.["evidence_match"], "exact");
+    assert.match(r.text, /evidence_window: 0 of 2/);
+  } finally {
+    rig.cleanup();
+  }
+});
+
+test("the report line counts rule-3 acceptances, including zero", () => {
+  const base = {
+    skill: "demo",
+    status: "pass" as const,
+    blocking: false,
+    executorRuns: 1,
+    judgeCalls: 1,
+    costUsd: 0,
+    messages: [],
+  };
+  assert.match(
+    formatSkill({ ...base, evidenceAccepted: 2, evidenceWindow: 1 }),
+    /evidence_window: 1 of 2/,
+  );
+  assert.match(
+    formatSkill({ ...base, evidenceAccepted: 3, evidenceWindow: 0 }),
+    /evidence_window: 0 of 3/,
+  );
+  assert.doesNotMatch(formatSkill(base), /evidence_window/);
 });

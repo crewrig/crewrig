@@ -130,6 +130,9 @@ interface Task {
 interface EvalRecord {
   readonly passed: boolean;
   readonly skillLoaded: boolean;
+  /** R50: expectations accepted from a judge PASS, and those accepted by rule 3 (`window`). */
+  readonly accepted: number;
+  readonly acceptedByWindow: number;
 }
 
 interface SkillState {
@@ -499,6 +502,8 @@ export async function runEvals(
       s.evalRuns.push({
         passed: grading.summary.total > 0 && grading.summary.failed === 0,
         skillLoaded: loaded,
+        accepted: grading.expectations.filter((x) => x.evidence_match !== undefined).length,
+        acceptedByWindow: grading.expectations.filter((x) => x.evidence_match === "window").length,
       });
     } catch (e) {
       s.errors.push(`${label}: ${(e as Error).message}`);
@@ -578,6 +583,8 @@ export async function runEvals(
       tolerance: cfg.tolerance,
       regression: d.regression,
       skillLoaded: s.evalRuns.filter((r) => r.skillLoaded).length,
+      evidenceAccepted: s.evalRuns.reduce((n, r) => n + r.accepted, 0),
+      evidenceWindow: s.evalRuns.reduce((n, r) => n + r.acceptedByWindow, 0),
       messages,
     });
     if (!opts.mock)

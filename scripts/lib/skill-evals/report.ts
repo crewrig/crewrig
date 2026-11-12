@@ -3,7 +3,8 @@
 // One block per skill: status, the eval pass rate with evals passed/total, the probe pass rate with
 // probes passed/total (n/a without probes), the threshold, the base eval pass rate and the
 // difference (n/a when not compared, with a line saying so), the number of eval runs that loaded
-// the skill (R48), executor runs used, judge calls used and measured cost, plus the reason and,
+// the skill (R48), a line `evidence_window: <n> of <m>` counting the expectations accepted by the
+// window rule among those accepted from a judge PASS (R50), executor runs used, judge calls used and measured cost, plus the reason and,
 // when the regression condition holds, the regression line. Statuses: pass, fail, regression,
 // invalid, no-evals, mock, error (and `stale`, reported by the attestation check only).
 //
@@ -33,6 +34,9 @@ export interface SkillResult {
   regression?: boolean;
   /** Eval runs that loaded the skill (R48), informational. */
   skillLoaded?: number;
+  /** R50: expectations accepted from a judge PASS, and those accepted by the window rule (rule 3). */
+  evidenceAccepted?: number;
+  evidenceWindow?: number;
   executorRuns: number;
   judgeCalls: number;
   /** Sum of measured run costs; null when any run's cost is unknown (a lower bound is printed). */
@@ -72,6 +76,8 @@ export function formatSkill(r: SkillResult): string {
         : r.costUsd.toFixed(2)
     }`;
   lines.push(head);
+  if (r.evidenceAccepted !== undefined)
+    lines.push(`  evidence_window: ${r.evidenceWindow ?? 0} of ${r.evidenceAccepted}`);
   if (r.baseEvalPassRate === null)
     lines.push("  not compared: no valid evals/results.json at the merge-base");
   if (r.regression === true)
