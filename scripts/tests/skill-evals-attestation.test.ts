@@ -34,13 +34,16 @@ const record = (sel: Selection, over: Partial<ResultsRecord> = {}): ResultsRecor
   judge_model: "j",
   date: "2026-01-01T00:00:00.000Z",
   status: "pass",
-  benchmark: {
-    with_skill_mean: 1,
-    without_skill_mean: 0.5,
-    base_mean: null,
-    delta_value: 0.5,
-    tolerance: 0.05,
-  },
+  effort: "medium",
+  eval_pass_rate: 1,
+  probe_pass_rate: null,
+  base_eval_pass_rate: null,
+  threshold: 0.8,
+  tolerance: 0.05,
+  evals_passed: 2,
+  evals_total: 2,
+  probes_passed: 0,
+  probes_total: 0,
   executor_runs: 4,
   judge_calls: 6,
   cost_usd: 0.4,
@@ -184,18 +187,14 @@ test("recorded regression is reported and blocks only under regression-blocking"
       sel.skill.dirAbs,
       record(sel, {
         status: "regression",
-        benchmark: {
-          with_skill_mean: 0.8,
-          without_skill_mean: 0.5,
-          base_mean: 0.9,
-          delta_value: 0.3,
-          tolerance: 0.05,
-        },
+        eval_pass_rate: 0.8,
+        base_eval_pass_rate: 0.9,
       }),
     );
     repo.git("add", "-A");
     const off = attestSelection(selectionOf(repo, "demo"), {
       regressionBlocking: false,
+      failBlocking: false,
       missingEvalsBlocking: false,
     });
     assert.equal(off.status, "regression");
@@ -203,6 +202,7 @@ test("recorded regression is reported and blocks only under regression-blocking"
     assert.match(off.reason, /base mean 0\.9, head mean 0\.8, tolerance 0\.05/);
     const on = attestSelection(selectionOf(repo, "demo"), {
       regressionBlocking: true,
+      failBlocking: false,
       missingEvalsBlocking: false,
     });
     assert.equal(on.blocking, true);
@@ -210,6 +210,7 @@ test("recorded regression is reported and blocks only under regression-blocking"
     assert.equal(
       attestMain([], cleanEnv(), repo.root, s.io, {
         regressionBlocking: true,
+        failBlocking: false,
         missingEvalsBlocking: false,
       }),
       1,
@@ -237,12 +238,14 @@ test("no-evals warns and blocks only under missing-evals-blocking; invalid alway
     assert.equal(
       attestSelection(selectionOf(repo, "plain"), {
         regressionBlocking: false,
+        failBlocking: false,
         missingEvalsBlocking: true,
       }).blocking,
       true,
     );
     const broken = attestSelection(selectionOf(repo, "broken"), {
       regressionBlocking: false,
+      failBlocking: false,
       missingEvalsBlocking: false,
     });
     assert.equal(broken.status, "invalid");

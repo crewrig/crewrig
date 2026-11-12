@@ -8,7 +8,6 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
-import { buildBenchmark, popStddev, signedDecimal } from "../lib/skill-evals/benchmark.ts";
 import { skillRel } from "./lib/skill-evals-fixtures.ts";
 import { evalsWith, makeRig } from "./lib/skill-evals-run-rig.ts";
 
@@ -74,31 +73,6 @@ test("a mock run writes the R10 layout, R11 grading.json and R14 benchmark.json,
   } finally {
     rig.cleanup();
   }
-});
-
-test("mean, population standard deviation, single-eval zero, and the signed delta string", () => {
-  assert.equal(popStddev([1]), 0);
-  assert.equal(popStddev([]), 0);
-  assert.equal(popStddev([0, 1]), 0.5);
-  assert.equal(signedDecimal(0.1), "+0.10");
-  assert.equal(signedDecimal(-0.05), "-0.05");
-  const g = (pr: number) => ({ passed: pr, failed: 1 - pr, total: 1, pass_rate: pr });
-  const b = buildBenchmark(
-    [
-      { evalId: 1, configuration: "with_skill", summary: g(1) },
-      { evalId: 2, configuration: "with_skill", summary: g(0) },
-      { evalId: 1, configuration: "without_skill", summary: g(0) },
-      { evalId: 2, configuration: "without_skill", summary: g(0) },
-    ],
-    { skill: "x", mock: false },
-  ) as { run_summary: Record<string, unknown> };
-  assert.deepEqual((b.run_summary["with_skill"] as { pass_rate: unknown }).pass_rate, {
-    mean: 0.5,
-    stddev: 0.5,
-  });
-  assert.deepEqual(b.run_summary["delta"], { pass_rate: "+0.50" });
-  assert.equal(b.run_summary["delta_value"], 0.5);
-  assert.equal("mock" in b, false);
 });
 
 test("a failed check is recorded with its observed value and the judge is called only for expectations", async () => {

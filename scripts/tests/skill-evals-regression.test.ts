@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
-import { isRegression } from "../lib/skill-evals/benchmark.ts";
+import { isRegression } from "../lib/skill-evals/results.ts";
 import type { MockScript } from "../lib/skill-evals/executor/mock.ts";
 import { contentHash, readWorkingTree } from "../lib/skill-evals/hash.ts";
 import type { Snapshot } from "../lib/skill-evals/hash.ts";
@@ -86,8 +86,8 @@ test("regression versus base is reported with both means and does not block by d
     const r = await rig.run({ fetchImpl: j.fetch });
     const s = r.results[0];
     assert.equal(s?.status, "regression", r.text + r.stderr);
-    assert.equal(s?.baseMean?.toFixed(2), "0.90");
-    assert.equal(s?.withSkillMean?.toFixed(2), "0.80");
+    assert.equal(s?.baseEvalPassRate?.toFixed(2), "0.90");
+    assert.equal(s?.evalPassRate?.toFixed(2), "0.80");
     assert.equal(r.exitCode, 0);
     assert.match(
       r.text,
@@ -192,7 +192,7 @@ test("an evals-only change plans two runs per eval, reports pass with a null bas
     const r = await rig.run({ fetchImpl: judgeFetch().fetch });
     assert.equal(r.results[0]?.status, "pass");
     assert.equal(r.results[0]?.executorRuns, 4, "2 evals x 2 runs, no base replay");
-    assert.equal(r.results[0]?.baseMean, null);
+    assert.equal(r.results[0]?.baseEvalPassRate, null);
     assert.equal(fs.existsSync(path.join(rig.out, "demo", "base")), false);
     const rec = JSON.parse(fs.readFileSync(resultsFile(rig.repo.root), "utf8"));
     assert.equal(rec.benchmark.base_mean, null);

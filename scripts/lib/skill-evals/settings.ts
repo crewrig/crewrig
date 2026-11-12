@@ -6,7 +6,7 @@
 // Usage: import { REGRESSION_BLOCKING, ... } from "./settings.ts".
 // Exit codes: not applicable (library). Finding-line format: not applicable.
 
-/** R19: a skill regresses when its head mean is lower than the base mean by MORE than this. */
+/** R19: a skill regresses when its eval pass rate is lower than the base's by MORE than this. */
 export const TOLERANCE = 0.05;
 /** R20: when true, a regression (measured or recorded) makes the run or the check exit non-zero. */
 export const REGRESSION_BLOCKING = false;
@@ -41,7 +41,7 @@ export const EXECUTOR_MODEL = "claude-sonnet-5-5";
 export const JUDGE_MODEL = "claude-sonnet-5-5";
 /** Judge `max_tokens` for an evidence call (the library default of 256 cannot hold an excerpt). */
 export const JUDGE_MAX_TOKENS = 512;
-/** R23: share of the quorum-times-runs judge estimate added for retries. */
+/** R23: share of the one-call-per-eval judge estimate added for retries. */
 export const JUDGE_RETRY_ALLOWANCE = 0.25;
 
 /** R13: minimum non-whitespace characters of a valid evidence string. */

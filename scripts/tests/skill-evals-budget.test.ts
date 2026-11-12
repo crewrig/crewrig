@@ -22,14 +22,13 @@ test("planning: three runs per eval, two when there is no replay; judge worst ca
     evals: doc.evals.map((e: object) => ({ ...e, checks: [], expectations: ["a", "b", "c"] })),
     trigger_probes: [],
   };
-  const withReplay = planSkill("x", evals, true);
+  const withReplay = planSkill("x", evals);
   assert.equal(withReplay.executorRuns, 12);
   assert.equal(
     withReplay.judgeCalls,
     4 * 3 * 3 * 3 + Math.ceil(4 * 3 * 3 * 3 * 0.25),
     "expectations x runs x quorum + retries",
   );
-  assert.equal(planSkill("x", evals, false).executorRuns, 8);
 });
 
 test("an over-cap executor plan is refused before any call, with planned versus cap", async () => {
@@ -81,8 +80,8 @@ test("pre-flight arithmetic is a pure function of the plans", () => {
   const p = (n: number) => ({
     skill: "s",
     evals: n,
-    runsPerEval: 3 as const,
-    executorRuns: 3 * n,
+    probes: 0,
+    executorRuns: n,
     judgeCalls: 1,
   });
   assert.deepEqual(preflight([p(10)], limits), []);

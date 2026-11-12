@@ -4,8 +4,8 @@
 // CREWRIG_REPO_DIR overrides the repository root (default: the root of this script).
 // Makes no model call and needs no credential (spec 0290 R37, R39). The results file is self-declared:
 // the check proves freshness (the recorded content hash matches), not truth (R38).
-// Exit: 0 clean, 1 a blocking outcome (invalid, stale; no-evals and recorded regression only under
-// missing-evals-blocking / regression-blocking), 2 base ref unresolvable.
+// Exit: 0 clean, 1 a blocking outcome (invalid, stale; no-evals, recorded fail and recorded regression only under
+// missing-evals-blocking / fail-blocking / regression-blocking), 2 base ref unresolvable.
 // Finding line: `<skill>: <status>[: <reason>]`; also appended to $GITHUB_STEP_SUMMARY when set.
 //
 // ENTRY FORM (spec 0250 R3; spec 0243 R5) — do not "tidy" it into an ordinary module:

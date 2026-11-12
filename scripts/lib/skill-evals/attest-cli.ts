@@ -7,7 +7,7 @@
 // check proves freshness, not truth.
 //
 // Usage: node scripts/skill-evals-attestation.ts [<base-ref>]   (BASE_REF is read when no argument)
-// Exit: 0 clean, 1 a blocking outcome (invalid, stale, and no-evals / regression under their
+// Exit: 0 clean, 1 a blocking outcome (invalid, stale, and no-evals / fail / regression under their
 // settings), 2 base ref unresolvable.
 // Finding line: `<skill>: <status>[: <reason>]`.
 
@@ -57,7 +57,7 @@ export function attestMain(
     const o = attestSelection(s, settings);
     blocking ||= o.blocking;
     lines.push(
-      `${o.skill}: ${o.status}${o.status === "pass" || o.status === "new" ? "" : `: ${o.reason}`}${o.blocking ? " [blocking]" : ""}`,
+      `${o.skill}: ${o.status}${o.status === "pass" ? "" : `: ${o.reason}`}${o.blocking ? " [blocking]" : ""}`,
     );
   }
   const text = `${lines.join("\n")}\n`;
