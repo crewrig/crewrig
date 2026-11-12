@@ -12,6 +12,12 @@ version: 2.0.0
 
 *Delta 01 of `specs/0296-pr-reviewer-modernization.md`. Source: the cold plan review of issue #1892 (finding v1-F1) and the wave coordinator's decision recorded on that issue. A skill that ships `evals/evals.json` is protected by `check-skill-quality`, which runs on every skill in continuous integration; `pr-reviewer` has nine warnings today, all of which become errors the moment the evals land. An evals-only pull request (R1) would therefore be red and would leave `main` red. The delta lands the evals, the rewrite and the results in one pull request that is pushed only once the skill is clean, and keeps the before/after comparison by measuring the baseline locally on a commit of that branch.*
 
+## ADDED
+
+<!-- markdownlint-disable MD029 -->
+
+25. **R25 (no red push).** No commit of the branch SHALL be pushed while `task check-skill-quality -- pr-reviewer` reports a finding, and the pre-push hook SHALL NOT be bypassed.
+
 ## MODIFIED
 
 **R1 (two implementation pull requests).** Original: "The work SHALL land as two implementation pull requests, in this order. The *evals PR* SHALL carry R2 to R6 … The *rewrite PR* SHALL carry R7 to R24 …". Replacement: **R1 (one implementation pull request).** The work SHALL land as one implementation pull request carrying R2 to R6 and R7 to R24. Its branch SHALL hold, in this order: (1) a commit that adds only `evals/evals.json` and the fixtures under `evals/files/`; (2) a commit that adds only the `evals/results.json` of the baseline run of R5, measured on the unchanged skill; (3) the commits of the scripts, the rewritten skill and agent and the final `evals/results.json`. The branch SHALL NOT be pushed until the skill passes `task check-skill-quality -- pr-reviewer` with zero findings, because shipping `evals/evals.json` makes every finding an error.
@@ -27,12 +33,6 @@ version: 2.0.0
 **Scenario *Happy path — a required check fails*, and the other script scenarios,** stand unchanged.
 
 **Scenario *Failure path — gate failed after the retry*.** Read "the rewrite PR" as "the pull request".
-
-## ADDED
-
-<!-- markdownlint-disable MD029 -->
-
-25. **R25 (no red push).** No commit of the branch SHALL be pushed while `task check-skill-quality -- pr-reviewer` reports a finding, and the pre-push hook SHALL NOT be bypassed.
 
 ## REMOVED
 
