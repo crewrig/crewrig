@@ -1,8 +1,8 @@
 ---
 name: developer
-description: "Implementation skill for writing, modifying, and refactoring code. Activate by default for any coding task that does not warrant the architect skill. Optimized for parallelisable execution, fast feedback loops, and minimal surface area per change."
+description: "Implements a code change with the smallest correct diff: fixes a bug, refactors a bounded piece of code or makes a small change in one or a few files, then reviews its own diff before reporting done. Use when asked to implement, fix, modify, refactor, rename or change code that stays inside existing contracts, or when re-spawned to fix the findings of a review pass (review brief, tech-class findings). Not for designing a new abstraction or changing a shared contract (architect), writing tests or test plans (tester), reviewing a pull request (pr-reviewer) or writing documentation (doc-writer)."
 license: Apache-2.0
-compatibility: "Requires Node.js 24 or later and js-yaml from the setup dependency step (used by scripts/build-components.ts, no yq), and git (used for staged-file inspection of executable bits)."
+compatibility: "Requires Node.js 24 (the script runs as node scripts/pre-handoff.ts) and git."
 allowed-tools:
   - Read
   - Write
@@ -15,7 +15,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.9"
+    version: "1.2.0"
 ---
 
 
@@ -39,117 +39,111 @@ the change touches auth, secrets, crypto, or external input handling.
 
 ### 1. Branch setup
 
-Before creating your branch, always synchronize with the remote to
-avoid basing work on a stale commit:
+Cut the branch from the remote ref, after a fetch:
 
 ```sh
 git fetch origin
 git checkout -b <branch-name> origin/main
 ```
 
-Never use `git checkout -b <branch> main` (local ref) — it may be
-behind `origin/main` if the remote was updated since your last fetch,
-which causes the branch to miss recently merged PRs and forces a
-rebase round-trip.
+A local `main` can be behind `origin/main`. A branch cut from it misses
+recently merged work and costs a rebase round-trip later.
 
 ### 2. Read before writing
 
-Read the file you are about to modify. Read the function calling it.
-Read the tests around it. Two minutes of reading saves twenty minutes
-of guessing.
-
-If the codebase is unfamiliar, run a focused grep for the symbol or
-pattern you intend to change before editing — never edit blind.
+Read the file you are about to modify, the function calling it and the
+tests around it. If the codebase is unfamiliar, grep for the symbol or
+pattern you intend to change before editing: an edit made without
+reading the surroundings usually breaks a caller you did not see.
 
 ### 3. Smallest correct change
 
-Write the change that solves the stated problem. Resist:
+Write the change that solves the stated problem. Leave out:
 
 - Refactoring "while you are there".
-- Adding error handling for cases that cannot happen.
-- Introducing abstractions for hypothetical future use.
-- Renaming things that are merely *not how you would have named them*.
+- Error handling for cases that cannot happen.
+- Abstractions for hypothetical future use.
+- Renames of things that are merely *not how you would have named them*.
 
-Three repeated lines is preferable to a premature abstraction. If a
-genuine duplication emerges, the next change will surface it.
+Three repeated lines are preferable to a premature abstraction. If a
+genuine duplication emerges, the next change will surface it. Every
+extra line is one more line for the reviewer to read and for the next
+editor to carry.
 
 ### 4. Prove it locally
 
-Before reporting a task as done, run:
+Before reporting a task as done:
 
-- Review the full diff (`git diff HEAD`) against the declared task scope
-  before reporting done. Any modified file not explicitly in scope is a red
-  flag — revert it or confirm it was intentional. Pay special attention to
-  Unicode → ASCII regressions (e.g. `→` silently replaced by `->`, `—` by
-  `--`): a quick `git diff HEAD | grep -P '[^\x00-\x7F]'` catches additions
-  of non-ASCII, but the inverse — loss of non-ASCII — requires checking the
-  removed lines.
-- The unit test for the changed code (or write one if none exists and
-  the project's testing convention requires it).
-- The narrowest type-check / lint that covers the change.
-- For UI / frontend work: open the change in a browser and exercise
-  the golden path *and* one edge case.
-- For changes to bundled-script source files (any file under
-  `artifacts/core/skills/<name>/scripts/`,
-  `artifacts/library/skills/<name>/scripts/`,
-  `artifacts/community/skills/<name>/scripts/`,
-  `artifacts/core/agents/<name>/scripts/`,
-  `artifacts/library/agents/<name>/scripts/`, or
-  `artifacts/community/agents/<name>/scripts/`): regenerate the `.gemini/`
-  and `.claude/` mirrors with the repository build, stage them in the same
-  commit, and confirm they are drift-free. This is non-optional — the CI
-  `check-components` job rejects PRs where source and bundles disagree.
-  <!-- crewrig-repo-only:start -->
-  CrewRig repository only: run `node scripts/lib/node-floor-guard.js`, then
-  `node scripts/build-components.ts` (two separate steps, not chained with
-  `&&`; Node.js 24 or later, `js-yaml` from the setup dependency step), stage
-  the outputs, then run `node scripts/build-components.ts --check`.
-  <!-- crewrig-repo-only:end -->
-- For changes that include executable files: after any push via the MCP
-  `push_files` tool (which strips file modes), verify the executable
-  bit survived with `git ls-files --stage -- <file>` (`100755`, not
-  `100644`). Restore with `git update-index --chmod=+x <file>` before the
-  next push.
+- Run the unit test for the changed code, or write one if none exists
+  and the project's testing convention requires it.
+- Run the narrowest type-check or lint that covers the change.
+- For UI work, open the change in a browser and exercise the golden path
+  and one edge case.
+- If the project has a build step that generates files from sources,
+  follow the build and generated-file rules of its working-rules file:
+  a generated file that disagrees with its source fails the project's
+  pipeline.
+- Run `scripts/pre-handoff.ts` on the diff (below).
 
-If the project has no test or type-check infrastructure, say so
-explicitly in the report — do not claim verification you did not do.
+If the project has no test or type-check infrastructure, say so in the
+report. A verification you did not do must not be claimed.
+
+#### `scripts/pre-handoff.ts`
+
+Run it last, from the repository, before the report:
+
+```sh
+node scripts/pre-handoff.ts --scope <path-or-glob> [--scope ...] [--base origin/main] [--json]
+```
+
+`--scope` lists the paths the task covers. `--base` defaults to `HEAD`,
+which reviews the staged, unstaged and untracked changes; pass the
+branch's base ref to include commits already made on the branch.
+
+| Exit | Meaning | What to do |
+|---|---|---|
+| `0` | No error finding. Warnings may be listed. | Check each `non-ascii-added` warning is intended, then report. |
+| `1` | An error finding. | `scope`: revert the file or confirm it was intended. `non-ascii-lost`: a character such as an arrow was replaced by ASCII; restore it unless the removal is intended, and say so in the report. `mode-lost`: restore the executable bit. Run again. |
+| `2` | Usage error. | Fix the command line. |
+| `3` | Not in a git repository, or unknown base ref. | Run it from the repository root with a ref that exists. |
+
+The script catches what a skim of the diff misses: a `→` silently
+replaced by `->` shows up only on removed lines, which nobody rereads.
+
+A push through a tool that strips file modes (some file-push tools of
+MCP servers) loses the executable bit on the remote side, where the
+script cannot see it. After such a push, check
+`git ls-files --stage -- <file>` shows `100755` and restore it with
+`git update-index --chmod=+x <file>` before the next push.
 
 ### 5. Parallelisable work
 
-When a task decomposes into independent subtasks (e.g. apply the same
-fix to several files), prefer launching them concurrently rather than
-serially. State the decomposition in one line, then dispatch.
+When a task decomposes into independent subtasks (the same fix in
+several files), run them concurrently rather than serially. State the
+decomposition in one line, then dispatch.
 
-If two subtasks share a file or a contract, they are *not*
-independent — serialize them.
+Two subtasks that share a file or a contract are not independent:
+serialize them.
 
 ## Output expectations
 
 - Diffs over full rewrites. Edit in place; do not Write a file you
   could Edit.
-- No trailing summary of "what I just did" unless the user explicitly
-  asks. The diff is the summary.
-- Comments only where the *why* is non-obvious. Do not narrate *what*
-  the code does — the code already does that.
+- No trailing summary of "what I just did" unless the user asks. The
+  diff is the summary.
+- Comments only where the *why* is non-obvious. The code already says
+  *what* it does.
 
-## Finding class taxonomy
+## Findings from a review loop
 
-When re-spawned as the DEV target of a `tech`-class iteration of the
-retroactive review loop (per
-[`docs/retroactive-loop.md`](../../../docs/retroactive-loop.md)
-→ *Routing matrix*), the brief carries reviewer findings each
-tagged with a `class:` field. The skill SHALL act on findings whose
-`class:` is `tech` and SHALL surface a violation back to the
-orchestrator if any incoming finding it is asked to address omits
-the tag — a missing tag is a reviewer protocol error, not a hint to
-guess at the loop target. Findings tagged `arch` or `spec` are
-out-of-scope for this skill and indicate misrouting; flag and
-return.
+When you are re-spawned to fix findings of a review, act only on the
+findings tagged `class: tech`. Return a finding with no tag to the
+orchestrator as a protocol error, and return an `arch` or `spec` finding
+as misrouted, without fixing either. The rule and its reason are in
+`references/shared-finding-class-taxonomy.md`.
 
 ## Friction reporting
 
-When a recognition signal fires (see `config/TOOLS.md` →
-*Friction Reporting → Recognition signals*), invoke the
-`harness-report` skill rather than reimplementing the protocol
-inline. The reporter walks you through identifying the offender,
-picking the room, and filling the payload.
+When something in the workflow misleads or blocks you, tag it with the
+`harness-report` skill. The rule is in
+`references/shared-friction-reporting.md`.
