@@ -1,0 +1,3 @@
+1 VERDICT=PASS EVIDENCE="- [USER-PARKED] Do widgets archived by their owner belong in the export?"
+2 VERDICT=PASS EVIDENCE="Requirement 2 states \"The file SHALL contain one row per widget the caller can see, and no row for a widget the caller cannot see.\" and no Requirements or Scenarios line mentions archived widgets."
+3 VERDICT=PASS EVIDENCE="### Failure path: service failure ... **Then** the command prints a clear error, exits with a non-zero status, and no `widgets.csv` exists (or, if one existed before, it is unchanged)."

@@ -20,6 +20,10 @@ export interface GradedExpectation {
   text: string;
   passed: boolean;
   evidence: string;
+  /** R50: the rule that accepted a judge PASS; absent on checks and on failed entries. */
+  evidence_match?: "exact" | "normalised" | "window" | "path_line";
+  /** R50: with `window`, the share of the evidence covered by the longest verbatim run, 2 decimals. */
+  window_share?: number;
 }
 
 export interface GradeSummary {
@@ -124,7 +128,14 @@ export async function gradeRun(input: GradeInput): Promise<Grading> {
         });
       else {
         const v = validateEvidence(answer.evidence, { transcript: input.transcript, files });
-        if (v.ok) entries.push({ text, passed: true, evidence: answer.evidence ?? "" });
+        if (v.ok)
+          entries.push({
+            text,
+            passed: true,
+            evidence: answer.evidence ?? "",
+            evidence_match: v.rule,
+            ...(v.rule === "window" ? { window_share: Math.round(v.share * 100) / 100 } : {}),
+          });
         else
           entries.push({
             text,

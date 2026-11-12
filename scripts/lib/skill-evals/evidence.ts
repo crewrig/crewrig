@@ -2,9 +2,18 @@
 //
 // The judge answers each expectation with a line `<n> VERDICT=<word> EVIDENCE=<JSON string>`.
 // An expectation is `passed: true` only when the verdict is PASS and the evidence is valid:
-// at least 12 non-whitespace characters and either an exact substring of the run's transcript.md
-// or of a file the run produced (line endings normalised), or a `path:line` reference naming a
-// produced file and an existing line of it. Anything else is an unsupported PASS.
+// at least 12 non-whitespace characters and either matches the run's transcript.md or a file the
+// run produced under spec 0290 R49 (delta-05), or is a `path:line` reference naming a produced
+// file and an existing line of it. Anything else is an unsupported PASS. R49, in order:
+//   1. exact substring (line endings normalised);
+//   2. normalised match: NFKC, letters and digits only, ellipsis pieces (each at least 12 letters
+//      and digits) found whole-word and in order;
+//   3. the longest verbatim word run of the evidence holds at least EVIDENCE_WINDOW_CHARS letters
+//      and digits and at least EVIDENCE_WINDOW_SHARE of the evidence's letters and digits.
+// The result names the rule that accepted the evidence (spec 0290 R50): `exact`, `normalised`,
+// `window` (with the share of the evidence the longest verbatim run covers) or `path_line`.
+// The rules only widen acceptance. Rule 3 proves the quote is grounded in real output, not that it
+// entails the expectation.
 //
 // Usage: validateEvidence(evidence, { transcript, files }) -> { ok } | { ok: false, reason }
 // Exit codes: not applicable (library). Finding-line format: not applicable.
@@ -12,7 +21,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { EVIDENCE_MIN_CHARS } from "./settings.ts";
+import { EVIDENCE_MIN_CHARS, EVIDENCE_WINDOW_CHARS, EVIDENCE_WINDOW_SHARE } from "./settings.ts";
 
 export interface ProducedFile {
   /** Path relative to the run's outputs/ directory, `/` separators. */
@@ -54,10 +63,68 @@ export function parseEvidence(text: string): string | undefined {
   return rest === "" ? undefined : rest;
 }
 
+/** Words of a text: maximal runs of Unicode letters and digits, after NFKC normalisation. */
+const words = (s: string): string[] => s.normalize("NFKC").match(/[\p{L}\p{N}]+/gu) ?? [];
+const alnum = (ws: readonly string[]): number => ws.reduce((n, w) => n + [...w].length, 0);
+
+/** The ellipsis markers a judge uses to elide text inside a quote. */
+const ELLIPSIS = /\[(?:\.{3}|…)\]|\.{3}|…/;
+
+/** A word stream wrapped in single spaces, so that a whole-word run is a plain substring. */
+const padded = (ws: readonly string[]): string => ` ${ws.join(" ")} `;
+
+/** R49 rule 2: every ellipsis piece occurs whole-word in the material, in order, without overlap. */
+function matchNormalised(evidence: string, haystack: string): boolean {
+  const pieces = evidence
+    .split(ELLIPSIS)
+    .map(words)
+    .filter((w) => w.length > 0);
+  if (pieces.length === 0) return false;
+  let from = 0;
+  for (const piece of pieces) {
+    if (alnum(piece) < EVIDENCE_MIN_CHARS) return false;
+    const needle = ` ${piece.join(" ")} `;
+    const at = haystack.indexOf(needle, from);
+    if (at < 0) return false;
+    from = at + needle.length - 1;
+  }
+  return true;
+}
+
+/** R49 rule 3: the share of the evidence covered by its longest verbatim word run, when both floors hold. */
+function matchWindow(evidence: string, haystack: string): number | undefined {
+  const e = words(evidence);
+  const total = alnum(e);
+  if (total === 0) return undefined;
+  let bestStart = 0;
+  let bestLen = 0;
+  for (let i = 0; i + bestLen < e.length; i++) {
+    // only a run longer than the best so far matters: test one word beyond it first
+    if (!haystack.includes(padded(e.slice(i, i + bestLen + 1)))) continue;
+    let j = i + bestLen + 1;
+    while (j < e.length && haystack.includes(padded(e.slice(i, j + 1)))) j++;
+    bestStart = i;
+    bestLen = j - i;
+  }
+  const run = alnum(e.slice(bestStart, bestStart + bestLen));
+  return run >= EVIDENCE_WINDOW_CHARS && run >= EVIDENCE_WINDOW_SHARE * total
+    ? run / total
+    : undefined;
+}
+
+/** The rule that accepted a piece of evidence (spec 0290 R50). */
+export type EvidenceMatch =
+  | { readonly rule: "exact" | "normalised" | "path_line" }
+  | { readonly rule: "window"; readonly share: number };
+
+export type EvidenceVerdict =
+  | ({ readonly ok: true } & EvidenceMatch)
+  | { readonly ok: false; readonly reason: string };
+
 export function validateEvidence(
   evidence: string | undefined,
   material: EvidenceMaterial,
-): { ok: true } | { ok: false; reason: string } {
+): EvidenceVerdict {
   if (evidence === undefined || evidence.trim() === "")
     return { ok: false, reason: "no evidence was given" };
   if (evidence.replace(/\s/g, "").length < EVIDENCE_MIN_CHARS)
@@ -66,15 +133,22 @@ export function validateEvidence(
       reason: `evidence has fewer than ${EVIDENCE_MIN_CHARS} non-whitespace characters`,
     };
   const needle = norm(evidence);
-  if (norm(material.transcript).includes(needle)) return { ok: true };
-  for (const f of material.files) if (norm(f.content).includes(needle)) return { ok: true };
+  if (norm(material.transcript).includes(needle)) return { ok: true, rule: "exact" };
+  for (const f of material.files)
+    if (norm(f.content).includes(needle)) return { ok: true, rule: "exact" };
+  const haystacks = [material.transcript, ...material.files.map((f) => f.content)].map((t) =>
+    padded(words(t)),
+  );
+  if (haystacks.some((h) => matchNormalised(evidence, h))) return { ok: true, rule: "normalised" };
+  const shares = haystacks.flatMap((h) => matchWindow(evidence, h) ?? []);
+  if (shares.length > 0) return { ok: true, rule: "window", share: Math.max(...shares) };
   const ref = /^(.+):(\d+)$/.exec(evidence.trim());
   if (ref !== null) {
     const rel = (ref[1] ?? "").replace(/^\.?\/?(outputs\/)?/, "");
     const line = Number(ref[2]);
     const file = material.files.find((f) => f.rel === rel);
     if (file !== undefined && line >= 1 && line <= norm(file.content).split("\n").length)
-      return { ok: true };
+      return { ok: true, rule: "path_line" };
   }
   return {
     ok: false,

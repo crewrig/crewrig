@@ -47,8 +47,14 @@ export const JUDGE_RETRY_ALLOWANCE = 0.25;
 /** R13: minimum non-whitespace characters of a valid evidence string. */
 export const EVIDENCE_MIN_CHARS = 12;
 
+/** R49 rule 3: minimum letters and digits of the longest verbatim run of the evidence. */
+export const EVIDENCE_WINDOW_CHARS = 40;
+
+/** R49 rule 3: minimum share of the evidence's letters and digits that the longest verbatim run covers. */
+export const EVIDENCE_WINDOW_SHARE = 0.3;
+
 /** Written to evals/results.json (R36). */
-export const RUNNER_VERSION = "2.0.0";
+export const RUNNER_VERSION = "2.1.0";
 
 /** Tools the executor may use: the main security boundary, kept in one place. */
 export const EXECUTOR_TOOLS = ["Bash", "Read", "Write", "Edit", "Skill"] as const;

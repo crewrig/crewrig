@@ -1,0 +1,3 @@
+1 VERDICT=PASS EVIDENCE="- [USER-PARKED] Do widgets archived by their owner belong in the export?"
+2 VERDICT=PASS EVIDENCE="Requirements and Scenarios only say \"widgets the caller can see\" / \"three widgets\"; archived widgets are mentioned only in Open questions: \"requirement 1 (\\\"widgets the caller can see\\\") is silent on archived widgets\""
+3 VERDICT=PASS EVIDENCE="### Failure path: service fails\n\n- **Given** the widgets service returns an error during the export\n- **When** the caller runs `widgets export --out widgets.csv`\n- **Then** the command prints a clear error message and exits non-zero\n- **And** no `widgets.csv` file exists at that path."
