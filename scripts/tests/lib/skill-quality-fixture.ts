@@ -82,4 +82,3 @@ export interface Out {
 }
 export const parsed = (stdout: string): Out => JSON.parse(stdout) as Out;
 export const protectedFiles = { "evals/evals.json": evalsJson() };
-
