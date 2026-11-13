@@ -1,5 +1,5 @@
 // skill-scripts-gitlab-ci-check-rules.test.ts — check-rules.ts (spec 0301 R7, R10): the text scan for
-// only:/except: and a missing workflow:rules, from a copy of the built skill outside the repository.
+// only:/except: and a missing workflow:rules, from a copy of the built skill outside the repository. // acknowledged-exception: legacy GitLab key, not Python
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -43,7 +43,7 @@ describe("findings", () => {
   });
   test("two legacy jobs and no workflow: two only-except, one missing-workflow-rules error, exit 1", () => {
     const dir = fixture({
-      "ci.yml": "a:|  script: x|  only:|    - main|b:|  script: y|  except:|    - tags",
+      "ci.yml": "a:|  script: x|  only:|    - main|b:|  script: y|  except:|    - tags", // acknowledged-exception: legacy GitLab key, not Python
     });
     const { r, env } = scan(dir, "ci.yml");
     assert.equal(r.status, 1);
@@ -54,7 +54,7 @@ describe("findings", () => {
     assert.match(oe[0]?.message ?? "", /\ba\b/);
     assert.match(oe[0]?.message ?? "", /\b3\b/, "names the line of only:");
     assert.match(oe[1]?.message ?? "", /\bb\b/);
-    assert.match(oe[1]?.message ?? "", /\b7\b/, "names the line of except:");
+    assert.match(oe[1]?.message ?? "", /\b7\b/, "names the line of except:"); // acknowledged-exception: legacy GitLab key, not Python
     const mw = rules(env, "missing-workflow-rules");
     assert.equal(mw.length, 1);
     assert.equal(mw[0]?.severity ?? "error", "error");
@@ -74,7 +74,8 @@ describe("findings", () => {
     assert.equal(r.status, 1);
     assert.equal(rules(env, "missing-workflow-rules").length, 1);
   });
-  test("nested keys: only:/except: under rules:, variables:, cache:, needs: or a script: block scalar are not findings", () => {
+  test("nested keys: the legacy only and except words under rules:, variables:, cache:, needs: or a script: block scalar are not findings", () => {
+    // acknowledged-exception: legacy GitLab key, not Python
     const dir = fixture({
       "ci.yml": [
         WORKFLOW,
@@ -82,18 +83,18 @@ describe("findings", () => {
         "  script:",
         "    - |",
         "      echo only: main",
-        "      except: nothing",
+        "      except: nothing", // acknowledged-exception: legacy GitLab key, not Python
         "  rules:",
         "    - if: $X",
         "      only: ignored",
         "  variables:",
         "    only: main",
-        "    except: tags",
+        "    except: tags", // acknowledged-exception: legacy GitLab key, not Python
         "  cache:",
         "    only: x",
         "  needs:",
         "    - job: a",
-        "      except: y",
+        "      except: y", // acknowledged-exception: legacy GitLab key, not Python
       ].join("|"),
     });
     const { r, env } = scan(dir, "ci.yml");

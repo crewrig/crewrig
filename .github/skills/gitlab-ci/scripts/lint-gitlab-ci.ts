@@ -22,7 +22,7 @@ and reads no token. The file defaults to .gitlab-ci.yml.
 
 Outcomes:
   valid        glab exited 0 and printed "CI/CD YAML is valid".                       exit 0
-  invalid      glab printed a line ending "is invalid."; one invalid-config finding
+  invalid      glab printed a line ending "is invalid." (standard output or error); one invalid-config finding
                per error line that follows it.                                         exit 1
   not checked  precondition finding that says the pipeline was NOT validated
                server-side: missing file, missing glab, timeout, authentication
@@ -158,14 +158,20 @@ Exit codes: 0 valid, 1 invalid, 2 usage error, 3 not validated.
   }
   if (r.timedOut) return notValidated(`glab did not answer within ${timeoutS} seconds (timeout)`);
 
-  const outLines = r.stdout.split(/\r?\n/);
-  const invalidAt = outLines.findIndex((l) => /(?:^|\s)is invalid\.$/i.test(l.trim()));
-  if (invalidAt !== -1) {
-    const errors = outLines
-      .slice(invalidAt + 1)
+  // The verdict is on standard output in glab 1.130.0; either stream is searched, stdout first.
+  const streams = [r.stdout, r.stderr].map((t) => t.split(/\r?\n/));
+  const hit = streams
+    .map((lines) => ({
+      lines,
+      at: lines.findIndex((l) => /(?:^|\s)is invalid\.$/i.test(l.trim())),
+    }))
+    .find((h) => h.at !== -1);
+  if (hit !== undefined) {
+    const errors = hit.lines
+      .slice(hit.at + 1)
       .map((l) => l.trim())
       .filter((l) => l !== "");
-    const texts = errors.length > 0 ? errors : [(outLines[invalidAt] as string).trim()];
+    const texts = errors.length > 0 ? errors : [(hit.lines[hit.at] as string).trim()];
     const findings: Finding[] = texts.map((message) => ({
       rule: "invalid-config",
       message,
@@ -175,7 +181,7 @@ Exit codes: 0 valid, 1 invalid, 2 usage error, 3 not validated.
     const summary = `${findings.map((f) => `${target}: error invalid-config: ${f.message}`).join("\n")}\n${NAME}: ${target} is invalid`;
     return emit(1, { file: target, repo: repo ?? null, verdict: "invalid" }, findings, summary);
   }
-  if (r.status === 0 && /ci\/cd yaml is valid/i.test(r.stdout))
+  if (r.status === 0 && /ci\/cd yaml is valid/i.test(`${r.stdout}\n${r.stderr}`))
     return emit(
       0,
       { file: target, repo: repo ?? null, verdict: "valid" },

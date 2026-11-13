@@ -23,7 +23,7 @@ Work on a `.gitlab-ci.yml` the way a reviewer who has seen the usual failures wo
 
 ## Scripts
 
-Run `node <skill-dir>/scripts/<name>.ts` from the repository. Each script reads only the file or directory it is given (a directory means `<dir>/.gitlab-ci.yml` plus the YAML under `<dir>/.gitlab/`).
+Run `node scripts/<name>.ts` from the skill directory, or give its full path from elsewhere. The three offline scripts read only the target you give them, a file or a directory (a directory means `<dir>/.gitlab-ci.yml` plus the YAML under `<dir>/.gitlab/`). `lint-gitlab-ci.ts` takes one file and queries GitLab.
 
 | When | Command | Exit `1` means |
 |---|---|---|
@@ -51,7 +51,7 @@ No script simulates or executes a pipeline; `glab ci lint` checks configuration 
 - **A cache path must sit under `$CI_PROJECT_DIR`.** GitLab archives nothing outside it, so a `GOPATH` or pip cache in `$HOME` is silently never cached. Key the cache on the lockfile, not the manifest.
 - **A job whose `tags:` match no runner stays pending** with no error, which is the usual cause of a stuck job.
 - **Certificates and kubeconfigs go in `file`-type variables.** Echoing a plain variable into a file defeats masking.
-- **Fork merge request pipelines must not reach protected variables or protected runners.** A fork branch is not a protected ref. Relaxing that, or registering an unprotected shared or privileged runner, lets fork code run on your infrastructure.
+- **Fork merge request pipelines must not reach protected variables or protected runners.** A fork branch is not a protected ref. Relaxing that, or registering an unprotected shared or privileged runner, lets fork code run on your infrastructure. If a fork must run privileged work, gate it behind a maintainer-approved job in a protected environment.
 - **Pin remote includes and components.** `include:remote`, a branch ref and `~latest` can change under an unchanged pipeline. Pin a tag or commit SHA and prefer first-party sources.
 - **Scope the `CI_JOB_TOKEN` allowlist.** Older projects may still carry the open default, which lets a compromised job in a low-value project reach a high-value one. List only the projects that need access.
 - **Serialize deploys with `resource_group:` and set `interruptible: false` on them.** Otherwise two pipelines can deploy to one target at once, and a newer pipeline can cancel a rollout half done. Put production behind a protected environment with required approvals.
