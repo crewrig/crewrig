@@ -110,7 +110,7 @@ void (async () => {
   const usage = `Usage: ${self} <workflow-file> <job-id> [event-type]`;
   if (argv.includes("--help")) {
     process.stdout.write(
-      `${usage} [--json]\n\nDry-runs one job locally with act (default event: push). Without act, the docker CLI or a reachable\nDocker daemon the run is skipped with exit 0. --json prints {ok, data, findings} on stdout.\nExit codes: 0 ok or skipped, 1 workflow file not found, otherwise the status of act, 2 usage error.\n`,
+      `${usage} [--json]\n\nDry-runs one job locally with act (default event: push). The run is skipped with exit 0 when act, the docker CLI or a reachable\nDocker daemon is missing. --json prints {ok, data, findings} on stdout.\nExit codes: 0 ok or skipped, 1 workflow file not found, otherwise the status of act, 2 usage error.\n`,
     );
     return;
   }

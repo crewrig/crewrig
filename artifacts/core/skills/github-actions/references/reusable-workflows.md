@@ -32,9 +32,9 @@ A frequent question. The trade-off:
 | Runs on | Its own runner(s). | The caller's runner. |
 | Can declare `runs-on:` | Yes. | No (inherits). |
 | Can use `services:` / `container:` | Yes. | No. |
-| Secrets | Explicit input, or `secrets: inherit`. | Pass as `inputs:` (visible in logs unless masked). |
+| Secrets | Explicit input, or `secrets: inherit`. | Pass as `inputs:`; a registered secret stays masked, a derived value does not. |
 | Strategy / matrix | Yes (at caller or callee). | No (loop manually). |
-| Nesting | Up to 4 levels deep. | Up to 10 levels deep (no recursion). |
+| Nesting | Up to 10 levels, the top-level caller included. | Composite actions can call other actions; no recursion. |
 | Versioning | By ref (`@<sha>`). | Same. |
 | Visibility | Private repo: same repo or org. Public repo: anywhere. | Same. |
 
@@ -187,8 +187,9 @@ Prefer explicit pass-through when the callee's secret list is short.
 The caller's job-level `permissions:` are passed to the callee. The
 callee **cannot grant itself more than the caller granted** — a
 reusable workflow with internal `permissions: write-all` is silently
-capped at the caller's grant. To audit, look at the **caller**'s
-permissions; the callee's are advisory.
+capped at the caller's grant. The callee's own `permissions:` still
+take effect, but only to narrow its token further. To audit, start from
+the **caller**'s permissions: they are the ceiling.
 
 ### Reading outputs
 
@@ -254,8 +255,9 @@ the reusable workflow are serialized at the call site.
 
 ## Limitations
 
-- **Nesting depth: 4.** A reusable workflow can call another reusable
-  workflow up to three more levels deep.
+- **Nesting depth: 10 levels.** The top-level caller is the first level,
+  so a reusable workflow can be called through up to nine further
+  levels.
 - **No recursion.** A workflow cannot call itself, directly or
   transitively.
 - **No environment passing** from caller to callee. The callee
@@ -269,10 +271,10 @@ the reusable workflow are serialized at the call site.
 - **The callee runs on its own runners**, billed to the **caller**'s
   account. A reusable workflow in a public template repo consumed
   from a private repo bills the private repo.
-- **`workflow_call` cannot coexist with `pull_request_target` in a
-  caller** if the caller is in a public repo and the callee modifies
-  the repo — the fork-PR safety model breaks down. Audit the trigger
-  combination explicitly.
+- **The caller's trigger governs the callee's trust.** A reusable
+  workflow called from a `pull_request_target` caller runs with that
+  trigger's privileges: apply the same head-checkout rules inside the
+  callee.
 - **Reusable workflows do not appear as separate steps in the run
   log** — they show up as a nested job. Debugging is one level
   deeper than for composite actions.
@@ -365,6 +367,7 @@ jobs:
     runs-on: ubuntu-24.04
     environment: ${{ inputs.environment }}
     steps:
+      - uses: actions/checkout@<sha>
       - uses: aws-actions/configure-aws-credentials@<sha>
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE }}

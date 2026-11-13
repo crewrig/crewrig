@@ -139,9 +139,11 @@ defaults:
     working-directory: ./app
 ```
 
-The default shell on Linux/macOS is `bash -e -o pipefail {0}`; on
-Windows it is `pwsh -command ". '{0}'"`. Setting `shell: bash`
-explicitly on Windows runners pulls in Git Bash.
+The default shell on Linux/macOS is `bash -e {0}` (`sh` when `bash` is
+not found), with no `pipefail`. Setting `shell: bash` explicitly runs
+`bash --noprofile --norc -eo pipefail {0}`, which does fail a pipeline on
+its first failing command. On Windows the default is
+`pwsh -command ". '{0}'"`, and `shell: bash` pulls in Git Bash.
 
 ### `concurrency`
 
@@ -183,7 +185,7 @@ Pin the OS version. `ubuntu-latest` drifts on a rolling schedule.
 ### `needs`
 
 Dependency edges, single ID or array. The job runs after all listed
-jobs complete with a non-failure status (unless `if:` overrides). The
+jobs succeed (unless an `if:` condition overrides that). The
 outputs of `needs` jobs are exposed under
 `${{ needs.<id>.outputs.<name> }}`.
 
@@ -364,6 +366,7 @@ untrusted input into `run:`.
 ```yaml
 - env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    PR_NUMBER: ${{ github.event.pull_request.number }}
     PR_TITLE: ${{ github.event.pull_request.title }}
   run: |
     gh pr comment "$PR_NUMBER" --body "Title: $PR_TITLE"
@@ -430,7 +433,7 @@ Composite actions have notable constraints:
 
 - `shell:` is mandatory on every `run:` step (no inheritance from
   workflow defaults).
-- `continue-on-error:` is not supported on steps.
+- `continue-on-error:` is supported on steps.
 - Conditional `if:` is supported.
 - No `services:` or `container:`.
 - Cannot use `secrets` directly; pass them as `inputs:`.

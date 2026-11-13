@@ -147,7 +147,7 @@ void (async () => {
   const usage = `Usage: ${self} <workflow-file> [event-type] [event-payload-json-file]`;
   if (argv.includes("--help")) {
     process.stdout.write(
-      `${usage} [--json]\n\nDry-runs a whole workflow locally with act (default event: push). Without a payload file a minimal\npayload for the event is written to a temporary file and removed on exit. Without act, the docker\nCLI or a reachable Docker daemon the run is skipped with exit 0. --json prints {ok, data, findings}\non stdout.\nExit codes: 0 ok or skipped, 1 file not found, otherwise the status of act, 2 usage error.\n`,
+      `${usage} [--json]\n\nDry-runs a whole workflow locally with act (default event: push). Without a payload file a minimal\npayload for the event is written to a temporary file and removed on exit. The run is skipped with exit 0 when act, the\ndocker CLI or a reachable Docker daemon is missing. --json prints {ok, data, findings}\non stdout.\nExit codes: 0 ok or skipped, 1 file not found, otherwise the status of act, 2 usage error.\n`,
     );
     return;
   }

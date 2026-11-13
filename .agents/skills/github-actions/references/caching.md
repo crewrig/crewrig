@@ -44,7 +44,8 @@ The runner performs two operations:
    `key`, the cache is uploaded in a `post:` step, and only when the
    job succeeded: a failed job saves nothing. To save a cache on
    failure too, split the step into `actions/cache/restore` and
-   `actions/cache/save` with `if: always()` on the save.
+   `actions/cache/save` with `if: ${{ !cancelled() }}` on the save: unlike
+   `always()`, it does not keep a hung run alive after a cancellation.
 
 The save is conditional on **exact-key miss**. If you want to refresh
 a cache whose content is sensitive to inputs not covered by the key
@@ -71,7 +72,8 @@ Worked example for a monorepo with multiple lockfiles:
 key: pnpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'packages/*/pnpm-lock.yaml') }}
 ```
 
-`hashFiles` returns SHA-256 of the concatenated, sorted file contents.
+`hashFiles` returns a single SHA-256 hash for the set of files that match
+the patterns.
 If no file matches the glob, the function returns `''` and the key
 becomes degenerate — verify the glob locally before merging.
 
@@ -146,9 +148,12 @@ Mitigations:
 - Do not run untrusted code (a checkout of the pull request head, an
   install from its manifest) in those events, and do not save a cache
   from them.
-- Where a privileged workflow must cache, give it its own key prefix
-  (for example `priv-${{ runner.os }}-...`) that the unprivileged
-  workflows never restore from.
+- A separate key prefix is not a control: untrusted code in that job
+  holds the cache token and can write any key in the default branch's
+  scope, including the exact keys the main workflows restore.
+- Where such a job needs a cache at all, restore only
+  (`actions/cache/restore`) and never save. Save the cache from a
+  trusted workflow that runs on `push` to the default branch.
 - Treat cached binaries as untrusted. Re-verify checksums after
   restore for security-sensitive tools.
 
@@ -221,8 +226,9 @@ on `**/*.gradle*` and `**/gradle-wrapper.properties`.
       requirements/*.txt
 ```
 
-For Poetry, drop the built-in cache and use `actions/cache` directly
-over `~/.cache/pypoetry` keyed on `poetry.lock`.
+For Poetry, set `cache: poetry` on `actions/setup-python`: it keys on
+`poetry.lock`. Install Poetry before that step, because the cache
+setup needs the `poetry` command.
 
 ### Go modules
 

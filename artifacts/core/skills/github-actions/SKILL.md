@@ -42,7 +42,7 @@ checks and states which ones ran.
 | `node scripts/check-pull-request-target.ts <path>` | A workflow triggered by `pull_request_target`. | Same as above. |
 | `node scripts/check-expression-injection.ts <path>` | A `${{ }}` expression inside `run:` or an `actions/github-script` script. | Same as above. |
 | `node scripts/check-pinned-actions.ts <path>` | Any `uses:` that is not a 40-character SHA. | `0` all pinned, `1` unpinned reference or unreadable path, `2` usage error. |
-| `node scripts/lint-workflow.ts <path>` | Syntax, contexts and shell errors; needs `actionlint`. | `0` clean or skipped, `1` errors or unreadable path, `2` usage error. |
+| `node scripts/lint-workflow.ts <path>` | Syntax, contexts and shell errors; needs `actionlint`. | `0` clean or skipped (without `actionlint` it exits `0` before it looks at the path, so a missing file also passes), `1` errors or unreadable path, `2` usage error. |
 | `node scripts/check-secrets-exposure.ts <path>` | A secret that may reach a log or an over-wide scope. | `0` nothing found, `1` a finding, `2` usage error. |
 | `node scripts/simulate-job.ts <file> <job> [event]` and `node scripts/simulate-workflow.ts <file> [event]` | A local dry run with `act` while iterating on `run:` logic. | `0` ok or skipped, otherwise the status of `act`, `2` usage error. |
 
@@ -53,8 +53,8 @@ at your file: report it as skipped, never as passed. Exit `2` or `3` means the c
 or the environment is wrong, not the workflow. A green `act` run is necessary, not
 sufficient: it does not reproduce the hosted runner image.
 
-The three new checks (`check-permissions.ts`, `check-pull-request-target.ts`,
-`check-expression-injection.ts`) do not read composite actions: a file with no `jobs:` key passes
+The three checks `check-permissions.ts`, `check-pull-request-target.ts`
+and `check-expression-injection.ts` do not read composite actions: a file with no `jobs:` key passes
 with no finding and the summary says it was not checked, so review the `run:` steps of
 an `action.yml` by hand, above all any `${{ inputs.* }}` in them. They also read a small
 subset of YAML. A construct they cannot read
@@ -78,11 +78,13 @@ A script catches the first four; the rest need your judgement.
    pull request cannot: restore never reads a child or sibling ref. Do not run pull
    request code in those events, and do not save a cache from them.
 6. `hashFiles()` over a glob that also matches vendored copies yields a key that
-   changes on every run. Name the real lockfile path.
+   changes whenever any of those files does, often after an install. Name the real
+   lockfile path.
 7. `continue-on-error: true` on a flaky step ends up hiding a real regression. Retry
    explicitly and handle the failure instead.
-8. `if: always()` on a cleanup step that needs secrets: `always()` also runs on
-   cancellation, when secrets may not be available. Use `if: ${{ !cancelled() }}`.
+8. `if: always()` on a cleanup or upload step: `always()` also runs after a
+   cancellation, so a step that can hang keeps the run alive until it times out.
+   Use `if: ${{ !cancelled() }}`.
 9. A boolean or an enum declared as a `string` input of `workflow_dispatch` is not
    validated. Declare `type: boolean`, or `type: choice` with `options:`.
 10. A self-hosted runner attached to a public repository runs any fork's code on your

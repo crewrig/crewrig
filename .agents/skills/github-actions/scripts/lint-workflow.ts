@@ -144,7 +144,7 @@ void (async () => {
   const usage = `Usage: ${self} <workflow-file-or-directory>`;
   if (argv.includes("--help")) {
     process.stdout.write(
-      `${usage} [--json]\n\nRuns actionlint on every .yml/.yaml under <dir>/.github/workflows (else <dir>) or on one file.\nWithout actionlint the check is skipped with exit 0. --json prints {ok, data, findings} on stdout.\nExit codes: 0 clean or skipped, 1 actionlint reported errors or the target is unreadable, 2 usage error.\n`,
+      `${usage} [--json]\n\nRuns actionlint on every .yml/.yaml under <dir>/.github/workflows (else <dir>) or on one file.\nWithout actionlint the check is skipped with exit 0 before the path is examined,\nso a missing file also exits 0 on such a machine. --json prints {ok, data, findings} on stdout.\nExit codes: 0 clean or skipped, 1 actionlint reported errors or the target is unreadable, 2 usage error.\n`,
     );
     return;
   }
