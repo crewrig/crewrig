@@ -103,7 +103,7 @@
         "The third-party action softprops/action-gh-release is referenced by a 40-hexadecimal-character commit SHA, not by the v2 tag.",
         "The pin is followed on the same line by a comment carrying the human-readable version, for example # v2.2.1.",
         "The SHA used for each action is the one listed for it in pins.txt, and none is invented.",
-        "Nothing else in the workflow changes meaning: the tag trigger, the contents: write permission and the body_path input are kept."
+        "The written .github/workflows/release-notes.yml still contains the whole trigger block (the on: key with push: and tags: holding the glob 'v*'), the line contents: write under permissions:, and the body_path: input line."
       ],
       "checks": [
         {
@@ -151,7 +151,7 @@
       "expectations": [
         "The workflow grants id-token: write, scoped to the deploy job or at the workflow level, so the job can request an OIDC token.",
         "The AWS credentials step assumes the role arn:aws:iam::123456789012:role/gha-deploy-prod through role-to-assume and keeps the eu-west-1 region.",
-        "The workflow no longer references AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY, nor the aws-access-key-id and aws-secret-access-key inputs.",
+        "The written .github/workflows/deploy.yml contains no line mentioning AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, aws-access-key-id or aws-secret-access-key, and the step that uses aws-actions/configure-aws-credentials shows a role-to-assume: line, quoted from the file.",
         "The workflow keeps contents: read permission, the production environment, and the aws s3 sync step to s3://orders-api-static-prod."
       ],
       "checks": [
