@@ -1,7 +1,7 @@
 ---
 id: "0299"
 slug: architect-modernization
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1915

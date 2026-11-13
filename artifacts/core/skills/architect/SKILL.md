@@ -1,16 +1,14 @@
 ---
 name: architect
-description: "Design and architecture skill for ADRs, RFCs, design reviews,
-  and ripple-effect analysis. Activate when a change touches more than one
-  component, introduces a new abstraction, modifies a shared contract, or when
-  the user explicitly asks for a design opinion or alternatives."
+description: "Produces design and architecture work: frames a decision, weighs at least two alternatives with their trade-offs, maps the ripple effect of a change, writes Architecture Decision Records and RFCs, accounts for the bytes of a size-constrained plan, and reviews a plan or a spec with class-tagged findings. Use when a change touches several components, adds an abstraction, changes a shared contract or involves a migration, when asked for a design opinion, alternatives, a design review, an ADR, an RFC or a ripple-effect analysis, when a plan must fit a size budget, or when reviewing a plan or a spec as its reviewer. Trigger terms: design review, architecture, ADR, RFC, alternatives, trade-off, blast radius, ripple effect, plan review, byte budget. Not for implementing the change (developer), writing the spec (spec-author), reviewing a pull request (pr-reviewer) or writing documentation (doc-writer)."
 type: skill
 license: Apache-2.0
+compatibility: "Requires Node >= 24 (scripts/measure-span.ts is a TypeScript file run with node) and the gh CLI (to post a plan review). The lint-verdict.ts script of the pr-reviewer skill is used when that skill is installed; a manual checklist replaces it otherwise."
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.3.4"
+    version: "2.0.0"
 claude:
   allowed-tools:
     - Read
@@ -22,40 +20,19 @@ claude:
 
 # Architect
 
-Bias toward *fewer*, *simpler*, *more reversible* designs. The architect
-skill exists to slow down at the right moment, not to add ceremony.
+Bias toward fewer, simpler, more reversible designs. The skill exists to slow down at the right moment, not to add ceremony: a local, internal, reversible change does not need it, and the developer skill handles that.
 
-## When to activate
-
-- A change touches multiple modules or crosses a public contract.
-- The user asks for alternatives, a second opinion, or a design review.
-- A new abstraction is being proposed (interface, base class, plugin
-  point, schema).
-- A migration is involved (data, config, format, dependency upgrade).
-- The user requests an Architecture Decision Record (ADR).
-
-If the change is local, internal, and reversible — skip this skill and
-let the developer skill handle it.
+Use it when a change touches several modules or crosses a public contract, when an abstraction (interface, base class, plugin point, schema) or a migration is proposed, when someone asks for alternatives, a second opinion or an ADR, and when a plan or a spec is reviewed.
 
 ## Operating mode
 
 ### 1. Frame before proposing
 
-Before writing any solution, restate:
+Restate the **goal** in one sentence, the **constraints** the user stated plus those the existing system implies (performance, security, compatibility, deadlines), and the **non-goal**. Solving the wrong problem is the costliest design error, so when the goal is too vague to frame, ask one question.
 
-- The **goal** in one sentence.
-- The **constraint** that the user has stated *and* the constraints
-  implied by the existing system (perf, security, compat, deadlines).
-- The **non-goal** — what is explicitly out of scope.
+### 2. Surface at least two alternatives
 
-If the user has not stated a goal precisely enough to frame, ask one
-question. Architects must not solve the wrong problem.
-
-### 2. Surface ≥2 alternatives
-
-A single proposal is not a design — it is a draft. For every
-non-trivial decision, sketch at least two viable options and state the
-trade-off in one line each:
+A single proposal is a draft, not a design. For each non-trivial decision sketch two viable options and say in one line what each buys and what it costs:
 
 ```text
 Option A: <approach>
@@ -65,69 +42,22 @@ Option B: <alternative>
 Recommendation: <A or B>, because <the constraint that breaks the tie>.
 ```
 
-Do not invent a strawman option just to make the recommendation look
-obvious. If you genuinely see only one viable path, say so and explain
-why the alternatives are non-viable.
+Do not invent a strawman to flatter the recommendation. When only one path is viable, say so and say why the others are not.
 
 ### 3. Ripple-effect analysis
 
-For every recommended option, list the **blast radius**:
+For the recommended option list the blast radius: the files and modules that change, the public contracts that shift (API, schema, CLI, environment variables), the downstream consumers (other repositories, services, agents) and the reversibility (trivial, awkward or one-way). A one-way change gets an ADR, an awkward one a migration plan, a trivial one neither: over-documenting is its own cost.
 
-- Files / modules that must change.
-- Public contracts that shift (API, schema, CLI, env vars).
-- Downstream consumers (other repos, services, agents).
-- Reversibility: trivial / awkward / one-way.
-- Bundled mirrors (CrewRig repository only): if the change touches
-  `artifacts/core/skills/*/scripts/` or
-  `artifacts/core/agents/*/scripts/`, the `.gemini/` and `.claude/`
-  bundles regenerated by the repository's build script must ship in
-  the same commit. Call this step out explicitly in the design note's
-  blast radius — silent omission triggers the `check-components` CI
-  job.
-  <!-- crewrig-repo-only:start -->
-  The build script is `scripts/build-components.ts`; it exists only in the
-  CrewRig repository.
-  <!-- crewrig-repo-only:end -->
+When the change touches a skill's or an agent's `scripts/`, the built copies of the CLI trees are regenerated by the repository's build and ship in the same commit, so name that step in the blast radius; leaving it out makes the components check fail.
+<!-- crewrig-repo-only:start -->
+The build script is `scripts/build-components.ts`; it exists only in the CrewRig repository.
+<!-- crewrig-repo-only:end -->
 
-A change with a one-way blast radius gets an ADR. A change with an
-awkward blast radius gets a migration plan. A trivial change gets
-neither — do not over-document.
+### 4. Byte accounting for size-constrained plans
 
-### 4. Byte-accounting discipline (size/budget-constrained plans)
+When a plan claims to bring something under a size, byte or token budget by moving, trimming or rewriting content, every savings figure comes from a measurement of the exact span, taken before the figure goes into the plan. Line counts and prose heuristics are not measurements, and a figure that is only a scoping estimate is labelled as one.
 
-Applies whenever a plan claims to bring something under a size, byte,
-or token budget (e.g. a file-size CI gate) by relocating, trimming, or
-rewriting content.
-
-Every claimed savings figure MUST be based on an empirical measurement
-of the actual candidate span — `wc -c` on the exact line range being
-moved, dropped, or rewritten — taken **before** the figure is committed
-to the plan. Do not estimate savings from line counts, prose-length
-heuristics, or "architect-level approximation."
-
-```text
-# before committing a savings figure to the plan
-sed -n '42,88p' docs/target-file.md | wc -c
-# 1103 → this is the number the plan may cite, not a guess
-```
-
-The plan must land on an explicit safety margin between the projected
-post-change size and the budget line — not clear it exactly. A plan
-that projects landing 3 bytes under budget has no margin for the next
-edit and should not ship as if it were safe.
-
-**Self-check before finalizing.** Sum every section's *measured* (not
-estimated) savings, compare the total against the actual gap-to-budget,
-and check the resulting margin against an explicit threshold the plan
-states. If the margin is thinner than that threshold, either add more
-headroom (an additional candidate section, a larger margin) or flag the
-risk explicitly in the plan's Risks section — do not ship a thin,
-unverified plan as if it were safe.
-
-If a genuinely unmeasured figure must appear — a rough
-order-of-magnitude scoping estimate before line ranges are even
-identified — label it as an estimate, not a committed savings figure.
-Same cite-or-downgrade discipline as "## Grounding discipline" below.
+Run `node scripts/measure-span.ts <file> <first>-<last>... --current <bytes> --budget <bytes> --margin <bytes>` on the spans to move: it prints the exact bytes of each range, the total, the projected size and the margin. Exit `0` means the margin clears the threshold you set; exit `1` means a finding, either over budget or a margin thinner than the threshold, so add headroom (another candidate span) or flag the risk in the plan; exit `2` is a usage mistake; exit `3` means the file is unreadable or a range goes past its last line. State the threshold in the plan: a plan that lands 3 bytes under budget has no room for the next edit.
 
 ### 5. Output formats
 
@@ -137,111 +67,31 @@ Same cite-or-downgrade discipline as "## Grounding discipline" below.
 | ADR (markdown) | One-way or contract change | `docs/adr/NNNN-<slug>.md` |
 | RFC (issue) | Cross-team or cross-project | GitHub issue with label `rfc` |
 
-ADRs follow the standard sections: Context, Decision, Status, Consequences.
-Keep each section under 10 lines. ADRs that need a 2-page Context have
-not been thought through yet.
+An ADR has the sections Context, Decision, Status and Consequences, each under ten lines, and records the rejected alternatives. A Context that needs two pages means the decision is not crisp yet.
 
-### 6. Briefing sub-agents (call-graph context)
+### 6. Briefing sub-agents
 
-When delegating a focused task (tester, security, doc-writer, etc.) to a
-sub-agent, the brief MUST include the **call-graph context** of any file
-the sub-agent will read or evaluate — at minimum:
-
-- The **entry point(s)** that invoke the target file in production paths.
-- **Sibling scripts** that share lifecycle responsibility (pre-checks,
-  cleanup, error handling, idempotency guards).
-- Any **harness-provided preconditions** the target relies on but does
-  not itself enforce.
-
-The blast-radius list produced in step 3 already contains this
-information — copy the relevant rows into the brief verbatim rather
-than asking the sub-agent to rediscover them.
-
-A brief that names a single file in isolation routinely produces
-false-positive flags: the sub-agent reports a missing guard that an
-upstream sibling already provides. Treat this as a brief defect, not
-a sub-agent defect.
+When delegating a focused task (tester, security, doc-writer) put the call-graph context of each file in the brief: the entry points that invoke it in production, the sibling scripts that share its lifecycle (pre-checks, cleanup, idempotency guards) and the preconditions the harness provides without enforcing them. Copy the relevant blast-radius rows verbatim. A brief that names one file in isolation produces false positives, such as a missing guard that an upstream sibling already provides; that is a brief defect, not a sub-agent defect.
 
 ## Grounding discipline
 
-Architect output composes under narrative pressure — ADRs, RFCs, and
-ripple-effect analyses reward fluent prose, and fluent prose rewards
-plausible-sounding detail. A confident sentence about an env var that
-does not exist, a CLI subcommand that was never shipped, or an
-"atomic" guarantee the system does not actually provide will mislead
-every downstream reader.
-
-**Hard rule.** Every claim about an external surface MUST cite a
-verifiable source — a file path with line range, a command output
-excerpt, or a sentence from the input brief. This applies to env var
-names, CLI subcommand names, schema field names, file paths claimed
-to exist, harness-provided variables or pre-conditions, and named
-architectural invariants (e.g. "atomic", "idempotent", "stateless",
-"content-addressed", "drift-free"). If you cannot cite, omit the
-claim or mark it explicitly as an assumption to verify.
-
-**Self-check before returning.** Re-read the draft once. Mark every
-named external surface and every named invariant. For each mark, ask:
-does this trace to a file path, a command output, or a sentence in my
-brief? If no, delete it or downgrade it to "assumption — verify
-before relying on this". The self-check is cheap; an ADR that
-recommends a design around a non-existent surface is not.
+Read `references/shared-grounding-discipline.md`. In an ADR, an RFC or a design note, a claim about an environment variable, a command, a schema field, a path or a named guarantee ("atomic", "idempotent", "stateless") needs a source: a path with a line range, a command output or a sentence of the brief. A name you cannot trace is written as "assumption — verify before relying on this", or left out, never stated as a fact.
 
 ## Finding class taxonomy
 
-When this skill acts as plan reviewer (per `AGENTS.md` →
-*Plan review protocol* — *Review rule*) or as spec reviewer in the
-SPECS stage, every finding it emits SHALL carry exactly one `class:`
-field whose value is `tech`, `arch`, or `spec` (per
-[`docs/retroactive-loop.md`](../../../../docs/retroactive-loop.md) →
-*Routing matrix* and `docs/plan-format.md` → *Finding tag schema*). The tag is the
-only signal the routing engine reads to pick the loop target; a
-finding without it is malformed and SHALL be retagged before the
-orchestrator consumes the verdict (see
-[`docs/retroactive-loop.md`](../../../../docs/retroactive-loop.md) →
-*Class tagging discipline*). Do not default to `tech` when the class
-is ambiguous — escalate upstream per ADR-0010 →
-*Finding classification taxonomy*.
+Read `references/shared-finding-class-taxonomy.md`. When this skill reviews a plan or a spec, every finding it emits, blocking or not, carries exactly one `class:` line whose value is `tech`, `arch` or `spec`; when the class is ambiguous, escalate to the upstream class rather than defaulting to `tech`.
 
 ## Reviewer seat
 
-Both review surfaces this skill occupies are seated: every pass is
-attributed to one seat, carries a `seat:` line, and — from its second pass
-onward — reads a bounded scope. The contract is
-`docs/reviewer-seat.md`; the two surfaces differ only as follows.
+Plan and spec reviews are seated: every pass is attributed to one seat, carries a `seat:` line and, from its second pass, reads a bounded scope (`docs/reviewer-seat.md`). Two facts are specific to this skill:
 
-**As plan reviewer** — the `plan/<ticket>` seat. The `seat:` line goes
-immediately after the `### Verdict: …` line (`docs/plan-format.md` →
-*Header conventions*). From pass two the mandatory reading is bounded to
-the plan revision's delta, the seat's ledger (read first, verdicts
-authoritative; `docs/reviewer-seat.md` → *Seat ledger*), the prior findings' dispositions, and every
-surface that delta reaches. Nothing else changes on this surface: the
-`v<N>-F<M>` identifiers and the *Finding Traceability Audit* that
-`docs/plan-review-protocol.md` already mandates are exactly what the seat
-contract's identifier, disposition-record and audit obligations resolve
-to here — there is no second scheme and no second record. Plan `v2` and later are
-posted as deltas with a cumulative traceability table, and a plan or verdict
-comment stays within 12 KB, that is 12288 bytes (`docs/plan-format.md` →
-*Delta revisions*, *Comment size budget*). Check before posting in any
-repository with `wc -c < comment.md` (the byte count must not exceed 12288).
-<!-- crewrig-repo-only:start -->
-CrewRig repository only: `node scripts/check-comment-size.ts comment.md` runs
-the same check.
-<!-- crewrig-repo-only:end -->
+- **Plan reviewer** (`plan/<ticket>`): the `seat:` line goes right after the `### Verdict: …` line; identifiers are `v<N>-F<M>`; from pass two the verdict opens with a traceability audit of every prior identifier; plan `v2` and later are posted as deltas with a cumulative table.
+- **Spec reviewer** (`specs/<ticket>`): identifiers are `s<N>-F<M>`, where `<N>` counts the seat's passes across every artifact; a delta-spec pull request is a replaced artifact, examined in full while every prior finding is still audited.
 
-**As spec reviewer in the SPECS stage** — the `specs/<ticket>` seat. The
-verdict lands on a pull request, where the placement depends on which rung
-of the posting ladder carries the verdict, so take the `seat:` line's
-placement from `docs/reviewer-seat.md` → *The seat line, and where it goes*
-rather than deriving it here. Findings carry
-`s<N>-F<M>`, where `<N>` counts the seat's passes across every artifact of
-that surface. A fresh delta-spec PR is a **replaced artifact**: examine it
-in full, and still audit every prior finding the dossier carries.
+A plan or verdict comment stays within 12288 bytes: check it with `wc -c < comment.md`, and where the `pr-reviewer` skill is installed also with its `check-comment-size.ts` script. Check the verdict's format with the `lint-verdict.ts` script of the `pr-reviewer` skill, run as `node <that skill's scripts directory>/lint-verdict.ts --surface plan --transport plan --ordinal <N> [--prior-ids <ids>] <file>`: exit `1` lists malformed tags, identifiers or a misplaced seat line to fix before posting.
 
-## Friction reporting
+That skill is a separate install, so look for it before relying on it. When it is absent, say so in the verdict ("lint-verdict.ts not available: manual check") and apply `references/verdict-manual-check.md` instead; skipping the check silently is not an option, since a malformed finding costs the author a round trip.
 
-When a recognition signal fires (see `config/TOOLS.md` →
-*Friction Reporting → Recognition signals*), invoke the
-`harness-report` skill rather than reimplementing the protocol
-inline. The reporter walks you through identifying the offender,
-picking the room, and filling the payload.
+## Friction
+
+Read `references/shared-friction-reporting.md`; when a signal fires, use the `harness-report` skill.

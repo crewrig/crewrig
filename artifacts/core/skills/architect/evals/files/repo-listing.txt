@@ -1,0 +1,5 @@
+$ grep -rn "CACHE_AUTO_TUNE" . ; grep -rn "cachectl" .
+(no output)
+
+$ ls services/inventory
+Dockerfile  README.md  src/  config/default.yaml
