@@ -9,7 +9,12 @@ import { test } from "node:test";
 
 import { citedTopics } from "../lib/build-components/shared-references.ts";
 import { bodyOfText } from "../lib/render-command.ts";
-import { contentHash, installFiles, readRevision, readWorkingTree } from "../lib/skill-evals/hash.ts";
+import {
+  contentHash,
+  installFiles,
+  readRevision,
+  readWorkingTree,
+} from "../lib/skill-evals/hash.ts";
 import type { SnapFile, Snapshot } from "../lib/skill-evals/hash.ts";
 import { selectChanged } from "../lib/skill-evals/select.ts";
 import type { Selection } from "../lib/skill-evals/select.ts";
@@ -96,7 +101,10 @@ test("head snapshot holds references/shared-X.md with the working-tree bytes of 
     const files = ok(head(repo));
     assert.deepEqual(virtuals(files), ["references/shared-friction-reporting.md"]);
     assert.equal(bytesOf(files, "references/shared-friction-reporting.md"), "shared v1\n");
-    assert.equal(files.find((f) => f.rel === "references/shared-friction-reporting.md")?.exec, false);
+    assert.equal(
+      files.find((f) => f.rel === "references/shared-friction-reporting.md")?.exec,
+      false,
+    );
   });
 });
 
@@ -108,10 +116,7 @@ test("the base snapshot holds the shared bytes at the revision, even when the wo
     writeShared(repo, "friction-reporting", "shared v2\n");
     const baseFiles = ok(readRevision(repo.root, base, skillRel("demo")));
     assert.equal(bytesOf(baseFiles, "references/shared-friction-reporting.md"), "shared v1\n");
-    assert.equal(
-      bytesOf(ok(head(repo)), "references/shared-friction-reporting.md"),
-      "shared v2\n",
-    );
+    assert.equal(bytesOf(ok(head(repo)), "references/shared-friction-reporting.md"), "shared v2\n");
   });
 });
 
@@ -248,9 +253,13 @@ for (const c of parityCases) {
         virtuals(files),
         build.map((t) => `references/shared-${t}.md`),
       );
-      for (const t of build) assert.equal(bytesOf(files, `references/shared-${t}.md`), `${t} bytes\n`);
+      for (const t of build)
+        assert.equal(bytesOf(files, `references/shared-${t}.md`), `${t} bytes\n`);
       const base = repo.git("rev-parse", "HEAD").trim();
-      assert.deepEqual(virtuals(ok(readRevision(repo.root, base, skillRel("demo")))), virtuals(files));
+      assert.deepEqual(
+        virtuals(ok(readRevision(repo.root, base, skillRel("demo")))),
+        virtuals(files),
+      );
     });
   });
 }
