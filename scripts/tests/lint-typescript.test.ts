@@ -141,10 +141,10 @@ describe("missing tools", () => {
     expectLine(run, "lint-typescript: oxfmt not found");
   });
 
-  test("are a wiring fault (exit 2) with --require-tools", () => {
+  test("are a precondition failure (exit 3) with --require-tools", () => {
     const dir = fixture({ "a.ts": "export const a = 1;\n" }, true);
     const run = lintTs(dir, ["--require-tools", "a.ts"], env);
-    assert.equal(run.status, 2, run.out);
+    assert.equal(run.status, 3, run.out);
     expectLine(run, "lint-typescript: oxlint not found");
   });
 });

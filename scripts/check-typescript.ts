@@ -94,7 +94,8 @@ function delegate(root: string, mode: "lint" | "format", files: string[]): numbe
   );
   process.stdout.write(res.stdout ?? "");
   process.stderr.write(res.stderr ?? "");
-  return res.status ?? 2;
+  // the linter's precondition failure (3) is this wrapper's documented wiring fault (2)
+  return res.status === 3 ? 2 : (res.status ?? 2);
 }
 
 function main(): number {

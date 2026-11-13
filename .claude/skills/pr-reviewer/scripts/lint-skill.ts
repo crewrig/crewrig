@@ -1,13 +1,15 @@
-// lint-skill.ts — SKILL.md frontmatter validator for PR review (spec 0258 R11).
-// Checks: required fields, version bumped vs base branch, and (spec 0289) that every
-// `scripts/...` path cited in a SKILL.md body or its references/**/*.md resolves inside the
-// skill's own directory or sits inside a `<!-- crewrig-repo-only:start/end -->` fence.
+// lint-skill.ts — SKILL.md frontmatter validator for PR review.
+// Checks: required fields, version bumped vs base branch, and that every `scripts/...` path
+// cited in a SKILL.md body or its references/**/*.md resolves inside the skill's own directory
+// or sits inside a `<!-- crewrig-repo-only:start/end -->` fence.
 // The citation check needs no js-yaml and runs whichever frontmatter leg is active.
-// Usage: node lint-skill.ts <SKILL.md> [SKILL.md ...]
+// Usage: node lint-skill.ts [--json] [--] <SKILL.md> [SKILL.md ...]
 // Env: BASE_REF (default: origin/main)
-// Exit 0 = no findings, 1 = findings. The leading `---` block is parsed with `js-yaml`,
-// resolved at run time from the script's directory, then from the working directory; when
-// it cannot be found the shell's whole-file line fallback runs instead, after a one-line note.
+// Exit 0 = no finding, 1 = findings, 2 = usage error, 3 = an input is not a readable regular
+// file (nothing is linted then). With --json it prints one {ok, data, findings} object on stdout
+// and the human text on stderr. The leading `---` block is parsed with `js-yaml`, resolved at
+// run time from the script's directory, then from the working directory; when it cannot be
+// found a whole-file line fallback runs instead, after a one-line note.
 // Self-contained on purpose: no import, built-ins through process.getBuiltinModule.
 
 process.removeAllListeners("warning");
@@ -28,8 +30,9 @@ void (async () => {
   ];
   const bin = (s: string): string => Buffer.from(s, "utf8").toString("latin1");
   const unbin = (s: string): string => Buffer.from(s, "latin1").toString("utf8");
+  let jsonMode = false;
   const say = (s: string): void => {
-    process.stdout.write(Buffer.from(bin(s), "latin1"));
+    (jsonMode ? process.stderr : process.stdout).write(Buffer.from(bin(s), "latin1"));
   };
 
   interface Yaml {
@@ -260,11 +263,72 @@ void (async () => {
     return found;
   }
 
-  const files = process.argv.slice(2);
-  if (files.length === 0) {
-    say(`${NAME}: no files supplied — nothing to check.\n`);
+  interface Finding {
+    rule: string;
+    message: string;
+  }
+  const USAGE =
+    "Usage: node lint-skill.ts [--json] [--] <SKILL.md>...\n" +
+    "  Checks frontmatter keys, the version bump against BASE_REF and script citations.\n" +
+    "  Exit 0 clean, 1 findings, 2 usage error, 3 an input is not a readable regular file.\n";
+  const argv = process.argv.slice(2);
+  let help = false;
+  let usageError: string | undefined;
+  const files: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i] as string;
+    if (a === "--") {
+      files.push(...argv.slice(i + 1));
+      break;
+    }
+    if (a === "--json") jsonMode = true;
+    else if (a === "--help" || a === "-h") help = true;
+    else if (a.length > 1 && a.startsWith("-")) usageError ??= `unknown option ${a}`;
+    else files.push(a);
+  }
+  const finish = (code: number, data: object | null, findings: Finding[]): void => {
+    if (jsonMode) process.stdout.write(`${JSON.stringify({ ok: code === 0, data, findings })}\n`);
+    process.exitCode = code;
+  };
+  if (help) {
+    process.stdout.write(USAGE);
     return;
   }
+  if (usageError !== undefined) {
+    say(`${NAME}: ${usageError}\n${USAGE}`);
+    finish(2, null, [{ rule: "usage", message: usageError }]);
+    return;
+  }
+  if (files.length === 0) {
+    say(`${NAME}: no files supplied — nothing to check.\n`);
+    finish(0, { files: [] }, []);
+    return;
+  }
+  // every input is checked before anything is linted: an unreadable one wins over a finding
+  const unreadable = files.filter((f) => {
+    try {
+      return !fs.statSync(f).isFile();
+    } catch {
+      return true;
+    }
+  });
+  if (unreadable.length > 0) {
+    for (const f of unreadable) say(`${f}: not a readable regular file\n`);
+    finish(
+      3,
+      null,
+      unreadable.map((f) => ({
+        rule: "precondition",
+        message: `${f}: not a readable regular file`,
+      })),
+    );
+    return;
+  }
+  const found: Finding[] = [];
+  const report = (rule: string, message: string): void => {
+    say(`${message}\n`);
+    found.push({ rule, message });
+  };
   const requested = process.env["BASE_REF"];
   const baseRef = requested === undefined || requested === "" ? "origin/main" : requested;
   const yaml = loadYaml();
@@ -272,7 +336,6 @@ void (async () => {
     say(
       "lint-skill: js-yaml not found — using line fallback for the required keys and the version; run it from a CrewRig checkout after setup for the full check.\n",
     );
-  let findings = 0;
 
   const versionOf = (text: string): string =>
     yaml === undefined
@@ -280,17 +343,6 @@ void (async () => {
       : yamlValue(yaml, text, "metadata.provenance.version");
 
   for (const file of files) {
-    let regular = false;
-    try {
-      regular = fs.statSync(file).isFile();
-    } catch {
-      regular = false;
-    }
-    if (!regular) {
-      say(`${file}: not a regular file\n`);
-      findings = 1;
-      continue;
-    }
     let text = "";
     try {
       text = fs.readFileSync(file).toString("latin1");
@@ -302,8 +354,7 @@ void (async () => {
       const present =
         yaml === undefined ? fallbackHasKey(text, key) : yamlValue(yaml, text, key) !== "";
       if (!present) {
-        say(`${file}: missing required frontmatter key: ${key}\n`);
-        findings = 1;
+        report("missing-key", `${file}: missing required frontmatter key: ${key}`);
       }
     }
 
@@ -311,13 +362,14 @@ void (async () => {
     const blob = baseContent(baseRef, file);
     const baseVersion = blob === undefined ? "" : versionOf(blob);
     if (baseVersion !== "" && headVersion === baseVersion) {
-      process.stdout.write(
+      const message = `${file}: version not bumped vs ${baseRef} (still ${unbin(headVersion)})`;
+      (jsonMode ? process.stderr : process.stdout).write(
         Buffer.from(
           `${bin(`${file}: version not bumped vs ${baseRef} (still `)}${headVersion})\n`,
           "latin1",
         ),
       );
-      findings = 1;
+      found.push({ rule: "version-not-bumped", message });
     }
 
     if (path.basename(file) === "SKILL.md") {
@@ -339,12 +391,11 @@ void (async () => {
       }
       for (const t of targets) {
         for (const f of citationFindings(skillDir, skillName, t.body, t.frontmatter)) {
-          say(`${t.name}:${f.line}: ${f.message}\n`);
-          findings = 1;
+          report("script-citation", `${t.name}:${f.line}: ${f.message}`);
         }
       }
     }
   }
 
-  process.exitCode = findings;
+  finish(found.length > 0 ? 1 : 0, { files }, found);
 })();

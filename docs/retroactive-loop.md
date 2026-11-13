@@ -109,8 +109,8 @@ not a suggestion — but if it is ever missed and the `pr-reviewer` seat
 is spawned before the `iter:1` label lands, the `pr-reviewer` skill's
 own Preflight step notices the missing `iter:N` label and applies
 `iter:1` itself before minting any finding identifier
-(`artifacts/core/skills/pr-reviewer/SKILL.md` → *Iteration-label
-self-heal*). This is a second line of defense, not a relaxation of
+(`artifacts/core/skills/pr-reviewer/SKILL.md` → *Preflight: CI status and
+iteration label*, run through `scripts/iter-label.ts`). This is a second line of defense, not a relaxation of
 step 1: the orchestrator SHALL still apply the label before spawning.
 The two surfaces stay in lockstep per the *Routing matrix* convention
 below.

@@ -235,9 +235,13 @@ function lintJson(c: Ctx): void {
   write(c, "comma.json", '{"a":[{"b":1,}]}\r\n');
   attempt(c, "ws-lint-json", () => {
     ok(run(c, PRR("lint-json"), ["good.json"]));
+    // an unreadable input wins over a finding: nothing is linted, so broken.json is not reported
     const broken = run(c, PRR("lint-json"), ["broken.json", "nope.json"]);
-    expectStatus(broken, 1);
-    assert.match(broken.out, /^broken\.json: invalid JSON — .+\nnope\.json: not a regular file\n$/);
+    expectStatus(broken, 3);
+    assert.equal(broken.out, "nope.json: not a readable regular file\n", why(broken, "unreadable"));
+    const brokenAlone = run(c, PRR("lint-json"), ["broken.json"]);
+    expectStatus(brokenAlone, 1);
+    assert.match(brokenAlone.out, /^broken\.json: invalid JSON — .+\n$/);
     const comma = run(c, PRR("lint-json"), ["comma.json"]);
     expectStatus(comma, 1);
     assert.match(

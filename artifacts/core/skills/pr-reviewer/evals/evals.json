@@ -1,0 +1,262 @@
+{
+  "skill_name": "pr-reviewer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "You are asked to review the pull request described by pr-defect.json (its metadata) and change-defect.diff (its diff). The CI checks are in checks-pass.json, the login that would post the review is in whoami-distinct.txt, and the project's working rules are in conventions.md. The review seat is review/77. Write the verdict body you would post to verdict.md and the exact gh command you would run to post it, using --body-file verdict.md, to post-command.sh. Do not run gh, glab, tea or git push, and do not post, comment on, approve or edit any pull request, issue or other forge artifact: work only from the files in the current directory and write only the files asked for.",
+      "expected_output": "verdict.md requests changes, finds that retry() returns None instead of raising the last error, cites the file and line, tags every finding with a class and an iteration identifier, and starts with the seat line; post-command.sh uses a formal review.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/pr-defect.json",
+        "evals/files/change-defect.diff",
+        "evals/files/checks-pass.json",
+        "evals/files/whoami-distinct.txt"
+      ],
+      "expectations": [
+        "verdict.md reports that retry() returns None after the last failed attempt instead of raising the last error, and cites src/widgets/retry.py with a line number or range.",
+        "Every finding in verdict.md carries its own class line whose value is tech, arch or spec, and its own identifier of the form i1-F<number>.",
+        "verdict.md states the CI status and says that every check passes.",
+        "The verdict is REQUEST CHANGES and no claim in verdict.md is about code that is absent from change-defect.diff."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "verdict.md"
+        },
+        {
+          "type": "file_exists",
+          "path": "post-command.sh"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "(?:^|\\n)seat: review/77[ \\t]*(?:\\r?\\n|$)"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "(?:^|\\n)[ \\t]*(?:[-*][ \\t]+)?[Cc]lass:[ \\t]*(?:tech|arch|spec)\\b"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "\\bi1-F1\\b"
+        },
+        {
+          "type": "file_contains",
+          "path": "post-command.sh",
+          "pattern": "gh pr review[^\\n]*--request-changes"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "You are asked to review the pull request described by pr-clean.json (its metadata) and change-clean.diff (its diff). The CI checks are in checks-fail.json, the login that would post the review is in whoami-distinct.txt, and the project's working rules are in conventions.md. The review seat is review/78. Write the verdict body you would post to verdict.md and the exact gh command you would run to post it, using --body-file verdict.md, to post-command.sh. Do not run gh, glab, tea or git push, and do not post, comment on, approve or edit any pull request, issue or other forge artifact: work only from the files in the current directory and write only the files asked for.",
+      "expected_output": "The diff is clean but the required check unit-tests fails, so verdict.md does not approve, names the failing check in a CI status section, and post-command.sh does not use --approve.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/pr-clean.json",
+        "evals/files/change-clean.diff",
+        "evals/files/checks-fail.json",
+        "evals/files/whoami-distinct.txt"
+      ],
+      "expectations": [
+        "verdict.md has a CI status section that says the check named unit-tests is failing.",
+        "verdict.md does not approve: the verdict it gives is REQUEST CHANGES or COMMENT, and it says the failing check is the reason.",
+        "verdict.md does not invent a defect in the diff: its code observations, if any, are consistent with change-clean.diff."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "verdict.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "unit-tests"
+        },
+        {
+          "type": "file_contains",
+          "path": "post-command.sh",
+          "pattern": "^(?![\\s\\S]*--approve)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "You are asked to review the pull request described by pr-clean.json (its metadata) and change-clean.diff (its diff). The CI checks are in checks-pass.json, the login that would post the review is in whoami-distinct.txt, and the project's working rules are in conventions.md. The review seat is review/78. Write the verdict body you would post to verdict.md and the exact gh command you would run to post it, using --body-file verdict.md, to post-command.sh. Do not run gh, glab, tea or git push, and do not post, comment on, approve or edit any pull request, issue or other forge artifact: work only from the files in the current directory and write only the files asked for.",
+      "expected_output": "A clean change with passing checks is approved plainly: verdict.md approves, states that CI passes, and raises no invented blocking objection; post-command.sh posts a formal approving review.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/pr-clean.json",
+        "evals/files/change-clean.diff",
+        "evals/files/checks-pass.json",
+        "evals/files/whoami-distinct.txt"
+      ],
+      "expectations": [
+        "verdict.md approves the change and states that every CI check passes.",
+        "verdict.md raises no blocking finding, and every observation it makes can be traced to change-clean.diff.",
+        "verdict.md covers correctness, convention compliance and test coverage, citing the files change-clean.diff adds."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "verdict.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "(?:^|\\n)seat: review/78[ \\t]*(?:\\r?\\n|$)"
+        },
+        {
+          "type": "file_contains",
+          "path": "post-command.sh",
+          "pattern": "gh pr review[^\\n]*--approve"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "You are asked to review the pull request described by pr-defect.json (its metadata) and change-defect.diff (its diff). The CI checks are in checks-pass.json, the login that would post the review is in whoami-same.txt, and the project's working rules are in conventions.md. The review seat is review/77. Write the verdict body you would post to verdict.md and the exact gh command you would run to post it, using --body-file verdict.md, to post-command.sh. Do not run gh, glab, tea or git push, and do not post, comment on, approve or edit any pull request, issue or other forge artifact: work only from the files in the current directory and write only the files asked for.",
+      "expected_output": "The reviewer and the author are the same login, so the verdict is a plain comment that opens with a Verdict header, and the posting command is gh pr comment, never a review event.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/pr-defect.json",
+        "evals/files/change-defect.diff",
+        "evals/files/checks-pass.json",
+        "evals/files/whoami-same.txt"
+      ],
+      "expectations": [
+        "The first non-empty line of verdict.md is a Verdict heading naming the event, such as ## Verdict: REQUEST CHANGES, and the seat line follows it.",
+        "post-command.sh posts the verdict as a plain comment and uses no review event such as --approve, --request-changes or --comment on gh pr review.",
+        "verdict.md still reports the retry() defect that returns None instead of raising."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "verdict.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "^\\s*## Verdict: (?:APPROVE|REQUEST CHANGES|COMMENT)"
+        },
+        {
+          "type": "file_contains",
+          "path": "post-command.sh",
+          "pattern": "gh pr comment"
+        },
+        {
+          "type": "file_contains",
+          "path": "post-command.sh",
+          "pattern": "^(?![\\s\\S]*gh pr review)"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "You are asked to review the pull request described by pr-v2.json (its metadata) and change-v2.diff (its diff). The CI checks are in checks-pass.json, the login that would post the review is in whoami-distinct.txt, and the project's working rules are in conventions.md. The review seat is review/77. This is the seat's second pass: its first verdict is in prior-verdict.md and the author's disposition of its findings is in disposition.md; the pull request carries the label iter:2. Write the verdict body you would post to verdict.md and the exact gh command you would run to post it, using --body-file verdict.md, to post-command.sh. Do not run gh, glab, tea or git push, and do not post, comment on, approve or edit any pull request, issue or other forge artifact: work only from the files in the current directory and write only the files asked for.",
+      "expected_output": "verdict.md opens with a prior-finding audit of i1-F1 and i1-F2 before any new finding, accepts the fix of i1-F1, rejects the disposition of i1-F2 (no exhaustion test exists), and therefore does not approve; new identifiers use the iter:2 ordinal.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/pr-v2.json",
+        "evals/files/change-v2.diff",
+        "evals/files/checks-pass.json",
+        "evals/files/whoami-distinct.txt",
+        "evals/files/prior-verdict.md",
+        "evals/files/disposition.md"
+      ],
+      "expectations": [
+        "The first section of verdict.md after the seat line is a prior-finding audit that names i1-F1 and i1-F2, before any new finding.",
+        "The audit accepts the disposition of i1-F1 because change-v2.diff makes retry() raise the last error.",
+        "The audit does not accept the disposition of i1-F2: it says no test covers the exhausted case, since test_retry_succeeds_after_one_failure only covers a retry that succeeds.",
+        "The verdict does not approve because a prior finding is unaddressed, and any new finding identifier begins with i2-."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "verdict.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "\\bi1-F1\\b"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "\\bi1-F2\\b"
+        },
+        {
+          "type": "file_contains",
+          "path": "post-command.sh",
+          "pattern": "^(?![\\s\\S]*--approve)"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "You are asked to review the pull request described by pr-docs.json and change-docs.diff. The CI checks are in checks-pass.json, the posting login is in whoami-distinct.txt and the project rules are in conventions.md. The review seat is review/79. The diff adds lines to docs/errors.md that point at rules of docs/rules.md. head-rules.md is docs/rules.md at the pull request's head revision; local-rules.md is the copy in a local checkout that has not been updated since before the pull request was opened. Check the cross-references the diff makes. Write the verdict body to verdict.md and the exact gh command to post it, using --body-file verdict.md, to post-command.sh. Do not run gh, glab, tea or git push, and do not post, comment on, approve or edit any pull request, issue or other forge artifact: work only from the files in the current directory and write only the files asked for.",
+      "expected_output": "The cross-references to rules 6 and 7 resolve against the head revision, so verdict.md reports no dangling reference and does not rely on the stale local copy.",
+      "files": [
+        "evals/files/conventions.md",
+        "evals/files/pr-docs.json",
+        "evals/files/change-docs.diff",
+        "evals/files/checks-pass.json",
+        "evals/files/whoami-distinct.txt",
+        "evals/files/head-rules.md",
+        "evals/files/local-rules.md"
+      ],
+      "expectations": [
+        "verdict.md does not report that rule 6 or rule 7 is missing or dangling, because both exist in head-rules.md.",
+        "verdict.md says the cross-references were checked against the head revision (head-rules.md) rather than the local copy.",
+        "verdict.md does not block the pull request."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "verdict.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "[Hh][Ee][Aa][Dd]"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "Please review pull request 412 cold and tell me whether to approve it or request changes.",
+      "should_trigger": true
+    },
+    {
+      "query": "Can you do a code review of PR #88 and post your verdict on it? I wrote it, so I want an independent pair of eyes.",
+      "should_trigger": true
+    },
+    {
+      "query": "Audit this pull request for correctness and test coverage: here is the diff. I need a Request Changes or Approve verdict.",
+      "should_trigger": true
+    },
+    {
+      "query": "Run a REVIEW pass on the implementation PR for ticket 1520 and report back with class-tagged findings.",
+      "should_trigger": true
+    },
+    {
+      "query": "Write the title and the description for the pull request I am about to open for this change.",
+      "should_trigger": false
+    },
+    {
+      "query": "Look over my uncommitted local changes before I commit and tell me if anything looks off.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write the commit message for my local change; nothing is pushed and there is no pull request.",
+      "should_trigger": false
+    },
+    {
+      "query": "Draft the spec for the new retry feature, with its requirements and scenarios.",
+      "should_trigger": false
+    }
+  ]
+}
