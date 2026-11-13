@@ -1,7 +1,7 @@
 ---
 id: "0290"
 slug: skill-eval-runner
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1917
