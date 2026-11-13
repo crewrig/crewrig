@@ -18,11 +18,7 @@ import { test } from "node:test";
 const REPO = path.resolve(import.meta.dirname, "..", "..");
 const LIB = path.join(REPO, "scripts", "lib", "ci-parity");
 const SCRIPT = path.join(REPO, "scripts", "classify-ci-drift.ts");
-const SAMPLES = path.join(
-  import.meta.dirname,
-  "fixtures",
-  "classify-ci-drift-samples.txt",
-);
+const SAMPLES = path.join(import.meta.dirname, "fixtures", "classify-ci-drift-samples.txt");
 
 /** The one non-literal call site: `verr` is forwarded to the validity-error list. Exempt by exact text. */
 const EXEMPT_FILE = "reference.ts";
@@ -49,8 +45,7 @@ function skipLiteral(src: string, i: number): number {
     const c = src[j];
     if (c === "\\") j += 2;
     else if (c === q) return j + 1;
-    else if (q === "`" && c === "$" && src[j + 1] === "{")
-      j = skipBraces(src, j + 1);
+    else if (q === "`" && c === "$" && src[j + 1] === "{") j = skipBraces(src, j + 1);
     else j++;
   }
   throw new Error("unterminated literal");
@@ -177,10 +172,8 @@ function readSamples(): Sample[] {
     const d = /^ {2}DRIFT: (.*)$/.exec(line);
     const b = /^ {2}- (.*)$/.exec(line);
     if (d) out.push({ family: "drift", first: d[1] as string, lines: [line] });
-    else if (b)
-      out.push({ family: "bullet", first: b[1] as string, lines: [line] });
-    else if (/^ {4}/.test(line) && out.length > 0)
-      out[out.length - 1]?.lines.push(line);
+    else if (b) out.push({ family: "bullet", first: b[1] as string, lines: [line] });
+    else if (/^ {4}/.test(line) && out.length > 0) out[out.length - 1]?.lines.push(line);
     else assert.fail(`samples file: unrecognised line ${JSON.stringify(line)}`);
   }
   return out;
@@ -239,24 +232,13 @@ test("scanner: verr and a literal validityErrors.push are bullet sites; definiti
 });
 
 test("scanner: a non-literal message is not a template, and only the exact forwarding sink is exempt", () => {
-  const sink =
-    "caps.forEach((c, i) => check(c, i, seen, (m) => state.validityErrors.push(m)));";
+  const sink = "caps.forEach((c, i) => check(c, i, seen, (m) => state.validityErrors.push(m)));";
   const [exempt] = scanSource(EXEMPT_FILE, sink);
   assert.equal(exempt?.template, null);
   assert.equal(exempt?.exempt, true);
-  assert.equal(
-    scanSource("other.ts", sink)[0]?.exempt,
-    false,
-    "same text in another file",
-  );
-  assert.equal(
-    scanSource(EXEMPT_FILE, "state.validityErrors.push(msg);")[0]?.exempt,
-    false,
-  );
-  assert.equal(
-    scanSource(EXEMPT_FILE, "fail(state, message);")[0]?.template,
-    null,
-  );
+  assert.equal(scanSource("other.ts", sink)[0]?.exempt, false, "same text in another file");
+  assert.equal(scanSource(EXEMPT_FILE, "state.validityErrors.push(msg);")[0]?.exempt, false);
+  assert.equal(scanSource(EXEMPT_FILE, "fail(state, message);")[0]?.template, null);
   assert.equal(
     scanSource(EXEMPT_FILE, 'fail(state, "a" + b);')[0]?.template,
     null,
@@ -270,14 +252,8 @@ test("scanner: a non-literal message is not a template, and only the exact forwa
 
 test("guard: the scan finds the harness call sites and exempts exactly the forwarding sink", () => {
   const sites = scanLib();
-  assert.ok(
-    sites.filter((s) => s.family === "drift").length > 0,
-    "no fail( site found",
-  );
-  assert.ok(
-    sites.filter((s) => s.family === "bullet").length > 0,
-    "no validity site found",
-  );
+  assert.ok(sites.filter((s) => s.family === "drift").length > 0, "no fail( site found");
+  assert.ok(sites.filter((s) => s.family === "bullet").length > 0, "no validity site found");
   const bad = sites.filter((s) => s.template === null && !s.exempt);
   assert.deepEqual(
     bad.map((s) => `${s.file}:${s.line}`),
@@ -297,10 +273,7 @@ test("guard: every call site has a sample, and every sample belongs to a call si
   assert.ok(samples.length > 0);
   const missing = sites.filter(
     (s) =>
-      !samples.some(
-        (x) =>
-          x.family === s.family && matcher(s.template as string).test(x.first),
-      ),
+      !samples.some((x) => x.family === s.family && matcher(s.template as string).test(x.first)),
   );
   assert.deepEqual(
     missing.map((s) => `${s.file}:${s.line} ${s.template}`),
@@ -308,11 +281,7 @@ test("guard: every call site has a sample, and every sample belongs to a call si
     "harness message with no sample in classify-ci-drift-samples.txt",
   );
   const orphans = samples.filter(
-    (x) =>
-      !sites.some(
-        (s) =>
-          s.family === x.family && matcher(s.template as string).test(x.first),
-      ),
+    (x) => !sites.some((s) => s.family === x.family && matcher(s.template as string).test(x.first)),
   );
   assert.deepEqual(
     orphans.map((x) => x.first),
@@ -353,17 +322,13 @@ test("guard: no sample is unclassified, and the samples cover every rule", () =>
   );
   assert.equal(d.count, drift.length, "one record per DRIFT sample");
   assert.equal(b.count, bullets.length, "one record per bullet sample");
-  const unclassified = [...d.records, ...b.records].filter(
-    (r) => r.kind === "unclassified",
-  );
+  const unclassified = [...d.records, ...b.records].filter((r) => r.kind === "unclassified");
   assert.deepEqual(
     unclassified.map((r) => r.text.split("\n")[0]),
     [],
     "a harness message the classifier cannot classify",
   );
-  const seen = new Set(
-    [...d.records, ...b.records].map((r) => `${r.kind}/${r.engine}`),
-  );
+  const seen = new Set([...d.records, ...b.records].map((r) => `${r.kind}/${r.engine}`));
   for (const want of [
     "stale-derived-pipeline/gitlab",
     "untraceable-job/github-actions",
@@ -373,10 +338,7 @@ test("guard: no sample is unclassified, and the samples cover every rule", () =>
     "hand-authored-drift/gitlab",
     "evidence-less-exception/reference",
   ]) {
-    assert.ok(
-      seen.has(want),
-      `no sample reaches ${want}; got ${[...seen].sort().join(", ")}`,
-    );
+    assert.ok(seen.has(want), `no sample reaches ${want}; got ${[...seen].sort().join(", ")}`);
   }
   assert.ok(
     drift.some((x) => /portable set but absent from/.test(x.first)),

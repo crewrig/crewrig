@@ -13,17 +13,14 @@ import { test } from "node:test";
 const REPO = path.resolve(import.meta.dirname, "..", "..");
 const SCRIPT = path.join(REPO, "scripts", "classify-ci-drift.ts");
 const FIX = path.join(import.meta.dirname, "fixtures");
-const fixture = (name: string) =>
-  path.join(FIX, `classify-ci-drift-${name}.txt`);
+const fixture = (name: string) => path.join(FIX, `classify-ci-drift-${name}.txt`);
 
 const OK_LINE =
   "OK: reference, GitHub Actions, GitLab agree on the portable capability set; every pipeline job is traceable.";
 const QUESTION = (id: string) =>
   `Is the reference or the pipeline job the intended truth for capability '${id}'?`;
-const FOOTER = (n: number) =>
-  `\nFAILED: ${n} CI parity violation(s) detected (spec 0049).\n`;
-const VALIDITY_HEAD =
-  "FAILED: 1 reference-validity violation(s) in /repo/ci/ci-capabilities.yml:";
+const FOOTER = (n: number) => `\nFAILED: ${n} CI parity violation(s) detected (spec 0049).\n`;
+const VALIDITY_HEAD = "FAILED: 1 reference-validity violation(s) in /repo/ci/ci-capabilities.yml:";
 
 interface Run {
   status: number;
@@ -42,8 +39,7 @@ interface Rec {
 }
 interface Report {
   ok: boolean;
-  data:
-    { count: number; records: Rec[] } | { kinds: { kind: string }[] } | null;
+  data: { count: number; records: Rec[] } | { kinds: { kind: string }[] } | null;
   findings: { rule: string; message: string; severity?: string }[];
 }
 
@@ -64,10 +60,7 @@ function classify(text: string): { status: number; report: Report; run: Run } {
 }
 function records(text: string): Rec[] {
   const { report } = classify(text);
-  assert.ok(
-    report.data !== null && "records" in report.data,
-    `no records for: ${text}`,
-  );
+  assert.ok(report.data !== null && "records" in report.data, `no records for: ${text}`);
   return report.data.records;
 }
 function fromFixture(name: string) {
@@ -86,10 +79,7 @@ test("the clean OK run has no record and exits 0", () => {
   assert.equal(report.ok, true);
   assert.deepEqual(report.data, { count: 0, records: [] });
   assert.deepEqual(report.findings, []);
-  assert.ok(
-    fs.readFileSync(fixture("clean"), "utf8").includes(OK_LINE),
-    "fixture is the OK run",
-  );
+  assert.ok(fs.readFileSync(fixture("clean"), "utf8").includes(OK_LINE), "fixture is the OK run");
 });
 
 test("stale derived pipeline: one record, auto, the nested DRIFT/FAILED dump stays inside it", () => {
@@ -106,14 +96,8 @@ test("stale derived pipeline: one record, auto, the nested DRIFT/FAILED dump sta
   assert.equal(r.action, "auto");
   assert.equal(r.ambiguous, false);
   assert.equal(r.question, null);
-  assert.ok(
-    r.text.includes("# hand-edited drift"),
-    "the dump is part of the verbatim record",
-  );
-  assert.ok(
-    r.text.includes("    FAILED: run 'node"),
-    "the indented FAILED line is a continuation",
-  );
+  assert.ok(r.text.includes("# hand-edited drift"), "the dump is part of the verbatim record");
+  assert.ok(r.text.includes("    FAILED: run 'node"), "the indented FAILED line is a continuation");
 });
 
 test("reference drift: an invalid reference (validity bullet) names the capability, engine reference", () => {
@@ -231,17 +215,9 @@ test("ambiguous is true exactly for hand-authored-drift, over every fixture reco
     const { report } = fromFixture(name);
     assert.ok(report.data && "records" in report.data, name);
     for (const r of report.data.records) {
-      assert.equal(
-        r.ambiguous,
-        r.kind === "hand-authored-drift",
-        `${name}: ${r.kind}`,
-      );
+      assert.equal(r.ambiguous, r.kind === "hand-authored-drift", `${name}: ${r.kind}`);
       assert.equal(r.question !== null, r.ambiguous, `${name}: ${r.kind}`);
-      assert.equal(
-        r.action === "auto",
-        r.kind === "stale-derived-pipeline",
-        `${name}: ${r.kind}`,
-      );
+      assert.equal(r.action === "auto", r.kind === "stale-derived-pipeline", `${name}: ${r.kind}`);
     }
   }
 });
@@ -266,24 +242,18 @@ test("a DRIFT record plus an unindented Error: line exits 3, data null, and coun
   const text =
     drift(
       "capability 'build' (github-actions): job 'build' exhibits 1 of 2 declared business steps (R3)",
-    ) +
-    "Error: /repo/.gitlab-ci.yml: more than one YAML document is not supported\n";
+    ) + "Error: /repo/.gitlab-ci.yml: more than one YAML document is not supported\n";
   const { status, report } = classify(text);
   assert.equal(status, 3);
   assert.equal(report.data, null);
   assert.equal(report.findings[0]?.rule, "precondition");
   assert.match(report.findings[0]?.message ?? "", /after 1 record\(s\)/);
-  assert.match(
-    report.findings[0]?.message ?? "",
-    /Error: \/repo\/\.gitlab-ci\.yml/,
-  );
+  assert.match(report.findings[0]?.message ?? "", /Error: \/repo\/\.gitlab-ci\.yml/);
 });
 
 test("an indented Error: text inside a continuation is part of the record and has no effect", () => {
   const text =
-    drift(
-      "reference↔GitLab divergence (gitlab) — composed 'build-ci.ts --check' failed (R5):",
-    ) +
+    drift("reference↔GitLab divergence (gitlab) — composed 'build-ci.ts --check' failed (R5):") +
     "    Error: cannot read the reference\n    Error: second line\n" +
     FOOTER(1);
   const { status, report } = classify(text);
@@ -296,9 +266,7 @@ test("an indented Error: text inside a continuation is part of the record and ha
 
 test("a run aborted by ShellAbort keeps its records, has no footer and exits 1 (partial set)", () => {
   const text = fs.readFileSync(fixture("aborted-shell"), "utf8");
-  assert.ok(
-    !/^FAILED:/m.test(text) && !/^Error:/m.test(text) && !/^OK:/m.test(text),
-  );
+  assert.ok(!/^FAILED:/m.test(text) && !/^Error:/m.test(text) && !/^OK:/m.test(text));
   const { status, report } = classify(text);
   assert.equal(status, 1);
   assert.ok(report.data && "records" in report.data);
@@ -329,10 +297,7 @@ test("non-harness input (no record, no OK, no FAILED) exits 3 and prints no reco
 });
 
 test("an unreadable path exits 3 and names the path", () => {
-  const missing = path.join(
-    os.tmpdir(),
-    "crewrig-classify-ci-drift-no-such-file.txt",
-  );
+  const missing = path.join(os.tmpdir(), "crewrig-classify-ci-drift-no-such-file.txt");
   const r = run(["--json", missing]);
   assert.equal(r.status, 3);
   const report = JSON.parse(r.stdout) as Report;
@@ -362,16 +327,11 @@ test("a mixed OK and DRIFT input exits 1 with the mixed-input warning", () => {
   const warn = report.findings.filter((f) => f.rule === "mixed-input");
   assert.equal(warn.length, 1);
   assert.equal(warn[0]?.severity, "warning");
-  assert.equal(
-    report.findings.length,
-    2,
-    "the record finding plus the warning",
-  );
+  assert.equal(report.findings.length, 2, "the record finding plus the warning");
 });
 
 test("a record that matches no rule is unclassified, exit 1; structural lines never are", () => {
-  const text =
-    drift("a brand new harness message nobody classified") + FOOTER(1);
+  const text = drift("a brand new harness message nobody classified") + FOOTER(1);
   const { status, report } = classify(text);
   assert.equal(status, 1);
   assert.ok(report.data && "records" in report.data);
@@ -417,9 +377,7 @@ const ADJACENT: ReadonlyArray<{
   },
   {
     name: "DRIFT 3 over 4: (reference) tag together with an engine tag",
-    input: drift(
-      "capability 'x' (reference): trigger path is wrong for (github-actions)",
-    ),
+    input: drift("capability 'x' (reference): trigger path is wrong for (github-actions)"),
     kind: "reference-drift",
     engine: "reference",
   },
@@ -517,19 +475,12 @@ test("--json prints one {ok, data, findings} object on standard output on each o
     const r = run(args, input);
     assert.equal(r.status, code);
     const lines = r.stdout.trimEnd().split("\n");
-    assert.equal(
-      lines.length,
-      1,
-      `exit ${code}: one JSON line on standard output`,
-    );
+    assert.equal(lines.length, 1, `exit ${code}: one JSON line on standard output`);
     const o = JSON.parse(lines[0] as string) as Report;
     assert.deepEqual(Object.keys(o).sort(), ["data", "findings", "ok"]);
     assert.equal(o.ok, code === 0);
     assert.ok(Array.isArray(o.findings));
-    assert.ok(
-      r.stderr.length > 0,
-      `exit ${code}: human text on standard error`,
-    );
+    assert.ok(r.stderr.length > 0, `exit ${code}: human text on standard error`);
     if (code === 2 || code === 3) {
       assert.equal(o.data, null);
       assert.equal(o.findings.length, 1);
@@ -558,12 +509,7 @@ test("without --json the verdict goes to stdout (0, 1) or stderr (2, 3) and stan
 });
 
 test("usage errors exit 2: no operand, two operands, unknown option, --kinds with an operand", () => {
-  for (const args of [
-    [],
-    ["a", "b"],
-    ["--nope", "-"],
-    ["--kinds", "x"],
-  ] as const) {
+  for (const args of [[], ["a", "b"], ["--nope", "-"], ["--kinds", "x"]] as const) {
     const r = run(args);
     assert.equal(r.status, 2, JSON.stringify(args));
     assert.match(r.stderr, /Usage:/);
@@ -589,10 +535,7 @@ test("--kinds prints the five kinds with definition and guidance, exit 0; --json
   const r = run(["--kinds"]);
   assert.equal(r.status, 0);
   for (const k of kinds) assert.ok(r.stdout.includes(k), k);
-  assert.ok(
-    !r.stdout.includes("unclassified"),
-    "unclassified is not one of the five kinds",
-  );
+  assert.ok(!r.stdout.includes("unclassified"), "unclassified is not one of the five kinds");
   const j = run(["--json", "--kinds"]);
   assert.equal(j.status, 0);
   const o = JSON.parse(j.stdout) as Report;
