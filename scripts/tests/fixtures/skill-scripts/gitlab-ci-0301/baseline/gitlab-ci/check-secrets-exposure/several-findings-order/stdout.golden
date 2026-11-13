@@ -1,0 +1,16 @@
+[RISK] ci.yml:2: hardcoded value for a credential-named key
+       why: a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable
+[RISK] ci.yml:3: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:6: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret variable values
+[RISK] ci.yml:7: echo/printf of a credential-named variable
+       why: printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it
+[RISK] ci.yml:8: hardcoded value for a credential-named key
+       why: a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable
+[RISK] ci.yml:9: literal access token / private key
+       why: a recognizable credential literal is committed in the pipeline — revoke it and store it as a masked + protected CI/CD variable
+[RISK] ci.yml:10: hardcoded value for a credential-named key
+       why: a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable
+[RISK] ci.yml:10: literal access token / private key
+       why: a recognizable credential literal is committed in the pipeline — revoke it and store it as a masked + protected CI/CD variable

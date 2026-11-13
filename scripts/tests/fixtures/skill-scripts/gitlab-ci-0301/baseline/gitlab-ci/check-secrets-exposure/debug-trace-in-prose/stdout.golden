@@ -1,0 +1,4 @@
+[RISK] ci.yml:1: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones
+[RISK] ci.yml:2: CI_DEBUG_TRACE enabled
+       why: debug trace logs every variable in the job, including masked and protected ones

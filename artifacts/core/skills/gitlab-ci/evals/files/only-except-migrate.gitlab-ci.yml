@@ -1,0 +1,39 @@
+stages:
+  - test
+  - package
+  - release
+
+run-tests:
+  stage: test
+  image: python:3.12-slim
+  script:
+    - pip install -r requirements.txt
+    - pytest
+  only:
+    - branches
+    - merge_requests
+  except:
+    - schedules
+
+build-docs:
+  stage: package
+  image: python:3.12-slim
+  script:
+    - mkdocs build
+  only:
+    changes:
+      - docs/**/*
+      - mkdocs.yml
+  except:
+    - tags
+
+publish-package:
+  stage: release
+  image: python:3.12-slim
+  script:
+    - python -m build
+    - twine upload dist/*
+  only:
+    - tags
+  except:
+    - branches

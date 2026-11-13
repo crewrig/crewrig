@@ -1,0 +1,4 @@
+[UNPINNED] ci.yml:2: node:22
+[UNPINNED] ci.yml:3: node
+[UNPINNED] ci.yml:4: node:latest
+[UNPINNED] ci.yml:6: registry.example.com:5000/team/app:1.2

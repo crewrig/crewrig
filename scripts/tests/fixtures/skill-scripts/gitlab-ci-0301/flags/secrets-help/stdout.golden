@@ -1,0 +1,10 @@
+Usage: node scripts/check-secrets-exposure.ts <pipeline-file-or-directory>
+       node scripts/check-secrets-exposure.ts --help
+
+Flags patterns in a GitLab CI pipeline that may leak secrets into job logs: a credential-named
+key set to an inline literal, a recognizable token shape or PEM private-key header, echo or printf
+of a credential-named variable, set -x, and CI_DEBUG_TRACE. A text scan: no live GitLab, no
+network. Directory mode scans <dir>/.gitlab-ci.yml plus the YAML under <dir>/.gitlab/.
+
+Exit codes (legacy): 0 clean or nothing to scan, 1 a finding or a missing target, 2 usage error.
+This script has no --json option and does not use exit 3.

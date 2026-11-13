@@ -1,0 +1,31 @@
+include:
+  - remote: 'https://ci-templates.example.com/shared/build.yml'
+
+stages:
+  - build
+  - deploy
+
+variables:
+  CI_DEBUG_TRACE: "true"
+
+build:
+  stage: build
+  image: golang:1.23.3
+  cache:
+    key: go-modules
+    paths:
+      - /tmp/go-cache/
+  script:
+    - export GOCACHE=/tmp/go-cache
+    - go build ./...
+  rules:
+    - if: $CI_COMMIT_BRANCH
+
+deploy:
+  stage: deploy
+  image: alpine:3.20.3
+  script:
+    - set -x
+    - curl --fail -u "deployer:$DEPLOY_PASSWORD" -T app.tar.gz https://artifacts.example.com/upload
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
