@@ -20,7 +20,9 @@ export const BASELINE_ROOT = path.resolve(
   import.meta.dirname,
   "..",
   "fixtures",
-  "skill-scripts-baseline-0301",
+  "skill-scripts",
+  "gitlab-ci-0301",
+  "baseline",
 );
 
 /**
