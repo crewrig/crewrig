@@ -1,0 +1,214 @@
+{
+  "skill_name": "github-actions",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create the CI workflow for this repository as .github/workflows/ci.yml. The language, the toolchain version and the commands are in package.json. It must run on pull requests and on pushes to main, and must run the lint and test scripts. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact, and do not trigger any workflow run: only write the files asked for, in the current directory.",
+      "expected_output": ".github/workflows/ci.yml is a valid workflow for the Node.js project: triggers on pull_request and push to main, restricted top-level permissions, Node 22, npm ci, then the lint and test scripts, with a job timeout.",
+      "files": [
+        "evals/files/package.json"
+      ],
+      "expectations": [
+        "The workflow triggers on pull_request and on push to the main branch.",
+        "The workflow declares a top-level permissions block limited to read access (contents: read), not write-all and not left implicit.",
+        "The workflow installs dependencies with npm ci and then runs the lint and test scripts of package.json (npm run lint and npm test, or npm run test).",
+        "The Node.js version used is 22, the version the package.json engines field requires, and no command or option appears that package.json does not support.",
+        "Every job sets timeout-minutes."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": ".github/workflows/ci.yml"
+        },
+        {
+          "type": "file_contains",
+          "path": ".github/workflows/ci.yml",
+          "pattern": "pull_request"
+        },
+        {
+          "type": "file_contains",
+          "path": ".github/workflows/ci.yml",
+          "pattern": "(^|\\n)permissions:\\s*\\n\\s+contents:\\s*read"
+        },
+        {
+          "type": "file_contains",
+          "path": ".github/workflows/ci.yml",
+          "pattern": "npm ci"
+        },
+        {
+          "type": "file_contains",
+          "path": ".github/workflows/ci.yml",
+          "pattern": "timeout-minutes:"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Review pr-title.yml, the workflow for our repository's pull requests, for security problems, then write the corrected version to .github/workflows/pr-title.yml. List each problem you found in your answer. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact, and do not trigger any workflow run: only write the files asked for, in the current directory.",
+      "expected_output": "The review names the missing permissions restriction and the event data interpolated into a shell step; the corrected workflow restricts permissions and passes the pull request title through an environment variable.",
+      "files": [
+        "evals/files/pr-title.yml"
+      ],
+      "expectations": [
+        "The review reports that the workflow has no restricted permissions: block, so GITHUB_TOKEN keeps the repository default scope.",
+        "The review reports that github.event.pull_request.title is interpolated directly inside a run: step, which allows script injection by whoever controls the title.",
+        "In the corrected workflow, the pull request title reaches the shell only through an env: variable referenced as a quoted shell variable, and the string github.event.pull_request.title no longer appears inside any run: block.",
+        "The corrected workflow declares top-level permissions limited to contents: read."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": ".github/workflows/pr-title.yml"
+        },
+        {
+          "type": "file_contains",
+          "path": ".github/workflows/pr-title.yml",
+          "pattern": "(^|\\n)permissions:\\s*\\n\\s+contents:\\s*read"
+        },
+        {
+          "type": "file_contains",
+          "path": ".github/workflows/pr-title.yml",
+          "pattern": "env:"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Review prt-comment.yml, a workflow that runs the tests of incoming pull requests and comments the result. Fix what is unsafe about it and write the corrected version to .github/workflows/prt-comment.yml, then explain the problem and your fix in a few sentences. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact, and do not trigger any workflow run: only write the files asked for, in the current directory.",
+      "expected_output": "The review flags the pull_request_target workflow that checks out and executes the pull request head with a privileged token, and the corrected workflow no longer checks out the head under pull_request_target.",
+      "files": [
+        "evals/files/prt-comment.yml"
+      ],
+      "expectations": [
+        "The explanation identifies that a pull_request_target workflow runs with the base repository's secrets and write token while it checks out and runs code from the pull request head (github.event.pull_request.head.sha), so untrusted code can exfiltrate them.",
+        "The corrected workflow does not check out github.event.pull_request.head.sha, or any other pull request head ref, in a workflow triggered by pull_request_target.",
+        "The fix keeps the tests running and the result commented, for example by running the tests in an unprivileged pull_request workflow and commenting from a separate workflow_run workflow, or by checking out only the base ref; it does not simply delete the tests."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": ".github/workflows/prt-comment.yml"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "release-notes.yml publishes a release when a tag is pushed. Harden how it references actions and write the result to .github/workflows/release-notes.yml. pins.txt lists the verified commit SHAs to use; you cannot look anything up. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact, and do not trigger any workflow run: only write the files asked for, in the current directory.",
+      "expected_output": "Every action in .github/workflows/release-notes.yml, including the third-party softprops/action-gh-release, is pinned by a full 40-hexadecimal-character commit SHA from pins.txt followed by a comment carrying the human-readable version.",
+      "files": [
+        "evals/files/release-notes.yml",
+        "evals/files/pins.txt"
+      ],
+      "expectations": [
+        "The third-party action softprops/action-gh-release is referenced by a 40-hexadecimal-character commit SHA, not by the v2 tag.",
+        "The pin is followed on the same line by a comment carrying the human-readable version, for example # v2.2.1.",
+        "The SHA used for each action is the one listed for it in pins.txt, and none is invented.",
+        "Nothing else in the workflow changes meaning: the tag trigger, the contents: write permission and the body_path input are kept."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": ".github/workflows/release-notes.yml"
+        },
+        {
+          "type": "file_contains",
+          "path": ".github/workflows/release-notes.yml",
+          "pattern": "softprops/action-gh-release@[0-9a-f]{40}\\s+#\\s*v?\\d"
+        },
+        {
+          "type": "file_contains",
+          "path": ".github/workflows/release-notes.yml",
+          "pattern": "actions/checkout@[0-9a-f]{40}"
+        },
+        {
+          "type": "file_contains",
+          "path": ".github/workflows/release-notes.yml",
+          "pattern": "body_path:"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Review hardened-ci.yml against this project's GitHub Actions security defaults and tell me what needs to change. Write a corrected workflow file only if a change is required. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact, and do not trigger any workflow run: only write the files asked for, in the current directory.",
+      "expected_output": "The review concludes the workflow already complies and requires no change, and no workflow file is produced or rewritten.",
+      "files": [
+        "evals/files/hardened-ci.yml"
+      ],
+      "expectations": [
+        "The review concludes that hardened-ci.yml is already compliant and that no change is required.",
+        "The review does not demand a change to the workflow and does not present a rewritten version of it as a required fix; any remark is explicitly optional.",
+        "The review does not report a false violation, such as an unpinned action, a missing permissions block or an injection of event data into a run step, because the fixture has none."
+      ],
+      "checks": []
+    },
+    {
+      "id": 6,
+      "prompt": "deploy-aws-keys.yml deploys the static site to AWS with long-lived access keys stored as secrets. Switch it to short-lived credentials and write the result to .github/workflows/deploy.yml. The IAM role to assume is arn:aws:iam::123456789012:role/gha-deploy-prod and the region stays eu-west-1. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact, and do not trigger any workflow run: only write the files asked for, in the current directory.",
+      "expected_output": ".github/workflows/deploy.yml authenticates to AWS through OIDC with role-to-assume and id-token: write, no longer references the AWS access key secrets, and keeps the rest of the deploy.",
+      "files": [
+        "evals/files/deploy-aws-keys.yml"
+      ],
+      "expectations": [
+        "The workflow grants id-token: write, scoped to the deploy job or at the workflow level, so the job can request an OIDC token.",
+        "The AWS credentials step assumes the role arn:aws:iam::123456789012:role/gha-deploy-prod through role-to-assume and keeps the eu-west-1 region.",
+        "The workflow no longer references AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY, nor the aws-access-key-id and aws-secret-access-key inputs.",
+        "The workflow keeps contents: read permission, the production environment, and the aws s3 sync step to s3://orders-api-static-prod."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": ".github/workflows/deploy.yml"
+        },
+        {
+          "type": "file_contains",
+          "path": ".github/workflows/deploy.yml",
+          "pattern": "id-token:\\s*write"
+        },
+        {
+          "type": "file_contains",
+          "path": ".github/workflows/deploy.yml",
+          "pattern": "role-to-assume:\\s*arn:aws:iam::123456789012:role/gha-deploy-prod"
+        },
+        {
+          "type": "file_contains",
+          "path": ".github/workflows/deploy.yml",
+          "pattern": "s3://orders-api-static-prod"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "Write a workflow that runs our Go tests on every pull request and caches the module downloads.",
+      "should_trigger": true
+    },
+    {
+      "query": "Our CI job fails with \"Resource not accessible by integration\" when it tries to comment on the pull request; what is wrong in .github/workflows/ci.yml?",
+      "should_trigger": true
+    },
+    {
+      "query": "Design a reusable composite action that sets up Node and restores the npm cache, so every repository of the organization can call it in one line.",
+      "should_trigger": true
+    },
+    {
+      "query": "Which permissions does the GITHUB_TOKEN need for a job to push a tag, and how do I stop it from having more than that?",
+      "should_trigger": true
+    },
+    {
+      "query": "Convert our .gitlab-ci.yml build stage so it uses rules: instead of only/except.",
+      "should_trigger": false
+    },
+    {
+      "query": "Change the replica count and the memory limit in this Kubernetes Deployment manifest.",
+      "should_trigger": false
+    },
+    {
+      "query": "Do a security review of the login handler of our web application: look at session handling and password storage.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write the pull request description for my change.",
+      "should_trigger": false
+    }
+  ]
+}

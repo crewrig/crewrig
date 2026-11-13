@@ -1,0 +1,7 @@
+Verified commit SHAs to use when pinning actions in this repository
+(format: action, version, full commit SHA):
+
+actions/checkout v4.2.2 0c26a3a7c9b3d5fa30cfaba9743cecd359447653
+actions/setup-node v4.4.0 a934ffe7b56651f0108d79e0921ed964fde62c03
+softprops/action-gh-release v2.2.1 da757c605d3bdda9573b756b3262ae7e8282c9dc
+aws-actions/configure-aws-credentials v4.0.2 f30d9b556831038e9849b243451f2d39b0defb81

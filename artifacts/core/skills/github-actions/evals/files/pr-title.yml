@@ -1,0 +1,13 @@
+name: PR title banner
+on:
+  pull_request:
+    types: [opened, edited]
+jobs:
+  banner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Announce the pull request
+        run: echo "Checking pull request ${{ github.event.pull_request.title }}"
+      - name: Show the author
+        run: echo "Opened by ${{ github.actor }}"
