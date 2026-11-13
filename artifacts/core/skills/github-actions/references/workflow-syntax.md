@@ -218,7 +218,7 @@ strategy:
   fail-fast: false
   max-parallel: 4
   matrix:
-    os: [ubuntu-24.04, macos-14, windows-2022]
+    os: [ubuntu-24.04, macos-15, windows-2022]
     node: ["20", "22"]
     include:
       - os: ubuntu-24.04
@@ -450,8 +450,10 @@ Composite actions have notable constraints:
 - **`if:` and `${{ }}`**: the `if:` key accepts an expression
   without the `${{ }}` wrapper; adding it is allowed but redundant.
 - **`needs:` semantics**: a job with `needs:` runs only if all
-  upstream jobs **succeed**. To run on failure, use
-  `if: ${{ always() }}` or `if: ${{ failure() }}`.
+  upstream jobs **succeed**. To run only after a failure, use
+  `if: ${{ failure() }}`; to run after success or failure but not after
+  a cancellation, use `if: ${{ !cancelled() }}`. Avoid `always()`: it also
+  runs after a cancellation, so a hung step keeps the run alive.
 - **`strategy.matrix` empty include**: a matrix containing only
   `include:` (no axes) generates one job per `include:` entry — useful
   for hand-curated combinations.

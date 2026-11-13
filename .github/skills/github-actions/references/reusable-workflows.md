@@ -34,7 +34,7 @@ A frequent question. The trade-off:
 | Can use `services:` / `container:` | Yes. | No. |
 | Secrets | Explicit input, or `secrets: inherit`. | Pass as `inputs:`; a registered secret stays masked, a derived value does not. |
 | Strategy / matrix | Yes (at caller or callee). | No (loop manually). |
-| Nesting | Up to 10 levels, the top-level caller included. | Composite actions can call other actions; no recursion. |
+| Nesting | The docs allow up to ten levels. | Composite actions can call other actions; no recursion. |
 | Versioning | By ref (`@<sha>`). | Same. |
 | Visibility | Private repo: same repo or org. Public repo: anywhere. | Same. |
 
@@ -255,9 +255,8 @@ the reusable workflow are serialized at the call site.
 
 ## Limitations
 
-- **Nesting depth: 10 levels.** The top-level caller is the first level,
-  so a reusable workflow can be called through up to nine further
-  levels.
+- **Nesting depth.** The docs allow up to ten levels of reusable
+  workflows.
 - **No recursion.** A workflow cannot call itself, directly or
   transitively.
 - **No environment passing** from caller to callee. The callee

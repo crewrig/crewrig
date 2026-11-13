@@ -152,8 +152,10 @@ Mitigations:
   holds the cache token and can write any key in the default branch's
   scope, including the exact keys the main workflows restore.
 - Where such a job needs a cache at all, restore only
-  (`actions/cache/restore`) and never save. Save the cache from a
-  trusted workflow that runs on `push` to the default branch.
+  (`actions/cache/restore`) and never save, and only in a job that runs
+  no untrusted code: the cache token stays reachable even without a save
+  step. Save the cache from a trusted workflow that runs on `push` to
+  the default branch.
 - Treat cached binaries as untrusted. Re-verify checksums after
   restore for security-sensitive tools.
 

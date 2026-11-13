@@ -41,9 +41,12 @@ checks and states which ones ran.
 | `node scripts/check-pull-request-target.ts <path>` | A workflow triggered by `pull_request_target`. | Same as above. |
 | `node scripts/check-expression-injection.ts <path>` | A `${{ }}` expression inside `run:` or an `actions/github-script` script. | Same as above. |
 | `node scripts/check-pinned-actions.ts <path>` | Any `uses:` that is not a 40-character SHA. | `0` all pinned, `1` unpinned reference or unreadable path, `2` usage error. |
-| `node scripts/lint-workflow.ts <path>` | Syntax, contexts and shell errors; needs `actionlint`. | `0` clean or skipped (without `actionlint` it exits `0` before it looks at the path, so a missing file also passes), `1` errors or unreadable path, `2` usage error. |
+| `node scripts/lint-workflow.ts <path>` | Syntax, contexts and shell errors; needs `actionlint`. | `0` clean or skipped, `1` errors or unreadable path, `2` usage error. |
 | `node scripts/check-secrets-exposure.ts <path>` | A secret that may reach a log or an over-wide scope. | `0` nothing found, `1` a finding, `2` usage error. |
 | `node scripts/simulate-job.ts <file> <job> [event]` and `node scripts/simulate-workflow.ts <file> [event]` | A local dry run with `act` while iterating on `run:` logic. | `0` ok or skipped, otherwise the status of `act`, `2` usage error. |
+
+Without `actionlint`, `lint-workflow.ts` exits `0` before it looks at the path, so a
+missing file also passes on such a machine.
 
 Add `--json` to get one `{ok, data, findings}` object on standard output (every script
 except `check-secrets-exposure.ts`, which rejects it). A warning
