@@ -1989,6 +1989,7 @@ markdown-links:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: &markdown-links-changes-1
+        - "scripts/tests/check-markdown-links-shared-references.test.ts"
         - "scripts/tests/governance-suite-markdown-links.test.ts"
         - "scripts/tests/lib/governance-*.ts"
         - "docs/**"
