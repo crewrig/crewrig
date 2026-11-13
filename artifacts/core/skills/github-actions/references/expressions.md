@@ -5,15 +5,26 @@ the `if:` key. Read this before writing any non-trivial condition or
 output reference. Memorising the truthiness and short-circuit rules
 avoids the bulk of "the step ran when I told it not to" bugs.
 
+## Contents
+
+- Evaluation surface
+- Context objects
+- Operators
+- Functions
+- Truthiness
+- Common patterns
+- Pitfalls
+
 ## Evaluation surface
 
 Expressions appear in three places:
 
 1. **Interpolated** via `${{ expr }}` inside string values (most
    keys: `name`, `run`, `with`, `env`, `runs-on`, etc.).
-2. **As the entire value** of certain keys: `if:`, `continue-on-error:`,
-   `timeout-minutes:` — here the `${{ }}` wrapper is optional and
-   omitted by convention.
+2. **As the entire value** of a key: `if:` is evaluated as an
+   expression without the wrapper (`if: github.ref == 'refs/heads/main'`),
+   while `continue-on-error:` and `timeout-minutes:` need
+   `${{ }}` to evaluate one (`timeout-minutes: ${{ fromJSON(inputs.minutes) }}`).
 3. **Inside `${{ }}` blocks that produce a YAML value**, including
    for arrays via `fromJSON('[…]')`.
 
@@ -140,8 +151,8 @@ literal.
 
 ### `contains(haystack, needle)`
 
-`true` if `haystack` contains `needle`. Works on strings (substring),
-arrays (element membership), and objects (key membership).
+`true` if `haystack` contains `needle`. Works on strings (substring) and
+arrays (element membership).
 
 ```yaml
 if: contains(github.event.pull_request.labels.*.name, 'ship-it')
@@ -181,7 +192,7 @@ strategy:
 
 ### `hashFiles(pattern, …)`
 
-SHA-256 of the concatenated contents of files matching the glob
+A single SHA-256 hash for the set of files matching the glob
 pattern(s). The cornerstone of cache keys.
 
 ```yaml
@@ -216,8 +227,8 @@ To run an artifact-upload step regardless of outcome:
 if: ${{ !cancelled() }}
 ```
 
-`always()` is hazardous — secrets and the runner network may be in
-the process of being torn down on cancellation.
+`always()` is hazardous: it runs even when the workflow was cancelled, so
+a step that can hang keeps the run alive until it times out.
 
 ## Truthiness
 
@@ -226,9 +237,8 @@ the process of being torn down on cancellation.
 | `true` (boolean) | yes |
 | Non-empty string | yes |
 | Non-zero number | yes |
-| Non-empty array | yes |
-| Object with at least one key | yes |
-| `false` / `''` / `0` / `null` / `[]` / `{}` | no |
+| Any array or object, even an empty one | yes |
+| `false` / `0` / `-0` / `''` / `null` | no |
 
 The empty-string trap: `if: env.FOO` evaluates `''` to `false`. If
 you want "the variable exists at all", you have to check explicitly
@@ -272,6 +282,8 @@ via `include:`.)
 ### Dynamic matrix from a previous job
 
 ```yaml
+permissions:
+  contents: read
 jobs:
   plan:
     runs-on: ubuntu-24.04
@@ -287,7 +299,9 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.plan.outputs.targets) }}
     steps:
-      - run: ./deploy.sh ${{ matrix.target }}
+      - env:
+          TARGET: ${{ matrix.target }}
+        run: ./deploy.sh "$TARGET"
 ```
 
 ## Pitfalls
@@ -295,15 +309,17 @@ jobs:
 - **`secrets.X` inside `run:` directly.** Use `env:` to bind, then
   reference `"$X"`. Direct interpolation is a script-injection
   channel.
-- **Comparing a boolean input to a string.** `if: inputs.dry_run ==
-  'true'` works only because GitHub's evaluator loosely-compares; the
-  correct form is `if: inputs.dry_run`.
+- **Comparing a boolean input to a string.** For an input declared
+  `type: boolean`, `inputs.dry_run == 'true'` is `false` even when the
+  input is true: the boolean coerces to `1` and the string `'true'` to
+  `NaN`. Write `if: inputs.dry_run`. The string form `== 'true'` is only
+  right for an input declared `type: string`.
 - **`hashFiles` matching nothing.** Returns `''`, which silently
   changes the cache key. Verify the glob path before relying on it.
 - **`steps.<id>.outputs.<name>` returns empty for a skipped step.**
   Chain conditions with `&&` rather than relying on a value that may
   not have been produced.
-- **`always()` on a cleanup step that uses secrets.** The job may be
-  canceling; the secret may already be unbound. Use
-  `if: ${{ !cancelled() }}` if you really mean "any outcome except
+- **`always()` on a cleanup or upload step.** It also runs after a
+  cancellation, so a step that can hang keeps the run alive until the
+  timeout. Use `if: ${{ !cancelled() }}` for "any outcome except
   cancellation".

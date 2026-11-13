@@ -1,0 +1,5 @@
+{
+  "status": 7,
+  "stdout": "{\"ok\":false,\"data\":{\"ran\":true},\"findings\":[{\"rule\":\"tool-failed\",\"message\":\"act exited with status 7\"}]}\n",
+  "stderr": "+ act push --workflows wf.yml --eventpath {TMP}/act-payload.{RAND}.json --dryrun\nact-output\n"
+}

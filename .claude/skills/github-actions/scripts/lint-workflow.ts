@@ -1,7 +1,12 @@
 // lint-workflow.ts — validate GitHub Actions workflow files via actionlint. TypeScript entry
 // beside lint-workflow.sh (spec 0258); same output and exit codes.
 //
-// Usage: node lint-workflow.ts <workflow-file-or-directory>
+// Usage: node lint-workflow.ts <workflow-file-or-directory> [--json]
+//
+// --help prints the usage on standard output. --json prints one object {ok, data, findings} on
+// standard output (human text goes to standard error) with the exit code the run would have had.
+// Its error findings carry the reserved rule ids usage, target-unreadable, tool-failed and
+// internal-error; a skipped actionlint is the warning finding tool-missing with exit 0.
 //
 // A directory is linted through every .yml/.yaml under <dir>/.github/workflows (else <dir>). When
 // actionlint is missing the script exits 0 with a hint — it is not a hard blocker.
@@ -12,6 +17,17 @@ process.removeAllListeners("warning");
 
 void (async () => {
   const fs = process.getBuiltinModule("node:fs");
+  const argv = process.argv.slice(2);
+  const json = argv.includes("--json");
+  interface Finding {
+    rule: string;
+    message: string;
+    path?: string;
+    line?: number;
+    severity?: "warning";
+  }
+  const findings: Finding[] = [];
+  const checked: string[] = [];
   const cp = process.getBuiltinModule("node:child_process");
   const os = process.getBuiltinModule("node:os");
   const win = process.platform === "win32";
@@ -26,7 +42,7 @@ void (async () => {
     new Promise((done) => {
       stream.write(Buffer.from(u(s), "latin1"), () => done());
     });
-  const out = (s: string): Promise<void> => write(process.stdout, s);
+  const out = (s: string): Promise<void> => write(json ? process.stderr : process.stdout, s);
   const err = (s: string): Promise<void> => write(process.stderr, s);
   const self = (process.argv[1] ?? "").split(/[\\/]/).pop() ?? "";
   const stat = (p: string): import("node:fs").Stats | undefined => {
@@ -63,8 +79,8 @@ void (async () => {
   const run = (
     file: string,
     argv: string[],
-    stdio: "inherit" | "ignore",
-  ): Promise<{ status: number; error?: Error }> =>
+    stdio: "inherit" | "ignore" | "pipe",
+  ): Promise<{ status: number; error?: Error; output: string }> =>
     new Promise((done) => {
       let cmd = file;
       let list = argv;
@@ -74,6 +90,7 @@ void (async () => {
           done({
             status: 1,
             error: new Error(`refusing an argument that cmd.exe would interpret`),
+            output: "",
           });
           return;
         }
@@ -83,80 +100,151 @@ void (async () => {
         verbatim = true;
       }
       const child = cp.spawn(cmd, list, { stdio, windowsVerbatimArguments: verbatim });
-      child.on("error", (e) => done({ status: 127, error: e }));
+      let output = "";
+      child.stdout?.on("data", (d: Buffer) => (output += d.toString("latin1")));
+      child.stderr?.on("data", (d: Buffer) => (output += d.toString("latin1")));
+      child.on("error", (e) => done({ status: 127, error: e, output }));
       child.on("close", (code, signal) =>
-        done({ status: code ?? 128 + (signal === null ? 0 : (os.constants.signals[signal] ?? 0)) }),
+        done({
+          status: code ?? 128 + (signal === null ? 0 : (os.constants.signals[signal] ?? 0)),
+          output,
+        }),
       );
     });
 
-  try {
-    const args = process.argv.slice(2);
-    if (args.length !== 1) {
-      await err(`Usage: ${self} <workflow-file-or-directory>\n`);
-      process.exitCode = 2;
-      return;
+  /** Findings of one failed actionlint run: its own lines, or tool-failed when it did not lint. */
+  const lintFindings = (
+    f: string,
+    res: { status: number; error?: Error; output: string },
+  ): Finding[] => {
+    const reserved = ["usage", "target-unreadable", "tool-failed", "internal-error"];
+    const lines: Finding[] = [];
+    for (const row of res.output.split("\n")) {
+      const m = /^.+?:(\d+):\d+: (.*?)(?: \[([A-Za-z0-9_-]+)\])?$/.exec(row);
+      if (m === null || res.status !== 1) continue;
+      const rule = m[3] ?? "actionlint";
+      lines.push({
+        rule: reserved.includes(rule) ? "actionlint" : rule,
+        message: m[2] ?? "",
+        path: f,
+        line: Number(m[1]),
+      });
     }
-    const target = args[0] ?? "";
+    if (res.status === 1 && lines.length === 0)
+      lines.push({ rule: "actionlint", message: "actionlint reported errors", path: f });
+    if (res.status !== 1)
+      lines.push({
+        rule: "tool-failed",
+        message: `actionlint did not lint ${f} (status ${res.status}${res.error === undefined ? "" : `: ${res.error.message}`})`,
+        path: f,
+      });
+    return lines;
+  };
 
-    const actionlint = findTool("actionlint");
-    if (actionlint === undefined) {
-      await out(
-        `${YELLOW}[SKIP] actionlint not found — install: brew install actionlint${RESET}\n`,
-      );
-      return;
-    }
+  const usage = `Usage: ${self} <workflow-file-or-directory>`;
+  if (argv.includes("--help")) {
+    process.stdout.write(
+      `${usage} [--json]\n\nRuns actionlint on every .yml/.yaml under <dir>/.github/workflows (else <dir>) or on one file.\nWithout actionlint the check is skipped with exit 0 before the path is examined,\nso a missing file also exits 0 on such a machine. --json prints {ok, data, findings} on stdout.\nExit codes: 0 clean or skipped, 1 actionlint reported errors or the target is unreadable, 2 usage error.\n`,
+    );
+    return;
+  }
 
-    const files: string[] = [];
-    if (stat(target)?.isDirectory() === true) {
-      const walk = (dir: string): void => {
-        let names: string[];
-        try {
-          names = fs.readdirSync(dir);
-        } catch {
-          return;
-        }
-        for (const n of names) {
-          const p = dir.endsWith("/") ? dir + n : `${dir}/${n}`;
-          let st: import("node:fs").Stats;
-          try {
-            st = fs.lstatSync(p);
-          } catch {
-            continue;
-          }
-          if (st.isDirectory()) walk(p);
-          else if (st.isFile() && /\.ya?ml$/.test(n)) files.push(p);
-        }
-      };
-      let start = `${target}/.github/workflows`;
-      if (stat(start)?.isDirectory() !== true) start = target;
-      if (fs.lstatSync(start).isDirectory()) walk(start);
-      files.sort((a, b) => Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8")));
-    } else if (stat(target)?.isFile() === true) {
-      files.push(target);
-    } else {
-      await err(`${RED}[FAIL] not a file or directory: ${target}${RESET}\n`);
-      process.exitCode = 1;
-      return;
-    }
-
-    if (files.length === 0) {
-      await out(`${YELLOW}[SKIP] no workflow files found under: ${target}${RESET}\n`);
-      return;
-    }
-
-    let rc = 0;
-    for (const f of files) {
-      const res = await run(actionlint, ["-no-color", f], "inherit");
-      if (res.error !== undefined && res.status !== 0) await err(`${self}: ${res.error.message}\n`);
-      if (res.status === 0) await out(`${GREEN}[OK]${RESET} ${f}\n`);
-      else {
-        await out(`${RED}[FAIL]${RESET} ${f}\n`);
-        rc = 1;
+  const main = async (): Promise<void> => {
+    try {
+      const args = argv.filter((a) => a !== "--json");
+      if (args.length !== 1) {
+        await err(`${usage}\n`);
+        findings.push({
+          rule: "usage",
+          message: "exactly one workflow file or directory is required",
+        });
+        process.exitCode = 2;
+        return;
       }
+      const target = args[0] ?? "";
+
+      const actionlint = findTool("actionlint");
+      if (actionlint === undefined) {
+        await out(
+          `${YELLOW}[SKIP] actionlint not found — install: brew install actionlint${RESET}\n`,
+        );
+        findings.push({
+          rule: "tool-missing",
+          message:
+            "actionlint not found, the lint was skipped: install it (brew install actionlint)",
+          severity: "warning",
+        });
+        return;
+      }
+
+      const files: string[] = [];
+      if (stat(target)?.isDirectory() === true) {
+        const walk = (dir: string): void => {
+          let names: string[];
+          try {
+            names = fs.readdirSync(dir);
+          } catch {
+            return;
+          }
+          for (const n of names) {
+            const p = dir.endsWith("/") ? dir + n : `${dir}/${n}`;
+            let st: import("node:fs").Stats;
+            try {
+              st = fs.lstatSync(p);
+            } catch {
+              continue;
+            }
+            if (st.isDirectory()) walk(p);
+            else if (st.isFile() && /\.ya?ml$/.test(n)) files.push(p);
+          }
+        };
+        let start = `${target}/.github/workflows`;
+        if (stat(start)?.isDirectory() !== true) start = target;
+        if (fs.lstatSync(start).isDirectory()) walk(start);
+        files.sort((a, b) => Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8")));
+      } else if (stat(target)?.isFile() === true) {
+        files.push(target);
+      } else {
+        await err(`${RED}[FAIL] not a file or directory: ${target}${RESET}\n`);
+        findings.push({ rule: "target-unreadable", message: `not a file or directory: ${target}` });
+        process.exitCode = 1;
+        return;
+      }
+
+      if (files.length === 0) {
+        await out(`${YELLOW}[SKIP] no workflow files found under: ${target}${RESET}\n`);
+        return;
+      }
+
+      let rc = 0;
+      for (const f of files) {
+        checked.push(f);
+        const res = await run(actionlint, ["-no-color", f], json ? "pipe" : "inherit");
+        if (json) await err(res.output);
+        if (res.error !== undefined && res.status !== 0)
+          await err(`${self}: ${res.error.message}\n`);
+        if (res.status !== 0) findings.push(...lintFindings(f, res));
+        if (res.status === 0) await out(`${GREEN}[OK]${RESET} ${f}\n`);
+        else {
+          await out(`${RED}[FAIL]${RESET} ${f}\n`);
+          rc = 1;
+        }
+      }
+      process.exitCode = rc;
+    } catch (e) {
+      await err(`${self}: ${e instanceof Error ? e.message : String(e)}\n`);
+      findings.push({
+        rule: "internal-error",
+        message: e instanceof Error ? e.message : String(e),
+      });
+      process.exitCode = 1;
     }
-    process.exitCode = rc;
-  } catch (e) {
-    await err(`${self}: ${e instanceof Error ? e.message : String(e)}\n`);
-    process.exitCode = 1;
+  };
+  await main();
+  if (json) {
+    const code = typeof process.exitCode === "number" ? process.exitCode : 0;
+    process.stdout.write(
+      `${JSON.stringify({ ok: code === 0, data: code === 2 ? null : { files: checked }, findings })}\n`,
+    );
   }
 })();

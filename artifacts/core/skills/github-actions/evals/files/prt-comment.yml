@@ -1,0 +1,22 @@
+name: PR checks with comment
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  test-and-comment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - run: npm ci
+      - run: npm test
+      - name: Comment the result
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: gh pr comment "$PR_NUMBER" --body "Tests finished"

@@ -1,0 +1,5 @@
+{
+  "status": 2,
+  "stdout": "{\"ok\":false,\"data\":null,\"findings\":[{\"rule\":\"usage\",\"message\":\"exactly one workflow file or directory is required\"}]}\n",
+  "stderr": "Usage: check-pinned-actions.ts <workflow-file-or-directory>\n"
+}

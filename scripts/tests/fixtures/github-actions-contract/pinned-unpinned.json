@@ -1,0 +1,5 @@
+{
+  "status": 1,
+  "stdout": "{\"ok\":false,\"data\":{\"files\":[\"wf.yml\"],\"violations\":1},\"findings\":[{\"rule\":\"unpinned-action\",\"message\":\"actions/checkout@v4 is not pinned to a 40-character commit SHA: pin it and keep the version in a trailing comment\",\"path\":\"wf.yml\",\"line\":7}]}\n",
+  "stderr": "[UNPINNED] wf.yml:7: actions/checkout@v4\n1 unpinned action reference(s) found\n"
+}

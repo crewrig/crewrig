@@ -1,0 +1,5 @@
+Usage: check-pinned-actions <workflow-file-or-directory> [--json]
+
+Flags every uses: reference that is not pinned to a 40-character commit SHA.
+--json prints {ok, data, findings} on stdout. Exit codes: 0 all pinned, 1 unpinned reference
+or unreadable target, 2 usage error.

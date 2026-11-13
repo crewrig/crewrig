@@ -1,0 +1,5 @@
+{
+  "status": 2,
+  "stdout": "{\"ok\":false,\"data\":null,\"findings\":[{\"rule\":\"usage\",\"message\":\"a workflow file is required, then an optional event type and payload file\"}]}\n",
+  "stderr": "Usage: simulate-workflow.ts <workflow-file> [event-type] [event-payload-json-file]\n"
+}

@@ -1,0 +1,7 @@
+Usage: simulate-workflow <workflow-file> [event-type] [event-payload-json-file] [--json]
+
+Dry-runs a whole workflow locally with act (default event: push). Without a payload file a minimal
+payload for the event is written to a temporary file and removed on exit. The run is skipped with exit 0 when act, the
+docker CLI or a reachable Docker daemon is missing. --json prints {ok, data, findings}
+on stdout.
+Exit codes: 0 ok or skipped, 1 file not found, otherwise the status of act, 2 usage error.

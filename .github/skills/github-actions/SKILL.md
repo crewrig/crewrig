@@ -1,381 +1,139 @@
 ---
 name: github-actions
-description: "Practitioner-grade GitHub Actions knowledge: authoring, reviewing, hardening, debugging workflows. Activate when reading or writing `.github/workflows/` files, diagnosing a failing pipeline, reviewing a CI change, or designing reusable/composite actions. Covers caching, secrets, GITHUB_TOKEN, OIDC."
+description: "Writes, reviews and hardens GitHub Actions workflows and composite actions, and bundles scripts that check permissions, pinned actions, pull_request_target checkouts and expression injection. Use when working on a file under .github/workflows or an action.yml, when a workflow needs a GITHUB_TOKEN permissions block, OIDC instead of long-lived cloud keys, pinned actions, caching, a reusable workflow or a composite action, when a pull request changes CI, or when a failing pipeline may be caused by the workflow definition. Trigger terms: workflow, GitHub Actions, CI pipeline, permissions, pull_request_target, OIDC, pinned actions, reusable workflow, composite action, failing pipeline. Not for GitLab CI pipelines (gitlab-ci), security review of application code (security) or pull request descriptions (pr-logbook)."
 license: Apache-2.0
+compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts). actionlint and act are optional: the checks that need them are skipped, and reported as skipped, when they are missing."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.2"
+    version: "1.2.0"
 ---
 
 
 # GitHub Actions
 
-A dense, practitioner-oriented skill for working on GitHub Actions
-workflows. Read the relevant section before editing a workflow file;
-defer to the `references/` documents for exhaustive syntax tables. Treat
-the **Security defaults** section as non-negotiable.
+Practitioner rules for the workflows under `.github/workflows/` and for composite
+actions. The model already knows the syntax; this skill holds what it gets wrong,
+the checks that settle the fixed questions, and the judgements a script cannot make.
 
-## When to activate
+Hand a change to the **security** skill when it adds a secret, widens `GITHUB_TOKEN`
+permissions, adds a cloud trust relationship or runs untrusted input in a shell, and
+to the **architect** skill when it restructures workflows across repositories.
 
-Activate this skill the moment any of the following is true:
+## Scripts
 
-- A file under `.github/workflows/**` is being authored, modified, or
-  reviewed.
-- A composite action (`action.yml` / `action.yaml`) is being changed.
-- A reusable workflow (`on: workflow_call`) is being designed or
-  consumed.
-- A pipeline is failing and the root cause is suspected to be in the
-  workflow definition, the runner image, the cache, the permission
-  model, or the secret/variable scoping.
-- A pull request touches CI configuration and a reviewer-grade audit is
-  required (pinning, permissions, OIDC, secret exposure).
-- A migration is being planned (e.g., from GitLab CI, CircleCI, Jenkins,
-  or Azure Pipelines to GitHub Actions).
-- A self-hosted runner fleet is being designed, hardened, or
-  diagnosed.
+Run them from this skill's directory with `node scripts/<name>.ts <path>`, where
+`<path>` is a workflow file or a directory. They need only Node.js and write nothing.
+Run `validate-pipeline.ts` on every workflow you write or change: it runs the other
+checks and states which ones ran.
 
-Defer to **security** when the change introduces a new secret, expands
-`GITHUB_TOKEN` permissions, adds an OIDC trust relationship to a cloud
-provider, or executes untrusted input (PR title, branch name, issue
-body) inside a shell. Defer to **architect** when the change
-restructures the workflow topology (e.g., splitting a monolithic
-workflow into reusable workflows used across many repositories).
+| Script | When | Exit codes |
+|---|---|---|
+| `node scripts/validate-pipeline.ts <file-or-dir>` | After writing or changing a workflow, before presenting it. One input only. | `0` every check ran clean or was skipped, `1` a check that ran found a problem, `2` usage error or no workflow file, `3` unreadable input or a check that could not run. |
+| `node scripts/check-permissions.ts <path>` | A workflow without `permissions:`, or with `write-all`. | `0` clean, `1` a finding, `2` usage error or empty directory, `3` unreadable path. |
+| `node scripts/check-pull-request-target.ts <path>` | A workflow triggered by `pull_request_target`. | Same as above. |
+| `node scripts/check-expression-injection.ts <path>` | A `${{ }}` expression inside `run:` or an `actions/github-script` script. | Same as above. |
+| `node scripts/check-pinned-actions.ts <path>` | Any `uses:` that is not a 40-character SHA. | `0` all pinned, `1` unpinned reference or unreadable path, `2` usage error. |
+| `node scripts/lint-workflow.ts <path>` | Syntax, contexts and shell errors; needs `actionlint`. | `0` clean or skipped, `1` errors or unreadable path, `2` usage error. |
+| `node scripts/check-secrets-exposure.ts <path>` | A secret that may reach a log or an over-wide scope. | `0` nothing found, `1` a finding, `2` usage error. |
+| `node scripts/simulate-job.ts <file> <job> [event]` and `node scripts/simulate-workflow.ts <file> [event]` | A local dry run with `act` while iterating on `run:` logic. | `0` ok or skipped, otherwise the status of `act`, `2` usage error. |
 
-## Reference index
+Without `actionlint`, `lint-workflow.ts` exits `0` before it looks at the path, so a
+missing file also passes on such a machine.
 
-The `references/` directory holds the canonical, exhaustive
-documentation for each subdomain of GitHub Actions. Read the relevant
-file before producing non-trivial output.
+Add `--json` to get one `{ok, data, findings}` object on standard output (every script
+except `check-secrets-exposure.ts`, which rejects it). A warning
+never changes an exit code. A check that exits `0` with a `[SKIP]` line did not look
+at your file: report it as skipped, never as passed. Exit `2` or `3` means the call
+or the environment is wrong, not the workflow. A green `act` run is necessary, not
+sufficient: it does not reproduce the hosted runner image.
 
-| File | One-line description |
-|------|----------------------|
-| `references/workflow-syntax.md` | Full grammar of `on:`, `jobs:`, `steps:`, `strategy:`, `concurrency:`, `defaults:`, `env:`, with annotated examples for every key. |
-| `references/expressions.md` | Context objects (`github`, `env`, `secrets`, `vars`, `needs`, `inputs`, `steps`, `job`, `runner`, `matrix`), built-in functions, operators, and `if:` evaluation rules. |
-| `references/runners.md` | GitHub-hosted runner matrix (OS, CPU, memory, disk, pre-installed software), self-hosted runner architecture, label/group selection, composite-action constraints, ARC (Actions Runner Controller). |
-| `references/caching.md` | `actions/cache` semantics — key construction, `restore-keys` fallback chain, cross-branch and cross-ref visibility, eviction, 10 GB repo limit, language-specific recipes (npm, pnpm, Yarn, Maven, Gradle, pip, Poetry, Go modules, Cargo). |
-| `references/secrets-and-vars.md` | Secrets vs. variables, scope precedence (org → repo → environment), OIDC federation patterns for AWS / GCP / Azure / Vault, masking, common exfiltration anti-patterns. |
-| `references/permissions.md` | `GITHUB_TOKEN` permission model, repository default policy, the `permissions:` key at workflow and job level, least-privilege recipes per use case (release, push container, comment on PR, deploy). |
-| `references/reusable-workflows.md` | `workflow_call` triggers, `inputs:` / `outputs:` / `secrets:` contracts, `secrets: inherit`, calling conventions, `strategy.matrix` interaction, nesting limits, versioning strategies. |
+The three checks `check-permissions.ts`, `check-pull-request-target.ts`
+and `check-expression-injection.ts` do not read composite actions: a file with no `jobs:` key passes
+with no finding and the summary says it was not checked, so review the `run:` steps of
+an `action.yml` by hand, above all any `${{ inputs.* }}` in them. They also read a small
+subset of YAML. A construct they cannot read
+(anchor, alias, merge key, multi-line flow mapping) is reported as an `unparsed`
+warning: review that line by hand, because the file was not verified there.
 
-## Core concepts
+## Pitfalls
 
-A workflow is a YAML file under `.github/workflows/` triggered by one
-or more **events** (`on:`). Each workflow contains one or more
-**jobs**, which run in parallel by default on independent **runners**.
-A job is an ordered sequence of **steps**; each step is either a shell
-script (`run:`) or an invocation of an **action** (`uses:`). State
-between steps in a job is shared through the filesystem and through
-**outputs**; state between jobs travels through `needs.<job>.outputs`
-or through **artifacts**.
+A script catches the first four; the rest need your judgement.
 
-### Triggers (`on:`)
+1. Unpinned third-party actions: pin by commit SHA (`check-pinned-actions.ts`).
+2. A `GITHUB_TOKEN` with inherited write access: set a top-level `permissions:` block
+   with `contents: read` (not `{}`, which also blocks checkout of a private
+   repository) and raise it per job (`check-permissions.ts`).
+3. Event data pasted into a shell step: bind it under `env:` (`check-expression-injection.ts`).
+4. A `pull_request_target` workflow that checks out the pull request head: a label or an
+   environment gate does not make the head's code trusted (`check-pull-request-target.ts`).
+5. Cache poisoning through a privileged event: a job triggered by `pull_request_target`,
+   `workflow_run` or `issue_comment` saves into the default branch's cache scope, so
+   untrusted code it runs can plant an entry that the main branch restores. A plain
+   pull request cannot: restore never reads a child or sibling ref. Do not run pull
+   request code in those events, and do not save a cache from them.
+6. `hashFiles()` over a glob that also matches vendored copies yields a key that
+   changes whenever any of those files does, often after an install. Name the real
+   lockfile path.
+7. `continue-on-error: true` on a flaky step ends up hiding a real regression. Retry
+   explicitly and handle the failure instead.
+8. `if: always()` on a cleanup or upload step: `always()` also runs after a
+   cancellation, so a step that can hang keeps the run alive until it times out.
+   Use `if: ${{ !cancelled() }}`.
+9. A boolean or an enum declared as a `string` input of `workflow_dispatch` is not
+   validated. Declare `type: boolean`, or `type: choice` with `options:`.
+10. A self-hosted runner attached to a public repository runs any fork's code on your
+    hardware. Require approval for outside contributors and keep such runners off
+    public repositories.
 
-Common triggers and the trap that comes with each:
+## Judgement rules
 
-- **`push`** / **`pull_request`** — the workhorses. `pull_request`
-  runs with the **base** repository's permissions but the **head**
-  ref's code; this is the headline supply-chain risk.
-- **`pull_request_target`** — runs with **base** code and **base**
-  secrets. Useful for labeling, dangerous for anything that checks out
-  the PR head. Never `actions/checkout` the PR head in a
-  `pull_request_target` workflow without a separate, sandboxed
-  evaluation step.
-- **`workflow_dispatch`** — manual trigger with typed `inputs`. Always
-  validate enum-style inputs.
-- **`workflow_call`** — turns the workflow into a callable function;
-  see `references/reusable-workflows.md`.
-- **`workflow_run`** — fires when another workflow finishes. Inherits
-  no secrets from the upstream workflow. Often used to expose results
-  to a higher-privilege context — extreme care required.
-- **`schedule`** — cron expressions, UTC. Skewed and not guaranteed
-  on the dot. The default branch only.
-- **`repository_dispatch`** / **`issues`** / **`issue_comment`** /
-  **`release`** — event-shaped triggers; check the `event.action` to
-  filter sub-events.
+These are decisions; the detail and examples are in `references/generation-rules.md`.
 
-### Jobs and steps
+- Use OIDC for cloud access, because a short-lived token has nothing to rotate or leak.
+- Install Node dependencies with `npm ci`, because it fails on a lockfile mismatch;
+  when there is no lockfile, report it to the user to commit instead of using
+  `npm install`.
+- Bind a secret to the step that needs it, at most the job, because workflow-level
+  `env:` reaches every job and action.
+- Set `timeout-minutes:` on every job and `concurrency:` on branch workflows, because the
+  default timeout is six hours and superseded runs keep spending.
+- Send production deployments through an environment with required reviewers, because
+  an approval protects only the secrets stored in that environment.
+- Make the checks that enforce these rules required on the protected branch, because
+  a rule nothing blocks on drifts.
 
-A **job** declares `runs-on:` (the runner), an optional `needs:` list
-(dependency edges), an optional `strategy.matrix:` (fan-out), and a
-sequence of `steps:`. Each step has either `run:` or `uses:`,
-optionally `with:`, `env:`, `if:`, `id:`, `continue-on-error:`, and
-`timeout-minutes:`.
+Record a deliberate exception next to the rule it breaks and in the project's decision
+records, so a reviewer sees that it was chosen.
 
-Steps in the same job share the workspace (`$GITHUB_WORKSPACE`) and
-environment file (`$GITHUB_ENV`). Steps in different jobs do not — use
-`actions/upload-artifact` and `actions/download-artifact` to move
-files, and `outputs:` to move scalars.
+## What a script cannot know
 
-### Expressions and contexts
-
-The `${{ … }}` syntax evaluates expressions. The evaluator has
-seven first-class context objects (`github`, `env`, `vars`,
-`secrets`, `inputs`, `needs`, `steps`, `job`, `runner`, `matrix`) and
-a small set of functions (`contains`, `startsWith`, `endsWith`,
-`format`, `join`, `toJSON`, `fromJSON`, `hashFiles`, `success`,
-`always`, `cancelled`, `failure`). See `references/expressions.md` for
-the full enumeration and evaluation order.
-
-The single most important rule: **never** interpolate user-controlled
-strings (PR title, branch name, issue body, commit message) directly
-into a `run:` block via `${{ }}`. Pipe them through `env:` instead and
-read them as shell variables — the runner masks them properly and the
-shell parser does not re-evaluate them.
-
-### Runners
-
-Two flavors: GitHub-hosted (ephemeral VMs maintained by GitHub) and
-self-hosted (your hardware, your responsibility). GitHub-hosted runners
-are pre-warmed with common toolchains; the inventory shifts — pin a
-specific Ubuntu/Windows/macOS image (e.g., `ubuntu-24.04`, not
-`ubuntu-latest`) for reproducibility on long-lived workflows. See
-`references/runners.md` for resource limits and the pre-installed
-software matrix.
-
-### Caching
-
-`actions/cache` reduces install time by persisting directories
-identified by a **key**. Cache keys are immutable: once written under
-a key, content cannot be overwritten. `restore-keys` provides a
-prefix-fallback chain for partial hits. The cache scope is the
-repository; entries are reachable across refs with a base-ref fallback
-rule documented in `references/caching.md`. Total cache per repository
-is 10 GB; LRU eviction.
-
-### Secrets and variables
-
-**Secrets** are encrypted at rest, masked in logs, and never exposed
-via the API. **Variables** are plaintext, visible in logs, and meant
-for non-sensitive configuration. Both have three scopes: organization,
-repository, environment. Environment scope binds to a deployment
-**environment** that can require approvals and wait timers — the
-correct primitive for promotion gates.
-
-For cloud credentials, **prefer OIDC** over long-lived secrets. OIDC
-issues a short-lived token signed by GitHub's OIDC provider; the cloud
-side validates the token's `sub`, `repository`, `ref`, and
-`environment` claims. No rotation, no leakage window. See
-`references/secrets-and-vars.md` for canonical AWS / GCP / Azure
-trust-policy snippets.
-
-### Permissions
-
-`GITHUB_TOKEN` is an automatically minted, job-scoped token whose
-scope is governed by the `permissions:` key. The org/repo default can
-be **permissive** (read-write to everything) or **restricted** (only
-`contents: read` and `metadata: read`). Always set
-`permissions:` explicitly at the workflow level, even if only to
-`contents: read`. Grant additional scopes at the job level on a
-need-to-know basis.
-
-### Reusable workflows
-
-A workflow with `on: workflow_call` becomes invocable from another
-workflow via `uses: owner/repo/.github/workflows/file.yml@ref`. The
-contract is declared via `inputs:`, `outputs:`, and `secrets:`. Nesting
-is limited to four levels deep; reusable workflows cannot call
-themselves (no recursion); a matrix in the **caller** can fan-out a
-reusable workflow but the **callee**'s matrix is independent. See
-`references/reusable-workflows.md`.
-
-## Common pitfalls
-
-The top ten failure modes, in rough order of frequency observed across
-real-world audits:
-
-1. **Non-pinned third-party actions.** `uses: someorg/some-action@v3`
-   is a moving target. Pin by full commit SHA
-   (`uses: someorg/some-action@abc123def456…`) and add a comment with
-   the human-readable version. Renovate / Dependabot will track
-   updates.
-2. **Over-scoped `GITHUB_TOKEN`.** Inheriting `write-all` because the
-   repository default was never tightened. Set
-   `permissions: contents: read` at the workflow level and elevate per
-   job.
-3. **Script injection via untrusted input.** `run: echo "${{ github.event.pull_request.title }}"`
-   is remote code execution. Pipe through `env:` and use
-   `"$PR_TITLE"`.
-4. **`pull_request_target` checking out the PR head.** The classic
-   path to leaking org-level secrets. Either drop the
-   `actions/checkout` of the head, or fence the privileged steps
-   behind an explicit approval (label gating + environment).
-5. **Cache poisoning across branches.** A malicious PR can write a
-   cache entry that the main branch later restores. Restrict cache
-   restore to the same ref family, or include a security-sensitive
-   discriminator in the key.
-6. **`hashFiles()` over the wrong glob.** `hashFiles('**/package-lock.json')`
-   in a monorepo with vendored copies returns a key that changes
-   constantly. Pin to the actual lockfile path.
-7. **`continue-on-error: true` masking failures.** Used to silence a
-   flaky step, ends up silencing a real regression. Replace with retry
-   logic and explicit failure handling.
-8. **`if: always()` on cleanup steps that depend on `secrets`.**
-   `always()` runs on cancellation; secrets may not be hydrated.
-   Combine with `if: ${{ !cancelled() }}` if needed.
-9. **`workflow_dispatch` inputs typed as `string` when they are
-   booleans/enums.** No client-side validation; enforce with
-   `type: choice` and `options:` or `type: boolean`.
-10. **Self-hosted runners accepting jobs from public forks.** A fork
-    PR can run arbitrary code on your hardware. Set
-    `Require approval for all outside collaborators` on the
-    repository, and never attach self-hosted runners to a public
-    repository without an additional approval gate.
-
-## Validation tools
-
-Helper scripts live under `scripts/` as single-file TypeScript programs
-run with `node` (Node.js 24 or later; no install step) and are the
-recommended way to catch the pitfalls above before merge. Resolve the
-`scripts/` path against this skill's own directory.
-
-- **`scripts/lint-workflow.ts`** — runs the upstream `actionlint` binary
-  across `.github/workflows/`. Catches YAML errors, shellcheck
-  findings inside `run:` blocks, undefined contexts, unreachable
-  steps. Run on every workflow change.
-- **`scripts/check-pinned-actions.ts`** — fails the build if any
-  `uses:` references a tag/branch rather than a 40-character commit
-  SHA. The first-line defense against supply-chain compromise.
-- **`scripts/check-secrets-exposure.ts`** — greps for
-  `${{ secrets.* }}` patterns that flow into `run:` blocks without
-  going through `env:`, and flags `echo $SECRET` style mistakes.
-- **`scripts/simulate-job.ts`** / **`scripts/simulate-workflow.ts`** —
-  thin wrappers around `act` that run a job or the whole workflow
-  locally in Docker. Useful for fast iteration on `run:` logic, but
-  remember that `act` does not faithfully reproduce the full
-  GitHub-hosted runner image; treat green local runs as necessary,
-  not sufficient.
-
-Invoke them as:
-
-```sh
-node scripts/lint-workflow.ts .github/workflows/
-node scripts/check-pinned-actions.ts .github/workflows/
-node scripts/check-secrets-exposure.ts .github/workflows/
-node scripts/simulate-job.ts .github/workflows/ci.yml build
-node scripts/simulate-workflow.ts .github/workflows/ci.yml
-```
-
-CI should fail closed on any of these. If a script does not exist in
-the current fork, add it as part of the same PR that introduces a new
-workflow.
-
-## Security defaults
-
-These defaults are not stylistic preferences. Treat every deviation as
-requiring an ADR.
-
-1. **Pin every third-party action by 40-character commit SHA.** No
-   `@v3`, no `@main`. First-party (`actions/*`) may be pinned by SHA or
-   by major-version tag — prefer SHA. Document the pin with a comment
-   carrying the human-readable version.
-2. **Set `permissions:` at the workflow level**, defaulting to
-   `contents: read`. Elevate per job. Never leave the workflow with
-   the implicit org/repo default.
-3. **Prefer OIDC over long-lived cloud credentials.** A long-lived AWS
-   access key in `secrets.AWS_SECRET_ACCESS_KEY` is acceptable only
-   when the cloud provider does not yet support OIDC for the target
-   resource. Document the exception.
-4. **Never define secrets in `env:` at the top level of a workflow.**
-   Top-level `env` is inherited by every job; secrets should be
-   bound to the smallest scope that needs them — the specific step,
-   or at most the specific job.
-5. **Never interpolate untrusted input into `run:` via `${{ }}`.**
-   Use `env:` to bind the value to a shell variable; reference it as
-   `"$VAR"` with quotes.
-6. **`pull_request_target` workflows must not check out the PR head**
-   unless behind an explicit human approval gate and never with access
-   to secrets.
-7. **Set `concurrency:` on long-running jobs** to prevent runaway cost
-   from rapid pushes — typically
-   `group: ${{ github.workflow }}-${{ github.ref }}` with
-   `cancel-in-progress: true` for non-deployment workflows.
-8. **Set `timeout-minutes:` on every job.** The default is six hours.
-   A reasonable upper bound is the 95th percentile of historical
-   runtime times two.
-9. **Use environments for deployment gates.** Production deployments
-   should target a GitHub Environment with required reviewers and a
-   wait timer. The environment is also the correct scope for
-   production secrets.
-10. **Enable required status checks** on protected branches for the
-    workflows that enforce these defaults. A skill rule that is not
-    mechanically enforced will drift.
-
-## Quick recipes
-
-A handful of patterns worth memorising.
-
-### Minimum-viable secure CI skeleton
+`check-expression-injection.ts` warns on every `inputs.*` expression inside a `run:`
+value, because one file cannot know who calls a reusable workflow or a
+`workflow_dispatch`. The risk stays real after you silence the warning, since a caller
+may pass untrusted text. Bind the input under `env:` and quote it:
 
 ```yaml
-name: CI
-on:
-  pull_request:
-  push:
-    branches: [main]
-permissions:
-  contents: read
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-jobs:
-  test:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@<sha>  # v4.2.x
-      - uses: actions/setup-node@<sha>  # v4.x
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - run: npm test
+- env:
+    PR_TITLE: ${{ inputs.title }}
+  run: printf 'Title: %s\n' "$PR_TITLE"
 ```
 
-### Deploy to AWS via OIDC (no long-lived secrets)
+## References
 
-```yaml
-permissions:
-  id-token: write   # required for OIDC token issuance
-  contents: read
-jobs:
-  deploy:
-    runs-on: ubuntu-24.04
-    environment: production
-    steps:
-      - uses: actions/checkout@<sha>
-      - uses: aws-actions/configure-aws-credentials@<sha>  # v4.x
-        with:
-          role-to-assume: arn:aws:iam::123456789012:role/gha-deploy
-          aws-region: eu-west-3
-      - run: ./scripts/deploy.sh
-```
+Read one only when its subject is the task.
 
-### Safe handling of untrusted PR title
+- `references/generation-rules.md`: the interview and the rules for a new workflow,
+  with a secure skeleton and an OIDC job.
+- `references/workflow-syntax.md`: keys of `on:`, `jobs:`, `steps:`, `strategy:`.
+- `references/expressions.md`: contexts, functions and `if:` evaluation.
+- `references/permissions.md`: the `GITHUB_TOKEN` model and per-use-case grants.
+- `references/secrets-and-vars.md`: scopes, OIDC trust policies, masking.
+- `references/reusable-workflows.md`: `workflow_call` contracts and limits.
+- `references/caching.md`: key and `restore-keys` semantics, per-language recipes.
+- `references/runners.md`: hosted and self-hosted runners, labels, limits.
 
-```yaml
-- name: Comment on PR
-  env:
-    PR_TITLE: ${{ github.event.pull_request.title }}
-  run: |
-    # Quoted, no re-evaluation, masked if it happens to match a secret
-    printf 'Title: %s\n' "$PR_TITLE"
-```
+## Friction
 
-### Cache key with safe fallback
-
-```yaml
-- uses: actions/cache@<sha>  # v4.x
-  with:
-    path: ~/.npm
-    key: npm-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-    restore-keys: |
-      npm-${{ runner.os }}-
-```
-
-***
-
-When in doubt, consult the relevant `references/` file before writing
-YAML. The references are exhaustive on purpose; this top-level skill is
-the working surface.
+See `references/shared-friction-reporting.md`.

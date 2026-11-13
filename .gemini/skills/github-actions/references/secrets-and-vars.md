@@ -6,6 +6,16 @@ is the choice between confidentiality and observability. Use the
 wrong one and you either leak credentials to logs or accidentally
 encrypt a value you needed to debug.
 
+## Contents
+
+- Secrets vs. variables
+- Scope and precedence
+- Defining and consuming
+- Masking
+- OIDC federation
+- Common pitfalls
+- Auditing
+
 ## Secrets vs. variables
 
 | Property | Secrets | Variables |
@@ -61,6 +71,8 @@ repository access policy: all, private only, or a selected list.
 The job declares `environment:`:
 
 ```yaml
+permissions:
+  contents: read
 jobs:
   deploy:
     runs-on: ubuntu-24.04
@@ -139,7 +151,8 @@ Trust policy on the IAM role (snippet):
 }
 ```
 
-In the workflow:
+In the workflow (the `permissions:` below belong on the deploy job, so only
+that job can request an OIDC token):
 
 ```yaml
 permissions:
@@ -229,16 +242,23 @@ step's `env:` is ideal.
 
 ### Passing secrets to reusable workflows
 
-```yaml
-# BAD: re-listing every secret manually invites omissions.
-- uses: my-org/shared/.github/workflows/deploy.yml@<sha>
-  secrets:
-    NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-    DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+A reusable workflow is called from a job (`jobs.<id>.uses`), never from a
+step, and `secrets:` sits at the same job level.
 
-# GOOD when the callee is trusted: inherit all caller secrets.
-- uses: my-org/shared/.github/workflows/deploy.yml@<sha>
-  secrets: inherit
+```yaml
+permissions:
+  contents: read
+jobs:
+  deploy-explicit:
+    # Explicit: the callee gets exactly these two secrets and no others.
+    uses: my-org/shared/.github/workflows/deploy.yml@<sha>
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+  deploy-inherit:
+    # Only when the callee is trusted: it receives every caller secret.
+    uses: my-org/shared/.github/workflows/deploy.yml@<sha>
+    secrets: inherit
 ```
 
 `secrets: inherit` only works when both workflows are in the **same
@@ -284,8 +304,10 @@ environment with required reviewers.
 
 Periodic audit checklist:
 
-- List repository secrets: `gh secret list` — flag any that have not
-  been read in 90 days; rotate or delete.
+- List repository secrets: `gh secret list` shows each secret's name
+  and last-updated time, not when it was last read. Flag secrets that
+  have not been rotated in a long time, and delete those no workflow
+  references (search the workflows for the name).
 - List org-wide secrets and their repo access list. Tighten scope.
 - Inspect workflows for top-level `env:` referencing `secrets.*`.
 - Search for `${{ secrets.` patterns in `run:` blocks (the

@@ -1,7 +1,7 @@
 ---
 id: "0300"
 slug: github-actions-modernization
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1939

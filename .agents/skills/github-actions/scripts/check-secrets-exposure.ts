@@ -2,7 +2,7 @@
 // into logs or widen the secret blast radius. TypeScript entry beside check-secrets-exposure.sh
 // (spec 0258); same output.
 //
-// Usage: node check-secrets-exposure.ts <workflow-file-or-directory>
+// Usage: node check-secrets-exposure.ts <workflow-file-or-directory>      (--help prints the usage)
 //
 // Patterns flagged:
 //   1. `echo ${{ secrets.* }}`                          (secret echoed to stdout)
@@ -37,6 +37,13 @@ void (async () => {
       return undefined;
     }
   };
+
+  if (process.argv.includes("--help")) {
+    process.stdout.write(
+      `Usage: ${self} <workflow-file-or-directory>\n\nFlags patterns that may leak secrets into logs or widen their blast radius.\nExit codes: 0 nothing found, 1 finding, 2 usage error.\n`,
+    );
+    return;
+  }
 
   try {
     const args = process.argv.slice(2);
