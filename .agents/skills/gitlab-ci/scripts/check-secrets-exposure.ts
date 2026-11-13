@@ -3,6 +3,7 @@
 // text scan, same output).
 //
 // Usage: node check-secrets-exposure.ts <pipeline-file-or-directory>
+//        node check-secrets-exposure.ts --help
 //
 // Five checks, run in order on every line (one line may report several findings):
 //   1. a credential-named key set to an inline literal in `variables:` or a shell assignment;
@@ -41,6 +42,22 @@ void (async () => {
 
   const name = path.basename(process.argv[1] ?? "check-secrets-exposure.ts");
   const args = process.argv.slice(2);
+  if (args.length === 1 && args[0] === "--help") {
+    process.stdout.write(
+      `Usage: node scripts/${name} <pipeline-file-or-directory>
+       node scripts/${name} --help
+
+Flags patterns in a GitLab CI pipeline that may leak secrets into job logs: a credential-named
+key set to an inline literal, a recognizable token shape or PEM private-key header, echo or printf
+of a credential-named variable, set -x, and CI_DEBUG_TRACE. A text scan: no live GitLab, no
+network. Directory mode scans <dir>/.gitlab-ci.yml plus the YAML under <dir>/.gitlab/.
+
+Exit codes (legacy): 0 clean or nothing to scan, 1 a finding or a missing target, 2 usage error.
+This script has no --json option and does not use exit 3.
+`,
+    );
+    return;
+  }
   if (args.length !== 1) {
     err.push(`Usage: ${name} <pipeline-file-or-directory>\n`);
     process.exitCode = 2;

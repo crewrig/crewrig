@@ -1,284 +1,63 @@
 ---
 name: gitlab-ci
-description: "Practitioner-grade GitLab CI/CD knowledge: authoring, reviewing, hardening, debugging pipelines. Activate when reading or writing `.gitlab-ci.yml`, reviewing a CI change in a merge request, designing runners or CI/CD Components, or migrating to GitLab CI. Covers `rules:`, caching, OIDC."
+description: "Authors, reviews, hardens and debugs GitLab CI/CD pipelines, and checks them with bundled scripts for server-side validation, image pinning, secret exposure and legacy only/except keys. Use when reading or writing `.gitlab-ci.yml`, `rules:` or `workflow:rules`, `include:` or CI/CD Components, `id_tokens`, a runner or `glab ci lint`, when a pipeline runs twice or a job stays pending, or when migrating a pipeline from GitHub Actions, Jenkins or CircleCI to GitLab. Not for GitHub Actions workflows, Jenkins or other CI systems except as the source of a migration to GitLab, generic YAML such as Kubernetes manifests or compose files, security or threat-model reviews (security), or merge request descriptions and logbook entries (pr-logbook)."
 license: Apache-2.0
+compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts). glab is optional: only lint-gitlab-ci.ts needs it, and it reports exit 3 without it."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.2"
+    version: "1.2.0"
 ---
 
 
 # GitLab CI/CD
 
-A dense, practitioner-oriented skill for working on GitLab CI/CD
-pipelines. Read the relevant section before editing a `.gitlab-ci.yml`;
-defer to the `references/` documents for exhaustive syntax tables. Treat
-the **Security defaults** section as non-negotiable.
+Work on a `.gitlab-ci.yml` the way a reviewer who has seen the usual failures would: run the checks below before presenting a pipeline, and give each retained rule its reason when you explain a change. Syntax tables live in the references; this file holds what is easy to get wrong.
 
-This skill is the GitLab counterpart of the `github-actions` skill and
-presents a parallel activation and escalation contract. Keep your
-guidance engine-neutral wherever the project's platform-neutral
-capability reference (`ci/ci-capabilities.yml`, described by
-`docs/ci-reference-format.md`) keeps it neutral; name GitLab-specific
-syntax only where the behaviour is genuinely GitLab-specific.
+## Scripts
 
-## When to activate
+Run `node scripts/<name>.ts` from the skill directory, or give its full path from elsewhere. The three offline scripts read only the target you give them, a file or a directory (a directory means `<dir>/.gitlab-ci.yml` plus the YAML under `<dir>/.gitlab/`). `lint-gitlab-ci.ts` takes one file and queries GitLab.
 
-Activate this skill the moment any of the following is true:
+| When | Command | Exit `1` means |
+|---|---|---|
+| After writing or changing a pipeline, to ask GitLab itself whether it is valid | `node scripts/lint-gitlab-ci.ts .gitlab-ci.yml` (add `--repo <group/project>` when the working copy is not a GitLab checkout, `--timeout <seconds>` to change the 30 s bound) | GitLab reports the configuration invalid; each finding is one error line. |
+| Reviewing, authoring or migrating any pipeline | `node scripts/check-rules.ts <file-or-dir>` | A job still carries `only:` or `except:`, or jobs exist with no top-level `workflow:rules`. |
+| Reviewing or authoring any pipeline | `node scripts/check-pinned-images.ts <file-or-dir>` (add `--json` for a structured result) | An `image:` or `services:` reference is not pinned to an `@sha256:` digest, or the target does not exist. |
+| Reviewing or authoring any pipeline | `node scripts/check-secrets-exposure.ts <file-or-dir>` | A credential literal, a printed secret, `set -x` or `CI_DEBUG_TRACE`; also a target that does not exist. |
 
-- A `.gitlab-ci.yml` (or an `include`d CI fragment) is being authored,
-  modified, or reviewed.
-- A reusable **CI/CD Component** or an `include:`-based template is
-  being designed or consumed.
-- A merge request touches CI configuration and a reviewer-grade audit
-  is required (image pinning, protected/masked variables, OIDC, secret
-  exposure, `rules:` correctness).
-- A pipeline is failing and the root cause is suspected to be in the
-  pipeline definition, the runner/executor selection, the cache or
-  artifacts, the variable/secret scoping, or the `rules:` evaluation.
-- A self-managed runner fleet is being designed, hardened, or
-  diagnosed.
-- A migration is being planned (e.g., from GitHub Actions, CircleCI,
-  Jenkins, or Azure Pipelines to GitLab CI/CD).
+Two exit-code contracts coexist. `lint-gitlab-ci.ts` and `check-rules.ts` follow the full one, with `--json` giving `{ok, data, findings}`: `0` ok, `1` finding, `2` usage error, `3` the check could not run. The two older scripts keep their legacy codes, which existing callers rely on: `0` clean or nothing to scan, `1` a finding or a missing target, `2` usage error. They have no exit `3`, and only `check-pinned-images.ts` has `--json`.
 
-Defer to **security** when the change introduces a new secret, widens
-the `CI_JOB_TOKEN` access allowlist, adds an `id_tokens:` OIDC trust
-relationship to a cloud provider, relaxes protected-branch/variable
-gating, or executes untrusted input (MR title, branch name, commit
-message) inside a `script:`. Defer to **architect** when the change
-restructures the pipeline topology (e.g., splitting a monolithic
-pipeline into parent-child pipelines or shared CI/CD Components used
-across many projects).
+`lint-gitlab-ci.ts` is a read-only server-side query: it runs `glab ci lint` against GitLab, with a timeout, and writes nothing. Without `--repo`, glab fails before linting when the directory is not a GitLab checkout, and the script then exits `3` and says so, so pass `--repo` whenever you work outside a checkout. When it exits `3` the pipeline was not validated server-side, whatever the reason (no glab, no login, no network, a timeout). Run the three offline scripts instead, and tell the user plainly that the server-side validation did not happen. Never describe a pipeline as valid on the strength of an exit `3`.
 
-## Reference index
+No script simulates or executes a pipeline; `glab ci lint` checks configuration only.
 
-The `references/` directory holds the canonical, exhaustive
-documentation for each subdomain of GitLab CI/CD. Read the relevant
-file before producing non-trivial output.
+## Rules whose reason is not obvious
 
-| File | One-line description |
-|------|----------------------|
-| `references/pipeline-syntax.md` | Full grammar of `stages:`, `jobs`, `script:`/`before_script:`/`after_script:`, `needs:`, `rules:`, `extends:`, `!reference`, `parallel:matrix`, `environment:`, `default:`, with annotated examples for every key. |
-| `references/rules-and-triggers.md` | The `rules:` model (`if`/`changes`/`exists`/`when`), `workflow:rules:`, legacy `only/except`, parent-child and multi-project `trigger:` pipelines, the predefined-variable and expression-operator tables, and pipeline types. |
-| `references/runners-and-executors.md` | Instance/group/project runners, `tags:` selection, the shell/docker/kubernetes executors, autoscaling, `image:`/`services:`, and `config.toml` essentials. |
-| `references/caching-and-artifacts.md` | The cache-vs-artifacts distinction, `cache:key/paths/policy/when`, `artifacts:paths/reports/expire_in`, `dependencies:`, distributed cache, and language-specific recipes (npm, pnpm, Yarn, pip, Poetry, Maven, Gradle, Go, Cargo). |
-| `references/variables-and-secrets.md` | Variable sources and precedence, `file`/masked/protected variables, external secrets (`secrets:` with Vault / Azure / GCP), `id_tokens:` OIDC federation for AWS / GCP / Azure, masking caveats, and exfiltration anti-patterns. |
-| `references/security-and-permissions.md` | `CI_JOB_TOKEN` and its access allowlist, the member-role model, protected branches/tags, protected environments, `id_tokens:`, fork-runner trust, and least-privilege recipes per use case. |
-| `references/includes-and-components.md` | `include:` (local/project/remote/template/component), CI/CD Components and the catalog, `spec:inputs:`, `extends:`, `!reference`, `trigger:include`, nesting limits, and versioning strategies. |
+- **A pipeline without `workflow:rules` runs twice** when a branch has an open merge request: once as a branch pipeline, once as a merge request pipeline. Add the guard from the skeleton below.
+- **`only:`/`except:` cannot share a job with `rules:`**, and GitLab rejects the job. Migrate each job fully, not partly. `check-rules.ts` finds the legacy keys.
+- **Pin every image, and check what you wrote.** A tag can be re-pointed in the registry under an unchanged pipeline, and a major tag such as `node:22` moves with every release. When you author a new pipeline, or the user asks you to harden one, give each `image:` and `services:` entry at least an exact version tag, patch version included (for example `node:22.11.0-alpine3.20`), never `latest` or a major-only tag. A digest (`@sha256:` plus 64 hex characters) is the strongest pin and the only form `check-pinned-images.ts` accepts, so it still reports a tag. Run it on the file you wrote before answering, replace any reference you can resolve with its digest, and list the remaining findings for the user as tags still to be digest-pinned. Keep the readable tag in a comment next to a digest. When you diagnose or fix an existing pipeline, change only what the fix needs and report unpinned images as a finding instead of editing them, because unrequested edits hide the fix.
+- **Masking is narrow.** A masked variable must be at least 8 characters on one line from a restricted character set, or it logs in the clear. It is a substring replacement in the job log only, so a split, decoded or re-encoded value escapes it, and it does nothing against a job that sends the value elsewhere.
+- **Trace options defeat masking.** `CI_DEBUG_TRACE` and `set -x` print every expanded variable, masked ones included, so keep them out of any job that sees a credential.
+- **Protect deploy credentials as well as masking them.** A protected variable reaches only pipelines on protected branches and tags, so a feature branch cannot read it.
+- **Bind a secret to the job or environment that needs it.** A global `variables:` entry is inherited by every job, including ones that run untrusted code.
+- **Prefer `id_tokens:` to a stored cloud key.** The token is short-lived and scoped by claims, so there is nothing to rotate or leak. Keep a long-lived key only when the provider has no OIDC for that resource, and state why.
+- **A cache path must sit under `$CI_PROJECT_DIR`.** GitLab archives nothing outside it, so a `GOPATH` or pip cache in `$HOME` is silently never cached. Key the cache on the lockfile, not the manifest.
+- **A job whose `tags:` match no runner stays pending** with no error, which is the usual cause of a stuck job.
+- **Certificates and kubeconfigs go in `file`-type variables.** Echoing a plain variable into a file defeats masking.
+- **Fork merge request pipelines must not reach protected variables or protected runners.** A fork branch is not a protected ref. Relaxing that, or registering an unprotected shared or privileged runner, lets fork code run on your infrastructure. If a fork must run privileged work, gate it behind a maintainer-approved job in a protected environment.
+- **Pin remote includes and components.** `include:remote`, a branch ref and `~latest` can change under an unchanged pipeline. Pin a tag or commit SHA and prefer first-party sources.
+- **Scope the `CI_JOB_TOKEN` allowlist.** Older projects may still carry the open default, which lets a compromised job in a low-value project reach a high-value one. List only the projects that need access.
+- **Serialize deploys with `resource_group:` and set `interruptible: false` on them.** Otherwise two pipelines can deploy to one target at once, and a newer pipeline can cancel a rollout half done. Put production behind a protected environment with required approvals.
+- **State the reason of any deviation** from these rules in the change, so the next reviewer can judge it.
 
-## Core concepts
+## Recipes
 
-A pipeline is a YAML file (`.gitlab-ci.yml` at the repository root,
-overridable via `CI_CONFIG_PATH`) triggered by one or more events —
-a push, a merge request, a tag, a schedule, or a manual run. A
-pipeline contains **jobs**; each job belongs to a **stage**, and
-stages run in declared order while jobs in the same stage run in
-parallel. A job is a list of shell commands (`script:`) executed by a
-**runner** using a chosen **executor**. State between jobs travels
-through **artifacts** (a forward-passed contract) and, opportunistically,
-through **cache** (a best-effort speed optimization).
-
-### Stages, jobs, and the DAG
-
-Stages give a coarse ordering; `needs:` gives a fine one. A job with
-`needs:` starts as soon as its named dependencies finish, forming a
-**directed acyclic graph** that ignores stage boundaries — the way to
-shorten a pipeline's critical path. `needs: []` starts a job
-immediately, before any stage. See `references/pipeline-syntax.md`.
-
-### Triggers and `rules:`
-
-`rules:` is the modern control-flow primitive: an ordered list whose
-first matching entry decides whether (and how) the job runs. Rules key
-on `if:` expressions over predefined variables (`$CI_PIPELINE_SOURCE`,
-`$CI_COMMIT_BRANCH`, `$CI_COMMIT_TAG`, `$CI_MERGE_REQUEST_*`),
-`changes:` (path filters), and `exists:` (file presence).
-`workflow:rules:` gates the whole pipeline — most importantly to avoid
-running a duplicate detached and branch pipeline for the same commit.
-Legacy `only/except` still works but `rules:` supersedes it. See
-`references/rules-and-triggers.md`.
-
-### Runners and executors
-
-A runner is the agent that executes a job; the **executor** is how it
-does so. The **docker** executor (each job in a fresh container from
-`image:`) is the default for reproducibility; **shell** runs directly
-on the host; **kubernetes** schedules a pod per job. A job selects a
-runner by `tags:`; a job whose tags match no runner stays queued.
-Pin `image:` by digest, never a moving tag. See
-`references/runners-and-executors.md`.
-
-### Caching vs. artifacts
-
-These are different mechanisms. **Cache** persists reusable
-dependencies (e.g. `node_modules/`) across runs to save time; it may be
-absent and must never be relied on as a contract. **Artifacts** are a
-job's declared outputs, passed forward to later stages and downloadable
-from the UI. Use `cache:` for speed and `artifacts:` for correctness.
-See `references/caching-and-artifacts.md`.
-
-### Variables and secrets
-
-CI/CD variables come from many sources (instance, group, project,
-trigger, `.gitlab-ci.yml`, `dotenv` artifacts) with a defined
-precedence. A credential MUST be a **masked** variable (hidden in job
-logs) and, when it gates a real environment, a **protected** variable
-(exposed only to pipelines on protected branches/tags). The `file`
-variable type writes the value to a temp file and exports its path —
-the correct channel for certificates and kubeconfigs. For cloud
-credentials, **prefer `id_tokens:` OIDC** over long-lived keys. See
-`references/variables-and-secrets.md`.
-
-### Permissions and protection
-
-GitLab has no single token scope map; the surface spans the
-`CI_JOB_TOKEN` (and its project access allowlist), the project/group
-member role model, protected branches/tags, and protected
-environments. Production promotion belongs behind a protected
-environment with required approvals. See
-`references/security-and-permissions.md`.
-
-### Includes and components
-
-`include:` composes a pipeline from local files, other projects,
-remote URLs, GitLab templates, or versioned **CI/CD Components**.
-Components (`include:component:`) are the modern reusable unit, with a
-typed `spec:inputs:` contract and catalog versioning. `extends:` and
-`!reference` compose fragments within and across includes. See
-`references/includes-and-components.md`.
-
-## Common pitfalls
-
-The top failure modes, in rough order of frequency observed across
-real-world audits:
-
-1. **Non-pinned container images.** `image: node:22` (or `:latest`) is
-   a moving target — the registry can re-point the tag. Pin by digest
-   (`image: node@sha256:…`) and let Renovate track updates.
-2. **Plaintext or un-masked secrets.** A credential hardcoded in
-   `variables:`, or a masked variable that fails GitLab's masking
-   requirements (too short, contains whitespace) and silently logs in
-   the clear.
-3. **Over-broad `rules:` / missing `workflow:rules:`.** Without a
-   `workflow:` guard, a single push to a branch with an open MR runs
-   two pipelines. Rules that omit `$CI_PIPELINE_SOURCE` checks fire on
-   unintended events.
-4. **`CI_DEBUG_TRACE` or `set -x` left enabled.** Both print every
-   expanded variable to the job log, including masked ones — masking
-   does not survive a shell trace.
-5. **Treating cache as artifacts.** Relying on `cache:` to carry build
-   output to a later stage. Cache can be cold; only `artifacts:` (or
-   `needs:[].artifacts`) is a forward contract.
-6. **Cache key on the manifest, not the lockfile.** A cache keyed on
-   `package.json` instead of `package-lock.json` goes stale silently;
-   one keyed on nothing poisons across branches.
-7. **`cache:`/dependency dir outside `$CI_PROJECT_DIR`.** GitLab can
-   only cache paths under the project directory; a `GOPATH` or pip
-   cache in `$HOME` is silently not cached.
-8. **`interruptible` / `resource_group` misuse.** A deploy job left
-   `interruptible: true` can be cancelled mid-rollout; production
-   deploys need a `resource_group` to serialize.
-9. **Untrusted-fork runner exposure.** A shared or `privileged` runner
-   that accepts fork MR pipelines can run arbitrary code on your
-   infrastructure. Protected variables and protected runners are not
-   exposed to fork MRs by default — do not relax that.
-10. **Unpinned `include:remote` / `~latest` components.** A remote
-    include or a component pinned to `~latest` can change under you.
-    Pin to a tag or commit SHA and prefer first-party sources.
-
-## Validation tools
-
-Helper scripts live under `scripts/` as single-file TypeScript programs
-run with `node` (Node.js 24 or later; no install step) and are the
-recommended way to catch the pitfalls above before merge. Resolve the
-`scripts/` path against this skill's own directory. Both are **offline**
-text scans — no live GitLab, no `glab`, no Docker, no registry or token
-access.
-
-- **`scripts/check-pinned-images.ts`** — fails closed if any `image:`
-  or `services:` reference is not pinned to an immutable `@sha256:`
-  digest. The first-line defense against a re-pointed base image. The
-  GitLab counterpart of the `github-actions` skill's
-  `check-pinned-actions.ts`.
-- **`scripts/check-secrets-exposure.ts`** — flags hardcoded credential
-  literals in `variables:`/`script:`, recognizable token shapes
-  (`glpat-…`, `ghp_…`, AWS keys, PEM private keys), `echo`/`printf` of a
-  credential-named variable, `set -x`, and `CI_DEBUG_TRACE`. The GitLab
-  counterpart of the `github-actions` skill's `check-secrets-exposure.ts`.
-
-Invoke them as:
-
-```sh
-node scripts/check-pinned-images.ts .gitlab-ci.yml
-node scripts/check-secrets-exposure.ts .gitlab-ci.yml
-```
-
-Each accepts exactly one argument — a pipeline file or a directory
-(directory mode scans `<dir>/.gitlab-ci.yml` plus YAML under
-`<dir>/.gitlab/`). Both exit non-zero on a finding, so CI can fail
-closed.
-
-This skill ships **no** offline structural linter and **no** pipeline
-simulator, by design. GitLab's `glab ci lint` is a server-side CI-Lint
-API call (it requires authentication and a reachable instance — there
-is no offline structural validation equivalent to `actionlint`), and
-`gitlab-ci-local` *executes* the pipeline in Docker. Both are out of
-scope here: executing a pipeline on a live GitLab is not this skill's
-job. The two scripts above are the validations with genuine offline
-parity to their GitHub Actions siblings; nothing else is shipped as
-façade tooling.
-
-## Security defaults
-
-These defaults are not stylistic preferences. Treat every deviation as
-requiring an ADR.
-
-1. **Pin every container image by `@sha256:` digest.** No bare tags,
-   no `:latest`. Pin `image:` and every `services:` entry; document the
-   pin with a comment carrying the human-readable tag.
-2. **Every credential is a masked variable.** Never hardcode a secret
-   in `variables:` or a `script:`. Confirm the value meets GitLab's
-   masking requirements, or it logs in the clear despite the flag.
-3. **Protect the variables that gate real environments.** A deploy or
-   release credential is **protected** as well as masked, so it is
-   exposed only to pipelines on protected branches/tags.
-4. **Prefer `id_tokens:` OIDC over long-lived cloud credentials.** A
-   long-lived cloud key is acceptable only when the provider does not
-   support OIDC for the target resource. Document the exception.
-5. **Never echo or trace a secret.** No `echo "$TOKEN"`, no `set -x`
-   over secret-bearing commands, no `CI_DEBUG_TRACE: "true"` in a job
-   that sees a credential. Masking is best-effort and a transformed
-   value bypasses it.
-6. **Bind secrets to the smallest scope.** A secret in a global
-   `variables:` block is inherited by every job. Bind it to the job —
-   or the protected environment — that needs it.
-7. **Gate deploy / Pages / Release jobs behind protected refs and
-   environments.** Production promotion targets a protected
-   environment with required approvals; the environment is also the
-   correct scope for production secrets.
-8. **Serialize deployments with `resource_group:`** so two pipelines
-   never deploy to the same target concurrently, and leave production
-   deploys `interruptible: false`.
-9. **Scope the `CI_JOB_TOKEN` access allowlist.** Limit which projects
-   a job token may reach; the historical "allow all" default is a
-   lateral-movement risk.
-10. **Never run untrusted code on a `privileged` or shared runner.**
-    Fork MR pipelines must not receive protected variables or
-    protected runners. Keep that default; if a fork must run privileged
-    work, gate it behind a maintainer-approved, protected-environment
-    job.
-
-## Quick recipes
-
-A handful of patterns worth memorising.
-
-### Minimum-viable secure pipeline skeleton
+The secure skeleton, with the guard against double pipelines:
 
 ```yaml
 default:
-  image: node@sha256:<digest>  # node:22
+  image: node@sha256:<digest>  # node:22.11.0-alpine3.20
 
 stages: [test]
 
@@ -301,7 +80,7 @@ unit-test:
     - npm test
 ```
 
-### Deploy to AWS via OIDC (no long-lived secrets)
+Deploy to AWS through OIDC, with no stored key:
 
 ```yaml
 deploy:
@@ -325,35 +104,34 @@ deploy:
     - ./scripts/deploy.sh
 ```
 
-### Safe handling of an untrusted MR title
+An untrusted merge request title, bound to a variable so the shell never re-evaluates it:
 
 ```yaml
 comment:
   variables:
-    MR_TITLE: $CI_MERGE_REQUEST_TITLE   # bound to a variable, not interpolated
+    MR_TITLE: $CI_MERGE_REQUEST_TITLE
   script:
-    # Quoted; the shell does not re-evaluate the value.
     - printf 'Title: %s\n' "$MR_TITLE"
 ```
 
-### Pass a build artifact forward (not via cache)
+## Hand-offs
 
-```yaml
-build:
-  stage: build
-  script: [make dist]
-  artifacts:
-    paths: [dist/]
-    expire_in: 1 day
+Hand over to the `security` skill when a change introduces a new secret, widens the `CI_JOB_TOKEN` allowlist, adds an `id_tokens:` trust relationship to a cloud provider, relaxes protected-branch or protected-variable gating, or runs untrusted input (a merge request title, branch name or commit message) inside `script:`. Hand over to the `architect` skill when the change restructures pipeline topology, such as parent-child pipelines or shared CI/CD Components used across many projects.
 
-publish:
-  stage: deploy
-  needs: [build]   # pulls build's artifacts
-  script: [./publish.sh dist/]
-```
+## References
 
-***
+Read the one that matches the task before producing non-trivial output.
 
-When in doubt, consult the relevant `references/` file before writing
-YAML. The references are exhaustive on purpose; this top-level skill is
-the working surface.
+| File | Covers |
+|---|---|
+| [pipeline-syntax.md](references/pipeline-syntax.md) | The grammar of `stages:`, jobs, `script:`, `needs:`, `rules:`, `extends:`, `!reference`, `parallel:matrix`, `environment:`, `default:`, with an example per key. |
+| [rules-and-triggers.md](references/rules-and-triggers.md) | The `rules:` model, `workflow:rules:`, legacy `only/except`, parent-child and multi-project `trigger:`, the predefined-variable and operator tables, and pipeline types. |
+| [runners-and-executors.md](references/runners-and-executors.md) | Instance, group and project runners, `tags:` selection, the shell, docker and kubernetes executors, autoscaling, `image:`/`services:` and `config.toml`. |
+| [caching-and-artifacts.md](references/caching-and-artifacts.md) | `cache:key/paths/policy/when`, `artifacts:paths/reports/expire_in`, `dependencies:`, the distributed cache and language recipes. |
+| [variables-and-secrets.md](references/variables-and-secrets.md) | Variable sources and precedence, `file`, masked and protected variables, `secrets:` with Vault, Azure and GCP, `id_tokens:` for AWS, GCP and Azure, and exfiltration anti-patterns. |
+| [security-and-permissions.md](references/security-and-permissions.md) | `CI_JOB_TOKEN` and its allowlist, member roles, protected branches, tags and environments, fork trust and least-privilege recipes. |
+| [includes-and-components.md](references/includes-and-components.md) | `include:` forms, CI/CD Components and the catalog, `spec:inputs:`, `extends:`, `!reference`, `trigger:include`, nesting limits and versioning. |
+
+## Friction
+
+See `references/shared-friction-reporting.md`.

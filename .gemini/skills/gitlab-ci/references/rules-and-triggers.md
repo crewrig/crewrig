@@ -1,5 +1,18 @@
 # Rules and triggers reference
 
+## Contents
+
+- [Evaluation surface](#evaluation-surface)
+- [The `rules:` list](#the-rules-list)
+- [`workflow:rules:` — whole-pipeline gating](#workflowrules--whole-pipeline-gating)
+- [Predefined CI/CD variables used in rules](#predefined-cicd-variables-used-in-rules)
+- [Expression operators in `rules:if`](#expression-operators-in-rulesif)
+- [Pipeline types and trigger mechanisms](#pipeline-types-and-trigger-mechanisms)
+- [Legacy `only:` / `except:` (superseded by `rules:`)](#legacy-only--except-superseded-by-rules)
+- [Common patterns](#common-patterns)
+- [Pitfalls](#pitfalls)
+- [Cross-reference — this repository](#cross-reference--this-repository)
+
 The control-flow language that decides **whether** a job runs and
 **what kind of pipeline** runs at all. Read this before writing any
 non-trivial `rules:` clause or `workflow:` gate. Memorising the
@@ -451,8 +464,8 @@ workflow:
 
 This section applies to the CrewRig repository only.
 The generated `.gitlab-ci.yml` at the repo root is **derived**, not
-hand-authored: the generator (spec 0048) reads the neutral
-capability reference `ci/ci-capabilities.yml` and maps its
+hand-authored: the generator, which keeps the GitLab pipeline in step
+with the other CI engines, reads the neutral capability reference `ci/ci-capabilities.yml` and maps its
 engine-neutral trigger vocabulary — `push` / `pull-request` / `tag` /
 `scheduled` / `manual`, qualified by `branches` / `paths` /
 `tag-pattern` filters — onto the GitLab `rules:` constructs documented

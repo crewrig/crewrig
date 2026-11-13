@@ -1,0 +1,1 @@
+{"ok":false,"data":{"files":1},"findings":[{"rule":"unpinned-image","message":"node:22 is not pinned to a @sha256: digest; pin it by digest","path":"bad.yml","line":2},{"rule":"unpinned-image","message":"redis:7 is not pinned to a @sha256: digest; pin it by digest","path":"bad.yml","line":4}]}

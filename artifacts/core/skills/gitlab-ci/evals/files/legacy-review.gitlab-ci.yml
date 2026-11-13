@@ -1,0 +1,35 @@
+stages:
+  - build
+  - test
+  - deploy
+
+build:
+  stage: build
+  image: node:latest
+  script:
+    - npm ci
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+
+unit-tests:
+  stage: test
+  image: node:latest
+  script:
+    - npm ci
+    - npm test
+  only:
+    - branches
+    - merge_requests
+  except:
+    - schedules
+
+deploy-production:
+  stage: deploy
+  image: alpine:3
+  script:
+    - ./deploy.sh production
+  only:
+    - main
+  when: manual

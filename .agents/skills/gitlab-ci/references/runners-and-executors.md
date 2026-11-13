@@ -1,5 +1,16 @@
 # Runners and executors reference
 
+## Contents
+
+- [Runner scopes](#runner-scopes)
+- [Selecting a runner with `tags:`](#selecting-a-runner-with-tags)
+- [Executors](#executors)
+- [The docker executor](#the-docker-executor)
+- [`config.toml` essentials](#configtoml-essentials)
+- [Autoscaling](#autoscaling)
+- [Runner security](#runner-security)
+- [Resource and concurrency controls](#resource-and-concurrency-controls)
+
 Reference for the execution substrate of GitLab CI/CD: where a runner
 comes from (scope), how a job is matched to one (tags), how the runner
 runs the job (executors), how the docker executor handles images and

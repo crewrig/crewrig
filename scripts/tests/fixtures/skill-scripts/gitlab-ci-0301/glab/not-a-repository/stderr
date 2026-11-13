@@ -1,0 +1,4 @@
+ERROR
+ you must be in a GitLab project repository for this action: not a git repository: fatal: not a git repository (or
+  any of the parent directories): .git
+  git: exit status 128.
