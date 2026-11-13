@@ -1,0 +1,113 @@
+---
+id: "0300"
+slug: github-actions-modernization
+status: approved
+complexity: standard
+interaction-mode: AUTO
+related-issue: 1939
+version: 1.0.0
+---
+
+# Modernize the github-actions skill and the ci-configurator agent to the authoring standard
+
+## Intent
+
+The `github-actions` skill and the `ci-configurator` agent are rewritten to the skill authoring standard (`docs/skill-authoring-standard.md`), following the `pr-logbook` pilot and the `doc-writer` wave (spec 0297). The three security defaults whose outcome is fixed, a workflow with no restricted `permissions:`, a `pull_request_target` workflow that checks out the pull request head, and event data interpolated into a shell step, become bundled checks instead of prose the model re-derives. The generic GitHub Actions concepts the model already knows leave the skill, which keeps what is specific to this project and what is easy to get wrong. The agent shrinks to its role: the rules it duplicated from the skill move into one skill reference, and its two fixed steps, deciding which CI engine to target and validating the pipeline it produced, run as bundled scripts. The effect is measured with the eval runner on frozen cases, not asserted.
+
+## Requirements
+
+1. **R1 (order of work).** The work SHALL land as one implementation pull request whose commits are ordered: first `evals/` (cases and fixtures) with no change to the skill or agent, then a baseline measurement on the unchanged skill, then the scripts and the rewrite, then the final measurement. Cases and fixtures SHALL stay byte-identical after the first commit. Review fixes SHALL be batched into one commit before the final measurement, because the eval content hash covers `SKILL.md`, `scripts/`, `references/` and `assets/`: every later edit of those files makes the committed `evals/results.json` stale and costs a new paid measurement.
+2. **R2 (cases).** `artifacts/core/skills/github-actions/evals/evals.json` SHALL be valid under the eval schema of `docs/skill-evals.md` and SHALL hold at least five evals covering: a new CI workflow for a repository whose language and test command are visible in fixture files; a review of a workflow that has no top-level `permissions:` and interpolates `${{ github.event.pull_request.title }}` inside a `run:` step; a `pull_request_target` workflow that checks out `github.event.pull_request.head.sha`; a workflow that pins an action by tag and an expected fix that pins it by 40-character SHA with a version comment; and a request that needs no workflow change (an existing hardened workflow reviewed and found compliant, where the correct output is no edit). Every expectation SHALL be stated on observable output (the workflow file written or the review text), never on how the output was produced, so the same cases measure the skill before and after the scripts exist.
+3. **R3 (no forge, no script check).** No eval prompt SHALL ask the agent to create, edit, comment on or close a forge artifact or to trigger a real workflow run. Fixtures SHALL be plain files under `evals/files/`. No eval SHALL use an `exit_code` check on a bundled script, so the same cases run against the unchanged skill.
+4. **R4 (probes).** The file SHALL carry at least six trigger probes, at least 40 percent positive and at least 40 percent negative. The negatives SHALL be near-misses that share vocabulary: a `.gitlab-ci.yml` request, a generic YAML or Kubernetes manifest edit, a security review of application code, and a GitHub pull request description. The positives SHALL include a workflow-authoring request and a failing-pipeline diagnosis phrased without the words "GitHub Actions".
+5. **R5 (measurement).** The contributor SHALL measure the unchanged skill (baseline) and the rewritten skill (final) with `task skill-evals -- github-actions`, SHALL make at most four paid measurements for this skill in total (for example two baselines to record the spread, then two finals), and SHALL report both pass rates, the probe results, the cost and the run counts on the logbook. The contributor SHALL commit the `evals/results.json` of a non-mock run on the final skill. The rewrite SHALL be kept only when the final status is not `regression`. A probe failure SHALL be fixed by revising the description before the body. When the budget of four is spent without a clean final status, the figures go to the user for decision; the contributor SHALL NOT measure a fifth time on their own.
+
+6. **R6 (check-permissions).** Common to R6 to R11: all new scripts live in `artifacts/core/skills/github-actions/scripts/` and follow the script contract of the standard: a single TypeScript file for Node.js 24, no import, `--help`, `--json` object `{ok, data, findings}`, exit codes 0/1/2/3, no network call, no write. They take one or more workflow files or directories (a directory means every `*.yml` and `*.yaml` file directly under it, sorted), or `-` for standard input. A finding carries the rule, the file, the line, and a message that states the fix. A directory with no workflow file is a usage-level refusal with exit 2, not a silent success. Rule: `scripts/check-permissions.ts` SHALL report a finding, rule `permissions-missing`, for a workflow that has no top-level `permissions:` key and in which at least one job also lacks its own `permissions:` key, and a finding, rule `permissions-write-all`, for `permissions: write-all` at the workflow or at a job level. It SHALL accept `permissions: {}`, a read-only mapping, and a job-level `permissions:` on every job as compliant. A top-level mapping that grants `write` on a scope SHALL be a warning, rule `permissions-broad`, not an error, because release and deploy workflows need it.
+7. **R7 (check-pull-request-target).** `scripts/check-pull-request-target.ts` SHALL report a finding, rule `prt-head-checkout`, for a workflow triggered by `pull_request_target` (as a string, a list item or a mapping key) in which an `actions/checkout` step sets `ref:` to an expression that resolves to the pull request head (`github.event.pull_request.head.sha`, `github.event.pull_request.head.ref`, `github.head_ref`, or `refs/pull/*/merge` or `refs/pull/*/head`) or sets `repository:` to `github.event.pull_request.head.repo.full_name`. A workflow that does not use `pull_request_target`, and a `pull_request_target` workflow whose checkout takes no such `ref:` or `repository:`, SHALL pass. The message SHALL name the permitted route: check out the base, or split the untrusted build into a `pull_request` workflow and hand its result over through a `workflow_run` workflow.
+8. **R8 (check-expression-injection).** `scripts/check-expression-injection.ts` SHALL report a finding, rule `expression-injection`, for a `${{ ... }}` expression inside a `run:` value (including the body of an `actions/github-script` `script:` input) that reads an attacker-controllable field: `github.event.issue.title`, `github.event.issue.body`, `github.event.pull_request.title`, `github.event.pull_request.body`, `github.event.pull_request.head.ref`, `github.event.pull_request.head.label`, `github.event.comment.body`, `github.event.review.body`, `github.event.head_commit.message`, `github.event.commits[*].message`, `github.event.commits[*].author.email` and `.name`, `github.head_ref`, and any other `github.event.*` path ending in `.body`, `.title`, `.message`, `.label`, `.name` or `.email`. The same expression bound under `env:` and referenced as `"$VAR"` SHALL pass, and the message SHALL say so. Expressions on trusted fields (`github.sha`, `github.run_id`, `github.repository`, `secrets.*`, `inputs.*` read in a reusable workflow called only by trusted callers) SHALL pass.
+9. **R9 (shared parsing, deliberate duplication).** Each of the three scripts SHALL carry its own copy of the small YAML-subset reading it needs, per rule 7 of the script contract, and SHALL NOT depend on `js-yaml` or any package. Where a workflow uses a YAML construct the reader cannot interpret (anchors, merge keys, flow-style mappings in a checked position), the script SHALL report a finding, rule `unparsed`, severity warning, naming the line, rather than pass silently or crash.
+10. **R10 (existing scripts: audit and scope).** The five existing scripts do not follow the contract today: none accepts `--help` (each treats it as a path and exits 1 or 0) and none offers `--json`. This change SHALL bring `lint-workflow.ts`, `check-pinned-actions.ts`, `simulate-job.ts` and `simulate-workflow.ts` onto the contract (`--help`, `--json`, exit codes 0/1/2/3, `--dry-run` where a script writes, which only `simulate-workflow.ts` does for its temporary payload file), keeping their detection logic and their human-readable output byte-identical when run without `--json`. A missing external tool (`actionlint`, `act`) SHALL stay a skipped check with exit 0 and a visible hint, reported as a warning finding `tool-missing` under `--json`; it SHALL NOT become exit 3, so that an offline or minimal machine keeps working. `check-secrets-exposure.ts` is the shared secrets engine of a sibling ticket (#1941) and its detection and output SHALL NOT change here; the single permitted edit is the minimal handling of `--help` (usage on standard output, exit 0), because `task check-skill-quality` runs every script of a protected skill with `--help` and reports an error otherwise. Its `--json` adoption, and its replacement by the shared engine, belong to the sibling ticket.
+11. **R11 (agent-facing scripts).** The skill SHALL bundle two further scripts that serve the `ci-configurator` agent: `scripts/resolve-engine.ts` and `scripts/validate-pipeline.ts`, under the same contract.
+    - `resolve-engine.ts [--engine <github-actions|gitlab-ci>] [--root <dir>]` SHALL print the resolved target and how it was resolved (`inferred` or `explicit`). With `--engine`, that value wins over any inference. Without it, exactly one of `.github/workflows/` (holding at least one workflow file) and `.gitlab-ci.yml` under the root resolves to that engine. When both are present, or neither, with no `--engine`, it SHALL exit 1 with a finding (`engine-ambiguous` or `engine-absent`) whose message asks the caller to name the target and says not to guess. An unknown `--engine` value is a usage error, exit 2.
+    - `validate-pipeline.ts <workflow-file-or-directory>...` SHALL run, from the same directory, `lint-workflow.ts`, `check-pinned-actions.ts`, `check-permissions.ts`, `check-pull-request-target.ts`, `check-expression-injection.ts` and `check-secrets-exposure.ts` on its inputs, and report each check as `ran` and passed, `ran` with findings, or `skipped` with the reason (the check script absent or its external tool missing). It SHALL exit 1 when any check that ran reported an error finding, and 0 otherwise. Its report SHALL never mark a check `ran` that was skipped, so the agent can state truthfully what was verified. It writes nothing and makes no network call.
+
+12. **R12 (remove known concepts, keep the non-obvious).** `SKILL.md` SHALL drop the sections that restate generic GitHub Actions knowledge (the *Core concepts* section and its subsections on triggers, jobs and steps, expressions and contexts, runners, caching, secrets and variables, permissions and reusable workflows), the *Reference index* prose that repeats each reference's content, and the *Security defaults* prose that the scripts of R6 to R8 now enforce. It SHALL keep, in prose, what a script cannot decide or the model does not reliably know: the pitfalls that are specific or counter-intuitive, the rules that are judgements (OIDC over long-lived credentials, secrets scoped to the step or job, concurrency and `timeout-minutes` choices, environments as deployment gates), when to run each script and what each exit code means, and a pointer for each reference. A behaviour of the current skill that is dropped on purpose SHALL be listed on the logbook with its reason. The body SHALL stay under 500 lines and, as an aim, under 150.
+13. **R13 (generation rules reference).** The generation rules of the `ci-configurator` agent (action pinning, permissions, OIDC over long-lived secrets, job separation, timeouts, caching, concurrency) SHALL be consolidated, together with the interview protocol for a new workflow (one round, at most seven questions, inferring what the repository shows), into `references/generation-rules.md` of the skill, with the duplicated text of the skill's former *Security defaults* removed so each rule is stated once. The reference SHALL open with a `Contents` heading in its first 20 lines when it exceeds 100 lines, SHALL cite no other reference of the skill, and SHALL keep the minimal secure workflow skeleton and the OIDC example as `yaml` blocks.
+14. **R14 (description).** The `description` SHALL be third person, state what the skill does, carry a `Use when` clause with trigger terms (workflow, `.github/workflows`, `GITHUB_TOKEN`, `permissions`, `pull_request_target`, OIDC, reusable workflow, composite action, pinned actions, failing pipeline) and a `Not for` clause (GitLab CI pipelines, application-code security review, pull request descriptions), within 1,024 characters. `compatibility` SHALL name Node.js 24 and say that `actionlint` and `act` are optional.
+15. **R15 (prompt style).** `SKILL.md` and its references SHALL carry no spec, requirement or issue citation and no more than five capitalised `MUST`, `NEVER`, `CRITICAL`, `ALWAYS` or `IMPORTANT` outside code; each rule SHALL state its reason. The skill's reference to the `ADR` for deviations SHALL be reworded to say where an exception is recorded, without a numbered citation.
+16. **R16 (shared friction reference).** The skill SHALL cite `references/shared-friction-reporting.md` (the build writes the copy), SHALL NOT cite `config/TOOLS.md`, and SHALL add no `shared-` file of its own.
+
+17. **R17 (agent description and body).** `AGENT.md`'s `description` SHALL state when to delegate, with trigger terms: a new CI pipeline, "set up CI", a GitHub Actions workflow or a GitLab pipeline for a project, migrating from another CI platform, replacing tag-pinned actions or long-lived cloud keys; and what to send elsewhere (a failing run to `ci-debugger`, drift against the capability reference to `ci-parity`). The body SHALL be about 120 lines and at most 150, SHALL contain no spec or issue citation, and SHALL keep only: the role and persona, the activation boundary, the engine decision as a call to `resolve-engine.ts` with the meaning of each exit code, the two production modes (GitHub hand-authored through the skill's generation rules; GitLab derived from the capability reference with the repository-only generator inside the `crewrig-repo-only` fences), the validation step as a call to `validate-pipeline.ts` plus the GitLab scripts of the `gitlab-ci` skill, the output format, the pushback rule (state the rule and the cost of breaking it, tag an accepted override `OVERRIDE: <reason>`), and the handoff boundary. It SHALL carry no copy of the generation rules, the pitfalls or the security defaults, only a pointer to the `github-actions` skill and its `references/generation-rules.md`.
+18. **R18 (script location decision).** The agent SHALL call the engine and validation scripts as `<github-actions-skill-dir>/scripts/<name>.ts`, a skill-relative citation, because an agent installs without a `scripts/` directory beside it and the agent-script citation check (`scripts/check-agent-script-citations.ts`, issue #1863) treats an unfenced `scripts/...` path in an agent body as a finding, while a `<skill-dir>/scripts/...` citation is not one. The scripts therefore live in the `github-actions` skill, which every CLI target already installs with its `scripts/` directory, and no new component or build step is introduced. The agent SHALL load the `github-actions` skill at the start of every session, including a GitLab one, because `resolve-engine.ts` ships there; when the scripts cannot be found at their expected path the agent SHALL say so explicitly and fall back to the manual rule written in the same sentence of the body, never claiming a check was run. Every `scripts/` path the agent body cites outside a fence SHALL be of the `<skill-dir>` form, and `node scripts/check-agent-script-citations.ts` SHALL pass.
+19. **R19 (friction pointer).** The copied friction-reporting paragraph SHALL be replaced by one line pointing to the `harness-report` skill, and `config/TOOLS.md` SHALL NOT be cited.
+20. **R20 (tools allowlist decision).** The agent's `tools` SHALL be left unrestricted (no `tools` allowlist is added), because it writes workflow files and runs the validation scripts, so a read-only allowlist as proposed for the diagnosing agents does not apply. The reason SHALL be recorded in the PR description and on the logbook, not in the runtime prompt.
+
+21. **R21 (script tests).** Each new or modified script of R6 to R11 SHALL have automated tests that run with no network and cover: the success path, every rule it can report, a compliant case for every flagged construct, the `unparsed` warning of R9, the usage error, the `--json` shape, `--help`, and (for the contract migration of R10) that the human-readable output without `--json` is unchanged against a recorded fixture. The tests SHALL run from a copy of the built skill directory outside the repository, as the `doc-writer` tests do, so that a script that imports a repository file fails.
+22. **R22 (packaging).** Both sources SHALL bump `metadata.provenance.version` (the skill as a minor bump for the additive scripts and reference, the agent as a minor bump), the built components SHALL be regenerated in the same change, and every built `github-actions` skill directory SHALL contain `scripts/`, `references/` including `shared-friction-reporting.md` and `generation-rules.md`, and no `evals/`. `task check-skill-quality -- github-actions` SHALL report no error, the bundled-script citation check SHALL pass, and the agent description SHALL stay within 1,024 characters on the source and every compiled output.
+23. **R23 (integration points).** This change touches no CLI integration point (no deploy target, hook wiring, CLI root or settings, or `taskfiles/` entry), so no `docs/cli-matrix/rows/` source and no `docs/cli-matrix.md` change is required; if the implementation does touch one, the matrix row SHALL be updated in the same diff.
+
+## Scenarios
+
+### Happy path — workflow with no permissions
+
+- **Given** a workflow with no top-level `permissions:` and a single job without its own,
+- **When** `check-permissions.ts` runs on it,
+- **Then** it reports `permissions-missing` with the line of the `jobs:` key and exits 1.
+
+### Happy path — compliant workflow
+
+- **Given** a workflow with `permissions: { contents: read }`, every action pinned by SHA, the pull request title bound under `env:`, and a `pull_request` trigger,
+- **When** `validate-pipeline.ts` runs on it,
+- **Then** every check that ran passes, the report names which checks ran and which were skipped, and it exits 0.
+
+### Failure path — pull request head under pull_request_target
+
+- **Given** a workflow on `pull_request_target` whose `actions/checkout` sets `ref: ${{ github.event.pull_request.head.sha }}`,
+- **When** `check-pull-request-target.ts` runs,
+- **Then** it reports `prt-head-checkout`, names the base-checkout or `workflow_run` route, and exits 1.
+
+### Failure path — expression injection
+
+- **Given** a step `run: echo "${{ github.event.pull_request.title }}"`,
+- **When** `check-expression-injection.ts` runs,
+- **Then** it reports `expression-injection` with the line and exits 1; with the title bound under `env:` and the step reading `"$PR_TITLE"`, it exits 0.
+
+### Failure path — engine ambiguous or absent
+
+- **Given** a repository holding both `.github/workflows/ci.yml` and `.gitlab-ci.yml`, or neither, and no `--engine`,
+- **When** `resolve-engine.ts` runs,
+- **Then** it exits 1 with `engine-ambiguous` or `engine-absent` and the agent asks the user to name the target; with `--engine gitlab-ci` it exits 0 reporting `explicit`.
+
+### Failure path — empty directory, unreadable input, missing tool
+
+- **Given** a directory with no workflow file, an unreadable path, or a machine without `actionlint`,
+- **When** a check runs,
+- **Then** the empty directory is a usage-level exit 2, the unreadable path is exit 3, and the missing tool is a visible skip with exit 0 that `validate-pipeline.ts` reports as `skipped`, never as `ran`.
+
+### Failure path — unsupported YAML construct
+
+- **Given** a workflow that uses a YAML anchor in a checked position,
+- **When** a check runs,
+- **Then** it reports an `unparsed` warning naming the line and does not report the workflow as compliant on that construct.
+
+### Failure path — rewrite regresses or the budget is spent
+
+- **Given** the final measurement is below the baseline by more than the tolerance, or four paid measurements have been made without a clean final status,
+- **When** the contributor revises the description, then the body, within the budget,
+- **Then** the cases stay unchanged and, if the run still regresses, the figures go to the user for decision.
+
+## Out of scope
+
+- The shared secrets engine and the rewrite of `check-secrets-exposure.ts` (sibling ticket #1941), beyond the `--help` handling named in R10.
+- The `gitlab-ci` skill and its scripts (sibling ticket #1940), the `ci-debugger`, `ci-parity` and `security` agents (sibling ticket #1942), and the `security` skill.
+- Changing the eval runner, its settings, the skill-quality linter or the spec linter.
+- The `- uses:` matcher fix in `check-pinned-actions.ts`, tracked as a separate bug issue; this change moves that script onto the contract without altering its detection.
+- Rewriting the six reference files other than adding `generation-rules.md` and removing text duplicated between the skill and the agent.
+- Making the agent read-only (R20): it writes pipeline files.
+- A script for the judgement rules (choice of runner, caching strategy, timeout values, environment gates).
+- Wiring the new checks into repository CI over the existing workflows of `.github/workflows/`.
+
+## Open questions
+
+- Decided (AUTO): `resolve-engine.ts` lives in the `github-actions` skill (R18). The GitLab path of the agent states plainly when the script is missing; moving it later to a neutral location is a follow-up if the build gains one.
+- Decided (AUTO): the single `--help` edit to `check-secrets-exposure.ts` (R10) is accepted, because a protected skill cannot pass `task check-skill-quality` without it; if #1941 lands first the edit disappears.
