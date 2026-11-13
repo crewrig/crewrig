@@ -116,7 +116,6 @@ node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts
 ```
 <!-- crewrig-repo-only:end -->
 
-
 This reads the existing reference and emits `.gitlab-ci.yml` (one job
 per portable capability; `requires:` → `image`/`before_script`/
 `GIT_DEPTH`; `command:` → `script:`; `trigger[]` → `rules:`). You do
@@ -342,7 +341,6 @@ reference — the derivation's own drift gate (CrewRig repository only):
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts --check
 ```
 <!-- crewrig-repo-only:end -->
-
 
 If any script reports violations, **fix the cause and rerun** — for the
 GitLab path that means correcting the reference or the security overlay

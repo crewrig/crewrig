@@ -12,7 +12,15 @@ import { findCitations } from "../lib/governance/agent-script-citations.ts";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
 const ENTRY = path.join(REPO, "scripts", "check-agent-script-citations.ts");
-const LINT = path.join(REPO, "artifacts", "core", "skills", "pr-reviewer", "scripts", "lint-skill.ts");
+const LINT = path.join(
+  REPO,
+  "artifacts",
+  "core",
+  "skills",
+  "pr-reviewer",
+  "scripts",
+  "lint-skill.ts",
+);
 const AGENT_FIXTURES = path.join(import.meta.dirname, "fixtures", "agent-script-citations");
 const SKILL_FIXTURES = path.join(import.meta.dirname, "fixtures", "skill-scripts-citations");
 
@@ -101,7 +109,12 @@ describe("parity with the bundled lint-skill.ts scanner", () => {
       const dir = path.join(SKILL_FIXTURES, name);
       const refDir = path.join(dir, "references");
       const files = ["SKILL.md"].concat(
-        fs.existsSync(refDir) ? fs.readdirSync(refDir).sort().map((f) => `references/${f}`) : [],
+        fs.existsSync(refDir)
+          ? fs
+              .readdirSync(refDir)
+              .sort()
+              .map((f) => `references/${f}`)
+          : [],
       );
       const resolves = (cited: string): boolean => {
         try {

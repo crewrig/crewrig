@@ -59,7 +59,6 @@ node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ci-parity.ts
 ```
 <!-- crewrig-repo-only:end -->
 
-
 The harness is **fail-closed**: it exits non-zero on any reference
 validity violation, any divergence, any evidence-less engine-specific
 exception, or any untraceable job, and prints `OK:` only on a clean
@@ -149,7 +148,6 @@ node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts         
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ci-parity.ts   # confirm the divergence is resolved
 ```
 <!-- crewrig-repo-only:end -->
-
 
 This is safe to apply autonomously because it mutates nothing that
 requires judgment: it re-derives the generated GitLab pipeline from the
