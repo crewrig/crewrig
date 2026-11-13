@@ -1,5 +1,15 @@
 # Variables and secrets reference
 
+## Contents
+
+- [The variable model](#the-variable-model)
+- [Scope and precedence](#scope-and-precedence)
+- [Variable types and flags](#variable-types-and-flags)
+- [External secrets (`secrets:`)](#external-secrets-secrets)
+- [OIDC federation (`id_tokens:`)](#oidc-federation-id_tokens)
+- [Exfiltration anti-patterns and common pitfalls](#exfiltration-anti-patterns-and-common-pitfalls)
+- [Auditing](#auditing)
+
 CI/CD variables are the channel GitLab offers for injecting
 configuration into a pipeline. There is no separate "secret" object as
 in some other systems: a variable becomes a secret by flipping two
