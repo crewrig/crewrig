@@ -55,7 +55,7 @@ runs them together. The reason is here so the first draft already complies.
   `# TODO: resolve to commit SHA` and report the gap. Checked by
   `check-pinned-actions.ts`.
 - **Set a top-level `permissions:` block with `contents: read`**, written as a
-  block (`permissions:` then `  contents: read`), not as `permissions: {}`: an
+  block (the key `permissions:` with `contents: read` indented under it), not as `permissions: {}`: an
   empty mapping also removes read access, so `actions/checkout` fails on a
   private repository. Raise a scope only on the job that needs it
   (`contents: write` to tag a release, `id-token: write` for OIDC). Never use
