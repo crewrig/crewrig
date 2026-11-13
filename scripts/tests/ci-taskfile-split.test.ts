@@ -52,6 +52,7 @@ const GROUP_FILES: Record<string, readonly string[]> = {
     "path-ownership-selftest",
     "check-skill-versions",
     "check-description-length",
+    "check-agent-script-citations",
     "test-wiring",
     "test-wiring-selftest",
     "check-seat-brief",
@@ -110,8 +111,8 @@ describe("taskfiles/ci split (spec 0278 R23)", () => {
   const tree = loadTaskfileTree(REPO);
   const ciTasks = tree.tasks.filter((t) => t.name.startsWith("ci:"));
 
-  it("defines each of the 101 ci:* names in exactly the file of the R23 table", () => {
-    assert.equal(ciTasks.length, 101);
+  it("defines each of the 102 ci:* names in exactly the file of the R23 table", () => {
+    assert.equal(ciTasks.length, 102);
     for (const t of ciTasks) {
       const id = t.name.slice("ci:".length);
       assert.ok(expectedFiles(id).includes(t.file), `${t.name} is in ${t.file}`);

@@ -2576,11 +2576,6 @@ check-description-length:
         - ".agents/skills/**"
         - ".agents/agents/**"
         - "scripts/check-description-length.ts"
-        - "scripts/check-agent-script-citations.ts"
-        - "scripts/tests/agent-script-citations.test.ts"
-        - "scripts/tests/fixtures/agent-script-citations/**"
-        - "scripts/tests/fixtures/skill-scripts-citations/**"
-        - "artifacts/core/skills/pr-reviewer/scripts/lint-skill.ts"
         - "scripts/lib/governance/**"
         - "scripts/lib/require-dependency.ts"
         - "scripts/check-skill-quality.ts"
@@ -2590,6 +2585,30 @@ check-description-length:
         - "scripts/tests/lib/skill-quality-fixture.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *check-description-length-changes-1
+
+check-agent-script-citations:
+  stage: governance
+  image: node:24
+  before_script:
+    - !reference [.task-install, script]
+    - npm ci --omit=dev --workspaces=false
+  script:
+    - "task ci:check-agent-script-citations"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes: &check-agent-script-citations-changes-1
+        - "artifacts/*/agents/**"
+        - "scripts/check-agent-script-citations.ts"
+        - "scripts/lib/governance/agent-script-citations.ts"
+        - "scripts/lib/paths.ts"
+        - "scripts/tests/agent-script-citations.test.ts"
+        - "scripts/tests/fixtures/agent-script-citations/**"
+        - "scripts/tests/fixtures/skill-scripts-citations/**"
+        - "artifacts/core/skills/pr-reviewer/scripts/lint-skill.ts"
+        - "artifacts/*/skills/**/SKILL.md"
+        - "docs/plan-format.md"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes: *check-agent-script-citations-changes-1
 
 check-extension-version-bump:
   stage: governance

@@ -24,6 +24,7 @@
   "check-skill-versions": "taskfiles/governance.yml",
   "check-taskfile-commands": "taskfiles/governance.yml",
   "ci:check-agents-size": "taskfiles/ci/gate.yml",
+  "ci:check-agent-script-citations": "taskfiles/ci/governance.yml",
   "ci:check-ci-parity": "taskfiles/ci/governance.yml",
   "ci:check-comment-size": "taskfiles/ci/gate.yml",
   "ci:check-description-length": "taskfiles/ci/governance.yml",
