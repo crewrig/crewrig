@@ -1,0 +1,206 @@
+{
+  "skill_name": "architect",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "The team's situation is in context-cache.md. Give a design opinion with alternatives on how to cut the load on config-api, as a design note in design.md. Do not run gh, glab, tea or git push, and do not create, edit or comment on any pull request, issue or other forge artifact: work only from the files in the current directory and write only the files asked for.",
+      "expected_output": "design.md restates the goal, the constraint and the non-goal, gives at least two viable alternatives with a one-line trade-off each, and ends with a recommendation that names the constraint that breaks the tie.",
+      "files": [
+        "evals/files/context-cache.md"
+      ],
+      "expectations": [
+        "design.md states the goal in one sentence, the constraints taken from context-cache.md (latency, the 60-second freshness bound, no new datastore, team size or freeze) and at least one explicit non-goal.",
+        "design.md sketches at least two viable options and gives each a one-line trade-off saying what it buys at the cost of what.",
+        "design.md ends with a recommendation that says which option it picks and the constraint that decides between them, and the options are not strawmen.",
+        "Every fact about the system in design.md can be traced to context-cache.md; none is invented."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "design.md"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The change under consideration is renaming the flag --target of the crewctl CLI to --environment. The repository facts are in repo-tree.md. Write the ripple-effect analysis to blast-radius.md. Do not run gh, glab, tea or git push, and do not create, edit or comment on any pull request, issue or other forge artifact: work only from the files in the current directory and write only the files asked for.",
+      "expected_output": "blast-radius.md lists the files and modules that change, the public contract that shifts, the downstream consumers outside the repository, the reversibility, and the regenerated built copies with the build command.",
+      "files": [
+        "evals/files/repo-tree.md"
+      ],
+      "expectations": [
+        "blast-radius.md lists the files in repo-tree.md that must change, including the workflow, the documentation and the skill script.",
+        "blast-radius.md names the two external repositories as downstream consumers of the changed contract.",
+        "blast-radius.md says that the built copies under the four CLI trees must be regenerated with node scripts/build-components.ts and committed in the same change.",
+        "blast-radius.md states the reversibility of the change as trivial, awkward or one-way, with a reason."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "blast-radius.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "blast-radius.md",
+          "pattern": "build-components"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The decision under consideration is moving the order event schema from v1 to v2, described in event-schema.md. Write the Architecture Decision Record to adr.md. Do not run gh, glab, tea or git push, and do not create, edit or comment on any pull request, issue or other forge artifact: work only from the files in the current directory and write only the files asked for.",
+      "expected_output": "adr.md has the sections Context, Decision, Status and Consequences, each short, and treats the change as one-way.",
+      "files": [
+        "evals/files/event-schema.md"
+      ],
+      "expectations": [
+        "adr.md has the four sections Context, Decision, Status and Consequences, in that order.",
+        "Each section of adr.md is at most ten lines.",
+        "adr.md recognises that the change is one-way once old events are purged and says what the consequence is for consumers.",
+        "adr.md records at least one rejected alternative."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "adr.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "adr.md",
+          "pattern": "(?:^|\\n)#+ *Context"
+        },
+        {
+          "type": "file_contains",
+          "path": "adr.md",
+          "pattern": "(?:^|\\n)#+ *Decision"
+        },
+        {
+          "type": "file_contains",
+          "path": "adr.md",
+          "pattern": "(?:^|\\n)#+ *Status"
+        },
+        {
+          "type": "file_contains",
+          "path": "adr.md",
+          "pattern": "(?:^|\\n)#+ *Consequences"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Do a design review of the plan that brings the file under its budget: the budget problem is in budget.md and the measurements already taken are in measurements.txt. Write the design note, with the savings you can claim and the margin you land on, to plan.md. Do not run gh, glab, tea or git push, and do not create, edit or comment on any pull request, issue or other forge artifact: work only from the files in the current directory and write only the files asked for.",
+      "expected_output": "plan.md uses the measured 600 and 900 byte figures, does not present the unmeasured section C figure as a committed saving (it measures it or labels it an estimate), and states an explicit margin against an explicit threshold.",
+      "files": [
+        "evals/files/budget.md",
+        "evals/files/measurements.txt"
+      ],
+      "expectations": [
+        "plan.md cites the measured figures 600 and 900 bytes for sections A and B.",
+        "plan.md does not count the roughly 700 bytes of section C as a committed saving: it labels it an estimate, or says it must be measured first.",
+        "plan.md computes the projected size and the margin to the 51,200-byte budget and states the threshold it compares the margin against.",
+        "plan.md says what to do when the margin is thinner than the threshold."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "plan.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "plan.md",
+          "pattern": "[Mm]argin"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "This is a design review of the plan in plan-draft.md against the spec summary in spec-summary.md, as the plan reviewer of seat plan/77. Write the review verdict you would post to verdict.md. Do not run gh, glab, tea or git push, and do not create, edit or comment on any pull request, issue or other forge artifact: work only from the files in the current directory and write only the files asked for.",
+      "expected_output": "verdict.md has a Verdict heading, the seat line right after it, findings with v1-F identifiers and one class line each, and does not accept a plan that lacks alternatives and a rollback strategy.",
+      "files": [
+        "evals/files/plan-draft.md",
+        "evals/files/spec-summary.md"
+      ],
+      "expectations": [
+        "verdict.md has a level-three Verdict heading and the line seat: plan/77 immediately after it.",
+        "Every finding in verdict.md has an identifier of the form v1-F<number> and exactly one class line with the value tech, arch or spec.",
+        "verdict.md does not accept the plan: it reports that the plan lacks a rollback strategy and alternatives considered, and that the public configuration key sync.interval is missing from its blast radius.",
+        "Every claim in verdict.md traces to plan-draft.md or spec-summary.md."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "verdict.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "(?:^|\\n)### Verdict:[^\\n]*\\n+seat: plan/77"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "\\bv1-F1\\b"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "(?:^|\\n)[ \\t]*(?:[-*][ \\t]+)?[Cc]lass:[ \\t]*(?:tech|arch|spec)\\b"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Follow the brief in brief-cache.md. The result of searching the repository is in repo-listing.txt. Write the ADR to adr.md. Do not run gh, glab, tea or git push, and do not create, edit or comment on any pull request, issue or other forge artifact: work only from the files in the current directory and write only the files asked for.",
+      "expected_output": "adr.md does not present CACHE_AUTO_TUNE or cachectl rebalance as facts of the system: it omits them or marks them as assumptions to verify.",
+      "files": [
+        "evals/files/brief-cache.md",
+        "evals/files/repo-listing.txt"
+      ],
+      "expectations": [
+        "adr.md does not state as a fact that the inventory service reads CACHE_AUTO_TUNE or that operators run cachectl rebalance.",
+        "If adr.md mentions CACHE_AUTO_TUNE or cachectl, it marks them as an assumption to verify, citing that repo-listing.txt found no trace of them.",
+        "adr.md has the sections Context, Decision, Status and Consequences and addresses the requirement that the cache survives a restart."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "adr.md"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "We have to choose between a message queue and direct HTTP calls between two services. Give me the options and their trade-offs.",
+      "should_trigger": true
+    },
+    {
+      "query": "Write an Architecture Decision Record for moving our configuration format from YAML to TOML.",
+      "should_trigger": true
+    },
+    {
+      "query": "What would be the blast radius of renaming this public CLI flag?",
+      "should_trigger": true
+    },
+    {
+      "query": "Review the plan on this issue and tell me whether it is sound, with findings.",
+      "should_trigger": true
+    },
+    {
+      "query": "Implement the retry helper described in the ticket.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write the spec file for the new retry feature with its requirements and scenarios.",
+      "should_trigger": false
+    },
+    {
+      "query": "Review pull request 412 cold and tell me whether to approve it or request changes.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write the README section that explains how to install the tool.",
+      "should_trigger": false
+    }
+  ]
+}

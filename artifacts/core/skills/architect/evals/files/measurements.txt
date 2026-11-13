@@ -1,0 +1,3 @@
+section A (lines 10-40): 600 bytes (wc -c on the exact range)
+section B (lines 60-95): 900 bytes (wc -c on the exact range)
+section C (lines 120-160): not measured; roughly 700 bytes judging by its 41 lines
