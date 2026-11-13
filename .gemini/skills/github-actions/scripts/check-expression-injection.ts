@@ -214,6 +214,8 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
         "warning",
       );
     const lines = scan(text);
+    // A file with no top-level jobs: key (a composite action.yml) is a clean pass.
+    if (!lines.some((l) => l.ind === 0 && kv(l.t)?.key === "jobs")) return found;
     lines.forEach((l, i) => {
       if (ANCHOR.test(l.t) || MERGE.test(l.t)) unparsed(l.n, "a YAML anchor, alias or merge key");
       else if (/^-\s+\{/.test(l.t)) unparsed(l.n, "a step written as a flow mapping");

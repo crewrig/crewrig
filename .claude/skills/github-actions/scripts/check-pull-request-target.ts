@@ -176,7 +176,7 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
   const ROUTE =
     "check out the base ref instead, or split the untrusted build into a pull_request workflow and hand its result to a workflow_run workflow";
   const HEAD_REF =
-    /github\.event\.pull_request\.head\.(?:sha|ref)\b|github\.head_ref\b|refs\/pull\/[^/\s'"}]+\/(?:merge|head)\b/;
+    /github\.event\.pull_request\.head\.(?:sha|ref)\b|github\.head_ref\b|refs\/pull\/.+?\/(?:merge|head)\b/;
   const HEAD_REPO = /github\.event\.pull_request\.head\.repo\.full_name\b/;
   const unbalanced = (v: string): boolean =>
     /^[[{]/.test(v) && !/^(?:\[[^[\]{}]*\]|\{[^[\]{}]*\})$/.test(v);
