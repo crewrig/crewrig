@@ -14,7 +14,10 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { judgeEvidencePreflight, llmJudgeEvidence } from "../../../tests/e2e/lib/llm_judge.ts";
+import {
+  judgeEvidencePreflight,
+  llmJudgeEvidence,
+} from "../../../tests/e2e/lib/llm_judge.ts";
 import type { JudgeDeps } from "../../../tests/e2e/lib/llm_judge.ts";
 import { effectiveJson, judgeEnv } from "./credentials.ts";
 import type { Credential, JudgeSection } from "./credentials.ts";
@@ -55,8 +58,32 @@ export function buildJudgeMessage(
   );
 }
 
-const LINE_RE =
-  /^\s*(?:[-*+>]\s*)*[*_`]*(?:#|\[)?(\d+)[\]\.):]?[*_`]*(?![\w])(?:.*?)\bVERDICT[*_`]*\s*[=:]\s*[*_`]*([A-Za-z]+)/i;
+// The index prefix of an entry line; what follows is searched for the structured fields.
+const INDEX_RE =
+  /^\s*(?:[-*+>]\s*)*[*_`]*(?:#|\[)?(\d+)[\]\.):]?[*_`]*(?![\w])/;
+const EVIDENCE_AT = /[*_`]*EVIDENCE[*_`]*\s*[=:]/i;
+const VERDICT_FIELD = /\bVERDICT[*_`]*\s*[=:][\s*_`]*([A-Za-z]+)/i;
+const VERDICT_WORD = /^(?:PASS|FAIL|UNCERTAIN)$/i;
+
+/**
+ * The verdict word of the structured `VERDICT=<word>` field of an entry line, never a `Verdict:`
+ * quoted inside the EVIDENCE string (#1914): the field is looked for before `EVIDENCE=`, then after
+ * the closing quote of a quoted evidence literal. Only PASS, FAIL and UNCERTAIN are verdict words.
+ */
+function verdictField(rest: string): string | undefined {
+  const at = rest.search(EVIDENCE_AT);
+  const regions = [at < 0 ? rest : rest.slice(0, at)];
+  if (at >= 0) {
+    const tail = rest.slice(at).replace(EVIDENCE_AT, "");
+    const lit = /^\s*"(?:[^"\\]|\\.)*"/.exec(tail);
+    if (lit !== null) regions.push(tail.slice(lit[0].length));
+  }
+  for (const r of regions) {
+    const w = VERDICT_FIELD.exec(r)?.[1];
+    if (w !== undefined && VERDICT_WORD.test(w)) return w;
+  }
+  return undefined;
+}
 
 // Bare form: `<index> <word>` with no `VERDICT=`; the word is a verdict only when it is
 // PASS/FAIL/UNCERTAIN, or any word that is followed by `EVIDENCE` (so prose is never an entry).
@@ -66,25 +93,36 @@ const BARE_RE =
 /**
  * Parse the judge's answer into one entry per expectation (undefined for a missing index). A line
  * is an entry when it starts with an index (`1`, `1.`, `1)`, `1:`, `#1`, `[1]`, optionally after a
- * list marker or inside bold/backticks); `VERDICT=` or `VERDICT:` (any case) and `EVIDENCE=` are
- * found anywhere on it; a bare `<index> PASS|FAIL|UNCERTAIN|<word> EVIDENCE` is accepted too. The first line wins on a repeated index; an index outside 1..n is ignored.
+ * list marker or inside bold/backticks); `VERDICT=` or `VERDICT:` (any case) is read from the structured field, never from inside the
+ * EVIDENCE string (#1914), and `EVIDENCE=` is found anywhere on it; a bare `<index> PASS|FAIL|UNCERTAIN|<word> EVIDENCE` is accepted too. The first line wins on a repeated index; an index outside 1..n is ignored.
  * Fenced code blocks need no special handling: the fence lines carry no index.
  */
-export function parseJudgeAnswer(text: string, n: number): (JudgeAnswer | undefined)[] {
-  const out: (JudgeAnswer | undefined)[] = Array.from({ length: n }, () => undefined);
+export function parseJudgeAnswer(
+  text: string,
+  n: number,
+): (JudgeAnswer | undefined)[] {
+  const out: (JudgeAnswer | undefined)[] = Array.from(
+    { length: n },
+    () => undefined,
+  );
   for (const line of text.split(/\r?\n/)) {
-    let m = LINE_RE.exec(line);
-    if (m === null) {
+    const idx = INDEX_RE.exec(line);
+    let word =
+      idx === null ? undefined : verdictField(line.slice(idx[0].length));
+    let num = idx?.[1];
+    if (word === undefined) {
       const b = BARE_RE.exec(line);
-      if (b !== null && (b[3] !== undefined || /^(?:PASS|FAIL|UNCERTAIN)$/i.test(b[2] ?? "")))
-        m = b;
+      if (b !== null && (b[3] !== undefined || VERDICT_WORD.test(b[2] ?? ""))) {
+        word = b[2];
+        num = b[1];
+      }
     }
-    if (m === null) continue;
-    const i = Number(m[1]) - 1;
+    if (word === undefined || num === undefined) continue;
+    const i = Number(num) - 1;
     if (i < 0 || i >= n || out[i] !== undefined) continue;
-    const at = line.search(/[*_`]*EVIDENCE[*_`]*\s*[=:]/i);
+    const at = line.search(EVIDENCE_AT);
     out[i] = {
-      verdict: (m[2] ?? "").toUpperCase(),
+      verdict: word.toUpperCase(),
       evidence: at < 0 ? undefined : parseEvidence(line.slice(at)),
     };
   }
@@ -102,14 +140,22 @@ export interface JudgeSetup {
   readonly baseEnv: Readonly<Record<string, string | undefined>>;
   readonly mock: boolean;
   /** Mock mode: the raw judge answer for the eval's expectations (default: PASS quoting the transcript). */
-  readonly mockAnswer?: (expectations: readonly string[], material: JudgeMaterial) => string;
+  readonly mockAnswer?: (
+    expectations: readonly string[],
+    material: JudgeMaterial,
+  ) => string;
   readonly fetchImpl?: typeof fetch;
   /** Retry back-off of the judge transport (default: real timers). */
   readonly sleep?: (ms: number) => Promise<void>;
 }
 
-export const defaultMockAnswer = (e: readonly string[], m: JudgeMaterial): string => {
-  const quote = JSON.stringify(m.transcript.replace(/\s+/g, " ").trim().slice(0, 40));
+export const defaultMockAnswer = (
+  e: readonly string[],
+  m: JudgeMaterial,
+): string => {
+  const quote = JSON.stringify(
+    m.transcript.replace(/\s+/g, " ").trim().slice(0, 40),
+  );
   return e.map((_, i) => `${i + 1} VERDICT=PASS EVIDENCE=${quote}`).join("\n");
 };
 
@@ -118,7 +164,12 @@ export interface Judge {
   callsUsed(): number;
   preflight(): Promise<
     | { ok: true }
-    | { ok: false; reason: "auth-missing" | "hard-failure"; backend: string; detail: string }
+    | {
+        ok: false;
+        reason: "auth-missing" | "hard-failure";
+        backend: string;
+        detail: string;
+      }
   >;
 }
 
@@ -132,7 +183,11 @@ export function createJudge(setup: JudgeSetup): Judge {
   fs.writeFileSync(
     path.join(setup.dir, "effective.json"),
     effectiveJson(
-      { ...setup.judge, max_tokens: JUDGE_MAX_TOKENS, effort: setup.effort ?? EFFORT },
+      {
+        ...setup.judge,
+        max_tokens: JUDGE_MAX_TOKENS,
+        effort: setup.effort ?? EFFORT,
+      },
       setup.maxCalls,
     ),
   );
@@ -168,19 +223,30 @@ export function createJudge(setup: JudgeSetup): Judge {
       );
       switch (r.kind) {
         case "auth-missing":
-          throw new JudgeFailure("auth-missing", `judge backend ${r.backend} has no credentials`);
+          throw new JudgeFailure(
+            "auth-missing",
+            `judge backend ${r.backend} has no credentials`,
+          );
         case "hard-failure":
           throw new JudgeFailure(
-            r.stderr.includes("does not support") ? "unsupported-backend" : "hard-failure",
+            r.stderr.includes("does not support")
+              ? "unsupported-backend"
+              : "hard-failure",
             `judge backend ${r.backend} failed: ${r.stderr.trim()}`,
           );
         case "cap-exceeded":
-          throw new JudgeFailure("cap", `judge max_calls ${r.maxCalls} reached (count ${r.count})`);
+          throw new JudgeFailure(
+            "cap",
+            `judge max_calls ${r.maxCalls} reached (count ${r.count})`,
+          );
         case "answer": {
           if (opts?.rawFile !== undefined) writeRaw(opts.rawFile, r.text);
           const entries = parseJudgeAnswer(r.text, expectations.length);
           if (entries.every((e) => e === undefined))
-            throw new JudgeFailure("no-verdict", "the judge returned no parseable verdict line");
+            throw new JudgeFailure(
+              "no-verdict",
+              "the judge returned no parseable verdict line",
+            );
           return entries;
         }
       }
@@ -189,13 +255,19 @@ export function createJudge(setup: JudgeSetup): Judge {
     fn,
     callsUsed: () => {
       try {
-        return Number(fs.readFileSync(path.join(setup.dir, "judge.count"), "utf8").trim()) || 0;
+        return (
+          Number(
+            fs.readFileSync(path.join(setup.dir, "judge.count"), "utf8").trim(),
+          ) || 0
+        );
       } catch {
         return 0;
       }
     },
     async preflight() {
-      const r = await judgeEvidencePreflight(depsFor(setup.mock ? "" : undefined));
+      const r = await judgeEvidencePreflight(
+        depsFor(setup.mock ? "" : undefined),
+      );
       if (r.kind === "ok") return { ok: true };
       return {
         ok: false,
