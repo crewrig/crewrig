@@ -8,6 +8,7 @@ task: Available tasks for this project:
 * build-components-gemini:                   Build community components for Gemini CLI only (Node.js 24)
 * build-copilot-plugin:                      Build a Copilot CLI plugin from an extension (task build-copilot-plugin EXT=hello-world)
 * check-agent-profiles:                      Check agent capability-profile conformance against spec 0195 (local mirror of the CI guard, spec 0198)
+* check-agent-script-citations:              Fail when an agent body cites a scripts/ path outside a crewrig-repo-only fence (issue #1863, spec 0289)
 * check-claude-agent-layout:                 Check the compiled .claude/agents/ tree holds only flat <name>.md files (local mirror of the CI guard, spec 0201)
 * check-comment-size:                        Fail when a plan or verdict comment body exceeds 12288 bytes (spec 0275 R-E2). Author-side: task check-comment-size -- <file> (or pipe the body on stdin)
 * check-components:                          Check that generated community components match source (drift detection) and run the assembly verification test (Node.js 24)

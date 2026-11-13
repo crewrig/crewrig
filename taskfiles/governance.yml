@@ -20,6 +20,10 @@ tasks:
     desc: "Fail when a skill or agent description exceeds 1024 characters (spec 0293)"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-description-length.ts
 
+  check-agent-script-citations:
+    desc: "Fail when an agent body cites a scripts/ path outside a crewrig-repo-only fence (issue #1863, spec 0289)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-agent-script-citations.ts
+
   check-skill-quality:
     desc: "Lint skill sources against the authoring standard; a skill that ships evals is protected (spec 0293). Author-side: task check-skill-quality -- <skill> [--strict] [--json]"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-skill-quality.ts {{.CLI_ARGS}}

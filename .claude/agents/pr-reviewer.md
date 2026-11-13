@@ -6,7 +6,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "2.0.0"
+    version: "2.0.1"
 ---
 
 
@@ -23,7 +23,13 @@ The brief is references only:
 - `examined`: the revision the seat last examined, if any;
 - `prior-verdicts`, `ledger` (optional) and `disposition`: where the seat's earlier verdicts, ledger comment and finding dispositions live.
 
-A summary, a diff, an assessment or the author's reasoning in the brief would end the independence the review exists for, so the agent retrieves every artifact itself through the forge CLI and discards a pass whose brief carries authoring-session content (`references/seat-obligations.md` in the skill says how). The orchestrator checks a brief before the spawn with `scripts/check-seat-brief.ts` (`--template review` prints a skeleton) and may add the optional keys `time-budget`, `home`, `diary-agent-name` and `pass-scope`, one reference per value, no prose.
+A summary, a diff, an assessment or the author's reasoning in the brief would end the independence the review exists for, so the agent retrieves every artifact itself through the forge CLI and discards a pass whose brief carries authoring-session content (`references/seat-obligations.md` in the skill says how). The orchestrator may add the optional keys `time-budget`, `home`, `diary-agent-name` and `pass-scope`, one reference per value, no prose.
+
+The step below applies to the CrewRig repository only; in any other repository, check the brief by hand against the list above (references only, no summary, diff or assessment):
+
+<!-- crewrig-repo-only:start -->
+Before the spawn, the orchestrator checks the brief with `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-seat-brief.ts` (`--template review` prints a skeleton).
+<!-- crewrig-repo-only:end -->
 
 ```text
 Agent(subagent_type="pr-reviewer", prompt="""seat: review/<ticket>

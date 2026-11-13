@@ -8,6 +8,7 @@
   "build-components-gemini": "taskfiles/components.yml",
   "build-copilot-plugin": "taskfiles/extensions.yml",
   "check-agent-profiles": "taskfiles/governance.yml",
+  "check-agent-script-citations": "taskfiles/governance.yml",
   "check-claude-agent-layout": "taskfiles/governance.yml",
   "check-comment-size": "taskfiles/governance.yml",
   "check-components": "taskfiles/components.yml",

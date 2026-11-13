@@ -3,7 +3,7 @@ name: pr-reviewer
 description: "Delegate to review a pull request or a spec pull request cold, with no authoring context, and get a posted verdict (Approve, Request Changes or Comment) with a seat line and class-tagged findings. Use when a PR needs an independent review, a REVIEW pass, a second opinion before merge or a re-review of a change after fixes; spawn it with a references-only brief (seat, artifact, examined revision, prior verdicts, disposition). Trigger terms - review PR, cold review, audit pull request, verdict, REVIEW pass. Not for fixing the change, writing a PR body or composing a commit message."
 model: gemini-3.1-pro-preview
 ---
-<!-- crewrig-provenance: version="2.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="2.0.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # PR Reviewer Agent
 
@@ -18,7 +18,13 @@ The brief is references only:
 - `examined`: the revision the seat last examined, if any;
 - `prior-verdicts`, `ledger` (optional) and `disposition`: where the seat's earlier verdicts, ledger comment and finding dispositions live.
 
-A summary, a diff, an assessment or the author's reasoning in the brief would end the independence the review exists for, so the agent retrieves every artifact itself through the forge CLI and discards a pass whose brief carries authoring-session content (`references/seat-obligations.md` in the skill says how). The orchestrator checks a brief before the spawn with `scripts/check-seat-brief.ts` (`--template review` prints a skeleton) and may add the optional keys `time-budget`, `home`, `diary-agent-name` and `pass-scope`, one reference per value, no prose.
+A summary, a diff, an assessment or the author's reasoning in the brief would end the independence the review exists for, so the agent retrieves every artifact itself through the forge CLI and discards a pass whose brief carries authoring-session content (`references/seat-obligations.md` in the skill says how). The orchestrator may add the optional keys `time-budget`, `home`, `diary-agent-name` and `pass-scope`, one reference per value, no prose.
+
+The step below applies to the CrewRig repository only; in any other repository, check the brief by hand against the list above (references only, no summary, diff or assessment):
+
+<!-- crewrig-repo-only:start -->
+Before the spawn, the orchestrator checks the brief with `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-seat-brief.ts` (`--template review` prints a skeleton).
+<!-- crewrig-repo-only:end -->
 
 ```text
 Agent(subagent_type="pr-reviewer", prompt="""seat: review/<ticket>

@@ -9,7 +9,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.3.2"
+    version: "1.3.3"
 ---
 
 # CI Configurator Agent
@@ -108,11 +108,14 @@ path documented in the rest of this agent.
 A GitLab pipeline is **derived**, not hand-authored. When the repository
 already carries the project's platform-neutral capability reference
 (`ci/ci-capabilities.yml`, described by `docs/ci-reference-format.md`),
-produce the GitLab pipeline by **composing the generator**:
+produce the GitLab pipeline by **composing the generator** (a CrewRig-repository-only script):
 
+<!-- crewrig-repo-only:start -->
 ```bash
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts
 ```
+<!-- crewrig-repo-only:end -->
+
 
 This reads the existing reference and emits `.gitlab-ci.yml` (one job
 per portable capability; `requires:` → `image`/`before_script`/
@@ -318,8 +321,8 @@ that ship with the relevant skill on your output.
 For a **GitHub Actions** target (`github-actions` skill):
 
 ```bash
-node scripts/lint-workflow.ts        .github/workflows/<name>.yml
-node scripts/check-pinned-actions.ts .github/workflows/<name>.yml
+node <github-actions-skill-dir>/scripts/lint-workflow.ts        .github/workflows/<name>.yml
+node <github-actions-skill-dir>/scripts/check-pinned-actions.ts .github/workflows/<name>.yml
 ```
 
 For a **GitLab CI/CD** target (`gitlab-ci` skill — both are offline
@@ -327,16 +330,19 @@ text scans; there is no offline structural linter or pipeline
 simulator for GitLab, by design):
 
 ```bash
-node scripts/check-pinned-images.ts    .gitlab-ci.yml
-node scripts/check-secrets-exposure.ts .gitlab-ci.yml
+node <gitlab-ci-skill-dir>/scripts/check-pinned-images.ts    .gitlab-ci.yml
+node <gitlab-ci-skill-dir>/scripts/check-secrets-exposure.ts .gitlab-ci.yml
 ```
 
 For a GitLab target you also confirm the pipeline is in sync with the
-reference — the derivation's own drift gate:
+reference — the derivation's own drift gate (CrewRig repository only):
 
+<!-- crewrig-repo-only:start -->
 ```bash
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts --check
 ```
+<!-- crewrig-repo-only:end -->
+
 
 If any script reports violations, **fix the cause and rerun** — for the
 GitLab path that means correcting the reference or the security overlay
@@ -359,7 +365,7 @@ resolution*). The rest of the message has three parts, in this order:
    `needs:` graph, the concurrency / `resource_group` strategy). The
    comments are part of the deliverable; they survive into the
    committed file. For a GitLab target this block is the derived
-   pipeline — present it as produced by `scripts/build-ci.ts`, not
+   pipeline — present it as produced by the generator, not
    hand-edited.
 
 2. **Decision table** — a Markdown table explaining each non-obvious
