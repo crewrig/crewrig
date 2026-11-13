@@ -13,6 +13,7 @@
 // Reuses git-run.ts (runGit). The text rules live in md-links-extract.ts.
 
 import { existsSync, readFileSync, statSync } from "node:fs";
+import { sharedTopic } from "../skill-citations/grammar.ts";
 import { runGit } from "./git-run.ts";
 import {
   decodeIgnore,
@@ -54,6 +55,23 @@ function trackedMarkdown(cwd: string): string[] {
     .filter((p) => p !== "");
 }
 
+const SKILL_REFERENCE =
+  /^artifacts\/[^/]+\/skills\/[^/]+\/(references\/shared-[^/]+\.md)$/;
+
+/**
+ * The source a skill's `references/shared-<topic>.md` citation stands for: the build copies
+ * `artifacts/core/shared/references/<topic>.md` to that path in every built skill, so inside
+ * a skill source the citation resolves there (as the build and check-skill-quality do).
+ * Returns undefined when `resolved` is not such a citation.
+ */
+function sharedSource(resolved: string): string | undefined {
+  const m = SKILL_REFERENCE.exec(resolved);
+  const topic = m === null ? undefined : sharedTopic(m[1] as string);
+  return topic === undefined
+    ? undefined
+    : `artifacts/core/shared/references/${topic}.md`;
+}
+
 function scanFile(rel: string, shown: string, lines: string[]): number {
   const fileDir = dirnamePy(rel);
   let broken = 0;
@@ -67,9 +85,11 @@ function scanFile(rel: string, shown: string, lines: string[]): number {
     for (const raw of linkTargets(line)) {
       const resolved = resolveTarget(raw, fileDir);
       if (resolved === null || existsSync(resolved)) continue;
+      const source = sharedSource(resolved);
+      if (source !== undefined && existsSync(source)) continue;
       const target = stripAngles(raw);
       lines.push(
-        `FAIL: ${shown}:${idx + 1}: '${target}' -> resolved to '${resolved}' (does not exist)`,
+        `FAIL: ${shown}:${idx + 1}: '${target}' -> resolved to '${source ?? resolved}' (does not exist)`,
       );
       broken++;
     }
@@ -77,7 +97,10 @@ function scanFile(rel: string, shown: string, lines: string[]): number {
   return broken;
 }
 
-export function runMarkdownLinks(args: readonly string[], cwd: string): LinksOutcome {
+export function runMarkdownLinks(
+  args: readonly string[],
+  cwd: string,
+): LinksOutcome {
   const top = toplevel(cwd);
   if (top === undefined)
     return { code: 1, lines: [], error: `Error: ${cwd}: not a git repository` };
@@ -87,7 +110,8 @@ export function runMarkdownLinks(args: readonly string[], cwd: string): LinksOut
   let errors = 0;
   for (const rel of files) {
     if (!isFile(rel)) continue;
-    const shown = process.platform === "win32" ? rel.replaceAll("\\", "/") : rel;
+    const shown =
+      process.platform === "win32" ? rel.replaceAll("\\", "/") : rel;
     errors += scanFile(rel, shown, lines);
   }
   if (errors > 0) {
