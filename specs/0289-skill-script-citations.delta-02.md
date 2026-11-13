@@ -18,6 +18,8 @@ Nothing is added.
 
 ## MODIFIED
 
+<!-- markdownlint-disable MD029 -->
+
 15. **R15 (enforcement in CI), original (delta 01):** "The check of R12 SHALL be part of the CI governance group, run by the existing source-lint job through the repository's task and path-filter conventions, so that a change to an agent body, to the check or to its fixtures runs it."
 
    **Amended:** the check of R12 SHALL be part of the CI governance group and run by its own job, `check-agent-script-citations`, declared in the CI capability reference with the repository's task and path-filter conventions, so that a change to an agent body, to the check, to its fixtures or to the bundled skill linter it is held in parity with runs it. The job SHALL NOT share a job with another check, so that a failure names the check at fault.
