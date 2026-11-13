@@ -80,12 +80,19 @@ Exit `0`: every check ran clean or was skipped. Exit `1`: a finding; fix the cau
 rerun. Exit `2` or `3`: the call or a check is broken; do not present the pipeline. Pass
 the skipped checks on to the user as not verified (usually `actionlint` is missing).
 
-For GitLab, run both text scans (there is no offline structural linter for GitLab):
+For GitLab, run the offline text scans, then the server-side lint:
 
 ```bash
 node <gitlab-ci-skill-dir>/scripts/check-pinned-images.ts    .gitlab-ci.yml
 node <gitlab-ci-skill-dir>/scripts/check-secrets-exposure.ts .gitlab-ci.yml
+node <gitlab-ci-skill-dir>/scripts/check-rules.ts            .gitlab-ci.yml
+node <gitlab-ci-skill-dir>/scripts/lint-gitlab-ci.ts         .gitlab-ci.yml
 ```
+
+`lint-gitlab-ci.ts` is a read-only query to GitLab through `glab` (add `--repo
+<group/project>` outside a GitLab checkout). Exit `3` means the pipeline was not
+validated server-side (no `glab`, no login, no network, a timeout): say so to the
+user and never call the pipeline valid on that basis.
 
 and, in the CrewRig repository, confirm the derivation is in sync:
 

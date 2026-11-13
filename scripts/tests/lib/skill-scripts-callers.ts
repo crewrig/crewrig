@@ -80,6 +80,8 @@ export const CALLERS: readonly Caller[] = [
       "node <github-actions-skill-dir>/scripts/resolve-engine.ts",
       "node <gitlab-ci-skill-dir>/scripts/check-pinned-images.ts",
       "node <gitlab-ci-skill-dir>/scripts/check-secrets-exposure.ts",
+      "node <gitlab-ci-skill-dir>/scripts/check-rules.ts",
+      "node <gitlab-ci-skill-dir>/scripts/lint-gitlab-ci.ts",
     ],
   },
   {
