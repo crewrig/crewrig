@@ -41,9 +41,10 @@ The runner performs two operations:
    in order; on first prefix match, partial content is restored and
    `cache-hit` stays `'false'`.
 2. **Post-job save.** If the pre-job lookup did not hit the exact
-   `key`, the cache is uploaded after the job succeeds. Uploads happen
-   in a `post:` step that runs even if a later step fails — as long as
-   the cache step itself succeeded.
+   `key`, the cache is uploaded in a `post:` step, and only when the
+   job succeeded: a failed job saves nothing. To save a cache on
+   failure too, split the step into `actions/cache/restore` and
+   `actions/cache/save` with `if: always()` on the save.
 
 The save is conditional on **exact-key miss**. If you want to refresh
 a cache whose content is sensitive to inputs not covered by the key
@@ -100,9 +101,10 @@ rules:
 - A job on branch `feature/x` can restore caches created on
   `feature/x` **and** on the **default branch** (typically `main`).
 - A job on `main` restores only `main` caches.
-- A job triggered by a `pull_request` from a fork uses the
-  **base** repository's cache scope, but **cannot write** to it —
-  prevents cache poisoning by an outside contributor.
+- A job triggered by `pull_request` restores from the base branch and
+  the default branch and saves only into its own merge-ref scope, which
+  no other ref ever restores from. Restore never reads a child or a
+  sibling ref.
 
 The base-branch fallback means caches built on `main` are the
 canonical source for feature branches. Build a "warm-up" workflow on
@@ -132,17 +134,21 @@ include `runner.arch`.
 
 ## Cache poisoning
 
-A malicious PR cannot write to a cache (forks have read-only cache
-access), but a contributor with push access to a feature branch can
-write a cache that the default branch later restores (via the
-base-branch fallback).
+Restore is one-way (see *Scope and visibility*): a pull request or a
+feature branch cannot plant an entry that the default branch restores.
+The real vector is untrusted code running in an event scoped to the
+default branch (`pull_request_target`, `workflow_run`,
+`issue_comment`). A job there saves under the default branch's scope,
+and every later run of the default branch restores that entry.
 
 Mitigations:
 
-- Keep the default branch isolated: use a `restore-keys:` set that
-  only matches keys built on `main`. Easiest pattern: scope the key
-  with `${{ github.ref_name == github.event.repository.default_branch && 'main' || 'fork' }}`
-  so fork content never falls within `main`'s prefix chain.
+- Do not run untrusted code (a checkout of the pull request head, an
+  install from its manifest) in those events, and do not save a cache
+  from them.
+- Where a privileged workflow must cache, give it its own key prefix
+  (for example `priv-${{ runner.os }}-...`) that the unprivileged
+  workflows never restore from.
 - Treat cached binaries as untrusted. Re-verify checksums after
   restore for security-sensitive tools.
 

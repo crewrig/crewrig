@@ -279,7 +279,7 @@ Exit codes: 0 every check ran clean or was skipped, 1 an error finding from a ch
   }
   const count = (s: string): number => data.filter((d) => d.status === s).length;
   lines.push(
-    `${files.length} file(s), ${count("ran")} check(s) ran, ${count("skipped")} skipped, ${count("failed")} failed`,
+    `${files.length} file(s), ${count("ran")} check(s) ran (${data.filter((d) => d.result === "findings").length} with error findings), ${count("skipped")} skipped, ${count("failed")} could not run`,
   );
   emit(hasFailed ? 3 : hasErrors ? 1 : 0, { target, files, checks: data }, report, lines);
 })();

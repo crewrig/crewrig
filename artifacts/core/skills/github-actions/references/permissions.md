@@ -121,7 +121,9 @@ Two scopes deserve special mention:
 
 ## Least-privilege recipes
 
-The minimum `permissions:` for each common workflow shape.
+The minimum `permissions:` for each common workflow shape. Keep the
+workflow-level block at `contents: read` and put any `write` scope below on
+the job that needs it (`jobs.<id>.permissions`), so no other job holds it.
 
 ### Read-only CI
 
@@ -158,7 +160,11 @@ permissions:
 
 ```yaml
 permissions:
-  contents: write
+  contents: read
+jobs:
+  release:
+    permissions:
+      contents: write
 ```
 
 `softprops/action-gh-release` and friends need `contents: write` to

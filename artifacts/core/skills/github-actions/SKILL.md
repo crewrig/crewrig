@@ -53,7 +53,8 @@ at your file: report it as skipped, never as passed. Exit `2` or `3` means the c
 or the environment is wrong, not the workflow. A green `act` run is necessary, not
 sufficient: it does not reproduce the hosted runner image.
 
-The three new checks do not read composite actions: a file with no `jobs:` key passes
+The three new checks (`check-permissions.ts`, `check-pull-request-target.ts`,
+`check-expression-injection.ts`) do not read composite actions: a file with no `jobs:` key passes
 with no finding and the summary says it was not checked, so review the `run:` steps of
 an `action.yml` by hand, above all any `${{ inputs.* }}` in them. They also read a small
 subset of YAML. A construct they cannot read
@@ -71,9 +72,11 @@ A script catches the first four; the rest need your judgement.
 3. Event data pasted into a shell step: bind it under `env:` (`check-expression-injection.ts`).
 4. A `pull_request_target` workflow that checks out the pull request head: a label or an
    environment gate does not make the head's code trusted (`check-pull-request-target.ts`).
-5. Cache poisoning across branches: a pull request can write an entry that the main
-   branch later restores. Restore only from the same ref family, or put a trust
-   discriminator in the key.
+5. Cache poisoning through a privileged event: a job triggered by `pull_request_target`,
+   `workflow_run` or `issue_comment` saves into the default branch's cache scope, so
+   untrusted code it runs can plant an entry that the main branch restores. A plain
+   pull request cannot: restore never reads a child or sibling ref. Do not run pull
+   request code in those events, and do not save a cache from them.
 6. `hashFiles()` over a glob that also matches vendored copies yields a key that
    changes on every run. Name the real lockfile path.
 7. `continue-on-error: true` on a flaky step ends up hiding a real regression. Retry
@@ -96,8 +99,8 @@ These are decisions; the detail and examples are in `references/generation-rules
   `npm install`.
 - Bind a secret to the step that needs it, at most the job, because workflow-level
   `env:` reaches every job and action.
-- Set `concurrency:` and `timeout-minutes:` on every job, because the default timeout is six
-  hours and superseded runs keep spending.
+- Set `timeout-minutes:` on every job and `concurrency:` on branch workflows, because the
+  default timeout is six hours and superseded runs keep spending.
 - Send production deployments through an environment with required reviewers, because
   an approval protects only the secrets stored in that environment.
 - Make the checks that enforce these rules required on the protected branch, because

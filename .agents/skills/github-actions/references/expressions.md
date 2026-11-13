@@ -236,9 +236,8 @@ the process of being torn down on cancellation.
 | `true` (boolean) | yes |
 | Non-empty string | yes |
 | Non-zero number | yes |
-| Non-empty array | yes |
-| Object with at least one key | yes |
-| `false` / `''` / `0` / `null` / `[]` / `{}` | no |
+| Any array or object, even an empty one | yes |
+| `false` / `0` / `-0` / `''` / `null` | no |
 
 The empty-string trap: `if: env.FOO` evaluates `''` to `false`. If
 you want "the variable exists at all", you have to check explicitly
@@ -282,6 +281,8 @@ via `include:`.)
 ### Dynamic matrix from a previous job
 
 ```yaml
+permissions:
+  contents: read
 jobs:
   plan:
     runs-on: ubuntu-24.04
@@ -297,7 +298,9 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.plan.outputs.targets) }}
     steps:
-      - run: ./deploy.sh ${{ matrix.target }}
+      - env:
+          TARGET: ${{ matrix.target }}
+        run: ./deploy.sh "$TARGET"
 ```
 
 ## Pitfalls

@@ -386,7 +386,9 @@ to job outputs.
 - id: bump
   run: |
     echo "version=1.2.3" >> "$GITHUB_OUTPUT"
-- run: echo "${{ steps.bump.outputs.version }}"
+- env:
+    VERSION: ${{ steps.bump.outputs.version }}
+  run: echo "$VERSION"
 ```
 
 `$GITHUB_ENV` writes an environment variable visible to all

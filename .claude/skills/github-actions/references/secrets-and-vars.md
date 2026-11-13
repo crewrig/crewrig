@@ -71,6 +71,8 @@ repository access policy: all, private only, or a selected list.
 The job declares `environment:`:
 
 ```yaml
+permissions:
+  contents: read
 jobs:
   deploy:
     runs-on: ubuntu-24.04
@@ -149,7 +151,8 @@ Trust policy on the IAM role (snippet):
 }
 ```
 
-In the workflow:
+In the workflow (the `permissions:` below belong on the deploy job, so only
+that job can request an OIDC token):
 
 ```yaml
 permissions:

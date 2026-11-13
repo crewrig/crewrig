@@ -73,6 +73,8 @@ on:
       GHCR_TOKEN:
         required: false
 
+permissions:
+  contents: read
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -83,9 +85,10 @@ jobs:
       - id: publish
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ inputs.version }}
         run: |
-          ./scripts/build.sh "${{ inputs.version }}"
-          echo "url=https://npm.example.com/${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          ./scripts/build.sh "$VERSION"
+          echo "url=https://npm.example.com/$VERSION" >> "$GITHUB_OUTPUT"
 ```
 
 ### `inputs:`
@@ -190,6 +193,8 @@ permissions; the callee's are advisory.
 ### Reading outputs
 
 ```yaml
+permissions:
+  contents: read
 jobs:
   build:
     uses: my-org/shared/.github/workflows/build.yml@<sha>
@@ -199,7 +204,9 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     steps:
-      - run: echo "Artifact at ${{ needs.build.outputs.artifact_url }}"
+      - env:
+          ARTIFACT_URL: ${{ needs.build.outputs.artifact_url }}
+        run: echo "Artifact at $ARTIFACT_URL"
 ```
 
 ## Matrix interactions
@@ -209,6 +216,8 @@ Two distinct patterns:
 ### Matrix in the caller, fan-out across reusable workflow
 
 ```yaml
+permissions:
+  contents: read
 jobs:
   build:
     strategy:
@@ -306,9 +315,11 @@ on:
         value: ${{ jobs.build.outputs.image }}
 permissions:
   contents: read
-  packages: write
 jobs:
   build:
+    permissions:
+      contents: read
+      packages: write
     runs-on: ubuntu-24.04
     outputs:
       image: ${{ steps.push.outputs.image }}
@@ -322,8 +333,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: push
+        env:
+          REF: ${{ inputs.ref }}
         run: |
-          IMG="ghcr.io/${{ github.repository }}:${{ inputs.ref }}"
+          IMG="ghcr.io/${{ github.repository }}:$REF"
           docker build -t "$IMG" .
           docker push "$IMG"
           echo "image=$IMG" >> "$GITHUB_OUTPUT"
@@ -343,10 +356,12 @@ on:
         type: string
         required: true
 permissions:
-  id-token: write
   contents: read
 jobs:
   deploy:
+    permissions:
+      id-token: write
+      contents: read
     runs-on: ubuntu-24.04
     environment: ${{ inputs.environment }}
     steps:
@@ -354,7 +369,9 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE }}
           aws-region: eu-west-3
-      - run: ./deploy.sh "${{ inputs.image }}"
+      - env:
+          IMAGE: ${{ inputs.image }}
+        run: ./deploy.sh "$IMAGE"
 ```
 
 Caller `myapp/.github/workflows/release.yml`:
@@ -366,15 +383,19 @@ on:
     tags: ["v*.*.*"]
 permissions:
   contents: read
-  packages: write
-  id-token: write
 jobs:
   build:
+    permissions:
+      contents: read
+      packages: write
     uses: my-org/shared/.github/workflows/build.yml@<sha>
     with:
       ref: ${{ github.ref_name }}
   deploy:
     needs: build
+    permissions:
+      contents: read
+      id-token: write
     uses: my-org/shared/.github/workflows/deploy.yml@<sha>
     with:
       image: ${{ needs.build.outputs.image }}
