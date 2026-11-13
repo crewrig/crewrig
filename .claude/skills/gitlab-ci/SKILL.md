@@ -42,7 +42,7 @@ No script simulates or executes a pipeline; `glab ci lint` checks configuration 
 
 - **A pipeline without `workflow:rules` runs twice** when a branch has an open merge request: once as a branch pipeline, once as a merge request pipeline. Add the guard from the skeleton below.
 - **`only:`/`except:` cannot share a job with `rules:`**, and GitLab rejects the job. Migrate each job fully, not partly. `check-rules.ts` finds the legacy keys.
-- **Pin images by digest.** A tag can be re-pointed in the registry under an unchanged pipeline. Keep the readable tag in a comment next to the digest.
+- **Pin every image, and check what you wrote.** A tag can be re-pointed in the registry under an unchanged pipeline, and a major tag such as `node:22` moves with every release. When you author a pipeline, give each `image:` and `services:` entry at least an exact version tag, patch version included (for example `node:22.11.0-alpine3.20`), never `latest` or a major-only tag. A digest (`@sha256:` plus 64 hex characters) is the strongest pin and the only form `check-pinned-images.ts` accepts, so it still reports a tag. Run it on the file you wrote before answering, replace any reference you can resolve with its digest, and list the remaining findings for the user as tags still to be digest-pinned. Keep the readable tag in a comment next to a digest.
 - **Masking is narrow.** A masked variable must be at least 8 characters on one line from a restricted character set, or it logs in the clear. It is a substring replacement in the job log only, so a split, decoded or re-encoded value escapes it, and it does nothing against a job that sends the value elsewhere.
 - **Trace options defeat masking.** `CI_DEBUG_TRACE` and `set -x` print every expanded variable, masked ones included, so keep them out of any job that sees a credential.
 - **Protect deploy credentials as well as masking them.** A protected variable reaches only pipelines on protected branches and tags, so a feature branch cannot read it.
@@ -63,7 +63,7 @@ The secure skeleton, with the guard against double pipelines:
 
 ```yaml
 default:
-  image: node@sha256:<digest>  # node:22
+  image: node@sha256:<digest>  # node:22.11.0-alpine3.20
 
 stages: [test]
 
