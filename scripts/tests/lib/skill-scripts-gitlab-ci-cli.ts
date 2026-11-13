@@ -96,6 +96,14 @@ const path = require("node:path");
 const log = process.env.STUB_LOG;
 if (log) fs.appendFileSync(log, JSON.stringify(process.argv.slice(2)) + "\\n");
 if (process.env.STUB_HANG) {
+  // Two processes in one process group: the stub and a child it starts, so a kill that reaches
+  // only the stub leaves the child behind (R6: no process outlives the script).
+  const child = require("node:child_process").spawn(
+    process.execPath,
+    ["-e", "setInterval(() => {}, 1000)"],
+    { stdio: "ignore" },
+  );
+  fs.writeFileSync(process.env.STUB_HANG + ".child", String(child.pid));
   fs.writeFileSync(process.env.STUB_HANG, String(process.pid));
   setInterval(() => {}, 1000);
 } else {

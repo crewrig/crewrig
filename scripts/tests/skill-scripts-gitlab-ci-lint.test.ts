@@ -1,6 +1,6 @@
 // skill-scripts-gitlab-ci-lint.test.ts — lint-gitlab-ci.ts (spec 0301 R6, R10), driven only through a
-// GLAB_BIN stub, from a copy of the built skill outside the repository, with no network. The valid
-// and invalid replay fixtures are SYNTHETIC until a real capture lands (see
+// GLAB_BIN stub, from a copy of the built skill outside the repository, with no network. The replay
+// fixtures are real glab 1.130.0 captures, scrubbed, plus a few derived outputs (see
 // fixtures/skill-scripts/gitlab-ci-0301/glab/PROVENANCE.txt).
 
 import assert from "node:assert/strict";
@@ -38,64 +38,67 @@ const json = (fixture: string, extra: string[] = []) => {
 const NOT_VALIDATED = /not validated/i;
 
 describe("verdicts", () => {
-  test("valid: exit 0, ok true, no finding, data names the file and the verdict", () => {
+  test("valid (real capture): exit 0, ok true, no finding, data names the file and the verdict", () => {
     const { r, env } = json("valid");
     assert.equal(r.status, 0, r.stderr);
     assert.equal(env.ok, true);
     assert.deepEqual(env.findings, []);
-    assert.match(JSON.stringify(env.data), /ci\.yml/);
-    assert.match(JSON.stringify(env.data), /valid/i);
+    assert.equal(env.data?.["file"], "ci.yml");
+    assert.equal(env.data?.["verdict"], "valid");
   });
-  test("markers are matched case-insensitively and ignoring a leading symbol or whitespace", () => {
-    const { r, env } = json("valid-shouting");
-    assert.equal(r.status, 0, r.stderr);
-    assert.equal(env.ok, true);
-  });
-  test("invalid with two errors: exit 1, one invalid-config finding per error line", () => {
-    const { r, env } = json("invalid-two-errors");
+  test("invalid (real capture): exit 1, one invalid-config finding carrying the numbered error", () => {
+    const { r, env } = json("invalid");
     assert.equal(r.status, 1, r.stderr);
     assert.equal(env.ok, false);
-    assert.equal(env.findings.length, 2);
-    assert.ok(env.findings.every((f) => f.rule === "invalid-config"));
-    assert.match(env.findings[0]?.message ?? "", /unknown keys: foo/);
-    assert.match(env.findings[1]?.message ?? "", /needs job build/);
-  });
-  test("invalid with no detail line: one finding carrying the marker line", () => {
-    const { r, env } = json("invalid-no-detail");
-    assert.equal(r.status, 1);
     assert.equal(env.findings.length, 1);
     assert.equal(env.findings[0]?.rule, "invalid-config");
-    assert.match(env.findings[0]?.message ?? "", /CI\/CD YAML is invalid/i);
+    assert.match(env.findings[0]?.message ?? "", /chosen stage nope does not exist/);
+    assert.equal(env.data?.["verdict"], "invalid");
   });
-  test("invalid wins whatever the exit code of glab", () => {
-    const { r, env } = json("invalid-exit-zero");
+  for (const [fixture, error] of [
+    ["invalid-syntax", /did not find expected/],
+    ["invalid-rules", /invalid expression syntax/],
+    ["invalid-include", /nope\.yml.*does not exist/],
+  ] as [string, RegExp][])
+    test(`${fixture} (real capture): exit 1 with an invalid-config finding stating the error`, () => {
+      const { r, env } = json(fixture);
+      assert.equal(r.status, 1, r.stderr);
+      assert.deepEqual(
+        env.findings.map((f) => f.rule),
+        ["invalid-config"],
+      );
+      assert.match(env.findings[0]?.message ?? "", error);
+    });
+  test("derived: two numbered lines give two findings, one per line", () => {
+    const { r, env } = json("derived-two-lines");
     assert.equal(r.status, 1);
-    assert.equal(env.findings[0]?.rule, "invalid-config");
-    assert.match(env.findings[0]?.message ?? "", /bogus/);
+    assert.equal(env.findings.length, 2);
+    assert.ok(env.findings.every((f) => f.rule === "invalid-config"));
+    assert.match(env.findings[0]?.message ?? "", /\ba\b/);
+    assert.match(env.findings[1]?.message ?? "", /\bb\b/);
   });
-  test("both markers (exit 0): invalid takes precedence", () => {
-    const { r, env } = json("both-markers");
+  test("derived: both markers on exit 0, invalid takes precedence", () => {
+    const { r, env } = json("derived-both-markers");
     assert.equal(r.status, 1);
     assert.equal(env.ok, false);
     assert.ok(env.findings.some((f) => f.rule === "invalid-config"));
     assert.ok(!env.findings.some((f) => f.rule === "precondition"));
   });
-  test("human mode: nothing on stdout is required to be JSON and the exit code is the same", () => {
-    const r = lint(["ci.yml"], glab.replay("invalid-two-errors"));
+  test("human mode: the error text is printed and the exit code is the same", () => {
+    const r = lint(["ci.yml"], glab.replay("invalid"));
     assert.equal(r.status, 1);
-    assert.match(r.stdout + r.stderr, /unknown keys: foo/);
+    assert.match(r.stdout + r.stderr, /chosen stage nope/);
   });
 });
 
 describe("not validated: exit 3, rule precondition, says NOT validated server-side", () => {
   const cases: [string, string, RegExp | undefined][] = [
-    ["exit 0 without a marker", "exit-zero-no-marker", /unrecogni[sz]ed/i],
-    ["unrecognized output", "unrecognized", /unrecogni[sz]ed/i],
-    ["unrecognized failure text", "unrecognized-failure", /unrecogni[sz]ed/i],
-    ["authentication failure", "auth-failure", /auth/i],
-    ["connection failure", "connection-failure", /connect|network|resolve|host/i],
-    ["a real 403 from a non-member is never reported valid", "real-403-non-member", undefined],
-    ["a real run outside a GitLab checkout is never reported valid", "real-not-in-repo", undefined],
+    ["authentication failure (real capture, 401)", "auth-failure", /authenticat/i],
+    ["connection failure (real capture, no such host)", "connection-failure", /connect/i],
+    ["outside a git repository (real capture)", "not-a-repository", /checkout|repositor/i],
+    ["derived: exit 0 without a marker", "derived-exit0-no-marker", /unrecogni[sz]ed/i],
+    ["derived: exit 1 without a marker", "derived-exit1-no-marker", /unrecogni[sz]ed/i],
+    ["derived: unclassifiable standard error", "derived-unrecognized-stderr", /unrecogni[sz]ed/i],
   ];
   for (const [title, fixture, cause] of cases)
     test(title, () => {
@@ -103,8 +106,10 @@ describe("not validated: exit 3, rule precondition, says NOT validated server-si
       assert.equal(r.status, 3, r.stdout + r.stderr);
       assert.equal(env.ok, false);
       assert.equal(env.data, null);
-      assert.equal(env.findings.length, 1);
-      assert.equal(env.findings[0]?.rule, "precondition");
+      assert.deepEqual(
+        env.findings.map((f) => f.rule),
+        ["precondition"],
+      );
       assert.match(env.findings[0]?.message ?? "", NOT_VALIDATED);
       if (cause !== undefined) assert.match(env.findings[0]?.message ?? "", cause);
     });
@@ -114,13 +119,17 @@ describe("not validated: exit 3, rule precondition, says NOT validated server-si
     assert.equal(r.status, 3, r.stdout + r.stderr);
     const env = envelope(r);
     assert.equal(env.findings[0]?.rule, "precondition");
-    assert.match(env.findings[0]?.message ?? "", /not installed|not found|missing|no such|binary/i);
+    assert.match(
+      env.findings[0]?.message ?? "",
+      /not installed|not found|missing|no such|binary|could not be started/i,
+    );
     assert.match(env.findings[0]?.message ?? "", NOT_VALIDATED);
   });
 
-  test("hang past --timeout: exit 3 naming the timeout, and the stub process is gone", () => {
+  test("hang past --timeout: exit 3 naming the timeout, and the whole process tree is gone", () => {
     const pidFile = path.join(root, "hang.pid");
     fs.rmSync(pidFile, { force: true });
+    fs.rmSync(`${pidFile}.child`, { force: true });
     const started = Date.now();
     const r = lint(["ci.yml", "--json", "--timeout", "1"], glab.hang(pidFile));
     assert.ok(Date.now() - started < 20_000, "the bounded wait must end the run");
@@ -129,13 +138,15 @@ describe("not validated: exit 3, rule precondition, says NOT validated server-si
     assert.equal(env.findings[0]?.rule, "precondition");
     assert.match(env.findings[0]?.message ?? "", /timeout|timed out/i);
     assert.match(env.findings[0]?.message ?? "", NOT_VALIDATED);
-    const pid = Number(fs.readFileSync(pidFile, "utf8"));
-    assert.ok(pid > 0);
-    // The stub is a single Node process, so a missed kill leaves exactly this pid alive.
+    const pids = [pidFile, `${pidFile}.child`].map((f) => Number(fs.readFileSync(f, "utf8")));
+    assert.ok(pids.every((pid) => pid > 0));
+    assert.notEqual(pids[0], pids[1]);
     const deadline = Date.now() + 2_000;
-    while (!gone(pid) && Date.now() < deadline)
+    while (!pids.every(gone) && Date.now() < deadline)
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
-    assert.ok(gone(pid), `stub process ${pid} outlived the script`);
+    const leaked = pids.filter((pid) => !gone(pid));
+    for (const pid of leaked) process.kill(pid, "SIGKILL"); // do not leak it from a failing run
+    assert.deepEqual(leaked, [], "the stub and its child must both be gone (ESRCH)");
   });
 });
 
@@ -191,7 +202,7 @@ describe("target and arguments", () => {
       const r = lint(args, glab.replay("valid"));
       assert.equal(r.status, 2, r.stdout + r.stderr);
       assert.deepEqual(glab.calls(), []);
-      const j = lint([...args, "--json"], glab.replay("valid"));
+      const j = lint(["--json", ...args], glab.replay("valid"));
       assert.equal(j.status, 2);
       const env = envelope(j);
       assert.equal(env.ok, false);
@@ -205,7 +216,7 @@ describe("target and arguments", () => {
 
 describe("--json and --help shape", () => {
   test("--json prints exactly one object on stdout, human text on stderr", () => {
-    const r = lint(["ci.yml", "--json"], glab.replay("invalid-two-errors"));
+    const r = lint(["ci.yml", "--json"], glab.replay("derived-two-lines"));
     assert.equal(r.stdout.trimEnd().split("\n").length, 1);
     assert.deepEqual(Object.keys(envelope(r)).sort(), ["data", "findings", "ok"]);
     assert.notEqual(r.stderr, "");

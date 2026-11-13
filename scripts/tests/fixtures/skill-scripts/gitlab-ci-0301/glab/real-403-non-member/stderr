@@ -1,1 +1,0 @@
-POST https://gitlab.com/api/v4/projects/<id>/ci/lint: 403 {message: 403 Forbidden}

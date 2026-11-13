@@ -1,1 +1,7 @@
-Post "https://gitlab.example/api/v4/projects/1/ci/lint": dial tcp: lookup gitlab.example: no such host
+          
+   ERROR  
+          
+  you must be in a GitLab project repository for this action: Get                                                     
+  "https://unreachable.invalid/api/v4/projects/group%2Fproject?license=true&with_custom_attributes=true": dial tcp: lookup            
+  unreachable.invalid: no such host.                                                                                  
+

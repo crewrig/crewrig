@@ -158,7 +158,7 @@ describe("check-secrets-exposure --help (R9)", () => {
     assert.equal(r.status, 2);
     assert.doesNotMatch(r.stdout, /"ok"/);
   });
-  test("its help does not advertise --json", () => {
-    assert.doesNotMatch(go("check-secrets-exposure", ["--help"]).stdout, /--json/);
+  test("its help says it has no --json option", () => {
+    assert.match(go("check-secrets-exposure", ["--help"]).stdout, /no --json option/);
   });
 });
