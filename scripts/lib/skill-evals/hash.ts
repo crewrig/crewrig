@@ -10,6 +10,13 @@
 // an untracked non-ignored file or any symbolic link (index mode 120000) makes the snapshot
 // `invalid` and no hash is produced.
 //
+// The snapshot also carries, as virtual files, `references/shared-<topic>.md` for every shared
+// topic the body of SKILL.md cites (spec 0290 R51): the bytes of
+// `artifacts/core/shared/references/<topic>.md`, read from the same source (working tree or
+// revision) as the skill, so the hash and the install cover the skill as it ships. A cited topic
+// without a tracked source, an untracked or symlinked source, or a top-level
+// `references/shared-*.md` in the skill source makes the snapshot `invalid`.
+//
 // Usage: const snap = readWorkingTree(repoRoot, "artifacts/core/skills/x");
 //        if (snap.kind === "ok") contentHash(snap.files);
 // Exit codes: not applicable (library). Finding-line format: not applicable.
@@ -18,7 +25,10 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
+import { citedTopics } from "../build-components/shared-references.ts";
 import { runGit } from "../governance/git-run.ts";
+import { toLf } from "../line-endings.ts";
+import { bodyOfText } from "../render-command.ts";
 
 export interface SnapFile {
   /** Path relative to the skill directory, `/` separators. */
@@ -34,6 +44,8 @@ export type Snapshot =
   | { readonly kind: "absent" };
 
 const EVALS_JSON = "evals/evals.json";
+const SHARED_DIR = "artifacts/core/shared/references";
+const OWN_SHARED = /^references\/shared-[^/]+\.md$/;
 
 /** The paths R35 selects. */
 export function isSelected(rel: string): boolean {
@@ -52,6 +64,64 @@ function git(repoRoot: string, args: string[]): { ok: boolean; out: Buffer } {
 }
 
 const lit = (p: string) => `:(literal)${p}`;
+
+/** What the snapshot knows of one shared source file: its index mode and a way to read its bytes. */
+interface SharedSource {
+  readonly mode: string;
+  readonly read: () => Buffer | undefined;
+  /** True when the working-tree entry is a symbolic link although the index records a regular file. */
+  readonly isLink?: () => boolean;
+}
+
+/**
+ * R51: the virtual files for the topics cited by SKILL.md, plus the problems found. The text is
+ * derived from the SKILL.md bytes as `readTextLf` does (BOM stripped, CRLF and lone CR to LF);
+ * the hashed bytes stay raw. `sources` lists the shared directory once, on first use.
+ */
+function composeShared(
+  dir: string,
+  files: SnapFile[],
+  problems: string[],
+  sources: () => Map<string, SharedSource> | undefined,
+  untracked: () => Set<string>,
+): void {
+  const skillMd = files.find((f) => f.rel === "SKILL.md");
+  if (skillMd === undefined) return;
+  for (const f of files)
+    if (OWN_SHARED.test(f.rel))
+      problems.push(`${dir}/${f.rel}: the shared- prefix is reserved for shared references`);
+  const topics = citedTopics(
+    bodyOfText(toLf(skillMd.bytes.toString("utf8").replace(/^\uFEFF/, ""))),
+  );
+  if (topics.length === 0) return;
+  const listed = sources();
+  for (const topic of topics) {
+    const src = `${SHARED_DIR}/${topic}.md`;
+    const found = listed?.get(`${topic}.md`);
+    if (found === undefined) {
+      problems.push(
+        untracked().has(`${topic}.md`)
+          ? `${src}: untracked file under a hashed path; run \`git add ${src}\` (or git-ignore it)`
+          : `${dir}: cites references/shared-${topic}.md, but ${src} is not a tracked file`,
+      );
+      continue;
+    }
+    if (found.mode === "120000" || found.mode === "160000") {
+      problems.push(`${src}: symbolic link or submodule under a hashed path is not supported`);
+      continue;
+    }
+    const bytes = found.read();
+    if (bytes === undefined) {
+      problems.push(
+        found.isLink?.() === true
+          ? `${src}: symbolic link under a hashed path is not supported`
+          : `${dir}: cites references/shared-${topic}.md, but ${src} is not a tracked file`,
+      );
+      continue;
+    }
+    files.push({ rel: `references/shared-${topic}.md`, bytes, exec: found.mode === "100755" });
+  }
+}
 
 /** Read the skill directory from the working tree as it stands now (a dirty tree is allowed). */
 export function readWorkingTree(repoRoot: string, skillDirRel: string): Snapshot {
@@ -100,9 +170,71 @@ export function readWorkingTree(repoRoot: string, skillDirRel: string): Snapshot
     if (!st.isFile()) continue;
     files.push({ rel, bytes: fs.readFileSync(abs), exec: mode === "100755" });
   }
+  if (problems.length === 0 && files.some((f) => f.rel === "SKILL.md")) {
+    let listed: Map<string, SharedSource> | undefined;
+    let listedUntracked: Set<string> | undefined;
+    composeShared(
+      dir,
+      files,
+      problems,
+      () => {
+        const t = git(repoRoot, ["ls-files", "-s", "-z", "--", lit(SHARED_DIR)]);
+        listed = new Map();
+        if (!t.ok) return listed;
+        for (const rec of t.out.toString("utf8").split("\0")) {
+          if (rec === "") continue;
+          const tab = rec.indexOf("\t");
+          const name = rec.slice(tab + 1).slice(SHARED_DIR.length + 1);
+          if (name.includes("/")) continue;
+          listed.set(name, {
+            mode: rec.slice(0, rec.indexOf(" ")),
+            read: () => readRegular(path.join(repoRoot, SHARED_DIR, name)),
+            isLink: () => {
+              try {
+                return fs.lstatSync(path.join(repoRoot, SHARED_DIR, name)).isSymbolicLink();
+              } catch {
+                return false;
+              }
+            },
+          });
+        }
+        return listed;
+      },
+      () => {
+        if (listedUntracked !== undefined) return listedUntracked;
+        const u = git(repoRoot, [
+          "ls-files",
+          "-o",
+          "--exclude-standard",
+          "-z",
+          "--",
+          lit(SHARED_DIR),
+        ]);
+        listedUntracked = new Set(
+          u.ok
+            ? u.out
+                .toString("utf8")
+                .split("\0")
+                .filter((r) => r !== "")
+                .map((r) => r.slice(SHARED_DIR.length + 1))
+            : [],
+        );
+        return listedUntracked;
+      },
+    );
+  }
   if (problems.length > 0) return { kind: "invalid", problems: problems.sort() };
   if (!files.some((f) => f.rel === "SKILL.md")) return { kind: "absent" };
   return { kind: "ok", files };
+}
+
+/** The bytes of a regular file, or undefined when it is gone or not a regular file. */
+function readRegular(abs: string): Buffer | undefined {
+  try {
+    return fs.lstatSync(abs).isFile() ? fs.readFileSync(abs) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Read the skill directory at a git revision (the merge-base): modes from ls-tree, bytes from blobs. */
@@ -127,7 +259,34 @@ export function readRevision(repoRoot: string, rev: string, skillDirRel: string)
       return { kind: "invalid", problems: [`${dir}/${rel}: cannot read blob ${sha} at ${rev}`] };
     files.push({ rel, bytes: blob.out, exec: mode === "100755" });
   }
-  if (problems.length > 0) return { kind: "invalid", problems };
+  if (files.some((f) => f.rel === "SKILL.md")) {
+    composeShared(
+      dir,
+      files,
+      problems,
+      () => {
+        const t = git(repoRoot, ["ls-tree", "-z", rev, "--", `${SHARED_DIR}/`]);
+        const listed = new Map<string, SharedSource>();
+        if (!t.ok) return listed;
+        for (const rec of t.out.toString("utf8").split("\0")) {
+          if (rec === "") continue;
+          const tab = rec.indexOf("\t");
+          const [mode, type, sha] = rec.slice(0, tab).split(" ");
+          if (type !== "blob") continue;
+          listed.set(rec.slice(tab + 1).slice(SHARED_DIR.length + 1), {
+            mode: mode ?? "",
+            read: () => {
+              const b = git(repoRoot, ["cat-file", "blob", sha ?? ""]);
+              return b.ok ? b.out : undefined;
+            },
+          });
+        }
+        return listed;
+      },
+      () => new Set(),
+    );
+  }
+  if (problems.length > 0) return { kind: "invalid", problems: problems.sort() };
   if (!files.some((f) => f.rel === "SKILL.md")) return { kind: "absent" };
   return { kind: "ok", files };
 }

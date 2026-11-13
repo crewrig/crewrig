@@ -54,7 +54,7 @@ export const EVIDENCE_WINDOW_CHARS = 40;
 export const EVIDENCE_WINDOW_SHARE = 0.3;
 
 /** Written to evals/results.json (R36). */
-export const RUNNER_VERSION = "2.1.1";
+export const RUNNER_VERSION = "2.2.0";
 
 /** Tools the executor may use: the main security boundary, kept in one place. */
 export const EXECUTOR_TOOLS = ["Bash", "Read", "Write", "Edit", "Skill"] as const;
