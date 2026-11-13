@@ -17,10 +17,7 @@ const ENTRY = path.resolve(
 const SKILL = "artifacts/core/skills/demo/SKILL.md";
 let repo = "";
 
-function check(
-  body: string,
-  file = SKILL,
-): { status: number | null; stdout: string } {
+function check(body: string, file = SKILL): { status: number | null; stdout: string } {
   writeFileSync(path.join(repo, file), body);
   const r = spawnSync(
     process.execPath,
@@ -38,10 +35,7 @@ before(() => {
     recursive: true,
   });
   mkdirSync(path.join(repo, "docs"), { recursive: true });
-  writeFileSync(
-    path.join(repo, "artifacts/core/shared/references/real-topic.md"),
-    "x\n",
-  );
+  writeFileSync(path.join(repo, "artifacts/core/shared/references/real-topic.md"), "x\n");
 });
 after(() => rmSync(repo, { recursive: true, force: true }));
 
@@ -65,9 +59,6 @@ describe("shared-reference links in skill sources", () => {
   });
 
   it("does not apply outside a skill source", () => {
-    assert.equal(
-      check("[t](references/shared-real-topic.md)\n", "docs/x.md").status,
-      1,
-    );
+    assert.equal(check("[t](references/shared-real-topic.md)\n", "docs/x.md").status, 1);
   });
 });

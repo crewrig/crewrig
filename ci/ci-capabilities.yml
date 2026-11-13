@@ -2471,6 +2471,7 @@ capabilities:
       - on: push
         branches: [main, "release/**"]
     paths:
+      - "scripts/tests/check-markdown-links-shared-references.test.ts"
       - "scripts/tests/governance-suite-markdown-links.test.ts"
       - "scripts/tests/lib/governance-*.ts"
       - "docs/**"

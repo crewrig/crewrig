@@ -55,8 +55,7 @@ function trackedMarkdown(cwd: string): string[] {
     .filter((p) => p !== "");
 }
 
-const SKILL_REFERENCE =
-  /^artifacts\/[^/]+\/skills\/[^/]+\/(references\/shared-[^/]+\.md)$/;
+const SKILL_REFERENCE = /^artifacts\/[^/]+\/skills\/[^/]+\/(references\/shared-[^/]+\.md)$/;
 
 /**
  * The source a skill's `references/shared-<topic>.md` citation stands for: the build copies
@@ -67,9 +66,7 @@ const SKILL_REFERENCE =
 function sharedSource(resolved: string): string | undefined {
   const m = SKILL_REFERENCE.exec(resolved);
   const topic = m === null ? undefined : sharedTopic(m[1] as string);
-  return topic === undefined
-    ? undefined
-    : `artifacts/core/shared/references/${topic}.md`;
+  return topic === undefined ? undefined : `artifacts/core/shared/references/${topic}.md`;
 }
 
 function scanFile(rel: string, shown: string, lines: string[]): number {
@@ -97,10 +94,7 @@ function scanFile(rel: string, shown: string, lines: string[]): number {
   return broken;
 }
 
-export function runMarkdownLinks(
-  args: readonly string[],
-  cwd: string,
-): LinksOutcome {
+export function runMarkdownLinks(args: readonly string[], cwd: string): LinksOutcome {
   const top = toplevel(cwd);
   if (top === undefined)
     return { code: 1, lines: [], error: `Error: ${cwd}: not a git repository` };
@@ -110,8 +104,7 @@ export function runMarkdownLinks(
   let errors = 0;
   for (const rel of files) {
     if (!isFile(rel)) continue;
-    const shown =
-      process.platform === "win32" ? rel.replaceAll("\\", "/") : rel;
+    const shown = process.platform === "win32" ? rel.replaceAll("\\", "/") : rel;
     errors += scanFile(rel, shown, lines);
   }
   if (errors > 0) {
