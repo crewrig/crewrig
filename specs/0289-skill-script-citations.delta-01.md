@@ -1,7 +1,7 @@
 ---
 id: "0289"
 slug: skill-script-citations
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 1863

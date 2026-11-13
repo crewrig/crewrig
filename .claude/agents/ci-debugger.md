@@ -9,7 +9,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.0"
+    version: "1.2.1"
 ---
 
 
@@ -235,8 +235,8 @@ Symptoms: workflow fails to start, "Invalid workflow file",
 
 Typical fixes:
 
-- Run `actionlint` locally on the file. The skill's
-  `node scripts/lint-workflow.ts` wraps this.
+- Run `actionlint` locally on the file. The `github-actions` skill's
+  `lint-workflow.ts` script wraps this.
 - Watch for the classic YAML traps: tab characters, multi-line
   scalars with unintended indentation, `on:` keyword interpreted as
   boolean, unquoted `1.10` becoming a float.
@@ -318,11 +318,11 @@ consecutive clean runs before closing the diagnosis.
 ## Simulation
 
 When the failure does not reproduce from the logs alone, fall back
-to local reproduction with `scripts/simulate-job.ts` (shipped with
-the `github-actions` skill, run through Node from that skill's directory):
+to local reproduction with the `github-actions` skill's `simulate-job.ts`
+(run through Node from the installed skill directory):
 
 ```bash
-node scripts/simulate-job.ts .github/workflows/<file>.yml <job-id>
+node <github-actions-skill-dir>/scripts/simulate-job.ts .github/workflows/<file>.yml <job-id>
 ```
 
 The script runs the job under `act` or an equivalent container,

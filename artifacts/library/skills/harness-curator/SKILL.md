@@ -8,7 +8,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "2.0.1"
+    version: "2.0.2"
 claude:
   allowed-tools:
     - Read
@@ -227,14 +227,14 @@ single sweep so a noisy week cannot flood a repo. Ranking before
 truncation is severity-first (`high` > `med` > `low`), then cluster
 size (descending), then `cluster_key` (ascending, tie-breaker).
 
-Install the schedule on your maintainer machine:
+Install the schedule on your maintainer machine (run from the installed skill directory):
 
 ```bash
-node artifacts/library/skills/harness-curator/scripts/schedule-curator.ts
+node scripts/schedule-curator.ts
 # Preview only:
-node artifacts/library/skills/harness-curator/scripts/schedule-curator.ts --dry-run
+node scripts/schedule-curator.ts --dry-run
 # Remove the managed entry:
-node artifacts/library/skills/harness-curator/scripts/schedule-curator.ts --uninstall
+node scripts/schedule-curator.ts --uninstall
 ```
 
 The installer detects macOS (launchd, plist at
@@ -246,7 +246,7 @@ Reactive trigger — run manually the moment you file a `severity: high`
 friction so the curator surfaces it without waiting for the next sweep:
 
 ```bash
-node artifacts/library/skills/harness-curator/scripts/curate.ts --apply --dedup --max-issues 5
+node scripts/curate.ts --apply --dedup --max-issues 5
 ```
 
 Auto mode never runs on CI by design — MemPalace state is local to the

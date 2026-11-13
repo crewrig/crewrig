@@ -45,6 +45,8 @@ tasks:
         msg: "Run: task lint-bootstrap"
     cmds:
       - task: :check-description-length
+      - task: :check-agent-script-citations
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/agent-script-citations.test.ts
       - task: :check-skill-quality
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-skill-quality.test.ts {{.REPO_DIR}}/scripts/tests/check-skill-quality-contract.test.ts {{.REPO_DIR}}/scripts/tests/check-skill-quality-grammar.test.ts
   test-wiring:

@@ -206,7 +206,10 @@ A plan comment (and a verdict comment) SHALL be at most **12 KB** (12,288
 bytes, UTF-8). Rationale: well under a fifth of the forge's 65,536-character
 comment limit, enough for a full plan or verdict, so a comment above it is
 carrying bulk that belongs elsewhere. The author runs
-`scripts/check-comment-size.ts` on the comment body before posting. On
+`node scripts/check-comment-size.ts <file>` (repository root; `-` reads stdin)
+on the comment body before posting. The `pr-reviewer` skill bundles the same
+check as its own `scripts/check-comment-size.ts`, runnable in any repository
+from the installed skill directory. On
 overflow the author cuts the comment under budget by moving bulk (long
 evidence, command output) to a linked artifact (the PR description or a file
 in the diff) and keeping a reference; continuation comments are not used.

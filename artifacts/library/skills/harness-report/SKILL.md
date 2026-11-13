@@ -10,7 +10,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.5.3"
+    version: "1.5.4"
 claude:
   allowed-tools:
     - Read
@@ -82,7 +82,7 @@ Strongly encouraged:
   build time). NOT a file URL: the Curator's apply step routes the
   issue via `gh issue create --repo <owner>/<repo>` by stripping the
   `https://github.com/` prefix (see
-  `artifacts/library/skills/harness-curator/scripts/apply.py:23-36`),
+  `apply.py` in the `harness-curator` skill, lines 23-36),
   so a `/blob/<branch>/<path>` URL produces a malformed `--repo`
   argument and the issue fails to land. Put the file path in
   `evidence:` instead.

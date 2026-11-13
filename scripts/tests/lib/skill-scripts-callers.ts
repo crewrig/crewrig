@@ -74,16 +74,17 @@ export const CALLERS: readonly Caller[] = [
   },
   {
     file: "artifacts/core/agents/ci-configurator/AGENT.md",
-    required: run(
-      "lint-workflow",
-      "check-pinned-actions",
-      "check-pinned-images",
-      "check-secrets-exposure",
-    ),
+    // an agent installs alone: it cites a skill's script as <skill-dir>/scripts/<name>.ts (issue #1863)
+    required: [
+      "node <github-actions-skill-dir>/scripts/lint-workflow.ts",
+      "node <github-actions-skill-dir>/scripts/check-pinned-actions.ts",
+      "node <gitlab-ci-skill-dir>/scripts/check-pinned-images.ts",
+      "node <gitlab-ci-skill-dir>/scripts/check-secrets-exposure.ts",
+    ],
   },
   {
     file: "artifacts/core/agents/ci-debugger/AGENT.md",
-    required: run("lint-workflow", "simulate-job"),
+    required: ["lint-workflow.ts", "node <github-actions-skill-dir>/scripts/simulate-job.ts"],
   },
   { file: "README.md", required: ["lint-markdown.ts", "lint-skill.ts"] },
 ];
