@@ -210,3 +210,7 @@ test("#1914 the recorded answer shape: the expectation is graded on PASS, not 'R
   });
   assert.equal(entries[0]?.verdict, "PASS");
 });
+
+test("#1914 unquoted evidence followed by the field yields no entry (the prompt asks for a JSON string)", () => {
+  assert.equal(parseJudgeAnswer("1 EVIDENCE=some words VERDICT=PASS", 1)[0], undefined);
+});
