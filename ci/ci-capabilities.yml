@@ -1506,6 +1506,8 @@ capabilities:
         branches: [main, "release/**"]
     paths:
       - "scripts/check-ci-parity.ts"
+      - "scripts/lib/ci-parity/**"
+      - "scripts/**/classify-ci-drift*"
       - "scripts/build-ci.ts"
       - "scripts/ci-cache-guard.ts"
       - "scripts/ci-changeset-coverage.ts"
