@@ -203,7 +203,9 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error, 3 missing or unr
     });
   }
   const errors = findings.filter((x) => x.severity !== "warning").length;
-  const lines = findings.map((x) => `${x.path}${x.line ? `:${x.line}` : ""}: ${x.severity} ${x.rule}: ${x.message}`);
+  const lines = findings.map(
+    (x) => `${x.path}${x.line ? `:${x.line}` : ""}: ${x.severity} ${x.rule}: ${x.message}`,
+  );
   const counts = `${files.length} file(s), ${jobs} job(s) scanned`;
   const summary =
     lines.length === 0
