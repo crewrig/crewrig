@@ -193,10 +193,7 @@ Exit codes: 0 valid, 1 invalid, 2 usage error, 3 not validated.
   )
     return notValidated("connection failure: GitLab could not be reached");
   if (/not a git repository/i.test(text))
-    return notValidated(
-      "glab was run outside a GitLab checkout",
-      "; pass --repo <group/project>",
-    );
+    return notValidated("glab was run outside a GitLab checkout", "; pass --repo <group/project>");
   return notValidated(
     `unrecognized glab output (exit ${r.status}): ${text.slice(0, 200) || "no output"}`,
   );
