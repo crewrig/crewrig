@@ -46,13 +46,17 @@ checks and states which ones ran.
 | `node scripts/check-secrets-exposure.ts <path>` | A secret that may reach a log or an over-wide scope. | `0` nothing found, `1` a finding, `2` usage error. |
 | `node scripts/simulate-job.ts <file> <job> [event]` and `node scripts/simulate-workflow.ts <file> [event]` | A local dry run with `act` while iterating on `run:` logic. | `0` ok or skipped, otherwise the status of `act`, `2` usage error. |
 
-Add `--json` to get one `{ok, data, findings}` object on standard output. A warning
+Add `--json` to get one `{ok, data, findings}` object on standard output (every script
+except `check-secrets-exposure.ts`, which rejects it). A warning
 never changes an exit code. A check that exits `0` with a `[SKIP]` line did not look
 at your file: report it as skipped, never as passed. Exit `2` or `3` means the call
 or the environment is wrong, not the workflow. A green `act` run is necessary, not
 sufficient: it does not reproduce the hosted runner image.
 
-The three new checks read a small subset of YAML. A construct they cannot read
+The three new checks do not read composite actions: a file with no `jobs:` key passes
+with no finding and the summary says it was not checked, so review the `run:` steps of
+an `action.yml` by hand, above all any `${{ inputs.* }}` in them. They also read a small
+subset of YAML. A construct they cannot read
 (anchor, alias, merge key, multi-line flow mapping) is reported as an `unparsed`
 warning: review that line by hand, because the file was not verified there.
 

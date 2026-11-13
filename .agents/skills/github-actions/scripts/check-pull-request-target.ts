@@ -181,6 +181,7 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
   const unbalanced = (v: string): boolean =>
     /^[[{]/.test(v) && !/^(?:\[[^[\]{}]*\]|\{[^[\]{}]*\})$/.test(v);
 
+  const notChecked: string[] = [];
   const check = (path: string, text: string): Finding[] => {
     const found: Finding[] = [];
     const add = (rule: string, n: number, message: string, severity: "error" | "warning"): void => {
@@ -196,6 +197,11 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
     const lines = scan(text);
     for (const l of lines) {
       if (ANCHOR.test(l.t) || MERGE.test(l.t)) unparsed(l.n, "a YAML anchor, alias or merge key");
+    }
+
+    if (!lines.some((l) => l.ind === 0 && kv(l.t)?.key === "jobs")) {
+      notChecked.push(path); // a composite action.yml: a clean pass, but not examined
+      return found;
     }
 
     // Triggers: the on: key at column 0, its inline value, or the shallowest lines of its block.
@@ -272,7 +278,7 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
   const files = texts.map((f) => f.path);
   const summary =
     errors === 0
-      ? `[OK] ${files.length} workflow file(s) checked, no head checkout under pull_request_target${warnings > 0 ? ` (${warnings} warning(s))` : ""}`
+      ? `[OK] ${files.length - notChecked.length} workflow file(s) checked, no head checkout under pull_request_target${warnings > 0 ? ` (${warnings} warning(s))` : ""}${notChecked.length > 0 ? ` (${notChecked.length} file(s) without a jobs: key, not checked: ${notChecked.join(", ")})` : ""}`
       : `${errors} error(s) and ${warnings} warning(s) in ${files.length} workflow file(s)`;
   emit(errors === 0 ? 0 : 1, { files, errors, warnings }, findings, summary);
 })();

@@ -295,3 +295,27 @@ describe("validate-pipeline: contract", () => {
     assert.match(r.stdout, /^Usage: /);
   });
 });
+
+describe("validate-pipeline: unreadable targets are exit 3 before any check runs", () => {
+  test("a mode-000 directory is exit 3, not the empty-directory exit 2", (t) => {
+    if (process.getuid?.() === 0) return t.skip("root reads a mode-000 directory");
+    const d = dir({ "ci.yml": WF_CLEAN });
+    fs.chmodSync(d, 0o000);
+    const r = run("validate-pipeline", [d], { cwd: tmp });
+    fs.chmodSync(d, 0o755);
+    assert.equal(r.status, 3, r.stdout + r.stderr);
+    assert.match(r.stdout + r.stderr, /not readable/);
+    assert.doesNotMatch(r.stdout + r.stderr, /\[(ran|skipped|failed)\]/);
+  });
+  test("a mode-000 file is exit 3 with no check reported and no tool looked up", (t) => {
+    if (process.getuid?.() === 0) return t.skip("root reads a mode-000 file");
+    const d = dir({ "ci.yml": WF_CLEAN });
+    const f = path.join(d, "ci.yml");
+    fs.chmodSync(f, 0o000);
+    const r = run("validate-pipeline", [f], { cwd: tmp });
+    fs.chmodSync(f, 0o644);
+    assert.equal(r.status, 3, r.stdout + r.stderr);
+    assert.match(r.stdout + r.stderr, /not readable/);
+    assert.doesNotMatch(r.stdout + r.stderr, /\[(ran|skipped|failed)\]|actionlint/);
+  });
+});

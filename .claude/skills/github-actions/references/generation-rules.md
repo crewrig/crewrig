@@ -144,10 +144,12 @@ jobs:
 
 ```yaml
 permissions:
-  id-token: write   # lets the job request the OIDC token
   contents: read
 jobs:
   deploy:
+    permissions:
+      id-token: write   # lets this job, and only this job, request the OIDC token
+      contents: read
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: production

@@ -76,12 +76,14 @@ Exit codes: 0 every check ran clean or was skipped, 1 an error finding from a ch
     }
   };
   const files: string[] = [];
+  let unreadable: string | undefined;
   if (stat(target)?.isDirectory() === true) {
     const walk = (dir: string): void => {
       let names: string[];
       try {
         names = fs.readdirSync(dir);
       } catch {
+        unreadable ??= dir;
         return;
       }
       for (const n of names) {
@@ -98,6 +100,13 @@ Exit codes: 0 every check ran clean or was skipped, 1 an error finding from a ch
     };
     const inner = `${target}/.github/workflows`;
     walk(stat(inner)?.isDirectory() === true ? inner : target);
+    if (unreadable !== undefined)
+      return fail(
+        3,
+        "precondition",
+        `cannot read ${unreadable}`,
+        `[FAIL] not readable: ${unreadable}`,
+      );
     files.sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
     if (files.length === 0)
       return fail(
@@ -114,6 +123,14 @@ Exit codes: 0 every check ran clean or was skipped, 1 an error finding from a ch
       `${target} is not a readable file or directory`,
       `[FAIL] not a file or directory: ${target}`,
     );
+  // Every resolved file must be readable before any check runs or any tool is looked for.
+  for (const f of files) {
+    try {
+      fs.accessSync(f, fs.constants.R_OK);
+    } catch {
+      return fail(3, "precondition", `cannot read ${f}`, `[FAIL] not readable: ${f}`);
+    }
+  }
 
   // --- the six checks ----------------------------------------------------------------------------
   const here = path.dirname(path.resolve(process.argv[1] ?? "."));

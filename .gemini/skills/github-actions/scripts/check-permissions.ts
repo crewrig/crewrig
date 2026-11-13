@@ -69,7 +69,6 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
   if (inputs.includes("-") && inputs.length > 1)
     return usageError("- (standard input) cannot be combined with other inputs");
 
-  // Target validity: an empty directory is a usage-level refusal, an unreadable path is exit 3.
   const stat = (p: string): import("node:fs").Stats | undefined => {
     try {
       return fs.statSync(p);
@@ -125,7 +124,6 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
     }
   }
 
-  // --- YAML-subset reader: logical lines (comments and block-scalar bodies removed) -------------
   interface Ln {
     n: number;
     ind: number;
@@ -171,7 +169,6 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
   const ANCHOR = /^(?:-\s+)*(?:(?:"[^"]*"|'[^']*'|[^\s:#][^:]*?):\s+)?[&*][A-Za-z0-9_-]+(?:\s|$)/;
   const MERGE = /^(?:-\s+)*<<:/;
 
-  // --- the rules ---------------------------------------------------------------------------------
   interface Perm {
     kind: "write-all" | "read-all" | "map" | "unparsed";
     writes: { scope: string; n: number }[];
@@ -199,6 +196,7 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
     return { kind: ok ? "map" : "unparsed", writes };
   };
 
+  const notChecked: string[] = [];
   const check = (path: string, text: string): Finding[] => {
     const found: Finding[] = [];
     const add = (rule: string, n: number, message: string, severity: "error" | "warning"): void => {
@@ -216,7 +214,10 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
       if (ANCHOR.test(l.t) || MERGE.test(l.t)) unparsed(l.n, "a YAML anchor, alias or merge key");
     }
     const jobsAt = lines.findIndex((l) => l.ind === 0 && kv(l.t)?.key === "jobs");
-    if (jobsAt < 0) return found; // composite action.yml or no jobs: a clean pass
+    if (jobsAt < 0) {
+      notChecked.push(path); // a composite action.yml: a clean pass, but not examined
+      return found;
+    }
     const jobsLine = lines[jobsAt] as Ln;
     const report = (p: Perm, n: number, top: boolean): void => {
       if (p.kind === "write-all")
@@ -293,7 +294,7 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
   const files = texts.map((f) => f.path);
   const summary =
     errors === 0
-      ? `[OK] ${files.length} workflow file(s) checked, no permissions finding${warnings > 0 ? ` (${warnings} warning(s))` : ""}`
+      ? `[OK] ${files.length - notChecked.length} workflow file(s) checked, no permissions finding${warnings > 0 ? ` (${warnings} warning(s))` : ""}${notChecked.length > 0 ? ` (${notChecked.length} file(s) without a jobs: key, not checked: ${notChecked.join(", ")})` : ""}`
       : `${errors} error(s) and ${warnings} warning(s) in ${files.length} workflow file(s)`;
   emit(errors === 0 ? 0 : 1, { files, errors, warnings }, findings, summary);
 })();

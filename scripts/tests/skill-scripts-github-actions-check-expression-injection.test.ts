@@ -213,3 +213,28 @@ describe("check-expression-injection: unsupported YAML (R9) and contract", () =>
     assert.match(r.stdout, /^Usage: /);
   });
 });
+
+describe("check-expression-injection: shapes the line reader must not pass silently", () => {
+  test("a plain multi-line run: scalar whose continuation holds the expression is reported", () => {
+    const text = `${HEAD}      - run: echo foo\n          \${{ github.event.pull_request.body }}\n`;
+    const { r, env } = check(text);
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    const f = env.findings.find((x) => x.rule === "expression-injection");
+    assert.equal(f?.line, lineOf(text, "github.event.pull_request.body"));
+  });
+  test("the bracket form of an attacker-controlled path is reported", () => {
+    const { r, env } = check(runStep(`echo \${{ github['event']['pull_request']['title'] }}`));
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.ok(env.findings.some((x) => x.rule === "expression-injection"));
+  });
+  test("a bracket form of a trusted field still passes", () => {
+    const { r } = check(runStep(`echo \${{ github['sha'] }}`));
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+  });
+  test("a composite action says it was not checked and exits 0 with no finding", () => {
+    const { r, env } = check(ACTION_YML);
+    assert.equal(r.status, 0);
+    assert.deepEqual(env.findings, []);
+    assert.match(r.stderr + r.stdout, /not checked/);
+  });
+});

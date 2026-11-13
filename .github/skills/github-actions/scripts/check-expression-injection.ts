@@ -201,6 +201,7 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
       (/\.(?:body|title|message|label)$/.test(path) ||
         /\.(?:author|committer)\.(?:name|email)$/.test(path)));
 
+  const notChecked: string[] = [];
   const check = (path: string, text: string): Finding[] => {
     const found: Finding[] = [];
     const add = (rule: string, n: number, message: string, severity: "error" | "warning"): void => {
@@ -215,7 +216,10 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
       );
     const lines = scan(text);
     // A file with no top-level jobs: key (a composite action.yml) is a clean pass.
-    if (!lines.some((l) => l.ind === 0 && kv(l.t)?.key === "jobs")) return found;
+    if (!lines.some((l) => l.ind === 0 && kv(l.t)?.key === "jobs")) {
+      notChecked.push(path);
+      return found;
+    }
     lines.forEach((l, i) => {
       if (ANCHOR.test(l.t) || MERGE.test(l.t)) unparsed(l.n, "a YAML anchor, alias or merge key");
       else if (/^-\s+\{/.test(l.t)) unparsed(l.n, "a step written as a flow mapping");
@@ -234,15 +238,24 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
           .some((x) => /^(?:-\s+)?uses:\s*["']?actions\/github-script@/.test(x.t));
         if (!isScript) return;
       }
+      // A plain or quoted scalar may continue on deeper lines: read them as part of the value.
+      const eff = l.ind + (/^(?:-\s+)*/.exec(l.t)?.[0].length ?? 0);
+      const more: { n: number; s: string }[] = [];
+      for (let j = i + 1; l.body.length === 0 && j < lines.length; j++) {
+        if ((lines[j] as Ln).ind <= eff) break;
+        more.push({ n: (lines[j] as Ln).n, s: (lines[j] as Ln).t });
+      }
       const values: { n: number; s: string }[] =
-        l.body.length > 0 ? l.body : [{ n: l.n, s: k.value }];
+        l.body.length > 0 ? l.body : [{ n: l.n, s: k.value }, ...more];
       const seen = new Set<string>();
       for (const v of values) {
         for (const m of v.s.matchAll(/\$\{\{([\s\S]*?)\}\}/g)) {
           const expr = m[1] as string;
           const paths = expr.match(/(?<![\w.])github(?:\.[A-Za-z0-9_-]+|\[[^\]]*\])+/g) ?? [];
           for (const raw of paths) {
-            const p = raw.replace(/\[[^\]]*\]/g, "[*]");
+            const p = raw
+              .replace(/\[\s*(['"])([^'"\]]+)\1\s*\]/g, ".$2")
+              .replace(/\[[^\]]*\]/g, "[*]");
             if (!hostile(p) || seen.has(`${v.n}:${p}`)) continue;
             seen.add(`${v.n}:${p}`);
             add(
@@ -274,7 +287,7 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
   const files = texts.map((f) => f.path);
   const summary =
     errors === 0
-      ? `[OK] ${files.length} workflow file(s) checked, no expression injection${warnings > 0 ? ` (${warnings} warning(s))` : ""}`
+      ? `[OK] ${files.length - notChecked.length} workflow file(s) checked, no expression injection${warnings > 0 ? ` (${warnings} warning(s))` : ""}${notChecked.length > 0 ? ` (${notChecked.length} file(s) without a jobs: key, not checked: ${notChecked.join(", ")})` : ""}`
       : `${errors} error(s) and ${warnings} warning(s) in ${files.length} workflow file(s)`;
   emit(errors === 0 ? 0 : 1, { files, errors, warnings }, findings, summary);
 })();
