@@ -1,0 +1,3 @@
+Validating...
+invalid.yml is invalid.
+1 unit job: chosen stage nope does not exist; available stages are .pre, test, .post

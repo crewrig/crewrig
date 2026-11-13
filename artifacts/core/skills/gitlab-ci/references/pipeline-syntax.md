@@ -1,5 +1,14 @@
 # Pipeline syntax reference
 
+## Contents
+
+- [File location and naming](#file-location-and-naming)
+- [Top-level keys](#top-level-keys)
+- [Job-level keys](#job-level-keys)
+- [Reuse mechanisms](#reuse-mechanisms)
+- [Full worked example](#full-worked-example)
+- [Edge cases and quirks](#edge-cases-and-quirks)
+
 Canonical reference for the YAML grammar of a GitLab CI/CD pipeline
 (`.gitlab-ci.yml`). Each top-level and job-level key is enumerated with
 semantics, defaults, and a worked example. Read the section that matches

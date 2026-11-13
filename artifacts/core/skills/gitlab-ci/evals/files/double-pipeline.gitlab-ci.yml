@@ -1,0 +1,33 @@
+stages:
+  - test
+  - build
+
+lint:
+  stage: test
+  image: node:22.11-alpine
+  script:
+    - npm ci
+    - npm run lint
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+unit-tests:
+  stage: test
+  image: node:22.11-alpine
+  script:
+    - npm ci
+    - npm test
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+build:
+  stage: build
+  image: node:22.11-alpine
+  script:
+    - npm ci
+    - npm run build
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
