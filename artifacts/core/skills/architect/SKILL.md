@@ -8,7 +8,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "2.0.0"
+    version: "2.0.1"
 claude:
   allowed-tools:
     - Read
@@ -67,7 +67,7 @@ Run `node scripts/measure-span.ts <file> <first>-<last>... --current <bytes> --b
 | ADR (markdown) | One-way or contract change | `docs/adr/NNNN-<slug>.md` |
 | RFC (issue) | Cross-team or cross-project | GitHub issue with label `rfc` |
 
-An ADR has the sections Context, Decision, Status and Consequences, each under ten lines, and records the rejected alternatives. A Context that needs two pages means the decision is not crisp yet.
+The layout and numbering of an ADR come from the `doc-writer` skill: its `new-adr.ts` lays the ADR out and its `lint-adr.ts` checks it. That skill is a separate install, so when `doc-writer` is not installed say so explicitly and use the repository order, Status first, then Context, Decision and Consequences, the last listing the positive, negative and neutral effects. Keep each section short (the Context a few sentences, none over ten lines) and record the rejected alternatives. A Context that needs two pages means the decision is not crisp yet.
 
 ### 6. Briefing sub-agents
 
