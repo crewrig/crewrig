@@ -1,0 +1,4 @@
+[UNPINNED] ci.yml:4: $CI_REGISTRY_IMAGE:latest
+[UNPINNED] ci.yml:5: $CI_REGISTRY_IMAGE:$TAG
+[UNPINNED] ci.yml:7: $REG@v1
+[UNPINNED] ci.yml:9: node:$TAG
