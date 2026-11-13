@@ -282,7 +282,7 @@ Exit codes: 0 no error finding, 1 error finding, 2 usage error or no workflow fi
       add(
         "permissions-missing",
         firstMissing ?? jobsLine.n,
-        "no top-level permissions: key and a job without its own: add permissions: { contents: read } at the workflow level and raise a scope only on the job that needs it",
+        "no top-level permissions: key and a job without its own: add a top-level permissions: block with contents: read and raise a scope only on the job that needs it",
         "error",
       );
     return found.sort((a, b) => (a.line ?? 0) - (b.line ?? 0));

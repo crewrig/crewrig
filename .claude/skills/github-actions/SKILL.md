@@ -64,8 +64,9 @@ warning: review that line by hand, because the file was not verified there.
 A script catches the first four; the rest need your judgement.
 
 1. Unpinned third-party actions: pin by commit SHA (`check-pinned-actions.ts`).
-2. A `GITHUB_TOKEN` with inherited write access: set `permissions:` at the workflow
-   level and raise it per job (`check-permissions.ts`).
+2. A `GITHUB_TOKEN` with inherited write access: set a top-level `permissions:` block
+   with `contents: read` (not `{}`, which also blocks checkout of a private
+   repository) and raise it per job (`check-permissions.ts`).
 3. Event data pasted into a shell step: bind it under `env:` (`check-expression-injection.ts`).
 4. A `pull_request_target` workflow that checks out the pull request head: a label or an
    environment gate does not make the head's code trusted (`check-pull-request-target.ts`).
@@ -89,6 +90,9 @@ A script catches the first four; the rest need your judgement.
 These are decisions; the detail and examples are in `references/generation-rules.md`.
 
 - Use OIDC for cloud access, because a short-lived token has nothing to rotate or leak.
+- Install Node dependencies with `npm ci`, because it fails on a lockfile mismatch;
+  when there is no lockfile, report it to the user to commit instead of using
+  `npm install`.
 - Bind a secret to the step that needs it, at most the job, because workflow-level
   `env:` reaches every job and action.
 - Set `concurrency:` and `timeout-minutes:` on every job, because the default timeout is six

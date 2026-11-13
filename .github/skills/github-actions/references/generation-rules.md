@@ -54,8 +54,10 @@ runs them together. The reason is here so the first draft already complies.
   keep it accurate. When the SHA cannot be resolved in the session, write
   `# TODO: resolve to commit SHA` and report the gap. Checked by
   `check-pinned-actions.ts`.
-- **Set `permissions:` at the workflow level to the least the smallest job
-  needs**, usually `contents: read`, and raise a scope on the job that needs it
+- **Set a top-level `permissions:` block with `contents: read`**, written as a
+  block (`permissions:` then `  contents: read`), not as `permissions: {}`: an
+  empty mapping also removes read access, so `actions/checkout` fails on a
+  private repository. Raise a scope only on the job that needs it
   (`contents: write` to tag a release, `id-token: write` for OIDC). Never use
   `write-all`, and never leave it unset: the repository default may grant the
   token write access to everything. Checked by `check-permissions.ts`.
@@ -102,6 +104,12 @@ No script can decide these: they depend on the project.
 - **Required status checks** on the protected branch for the jobs that enforce
   these rules. A rule that nothing blocks on drifts. This is a repository
   setting: list it in the follow-up checklist.
+- **Reproducible installs.** A Node pipeline installs with `npm ci`, which
+  fails when the lockfile and `package.json` disagree, where `npm install`
+  silently rewrites the tree. When the repository has no lockfile, tell the user
+  to commit one; do not fall back to `npm install`. The same holds for the
+  other ecosystems (`pip` with pinned requirements, `go mod download`, a locked
+  `cargo` build).
 - **Caching.** Use the caching of the setup action first (`cache: npm` on
   `actions/setup-node`, `cache: pip` on `actions/setup-python`). When
   `actions/cache` is needed, key it on the hash of the lockfile plus a numeric
