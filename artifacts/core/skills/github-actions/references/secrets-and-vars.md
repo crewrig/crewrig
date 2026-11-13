@@ -6,6 +6,16 @@ is the choice between confidentiality and observability. Use the
 wrong one and you either leak credentials to logs or accidentally
 encrypt a value you needed to debug.
 
+## Contents
+
+- Secrets vs. variables
+- Scope and precedence
+- Defining and consuming
+- Masking
+- OIDC federation
+- Common pitfalls
+- Auditing
+
 ## Secrets vs. variables
 
 | Property | Secrets | Variables |
