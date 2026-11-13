@@ -808,10 +808,6 @@
     "desc": "Run the check-agent-profiles CI capability (pre-push mirror of the CI job)"
   },
   {
-    "name": "ci:check-agent-script-citations",
-    "desc": "Fail when an agent body cites a scripts/ path outside a crewrig-repo-only fence (pre-push mirror of the CI job)"
-  },
-  {
     "name": "ci:agent-profile-migration",
     "desc": "Run the agent-profile migration regression suite (cached by the ci-cache-guard capability key)"
   },

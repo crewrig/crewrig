@@ -253,14 +253,6 @@ jobs:
         with:
           id: check-description-length
 
-  check-agent-script-citations:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/ci-job
-        with:
-          id: check-agent-script-citations
-
   check-extension-version-bump:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'

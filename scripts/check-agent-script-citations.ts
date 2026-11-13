@@ -20,6 +20,7 @@ const findings = findAgentCitations(repoDir);
 if (findings.length === 0) {
   ok(`OK: no unfenced script citation in ${agentBodies(repoDir).length} agent bodies`);
 } else {
+  fail(`check-agent-script-citations: ${findings.length} unfenced script citation(s) in agent bodies`);
   fail(findings.map((f) => `FAIL ${f.file}:${f.line}: ${f.message}`).join("\n"));
   process.exitCode = 1;
 }

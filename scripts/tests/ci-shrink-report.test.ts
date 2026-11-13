@@ -20,8 +20,8 @@ const workflowSurfaces = (): string[] => [
     .map((f) => `${WORKFLOW_DIR}/${f}`),
 ];
 const SURFACES = [...workflowSurfaces(), "ci/ci-capabilities.yml", ".gitlab-ci.yml"];
-const FLOOR = 9080; // spec 0280 R10 floor 8880, raised by spec 0287 R13 (staged callees) to 9000, then to the rounded pin of 9070 by spec 0290 (#1849: two capabilities, 95 lines), then to 9080 by spec 0293 (#1848: the linter joins the check-description-length job, 12 lines); spec 0287 R13 hard cap 9100
-const PIN = 9080; // measured 9072 for spec 0293 (#1848), 9062 before (spec 0287 R13: the measured total rounded up to the next ten); was 8967, +95 by spec 0290 (#1849: skill-evals-attestation and skill-evals-tests)
+const FLOOR = 9090; // spec 0280 R10 floor 8880, raised by spec 0287 R13 (staged callees) to 9000, then to the rounded pin of 9070 by spec 0290 (#1849: two capabilities, 95 lines), then to 9080 by spec 0293 (#1848: the linter joins the check-description-length job, 12 lines), then to 9090 by delta 01 of spec 0289 (#1863: the agent citation check joins the same job, 4 lines); spec 0287 R13 hard cap 9100
+const PIN = 9090; // measured 9082 for delta 01 of spec 0289 (#1863), 9072 for spec 0293 (#1848), 9062 before (spec 0287 R13: the measured total rounded up to the next ten); was 8967, +95 by spec 0290 (#1849: skill-evals-attestation and skill-evals-tests)
 const COMMENT_LIMIT = 322; // spec 0285 R2: half of the 644 comment lines of a67ca65e
 
 const lines = (rel: string): string[] => {

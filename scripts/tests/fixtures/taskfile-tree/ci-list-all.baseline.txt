@@ -95,7 +95,6 @@ task: Available tasks for this project:
 * ci:alert-scheduled-failure-selftest:       Run the scheduled-failure alert self-test against a fake gh
 * ci:build-components-ts:                    Run the build-components-ts CI capability (pre-push mirror of the CI job)
 * ci:check-agent-profiles:                   Run the check-agent-profiles CI capability (pre-push mirror of the CI job)
-* ci:check-agent-script-citations:           Fail when an agent body cites a scripts/ path outside a crewrig-repo-only fence (pre-push mirror of the CI job)
 * ci:check-agents-size:                      Fail when the AGENTS.md size budget is exceeded (pre-push mirror of the CI job)
 * ci:check-ci-parity:                        Check the CI reference, workflow and GitLab outputs agree (pre-push mirror of the CI job)
 * ci:check-claude-agent-layout:              Run the check-claude-agent-layout CI capability (pre-push mirror of the CI job)

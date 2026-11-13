@@ -233,8 +233,8 @@ Symptoms: workflow fails to start, "Invalid workflow file",
 
 Typical fixes:
 
-- Run `actionlint` locally on the file. The skill's
-  its `lint-workflow.ts` script wraps this.
+- Run `actionlint` locally on the file. The `github-actions` skill's
+  `lint-workflow.ts` script wraps this.
 - Watch for the classic YAML traps: tab characters, multi-line
   scalars with unintended indentation, `on:` keyword interpreted as
   boolean, unquoted `1.10` becoming a float.
