@@ -164,3 +164,53 @@ test("real eval-4 answer: a raw TAB inside the JSON string is decoded, not kept 
 test("parseEvidence never keeps the quotes of an unparseable literal", () => {
   assert.equal(parseEvidence('EVIDENCE="bad \\q escape"'), "bad \\q escape");
 });
+
+// #1914: the verdict word comes from the structured VERDICT= field, never from inside EVIDENCE.
+const REQ = '"## Verdict: REQUEST CHANGES"';
+test("#1914 evidence quoting a Verdict line before the real VERDICT= does not hijack the verdict", () => {
+  const e = parseJudgeAnswer(`1 EVIDENCE=${REQ} VERDICT=PASS`, 1);
+  assert.equal(e[0]?.verdict, "PASS");
+  assert.equal(e[0]?.evidence, "## Verdict: REQUEST CHANGES");
+});
+
+test("#1914 evidence quoting a Verdict line after the real VERDICT= keeps the real verdict", () => {
+  for (const v of ["PASS", "FAIL", "UNCERTAIN"])
+    assert.equal(parseJudgeAnswer(`1 VERDICT=${v} EVIDENCE=${REQ}`, 1)[0]?.verdict, v);
+});
+
+test("#1914 a quoted Verdict inside evidence is no verdict when the field is absent", () => {
+  assert.equal(parseJudgeAnswer(`1 EVIDENCE=${REQ}`, 1)[0], undefined);
+  assert.equal(parseJudgeAnswer(`1 EVIDENCE:${REQ}`, 1)[0], undefined);
+});
+
+test("#1914 only PASS, FAIL and UNCERTAIN are verdict words; a later valid line still wins", () => {
+  const e = parseJudgeAnswer(`1 VERDICT=REQUEST EVIDENCE=${REQ}\n1 VERDICT=FAIL EVIDENCE="x"`, 1);
+  assert.equal(e[0]?.verdict, "FAIL");
+  assert.equal(parseJudgeAnswer('1 VERDICT=REQUEST EVIDENCE="x"', 1)[0], undefined);
+});
+
+test("#1914 markdown decorations and list markers around the structured field", () => {
+  const e = parseJudgeAnswer(
+    `- **1.** **VERDICT**=**PASS** **EVIDENCE**=${REQ}\n2) \`VERDICT: FAIL\` EVIDENCE: ${REQ}\n3. EVIDENCE=${REQ} **VERDICT:** UNCERTAIN`,
+    3,
+  );
+  assert.deepEqual(
+    e.map((x) => x?.verdict),
+    ["PASS", "FAIL", "UNCERTAIN"],
+  );
+});
+
+test("#1914 the recorded answer shape: the expectation is graded on PASS, not 'REQUEST'", async () => {
+  const dir = tmpDir("judge1914");
+  const answer = `1 EVIDENCE=${REQ} VERDICT=PASS`;
+  const j = mockJudge(dir, answer);
+  const entries = await j.fn(["The verdict is REQUEST CHANGES"], {
+    transcript: "x",
+    files: [{ rel: "v.md", content: "## Verdict: REQUEST CHANGES\n" }],
+  });
+  assert.equal(entries[0]?.verdict, "PASS");
+});
+
+test("#1914 unquoted evidence followed by the field yields no entry (the prompt asks for a JSON string)", () => {
+  assert.equal(parseJudgeAnswer("1 EVIDENCE=some words VERDICT=PASS", 1)[0], undefined);
+});
