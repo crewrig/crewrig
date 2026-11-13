@@ -76,8 +76,8 @@ export const CALLERS: readonly Caller[] = [
     file: "artifacts/core/agents/ci-configurator/AGENT.md",
     // an agent installs alone: it cites a skill's script as <skill-dir>/scripts/<name>.ts (issue #1863)
     required: [
-      "node <github-actions-skill-dir>/scripts/lint-workflow.ts",
-      "node <github-actions-skill-dir>/scripts/check-pinned-actions.ts",
+      "node <github-actions-skill-dir>/scripts/validate-pipeline.ts",
+      "node <github-actions-skill-dir>/scripts/resolve-engine.ts",
       "node <gitlab-ci-skill-dir>/scripts/check-pinned-images.ts",
       "node <gitlab-ci-skill-dir>/scripts/check-secrets-exposure.ts",
     ],
