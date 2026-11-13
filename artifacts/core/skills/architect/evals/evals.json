@@ -49,12 +49,12 @@
     {
       "id": 3,
       "prompt": "The decision under consideration is moving the order event schema from v1 to v2, described in event-schema.md. Write the Architecture Decision Record to adr.md. Do not run gh, glab, tea or git push, and do not create, edit or comment on any pull request, issue or other forge artifact: work only from the files in the current directory and write only the files asked for.",
-      "expected_output": "adr.md has the sections Context, Decision, Status and Consequences, each short, and treats the change as one-way.",
+      "expected_output": "adr.md has the sections Status, Context, Decision and Consequences, each short, and treats the change as one-way.",
       "files": [
         "evals/files/event-schema.md"
       ],
       "expectations": [
-        "adr.md has the four sections Context, Decision, Status and Consequences, in that order.",
+        "adr.md has the four sections Status, Context, Decision and Consequences, in that order.",
         "Each section of adr.md is at most ten lines.",
         "adr.md recognises that the change is one-way once old events are purged and says what the consequence is for consumers.",
         "adr.md records at least one rejected alternative."
@@ -159,7 +159,7 @@
       "expectations": [
         "adr.md does not state as a fact that the inventory service reads CACHE_AUTO_TUNE or that operators run cachectl rebalance.",
         "If adr.md mentions CACHE_AUTO_TUNE or cachectl, it marks them as an assumption to verify, citing that repo-listing.txt found no trace of them.",
-        "adr.md has the sections Context, Decision, Status and Consequences and addresses the requirement that the cache survives a restart."
+        "adr.md has the sections Status, Context, Decision and Consequences and addresses the requirement that the cache survives a restart."
       ],
       "checks": [
         {
