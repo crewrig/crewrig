@@ -9,9 +9,22 @@ import fs from "node:fs";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 
-import { envelope, run, copySkill, tempDir, type Run, type ScriptName } from "./lib/skill-scripts-gitlab-ci-cli.ts";
+import {
+  envelope,
+  run,
+  copySkill,
+  tempDir,
+  type Run,
+  type ScriptName,
+} from "./lib/skill-scripts-gitlab-ci-cli.ts";
 
-const GOLDEN = path.resolve(import.meta.dirname, "fixtures", "skill-scripts", "gitlab-ci-0301", "flags");
+const GOLDEN = path.resolve(
+  import.meta.dirname,
+  "fixtures",
+  "skill-scripts",
+  "gitlab-ci-0301",
+  "flags",
+);
 const root = tempDir("gitlab-ci-flags-");
 after(() => fs.rmSync(root, { recursive: true, force: true }));
 const skill = copySkill(root);

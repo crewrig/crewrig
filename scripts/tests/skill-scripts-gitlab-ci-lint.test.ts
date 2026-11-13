@@ -8,7 +8,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { after, beforeEach, describe, test } from "node:test";
 
-import { copySkill, envelope, glabStub, gone, run, tempDir } from "./lib/skill-scripts-gitlab-ci-cli.ts";
+import {
+  copySkill,
+  envelope,
+  glabStub,
+  gone,
+  run,
+  tempDir,
+} from "./lib/skill-scripts-gitlab-ci-cli.ts";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
 const root = tempDir("gitlab-ci-lint-");
@@ -126,7 +133,8 @@ describe("not validated: exit 3, rule precondition, says NOT validated server-si
     assert.ok(pid > 0);
     // The stub is a single Node process, so a missed kill leaves exactly this pid alive.
     const deadline = Date.now() + 2_000;
-    while (!gone(pid) && Date.now() < deadline) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+    while (!gone(pid) && Date.now() < deadline)
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
     assert.ok(gone(pid), `stub process ${pid} outlived the script`);
   });
 });

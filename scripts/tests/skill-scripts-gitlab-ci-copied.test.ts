@@ -7,7 +7,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 
-import { copySkill, envelope, glabStub, run, tempDir, type ScriptName } from "./lib/skill-scripts-gitlab-ci-cli.ts";
+import {
+  copySkill,
+  envelope,
+  glabStub,
+  run,
+  tempDir,
+  type ScriptName,
+} from "./lib/skill-scripts-gitlab-ci-cli.ts";
 import { type Layout, LAYOUT_PACKAGE } from "./lib/skill-scripts-observe.ts";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
@@ -35,7 +42,10 @@ describe("gitlab-ci scripts from a copy of the whole skill directory", () => {
       assert.ok(!fs.existsSync(path.join(dir, "evals")), "the built skill ships no evals/");
       const work = path.join(base, "work");
       fs.mkdirSync(work);
-      fs.writeFileSync(path.join(work, "ci.yml"), "workflow:\n  rules:\n    - if: $X\nbuild:\n  script: make\n");
+      fs.writeFileSync(
+        path.join(work, "ci.yml"),
+        "workflow:\n  rules:\n    - if: $X\nbuild:\n  script: make\n",
+      );
 
       test("--help of each script: usage on stdout, exit 0, no stderr", () => {
         for (const s of SCRIPTS) {
@@ -46,10 +56,16 @@ describe("gitlab-ci scripts from a copy of the whole skill directory", () => {
         }
       });
       test("lint-gitlab-ci: valid via the stub exits 0, a missing file exits 3, no warning", () => {
-        const ok = run(dir, "lint-gitlab-ci", ["ci.yml", "--json"], { cwd: work, env: glab.replay("valid") });
+        const ok = run(dir, "lint-gitlab-ci", ["ci.yml", "--json"], {
+          cwd: work,
+          env: glab.replay("valid"),
+        });
         assert.equal(ok.status, 0, ok.stdout + ok.stderr);
         assert.doesNotMatch(ok.stderr, WARNING);
-        const bad = run(dir, "lint-gitlab-ci", ["nope.yml"], { cwd: work, env: glab.replay("valid") });
+        const bad = run(dir, "lint-gitlab-ci", ["nope.yml"], {
+          cwd: work,
+          env: glab.replay("valid"),
+        });
         assert.equal(bad.status, 3);
         assert.doesNotMatch(bad.stderr, WARNING);
       });

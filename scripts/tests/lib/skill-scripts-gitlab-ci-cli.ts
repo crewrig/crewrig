@@ -65,17 +65,21 @@ export function run(
   args: readonly string[],
   opts: { cwd: string; env?: Record<string, string>; timeoutMs?: number },
 ): Run {
-  const res = spawnSync(process.execPath, [path.join(skillDir, "scripts", `${script}.ts`), ...args], {
-    cwd: opts.cwd,
-    env: {
-      HOME: os.tmpdir(),
-      PATH: path.dirname(process.execPath),
-      LC_ALL: "C",
-      ...opts.env,
+  const res = spawnSync(
+    process.execPath,
+    [path.join(skillDir, "scripts", `${script}.ts`), ...args],
+    {
+      cwd: opts.cwd,
+      env: {
+        HOME: os.tmpdir(),
+        PATH: path.dirname(process.execPath),
+        LC_ALL: "C",
+        ...opts.env,
+      },
+      encoding: "utf8",
+      timeout: opts.timeoutMs ?? 60_000,
     },
-    encoding: "utf8",
-    timeout: opts.timeoutMs ?? 60_000,
-  });
+  );
   return { status: res.status, stdout: res.stdout, stderr: res.stderr };
 }
 

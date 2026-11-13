@@ -153,7 +153,10 @@ describe("findings", () => {
 describe("nothing to scan", () => {
   for (const [title, rows] of [
     ["an empty file", ""],
-    ["stages, variables and include entries only", "stages:|  - build|variables:|  A: b|include:|  - local: x.yml"],
+    [
+      "stages, variables and include entries only",
+      "stages:|  - build|variables:|  A: b|include:|  - local: x.yml",
+    ],
   ] as [string, string][])
     test(`${title}: no missing-workflow-rules, zero jobs, exit 0`, () => {
       const dir = fixture({ "ci.yml": rows });
