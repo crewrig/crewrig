@@ -5,6 +5,15 @@ GitHub-hosted runner inventory, self-hosted runner architecture, label
 and group selection, runner security model, and the constraints that
 apply to composite actions and container jobs.
 
+## Contents
+
+- GitHub-hosted runners
+- Self-hosted runners
+- Containers and services
+- Composite-action constraints
+- Workflow commands
+- Runner diagnostics
+
 ## GitHub-hosted runners
 
 GitHub provisions ephemeral VMs per job, destroyed after the job

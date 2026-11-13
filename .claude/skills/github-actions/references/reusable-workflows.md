@@ -10,6 +10,17 @@ definition syntax, calling conventions, the interaction with matrices
 and concurrency, and the limitations that distinguish reusable
 workflows from composite actions.
 
+## Contents
+
+- Reusable workflow vs. composite action
+- Declaring a reusable workflow
+- Calling a reusable workflow
+- Matrix interactions
+- Concurrency
+- Limitations
+- Versioning strategy
+- Worked example: build-and-deploy
+
 ## Reusable workflow vs. composite action
 
 A frequent question. The trade-off:

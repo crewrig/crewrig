@@ -5,6 +5,15 @@ Each top-level and nested key is enumerated with semantics, defaults,
 and a worked example. Read the section that matches the key you are
 editing — do not guess from memory.
 
+## Contents
+
+- File location and naming
+- Top-level keys
+- Job-level keys
+- Step-level keys
+- Composite action syntax
+- Edge cases and quirks
+
 ## File location and naming
 
 Workflow files live under `.github/workflows/` and end in `.yml` or

@@ -9,7 +9,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.3.3"
+    version: "1.4.0"
 ---
 
 # CI Configurator Agent

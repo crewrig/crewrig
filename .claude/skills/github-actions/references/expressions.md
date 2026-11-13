@@ -5,6 +5,16 @@ the `if:` key. Read this before writing any non-trivial condition or
 output reference. Memorising the truthiness and short-circuit rules
 avoids the bulk of "the step ran when I told it not to" bugs.
 
+## Contents
+
+- Evaluation surface
+- Context objects
+- Operators
+- Functions
+- Truthiness
+- Common patterns
+- Pitfalls
+
 ## Evaluation surface
 
 Expressions appear in three places:

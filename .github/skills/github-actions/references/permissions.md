@@ -7,6 +7,17 @@ compromise — a workflow with `contents: read` and nothing else cannot
 push code, cannot publish a package, cannot open a PR, cannot tag a
 release, no matter what an action it calls tries to do.
 
+## Contents
+
+- The `GITHUB_TOKEN`
+- Default policy
+- The `permissions:` key
+- Scope inventory
+- Least-privilege recipes
+- Workflow- vs. job-level `permissions:`
+- Org-level restrictions
+- Auditing
+
 ## The `GITHUB_TOKEN`
 
 A short-lived (max 24 h, but the job's lifetime in practice) installation
@@ -261,6 +272,6 @@ Mechanical audit steps:
   policy on the cloud side is scoped to the specific
   `repo:<owner>/<repo>:environment:<env>` subject.
 
-The `scripts/actionlint` validator (with the `--shellcheck` flag)
+The `actionlint` command (with the `--shellcheck` flag)
 catches the obvious cases. A hand-written check that fails the build
 on `write-all` is worth adding to the same pre-merge gate.

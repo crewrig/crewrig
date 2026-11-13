@@ -6,6 +6,18 @@ the surface and full of footguns underneath. This document covers the
 key/restore-key semantics, scoping rules, eviction, the 10 GB
 per-repository limit, and proven recipes for each major language.
 
+## Contents
+
+- How `actions/cache` works
+- Key construction
+- `restore-keys` fallback chain
+- Scope and visibility
+- Limits
+- Cross-OS pitfalls
+- Cache poisoning
+- Language recipes
+- Debugging
+
 ## How `actions/cache` works
 
 A step using `actions/cache`:
