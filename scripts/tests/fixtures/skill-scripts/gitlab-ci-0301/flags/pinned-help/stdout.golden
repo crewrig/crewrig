@@ -1,0 +1,15 @@
+Usage: node scripts/check-pinned-images.ts <pipeline-file-or-directory> [--json]
+       node scripts/check-pinned-images.ts --help
+
+Flags GitLab CI `image:` and `services:` references that are not pinned to an immutable
+@sha256: digest. A text scan: no registry call, no Docker, no live GitLab. Directory mode scans
+<dir>/.gitlab-ci.yml plus the YAML under <dir>/.gitlab/.
+
+Options:
+  --json   print one JSON object {ok, data, findings} on stdout and the human text on stderr;
+           data is {files: <number of files scanned>}
+  --help   print this text (as the only argument)
+
+Exit codes (legacy, kept under --json; this script does not use exit 3):
+  0 all pinned or nothing to scan, 1 an unpinned reference or a missing or unreadable target,
+  2 usage error.

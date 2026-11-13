@@ -1,0 +1,1 @@
+{"ok":false,"data":null,"findings":[{"rule":"usage","message":"expected one pipeline file or directory, with optional --json"}]}
