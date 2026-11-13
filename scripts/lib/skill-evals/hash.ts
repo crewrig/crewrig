@@ -45,7 +45,7 @@ export type Snapshot =
 
 const EVALS_JSON = "evals/evals.json";
 const SHARED_DIR = "artifacts/core/shared/references";
-const OWN_SHARED = /^references\/shared-.+\.md$/;
+const OWN_SHARED = /^references\/shared-[^/]+\.md$/;
 
 /** The paths R35 selects. */
 export function isSelected(rel: string): boolean {
@@ -69,6 +69,8 @@ const lit = (p: string) => `:(literal)${p}`;
 interface SharedSource {
   readonly mode: string;
   readonly read: () => Buffer | undefined;
+  /** True when the working-tree entry is a symbolic link although the index records a regular file. */
+  readonly isLink?: () => boolean;
 }
 
 /**
@@ -111,7 +113,9 @@ function composeShared(
     const bytes = found.read();
     if (bytes === undefined) {
       problems.push(
-        `${dir}: cites references/shared-${topic}.md, but ${src} is not a tracked file`,
+        found.isLink?.() === true
+          ? `${src}: symbolic link under a hashed path is not supported`
+          : `${dir}: cites references/shared-${topic}.md, but ${src} is not a tracked file`,
       );
       continue;
     }
@@ -185,6 +189,13 @@ export function readWorkingTree(repoRoot: string, skillDirRel: string): Snapshot
           listed.set(name, {
             mode: rec.slice(0, rec.indexOf(" ")),
             read: () => readRegular(path.join(repoRoot, SHARED_DIR, name)),
+            isLink: () => {
+              try {
+                return fs.lstatSync(path.join(repoRoot, SHARED_DIR, name)).isSymbolicLink();
+              } catch {
+                return false;
+              }
+            },
           });
         }
         return listed;

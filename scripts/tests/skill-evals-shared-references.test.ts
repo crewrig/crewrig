@@ -269,7 +269,7 @@ test("a cited topic without a tracked source file makes the snapshot invalid, na
     writeSkill(repo, "demo", { "SKILL.md": skillMd(cite("missing-topic")) });
     commitAll(repo, "base");
     assert.match(problems(head(repo)), /missing-topic/);
-    assert.equal(readRevision(repo.root, "HEAD", skillRel("demo")).kind, "invalid");
+    assert.match(problems(readRevision(repo.root, "HEAD", skillRel("demo"))), /missing-topic/);
   });
 });
 
@@ -310,7 +310,24 @@ test("a symlinked shared source makes the snapshot invalid, naming the path", ()
     writeSkill(repo, "demo", { "SKILL.md": skillMd(cite("linked")) });
     commitAll(repo, "base");
     assert.match(problems(head(repo)), /artifacts\/core\/shared\/references\/linked\.md/);
-    assert.equal(readRevision(repo.root, "HEAD", skillRel("demo")).kind, "invalid");
+    assert.match(
+      problems(readRevision(repo.root, "HEAD", skillRel("demo"))),
+      /linked\.md.*symbolic link/,
+    );
+  });
+});
+
+test("a tracked regular shared source replaced by a symlink in the working tree says symbolic link", () => {
+  withRepo((repo) => {
+    writeShared(repo, "swapped", "regular\n");
+    writeShared(repo, "real", "real bytes\n");
+    writeSkill(repo, "demo", { "SKILL.md": skillMd(cite("swapped")) });
+    commitAll(repo, "base");
+    fs.rmSync(path.join(repo.root, SHARED, "swapped.md"));
+    fs.symlinkSync("real.md", path.join(repo.root, SHARED, "swapped.md"));
+    const p = problems(head(repo));
+    assert.match(p, /swapped\.md.*symbolic link/);
+    assert.doesNotMatch(p, /not a tracked file/);
   });
 });
 
@@ -338,6 +355,14 @@ test("a nested references/sub/shared-x.md is not reserved", () => {
     commitAll(repo, "base");
     const files = ok(head(repo));
     assert.equal(bytesOf(files, "references/sub/shared-x.md"), "nested\n");
+  });
+});
+
+test("a tracked references/shared-dir/x.md is not reserved", () => {
+  withRepo((repo) => {
+    writeSkill(repo, "demo", { "references/shared-dir/x.md": "dir\n" });
+    commitAll(repo, "base");
+    assert.equal(bytesOf(ok(head(repo)), "references/shared-dir/x.md"), "dir\n");
   });
 });
 
