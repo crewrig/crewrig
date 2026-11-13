@@ -1,0 +1,5 @@
+{
+  "status": 1,
+  "stdout": "{\"ok\":false,\"data\":{\"ran\":false},\"findings\":[{\"rule\":\"target-unreadable\",\"message\":\"event payload file not found: nope.json\"}]}\n",
+  "stderr": "[FAIL] event payload file not found: nope.json\n"
+}
