@@ -23,9 +23,37 @@ export const BASELINE_ROOT = path.resolve(
   "skill-scripts-baseline-0301",
 );
 
+/**
+ * Argument forms that sit next to the flags 0301 adds and must keep their legacy behaviour: a flag
+ * that is not the sole argument, a short form, and (secrets only) `--json`, which is never added.
+ */
+const CI_OK = "build:\n  image: node@sha256:" + "0123456789abcdef".repeat(4) + "\n";
+const extra = (script: string, name: string, args: string[]): SkillCase => ({
+  name: `arg-form-${name}`,
+  script,
+  args,
+  files: { "ci.yml": CI_OK },
+});
+const EXTRA_FORMS = (script: string): SkillCase[] => [
+  extra(script, "help-then-file", ["--help", "ci.yml"]),
+  extra(script, "file-then-help", ["ci.yml", "--help"]),
+  extra(script, "short-help", ["-h"]),
+];
+
 export const BASELINE_SCRIPTS: readonly { script: string; cases: readonly SkillCase[] }[] = [
-  { script: "gitlab-ci/check-pinned-images", cases: CHECK_PINNED_IMAGES },
-  { script: "gitlab-ci/check-secrets-exposure", cases: CHECK_SECRETS_EXPOSURE },
+  {
+    script: "gitlab-ci/check-pinned-images",
+    cases: [...CHECK_PINNED_IMAGES, ...EXTRA_FORMS("gitlab-ci/check-pinned-images")],
+  },
+  {
+    script: "gitlab-ci/check-secrets-exposure",
+    cases: [
+      ...CHECK_SECRETS_EXPOSURE,
+      ...EXTRA_FORMS("gitlab-ci/check-secrets-exposure"),
+      extra("gitlab-ci/check-secrets-exposure", "json-then-file", ["--json", "ci.yml"]),
+      extra("gitlab-ci/check-secrets-exposure", "json-alone", ["--json"]),
+    ],
+  },
 ];
 
 export const baselineDir = (c: Pick<SkillCase, "script" | "name">): string =>
@@ -50,9 +78,10 @@ export function observeLegacy(c: SkillCase): GoldenFiles {
 }
 
 if (process.argv[2] === "--regen") {
-  fs.rmSync(BASELINE_ROOT, { recursive: true, force: true });
+  const only = process.argv[3] === "--only" ? process.argv[4] : undefined;
+  if (only === undefined) fs.rmSync(BASELINE_ROOT, { recursive: true, force: true });
   for (const { cases } of BASELINE_SCRIPTS)
-    for (const c of cases)
+    for (const c of cases.filter((k) => only === undefined || k.name.startsWith(only)))
       for (const [rel, content] of observeLegacy(c)) {
         const file = path.join(baselineDir(c), ...rel.split("/"));
         fs.mkdirSync(path.dirname(file), { recursive: true });
