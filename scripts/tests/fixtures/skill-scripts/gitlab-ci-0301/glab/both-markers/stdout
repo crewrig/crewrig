@@ -1,0 +1,4 @@
+Validating...
+✓ CI/CD YAML is valid!
+✗ CI/CD YAML is invalid:
+1. stages config should be an array of strings

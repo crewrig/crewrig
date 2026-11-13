@@ -1,0 +1,4 @@
+Validating...
+✗ CI/CD YAML is invalid:
+1. jobs:build config contains unknown keys: foo
+2. jobs:test needs job build which does not exist

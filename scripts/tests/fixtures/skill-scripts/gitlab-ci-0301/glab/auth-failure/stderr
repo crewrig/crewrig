@@ -1,0 +1,1 @@
+POST https://gitlab.example/api/v4/projects/1/ci/lint: 401 {message: 401 Unauthorized}

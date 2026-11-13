@@ -1,0 +1,12 @@
+Replay fixtures of the GLAB_BIN stub (spec 0301 R10), glab 1.130.0 (the version of the local host).
+
+REAL (quoted from the approved PLAN review of #1940, read-only probes of glab 1.130.0 on gitlab.com,
+project id replaced by <id>):
+  real-403-non-member   stdout, stderr and exit status of `glab ci lint --repo <public project, not a member>`
+  real-not-in-repo      `glab ci lint` outside a GitLab checkout and without --repo
+
+SYNTHETIC (written from the R6 markers; NOT captured from GitLab). The capture of one valid and one
+invalid pipeline needs a GitLab project where the account has CI lint access, which requires the
+user's consent to create one. The real capture is OUTSTANDING; replace these directories with it:
+  valid, valid-shouting, invalid-two-errors, invalid-no-detail, invalid-exit-zero, both-markers,
+  exit-zero-no-marker, unrecognized, unrecognized-failure, auth-failure, connection-failure

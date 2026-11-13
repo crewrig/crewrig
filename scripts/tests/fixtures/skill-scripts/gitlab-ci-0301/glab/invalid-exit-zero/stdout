@@ -1,0 +1,3 @@
+Validating...
+✗ CI/CD YAML is invalid:
+1. root config contains unknown keys: bogus

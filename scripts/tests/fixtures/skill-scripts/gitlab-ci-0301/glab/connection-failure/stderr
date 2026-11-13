@@ -1,0 +1,1 @@
+Post "https://gitlab.example/api/v4/projects/1/ci/lint": dial tcp: lookup gitlab.example: no such host
