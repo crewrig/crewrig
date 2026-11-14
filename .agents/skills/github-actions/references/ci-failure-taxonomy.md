@@ -22,9 +22,11 @@ category points to that file by name instead of repeating it.
 Symptoms: a job stays in `queued` for minutes, or a self-hosted job never starts.
 
 A job waiting for a self-hosted runner is cancelled automatically after 24 hours in
-the queue. Standard GitHub-hosted runners have a concurrent-job limit per plan (20 on
-Free, 40 on Pro, 60 on Team, 500 on Enterprise at the time of writing), and a queue
-that is long only when many workflows start together points at that limit.
+the queue. Standard GitHub-hosted runners have a total concurrent-job limit per plan
+(20 on Free, 40 on Pro, 60 on Team, 500 on Enterprise at the time of writing), and
+macOS jobs have a lower cap inside that total (5 on Free, Pro and Team, 50 on
+Enterprise). A queue that is long only when many workflows start together points at
+those limits.
 
 Typical fixes:
 
@@ -67,9 +69,9 @@ Typical fixes:
   except `GITHUB_TOKEN`. Do not reach for `pull_request_target` to get them; move
   the work that needs a secret to a workflow a maintainer triggers.
 - Never print a secret to "verify" it: the runner masks only the secret's literal
-  value in log output. A split, encoded or otherwise transformed value is not
-  recognised, and a secret written to a file that is uploaded as an artifact leaks
-  through the artifact.
+  value in log output. A secret that is split or otherwise altered (a substring,
+  a reformatted value) is not recognised, and a secret written to a file that is
+  uploaded as an artifact leaks through the artifact.
 
 Scopes and masking are detailed in `secrets-and-vars.md`.
 
@@ -154,5 +156,6 @@ Typical fixes:
   `cancel-in-progress`) or serialise the releases in another way.
 - For pull-request jobs that should not race their own follow-up commits, put the
   head reference in the group key. `github.head_ref` is defined only on
-  `pull_request` and `pull_request_target` events, so write `${{ github.head_ref || github.run_id }}` (or
-  `github.ref`) to avoid an empty group on other events.
+  `pull_request` and `pull_request_target` events, so write
+  `${{ github.head_ref || github.run_id }}` (or `github.ref`) to avoid an empty group
+  on other events.
