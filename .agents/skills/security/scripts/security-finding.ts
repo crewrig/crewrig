@@ -22,8 +22,10 @@ Rules (each finding carries the finding number and a message that states the fix
   severity-missing, severity-unknown (BLOCKER, HIGH, MED, LOW or INFO), field-missing,
   placeholder (a value that is still template text in angle brackets), where-format
   (<file>:<line> or <file>:<first>-<last>), where-file-missing, where-line-out-of-range,
-  where-outside-root, numbering (1 to N in order), no-findings-block (no numbered finding and no
-  line "No findings."), precondition (unreadable report, root that is not a directory).
+  where-outside-root, numbering (1 to N in order), field-duplicate (a label given twice),
+  fence-unclosed (a code fence never closed), no-findings-block (no numbered finding and no line
+  "No findings."), precondition (unreadable report, root that is not a directory). A prose line
+  closes the open finding; the next header with a bracketed severity opens another.
 
 Options:
   --root <dir>  directory that Where: paths resolve against (default: the working directory)
@@ -83,8 +85,15 @@ Exit codes: 0 no finding, 1 at least one error, 2 usage error, 3 unreadable repo
   }
 
   // Split the report into numbered findings. A fenced block and its fence lines belong to the open
-  // field, a blank line does not close it, and a prose line outside any finding ends the findings.
-  type Block = { n: number; line: number; head: string; fields: Map<string, string> };
+  // field and a blank line does not close it. A prose line closes the open finding, and only a
+  // header with a bracketed severity opens one again, so that no finding is dropped silently.
+  type Block = {
+    n: number;
+    line: number;
+    head: string;
+    fields: Map<string, string>;
+    dups: string[];
+  };
   const blocks: Block[] = [];
   let fenced = false;
   let ended = false;
@@ -93,14 +102,25 @@ Exit codes: 0 no finding, 1 at least one error, 2 usage error, 3 unreadable repo
   text.split(/\r?\n/).forEach((line, i) => {
     const inside = fenced || /^\s*```/.test(line);
     if (/^\s*```/.test(line)) fenced = !fenced;
-    const head = inside || ended ? null : /^(\d+)\.\s+(.*)$/.exec(line);
+    const h = inside
+      ? null
+      : (/^(\d+)\.\s+(.*)$/.exec(line) ?? /^\s{1,3}(\d+)\.\s+(\[.*)$/.exec(line));
+    const head = h !== null && (!ended || /^\[/.test(h[2] ?? "")) ? h : null;
     const label = inside ? null : /^\s*(Where|Threat|Evidence|Fix):\s*(.*)$/.exec(line);
     const last = blocks[blocks.length - 1];
     if (head !== null) {
-      blocks.push({ n: Number(head[1]), line: i + 1, head: head[2] ?? "", fields: new Map() });
+      blocks.push({
+        n: Number(head[1]),
+        line: i + 1,
+        head: head[2] ?? "",
+        fields: new Map(),
+        dups: [],
+      });
       field = undefined;
+      ended = false;
     } else if (label !== null && last !== undefined && !ended) {
       field = label[1] ?? "";
+      if (last.fields.has(field)) last.dups.push(field);
       last.fields.set(field, (label[2] ?? "").trim());
     } else if ((inside || /^\s+\S/.test(line)) && last !== undefined && field !== undefined)
       last.fields.set(field, `${last.fields.get(field) ?? ""} ${line.trim()}`.trim());
@@ -131,7 +151,9 @@ Exit codes: 0 no finding, 1 at least one error, 2 usage error, 3 unreadable repo
       bad(b, "severity-unknown", `[${sev[1]}] is not a severity: use one of ${SEVS.join(", ")}`);
     else counts[sev[1] ?? ""] = (counts[sev[1] ?? ""] ?? 0) + 1;
     const summary = sev === null ? b.head : (sev[2] ?? "");
-    if (holes.test(summary.trim()))
+    for (const d of b.dups) bad(b, "field-duplicate", `${d}: appears twice: keep one ${d}: line`);
+    if (summary.trim() === "") bad(b, "field-missing", "add a one-line summary after the severity");
+    else if (holes.test(summary.trim()))
       bad(b, "placeholder", "replace the summary placeholder with a one-line summary");
     for (const name of ["Where", "Threat", "Evidence", "Fix"]) {
       const value = b.fields.get(name);
@@ -186,6 +208,14 @@ Exit codes: 0 no finding, 1 at least one error, 2 usage error, 3 unreadable repo
         `${where}: ${m[1]} has ${total} line(s); cite lines from 1 to ${total}, the last not below the first`,
       );
   });
+  const open = blocks[blocks.length - 1];
+  if (fenced)
+    findings.push({
+      rule: "fence-unclosed",
+      message:
+        "a code fence is never closed, so the lines after it are not read: close it with ```",
+      ...(open === undefined ? {} : { finding: open.n }),
+    });
   if (blocks.length === 0 && !noFindings)
     findings.push({
       rule: "no-findings-block",

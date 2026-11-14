@@ -8,11 +8,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 
-import { copySkill, envelope, run, tempDir } from "./lib/skill-scripts-security-cli.ts";
+import { copySkill, envelope, run, tempDir, toolStubs } from "./lib/skill-scripts-security-cli.ts";
 
 const root = tempDir("security-dep-audit-spawn-");
 after(() => fs.rmSync(root, { recursive: true, force: true }));
 const skill = copySkill(root);
+const tools = toolStubs(root);
 
 function project(files: Record<string, string>): string {
   const dir = fs.mkdtempSync(path.join(root, "project-"));
@@ -51,11 +52,13 @@ describe("a tool that cannot be started", () => {
       assert.equal(e.ok, false);
       assert.equal(e.findings[0]?.rule, "precondition");
       assert.equal(e.findings[0]?.cause, "tool-missing");
+      assert.match(e.findings[0]?.message ?? "", /found but cannot be started/);
+      assert.doesNotMatch(e.findings[0]?.message ?? "", /not found on PATH/);
     });
 });
 
 describe("--timeout range", () => {
-  for (const value of ["2147484", "99999999", "1e12", "Infinity"])
+  for (const value of ["2147484", "99999999", "1e12", "Infinity", "0.5", "1.5", "-1"])
     test(`--timeout ${value} is a usage error, not an immediate timeout`, () => {
       const r = run(skill, "dep-audit", ["--root", project({}), "--timeout", value], { cwd: root });
       assert.equal(r.status, 2, r.stdout);
@@ -66,5 +69,48 @@ describe("--timeout range", () => {
       cwd: root,
     });
     assert.equal(r.status, 0, r.stderr);
+  });
+});
+
+describe("a skipped pip dependency", () => {
+  function replayDir(stdout: string, status: number): Record<string, string> {
+    const dir = fs.mkdtempSync(path.join(root, "replay-"));
+    fs.writeFileSync(path.join(dir, "stdout"), stdout);
+    fs.writeFileSync(path.join(dir, "stderr"), "");
+    fs.writeFileSync(path.join(dir, "status"), `${status}\n`);
+    return tools.replay({ pip: dir });
+  }
+  const skipped = (name: string): object => ({ name, skip_reason: "not found on PyPI" });
+  const vulnerable = {
+    name: "idna",
+    version: "3.6",
+    vulns: [{ id: "PYSEC-1", fix_versions: ["3.7"], aliases: [], description: "d" }],
+  };
+  test("two skipped pins are named in a readable sentence and the ecosystem is not-audited", () => {
+    const out = JSON.stringify({ dependencies: [skipped("acme-a"), skipped("acme-b")], fixes: [] });
+    const r = run(skill, "dep-audit", ["--root", project(PIP_FILE), "--json"], {
+      cwd: root,
+      env: replayDir(out, 0),
+    });
+    assert.equal(r.status, 3);
+    const message = envelope(r).findings[0]?.message ?? "";
+    assert.match(message, /the tool skipped acme-a, acme-b /);
+  });
+  test("with an advisory in the same run the exit is 1 and the skipped pin is a warning", () => {
+    const out = JSON.stringify({ dependencies: [skipped("acme-a"), vulnerable], fixes: [] });
+    const r = run(skill, "dep-audit", ["--root", project(PIP_FILE), "--json"], {
+      cwd: root,
+      env: replayDir(out, 1),
+    });
+    assert.equal(r.status, 1);
+    const found = envelope(r).findings;
+    assert.deepEqual(
+      found.map((f) => [f.rule, f.severity ?? "error"]),
+      [
+        ["vulnerable-dependency", "error"],
+        ["precondition", "warning"],
+      ],
+    );
+    assert.match(found[1]?.message ?? "", /skipped acme-a/);
   });
 });

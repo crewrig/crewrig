@@ -26,21 +26,30 @@ of the project is written (the tools keep their own cache and logs).
 pnpm-lock.yaml, yarn.lock, go.mod, Cargo.lock, poetry.lock, pom.xml, Gemfile.lock and composer.lock
 give an unsupported-ecosystem warning, and no manifest gives nothing-to-audit: both mean NOT audited.
 A verdict is clean, vulnerable or not-audited with a cause: tool-missing, timeout, offline,
-unrecognized-output (also a pip dependency the tool skipped), no-lockfile, unpinned or unsupported.
+unrecognized-output (also a pip dependency the tool skipped, unless the run finds an advisory: exit 1,
+the skipped one a warning), no-lockfile, unpinned or unsupported.
 A vulnerable-dependency finding is an error at or above --fail-on (low, moderate, high, critical;
 default high), a warning below; no severity (every pip advisory) counts as at or above. Reachability
-is not assessed. --timeout is 1 to 2147483 s per command (default 60); its process group is killed.
+is not assessed. --timeout is a whole 1 to 2147483 s per command (default 60); its process group is killed.
 data: {root, failOn, audited: [{ecosystem, manifest, verdict, cause?, advisories, skipped}]}.
-Exit codes: 0 audited and nothing at or above --fail-on, 1 a vulnerable dependency, 2 usage error,
+Exit codes: 0 audited, nothing at or above --fail-on; 1 a vulnerable dependency; 2 usage error;
 3 not audited (a precondition error, manifests found and none audited, or Windows).
 `;
   type Finding = { rule: string; message: string; severity?: string; [k: string]: unknown };
   type Adv = { pkg: string; version: string; id: string; severity?: string; fix?: string };
-  type Res = { verdict: string; cause?: string; advisories: Adv[]; skipped: string[] };
+  type Res = {
+    verdict: string;
+    cause?: string;
+    why?: string;
+    advisories: Adv[];
+    skipped: string[];
+  };
   type Entry = Res & { ecosystem: string; manifest: string };
-  const BLANK =
-    '{"verdict":"not-audited","cause":"unrecognized-output","advisories":[],"skipped":[]}';
-  const blank = (): Res => JSON.parse(BLANK) as Res;
+  const blank = (): Res =>
+    JSON.parse(
+      '{"verdict":"not-audited","cause":"unrecognized-output","advisories":[],"skipped":[]}',
+    ) as Res;
+  const done = (res: Res, verdict: string): Res => ({ ...res, verdict, cause: undefined });
   const argv = process.argv.slice(2);
   const json = argv.includes("--json");
   const emit = (code: number, data: unknown, findings: Finding[]): void => {
@@ -54,10 +63,7 @@ Exit codes: 0 audited and nothing at or above --fail-on, 1 a vulnerable dependen
   };
   const stop = (code: number, rule: string, message: string, extra = {}): void =>
     emit(code, null, [{ rule, message, ...extra }]);
-  if (argv.includes("--help")) {
-    process.stdout.write(USAGE);
-    return;
-  }
+  if (argv.includes("--help")) return void process.stdout.write(USAGE);
   const opt: Record<string, string> = {};
   for (let i = 0; i < argv.length; i++) {
     const raw = argv[i] ?? "";
@@ -80,8 +86,8 @@ Exit codes: 0 audited and nothing at or above --fail-on, 1 a vulnerable dependen
     return stop(2, "usage", `--ecosystem takes npm or pip, got ${only}`);
   if (failOn === "info" || RANK[failOn] === undefined)
     return stop(2, "usage", `--fail-on takes low, moderate, high or critical, got ${failOn}`);
-  if (!(seconds > 0 && seconds <= 2147483))
-    return stop(2, "usage", `--timeout takes 1 to 2147483 seconds, got ${opt["--timeout"]}`);
+  if (!Number.isInteger(seconds) || seconds < 1 || seconds > 2147483)
+    return stop(2, "usage", `--timeout takes whole seconds, 1 to 2147483, got ${opt["--timeout"]}`);
   const NOT = "the dependencies were NOT audited";
   if (process.platform === "win32")
     return stop(3, "precondition", `POSIX only; ${NOT}`, { cause: "unsupported-platform" });
@@ -153,7 +159,6 @@ pom.xml:mvn org.owasp:dependency-check-maven:check,Gemfile.lock:bundle audit,com
         end();
       });
     });
-  /** Recognition rules of the npm captures: the exit code is read together with the stdout JSON. */
   const npmRules = (r: Run): Res => {
     const j = rec(parse(r.out));
     const res = blank();
@@ -181,13 +186,10 @@ pom.xml:mvn org.owasp:dependency-check-maven:check,Gemfile.lock:bundle audit,com
           fix: str(rec(rec(entry)?.fixAvailable)?.version),
         });
       }
-    if (r.code === 0 && Object.keys(vulns).length === 0)
-      return { ...res, verdict: "clean", cause: undefined };
-    if (r.code === 1 && res.advisories.length > 0)
-      return { ...res, verdict: "vulnerable", cause: undefined };
+    if (r.code === 0 && Object.keys(vulns).length === 0) return done(res, "clean");
+    if (r.code === 1 && res.advisories.length > 0) return done(res, "vulnerable");
     return res;
   };
-  /** Recognition rules of the pip-audit captures: a skipped dependency is never clean. */
   const pipRules = (r: Run): Res => {
     const j = rec(parse(r.out));
     const res = blank();
@@ -210,23 +212,24 @@ pom.xml:mvn org.owasp:dependency-check-maven:check,Gemfile.lock:bundle audit,com
         if (seen.has(`${name}/${id}`)) continue;
         seen.add(`${name}/${id}`);
         const fix = arr(rec(v)?.fix_versions).map(String).join(", ");
-        res.advisories.push({
-          pkg: name,
-          version: str(d?.version) ?? "unknown",
-          id,
-          fix: fix || undefined,
-        });
+        const version = str(d?.version) ?? "unknown";
+        res.advisories.push({ pkg: name, version, id, fix: fix || undefined });
       }
     }
-    if (r.code === 1 && res.advisories.length > 0)
-      return { ...res, verdict: "vulnerable", cause: undefined };
+    if (r.code === 1 && res.advisories.length > 0) return done(res, "vulnerable");
     const empty =
       res.advisories.length === 0 && res.skipped.length === 0 && j.dependencies.length > 0;
-    return r.code === 0 && empty ? { ...res, verdict: "clean", cause: undefined } : res;
+    return r.code === 0 && empty ? done(res, "clean") : res;
   };
   const audit = async (ecosystem: string, manifest: string): Promise<Entry> => {
     const tool = ecosystem === "npm" ? "npm" : "pip-audit";
-    const no = (cause: string): Entry => ({ ...blank(), ecosystem, manifest, cause });
+    const no = (cause: string, why?: string): Entry => ({
+      ...blank(),
+      ecosystem,
+      manifest,
+      cause,
+      why,
+    });
     const bin = which(tool);
     if (ecosystem === "npm" && lock === undefined) return no("no-lockfile");
     if (bin === undefined) return no("tool-missing");
@@ -234,12 +237,14 @@ pom.xml:mvn org.owasp:dependency-check-maven:check,Gemfile.lock:bundle audit,com
     const pip = "--disable-pip --no-deps --format json --progress-spinner off";
     const args = ecosystem === "npm" ? npm.split(" ") : ["-r", manifest, ...pip.split(" ")];
     const r = await run(bin, args);
-    if (r.failed) return no("tool-missing");
+    if (r.failed) return no("tool-missing", "cannot-start");
     if (r.timedOut) return no("timeout");
     return { ecosystem, manifest, ...(ecosystem === "npm" ? npmRules(r) : pipRules(r)) };
   };
   const WARN = { severity: "warning" };
   const FIX: Record<string, string> = {
+    "cannot-start":
+      "the tool was found but cannot be started (not executable, or its interpreter is missing)",
     "tool-missing": "the tool was not found on PATH; install it and run again, or audit by hand",
     timeout: `the tool did not finish within ${seconds}s; raise --timeout or run it by hand`,
     offline: "the registry could not be reached; restore the network and run again",
@@ -260,9 +265,7 @@ pom.xml:mvn org.owasp:dependency-check-maven:check,Gemfile.lock:bundle audit,com
     add(
       "unsupported-ecosystem",
       `${file}: its dependencies were NOT audited; run ${tool} by hand`,
-      {
-        severity: "warning",
-      },
+      WARN,
     );
   }
   for (const a of audited) {
@@ -277,20 +280,18 @@ pom.xml:mvn org.owasp:dependency-check-maven:check,Gemfile.lock:bundle audit,com
       );
     }
     const skipped = a.skipped.join(", ");
-    const skip = `${skipped} was skipped by the tool (a private package, a name @ url requirement) and is never clean`;
-    const why = skipped === "" ? (FIX[a.cause ?? ""] ?? "") : `${skip}; audit it by hand`;
+    const skip = `the tool skipped ${skipped} (a private package, a name @ url requirement), which is never clean`;
+    const why = skipped === "" ? (FIX[a.why ?? a.cause ?? ""] ?? "") : `${skip}; audit it by hand`;
     if (a.verdict === "not-audited" && a.cause !== "unsupported")
       add("precondition", `${a.ecosystem}: ${NOT} (cause ${a.cause}): ${why}`, {
         cause: a.cause,
         ecosystem: a.ecosystem,
       });
     else if (a.skipped.length > 0)
-      add("precondition", `${a.ecosystem}: ${skipped} was skipped and NOT audited`, WARN);
+      add("precondition", `${a.ecosystem}: the tool skipped ${skipped}, NOT audited`, WARN);
   }
   if (audited.length === 0)
-    add("nothing-to-audit", `no npm or pip manifest at the top level of ${root}: ${NOT}`, {
-      severity: "warning",
-    });
+    add("nothing-to-audit", `no npm or pip manifest at the top level of ${root}: ${NOT}`, WARN);
   const errors = (rule: string): boolean =>
     findings.some((f) => f.rule === rule && f.severity !== "warning");
   const none = audited.length > 0 && audited.every((a) => a.verdict === "not-audited");

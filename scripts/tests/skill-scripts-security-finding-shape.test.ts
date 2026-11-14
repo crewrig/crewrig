@@ -68,3 +68,50 @@ describe("after the findings", () => {
     assert.equal(r.status, 0, r.stdout + r.stderr);
   });
 });
+
+describe("no silent pass", () => {
+  const second = (where: string, n = 2): string =>
+    `${n}. [LOW] Second finding\n   Where: ${where}\n   Threat: t\n   Evidence: e\n   Fix: f\n`;
+  const first = `${HEAD}   Evidence: e\n   Fix: f\n`;
+  test("a finding after a prose line is still checked: line 99 of a 5-line file is reported", () => {
+    const r = check(`${first}\nSummary of the review\n\n${second("src/a.ts:99")}`);
+    assert.equal(r.status, 1);
+    const found = envelope(r).findings;
+    assert.deepEqual(
+      found.map((f) => [f.rule, f.finding]),
+      [["where-line-out-of-range", 2]],
+    );
+    assert.equal(envelope(r).data?.["checked"], 2);
+  });
+  test("a valid second finding after a heading is counted", () => {
+    const r = check(`${first}\n## Second part\n${second("src/a.ts:2")}`);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.equal(envelope(r).data?.["checked"], 2);
+  });
+  test("an indented header with a bracketed severity is a finding, not a continuation", () => {
+    const r = check(`${first}   ${second("src/a.ts:99")}`);
+    assert.deepEqual(
+      envelope(r).findings.map((f) => f.rule),
+      ["where-line-out-of-range"],
+    );
+  });
+  test("a label given twice is field-duplicate", () => {
+    const r = check(`${HEAD}   Where: src/a.ts:99\n   Evidence: e\n   Fix: f\n`);
+    assert.deepEqual(
+      envelope(r).findings.map((f) => f.rule),
+      ["field-duplicate", "where-line-out-of-range"],
+    );
+  });
+  test("a header with no summary is field-missing", () => {
+    const r = check(first.replace("SQL injection in the sort parameter", ""));
+    assert.deepEqual(
+      envelope(r).findings.map((f) => f.rule),
+      ["field-missing"],
+    );
+  });
+  test("an unclosed fence is reported, since it swallows the findings after it", () => {
+    const r = check(`${HEAD}   Evidence:\n   \`\`\`js\n   x\n   Fix: f\n${second("src/a.ts:99")}`);
+    assert.equal(r.status, 1);
+    assert.ok(envelope(r).findings.some((f) => f.rule === "fence-unclosed"));
+  });
+});
