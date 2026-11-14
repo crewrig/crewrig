@@ -29,3 +29,4 @@ you.
 
 When something in the workflow misleads you, tag it with the `harness-report`
 skill.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.
