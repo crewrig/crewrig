@@ -1,0 +1,26 @@
+[
+  {
+    "drawer_id": "tr-001",
+    "room": "sessions",
+    "filed_at": "2026-10-01T10:00:00.000000",
+    "content": "User: run the build\nAssistant: the build failed with an unexpected error in step 3, trying again"
+  },
+  {
+    "drawer_id": "tr-002",
+    "room": "sessions",
+    "filed_at": "2026-10-02T10:00:00.000000",
+    "content": "Assistant: the helper is not working, the output is broken after the update"
+  },
+  {
+    "drawer_id": "tr-003",
+    "room": "sessions",
+    "filed_at": "2026-10-03T10:00:00.000000",
+    "content": "User: thanks, that is all\nAssistant: done, everything passed"
+  },
+  {
+    "drawer_id": "tr-004",
+    "room": "sessions",
+    "filed_at": "2026-10-04T10:00:00.000000",
+    "content": "Assistant: the retry didn't work, try again with a different flag"
+  }
+]

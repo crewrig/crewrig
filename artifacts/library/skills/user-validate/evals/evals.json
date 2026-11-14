@@ -1,0 +1,223 @@
+{
+  "skill_name": "user-validate",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "The per-user gate configuration of this machine is in validation.conf (use it in place of ~/.crewrig/validation.conf, which does not exist here). Work out the effective configuration the gate runs with, filling every missing key with its default, and write it to effective.json as one JSON object with exactly the keys backend, translate, pedagogy, illustration and theme, with the string values of the configuration vocabulary. Do not run plannotator, do not open a browser and do not ask me any question: only write the files asked for, in the current directory.",
+      "expected_output": "effective.json holds backend plannotator, translate on, pedagogy professor, and the defaults for the two missing keys: illustration off and theme auto.",
+      "files": [
+        "evals/files/validation.conf"
+      ],
+      "expectations": [
+        "effective.json is a single JSON object that holds the five keys and no other key, such as the unknown bogus key of the configuration file."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "effective.json"
+        },
+        {
+          "type": "file_contains",
+          "path": "effective.json",
+          "pattern": "\"backend\":\\s*\"plannotator\""
+        },
+        {
+          "type": "file_contains",
+          "path": "effective.json",
+          "pattern": "\"translate\":\\s*\"on\""
+        },
+        {
+          "type": "file_contains",
+          "path": "effective.json",
+          "pattern": "\"pedagogy\":\\s*\"professor\""
+        },
+        {
+          "type": "file_contains",
+          "path": "effective.json",
+          "pattern": "\"illustration\":\\s*\"off\""
+        },
+        {
+          "type": "file_contains",
+          "path": "effective.json",
+          "pattern": "\"theme\":\\s*\"auto\""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "A reviewer closed five plannotator gates. The process exit status and the standard output of each run are recorded in runs.json. For each run, work out the outcome the gate returns to its caller, and write outcomes.json as a JSON array with one object per run: `run`, `outcome` and, only when the outcome carries one, `feedback`. Do not run plannotator, do not open a browser and do not ask me any question: only write the files asked for, in the current directory.",
+      "expected_output": "outcomes.json maps the five runs to approved, changes-requested with the feedback, rejected, rejected and rejected.",
+      "files": [
+        "evals/files/runs.json"
+      ],
+      "expectations": [
+        "outcomes.json maps run 1 to approved, run 2 to changes-requested and run 3 to rejected.",
+        "outcomes.json maps run 4, whose process exited non-zero although its output says approved, and run 5, whose output is not a decision object, both to rejected.",
+        "Only run 2 carries a feedback field, with the reviewer's text unchanged."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "outcomes.json"
+        },
+        {
+          "type": "file_contains",
+          "path": "outcomes.json",
+          "pattern": "\"outcome\":\\s*\"approved\""
+        },
+        {
+          "type": "file_contains",
+          "path": "outcomes.json",
+          "pattern": "\"outcome\":\\s*\"changes-requested\""
+        },
+        {
+          "type": "file_contains",
+          "path": "outcomes.json",
+          "pattern": "\"outcome\":\\s*\"rejected\""
+        },
+        {
+          "type": "file_contains",
+          "path": "outcomes.json",
+          "pattern": "Tighten section 2 and add a rollback step"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The gate configuration is backend=plannotator, translate=off, pedagogy=professor, illustration=off, theme=dark. The precise ask is `Approve this plan for DEV?` and the artifact is plan.md. Build the presentation document you would hand to the review viewer and write it to presentation.html. Do not run plannotator, do not open a browser and do not ask me any question: only write the files asked for, in the current directory.",
+      "expected_output": "presentation.html is a dark-themed HTML page that embeds the plan's real content, frames the decision for a professor-level reader and keeps its colour declarations inline or in the body.",
+      "files": [
+        "evals/files/plan.md"
+      ],
+      "expectations": [
+        "presentation.html embeds the three steps of the plan itself, not only a summary of them, and states the decision the reader is asked to make.",
+        "presentation.html explains what is being decided and what approving or rejecting implies, in the way a professor-level framing asks for.",
+        "The background and text colours of presentation.html are declared inline on the body or in a style block inside the body, not only in the head."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "presentation.html"
+        },
+        {
+          "type": "file_contains",
+          "path": "presentation.html",
+          "pattern": "<meta name=\"color-scheme\" content=\"dark( only)?\">"
+        },
+        {
+          "type": "file_contains",
+          "path": "presentation.html",
+          "pattern": "<body[^>]*style="
+        },
+        {
+          "type": "file_contains",
+          "path": "presentation.html",
+          "pattern": "retry budget of 3 attempts"
+        },
+        {
+          "type": "file_contains",
+          "path": "presentation.html",
+          "pattern": "sync_retry_exhausted"
+        },
+        {
+          "type": "file_contains",
+          "path": "presentation.html",
+          "pattern": "Approve this plan for DEV\\?"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "The gate configuration is backend=internal, translate=off, pedagogy=simple, illustration=off. The precise ask is `Approve this plan for DEV?` and the artifact is plan.md. The interactive question tool is not available in this run, so write to question.json the structured question you would have put to the user, as `{\"question\": string, \"options\": [{\"label\": string, \"outcome\": string}]}` where each option's outcome is one of the three outcomes the gate can return. Do not run plannotator, do not open a browser and do not ask me any question: only write the files asked for, in the current directory.",
+      "expected_output": "question.json holds one structured question with exactly three options, one for each outcome.",
+      "files": [
+        "evals/files/plan.md"
+      ],
+      "expectations": [
+        "question.json asks the one decision, whether to approve the plan in plan.md for DEV, as a structured question with options and not as open prose.",
+        "question.json has exactly three options, one mapping to each of the outcomes approved, changes-requested and rejected."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "question.json"
+        },
+        {
+          "type": "file_contains",
+          "path": "question.json",
+          "pattern": "\"outcome\":\\s*\"approved\""
+        },
+        {
+          "type": "file_contains",
+          "path": "question.json",
+          "pattern": "\"outcome\":\\s*\"changes-requested\""
+        },
+        {
+          "type": "file_contains",
+          "path": "question.json",
+          "pattern": "\"outcome\":\\s*\"rejected\""
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "The gate configuration is backend=plannotator, but `plannotator --version` exits 127 on this machine: the binary is not installed (take that as given and do not run it). The precise ask is `Approve this plan for DEV?` for plan.md. Write one word, `internal` or `plannotator`, to backend-used.txt for the backend this gate runs on, and write to user-notice.txt the message you show the user about it. Do not run plannotator, do not open a browser and do not ask me any question: only write the files asked for, in the current directory.",
+      "expected_output": "backend-used.txt says internal and user-notice.txt tells the user that the gate fell back because plannotator is not installed.",
+      "files": [
+        "evals/files/plan.md"
+      ],
+      "expectations": [
+        "user-notice.txt tells the user that plannotator is not available and that the gate ran on the internal backend instead, rather than staying silent or reporting an error."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "backend-used.txt"
+        },
+        {
+          "type": "file_contains",
+          "path": "backend-used.txt",
+          "pattern": "^\\s*internal\\s*$"
+        },
+        {
+          "type": "file_exists",
+          "path": "user-notice.txt"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "Before we move to planning, get the user's formal approval of this spec and bring back the decision.",
+      "should_trigger": true
+    },
+    {
+      "query": "I need the user to arbitrate between these two designs: ask them, and return approved, changes requested or rejected.",
+      "should_trigger": true
+    },
+    {
+      "query": "Run the validation gate on this plan with the configured review backend before the DEV stage.",
+      "should_trigger": true
+    },
+    {
+      "query": "Put this document to the user for a go or no-go decision and carry their feedback back to the stage that wrote it.",
+      "should_trigger": true
+    },
+    {
+      "query": "Review this pull request cold and post a verdict with its findings.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write the specification for the new export feature, with requirements and scenarios.",
+      "should_trigger": false
+    },
+    {
+      "query": "Summarise this plan in three bullets for a chat message to my team.",
+      "should_trigger": false
+    },
+    {
+      "query": "Draft an RFC that compares two migration strategies and recommends one.",
+      "should_trigger": false
+    }
+  ]
+}

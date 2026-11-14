@@ -1,0 +1,293 @@
+{
+  "skill_name": "harness-report",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "During this session you ran `rm -rf build/` in the cleanup step even though I had told you twice not to delete that directory; you did it because the skill file `artifacts/core/skills/cleanup/SKILL.md`, line 31, instructs it. I contest the action and want the friction tagged. The component's canonical repository is https://github.com/acme/agent-config and the file was last changed in commit 4f9c2ab. Write the exact content you would pass to the friction drawer to friction.txt (the payload only, no commentary), and the room you would file it in to room.txt (the room name only). Do not call gh, glab, tea, git push or any MemPalace tool, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "friction.txt is a well-formed FRICTION payload attributed to the cleanup skill file (not to the reporting skill), with the repository root as canonical and a file-and-line evidence entry; room.txt says prompt.",
+      "files": [],
+      "expectations": [
+        "friction.txt attributes the friction to the cleanup skill file named in the request, and never to a harness-report skill.",
+        "friction.txt starts with a single-line FRICTION title that names the problem, and holds the payload only, with no explanatory text before or after it.",
+        "Every claim in friction.txt, such as the file, the line, the commit or the action taken, can be traced to the request; none is invented."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "friction.txt"
+        },
+        {
+          "type": "file_exists",
+          "path": "room.txt"
+        },
+        {
+          "type": "file_contains",
+          "path": "friction.txt",
+          "pattern": "^\\s*FRICTION: \\S"
+        },
+        {
+          "type": "file_contains",
+          "path": "friction.txt",
+          "pattern": "\\nwriter_agent: \\S"
+        },
+        {
+          "type": "file_contains",
+          "path": "friction.txt",
+          "pattern": "\\ncanonical: https://github\\.com/acme/agent-config[ \\t]*(\\n|$)"
+        },
+        {
+          "type": "file_contains",
+          "path": "friction.txt",
+          "pattern": "\\nevidence:\\s+(- )?\\S*artifacts/core/skills/cleanup/SKILL\\.md:31"
+        },
+        {
+          "type": "file_contains",
+          "path": "friction.txt",
+          "pattern": "^(?![\\s\\S]*harness-report)"
+        },
+        {
+          "type": "file_contains",
+          "path": "room.txt",
+          "pattern": "^\\s*prompt\\s*$"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "A safeguard blocked me: the pre-write hook `hooks/pre-write.sh` (the offending check is on line 12), found at https://github.com/acme/agent-config/blob/main/hooks/pre-write.sh, rejected every write in the repository for a whole afternoon and I had to disable it by hand to get any work done. This is a blocker. Tag the friction: write the exact payload you would pass to the friction drawer to friction.txt (payload only) and the room name only to room.txt. Do not call gh, glab, tea, git push or any MemPalace tool, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory. Do not run any curator script.",
+      "expected_output": "friction.txt carries severity high, the repository root as canonical (not the file URL), and the hook path with line 12 as evidence; room.txt names one of the five fixed rooms.",
+      "files": [],
+      "expectations": [
+        "friction.txt puts the file path of the hook in the evidence entries and the repository root, not the file URL, in the canonical field.",
+        "The title and the other fields describe a hook that rejected every write, as the request states, without inventing a cause."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "friction.txt"
+        },
+        {
+          "type": "file_exists",
+          "path": "room.txt"
+        },
+        {
+          "type": "file_contains",
+          "path": "friction.txt",
+          "pattern": "^\\s*FRICTION: \\S"
+        },
+        {
+          "type": "file_contains",
+          "path": "friction.txt",
+          "pattern": "\\nwriter_agent: \\S"
+        },
+        {
+          "type": "file_contains",
+          "path": "friction.txt",
+          "pattern": "\\ncanonical: https://github\\.com/acme/agent-config[ \\t]*(\\n|$)"
+        },
+        {
+          "type": "file_contains",
+          "path": "friction.txt",
+          "pattern": "\\nseverity: high[ \\t]*(\\n|$)"
+        },
+        {
+          "type": "file_contains",
+          "path": "friction.txt",
+          "pattern": "\\nevidence:\\s+(- )?\\S*hooks/pre-write\\.sh:12"
+        },
+        {
+          "type": "file_contains",
+          "path": "room.txt",
+          "pattern": "^\\s*(tool|prompt|format|behavior|process)\\s*$"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The MemPalace server is unreachable (every mempalace tool is unavailable), so the friction must be filed directly as an issue on the offender's own repository. The offender is the skill file `artifacts/core/skills/plan/SKILL.md`, line 58, of the repository https://gitlab.com/acme/platform/agent-config. The friction: its step 4 tells the agent to run `yq m -i`, a command that does not exist on yq v4; first seen in commit 9d1e0aa; severity med; the writer agent is claude-code. Write the exact command you would run to file the issue to file.sh (put the issue body in a heredoc inside file.sh, or in a body.md that file.sh reads). Only write the files; do not run the command. Do not call gh, glab, tea, git push or any MemPalace tool, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "file.sh holds a single glab issue create command targeting the GitLab project with the harness-feedback label and the FRICTION title, using the description flag.",
+      "files": [],
+      "expectations": [
+        "The issue body that file.sh sends (inline or through body.md) carries the writer agent, the severity and the evidence entry for the skill file and its line.",
+        "file.sh files one issue only, on the GitLab project named in the request, and uses the glab command line tool rather than gh."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "file.sh"
+        },
+        {
+          "type": "file_contains",
+          "path": "file.sh",
+          "pattern": "glab issue create"
+        },
+        {
+          "type": "file_contains",
+          "path": "file.sh",
+          "pattern": "--repo[ =][\"']?(https://gitlab\\.com/)?acme/platform/agent-config[\"']?"
+        },
+        {
+          "type": "file_contains",
+          "path": "file.sh",
+          "pattern": "--label[ =][\"']?harness-feedback"
+        },
+        {
+          "type": "file_contains",
+          "path": "file.sh",
+          "pattern": "--description"
+        },
+        {
+          "type": "file_contains",
+          "path": "file.sh",
+          "pattern": "FRICTION: "
+        },
+        {
+          "type": "file_contains",
+          "path": "file.sh",
+          "pattern": "^(?![\\s\\S]*\\bgh (issue|api)\\b)"
+        },
+        {
+          "type": "file_contains",
+          "path": "file.sh",
+          "pattern": "^(?![\\s\\S]*--body\\b)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "The MemPalace server is unreachable (every mempalace tool is unavailable), so the friction must be filed directly as an issue on the offender's own repository. The offender is the prompt of the agent `artifacts/core/agents/reviewer/AGENT.md`, line 20, in the repository https://git.acme.internal/platform/agent-config, a self-hosted Gitea instance. The friction: the agent prompt cites a file that does not ship to adopters; first seen in commit 77be301; severity low; the writer agent is gemini-cli. Write the exact command you would run to file the issue to file.sh (put the issue body in a heredoc inside file.sh, or in a body.md that file.sh reads). Only write the files; do not run the command. Do not call gh, glab, tea, git push or any MemPalace tool, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "file.sh holds a single tea issue create command targeting platform/agent-config with the harness-feedback label (plural labels flag) and the description flag.",
+      "files": [],
+      "expectations": [
+        "The issue body that file.sh sends (inline or through body.md) carries the writer agent, the severity and the evidence entry for the agent file and its line.",
+        "file.sh files one issue only, on the repository named in the request, and uses the tea command line tool, not gh or glab."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "file.sh"
+        },
+        {
+          "type": "file_contains",
+          "path": "file.sh",
+          "pattern": "tea issues? create"
+        },
+        {
+          "type": "file_contains",
+          "path": "file.sh",
+          "pattern": "--repo[ =][\"']?(https://git\\.acme\\.internal/)?platform/agent-config[\"']?"
+        },
+        {
+          "type": "file_contains",
+          "path": "file.sh",
+          "pattern": "--labels[ =][\"']?harness-feedback"
+        },
+        {
+          "type": "file_contains",
+          "path": "file.sh",
+          "pattern": "--description"
+        },
+        {
+          "type": "file_contains",
+          "path": "file.sh",
+          "pattern": "FRICTION: "
+        },
+        {
+          "type": "file_contains",
+          "path": "file.sh",
+          "pattern": "^(?![\\s\\S]*\\b(gh|glab) (issue|api)\\b)"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "My notes of a session are in session-notes.md. Decide whether they contain a recognition signal that calls for tagging a friction, and write exactly one word, `tag` or `skip`, to decision.txt. If you decide to tag, also write the payload you would pass to the friction drawer to friction.txt and the room name only to room.txt. Do not call gh, glab, tea, git push or any MemPalace tool, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "decision.txt says tag, since a user correction always counts as a signal; friction.txt attributes the friction to the style rule file with its line and the repository root.",
+      "files": [
+        "evals/files/session-notes.md"
+      ],
+      "expectations": [
+        "friction.txt describes the contested action from the notes, indenting with tabs after the rule told it to and the user correcting it, and invents no other event.",
+        "friction.txt attributes the friction to the style rule file named in the notes, not to a reporting skill."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "decision.txt"
+        },
+        {
+          "type": "file_contains",
+          "path": "decision.txt",
+          "pattern": "^\\s*tag\\s*$"
+        },
+        {
+          "type": "file_exists",
+          "path": "friction.txt"
+        },
+        {
+          "type": "file_exists",
+          "path": "room.txt"
+        },
+        {
+          "type": "file_contains",
+          "path": "friction.txt",
+          "pattern": "^\\s*FRICTION: \\S"
+        },
+        {
+          "type": "file_contains",
+          "path": "friction.txt",
+          "pattern": "\\nwriter_agent: \\S"
+        },
+        {
+          "type": "file_contains",
+          "path": "friction.txt",
+          "pattern": "\\nevidence:\\s+(- )?\\S*config/rules/10-style\\.md:8"
+        },
+        {
+          "type": "file_contains",
+          "path": "friction.txt",
+          "pattern": "\\ncanonical: https://github\\.com/acme/agent-config[ \\t]*(\\n|$)"
+        },
+        {
+          "type": "file_contains",
+          "path": "room.txt",
+          "pattern": "^\\s*(tool|prompt|format|behavior|process)\\s*$"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "You just did the opposite of what I asked, and it is the second time this session that the same tool returned inconsistent output. Log this harness friction so the maintainers see it.",
+      "should_trigger": true
+    },
+    {
+      "query": "The skill I loaded told me to run a command that does not exist. Flag that prompt problem for the people who maintain the agents.",
+      "should_trigger": true
+    },
+    {
+      "query": "A guard rule blocked a perfectly legitimate action and I had to work around it and explain why. Tag that friction.",
+      "should_trigger": true
+    },
+    {
+      "query": "I corrected you and you went the wrong way again; record the friction before we carry on.",
+      "should_trigger": true
+    },
+    {
+      "query": "Run the harness curator now: cluster the frictions the crew has accumulated and open one feedback issue per cluster.",
+      "should_trigger": false
+    },
+    {
+      "query": "Open an issue on our product repository for the login bug I just found, with steps to reproduce.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write a blameless post-mortem for yesterday's production incident.",
+      "should_trigger": false
+    },
+    {
+      "query": "Fix the retry helper so it stops hammering the API when the server answers 429.",
+      "should_trigger": false
+    }
+  ]
+}
