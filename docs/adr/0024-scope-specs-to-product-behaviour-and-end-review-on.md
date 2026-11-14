@@ -1,5 +1,7 @@
 # ADR-0024: Scope specs to product behaviour and end review on blocking findings
 
+<!-- crewrig-doc: section=architecture-adr nav_order=240 published=true title="ADR 0024 — Scope specs to product behaviour and end review on blocking findings" -->
+
 ## Status
 
 Proposed

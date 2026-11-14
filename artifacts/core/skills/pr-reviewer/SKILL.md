@@ -69,7 +69,7 @@ Before posting, read `references/assert-fresh-observation.md`: observe the artif
 
 ## Blocking and non-blocking
 
-Mark every finding blocking or non-blocking. Approve when nothing blocks: the loop ends on a pass with no blocking finding (ADR-0024), and non-blocking findings go to the findings ledger (#961) or a follow-up issue, never to another pass. Passes are capped at 2 at `trivial`/`small` and 3 at `standard`; a fix pass reads only the change since the last examined revision.
+Mark every finding blocking or non-blocking. Approve when nothing blocks: the loop ends on a pass with no blocking finding, and non-blocking findings go to the deferred-findings ledger or a follow-up issue, never to another pass. Passes are capped at 2 at `trivial`/`small` and 3 at `standard`; a fix pass reads only the change since the last examined revision.
 
 ## Finding tags
 
