@@ -99,7 +99,19 @@ const agentsDir = path.join(REPO, "artifacts", "core", "agents");
 // Spec 0307: eleven of the 22 corpus agents moved to artifacts/library/agents; the corpus labels stay
 // `core agent <name>/<target>` so the recorded goldens keep their keys.
 const libraryAgentsDir = path.join(REPO, "artifacts", "library", "agents");
-const movedAgents = ["accessibility-auditor","accessibility-tester","astro-developer","copywriter","designer","frontend-developer","regression-sentinel","scenario-author","seo-specialist","visual-regression-tester","web-conformity-checker"];
+const movedAgents = [
+  "accessibility-auditor",
+  "accessibility-tester",
+  "astro-developer",
+  "copywriter",
+  "designer",
+  "frontend-developer",
+  "regression-sentinel",
+  "scenario-author",
+  "seo-specialist",
+  "visual-regression-tester",
+  "web-conformity-checker",
+];
 const agents = fs.existsSync(agentsDir)
   ? [...fs.readdirSync(agentsDir), ...movedAgents].sort()
   : [];

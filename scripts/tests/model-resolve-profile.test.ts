@@ -45,7 +45,19 @@ describe("profileRead on the real core agent sources", () => {
   const agentsDir = path.join(REPO, "artifacts", "core", "agents");
   // Spec 0307: eleven of the 22 profiled agents moved to artifacts/library/agents.
   const libraryDir = path.join(REPO, "artifacts", "library", "agents");
-  const moved = ["accessibility-auditor","accessibility-tester","astro-developer","copywriter","designer","frontend-developer","regression-sentinel","scenario-author","seo-specialist","visual-regression-tester","web-conformity-checker"];
+  const moved = [
+    "accessibility-auditor",
+    "accessibility-tester",
+    "astro-developer",
+    "copywriter",
+    "designer",
+    "frontend-developer",
+    "regression-sentinel",
+    "scenario-author",
+    "seo-specialist",
+    "visual-regression-tester",
+    "web-conformity-checker",
+  ];
   const agents = [...fs.readdirSync(agentsDir), ...moved].sort();
   const dirOf = (a: string): string => (moved.includes(a) ? libraryDir : agentsDir);
 

@@ -49,7 +49,10 @@ const gitShow = (rel: string): string | undefined => {
 };
 const refAvailable = (): boolean => {
   try {
-    execFileSync("git", ["rev-parse", "--verify", "--quiet", BASE_REF], { cwd: REPO, stdio: "ignore" });
+    execFileSync("git", ["rev-parse", "--verify", "--quiet", BASE_REF], {
+      cwd: REPO,
+      stdio: "ignore",
+    });
     return true;
   } catch {
     return false;
@@ -71,15 +74,20 @@ describe("spec 0307 R18 — web components live in the library tier", () => {
 
   test("core keeps 11 agents and 13 skills", () => {
     const dirs = (rel: string): string[] =>
-      fs.readdirSync(path.join(REPO, rel), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+      fs
+        .readdirSync(path.join(REPO, rel), { withFileTypes: true })
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name);
     assert.equal(dirs("artifacts/core/agents").length, 11);
     assert.equal(dirs("artifacts/core/skills").length, 13);
   });
 
   test("the fifteen names are absent from the four committed project trees", () => {
     for (const tree of TREES) {
-      for (const n of AGENTS) assert.equal(exists(`${tree}/agents/${n}.md`), false, `${tree}/agents/${n}.md`);
-      for (const n of SKILLS) assert.equal(exists(`${tree}/skills/${n}`), false, `${tree}/skills/${n}`);
+      for (const n of AGENTS)
+        assert.equal(exists(`${tree}/agents/${n}.md`), false, `${tree}/agents/${n}.md`);
+      for (const n of SKILLS)
+        assert.equal(exists(`${tree}/skills/${n}`), false, `${tree}/skills/${n}`);
     }
   });
 
@@ -90,7 +98,9 @@ describe("spec 0307 R18 — web components live in the library tier", () => {
     }
     let compared = 0;
     for (const c of COMPONENTS) {
-      const now = versionOf(fs.readFileSync(path.join(REPO, `artifacts/library/${c.kind}/${c.name}/${c.file}`), "utf8"));
+      const now = versionOf(
+        fs.readFileSync(path.join(REPO, `artifacts/library/${c.kind}/${c.name}/${c.file}`), "utf8"),
+      );
       assert.ok(now, `${c.name} carries a metadata.provenance.version`);
       const base = gitShow(`artifacts/core/${c.kind}/${c.name}/${c.file}`);
       if (base === undefined) continue; // already moved on the base: nothing left to bump against
