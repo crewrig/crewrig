@@ -19,7 +19,7 @@ task test-fixed-context-probe                                # unit suite, fixtu
 
 Options: `--settings <file>`, `--model <id>` (default `claude-sonnet-5-5`), `--cwd <dir>`, `--threshold-file <file>`, `--session <id>` or `--transcript <file>` (free), `--warn-only`.
 
-Method: `claude -p --output-format json --allowedTools Agent` with a prompt that calls the `developer` agent once; the first-call input tokens (input + cache read + cache creation of the first `assistant` line) are read from `~/.claude/projects/<project>/<session>.jsonl` and `<session>/subagents/*.jsonl`. The probe never edits `~/.claude/` or the repository's `.claude/`.
+Method: `claude -p --output-format json --allowedTools Agent` with a prompt that calls the `developer` agent once; the first-call input tokens (input + cache read + cache creation of the first `assistant` line) are read from `~/.claude/projects/<project>/<session>.jsonl` and `<session>/subagents/*.jsonl`. The probe never edits `~/.claude/` or the repository's `.claude/`. A paid run inherits the invoker's user settings, hooks, MCP servers and the project's `CLAUDE.md`/`AGENTS.md`, so the numbers depend on where it runs: compare runs only from the same checkout and home, and use `--cwd` for a clean one.
 
 ## Threshold
 
