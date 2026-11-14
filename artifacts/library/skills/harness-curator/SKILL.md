@@ -1,6 +1,6 @@
 ---
 name: harness-curator
-description: Harness feedback-loop curator. Activate on demand to read friction tags from the harness-friction wing, cluster them, and open one issue per cluster on the canonical/feedback repos in provenance blocks. `--deep` sweeps `wing=transcripts`; auto mode (#42) runs scheduled.
+description: 'Reads the friction tags that agents filed in the harness-friction wing, clusters them, and opens one evidence-backed feedback issue per cluster on the repositories named in the components'' provenance, after a health check of the wing. Also sweeps transcripts for untagged frictions (`--deep`) and runs on a schedule. Use when the user explicitly asks to curate, sweep or cluster frictions, to open the feedback issues, to check the health of the friction wing or to schedule the curator. Trigger terms: harness curator, curate frictions, friction wing, feedback issues, deep sweep. Not for tagging a single friction (harness-report) or for ordinary bug reports.'
 type: skill
 license: Apache-2.0
 compatibility: Requires Node.js 24 or later, a forge CLI (setup-labels.ts uses gh; --apply selects gh, glab, or tea per the target repository's forge), and the mempalace Python package (pipx install 'mempalace>=3.6.0,<3.7').
@@ -8,7 +8,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "2.0.2"
+    version: "2.1.0"
 claude:
   allowed-tools:
     - Read
@@ -20,262 +20,106 @@ claude:
 
 # Harness Curator
 
-The agent that closes the harness feedback loop. Reads the frictions
-tagged by sibling agents during real work, clusters them, and opens
-one descriptive issue per cluster against the agent system itself so
-the friction surfaces to the maintainers.
+Closes the feedback loop: the frictions that agents tagged during real work become one descriptive issue per
+cluster, on the repository that owns the offending component. The issue carries evidence, not a fix; the fix
+lands later as a human-authored change that closes it.
 
-## V0 contract — descriptive issues only
+## When to run it
 
-The Curator does **not** attempt a fix. It produces a rich,
-evidence-backed issue body — the artifact is a GitHub *issue*, not a
-PR/MR, because there is no diff yet. The actual fix lands later, as a
-human-authored MR (or via the auto-fix mode tracked in #42) that
-closes the issue. Proving the surfacing loop matters more than proving
-auto-repair.
+Only on an explicit request: the user runs `/harness-curate`, asks what frictions the crew has accumulated,
+asks for a deep sweep, or a schedule triggers it. During unrelated work, reaching for this skill means you are
+off task.
 
-## When to activate
+## The script
 
-- The user runs `/harness-curate` (or equivalent invocation).
-- The user asks for "what frictions has the crew accumulated lately".
-- A scheduled sweep triggers it (auto mode — out of V0 scope, tracked
-  in issue #42).
+Reading the wing through MCP would take thousands of calls, so a bundled script reads it with the MemPalace
+Python library, parses every `FRICTION:` payload and clusters them. Run it from the skill directory (or
+`task harness-curate -- <options>`); `node scripts/curate.ts --help` lists every option.
 
-The Curator is **never** activated implicitly during normal work. If
-you are in the middle of an unrelated task and find yourself reaching
-for this skill, you are off-task.
+Exit codes of `curate.ts`: `0` ok, `1` a usage error or an unhealthy `--check`, `2` python or MemPalace not
+found (or the backend failed), `3` `--apply` without an authenticated forge CLI. A usage error prints
+`Error:` or `Unknown option` on stderr, which tells it from an unhealthy wing.
 
-## Operating mode
+Test mode: `--from-stdin` reads a JSON list of drawers (`drawer_id`, `room`, `content`) instead of MemPalace,
+so a dry run needs no server and no forge. `assets/sample-frictions.json` is a sample.
 
-The heavy lifting (reading the wing, parsing payloads, clustering,
-composing issue bodies) is delegated to a bundled script — you run
-it, read the JSON it returns, and open issues from there. This split
-exists because batch-reading the friction wing per-call through MCP
-would be a multi-thousand-call traversal; see `config/TOOLS.md` →
-*Carve-out for bundled skill/agent scripts* for the rationale.
+## Step 1: dry run and health gate
 
-### 1. Run the curator script
-
-```bash
-task harness-curate -- --dry-run
-# or directly, from the skill bundle (works whether installed at project
-# level under .gemini/.claude or user level under ~/.gemini/~/.claude):
-node scripts/curate.ts --dry-run
+```sh
+node scripts/curate.ts --check
 ```
 
-The script walks `wing="harness-friction"` via the MemPalace Python
-library, parses every `FRICTION:` payload, clusters, and emits a JSON
-document on stdout:
+It runs a dry run and prints `healthy` or `unhealthy`: exit `0` healthy, exit `1` when `skipped_malformed`
+exceeds 25 percent of the drawers (`--max-malformed-ratio` moves the limit) or `routing_failures` is above
+zero. An unhealthy wing means the filing source is rotten (payloads missing `writer_agent` or evidence) or a
+friction names no canonical repository; fix that before opening issues, so that the issues are not opened
+blind or partial. Without `--check`, `node scripts/curate.ts --dry-run` (the default) prints the full JSON report: `stats`,
+`clusters` (each with `cluster_key`, `target_repo`, `title`, `body`, `labels`, `frictions`), `skipped` and
+`routing_failures`. Spot-check at least one `body` to see that it reads sensibly.
 
-```json
-{
-  "stats": {
-    "total_drawers": 12,
-    "valid_frictions": 11,
-    "skipped_malformed": 1,
-    "clusters_formed": 4,
-    "clusters_above_threshold": 2,
-    "clusters_parked": 2,
-    "routing_failures": 0
-  },
-  "clusters": [
-    {
-      "cluster_key": "yq-merge",
-      "cluster_size": 3,
-      "target_repo": "https://github.com/crewrig/crewrig",
-      "title": "💬 Friction cluster: yq-merge (3 reports)",
-      "body": "<markdown>",
-      "labels": ["harness-feedback", "room:prompt", "severity:med"],
-      "frictions": [...]
-    }
-  ],
-  "skipped": [
-    {
-      "drawer_id": "drw-005",
-      "room": "process",
-      "reason": "malformed",
-      "snippet": "Not a friction at all — random text..."
-    }
-  ],
-  "routing_failures": [
-    {
-      "cluster_key": "no-canonical-cluster",
-      "frictions": [...],
-      "reason": "missing_canonical"
-    }
-  ]
-}
+## Step 2: open the issues
+
+Two equivalent paths; either way open one issue per cluster, because independent clusters deserve
+independent triage.
+
+- **The script:** `node scripts/curate.ts --apply` opens one issue per cluster through the forge CLI picked
+  from the cluster's repository host (`gh`, `glab` or `tea`), with the three labels from the report.
+- **By hand:** iterate the report and run `gh issue create --repo <owner>/<repo> --title <title> --body <body>
+  --label <label>` per cluster (the `glab` and `tea` equivalents on GitLab and Gitea). Choose this when you
+  want to enrich a body first. Forge access is CLI-only; the framework ships no forge MCP server.
+
+### What the script decides
+
+- A cluster is proposed at 2 or more reports (`--threshold`), or at 1 report of `severity: high`, which
+  bypasses the threshold by design.
+- The cluster key is the `subcategory`, else the room. The target repository is the most frequent
+  `canonical` in the cluster (`--target-repo` forces one).
+- Labels are `harness-feedback`, `room:<dominant room>` and `severity:<worst>`. The title carries a Gitmoji
+  per dominant room (`tool` 🐛, `process` 📝, `behavior` 🚸, `format` 🎨, `prompt` 💬, other 🔧).
+- A cluster with no resolvable `canonical` is a routing failure: it is reported, never opened blind.
+- `--max-issues N` keeps the N highest-ranked clusters (severity, then size, then key) and `--dedup` skips a
+  cluster whose key already has an open `harness-feedback` issue.
+
+### Labels must exist first
+
+`--label` fails on a label the target repository does not have. Create the nine labels once per receiving
+repository; the script is idempotent and safe to re-run after a vocabulary change:
+
+```sh
+node scripts/setup-labels.ts --repo <owner/repo>        # add --dry-run to preview
 ```
 
-Each `title` carries a per-room Gitmoji prefix chosen from the cluster's
-dominant room (`tool` → 🐛, `process` → 📝, `behavior` → 🚸, `format` → 🎨,
-`prompt` → 💬; any other/unknown dominant room → 🔧), the same dominant
-room the `room:<dominant>` label above names — so a maintainer scanning the
-open-issues list recognizes a curator-authored issue's category at a
-glance.
+A missing label shows up as a `failures:` entry of the run summary; create it and retry.
 
-### 2. Validate the output before opening anything
+## Deep mode
 
-Read the JSON. Check the stats — high `skipped_malformed` or
-`routing_failures` is a signal that the wing has rot, and you should
-investigate before opening issues. Spot-check at least one body to
-make sure it reads sensibly.
-
-### 3. Open the issues
-
-Two paths, equivalent in outcome:
-
-- **Let the script do it**: `task harness-curate -- --apply`. The
-  script opens one issue per cluster via the target forge's CLI
-  (`gh`, `glab`, or `tea`, selected from the cluster's canonical
-  repository host), with all three labels from the JSON
-  (`harness-feedback`, `room:<x>`, `severity:<y>`).
-- **Open them yourself**: iterate the JSON and run `gh issue create
-  --repo <owner>/<repo> --title <title> --body <body> --label <...>`
-  per cluster (the same argv `apply.py` builds), or the `glab`/`tea`
-  equivalent on GitLab/Gitea. Forge access is CLI-only (`AGENTS.md` →
-  *Forge Access*); the framework ships no forge MCP server, so a
-  host-provided one is an optional convenience, not the default. Use
-  this path when you want to enrich the body before opening (e.g.
-  linking a recent `logbook` issue you noticed while reviewing).
-
-Either way: **one issue per cluster**. Resist bundling — independent
-clusters deserve independent triage.
-
-### 4. Threshold + routing rules (encoded in the script)
-
-The script applies these for you. Documented here so you can override
-via flags when the situation warrants:
-
-| Rule | Default | Override |
-|---|---|---|
-| Cluster size threshold | 2 | `--threshold N` |
-| Severity-`high` bypass | always promotes a singleton | (no override — by design) |
-| Target repo | most-frequent `canonical:` in cluster | `--target-repo <url>` for tests |
-| Cluster key | `subcategory:` if set, else `room` | (no override — wire-protocol) |
-| Labels | `harness-feedback` + `room:<dominant>` + `severity:<worst>` | (no override — wire-protocol) |
-| Max issues per run | 0 (unlimited) | `--max-issues N` (ranks high-severity → biggest cluster first, then truncates) |
-| Dedup existing issues | off | `--dedup` (skips clusters whose `cluster_key` already has an open `harness-feedback` issue) |
-
-A cluster with no resolvable `canonical:` and no `--target-repo`
-override counts as a *routing failure* — surfaced in the stats, not
-opened blind.
-
-### Prerequisite: labels exist on the target repo
-
-`gh issue create --label <name>` fails if the label does not already
-exist on the target repo. The three labels the Curator uses
-(`harness-feedback`, `room:<category>` for each of the 5 fixed rooms,
-and `severity:low|med|high`) **must be pre-created** on every repo
-that may receive curator output, before the first `--apply` run.
-A fork maintainer typically does this once at fork setup time.
-
-Bootstrap the 9 labels via the bundled script (idempotent — safe to
-re-run after a label vocabulary change):
-
-```bash
-node scripts/setup-labels.ts --repo <owner/repo>
-# Or preview the plan without contacting GitHub:
-node scripts/setup-labels.ts --repo <owner/repo> --dry-run
+```sh
+node scripts/curate.ts --deep [--deep-window 1000]
 ```
 
-The script uses `gh label create --force` per label, so it creates
-missing labels and updates the color / description of any that already
-exist. Omit `--repo` to target the repo resolved from the current
-working directory's git remote.
+It scans the most recent transcript drawers (default 500) with a fixed set of heuristic patterns and prints a
+Markdown checklist of candidates grouped by pattern, for a human to triage. It never opens issues and
+excludes `--apply`. To promote a candidate, tag it with the `harness-report` skill; it joins the next sweep.
 
-If `--apply` fails on a missing label, the script surfaces it as a
-`failures:` entry in the run summary. The maintainer creates the
-label and retries.
+## Scheduled mode
 
-### --deep mode
+`node scripts/schedule-curator.ts` installs a weekly Monday 09:00 run of
+`node scripts/curate.ts --apply --dedup --max-issues 5` (launchd on macOS, cron on Linux; re-running replaces
+the entry; `--dry-run` previews, `--uninstall` removes it). It runs on the maintainer's machine, never in CI,
+because the MemPalace state is local. Run the same command by hand right after filing a `severity: high`
+friction.
 
-Run a heuristic sweep of `wing="transcripts"` instead of the regular
-`wing="harness-friction"` curation. Useful for catching frictions that
-slipped through the recognition signals and were never tagged.
+## Step 3: report the run
 
-```bash
-node scripts/curate.ts --deep
-# Tune the scan window (default: 500 most-recent transcript drawers):
-node scripts/curate.ts --deep --deep-window 1000
+```sh
+node scripts/curate.ts --summary
 ```
 
-Behavior:
+prints the counts as bullets: frictions read and skipped, clusters formed, proposed and parked, routing
+failures and the proposed clusters. Post it, adding the issues opened with their links. Even a zero-issue run
+is worth reporting: it tells the user the wing is healthy.
 
-- Reads up to `--deep-window` drawers from `wing="transcripts"` (most
-  recent first).
-- Pre-filters each drawer against a fixed set of heuristic regex
-  patterns (`error`, `failed`, `retry`, `not working`, `unexpected`,
-  `broken`, `didn't work`, `try again`).
-- Emits a **Markdown review document** on stdout — not JSON, not
-  issues. Each candidate appears as a checkbox item grouped by pattern,
-  with a one-line excerpt for triage.
-- Incompatible with `--apply`: the script exits with an error if both
-  are passed. Deep mode is a discovery aid, not an issue-opening path.
-  To promote a candidate, the human (or agent) runs `/harness-report`
-  for it, which lands a `FRICTION:` payload in `wing="harness-friction"`
-  for the next regular sweep.
+## Friction
 
-Auto mode is implemented; see *Auto mode (scheduled curation)* below.
-
-### Auto mode (scheduled curation)
-
-Auto mode runs `curate.ts --apply --dedup --max-issues 5` on a recurring
-local schedule, default weekly Monday 09:00. Dedup is on so re-running
-the curator never re-opens the same cluster; `--max-issues 5` caps a
-single sweep so a noisy week cannot flood a repo. Ranking before
-truncation is severity-first (`high` > `med` > `low`), then cluster
-size (descending), then `cluster_key` (ascending, tie-breaker).
-
-Install the schedule on your maintainer machine (run from the installed skill directory):
-
-```bash
-node scripts/schedule-curator.ts
-# Preview only:
-node scripts/schedule-curator.ts --dry-run
-# Remove the managed entry:
-node scripts/schedule-curator.ts --uninstall
-```
-
-The installer detects macOS (launchd, plist at
-`~/Library/LaunchAgents/io.crewrig.harness-curator.plist`) vs Linux
-(cron, marker-comment-wrapped entry in `crontab -l`). Re-running the
-install replaces the previous entry, never duplicates.
-
-Reactive trigger — run manually the moment you file a `severity: high`
-friction so the curator surfaces it without waiting for the next sweep:
-
-```bash
-node scripts/curate.ts --apply --dedup --max-issues 5
-```
-
-Auto mode never runs on CI by design — MemPalace state is local to the
-maintainer.
-
-### 5. Run summary
-
-After applying, post a brief run summary to the user:
-
-- Frictions read / skipped (malformed).
-- Clusters formed / above threshold / parked.
-- Issues opened (with links) / routing failures.
-
-The summary is the primary signal that the loop ran. Even a zero-issue
-run is worth reporting — it tells the user the wing is healthy.
-
-## Output expectations
-
-- One issue per cluster, descriptive body only.
-- Every claim in the body backed by an evidence pointer.
-- Three labels per issue (`harness-feedback`, `room:<x>`, `severity:<y>`)
-  so maintainers can filter and triage natively.
-- No Curator-proposed diff (V0 contract — diffs live in follow-up MRs).
-
-## Friction reporting
-
-When a recognition signal fires (see `config/TOOLS.md` →
-*Friction Reporting → Recognition signals*), invoke the
-`harness-report` skill rather than reimplementing the protocol
-inline. The Curator is not exempt from the loop it serves — if the
-curation prompt led to a bad cluster, a wrong routing target, or an
-unactionable issue, report it like any other friction.
+If the curation led to a bad cluster, a wrong target or an unactionable issue, tag it with the
+`harness-report` skill; the shared rule is in `references/shared-friction-reporting.md`.

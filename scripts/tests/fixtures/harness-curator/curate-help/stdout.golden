@@ -17,6 +17,7 @@
 #                          [--max-issues <n>]
 #                          [--dedup]
 #                          [--deep] [--deep-window <n>]
+#                          [--check] [--summary] [--max-malformed-ratio <r>] [--json]
 #
 # Options:
 #   --dry-run        Output JSON of clusters that would become issues (default).
@@ -41,3 +42,14 @@
 #                    instead of clusters/issues. Incompatible with --apply.
 #   --deep-window    Maximum number of transcript drawers to scan in --deep
 #                    mode (default: 500).
+#   --check          Health gate over a dry run: exit 0 when the wing is healthy,
+#                    exit 1 when skipped_malformed exceeds --max-malformed-ratio of
+#                    total_drawers or routing_failures is above zero. Prints the
+#                    verdict; run it before --apply. Incompatible with --apply/--deep.
+#   --summary        Print the run summary (frictions read and skipped, clusters
+#                    formed, proposed and parked, routing failures) of a dry run.
+#   --max-malformed-ratio
+#                    Malformed share of drawers above which --check fails (default:
+#                    0.25, the share that makes the report warn on stderr).
+#   --json           With --check or --summary: print one {ok, data, findings}
+#                    object on stdout instead of text. Usage errors keep exit 1.
