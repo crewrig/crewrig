@@ -182,8 +182,9 @@ This script has no --json option and does not use exit 3.
        node scripts/${base} --help
 
 Flags patterns in a CI definition that may leak secrets into logs or widen their blast radius:
-literal credentials and token shapes, echoed secrets, set -x, CI_DEBUG_TRACE (gitlab), workflow-level
-env: secrets and toJSON(secrets) (github). A text scan: no live forge, no network.
+github: echoed secrets.*, workflow-level env: secrets, set -x, toJSON(secrets).
+gitlab: literal credentials and token shapes, echoed credential variables, set -x, CI_DEBUG_TRACE.
+A text scan: no live forge, no network.
   --platform github   a workflow file, or a directory (its .github/workflows when it exists)
   --platform gitlab   a pipeline file, or <dir>/.gitlab-ci.yml plus the YAML under <dir>/.gitlab/
 --platform is required in this copy; github-actions and gitlab-ci ship the same engine with their

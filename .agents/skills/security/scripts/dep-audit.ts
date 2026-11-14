@@ -21,14 +21,15 @@ a fixed argument vector with no shell, found on PATH. POSIX hosts only (Windows:
        pip-audit -r requirements.txt --disable-pip --no-deps --format json --progress-spinner off
        --no-deps audits only the pins written in the file (name==version), not what they pull in;
        the default mode builds packages and runs project code, so it is not used.
-Both tools query a package registry over the network. Nothing is installed, fixed or written.
+Both tools query a package registry over the network. Nothing is installed or fixed and no file
+of the project is written (the tools keep their own cache and logs).
 pnpm-lock.yaml, yarn.lock, go.mod, Cargo.lock, poetry.lock, pom.xml, Gemfile.lock and composer.lock
 give an unsupported-ecosystem warning, and no manifest gives nothing-to-audit: both mean NOT audited.
 A verdict is clean, vulnerable or not-audited with a cause: tool-missing, timeout, offline,
-unrecognized-output (also a skipped dependency), no-lockfile, unpinned or unsupported. A
-vulnerable-dependency finding is an error at or above --fail-on (low, moderate, high, critical;
-default high), a warning below; no severity (every pip advisory) counts as at or above.
-Reachability is not assessed. --timeout is per command (default 60 s); its process group is killed.
+unrecognized-output (also a pip dependency the tool skipped), no-lockfile, unpinned or unsupported.
+A vulnerable-dependency finding is an error at or above --fail-on (low, moderate, high, critical;
+default high), a warning below; no severity (every pip advisory) counts as at or above. Reachability
+is not assessed. --timeout is 1 to 2147483 s per command (default 60); its process group is killed.
 data: {root, failOn, audited: [{ecosystem, manifest, verdict, cause?, advisories, skipped}]}.
 Exit codes: 0 audited and nothing at or above --fail-on, 1 a vulnerable dependency, 2 usage error,
 3 not audited (a precondition error, manifests found and none audited, or Windows).
@@ -79,8 +80,8 @@ Exit codes: 0 audited and nothing at or above --fail-on, 1 a vulnerable dependen
     return stop(2, "usage", `--ecosystem takes npm or pip, got ${only}`);
   if (failOn === "info" || RANK[failOn] === undefined)
     return stop(2, "usage", `--fail-on takes low, moderate, high or critical, got ${failOn}`);
-  if (!Number.isFinite(seconds) || seconds <= 0)
-    return stop(2, "usage", `--timeout takes a positive number, got ${opt["--timeout"]}`);
+  if (!(seconds > 0 && seconds <= 2147483))
+    return stop(2, "usage", `--timeout takes 1 to 2147483 seconds, got ${opt["--timeout"]}`);
   const NOT = "the dependencies were NOT audited";
   if (process.platform === "win32")
     return stop(3, "precondition", `POSIX only; ${NOT}`, { cause: "unsupported-platform" });
@@ -89,7 +90,7 @@ Exit codes: 0 audited and nothing at or above --fail-on, 1 a vulnerable dependen
     fs.statSync(path.join(root, n), { throwIfNoEntry: false });
   if (stat("")?.isDirectory() !== true) return stop(3, "precondition", `not a directory: ${root}`);
   const has = (n: string): boolean => stat(n)?.isFile() === true;
-  const UNSUPPORTED = `pnpm-lock.yaml:pnpm audit,yarn.lock:yarn npm audit,go.mod:govulncheck ./...,
+  const UNSUPPORTED = `pnpm-lock.yaml:pnpm audit,yarn.lock:yarn npm audit (Yarn 2+) or yarn audit (Yarn 1),go.mod:govulncheck ./...,
 Cargo.lock:cargo audit,poetry.lock:pip-audit on the output of poetry export,
 pom.xml:mvn org.owasp:dependency-check-maven:check,Gemfile.lock:bundle audit,composer.lock:composer audit`;
   const lock = ["package-lock.json", "npm-shrinkwrap.json"].find(has);
@@ -130,9 +131,10 @@ pom.xml:mvn org.owasp:dependency-check-maven:check,Gemfile.lock:bundle audit,com
       const end = (): void => {
         clearTimeout(timer);
         try {
-          process.kill(-(child.pid ?? 0), "SIGKILL");
+          // no pid after a failed spawn: kill(0) would signal the caller's own group
+          if ((child.pid ?? 0) > 0) process.kill(-(child.pid ?? 0), "SIGKILL");
         } catch {
-          // the group is already gone
+          /* the group is already gone */
         }
         resolve(res);
       };
@@ -236,6 +238,7 @@ pom.xml:mvn org.owasp:dependency-check-maven:check,Gemfile.lock:bundle audit,com
     if (r.timedOut) return no("timeout");
     return { ecosystem, manifest, ...(ecosystem === "npm" ? npmRules(r) : pipRules(r)) };
   };
+  const WARN = { severity: "warning" };
   const FIX: Record<string, string> = {
     "tool-missing": "the tool was not found on PATH; install it and run again, or audit by hand",
     timeout: `the tool did not finish within ${seconds}s; raise --timeout or run it by hand`,
@@ -273,15 +276,16 @@ pom.xml:mvn org.owasp:dependency-check-maven:check,Gemfile.lock:bundle audit,com
         { severity: high ? "error" : "warning", ecosystem: a.ecosystem },
       );
     }
-    const skipped = a.skipped.length > 0 ? ` (skipped by the tool: ${a.skipped.join(", ")})` : "";
+    const skipped = a.skipped.join(", ");
+    const skip = `${skipped} was skipped by the tool (a private package, a name @ url requirement) and is never clean`;
+    const why = skipped === "" ? (FIX[a.cause ?? ""] ?? "") : `${skip}; audit it by hand`;
     if (a.verdict === "not-audited" && a.cause !== "unsupported")
-      add(
-        "precondition",
-        `${a.ecosystem}: ${NOT} (cause ${a.cause}): ${FIX[a.cause ?? ""] ?? ""}${skipped}`,
-        { cause: a.cause, ecosystem: a.ecosystem },
-      );
+      add("precondition", `${a.ecosystem}: ${NOT} (cause ${a.cause}): ${why}`, {
+        cause: a.cause,
+        ecosystem: a.ecosystem,
+      });
     else if (a.skipped.length > 0)
-      add("precondition", `${a.ecosystem}: ${NOT}${skipped}`, { severity: "warning" });
+      add("precondition", `${a.ecosystem}: ${skipped} was skipped and NOT audited`, WARN);
   }
   if (audited.length === 0)
     add("nothing-to-audit", `no npm or pip manifest at the top level of ${root}: ${NOT}`, {

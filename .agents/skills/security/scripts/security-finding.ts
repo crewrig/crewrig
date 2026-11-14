@@ -82,27 +82,33 @@ Exit codes: 0 no finding, 1 at least one error, 2 usage error, 3 unreadable repo
     return stop(3, "precondition", `cannot read the report ${inputs[0]}: ${(e as Error).message}`);
   }
 
-  // Split the report into numbered findings; a header inside a code fence is not a header.
+  // Split the report into numbered findings. A fenced block and its fence lines belong to the open
+  // field, a blank line does not close it, and a prose line outside any finding ends the findings.
   type Block = { n: number; line: number; head: string; fields: Map<string, string> };
   const blocks: Block[] = [];
   let fenced = false;
+  let ended = false;
   let field: string | undefined;
   let noFindings = false;
   text.split(/\r?\n/).forEach((line, i) => {
+    const inside = fenced || /^\s*```/.test(line);
     if (/^\s*```/.test(line)) fenced = !fenced;
-    const head = fenced ? null : /^(\d+)\.\s+(.*)$/.exec(line);
-    const label = fenced ? null : /^\s*(Where|Threat|Evidence|Fix):\s*(.*)$/.exec(line);
+    const head = inside || ended ? null : /^(\d+)\.\s+(.*)$/.exec(line);
+    const label = inside ? null : /^\s*(Where|Threat|Evidence|Fix):\s*(.*)$/.exec(line);
     const last = blocks[blocks.length - 1];
     if (head !== null) {
       blocks.push({ n: Number(head[1]), line: i + 1, head: head[2] ?? "", fields: new Map() });
       field = undefined;
-    } else if (label !== null && last !== undefined) {
+    } else if (label !== null && last !== undefined && !ended) {
       field = label[1] ?? "";
       last.fields.set(field, (label[2] ?? "").trim());
-    } else if (/^\s+\S/.test(line) && last !== undefined && field !== undefined)
+    } else if ((inside || /^\s+\S/.test(line)) && last !== undefined && field !== undefined)
       last.fields.set(field, `${last.fields.get(field) ?? ""} ${line.trim()}`.trim());
     else if (line.trim() === "No findings.") noFindings = true;
-    else if (line.trim() === "" && !fenced) field = undefined;
+    else if (line.trim() !== "" && !/^\s/.test(line)) {
+      field = undefined;
+      ended = last !== undefined;
+    }
   });
 
   const counts: Record<string, number> = Object.fromEntries(SEVS.map((s) => [s, 0]));

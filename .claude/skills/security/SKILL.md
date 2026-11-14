@@ -55,7 +55,7 @@ Write the findings as a numbered list, one block each:
 - `[SEV]` is one of the five severities above. `Where:` is `<file>:<line>` or `<file>:<first>-<last>`, a line of the whole file in the checkout, so that a reader can open it. A value may continue on indented lines.
 - When the input is a diff, cite the path of the post-image from the `+++` header without its `a/` or `b/` prefix, and a line of the new-file side of the hunk. A path that exists only in the diff cannot be opened.
 - A clean review is the line `No findings.` followed by an `Examined:` line that names what you read, with file and line, so an empty report cannot pass for a clean one.
-- A threat model opens with one line that names the trust boundary, then lists the threats in the same format.
+- A threat model opens with one line that names the trust boundary, then lists the threats in the same format. For a design with no code, cite the design document and a line of it in `Where:`; when the design exists only in the conversation, write it to a file next to the report and cite that, since `security-finding.ts` accepts only a real file and line.
 
 ## Scripts
 
@@ -69,12 +69,12 @@ Run `node scripts/<name>.ts` from the skill directory, or give the full path fro
 
 `security-finding.ts` checks the shape of the report and that every `Where:` resolves to a real file and line. It does not check that your evidence occurs at that line, so read the line yourself.
 
-`dep-audit.ts` runs `npm audit` for a lockfile and `pip-audit` for `requirements.txt`, found on `PATH`, so it queries a package registry over the network. It installs, builds and writes nothing, and runs on POSIX hosts only. For pip it audits only the pins written in `requirements.txt` (`name==version`), not what they pull in, because the mode that resolves dependencies builds packages and runs project code. An advisory below `--fail-on` is a warning, one at or above is an error, and an advisory with no severity (every pip one) counts as at or above.
+`dep-audit.ts` runs `npm audit` for a lockfile and `pip-audit` for `requirements.txt`, found on `PATH`, so it queries a package registry over the network. It installs and builds nothing, runs no project code and writes no file of the project (the tools keep their own cache and logs), and it runs on POSIX hosts only. For pip it audits only the pins written in `requirements.txt` (`name==version`), not what they pull in, because the mode that resolves dependencies builds packages and runs project code. An advisory below `--fail-on` is a warning, one at or above is an error, and an advisory with no severity (every pip one) counts as at or above.
 
-- **Exit `3`, an `unsupported-ecosystem` warning and a `nothing-to-audit` warning all mean the dependencies were NOT audited.** Say so in the report: a silent gap reads as a clean audit. Exit `3` covers a missing tool, no network, a timeout, a `package.json` with no lockfile, an unpinned requirement and output the script could not classify.
-- Only npm and pip are covered. For `pnpm-lock.yaml`, `yarn.lock`, `go.mod`, `Cargo.lock`, `poetry.lock`, `pom.xml`, `Gemfile.lock` and `composer.lock` the warning names the native tool to run by hand.
+- **Exit `3`, an `unsupported-ecosystem` warning and a `nothing-to-audit` warning all mean the dependencies were NOT audited.** Say so in the report: a silent gap reads as a clean audit. Exit `3` covers a missing or unrunnable tool, no network, a timeout, a `package.json` with no lockfile, an unpinned requirement and output the script could not classify. The likeliest cause for pip is a requirement the tool skipped, such as a private package or a `name @ url` entry: the finding names it, the whole pip ecosystem then reads not-audited (cause `unrecognized-output`) even when the other pins were checked, and you audit that dependency by hand.
+- Only npm and pip are covered. For `pnpm-lock.yaml`, `yarn.lock` (the warning names `yarn audit` for Yarn 1 and `yarn npm audit` for Yarn 2 and later), `go.mod`, `Cargo.lock`, `poetry.lock`, `pom.xml`, `Gemfile.lock` and `composer.lock` the warning names the native tool to run by hand.
 
-`check-secrets-exposure.ts` is a text scan of one workflow or pipeline file, or a directory of them. It keeps its legacy exit codes, has no `--json` and no exit `3`. A clean result says no known pattern matched, not that no secret exists.
+`check-secrets-exposure.ts` is a text scan of one workflow or pipeline file, or a directory of them. The `github` profile looks for an echoed `secrets.*`, a workflow-level `env:` that references secrets, `set -x` and `toJSON(secrets)`; the `gitlab` profile looks for literal credentials and token shapes, echoed credential variables, `set -x` and `CI_DEBUG_TRACE`. It keeps its legacy exit codes, has no `--json` and no exit `3`. A clean result says no known pattern matched, not that no secret exists.
 
 ## Hand-offs
 

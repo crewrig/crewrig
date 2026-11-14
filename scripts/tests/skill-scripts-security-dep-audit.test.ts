@@ -217,7 +217,10 @@ describe("pip", () => {
       assert.equal(audited(e)[0]?.cause, "unrecognized-output", c);
     }
     const e = envelope(audit(project(PIP_FILE), [], tools.replay({ pip: "private-pinned" })));
-    assert.match(e.findings[0]?.message ?? "", /skipped by the tool: acme-internal-lib/);
+    assert.match(
+      e.findings[0]?.message ?? "",
+      /acme-internal-lib was skipped by the tool .* never clean/,
+    );
   });
 
   test("a missing tool is exit 3 with cause tool-missing", () => {
