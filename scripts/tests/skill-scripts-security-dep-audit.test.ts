@@ -88,9 +88,8 @@ describe("npm", () => {
     assert.equal(r.status, 1, r.stderr);
     const e = envelope(r);
     assert.equal(e.ok, false);
-    const bySeverity = Object.fromEntries(
-      e.findings.map((f) => [/semver|cookie/.exec(f.message)?.[0], f.severity]),
-    );
+    const bySeverity: Record<string, string | undefined> = {};
+    for (const f of e.findings) bySeverity[/semver|cookie/.exec(f.message)?.[0] ?? ""] = f.severity;
     assert.deepEqual(bySeverity, { semver: "error", cookie: "warning" });
     const high = e.findings.find((f) => f.message.startsWith("semver"));
     assert.match(high?.message ?? "", /semver 5\.7\.1: .*severity high, fixed in 5\.7\.3/);
