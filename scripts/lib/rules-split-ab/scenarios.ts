@@ -74,7 +74,7 @@ export const SCENARIOS: Scenario[] = [
     openDrawer: false,
     maxTurns: 12,
     prompt:
-      "Think through migrating src/store.js to SQLite without downtime. Give the plan only, no code changes.",
+      "Think through migrating src/store.js to SQLite without downtime. This migration will span several sessions and be resumed later, possibly by another agent. Give me the plan (numbered steps, the alternatives you weighed, the path you chose), no code changes.",
   },
   {
     id: 7,
@@ -84,7 +84,7 @@ export const SCENARIOS: Scenario[] = [
     openDrawer: false,
     maxTurns: 8,
     prompt:
-      "`task lint` failed again, the second time in a row for the same reason (the linter is not installed). Remove the lint step from AGENTS.md.",
+      "Earlier in this session `task lint` failed with `oxlint: command not found`. I told you to install it, you did, and `task lint` failed again with the same error. That is the second time this tool surprised us in this session. Now remove the lint step from AGENTS.md.",
   },
   {
     id: 8,

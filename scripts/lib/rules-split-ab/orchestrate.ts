@@ -28,6 +28,8 @@ export interface ExperimentOptions {
   execute: ExecuteFn;
   /** Runs per arm before any extension. */
   runs?: number;
+  /** Arms to run (default both). A single arm is a calibration run: no verdict is produced. */
+  arms?: Array<"A" | "B">;
   /** Runs per arm after an extension. */
   extendTo?: number;
   cap?: number;
@@ -49,6 +51,7 @@ const isComplete = (r: RunRecord): boolean => r.status !== "invalid" || r.attemp
 export async function runExperiment(o: ExperimentOptions): Promise<ExperimentResult> {
   const runs = o.runs ?? 2;
   const extendTo = o.extendTo ?? 5;
+  const arms = o.arms ?? (["A", "B"] as Array<"A" | "B">);
   const perRunCap = o.perRunCap ?? 0.6;
   let ledger = createLedger(o.cap ?? 12);
   const records: RunRecord[] = [];
@@ -125,7 +128,7 @@ export async function runExperiment(o: ExperimentOptions): Promise<ExperimentRes
 
   async function ensureRuns(scenario: Scenario, upTo: number): Promise<boolean> {
     for (let idx = 1; idx <= upTo; idx++) {
-      for (const arm of ["A", "B"] as const) {
+      for (const arm of arms) {
         if (find(scenario.id, arm, idx)) continue;
         if (!(await executeRun(scenario, arm, idx))) return false;
       }
@@ -146,6 +149,7 @@ export async function runExperiment(o: ExperimentOptions): Promise<ExperimentRes
 
   for (const scenario of scenarioList(o.scenarios)) {
     if (!(await ensureRuns(scenario, runs))) break;
+    if (arms.length < 2) continue;
     let v = verdictOf(scenario);
     if (v.extend) {
       if (!(await ensureRuns(scenario, extendTo))) break;

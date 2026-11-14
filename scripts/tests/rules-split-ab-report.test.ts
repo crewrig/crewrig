@@ -228,6 +228,11 @@ describe("renderReport", () => {
     assert.match(md2, /40000/);
     assert.match(md2, /-10000/);
   });
+  test("summarises cost and mean first-call tokens per scenario and arm", () => {
+    assert.match(md, /Cost and first-call tokens per scenario and arm/);
+    assert.match(md, /\| 1 \| A \| 1 \| 1 \| 0 \| 0 \| 0\.31 \| 59000 \|/);
+    assert.match(md, /\| 1 \| B \| 1 \| 0 \| 0 \| 1 \| 1\.10 \| 41000 \|/);
+  });
   test("reports a guard stop and asks the coordinator", () => {
     const m = renderReport({
       records: [],

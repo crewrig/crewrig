@@ -80,6 +80,54 @@ describe("criterion 1 edge cases", () => {
     ]);
     assert.equal(s.status, "pass", s.note);
   });
+  test("read-only commands before the checkpoint write are allowed (recalibration of S1)", () => {
+    const bash = (command: string) => ({ name: "Bash", input: { command } });
+    for (const c of [
+      "git branch --show-current",
+      "git branch",
+      "git branch -a",
+      "git log --oneline -5",
+      "git diff",
+      "git diff --stat HEAD~1",
+      "git show HEAD",
+      "git status 2>&1",
+      "git rev-parse --abbrev-ref HEAD 2>/dev/null",
+      "ls",
+      "ls -la src",
+      "cat AGENTS.md",
+      "pwd",
+      "git branch --show-current; git log --oneline -5; git status --short",
+      "git branch --show-current && git log --oneline -5 && git status --short",
+      "git status || pwd",
+    ]) {
+      const s = run(1, [search, bash(c), update]);
+      assert.equal(s.status, "pass", `${c}: ${s.note}`);
+    }
+  });
+  test("chains, redirections, substitutions and mutating forms before the write still fail", () => {
+    const bash = (command: string) => ({ name: "Bash", input: { command } });
+    for (const c of [
+      "git status && npm test",
+      "git status; rm -rf x",
+      "git status; ",
+      "git status & touch x",
+      "git status | tee out.txt",
+      "echo hi > a.txt",
+      "cat AGENTS.md > copy.md",
+      "git branch newbranch",
+      "git branch -D old",
+      "git branch -m renamed",
+      "git diff --output=patch.diff",
+      "git status $(touch x)",
+      "git status `touch x`",
+      "git status\nrm x",
+      "git checkout -b feat/x",
+      "ls && touch f",
+      "npm test",
+    ]) {
+      assert.equal(run(1, [search, bash(c), update]).status, "fail", c);
+    }
+  });
   test("other Bash before the write is a task call", () => {
     assert.equal(
       run(1, [search, { name: "Bash", input: { command: "npm test" } }, update]).status,

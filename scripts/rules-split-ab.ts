@@ -10,6 +10,7 @@
 //
 // Options: --arm-a-ref <ref> (arm A: only 60-tools.md, via `git show <ref>:...`), --arm-a-rule and
 // --arm-b-rule <path> (repeatable; override the refs and the working tree), --worker-settings <path>
+// --arms A|B|A,B (a single arm is a calibration run, no verdict), --out must be a fresh directory.
 // (scratch-HOME mode: passed as --settings in scenario 2 only; real-HOME mode: merged into the
 // per-run settings file in scenario 2), --scenarios 1,8, --runs 2, --model, --out, --keep-scratch.
 //
@@ -68,6 +69,7 @@ function main(): void {
         "approved-cap": { type: "string" },
         "keep-scratch": { type: "boolean" },
         "auth-home": { type: "string" },
+        arms: { type: "string" },
       },
       strict: true,
     }));
@@ -78,6 +80,9 @@ function main(): void {
   const authHome = values["auth-home"] ?? "auto";
   if (authHome !== "auto" && authHome !== "scratch" && authHome !== "real")
     usage("--auth-home must be auto, scratch or real");
+  const armsArg = values.arms ?? "A,B";
+  if (!["A", "B", "A,B", "B,A"].includes(armsArg)) usage("--arms must be A, B or A,B");
+  const arms = armsArg.split(",") as Array<"A" | "B">;
   const model = values.model ?? "claude-sonnet-5-5";
   const runs = Number(values.runs ?? "2");
   if (!Number.isInteger(runs) || runs < 1 || runs > 5)
@@ -120,6 +125,10 @@ function main(): void {
   const outDir = path.resolve(
     values.resume ?? values.out ?? path.join(os.tmpdir(), `rules-split-ab-${Date.now()}`),
   );
+  if (!values.resume && fs.existsSync(outDir) && fs.readdirSync(outDir).length > 0)
+    usage(
+      `--out ${outDir} is not empty: use a fresh directory, or --resume to continue a stopped run`,
+    );
   fs.mkdirSync(outDir, { recursive: true });
   let armA = explicitA;
   if (!armA) {
@@ -167,7 +176,7 @@ function main(): void {
     );
   };
 
-  runExperiment({ scenarios, execute, runs, cap, perRunCap: PER_RUN, prior })
+  runExperiment({ scenarios, execute, runs, arms, cap, perRunCap: PER_RUN, prior })
     .then((r) => {
       persist(r.records, r.ledger.spent, r.verdicts, r.stopped);
       process.stdout.write(

@@ -87,6 +87,17 @@ describe("rules-split-ab runner", () => {
     assert.equal(run(["--dry-run", ...rules, "--auth-home", "x"], { CI: undefined }).status, 2);
   });
 
+  test("a paid run refuses a non-empty --out unless resuming, and spawns nothing", () => {
+    fs.rmSync(sentinel, { force: true });
+    const out = fs.mkdtempSync(path.join(tmp, "out-"));
+    fs.writeFileSync(path.join(out, "old.txt"), "x");
+    const r = run([...rules, "--out", out], { CI: undefined });
+    assert.equal(r.status, 2);
+    assert.match(r.stderr, /not empty/);
+    assert.equal(fs.existsSync(sentinel), false);
+    assert.equal(run(["--dry-run", ...rules, "--arms", "C"], { CI: undefined }).status, 2);
+  });
+
   test("--scenarios narrows the plan", () => {
     const r = run(["--dry-run", ...rules, "--scenarios", "1,8"], { CI: undefined });
     assert.match(r.stdout, /scenario 1\b/);

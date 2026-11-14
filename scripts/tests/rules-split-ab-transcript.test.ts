@@ -19,15 +19,22 @@ describe("parseTranscript", () => {
     const t = parseTranscript(read("c1-pass/transcript.jsonl"));
     assert.deepEqual(
       t.events.map((e) => e.name),
-      ["mempalace_search", "mempalace_diary_read", "mempalace_update_drawer", "Read", "Edit"],
+      [
+        "mempalace_search",
+        "Bash",
+        "mempalace_diary_read",
+        "mempalace_update_drawer",
+        "Read",
+        "Edit",
+      ],
     );
     assert.equal(t.events[0]?.server, "mempalace");
-    assert.equal(t.events[3]?.server, null);
+    assert.equal(t.events[1]?.server, null);
     assert.equal(t.events[0]?.input.room, "task-handoff");
     assert.equal(t.events[0]?.isError, false);
     assert.deepEqual(
       t.events.map((e) => e.seq),
-      [0, 1, 2, 3, 4],
+      [0, 1, 2, 3, 4, 5],
     );
   });
 

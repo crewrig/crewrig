@@ -218,3 +218,15 @@ describe("runExperiment", () => {
     assert.ok(r2.ledger.spent > r1.ledger.spent);
   });
 });
+
+describe("runExperiment, single arm (calibration)", () => {
+  test("arms: ['A'] runs only arm A and yields no verdict", async () => {
+    const { execute, calls } = fake();
+    const r = await runExperiment({ scenarios: [SCENARIOS[5]!], execute, arms: ["A"] });
+    assert.deepEqual(
+      calls.map((c) => `${c.arm}${c.runIndex}`),
+      ["A1", "A2"],
+    );
+    assert.deepEqual(r.verdicts, {});
+  });
+});

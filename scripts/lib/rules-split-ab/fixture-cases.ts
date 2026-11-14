@@ -167,6 +167,7 @@ const specs: Record<string, TranscriptSpec> = {
   "c1-pass": {
     tools: [
       search,
+      { name: "Bash", input: { command: "git branch --show-current" } },
       { name: "mempalace_diary_read", input: {} },
       {
         name: "mempalace_update_drawer",

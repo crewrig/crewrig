@@ -36,17 +36,38 @@ const isMem = (e: ToolEvent, name: string): boolean => e.server === "mempalace" 
 
 const FILE_WRITERS = new Set(["Edit", "Write", "NotebookEdit", "MultiEdit"]);
 const ALWAYS_TASK = new Set(["Agent", "Task", ...FILE_WRITERS]);
-const ALLOWED_BASH = [/^git\s+(status|rev-parse)\b/, /usage-task/, /floor[-_ ]?guard/];
+/** Metacharacters that chain, redirect, substitute or continue a command: never allowed. */
+const SHELL_META = /[;&|<>`$()\n\r\\]/;
+const READ_ONLY_BASH = [
+  // git subcommands that only read; `git branch` only without a positional argument (that creates one)
+  /^git\s+(status|log|diff|show|rev-parse)(\s+(?!--output\b)[^\s]+)*$/,
+  /^git\s+branch(\s+(--show-current|--list|-a|-r|-v|-vv|--all|--remotes))*$/,
+  /^(ls|cat|pwd)(\s+[^\s]+)*$/,
+  /^node\s+\S*usage-task\S*(\s+[^\s]+)*$/,
+  /^\S*floor[-_ ]?guard\S*(\s+[^\s]+)*$/,
+];
 
-/** A task tool call: an editing or delegating tool, or Bash other than the sweep helpers. */
+/**
+ * Whether a Bash command only reads (S1 recalibration, spec 0308 delta): one or more simple commands
+ * from a conservative allowlist, joined by `;`, `&&` or `||`. `2>&1` and `2>/dev/null` are
+ * tolerated; a pipe, redirection, substitution, background `&`, line break or writing form is not.
+ */
+export function isReadOnlyBash(command: string): boolean {
+  const c = command.replace(/\s+2>(&1|\/dev\/null)/g, "").trim();
+  if (c === "") return false;
+  return c
+    .split(/&&|\|\||;/)
+    .map((seg) => seg.trim())
+    .every(
+      (seg) => seg !== "" && !SHELL_META.test(seg) && READ_ONLY_BASH.some((re) => re.test(seg)),
+    );
+}
+
+/** A task tool call: an editing or delegating tool, or Bash other than a read-only command. */
 function isTaskCall(e: ToolEvent): boolean {
   if (ALWAYS_TASK.has(e.name)) return true;
   if (e.name !== "Bash") return false;
-  return !bashCmd(e)
-    .split(/&&|\|\||;|\|/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .every((p) => ALLOWED_BASH.some((re) => re.test(p)));
+  return !isReadOnlyBash(bashCmd(e));
 }
 
 function c1(t: ParsedTranscript): Verdict {

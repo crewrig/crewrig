@@ -41,6 +41,30 @@ export function renderReport(r: ReportInput): string {
       `| ${rec.scenario} | ${rec.arm} | ${rec.runIndex} | ${rec.status}${note} | ${att} | ${last?.firstCallTokens ?? ""} |`,
     );
   }
+  out.push(
+    "",
+    "## Cost and first-call tokens per scenario and arm",
+    "",
+    "| Scenario | Arm | Runs | Pass | Fail | Invalid | Cost USD | Mean first-call tokens |",
+    "|---|---|---|---|---|---|---|---|",
+  );
+  const groups = new Map<string, RunRecord[]>();
+  for (const rec of sorted) {
+    const k = `${rec.scenario}|${rec.arm}`;
+    groups.set(k, [...(groups.get(k) ?? []), rec]);
+  }
+  for (const [k, recs] of groups) {
+    const [sc, arm] = k.split("|");
+    const cost = recs.reduce((n, x) => n + x.attempts.reduce((m, a) => m + a.charged, 0), 0);
+    const toks = recs
+      .map((x) => x.attempts[x.attempts.length - 1]?.firstCallTokens)
+      .filter((t): t is number => typeof t === "number");
+    const mean = toks.length ? Math.round(toks.reduce((a, b) => a + b, 0) / toks.length) : "";
+    const n = (s: string) => recs.filter((x) => x.status === s).length;
+    out.push(
+      `| ${sc} | ${arm} | ${recs.length} | ${n("pass")} | ${n("fail")} | ${n("invalid")} | ${usd(cost)} | ${mean} |`,
+    );
+  }
   out.push("", "## Verdict per scenario", "", "| Scenario | Verdict |", "|---|---|");
   for (const [id, v] of Object.entries(r.verdicts)) out.push(`| ${id} | ${v.verdict} |`);
 
