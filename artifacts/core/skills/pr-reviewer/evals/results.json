@@ -1,11 +1,11 @@
 {
   "skill_name": "pr-reviewer",
-  "content_hash": "sha256:d65427e062a664c7dd46160529957061ca9b57983719b8a7649b3993c82ba454",
+  "content_hash": "sha256:4f8832c9e0d0668f787dde697d11f4a7971fd28f20847e1fc0cb961873eb817e",
   "runner_version": "3.0.0",
   "executor_model": "claude-sonnet-5-5",
   "judge_model": "claude-sonnet-5-5",
   "effort": "medium",
-  "date": "2026-11-14T15:13:50.900Z",
+  "date": "2026-11-14T20:03:43.547Z",
   "status": "pass",
   "eval_pass_rate": 0.8333333333333334,
   "probe_pass_rate": 1,
