@@ -39,6 +39,7 @@ out=$(mktemp)
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-ci-parity.ts > "$out" 2>&1
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/classify-ci-drift.ts "$out"
 grep -E '^(OK:|FAILED:|Error:)' "$out"
+rm -f "$out"
 ```
 <!-- crewrig-repo-only:end -->
 
@@ -62,11 +63,20 @@ Check that the list is complete before you present it:
 
 ## Classify
 
-The classifier assigns one of five kinds; run it with `--kinds` for the definitions.
-Name the kind before you propose anything: classifying first stops you from reaching
-for the nearest fix.
-Its `guidance` line gives the reconciliation of the kind; every kind except a stale
-derived pipeline is judgment-bearing.
+The classifier assigns one of five kinds. Name the kind before you propose anything:
+classifying first stops you from reaching for the nearest fix.
+
+- `stale-derived-pipeline`: the committed `.gitlab-ci.yml` is behind a fresh
+  derivation of the reference. The only kind you apply.
+- `reference-drift`: the reference is invalid or no longer describes reality.
+- `hand-authored-drift`: a hand-authored job diverges from its capability.
+- `evidence-less-exception`: an engine-specific capability lacks its
+  `exception.engine` or `exception.evidence`.
+- `untraceable-job`: a job is neither a capability `id` nor carries a valid
+  `# ci-capability:` annotation.
+
+The classifier's `guidance` line gives the reconciliation of the kind; every kind
+except a stale derived pipeline is judgment-bearing.
 
 A record the classifier calls `unclassified`, or `ambiguous` (the divergence may be
 reference drift or hand-authored drift, depending on which side is the intended

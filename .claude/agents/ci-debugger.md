@@ -79,8 +79,8 @@ list or a list of prohibited fixes.
 
 ## Simulation
 
-When the log alone does not reproduce the failure, reproduce it locally. Run the
-workflow check first, then the job under `act`:
+When the log alone leaves the cause open, validate the workflow statically. Run the
+workflow check first, then the dry run of the job:
 
 ```bash
 node <github-actions-skill-dir>/scripts/lint-workflow.ts .github/workflows/<file>.yml
@@ -88,11 +88,12 @@ node <github-actions-skill-dir>/scripts/simulate-job.ts .github/workflows/<file>
 ```
 
 `lint-workflow.ts` needs `actionlint` and reports a skip without it.
-`simulate-job.ts` needs `act` and a container runtime. Use simulation for a matrix
-entry that is hard to read from the log, for an environment-specific failure (image
-version, tool drift), and to check a fix before a commit triggers a real run. A
-green local run does not reproduce the hosted runner image. Never start with it: it
-is slower than reading the log and hides the symptom.
+`simulate-job.ts` runs `act --dryrun`, so it needs `act` and a container runtime, and
+it validates the job and its event wiring without executing any step. It cannot
+reproduce a runtime failure, a matrix entry's behaviour or drift of the hosted runner
+image: find those in the log. Use both to catch a static error in the workflow or in
+a proposed fix before a commit triggers a real run, and never start with them: reading
+the log is faster and keeps the symptom in view.
 
 ## Output
 

@@ -33,8 +33,7 @@ Typical fixes:
 - For self-hosted fleets: open the runner list under the repository, organization or
   enterprise settings and look for `Offline` runners; check the runner service and
   the `_diag` logs on the machine; add runners or restart stuck ones. Also check
-  that the labels in `runs-on:` match a registered runner, because a job whose labels
-  match no runner waits instead of failing.
+  that the labels in `runs-on:` match a registered runner that is online.
 - For the hosted concurrency limit: stagger workflows, use larger runners (a higher
   limit applies) or ask GitHub Support to raise the limit.
 
@@ -67,9 +66,10 @@ Typical fixes:
 - For forks: secrets are not passed to a workflow triggered from a forked repository,
   except `GITHUB_TOKEN`. Do not reach for `pull_request_target` to get them; move
   the work that needs a secret to a workflow a maintainer triggers.
-- Never print a secret to "verify" it: GitHub redacts known values from the log but
-  does not redact a derived or transformed value, such as a secret written to a file
-  and printed, or a substring.
+- Never print a secret to "verify" it: the runner masks only the secret's literal
+  value in log output. A split, encoded or otherwise transformed value is not
+  recognised, and a secret written to a file that is uploaded as an artifact leaks
+  through the artifact.
 
 Scopes and masking are detailed in `secrets-and-vars.md`.
 
@@ -154,5 +154,5 @@ Typical fixes:
   `cancel-in-progress`) or serialise the releases in another way.
 - For pull-request jobs that should not race their own follow-up commits, put the
   head reference in the group key. `github.head_ref` is defined only on
-  `pull_request` events, so write `${{ github.head_ref || github.run_id }}` (or
+  `pull_request` and `pull_request_target` events, so write `${{ github.head_ref || github.run_id }}` (or
   `github.ref`) to avoid an empty group on other events.
