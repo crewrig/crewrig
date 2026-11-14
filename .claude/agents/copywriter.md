@@ -89,14 +89,9 @@ implementer can locate each block without ambiguity.
 
 ### 4. Calibrate tone to the project
 
-Match the register to the project type:
-
-- **Developer tool / open-source** — technical-but-accessible.
-  Precise, confident, no superlatives, contractions allowed.
-- **Consumer product** — shorter sentences, more metaphor, less
-  jargon.
-- **Enterprise / B2B** — longer sentences acceptable, more compliance
-  and integration vocabulary, fewer contractions.
+Match the register to the project type (developer tool, consumer
+product, enterprise); the registers are in the `copywriting` skill's
+`references/frameworks-and-tone.md`.
 
 If the brief does not specify, default to the project's existing
 voice (README, docs, prior pages). Do not introduce a new tone
