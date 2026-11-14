@@ -1,0 +1,229 @@
+{
+  "skill_name": "init-expertise",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "The current directory is the root of my repository. Create the expertise (role) file for a Data Engineer, the way the init-expertise flow does it, under config/expertise/. Answer every interview question from the values below and do not ask me anything: they are my final answers, and the written file is all I need. Role name: Data Engineer. Shape: Responsibilities + Practices. One-line summary: You assist a data engineer who builds and operates batch and streaming data pipelines. Responsibilities: design ingestion pipelines that are idempotent and replayable; own data-quality checks and alert on freshness; document every dataset with an owner and a schema; control the cost of storage and compute. Key practices: every pipeline has a backfill procedure that is tested; schema changes are backward compatible or versioned; a failed run never leaves partial data visible to consumers.",
+      "expected_output": "config/expertise/DATA-ENGINEER.md holds the H1, the summary line, Responsibilities and Key Practices, and no Stack section.",
+      "files": [],
+      "expectations": [
+        "config/expertise/DATA-ENGINEER.md opens with the H1 Data Engineer, followed by the one-line summary given in the answers.",
+        "The Responsibilities section holds the four responsibilities of the answers and the Key Practices section the three practices, none invented and none dropped.",
+        "The Key Practices are written as concrete, testable statements, not vague wishes."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "config/expertise/DATA-ENGINEER.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/DATA-ENGINEER.md",
+          "pattern": "(^|\\n)# Data Engineer\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/DATA-ENGINEER.md",
+          "pattern": "You assist a data engineer who builds and operates batch and streaming data pipelines"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/DATA-ENGINEER.md",
+          "pattern": "\\n## Responsibilities\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/DATA-ENGINEER.md",
+          "pattern": "\\n## Key Practices\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/DATA-ENGINEER.md",
+          "pattern": "^(?![\\s\\S]*\\n## Stack\\b)"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The current directory is the root of my repository. Create the expertise (role) file for a Backend Go Developer, the way the init-expertise flow does it, under config/expertise/. Answer every interview question from the values below and do not ask me anything: they are my final answers, and the written file is all I need. Role name: Backend Go Developer. Shape: Stack + Practices. One-line summary: You assist a developer building server-side Go services: HTTP and gRPC APIs, concurrency and persistence. Stack: Go 1.23 with the standard library and chi; PostgreSQL with pgx; gRPC and Protobuf; Docker and testify. Key practices: accept interfaces and return structs; pass context.Context as the first parameter of every blocking call; wrap errors with %w and never discard them; table-driven tests with the race detector enabled in CI.",
+      "expected_output": "config/expertise/BACKEND-GO-DEVELOPER.md holds a Stack section and Key Practices, and no Responsibilities section.",
+      "files": [],
+      "expectations": [
+        "The filename derived from the role name Backend Go Developer is BACKEND-GO-DEVELOPER.md, uppercase with the words joined by hyphens.",
+        "The Stack section lists the technologies of the answers (Go, chi, PostgreSQL with pgx, gRPC and Protobuf, Docker, testify) and no other technology.",
+        "The Key Practices section holds the four practices of the answers, none invented and none dropped."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "config/expertise/BACKEND-GO-DEVELOPER.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/BACKEND-GO-DEVELOPER.md",
+          "pattern": "(^|\\n)# Backend Go Developer\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/BACKEND-GO-DEVELOPER.md",
+          "pattern": "\\n## Stack\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/BACKEND-GO-DEVELOPER.md",
+          "pattern": "\\n## Key Practices\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/BACKEND-GO-DEVELOPER.md",
+          "pattern": "^(?![\\s\\S]*\\n## Responsibilities\\b)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The current directory is the root of my repository. Before anything else run `mkdir -p config/expertise && cp existing-data-engineer.md config/expertise/DATA-ENGINEER.md`: that is a role file written earlier, and it must not be lost unless I say so. Now create the expertise file for a role called Data Engineer, the way the init-expertise flow does it. Answer every interview question from the values below and do not ask me anything: they are my final answers, and the written file is all I need. Role name: Data Engineer. Shape: Responsibilities + Practices. One-line summary: You assist a data engineer who owns the lakehouse and its governance. Responsibilities: model the lakehouse layers; enforce data contracts with producers; manage access policies on datasets. Key practices: contracts are versioned in the repository; breaking changes follow a deprecation cycle; access is granted by group, never by individual. The name Data Engineer collides with the existing file, and my decision is: pick a different name, namely Lakehouse Engineer.",
+      "expected_output": "The earlier config/expertise/DATA-ENGINEER.md is unchanged and the new role is written to config/expertise/LAKEHOUSE-ENGINEER.md.",
+      "files": [
+        "evals/files/existing-data-engineer.md"
+      ],
+      "expectations": [
+        "The new role file is config/expertise/LAKEHOUSE-ENGINEER.md and it describes the lakehouse and its governance, with the three responsibilities and three practices of the answers.",
+        "config/expertise/DATA-ENGINEER.md still holds the earlier role's content about the legacy nightly batch jobs, untouched."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "config/expertise/LAKEHOUSE-ENGINEER.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/LAKEHOUSE-ENGINEER.md",
+          "pattern": "(^|\\n)# Lakehouse Engineer\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/DATA-ENGINEER.md",
+          "pattern": "legacy nightly batch jobs"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/DATA-ENGINEER.md",
+          "pattern": "^(?![\\s\\S]*lakehouse)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "The current directory is the root of my repository. Before anything else run `mkdir -p config/expertise && cp existing-data-engineer.md config/expertise/DATA-ENGINEER.md`: that is a role file written earlier, and it must not be lost unless I say so. Now create the expertise file for a role called Data Engineer, the way the init-expertise flow does it. Answer every interview question from the values below and do not ask me anything: they are my final answers, and the written file is all I need. Role name: Data Engineer. Shape: Responsibilities + Practices. One-line summary: You assist a data engineer who owns the lakehouse and its governance. Responsibilities: model the lakehouse layers; enforce data contracts with producers; manage access policies on datasets. Key practices: contracts are versioned in the repository; breaking changes follow a deprecation cycle; access is granted by group, never by individual. The name Data Engineer collides with the existing file, and my decision is: overwrite the existing file.",
+      "expected_output": "The user chose to overwrite: config/expertise/DATA-ENGINEER.md now holds the new role and the earlier content is gone.",
+      "files": [
+        "evals/files/existing-data-engineer.md"
+      ],
+      "expectations": [
+        "config/expertise/DATA-ENGINEER.md now describes the lakehouse and governance role, with the responsibilities and practices of the answers.",
+        "The earlier content about the legacy nightly batch jobs no longer appears in config/expertise/DATA-ENGINEER.md."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "config/expertise/DATA-ENGINEER.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/DATA-ENGINEER.md",
+          "pattern": "lakehouse"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/DATA-ENGINEER.md",
+          "pattern": "\\n## Key Practices\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/DATA-ENGINEER.md",
+          "pattern": "^(?![\\s\\S]*legacy nightly batch)"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "The current directory is the root of my repository. Create the expertise (role) file for a release manager, the way the init-expertise flow does it, under config/expertise/. I answered the interview in French, as follows: Answer every interview question from the values below and do not ask me anything: they are my final answers, and the written file is all I need. Nom du rôle : Release Manager. Forme : Responsabilités + Pratiques. Résumé : Vous assistez un release manager qui coordonne les mises en production et la communication des versions. Responsabilités : planifier le calendrier des versions ; tenir la liste des changements de chaque version ; décider du report d'une version en cas de risque ; animer la revue de fin de version. Pratiques clés : chaque version porte un numéro sémantique ; le journal des changements est rédigé avant la fusion ; un retour arrière est répété avant chaque mise en production.",
+      "expected_output": "config/expertise/RELEASE-MANAGER.md is written in English, translated faithfully from the French answers.",
+      "files": [],
+      "expectations": [
+        "The whole of config/expertise/RELEASE-MANAGER.md is written in English, headings and content alike: no French sentence remains.",
+        "The summary line, the four responsibilities and the three key practices of the French answers are all present in English with their meaning kept, and nothing is added.",
+        "The file uses the Responsibilities and Key Practices sections, with no Stack section."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "config/expertise/RELEASE-MANAGER.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/RELEASE-MANAGER.md",
+          "pattern": "(^|\\n)# Release Manager\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/RELEASE-MANAGER.md",
+          "pattern": "\\n## Responsibilities\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/RELEASE-MANAGER.md",
+          "pattern": "\\n## Key Practices\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/expertise/RELEASE-MANAGER.md",
+          "pattern": "^(?![\\s\\S]*\\n## (Responsabilit|Pratiques|Stack))"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "I need a new role profile for a Data Engineer in config/expertise.",
+      "should_trigger": true
+    },
+    {
+      "query": "/init-expertise",
+      "should_trigger": true
+    },
+    {
+      "query": "Add a domain-expertise file for a security architect role the catalog lacks.",
+      "should_trigger": true
+    },
+    {
+      "query": "Interview me to create a persona profile for a Site Reliability Engineer.",
+      "should_trigger": true
+    },
+    {
+      "query": "Create a config/expertise file for a Mobile Developer, with a stack section.",
+      "should_trigger": true
+    },
+    {
+      "query": "Create a team file for the Atlas team under config/teams.",
+      "should_trigger": false
+    },
+    {
+      "query": "Build my personal profile config/PROFILE.md through a guided interview.",
+      "should_trigger": false
+    },
+    {
+      "query": "Add one more key practice to the existing config/expertise/BACKEND-JAVA.md.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write a job description for a Data Engineer.",
+      "should_trigger": false
+    },
+    {
+      "query": "List the roles available under config/expertise.",
+      "should_trigger": false
+    }
+  ]
+}
