@@ -34,6 +34,8 @@ export interface SkillResult {
   regression?: boolean;
   /** Eval runs that loaded the skill (R48), informational. */
   skillLoaded?: number;
+  /** #1973: ids of the evals that did not load the skill; reported as a warning. */
+  unloadedEvals?: readonly number[];
   /** R50: expectations accepted from a judge PASS, and those accepted by the window rule (rule 3). */
   evidenceAccepted?: number;
   evidenceWindow?: number;
@@ -57,6 +59,10 @@ const fmt = (n: number | null | undefined): string =>
 
 const ratio = (rate: number | null | undefined, n?: number, of?: number): string =>
   rate === null || rate === undefined ? "n/a" : `${rate.toFixed(2)} (${n}/${of})`;
+
+/** #1973: the warning that names the evals that passed or failed without the skill loaded. */
+export const unloadedWarning = (ids: readonly number[]): string =>
+  `warning: the skill did not load in ${ids.length} eval(s): ${ids.join(", ")}; rework these evals so they exercise the skill`;
 
 export function formatSkill(r: SkillResult): string {
   const lines: string[] = [];
@@ -88,6 +94,8 @@ export function formatSkill(r: SkillResult): string {
     lines.push(
       `  advisory: eval pass rate ${fmt(r.evalPassRate)} is below ${fmt(r.threshold)}; not a failure`,
     );
+  if (r.unloadedEvals !== undefined && r.unloadedEvals.length > 0)
+    lines.push(unloadedWarning(r.unloadedEvals));
   if (r.regression === true)
     lines.push(
       `  regression: ${r.skill} base eval pass rate ${fmt(r.baseEvalPassRate)}, head ${fmt(r.evalPassRate)}, diff ${diff}, tolerance ${fmt(r.tolerance)}`,

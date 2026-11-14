@@ -204,10 +204,10 @@ test("R48: skill_loaded is recorded per eval run and shown in the report; a skil
   assert.deepEqual(other.loaded, [false, false], "another skill's load is not this skill's");
   assert.match(yes.r.text, /skill_loaded=2\/2/);
   assert.match(other.r.text, /skill_loaded=0\/2/);
-  // #1963: the eval outcomes are the same, but a skill that never loads is a blocking fail
+  // #1963: the eval outcomes are the same, but a skill that never loads is a non-blocking fail (#1973)
   assert.deepEqual(yes.passed, other.passed);
   assert.equal(yes.r.results[0]?.status, "pass");
   assert.equal(other.r.results[0]?.status, "fail");
-  assert.equal(other.r.results[0]?.blocking, true);
+  assert.equal(other.r.results[0]?.blocking, false);
   assert.equal(yes.r.results[0]?.evalPassRate, other.r.results[0]?.evalPassRate);
 });

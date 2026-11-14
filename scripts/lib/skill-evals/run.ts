@@ -126,6 +126,7 @@ interface Task {
 }
 
 interface EvalRecord {
+  readonly evalId: number;
   readonly passed: boolean;
   readonly skillLoaded: boolean;
   /** R50: expectations accepted from a judge PASS, and those accepted by rule 3 (`window`). */
@@ -498,6 +499,7 @@ export async function runEvals(
       writeJson(path.join(dir, "grading.json"), grading);
       // R46: an eval passes when every one of its checks and expectations passes.
       s.evalRuns.push({
+        evalId: ev!.id,
         passed: grading.summary.total > 0 && grading.summary.failed === 0,
         skillLoaded: loaded,
         accepted: grading.expectations.filter((x) => x.evidence_match !== undefined).length,
@@ -551,6 +553,7 @@ export async function runEvals(
     const probesTotal = s.probeRuns.length;
     const evalPassRate = evalsPassed / evalsTotal;
     const skillLoaded = s.evalRuns.filter((r) => r.skillLoaded).length;
+    const unloadedEvals = s.evalRuns.filter((r) => !r.skillLoaded).map((r) => r.evalId);
     const probePassRate = probesTotal === 0 ? null : probesPassed / probesTotal;
     // R19: the base is the eval pass rate committed at the merge-base; nothing is run on the base.
     const baseFile = verifyResults(s.sel.baseResultsText, name);
@@ -584,6 +587,7 @@ export async function runEvals(
       tolerance: figures.tolerance,
       regression: d.regression,
       skillLoaded,
+      unloadedEvals,
       evidenceAccepted: s.evalRuns.reduce((n, r) => n + r.accepted, 0),
       evidenceWindow: s.evalRuns.reduce((n, r) => n + r.acceptedByWindow, 0),
       messages,
@@ -611,6 +615,7 @@ export async function runEvals(
         judge_calls: judgeCalls,
         cost_usd: unknown > 0 ? null : known,
         skill_loaded: skillLoaded,
+        unloaded_evals: unloadedEvals,
       });
   }
   return finish();

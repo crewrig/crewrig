@@ -213,6 +213,7 @@ test("a real pass writes every R36 key in order, with the hash of the tree it ra
       "judge_calls",
       "cost_usd",
       "skill_loaded",
+      "unloaded_evals",
     ]);
     assert.equal(rec.date, "2026-02-03T04:05:06.000Z");
     assert.equal(rec.skill_name, "demo");

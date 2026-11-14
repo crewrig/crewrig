@@ -100,16 +100,19 @@ test("a score under the 0.80 bar passes with an advisory line and never blocks",
   assert.match(none.r.text, /probe_pass_rate=n\/a/);
 });
 
-test("a skill that does not load in every eval is a blocking fail whatever its score", async () => {
+test("a skill that does not load in every eval is a non-blocking fail that names the evals (#1973)", async () => {
   const miss = await runTable(flags(5, 5), [], {}, [2]);
+  assert.equal(miss.r.exitCode, 0, "FAIL_BLOCKING is false by default");
+  assert.equal(miss.s.blocking, false);
+  assert.deepEqual(miss.rec.unloaded_evals, [2]);
+  assert.match(miss.r.text, /warning: the skill did not load in 1 eval\(s\): 2; rework/);
+  const blocked = await runTable(flags(5, 5), [], { failBlocking: true }, [2]);
+  assert.equal(blocked.r.exitCode, 1, "the knob still gates the condition");
+  assert.equal(blocked.s.blocking, true);
   assert.equal(miss.s.status, "fail");
   assert.equal(miss.rec.status, "fail");
   assert.equal(miss.rec.skill_loaded, 4);
-  assert.equal(miss.r.exitCode, 1);
-  assert.equal(miss.s.blocking, true);
   assert.match(miss.r.text, /^demo: status=fail .*skill_loaded=4\/5/m);
-  const open = await runTable(flags(5, 5), [], { failBlocking: false }, [2]);
-  assert.equal(open.r.exitCode, 0, "the knob still gates the condition");
 });
 
 test("decide(): non-regression is base minus one case; loading is the only fail; the threshold is advisory", () => {

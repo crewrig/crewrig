@@ -112,7 +112,11 @@ export function attestSelection(
     r.status === "regression"
       ? `base eval pass rate ${r.base_eval_pass_rate}, eval pass rate ${r.eval_pass_rate}, tolerance ${r.tolerance}`
       : r.status === "fail"
-        ? `the skill loaded in ${r.skill_loaded ?? "?"} of ${r.evals_total} evals`
+        ? `warning: the skill loaded in ${r.skill_loaded ?? "?"} of ${r.evals_total} evals${
+            r.unloaded_evals !== undefined && r.unloaded_evals.length > 0
+              ? `; unloaded evals: ${r.unloaded_evals.join(", ")}; rework them`
+              : ""
+          }`
         : `recorded status ${r.status}${advisory}`;
   return mk(r.status, reason, blocks(d, settings), r);
 }
