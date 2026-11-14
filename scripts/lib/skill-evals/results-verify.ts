@@ -127,6 +127,20 @@ export function verifyRecord(doc: Record<string, unknown>, ctx: VerifyContext): 
     ctx.baseText,
     ctx.mergeBase,
   );
+  for (const ev of r.evals)
+    for (const [k, run] of ev.runs.entries())
+      if (run.passed !== (run.assertions !== "" && !run.assertions.includes("0")))
+        return bad(
+          `eval ${ev.id} run ${k + 1} records passed ${String(run.passed)} but its assertions are "${run.assertions}"`,
+        );
+  const recordedRuns =
+    r.evals.reduce((n, x) => n + x.runs.length, 0) +
+    r.probes.reduce((n, x) => n + x.runs.length, 0);
+  if (r.executor_runs < recordedRuns)
+    return bad(`executor_runs ${r.executor_runs} is below the ${recordedRuns} recorded runs`);
+  const runCosts = r.evals.flatMap((x) => x.runs).reduce((n, x) => n + (x.cost_usd ?? 0), 0);
+  if (r.cost_usd !== null && r.cost_usd + 1e-6 < runCosts)
+    return bad(`cost_usd ${r.cost_usd} is below the ${runCosts} of the recorded eval runs`);
   const e = decision.evals;
   const p = decision.probes;
   const diff = (name: string, recorded: unknown, computed: unknown): Verified =>

@@ -243,10 +243,12 @@ export function decideSkill(input: SkillInput, plan: PlanShape = SAMPLING_PLAN):
       : poolState(input.probes, plan.probeRunsPerStage, plan);
   const pools = probes === null ? [evals] : [evals, probes];
   const stageReached = { evals: evals.stage, probes: probes === null ? null : probes.stage };
-  if (pools.some((p) => p.verdict === "rejected"))
-    return { status: "fail", evals, probes, stageReached, regression: null };
+  // R9: the measurement is `in-progress` while any pool still has runs to do, whatever the other pool
+  // decided; `fail` is final only when every pool is decided.
   if (pools.some((p) => p.verdict === "pending"))
     return { status: "in-progress", evals, probes, stageReached, regression: null };
+  if (pools.some((p) => p.verdict === "rejected"))
+    return { status: "fail", evals, probes, stageReached, regression: null };
   const regression =
     input.compare === undefined || input.compare === null
       ? null

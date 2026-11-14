@@ -83,6 +83,15 @@ function stopSkill(s: LiveSkill, message: string): void {
   s.controller.abort();
 }
 
+/**
+ * The cost cap of the measurement (R22) starts no new run but lets the runs in flight finish, so
+ * their paid work is recorded and counted: the recorded spend overshoots the cap by at most the
+ * runs in flight (R22 adds the concurrency term to the aggregate bound for this reason).
+ */
+function capSkill(s: LiveSkill, message: string): void {
+  s.stop ??= message;
+}
+
 async function attempt(ctx: StageCtx, s: LiveSkill, slot: Slot): Promise<Attempt> {
   const name = s.sel.skill.name;
   const isProbe = slot.kind === "probe";
@@ -98,14 +107,15 @@ async function attempt(ctx: StageCtx, s: LiveSkill, slot: Slot): Promise<Attempt
   try {
     await ctx.sem.acquire();
     try {
-      if (s.controller.signal.aborted || ctx.invocation.signal.aborted) return ABORTED;
+      if (s.controller.signal.aborted || ctx.invocation.signal.aborted || s.stop !== undefined)
+        return ABORTED;
       if (ctx.invMeter.reached) {
         ctx.invocationError ??= `max-invocation-usd ${ctx.cfg.maxInvocationUsd} reached (measured ${usd(ctx.invMeter.spent)})`;
         ctx.invocation.abort();
         return ABORTED;
       }
       if (s.meter.total >= ctx.cfg.maxMeasurementUsd) {
-        stopSkill(
+        capSkill(
           s,
           `the measurement is at its cap: ${usd(s.meter.total)} USD reached max-measurement-usd ${ctx.cfg.maxMeasurementUsd}; no new run started`,
         );

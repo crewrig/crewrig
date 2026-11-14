@@ -22,6 +22,7 @@ import {
   branchEntries,
   ledgerProblem,
   mergeBaseSet,
+  HistoryError,
   readHistory,
   unionEntries,
   v2Docs,
@@ -129,10 +130,16 @@ export function attestSelection(
   const doc = p.doc;
   if (doc["skill_name"] !== name)
     return stale(`evals/results.json names another skill (${JSON.stringify(doc["skill_name"])})`);
-  const hist: History =
-    repoRoot !== undefined && sel.mergeBase !== undefined
-      ? readHistory(repoRoot, sel.mergeBase, sel.skill.dirRel)
-      : { mbText: sel.baseResultsText, revisions: [] };
+  let hist: History;
+  try {
+    hist =
+      repoRoot !== undefined && sel.mergeBase !== undefined
+        ? readHistory(repoRoot, sel.mergeBase, sel.skill.dirRel)
+        : { mbText: sel.baseResultsText, revisions: [] };
+  } catch (e) {
+    if (e instanceof HistoryError) return mk("invalid", e.message, true);
+    throw e;
+  }
   const branch = branchEntries(
     unionEntries([doc, ...v2Docs(hist.revisions)]),
     mergeBaseSet(hist),

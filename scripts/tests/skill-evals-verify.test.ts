@@ -271,7 +271,7 @@ test("R14: an eval recorded but absent from the tree, or in the tree but not rec
     const ghost = { id: 7, case_hash: `sha256:${"0".repeat(64)}`, runs: rec.evals[0]!.runs };
     writeRecord(rig.dir, recompute({ ...rec, evals: [...rec.evals, ghost] }, rig.sel()));
     const extra = attest();
-    assert.equal(extra.status, "stale");
+    assert.equal(extra.status, "stale", extra.reason);
     assert.match(extra.reason, /eval 7 was recorded but is absent from the tree/);
     assert.equal(fs.existsSync(path.join(rig.dir, "evals", "results.json")), true);
   } finally {

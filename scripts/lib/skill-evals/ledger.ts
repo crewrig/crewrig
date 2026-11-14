@@ -40,6 +40,14 @@ export interface History {
   readonly revisions: readonly string[];
 }
 
+/** The range of the history cannot be listed: the ledger check fails closed instead of reading an empty history. */
+export class HistoryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "HistoryError";
+  }
+}
+
 export const NO_HISTORY: History = { mbText: undefined, revisions: [] };
 
 export const FINAL_STATUSES: ReadonlySet<string> = new Set(["pass", "fail", "regression"]);
@@ -177,15 +185,20 @@ export function readHistory(
     const r = runGit(["show", `${rev}:${file}`], { cwd: repoRoot });
     return r.status === 0 ? r.stdout.toString("utf8") : undefined;
   };
-  const log = runGit(["log", "--format=%H", `${mergeBase}..HEAD`, "--", file], { cwd: repoRoot });
-  const shas =
-    log.status === 0
-      ? log.stdout
-          .toString("utf8")
-          .split("\n")
-          .map((s) => s.trim())
-          .filter((s) => s !== "")
-      : [];
+  // `--full-history`: on a merge-commit checkout (the pull-request merge ref) the default history
+  // simplification follows one parent and could hide the commits that restored the file.
+  const log = runGit(["log", "--full-history", "--format=%H", `${mergeBase}..HEAD`, "--", file], {
+    cwd: repoRoot,
+  });
+  if (log.status !== 0)
+    throw new HistoryError(
+      `cannot list the revisions of ${file} in ${mergeBase}..HEAD (git log exit ${log.status}): ${log.stderr.toString("utf8").trim()}`,
+    );
+  const shas = log.stdout
+    .toString("utf8")
+    .split("\n")
+    .map((s) => s.trim())
+    .filter((s) => s !== "");
   const revisions: string[] = [];
   for (const sha of shas) {
     const t = show(sha);

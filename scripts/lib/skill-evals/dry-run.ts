@@ -24,7 +24,9 @@ import { gradeRun } from "./grade.ts";
 import { createJudge } from "./judge.ts";
 import type { Judge } from "./judge.ts";
 import { skillOutDir } from "./layout.ts";
-import { branchSpendOf, readHistory } from "./ledger.ts";
+import { branchSpendOf, HistoryError, readHistory } from "./ledger.ts";
+import type { History } from "./ledger.ts";
+import { usd } from "./money.ts";
 import { checkPreconditions } from "./preconditions.ts";
 import { DEFAULT_SETTINGS } from "./run-settings.ts";
 import type { RunSettings } from "./run-settings.ts";
@@ -132,7 +134,13 @@ export async function dryRun(o: DryRunOptions): Promise<DryRunReport> {
     const ticket = /#(\d+)$/.exec(a.asset)?.[1] ?? "0";
     // R22: the worst case of a dry-run is one re-asked judge call per eval with a sample.
     const worst = judged.length * 2 * JUDGE_ASSUMED_USD;
-    const hist = readHistory(o.repoRoot, o.mergeBase, o.skill.dirRel);
+    let hist: History;
+    try {
+      hist = readHistory(o.repoRoot, o.mergeBase, o.skill.dirRel);
+    } catch (e) {
+      if (e instanceof HistoryError) return out(3, `${e.message}\n`);
+      throw e;
+    }
     const rf = path.join(o.skill.dirAbs, "evals", "results.json");
     const spent = branchSpendOf(fs.existsSync(rf) ? fs.readFileSync(rf, "utf8") : undefined, hist);
     const refusals = refuseSpend(
@@ -218,7 +226,7 @@ export async function dryRun(o: DryRunOptions): Promise<DryRunReport> {
   const calls = judge.callsUsed();
   const measured = judge.costUsd();
   lines.push(
-    `dry-run spend: ${(measured ?? calls * JUDGE_ASSUMED_USD).toFixed(2)} (${calls} judge calls, ${measured === null && calls > 0 ? "assumed" : "measured"})`,
+    `dry-run spend: ${usd(measured ?? calls * JUDGE_ASSUMED_USD)} (${calls} judge calls, ${measured === null && calls > 0 ? "assumed" : "measured"})`,
   );
   return out(invalid ? 1 : 0);
 }

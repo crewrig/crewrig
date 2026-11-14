@@ -22,6 +22,7 @@ import {
   v2Docs,
 } from "./ledger.ts";
 import type { History, LedgerEntry } from "./ledger.ts";
+import { caseProblem } from "./case-hash.ts";
 import { parseResults, planCopy, planEquals } from "./results.ts";
 import type { ResultsRecord } from "./results.ts";
 import { shapeProblem } from "./results-verify.ts";
@@ -147,6 +148,17 @@ export function decideStart(input: StartInput): Start {
           `the measurement of ${hash} is in progress under ticket ${rec.ticket}; this invocation is ticket ${input.ticket}: resume it under ticket ${rec.ticket}`,
         );
       if (planEquals(rec.plan)) {
+        // R14: the case hashes are recorded at the start, so a case edited since would make the
+        // finished file permanently stale; refuse instead of continuing into it.
+        const edited = caseProblem(
+          new Map(rec.evals.map((e) => [e.id, e.case_hash] as const)),
+          input.caseHashes,
+        );
+        if (edited !== undefined)
+          return refuse(
+            `cannot resume the measurement of ${hash}: ${edited}, so the finished file would be stale for good; ` +
+              "restore the case, or change the skill content (any edit of SKILL.md or evals/evals.json gives a new hash) to start a new measurement",
+          );
         const ledger = unionEntries(sources, entryId(rec));
         return accept("resume", rec, ledger);
       }

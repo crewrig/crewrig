@@ -29,6 +29,7 @@ import { ClaudeCodeExecutor } from "./executor/claude-code.ts";
 import { MockExecutor } from "./executor/mock.ts";
 import type { Executor } from "./executor/types.ts";
 import { createJudge } from "./judge.ts";
+import { HistoryError } from "./ledger.ts";
 import { skillOutDir } from "./layout.ts";
 import { checkPreconditions } from "./preconditions.ts";
 import { classify, refusedResult, startSkills } from "./prepare.ts";
@@ -145,15 +146,21 @@ export async function runEvals(
 
   // 3. How each measurement starts (R8) and the spend caps (R22 c, d).
   const nowIso = nowFn().toISOString();
-  const st = startSkills({
-    repoRoot: opts.repoRoot,
-    mock: opts.mock,
-    candidates: cls.candidates,
-    ticket,
-    cfg,
-    now: nowIso,
-    judgeModel: cred.judge.model,
-  });
+  let st: ReturnType<typeof startSkills>;
+  try {
+    st = startSkills({
+      repoRoot: opts.repoRoot,
+      mock: opts.mock,
+      candidates: cls.candidates,
+      ticket,
+      cfg,
+      now: nowIso,
+      judgeModel: cred.judge.model,
+    });
+  } catch (e) {
+    if (e instanceof HistoryError) return done(3, `${e.message}\n`);
+    throw e;
+  }
   results.push(...st.results);
   if (st.started.length === 0) return finish();
   if (!opts.mock) {
@@ -245,9 +252,11 @@ export async function runEvals(
   // 7. Per-skill outcome (a skill that did not finish stays `in-progress` on disk and is an error).
   for (const s of running) {
     let d;
+    let writeFailed = false;
     try {
       d = persist(s, nowFn().toISOString());
     } catch (e) {
+      writeFailed = true;
       s.stop ??= `cannot write ${resultsPath(s.sel.skill.dirAbs)}: ${(e as Error).message}`;
       d = persist({ ...s, write: false }, nowFn().toISOString());
     }
@@ -255,7 +264,7 @@ export async function runEvals(
       ...(s.stop !== undefined ? [s.stop] : []),
       ...(ctx.invocationError !== undefined ? [ctx.invocationError] : []),
     ];
-    if (errors.length > 0 || d.status === "in-progress") {
+    if (d.status === "in-progress" || writeFailed) {
       const used = `executor runs used ${s.budget.used}, judge calls used ${s.judge.callsUsed()}`;
       results.push(
         skillResult(

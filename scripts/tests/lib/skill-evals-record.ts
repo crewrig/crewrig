@@ -88,7 +88,9 @@ export function buildRecord(sel: Selection, o: RecordOptions = {}): ResultsRecor
     base: null,
     regression: null,
     errors: [],
-    executor_runs: evals.reduce((n, e) => n + e.runs.length, 0) + probeEntries.length,
+    executor_runs:
+      evals.reduce((n, e) => n + e.runs.length, 0) +
+      probeEntries.reduce((n, e) => n + e.runs.length, 0),
     judge_calls: evals.reduce((n, e) => n + e.runs.length, 0),
     cost_usd: cost === null ? null : cost * evals.reduce((n, e) => n + e.runs.length, 0),
     judge_cost_usd: o.judgeCostUsd === undefined ? 0.05 : o.judgeCostUsd,
@@ -115,6 +117,18 @@ export function recompute(
   return {
     ...r,
     status: forced ?? decision.status,
+    executor_runs: Math.max(
+      r.executor_runs,
+      r.evals.reduce((n, e) => n + e.runs.length, 0) +
+        r.probes.reduce((n, e) => n + e.runs.length, 0),
+    ),
+    cost_usd:
+      r.cost_usd === null
+        ? null
+        : Math.max(
+            r.cost_usd,
+            r.evals.flatMap((e) => e.runs).reduce((n, x) => n + (x.cost_usd ?? 0), 0),
+          ),
     stage_reached: decision.stageReached,
     eval_passes: decision.evals.passes,
     eval_runs: decision.evals.runs,
