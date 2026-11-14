@@ -162,7 +162,7 @@ function assertTaskfile(tree: TaskfileTree): void {
   assert.ok(taskCmds(tree, ID).some((c) => c.includes(SCRIPT)));
 }
 
-const capPaths = (): string[] => {
+const capPaths = (): readonly string[] => {
   const cap = capsOf(read("ci", "ci-capabilities.yml")).find((c) => c.id === HOST);
   return effectivePaths(cap as Cap, (cap as Cap).trigger?.[0] ?? {});
 };
