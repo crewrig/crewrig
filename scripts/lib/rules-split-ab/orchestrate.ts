@@ -59,9 +59,14 @@ export async function runExperiment(o: ExperimentOptions): Promise<ExperimentRes
     for (const a of p.attempts) ledger = charge(ledger, a.charged, perRunCap);
     if (isComplete(p)) records.push(p);
   }
-  const find = (s: number, arm: string, idx: number) => records.find((r) => r.scenario === s && r.arm === arm && r.runIndex === idx);
+  const find = (s: number, arm: string, idx: number) =>
+    records.find((r) => r.scenario === s && r.arm === arm && r.runIndex === idx);
 
-  async function executeRun(scenario: Scenario, arm: "A" | "B", runIndex: number): Promise<boolean> {
+  async function executeRun(
+    scenario: Scenario,
+    arm: "A" | "B",
+    runIndex: number,
+  ): Promise<boolean> {
     const attempts: AttemptRecord[] = [];
     const truncs: boolean[] = [];
     for (let attempt = 1; attempt <= 2; attempt++) {
@@ -70,13 +75,26 @@ export async function runExperiment(o: ExperimentOptions): Promise<ExperimentRes
         stopped = { reason: guard.reason ?? "cost guard" };
         if (attempts.length > 0) {
           // charged but unfinished: keep the spend visible; a resume reruns this cell
-          const rec: RunRecord = { scenario: scenario.id, arm, runIndex, attempts, status: "invalid", truncatedTwice: false };
+          const rec: RunRecord = {
+            scenario: scenario.id,
+            arm,
+            runIndex,
+            attempts,
+            status: "invalid",
+            truncatedTwice: false,
+          };
           records.push(rec);
           o.onRecord?.(rec);
         }
         return false;
       }
-      const res = await o.execute({ scenario, arm, runIndex, attempt, maxBudgetUsd: perRunBudget(ledger, perRunCap) });
+      const res = await o.execute({
+        scenario,
+        arm,
+        runIndex,
+        attempt,
+        maxBudgetUsd: perRunBudget(ledger, perRunCap),
+      });
       const score = scoreRun(scenario.id, res);
       const before = ledger.spent;
       ledger = charge(ledger, score.costUsd, perRunCap);
@@ -116,8 +134,12 @@ export async function runExperiment(o: ExperimentOptions): Promise<ExperimentRes
   }
 
   function verdictOf(scenario: Scenario): ScenarioVerdict {
-    const a = records.filter((r) => r.scenario === scenario.id && r.arm === "A" && isComplete(r)).sort((x, y) => x.runIndex - y.runIndex);
-    const b = records.filter((r) => r.scenario === scenario.id && r.arm === "B" && isComplete(r)).sort((x, y) => x.runIndex - y.runIndex);
+    const a = records
+      .filter((r) => r.scenario === scenario.id && r.arm === "A" && isComplete(r))
+      .sort((x, y) => x.runIndex - y.runIndex);
+    const b = records
+      .filter((r) => r.scenario === scenario.id && r.arm === "B" && isComplete(r))
+      .sort((x, y) => x.runIndex - y.runIndex);
     const s = applyTruncationRule(a, b);
     return scenarioVerdict(s.a, s.b, { extendTo });
   }

@@ -13,7 +13,10 @@ const I = "invalid";
 
 describe("scenarioVerdict", () => {
   test("two identical passes in both arms: no regression, no extension", () => {
-    assert.deepEqual(scenarioVerdict([P, P], [P, P], { extendTo: 5 }), { verdict: "no-regression", extend: false });
+    assert.deepEqual(scenarioVerdict([P, P], [P, P], { extendTo: 5 }), {
+      verdict: "no-regression",
+      extend: false,
+    });
   });
   test("two identical fails in both arms: no regression (not above arm A)", () => {
     assert.equal(scenarioVerdict([F, F], [F, F], { extendTo: 5 }).verdict, "no-regression");
@@ -35,20 +38,34 @@ describe("scenarioVerdict", () => {
     assert.deepEqual(v, { verdict: "regression", extend: false });
   });
   test("after extension B equal to A despite flapping is no regression", () => {
-    assert.equal(scenarioVerdict([P, F, P, P, F], [P, F, P, P, F], { extendTo: 5 }).verdict, "no-regression");
+    assert.equal(
+      scenarioVerdict([P, F, P, P, F], [P, F, P, P, F], { extendTo: 5 }).verdict,
+      "no-regression",
+    );
   });
   test("after extension B above A is no regression", () => {
-    assert.equal(scenarioVerdict([P, F, F, P, F], [P, P, P, P, F], { extendTo: 5 }).verdict, "no-regression");
+    assert.equal(
+      scenarioVerdict([P, F, F, P, F], [P, P, P, P, F], { extendTo: 5 }).verdict,
+      "no-regression",
+    );
   });
   test("an invalid run blocks the conclusion", () => {
     assert.equal(scenarioVerdict([P, P], [P, I], { extendTo: 5 }).verdict, "blocked");
   });
   test("a regression among valid runs is never hidden by an invalid run", () => {
-    assert.equal(scenarioVerdict([P, P, P, P, P], [F, F, F, F, I], { extendTo: 5 }).verdict, "regression");
+    assert.equal(
+      scenarioVerdict([P, P, P, P, P], [F, F, F, F, I], { extendTo: 5 }).verdict,
+      "regression",
+    );
   });
 });
 
-const rec = (arm: "A" | "B", runIndex: number, status: "pass" | "fail" | "invalid", truncatedTwice = false): RunRecord => ({
+const rec = (
+  arm: "A" | "B",
+  runIndex: number,
+  status: "pass" | "fail" | "invalid",
+  truncatedTwice = false,
+): RunRecord => ({
   scenario: 1,
   arm,
   runIndex,
@@ -63,7 +80,10 @@ describe("applyTruncationRule", () => {
     assert.deepEqual(b, [F]);
   });
   test("A truncated twice stays invalid and the verdict is blocked", () => {
-    const { a, b } = applyTruncationRule([rec("A", 1, I, true), rec("A", 2, P)], [rec("B", 1, P), rec("B", 2, P)]);
+    const { a, b } = applyTruncationRule(
+      [rec("A", 1, I, true), rec("A", 2, P)],
+      [rec("B", 1, P), rec("B", 2, P)],
+    );
     assert.deepEqual(a, [I, P]);
     assert.equal(scenarioVerdict(a, b, { extendTo: 5 }).verdict, "blocked");
   });
@@ -81,7 +101,13 @@ describe("applyTruncationRule", () => {
   });
   test("B truncated twice turns into a regression against a passing A", () => {
     const a = [rec("A", 1, P), rec("A", 2, P), rec("A", 3, P), rec("A", 4, P), rec("A", 5, P)];
-    const b = [rec("B", 1, I, true), rec("B", 2, I, true), rec("B", 3, P), rec("B", 4, P), rec("B", 5, P)];
+    const b = [
+      rec("B", 1, I, true),
+      rec("B", 2, I, true),
+      rec("B", 3, P),
+      rec("B", 4, P),
+      rec("B", 5, P),
+    ];
     const r = applyTruncationRule(a, b);
     assert.equal(scenarioVerdict(r.a, r.b, { extendTo: 5 }).verdict, "regression");
   });
@@ -89,11 +115,48 @@ describe("applyTruncationRule", () => {
 
 describe("renderReport", () => {
   const records: RunRecord[] = [
-    { scenario: 1, arm: "A", runIndex: 1, status: "pass", truncatedTwice: false, attempts: [{ status: "pass", note: "", subtype: "success", costUsd: 0.31, charged: 0.31, firstCallTokens: 59000 }] },
-    { scenario: 1, arm: "B", runIndex: 1, status: "invalid", truncatedTwice: true, attempts: [
-      { status: "invalid", note: "truncated", subtype: "error_max_budget_usd", costUsd: 0.6, charged: 0.6, firstCallTokens: 41000 },
-      { status: "invalid", note: "truncated", subtype: "error_max_turns", costUsd: 0.5, charged: 0.5, firstCallTokens: 41000 },
-    ] },
+    {
+      scenario: 1,
+      arm: "A",
+      runIndex: 1,
+      status: "pass",
+      truncatedTwice: false,
+      attempts: [
+        {
+          status: "pass",
+          note: "",
+          subtype: "success",
+          costUsd: 0.31,
+          charged: 0.31,
+          firstCallTokens: 59000,
+        },
+      ],
+    },
+    {
+      scenario: 1,
+      arm: "B",
+      runIndex: 1,
+      status: "invalid",
+      truncatedTwice: true,
+      attempts: [
+        {
+          status: "invalid",
+          note: "truncated",
+          subtype: "error_max_budget_usd",
+          costUsd: 0.6,
+          charged: 0.6,
+          firstCallTokens: 41000,
+        },
+        {
+          status: "invalid",
+          note: "truncated",
+          subtype: "error_max_turns",
+          costUsd: 0.5,
+          charged: 0.5,
+          firstCallTokens: 41000,
+        },
+      ],
+    },
   ];
   const md = renderReport({
     records,
@@ -121,8 +184,40 @@ describe("renderReport", () => {
     assert.match(md, /blocked/);
     const md2 = renderReport({
       records: [
-        { scenario: 2, arm: "A", runIndex: 1, status: "pass", truncatedTwice: false, attempts: [{ status: "pass", note: "", subtype: "success", costUsd: 0.1, charged: 0.1, firstCallTokens: 50000 }] },
-        { scenario: 2, arm: "B", runIndex: 1, status: "pass", truncatedTwice: false, attempts: [{ status: "pass", note: "", subtype: "success", costUsd: 0.1, charged: 0.1, firstCallTokens: 40000 }] },
+        {
+          scenario: 2,
+          arm: "A",
+          runIndex: 1,
+          status: "pass",
+          truncatedTwice: false,
+          attempts: [
+            {
+              status: "pass",
+              note: "",
+              subtype: "success",
+              costUsd: 0.1,
+              charged: 0.1,
+              firstCallTokens: 50000,
+            },
+          ],
+        },
+        {
+          scenario: 2,
+          arm: "B",
+          runIndex: 1,
+          status: "pass",
+          truncatedTwice: false,
+          attempts: [
+            {
+              status: "pass",
+              note: "",
+              subtype: "success",
+              costUsd: 0.1,
+              charged: 0.1,
+              firstCallTokens: 40000,
+            },
+          ],
+        },
       ],
       verdicts: { 2: { verdict: "no-regression", extend: false } },
       spent: 0.2,
@@ -134,7 +229,13 @@ describe("renderReport", () => {
     assert.match(md2, /-10000/);
   });
   test("reports a guard stop and asks the coordinator", () => {
-    const m = renderReport({ records: [], verdicts: {}, spent: 11.7, cap: 12, stopped: { reason: "cost guard: 11.70 + 0.30 reaches 12 USD" } });
+    const m = renderReport({
+      records: [],
+      verdicts: {},
+      spent: 11.7,
+      cap: 12,
+      stopped: { reason: "cost guard: 11.70 + 0.30 reaches 12 USD" },
+    });
     assert.match(m, /stopped/i);
     assert.match(m, /coordinator/i);
   });

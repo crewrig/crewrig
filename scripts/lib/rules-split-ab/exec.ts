@@ -27,7 +27,11 @@ export class AuthError extends Error {}
 export function makeClaudeExecutor(o: ExecutorOptions): ExecuteFn {
   fs.mkdirSync(path.join(o.outDir, "runs"), { recursive: true });
   return async (req) => {
-    const scratch = createScratch({ ruleFiles: o.armRules[req.arm], scenario: req.scenario, skillDirs: o.skillDirs });
+    const scratch = createScratch({
+      ruleFiles: o.armRules[req.arm],
+      scenario: req.scenario,
+      skillDirs: o.skillDirs,
+    });
     try {
       const args = buildClaudeArgs({
         scratch,
@@ -55,13 +59,21 @@ export function makeClaudeExecutor(o: ExecutorOptions): ExecuteFn {
           resolve(out);
         });
       });
-      const callLog = fs.existsSync(scratch.callLog) ? fs.readFileSync(scratch.callLog, "utf8") : null;
+      const callLog = fs.existsSync(scratch.callLog)
+        ? fs.readFileSync(scratch.callLog, "utf8")
+        : null;
       const tag = `s${req.scenario.id}-${req.arm}${req.runIndex}-try${req.attempt}`;
       fs.writeFileSync(path.join(o.outDir, "runs", `${tag}.transcript.jsonl`), stdout);
-      if (callLog !== null) fs.writeFileSync(path.join(o.outDir, "runs", `${tag}.calls.jsonl`), callLog);
+      if (callLog !== null)
+        fs.writeFileSync(path.join(o.outDir, "runs", `${tag}.calls.jsonl`), callLog);
       const t = parseTranscript(stdout);
-      if (t.result?.isError && /not logged in|please run \/login|api key|authenticat/i.test(t.result.text)) {
-        throw new AuthError(`claude is not authenticated in the scratch HOME: ${t.result.text.slice(0, 200)}`);
+      if (
+        t.result?.isError &&
+        /not logged in|please run \/login|api key|authenticat/i.test(t.result.text)
+      ) {
+        throw new AuthError(
+          `claude is not authenticated in the scratch HOME: ${t.result.text.slice(0, 200)}`,
+        );
       }
       return { transcript: stdout === "" ? null : stdout, callLog };
     } finally {

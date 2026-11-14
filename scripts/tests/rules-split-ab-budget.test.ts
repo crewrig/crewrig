@@ -3,7 +3,13 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { canStart, charge, createLedger, perRunBudget, projectedCost } from "../lib/rules-split-ab/budget.ts";
+import {
+  canStart,
+  charge,
+  createLedger,
+  perRunBudget,
+  projectedCost,
+} from "../lib/rules-split-ab/budget.ts";
 
 describe("ledger", () => {
   test("projected cost is the per-run cap before any run, then the mean of charged runs", () => {

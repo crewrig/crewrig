@@ -61,7 +61,8 @@ export function parseTranscript(jsonl: string): ParsedTranscript {
       if (firstCallTokens === null && isObj(msg.usage)) {
         const u = msg.usage;
         const n = (k: string) => (typeof u[k] === "number" ? (u[k] as number) : 0);
-        firstCallTokens = n("input_tokens") + n("cache_creation_input_tokens") + n("cache_read_input_tokens");
+        firstCallTokens =
+          n("input_tokens") + n("cache_creation_input_tokens") + n("cache_read_input_tokens");
       }
       if (Array.isArray(msg.content)) {
         for (const block of msg.content) {
@@ -115,9 +116,15 @@ export function parseCallLog(text: string | null): CallLogEntry[] | null {
   for (const raw of text.split("\n")) {
     if (raw.trim() === "") continue;
     try {
-      const o = JSON.parse(raw);
+      const o: unknown = JSON.parse(raw);
       if (!isObj(o) || typeof o.tool !== "string" || typeof o.surface !== "string") return null;
-      out.push({ seq: Number(o.seq), ts: String(o.ts ?? ""), surface: o.surface, tool: o.tool, args: o.args });
+      out.push({
+        seq: Number(o.seq),
+        ts: String(o.ts ?? ""),
+        surface: o.surface,
+        tool: o.tool,
+        args: o.args,
+      });
     } catch {
       return null;
     }

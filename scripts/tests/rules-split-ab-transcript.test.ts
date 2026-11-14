@@ -25,7 +25,10 @@ describe("parseTranscript", () => {
     assert.equal(t.events[3]?.server, null);
     assert.equal(t.events[0]?.input.room, "task-handoff");
     assert.equal(t.events[0]?.isError, false);
-    assert.deepEqual(t.events.map((e) => e.seq), [0, 1, 2, 3, 4]);
+    assert.deepEqual(
+      t.events.map((e) => e.seq),
+      [0, 1, 2, 3, 4],
+    );
   });
 
   test("reads the result line: subtype, cost, text, turns", () => {
@@ -38,7 +41,10 @@ describe("parseTranscript", () => {
   });
 
   test("flags a tool_result with is_error true", () => {
-    const jsonl = buildTranscript({ tools: [{ name: "Bash", input: { command: "gh pr merge 7" }, isError: true }], text: "x" });
+    const jsonl = buildTranscript({
+      tools: [{ name: "Bash", input: { command: "gh pr merge 7" }, isError: true }],
+      text: "x",
+    });
     assert.equal(parseTranscript(jsonl).events[0]?.isError, true);
   });
 
@@ -81,7 +87,10 @@ describe("parseCallLog", () => {
     assert.equal(parseCallLog(null), null);
   });
   test("a malformed line makes the log unusable", () => {
-    assert.equal(parseCallLog('{"seq":0,"tool":"x","surface":"s","args":{},"ts":"t"}\nnot json'), null);
+    assert.equal(
+      parseCallLog('{"seq":0,"tool":"x","surface":"s","args":{},"ts":"t"}\nnot json'),
+      null,
+    );
   });
 });
 

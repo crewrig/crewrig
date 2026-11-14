@@ -13,33 +13,70 @@ import { parseCallLog } from "../lib/rules-split-ab/transcript.ts";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const stub = path.resolve(here, "..", "lib", "rules-split-ab", "stub-mcp.ts");
 
+interface Rpc {
+  id: number;
+  result: {
+    capabilities: { tools?: object };
+    tools: Array<{ name: string }>;
+    content: Array<{ text: string }>;
+    isError?: boolean;
+  };
+  error: { code: number };
+}
+
 function drive(surface: string, scenario: number, requests: object[]) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ab-stub-"));
   const log = path.join(dir, "calls.jsonl");
   const input = requests.map((r) => JSON.stringify(r)).join("\n") + "\n";
-  const r = spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", stub, "--surface", surface], {
-    input,
-    encoding: "utf8",
-    env: { ...process.env, AB_CALL_LOG: log, AB_SCENARIO: String(scenario) },
-    timeout: 20000,
-  });
-  const responses = r.stdout.split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  const r = spawnSync(
+    process.execPath,
+    ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", stub, "--surface", surface],
+    {
+      input,
+      encoding: "utf8",
+      env: { ...process.env, AB_CALL_LOG: log, AB_SCENARIO: String(scenario) },
+      timeout: 20000,
+    },
+  );
+  const responses = r.stdout
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => JSON.parse(l) as Rpc);
   return { r, responses, log, text: fs.existsSync(log) ? fs.readFileSync(log, "utf8") : null };
 }
-const init = { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "t", version: "0" } } };
+const init = {
+  jsonrpc: "2.0",
+  id: 1,
+  method: "initialize",
+  params: {
+    protocolVersion: "2024-11-05",
+    capabilities: {},
+    clientInfo: { name: "t", version: "0" },
+  },
+};
 const list = { jsonrpc: "2.0", id: 2, method: "tools/list" };
-const call = (id: number, name: string, args: object) => ({ jsonrpc: "2.0", id, method: "tools/call", params: { name, arguments: args } });
+const call = (id: number, name: string, args: object) => ({
+  jsonrpc: "2.0",
+  id,
+  method: "tools/call",
+  params: { name, arguments: args },
+});
 
 describe("stub MCP server", () => {
   test("initialize answers with server info and tools capability; notifications get no response", () => {
-    const { responses } = drive("mempalace", 1, [init, { jsonrpc: "2.0", method: "notifications/initialized" }, list]);
+    const { responses } = drive("mempalace", 1, [
+      init,
+      { jsonrpc: "2.0", method: "notifications/initialized" },
+      list,
+    ]);
     assert.equal(responses.length, 2);
     assert.ok(responses[0].result.capabilities.tools);
     assert.equal(responses[0].id, 1);
   });
 
   test("tools/list exposes the surface's tools only", () => {
-    const names = (s: string) => drive(s, 1, [init, list]).responses[1].result.tools.map((t: { name: string }) => t.name);
+    const names = (s: string) =>
+      drive(s, 1, [init, list]).responses[1].result.tools.map((t: { name: string }) => t.name);
     assert.ok(names("mempalace").includes("mempalace_search"));
     assert.ok(names("mempalace").includes("mempalace_update_drawer"));
     assert.ok(names("mempalace").includes("mempalace_add_drawer"));
@@ -56,14 +93,28 @@ describe("stub MCP server", () => {
   });
 
   test("scenario 1 returns the open [TASK:ongoing] drawer for the handoff search", () => {
-    const { responses } = drive("mempalace", 1, [init, call(2, "mempalace_search", { wing: "ab-scratch", room: "task-handoff", query: "[TASK:ongoing]" })]);
+    const { responses } = drive("mempalace", 1, [
+      init,
+      call(2, "mempalace_search", {
+        wing: "ab-scratch",
+        room: "task-handoff",
+        query: "[TASK:ongoing]",
+      }),
+    ]);
     const text = responses[1].result.content[0].text;
     assert.match(text, /\[TASK:ongoing\]/);
     assert.match(text, /drw-42/);
   });
 
   test("other scenarios return no drawer", () => {
-    const { responses } = drive("mempalace", 3, [init, call(2, "mempalace_search", { wing: "ab-scratch", room: "task-handoff", query: "[TASK:ongoing]" })]);
+    const { responses } = drive("mempalace", 3, [
+      init,
+      call(2, "mempalace_search", {
+        wing: "ab-scratch",
+        room: "task-handoff",
+        query: "[TASK:ongoing]",
+      }),
+    ]);
     assert.doesNotMatch(responses[1].result.content[0].text, /TASK:ongoing/);
   });
 
@@ -76,7 +127,10 @@ describe("stub MCP server", () => {
     const log = parseCallLog(text);
     assert.ok(log);
     assert.equal(log.length, 2);
-    assert.deepEqual(log.map((e) => e.seq), [0, 1]);
+    assert.deepEqual(
+      log.map((e) => e.seq),
+      [0, 1],
+    );
     assert.equal(log[1]?.tool, "mempalace_update_drawer");
     assert.equal(log[1]?.surface, "mempalace");
     assert.equal((log[1]?.args as { content: string }).content, "[TASK:checkpoint] x");
@@ -90,12 +144,23 @@ describe("stub MCP server", () => {
   });
 
   test("an unknown method answers a JSON-RPC error", () => {
-    const { responses } = drive("mempalace", 1, [init, { jsonrpc: "2.0", id: 9, method: "bogus/method" }]);
+    const { responses } = drive("mempalace", 1, [
+      init,
+      { jsonrpc: "2.0", id: 9, method: "bogus/method" },
+    ]);
     assert.equal(responses[1].error.code, -32601);
   });
 
   test("the sequentialthinking stub answers and logs", () => {
-    const { responses, text } = drive("sequentialthinking", 6, [init, call(2, "sequentialthinking", { thought: "t", nextThoughtNeeded: false, thoughtNumber: 1, totalThoughts: 1 })]);
+    const { responses, text } = drive("sequentialthinking", 6, [
+      init,
+      call(2, "sequentialthinking", {
+        thought: "t",
+        nextThoughtNeeded: false,
+        thoughtNumber: 1,
+        totalThoughts: 1,
+      }),
+    ]);
     assert.ok(responses[1].result.content[0].text.length > 0);
     assert.equal(parseCallLog(text)?.[0]?.surface, "sequentialthinking");
   });

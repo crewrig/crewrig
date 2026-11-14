@@ -38,7 +38,12 @@ export function applyTruncationRule(a: RunRecord[], b: RunRecord[]): { a: Status
     a: a.map((r) => r.status),
     b: b.map((r) => {
       const paired = aByIdx.get(r.runIndex);
-      return r.status === "invalid" && r.truncatedTwice && paired !== undefined && paired !== "invalid" ? "fail" : r.status;
+      return r.status === "invalid" &&
+        r.truncatedTwice &&
+        paired !== undefined &&
+        paired !== "invalid"
+        ? "fail"
+        : r.status;
     }),
   };
 }
@@ -54,7 +59,11 @@ const disagree = (s: Status[]): boolean => new Set(s.filter((x) => x !== "invali
  * runs per arm before any conclusion; after the extension B below A is a regression. An invalid run
  * blocks the conclusion, but never hides a regression visible among the valid runs.
  */
-export function scenarioVerdict(a: Status[], b: Status[], opts: { extendTo: number }): ScenarioVerdict {
+export function scenarioVerdict(
+  a: Status[],
+  b: Status[],
+  opts: { extendTo: number },
+): ScenarioVerdict {
   const hasInvalid = [...a, ...b].includes("invalid");
   const extended = Math.min(a.length, b.length) >= opts.extendTo;
   const diverge = rate(a) !== rate(b);

@@ -80,9 +80,11 @@ export function createScratch(opts: ScratchOptions): Scratch {
   fs.mkdirSync(path.join(home, ".crewrig", "system-context"), { recursive: true });
   fs.mkdirSync(bin, { recursive: true });
   fs.mkdirSync(path.join(proj, "src"), { recursive: true });
-  for (const f of opts.ruleFiles) fs.copyFileSync(f, path.join(home, ".claude", "rules", path.basename(f)));
+  for (const f of opts.ruleFiles)
+    fs.copyFileSync(f, path.join(home, ".claude", "rules", path.basename(f)));
   for (const d of opts.skillDirs ?? []) {
-    if (fs.existsSync(d)) fs.cpSync(d, path.join(home, ".claude", "skills", path.basename(d)), { recursive: true });
+    if (fs.existsSync(d))
+      fs.cpSync(d, path.join(home, ".claude", "skills", path.basename(d)), { recursive: true });
   }
 
   fs.writeFileSync(path.join(bin, "gh"), GH_STUB, { mode: 0o755 });
@@ -90,9 +92,18 @@ export function createScratch(opts: ScratchOptions): Scratch {
 
   fs.writeFileSync(path.join(proj, "CLAUDE.md"), "@AGENTS.md\n");
   fs.writeFileSync(path.join(proj, "AGENTS.md"), AGENTS_MD);
-  fs.writeFileSync(path.join(proj, "README.md"), "# Scratch\n\nWe recieve input and greet the caller.\n");
-  fs.writeFileSync(path.join(proj, "src", "greet.js"), "export function greet(name) {\n  return `hello ${name}`;\n}\n");
-  fs.writeFileSync(path.join(proj, "src", "sum.js"), "export function sum(a, b) {\n  return 0;\n}\n");
+  fs.writeFileSync(
+    path.join(proj, "README.md"),
+    "# Scratch\n\nWe recieve input and greet the caller.\n",
+  );
+  fs.writeFileSync(
+    path.join(proj, "src", "greet.js"),
+    "export function greet(name) {\n  return `hello ${name}`;\n}\n",
+  );
+  fs.writeFileSync(
+    path.join(proj, "src", "sum.js"),
+    "export function sum(a, b) {\n  return 0;\n}\n",
+  );
   fs.writeFileSync(path.join(proj, "src", "store.js"), "export const store = JSON.parse('{}');\n");
 
   git(proj, "init", "-q", "-b", "main");
@@ -107,7 +118,17 @@ export function createScratch(opts: ScratchOptions): Scratch {
   });
   fs.writeFileSync(
     mcpJson,
-    JSON.stringify({ mcpServers: { mempalace: server("mempalace"), obsidian: server("obsidian"), sequentialthinking: server("sequentialthinking") } }, null, 2),
+    JSON.stringify(
+      {
+        mcpServers: {
+          mempalace: server("mempalace"),
+          obsidian: server("obsidian"),
+          sequentialthinking: server("sequentialthinking"),
+        },
+      },
+      null,
+      2,
+    ),
   );
   return { root, home, proj, bin, mcpJson, callLog, ghLog };
 }
@@ -116,10 +137,20 @@ export function removeScratch(s: Scratch): void {
   fs.rmSync(s.root, { recursive: true, force: true });
 }
 
-const PASSTHROUGH = ["ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_BASE_URL", "TERM", "LANG", "TMPDIR"];
+const PASSTHROUGH = [
+  "ANTHROPIC_API_KEY",
+  "CLAUDE_CODE_OAUTH_TOKEN",
+  "ANTHROPIC_BASE_URL",
+  "TERM",
+  "LANG",
+  "TMPDIR",
+];
 
 /** Environment of the claude child: scratch HOME and PATH, the stub log paths, credential fallbacks. */
-export function buildEnv(s: Scratch, base: Record<string, string | undefined>): Record<string, string> {
+export function buildEnv(
+  s: Scratch,
+  base: Record<string, string | undefined>,
+): Record<string, string> {
   const env: Record<string, string> = {
     HOME: s.home,
     PATH: `${s.bin}${path.delimiter}${base.PATH ?? ""}`,
@@ -140,26 +171,45 @@ export interface ClaudeArgsInput {
 }
 
 const ALLOWED = [
-  "Read", "Edit", "Write", "Glob", "Grep", "Skill", "ToolSearch",
-  "Bash(git:*)", "Bash(gh:*)", "Bash(node:*)",
-  "mcp__mempalace", "mcp__obsidian", "mcp__sequentialthinking",
+  "Read",
+  "Edit",
+  "Write",
+  "Glob",
+  "Grep",
+  "Skill",
+  "ToolSearch",
+  "Bash(git:*)",
+  "Bash(gh:*)",
+  "Bash(node:*)",
+  "mcp__mempalace",
+  "mcp__obsidian",
+  "mcp__sequentialthinking",
 ];
 const DENIED = ["Agent", "Task", "WebFetch", "WebSearch"];
 
 export function buildClaudeArgs(i: ClaudeArgsInput): string[] {
   const a = [
-    "-p", i.scenario.prompt,
-    "--output-format", "stream-json",
+    "-p",
+    i.scenario.prompt,
+    "--output-format",
+    "stream-json",
     "--verbose",
-    "--model", i.model,
-    "--max-budget-usd", String(i.maxBudgetUsd),
-    "--max-turns", String(i.scenario.maxTurns),
-    "--mcp-config", i.scratch.mcpJson,
+    "--model",
+    i.model,
+    "--max-budget-usd",
+    String(i.maxBudgetUsd),
+    "--max-turns",
+    String(i.scenario.maxTurns),
+    "--mcp-config",
+    i.scratch.mcpJson,
     "--strict-mcp-config",
-    "--permission-mode", "acceptEdits",
+    "--permission-mode",
+    "acceptEdits",
     "--no-session-persistence",
-    "--allowed-tools", ALLOWED.join(","),
-    "--disallowed-tools", DENIED.join(","),
+    "--allowed-tools",
+    ALLOWED.join(","),
+    "--disallowed-tools",
+    DENIED.join(","),
   ];
   if (i.scenario.role === "worker" && i.workerSettings) a.push("--settings", i.workerSettings);
   return a;

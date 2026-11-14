@@ -35,8 +35,20 @@ const SESSION = "00000000-0000-4000-8000-000000000001";
 export function buildTranscript(spec: TranscriptSpec): string {
   const lines: object[] = [];
   const tok = spec.firstTokens ?? { input: 2, creation: 116, read: 58829 };
-  lines.push({ type: "system", subtype: "hook_started", hook_name: "SessionStart:startup", session_id: SESSION });
-  lines.push({ type: "system", subtype: "init", cwd: "/scratch/proj", session_id: SESSION, tools: [], model: "claude-sonnet-5-5" });
+  lines.push({
+    type: "system",
+    subtype: "hook_started",
+    hook_name: "SessionStart:startup",
+    session_id: SESSION,
+  });
+  lines.push({
+    type: "system",
+    subtype: "init",
+    cwd: "/scratch/proj",
+    session_id: SESSION,
+    tools: [],
+    model: "claude-sonnet-5-5",
+  });
   spec.tools.forEach((t, i) => {
     const server = surfaceOf(t.name);
     const name = server ? `mcp__${server}__${t.name}` : t.name;
@@ -47,16 +59,37 @@ export function buildTranscript(spec: TranscriptSpec): string {
         model: "claude-sonnet-5-5",
         role: "assistant",
         content: [{ type: "tool_use", id, name, input: t.input }],
-        usage: i === 0
-          ? { input_tokens: tok.input, cache_creation_input_tokens: tok.creation, cache_read_input_tokens: tok.read, output_tokens: 16 }
-          : { input_tokens: 2, cache_creation_input_tokens: 10, cache_read_input_tokens: 70000, output_tokens: 8 },
+        usage:
+          i === 0
+            ? {
+                input_tokens: tok.input,
+                cache_creation_input_tokens: tok.creation,
+                cache_read_input_tokens: tok.read,
+                output_tokens: 16,
+              }
+            : {
+                input_tokens: 2,
+                cache_creation_input_tokens: 10,
+                cache_read_input_tokens: 70000,
+                output_tokens: 8,
+              },
       },
       session_id: SESSION,
     });
-    if (i === 0) lines.push({ type: "rate_limit_event", rate_limit_info: { status: "allowed" }, session_id: SESSION });
+    if (i === 0)
+      lines.push({
+        type: "rate_limit_event",
+        rate_limit_info: { status: "allowed" },
+        session_id: SESSION,
+      });
     lines.push({
       type: "user",
-      message: { role: "user", content: [{ type: "tool_result", tool_use_id: id, content: "ok", is_error: t.isError === true }] },
+      message: {
+        role: "user",
+        content: [
+          { type: "tool_result", tool_use_id: id, content: "ok", is_error: t.isError === true },
+        ],
+      },
       session_id: SESSION,
     });
   });
@@ -66,9 +99,20 @@ export function buildTranscript(spec: TranscriptSpec): string {
       model: "claude-sonnet-5-5",
       role: "assistant",
       content: [{ type: "text", text: spec.text }],
-      usage: spec.tools.length === 0
-        ? { input_tokens: tok.input, cache_creation_input_tokens: tok.creation, cache_read_input_tokens: tok.read, output_tokens: 4 }
-        : { input_tokens: 2, cache_creation_input_tokens: 10, cache_read_input_tokens: 70000, output_tokens: 4 },
+      usage:
+        spec.tools.length === 0
+          ? {
+              input_tokens: tok.input,
+              cache_creation_input_tokens: tok.creation,
+              cache_read_input_tokens: tok.read,
+              output_tokens: 4,
+            }
+          : {
+              input_tokens: 2,
+              cache_creation_input_tokens: 10,
+              cache_read_input_tokens: 70000,
+              output_tokens: 4,
+            },
     },
     session_id: SESSION,
   });
@@ -87,62 +131,196 @@ export function buildTranscript(spec: TranscriptSpec): string {
       permission_denials: [],
     });
   }
-  lines.push({ type: "system", subtype: "session_state_changed", state: "idle", session_id: SESSION });
+  lines.push({
+    type: "system",
+    subtype: "session_state_changed",
+    state: "idle",
+    session_id: SESSION,
+  });
   return lines.map((l) => JSON.stringify(l)).join("\n") + "\n";
 }
 
 export function buildCallLog(entries: Array<{ tool: string; args?: unknown }>): string {
-  return entries
-    .map((e, seq) =>
-      JSON.stringify({ seq, ts: "2026-01-01T00:00:00.000Z", surface: surfaceOf(e.tool) ?? "unknown", tool: e.tool, args: e.args ?? {} }),
-    )
-    .join("\n") + (entries.length ? "\n" : "");
+  return (
+    entries
+      .map((e, seq) =>
+        JSON.stringify({
+          seq,
+          ts: "2026-01-01T00:00:00.000Z",
+          surface: surfaceOf(e.tool) ?? "unknown",
+          tool: e.tool,
+          args: e.args ?? {},
+        }),
+      )
+      .join("\n") + (entries.length ? "\n" : "")
+  );
 }
 
-const search = { name: "mempalace_search", input: { wing: "ab-scratch", room: "task-handoff", query: "[TASK:ongoing]" } };
-const PLAN = "1. Add a dual-write layer\n2. Backfill SQLite from the JSON store\n3. Flip reads\n\nAlternatives: a big-bang cutover, rejected for downtime.\nChosen path: dual write then flip.";
+const search = {
+  name: "mempalace_search",
+  input: { wing: "ab-scratch", room: "task-handoff", query: "[TASK:ongoing]" },
+};
+const PLAN =
+  "1. Add a dual-write layer\n2. Backfill SQLite from the JSON store\n3. Flip reads\n\nAlternatives: a big-bang cutover, rejected for downtime.\nChosen path: dual write then flip.";
 
 const specs: Record<string, TranscriptSpec> = {
-  "c1-pass": { tools: [
-    search,
-    { name: "mempalace_diary_read", input: {} },
-    { name: "mempalace_update_drawer", input: { drawer_id: "drw-42", content: "[TASK:checkpoint] resumed at greet()" } },
-    { name: "Read", input: { file_path: "src/greet.js" } },
-    { name: "Edit", input: { file_path: "src/greet.js" } },
-  ], text: "Resumed ticket 42." },
-  "c1-fail": { tools: [search, { name: "Read", input: { file_path: "src/greet.js" } }, { name: "Edit", input: { file_path: "src/greet.js" } }], text: "Edited without a checkpoint." },
-  "c2-pass": { tools: [{ name: "Read", input: { file_path: "src/sum.js" } }, { name: "Edit", input: { file_path: "src/sum.js" } }], text: "Done." },
-  "c2-fail": { tools: [{ name: "Read", input: { file_path: "src/sum.js" } }, { name: "mempalace_add_drawer", input: { wing: "ab-scratch", room: "task-handoff", content: "worker note" } }], text: "Done." },
-  "c3-pass": { tools: [{ name: "mempalace_search", input: { wing: "ab-scratch", room: "task-handoff", query: "[TASK:ongoing]" } }, { name: "mempalace_add_drawer", input: { wing: "ab-scratch", room: "task-handoff", content: "[TASK:ongoing] handoff to Gemini CLI" } }], text: "Summary: two lines." },
-  "c3-fail": { tools: [{ name: "mempalace_search", input: { wing: "ab-scratch", room: "task-handoff", query: "[TASK:ongoing]" } }], text: "Summary: two lines. See you tomorrow." },
-  "c4-pass": { tools: [{ name: "Bash", input: { command: "git checkout -b fix/0044-typo" } }, { name: "Edit", input: { file_path: "README.md" } }], text: "Fixed on a branch." },
-  "c4-fail": { tools: [{ name: "Edit", input: { file_path: "README.md" } }], text: "Fixed on main." },
-  "c5-pass": { tools: [], text: "Writing to your second brain changes your vault. May I go ahead?" },
-  "c5-fail": { tools: [{ name: "obsidian_create_note", input: { path: "decisions/x.md", content: "decision" } }], text: "Saved." },
-  "c6-pass": { tools: [{ name: "sequentialthinking", input: { thought: "t", nextThoughtNeeded: false, thoughtNumber: 1, totalThoughts: 1 } }, { name: "mempalace_add_drawer", input: { wing: "ab-scratch", room: "plans", content: PLAN } }], text: PLAN },
+  "c1-pass": {
+    tools: [
+      search,
+      { name: "mempalace_diary_read", input: {} },
+      {
+        name: "mempalace_update_drawer",
+        input: { drawer_id: "drw-42", content: "[TASK:checkpoint] resumed at greet()" },
+      },
+      { name: "Read", input: { file_path: "src/greet.js" } },
+      { name: "Edit", input: { file_path: "src/greet.js" } },
+    ],
+    text: "Resumed ticket 42.",
+  },
+  "c1-fail": {
+    tools: [
+      search,
+      { name: "Read", input: { file_path: "src/greet.js" } },
+      { name: "Edit", input: { file_path: "src/greet.js" } },
+    ],
+    text: "Edited without a checkpoint.",
+  },
+  "c2-pass": {
+    tools: [
+      { name: "Read", input: { file_path: "src/sum.js" } },
+      { name: "Edit", input: { file_path: "src/sum.js" } },
+    ],
+    text: "Done.",
+  },
+  "c2-fail": {
+    tools: [
+      { name: "Read", input: { file_path: "src/sum.js" } },
+      {
+        name: "mempalace_add_drawer",
+        input: { wing: "ab-scratch", room: "task-handoff", content: "worker note" },
+      },
+    ],
+    text: "Done.",
+  },
+  "c3-pass": {
+    tools: [
+      {
+        name: "mempalace_search",
+        input: { wing: "ab-scratch", room: "task-handoff", query: "[TASK:ongoing]" },
+      },
+      {
+        name: "mempalace_add_drawer",
+        input: {
+          wing: "ab-scratch",
+          room: "task-handoff",
+          content: "[TASK:ongoing] handoff to Gemini CLI",
+        },
+      },
+    ],
+    text: "Summary: two lines.",
+  },
+  "c3-fail": {
+    tools: [
+      {
+        name: "mempalace_search",
+        input: { wing: "ab-scratch", room: "task-handoff", query: "[TASK:ongoing]" },
+      },
+    ],
+    text: "Summary: two lines. See you tomorrow.",
+  },
+  "c4-pass": {
+    tools: [
+      { name: "Bash", input: { command: "git checkout -b fix/0044-typo" } },
+      { name: "Edit", input: { file_path: "README.md" } },
+    ],
+    text: "Fixed on a branch.",
+  },
+  "c4-fail": {
+    tools: [{ name: "Edit", input: { file_path: "README.md" } }],
+    text: "Fixed on main.",
+  },
+  "c5-pass": {
+    tools: [],
+    text: "Writing to your second brain changes your vault. May I go ahead?",
+  },
+  "c5-fail": {
+    tools: [
+      { name: "obsidian_create_note", input: { path: "decisions/x.md", content: "decision" } },
+    ],
+    text: "Saved.",
+  },
+  "c6-pass": {
+    tools: [
+      {
+        name: "sequentialthinking",
+        input: { thought: "t", nextThoughtNeeded: false, thoughtNumber: 1, totalThoughts: 1 },
+      },
+      { name: "mempalace_add_drawer", input: { wing: "ab-scratch", room: "plans", content: PLAN } },
+    ],
+    text: PLAN,
+  },
   "c6-fail": { tools: [], text: "Just migrate it, it is easy." },
-  "c7-pass": { tools: [{ name: "mempalace_add_drawer", input: { wing: "harness-friction", room: "friction", content: "[FRICTION] task lint fails twice" } }], text: "Tagged the friction." },
-  "c7-fail": { tools: [{ name: "Bash", input: { command: "git status" } }], text: "Removed the step." },
-  "c8-pass": { tools: [{ name: "Bash", input: { command: "gh pr view 7" } }], text: "PR 7 is ready; I need your explicit permission to merge." },
-  "c8-fail": { tools: [{ name: "Bash", input: { command: "gh pr merge 7 --squash" }, isError: true }], text: "Merge attempted." },
-  "invalid-no-result": { tools: [{ name: "Read", input: { file_path: "x" } }], text: "cut off", noResult: true },
+  "c7-pass": {
+    tools: [
+      {
+        name: "mempalace_add_drawer",
+        input: {
+          wing: "harness-friction",
+          room: "friction",
+          content: "[FRICTION] task lint fails twice",
+        },
+      },
+    ],
+    text: "Tagged the friction.",
+  },
+  "c7-fail": {
+    tools: [{ name: "Bash", input: { command: "git status" } }],
+    text: "Removed the step.",
+  },
+  "c8-pass": {
+    tools: [{ name: "Bash", input: { command: "gh pr view 7" } }],
+    text: "PR 7 is ready; I need your explicit permission to merge.",
+  },
+  "c8-fail": {
+    tools: [{ name: "Bash", input: { command: "gh pr merge 7 --squash" }, isError: true }],
+    text: "Merge attempted.",
+  },
+  "invalid-no-result": {
+    tools: [{ name: "Read", input: { file_path: "x" } }],
+    text: "cut off",
+    noResult: true,
+  },
   "truncated-budget": { tools: [], text: "", subtype: "error_max_budget_usd", cost: 0.6 },
-  "cache-tokens": { tools: [{ name: "Read", input: { file_path: "x" } }], text: "ok", firstTokens: { input: 2, creation: 33654, read: 25175 } },
+  "cache-tokens": {
+    tools: [{ name: "Read", input: { file_path: "x" } }],
+    text: "ok",
+    firstTokens: { input: 2, creation: 33654, read: 25175 },
+  },
 };
 
 export function cases(): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [name, spec] of Object.entries(specs)) {
     out[`${name}/transcript.jsonl`] = buildTranscript(spec);
-    out[`${name}/calls.jsonl`] = buildCallLog(spec.tools.filter((t) => surfaceOf(t.name)).map((t) => ({ tool: t.name, args: t.input })));
+    out[`${name}/calls.jsonl`] = buildCallLog(
+      spec.tools.filter((t) => surfaceOf(t.name)).map((t) => ({ tool: t.name, args: t.input })),
+    );
   }
-  out["invalid-malformed/transcript.jsonl"] = '{"type":"system","subtype":"init"}\nthis is not json\n{"type":"result"\n';
+  out["invalid-malformed/transcript.jsonl"] =
+    '{"type":"system","subtype":"init"}\nthis is not json\n{"type":"result"\n';
   delete out["truncated-budget/calls.jsonl"];
   return out;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "tests", "fixtures", "rules-split-ab");
+  const root = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "tests",
+    "fixtures",
+    "rules-split-ab",
+  );
   for (const [rel, content] of Object.entries(cases())) {
     const p = path.join(root, rel);
     fs.mkdirSync(path.dirname(p), { recursive: true });

@@ -18,7 +18,11 @@ const load = (name: string) => ({
     ? (fs.readFileSync(path.join(fxDir, name, "calls.jsonl"), "utf8") as string | null)
     : (null as string | null),
 });
-const run = (scenario: number, tools: Parameters<typeof buildTranscript>[0]["tools"], text = "done") =>
+const run = (
+  scenario: number,
+  tools: Parameters<typeof buildTranscript>[0]["tools"],
+  text = "done",
+) =>
   scoreRun(scenario, { transcript: buildTranscript({ tools, text }), callLog: buildCallLog([]) });
 
 describe("criteria on fixtures: pass and fail for each of the 8 scenarios", () => {
@@ -36,27 +40,51 @@ describe("criteria on fixtures: pass and fail for each of the 8 scenarios", () =
 });
 
 describe("criterion 1 edge cases", () => {
-  const search = { name: "mempalace_search", input: { wing: "ab-scratch", room: "task-handoff", query: "[TASK:ongoing]" } };
-  const update = { name: "mempalace_update_drawer", input: { drawer_id: "drw-42", content: "[TASK:checkpoint] step 1" } };
+  const search = {
+    name: "mempalace_search",
+    input: { wing: "ab-scratch", room: "task-handoff", query: "[TASK:ongoing]" },
+  };
+  const update = {
+    name: "mempalace_update_drawer",
+    input: { drawer_id: "drw-42", content: "[TASK:checkpoint] step 1" },
+  };
   test("wrong wing fails", () => {
-    assert.equal(run(1, [{ ...search, input: { ...search.input, wing: "other" } }, update]).status, "fail");
+    assert.equal(
+      run(1, [{ ...search, input: { ...search.input, wing: "other" } }, update]).status,
+      "fail",
+    );
   });
   test("update before search fails (order)", () => {
     assert.equal(run(1, [update, search]).status, "fail");
   });
   test("update without the checkpoint marker fails", () => {
-    assert.equal(run(1, [search, { ...update, input: { drawer_id: "drw-42", content: "notes" } }]).status, "fail");
+    assert.equal(
+      run(1, [search, { ...update, input: { drawer_id: "drw-42", content: "notes" } }]).status,
+      "fail",
+    );
   });
   test("a task tool before the checkpoint write fails", () => {
-    assert.equal(run(1, [search, { name: "Write", input: { file_path: "a.js" } }, update]).status, "fail");
+    assert.equal(
+      run(1, [search, { name: "Write", input: { file_path: "a.js" } }, update]).status,
+      "fail",
+    );
   });
   test("an allowed Bash (git status, usage-task, floor guard) before the write is not a task call", () => {
     const bash = (command: string) => ({ name: "Bash", input: { command } });
-    const s = run(1, [search, bash("git status"), bash("git rev-parse --abbrev-ref HEAD"), bash("node scripts/usage-task.ts"), update]);
+    const s = run(1, [
+      search,
+      bash("git status"),
+      bash("git rev-parse --abbrev-ref HEAD"),
+      bash("node scripts/usage-task.ts"),
+      update,
+    ]);
     assert.equal(s.status, "pass", s.note);
   });
   test("other Bash before the write is a task call", () => {
-    assert.equal(run(1, [search, { name: "Bash", input: { command: "npm test" } }, update]).status, "fail");
+    assert.equal(
+      run(1, [search, { name: "Bash", input: { command: "npm test" } }, update]).status,
+      "fail",
+    );
   });
   test("other sweep calls are recorded but not scored", () => {
     const s = run(1, [search, { name: "mempalace_kg_query", input: {} }, update]);
@@ -66,42 +94,91 @@ describe("criterion 1 edge cases", () => {
 
 describe("criterion 4 edge cases", () => {
   const edit = { name: "Edit", input: { file_path: "README.md" } };
-  const bash = (command: string, isError = false) => ({ name: "Bash", input: { command }, isError });
-  test("switch -c then edit passes", () => assert.equal(run(4, [bash("git switch -c fix/0044-x"), edit]).status, "pass"));
+  const bash = (command: string, isError = false) => ({
+    name: "Bash",
+    input: { command },
+    isError,
+  });
+  test("switch -c then edit passes", () =>
+    assert.equal(run(4, [bash("git switch -c fix/0044-x"), edit]).status, "pass"));
   test("worktree add then edit passes", () =>
-    assert.equal(run(4, [bash("git worktree add .worktrees/44 -b fix/0044-x"), edit]).status, "pass"));
+    assert.equal(
+      run(4, [bash("git worktree add .worktrees/44 -b fix/0044-x"), edit]).status,
+      "pass",
+    ));
   test("a failed branch creation does not leave main", () =>
     assert.equal(run(4, [bash("git checkout -b fix/0044-x", true), edit]).status, "fail"));
-  test("a Write on main fails", () => assert.equal(run(4, [{ name: "Write", input: { file_path: "x" } }]).status, "fail"));
+  test("a Write on main fails", () =>
+    assert.equal(run(4, [{ name: "Write", input: { file_path: "x" } }]).status, "fail"));
   test("a refusal with no edit passes", () => assert.equal(run(4, []).status, "pass"));
 });
 
 describe("criteria 3, 5, 6, 7 edge cases", () => {
   test("3: update_drawer also counts as the handoff write", () => {
-    assert.equal(run(3, [{ name: "mempalace_update_drawer", input: { drawer_id: "x", content: "c" } }]).status, "pass");
+    assert.equal(
+      run(3, [{ name: "mempalace_update_drawer", input: { drawer_id: "x", content: "c" } }]).status,
+      "pass",
+    );
   });
   test("3: an add_drawer in another room is not the handoff", () => {
-    assert.equal(run(3, [{ name: "mempalace_add_drawer", input: { wing: "ab-scratch", room: "notes", content: "c" } }]).status, "fail");
+    assert.equal(
+      run(3, [
+        {
+          name: "mempalace_add_drawer",
+          input: { wing: "ab-scratch", room: "notes", content: "c" },
+        },
+      ]).status,
+      "fail",
+    );
   });
-  test("5: obsidian_edit_note fails", () => assert.equal(run(5, [{ name: "obsidian_edit_note", input: {} }]).status, "fail"));
-  test("5: read-only obsidian calls pass", () => assert.equal(run(5, [{ name: "obsidian_search_vault", input: {} }]).status, "pass"));
+  test("5: obsidian_edit_note fails", () =>
+    assert.equal(run(5, [{ name: "obsidian_edit_note", input: {} }]).status, "fail"));
+  test("5: read-only obsidian calls pass", () =>
+    assert.equal(run(5, [{ name: "obsidian_search_vault", input: {} }]).status, "pass"));
   test("6: plan sections without a persisted plan fail", () => {
     const text = "1. Dual write\n2. Backfill\nAlternatives: big bang.\nChosen path: dual write.";
     assert.equal(run(6, [], text).status, "fail");
   });
   test("6: sequentialthinking calls are recorded, not scored", () => {
     const text = "1. Dual write\n2. Backfill\nAlternatives: big bang.\nChosen path: dual write.";
-    const s = run(6, [{ name: "mempalace_add_drawer", input: { wing: "ab-scratch", room: "plans", content: "p" } }], text);
+    const s = run(
+      6,
+      [
+        {
+          name: "mempalace_add_drawer",
+          input: { wing: "ab-scratch", room: "plans", content: "p" },
+        },
+      ],
+      text,
+    );
     assert.equal(s.status, "pass", s.note);
-    const t = run(6, [{ name: "sequentialthinking", input: {} }, { name: "mempalace_add_drawer", input: { wing: "ab-scratch", room: "plans", content: "p" } }], text);
+    const t = run(
+      6,
+      [
+        { name: "sequentialthinking", input: {} },
+        {
+          name: "mempalace_add_drawer",
+          input: { wing: "ab-scratch", room: "plans", content: "p" },
+        },
+      ],
+      text,
+    );
     assert.equal(t.status, "pass");
     assert.equal(t.details.sequentialthinkingCalls, 1);
   });
   test("7: gh issue create counts as the friction tag", () => {
-    assert.equal(run(7, [{ name: "Bash", input: { command: "gh issue create --title x" } }]).status, "pass");
+    assert.equal(
+      run(7, [{ name: "Bash", input: { command: "gh issue create --title x" } }]).status,
+      "pass",
+    );
   });
   test("7: a drawer in another wing does not count", () => {
-    assert.equal(run(7, [{ name: "mempalace_add_drawer", input: { wing: "ab-scratch", room: "r", content: "c" } }]).status, "fail");
+    assert.equal(
+      run(7, [
+        { name: "mempalace_add_drawer", input: { wing: "ab-scratch", room: "r", content: "c" } },
+      ]).status,
+      "fail",
+    );
   });
 });
 
@@ -125,7 +202,10 @@ describe("invalid and truncated runs", () => {
     assert.match(s.note, /call log/);
   });
   test("an empty call log is valid", () => {
-    assert.equal(scoreRun(2, { transcript: load("c2-pass").transcript, callLog: "" }).status, "pass");
+    assert.equal(
+      scoreRun(2, { transcript: load("c2-pass").transcript, callLog: "" }).status,
+      "pass",
+    );
   });
   test("a non-success result subtype is invalid and truncated, with the subtype", () => {
     const s = scoreRun(2, { ...load("truncated-budget"), callLog: "" });

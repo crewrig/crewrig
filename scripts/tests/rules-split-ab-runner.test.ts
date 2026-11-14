@@ -15,7 +15,11 @@ const runner = path.resolve(here, "..", "rules-split-ab.ts");
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ab-runner-test-"));
 const sentinel = path.join(tmp, "claude-was-spawned");
 fs.mkdirSync(path.join(tmp, "bin"));
-fs.writeFileSync(path.join(tmp, "bin", "claude"), `#!/bin/sh\necho spawned > '${sentinel}'\nexit 99\n`, { mode: 0o755 });
+fs.writeFileSync(
+  path.join(tmp, "bin", "claude"),
+  `#!/bin/sh\necho spawned > '${sentinel}'\nexit 99\n`,
+  { mode: 0o755 },
+);
 const toolsFile = path.join(tmp, "60-tools.md");
 const memoryFile = path.join(tmp, "60-memory.md");
 fs.writeFileSync(toolsFile, "# tools\n");
@@ -23,13 +27,21 @@ fs.writeFileSync(memoryFile, "# memory\n");
 const rules = ["--arm-a-rule", toolsFile, "--arm-b-rule", toolsFile, "--arm-b-rule", memoryFile];
 
 function run(args: string[], env: Record<string, string | undefined>) {
-  const e: Record<string, string | undefined> = { ...process.env, PATH: `${path.join(tmp, "bin")}${path.delimiter}${process.env.PATH}`, ...env };
+  const e: Record<string, string | undefined> = {
+    ...process.env,
+    PATH: `${path.join(tmp, "bin")}${path.delimiter}${process.env.PATH}`,
+    ...env,
+  };
   for (const k of Object.keys(e)) if (e[k] === undefined) delete e[k];
-  return spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", runner, ...args], {
-    encoding: "utf8",
-    env: e as NodeJS.ProcessEnv,
-    timeout: 30000,
-  });
+  return spawnSync(
+    process.execPath,
+    ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", runner, ...args],
+    {
+      encoding: "utf8",
+      env: e as NodeJS.ProcessEnv,
+      timeout: 30000,
+    },
+  );
 }
 
 describe("rules-split-ab runner", () => {
@@ -54,7 +66,9 @@ describe("rules-split-ab runner", () => {
   });
 
   test("the dry-run passes --settings for scenario 2 only", () => {
-    const r = run(["--dry-run", ...rules, "--worker-settings", "/w/worker.settings.json"], { CI: undefined });
+    const r = run(["--dry-run", ...rules, "--worker-settings", "/w/worker.settings.json"], {
+      CI: undefined,
+    });
     const lines = r.stdout.split("\n").filter((l) => l.includes("--settings"));
     assert.ok(lines.length > 0);
     assert.ok(lines.every((l) => /scenario 2\b/.test(l)));
@@ -81,7 +95,10 @@ describe("rules-split-ab runner", () => {
   });
 
   test("a missing rule file is a usage error (exit 2)", () => {
-    const r = run(["--dry-run", "--arm-a-rule", path.join(tmp, "nope.md"), "--arm-b-rule", toolsFile], { CI: undefined });
+    const r = run(
+      ["--dry-run", "--arm-a-rule", path.join(tmp, "nope.md"), "--arm-b-rule", toolsFile],
+      { CI: undefined },
+    );
     assert.equal(r.status, 2);
     assert.match(r.stderr, /nope\.md/);
   });

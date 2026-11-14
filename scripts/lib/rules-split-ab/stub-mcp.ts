@@ -13,12 +13,23 @@ import { OPEN_DRAWER_ID, PROJECT_WING, scenarioById } from "./scenarios.ts";
 
 export const SURFACE_TOOLS: Record<string, string[]> = {
   mempalace: [
-    "mempalace_search", "mempalace_add_drawer", "mempalace_update_drawer", "mempalace_get_drawer",
-    "mempalace_list_drawers", "mempalace_diary_read", "mempalace_diary_write", "mempalace_kg_query",
-    "mempalace_kg_add", "mempalace_status", "mempalace_checkpoint",
+    "mempalace_search",
+    "mempalace_add_drawer",
+    "mempalace_update_drawer",
+    "mempalace_get_drawer",
+    "mempalace_list_drawers",
+    "mempalace_diary_read",
+    "mempalace_diary_write",
+    "mempalace_kg_query",
+    "mempalace_kg_add",
+    "mempalace_status",
+    "mempalace_checkpoint",
   ],
   obsidian: [
-    "obsidian_list_vaults", "obsidian_search_vault", "obsidian_read_note", "obsidian_create_note",
+    "obsidian_list_vaults",
+    "obsidian_search_vault",
+    "obsidian_read_note",
+    "obsidian_create_note",
     "obsidian_edit_note",
   ],
   sequentialthinking: ["sequentialthinking"],
@@ -30,14 +41,20 @@ function canned(tool: string, args: Args, scenario: number): unknown {
   switch (tool) {
     case "mempalace_search": {
       const open = scenarioById(scenario)?.openDrawer === true;
-      if (open && (args.room === "task-handoff" || String(args.query ?? "").includes("[TASK:ongoing]"))) {
+      if (
+        open &&
+        (args.room === "task-handoff" || String(args.query ?? "").includes("[TASK:ongoing]"))
+      ) {
         return {
-          results: [{
-            drawer_id: OPEN_DRAWER_ID,
-            wing: PROJECT_WING,
-            room: "task-handoff",
-            content: "[TASK:ongoing] Ticket #42: add greet() in src/greet.js. Next: handle an empty name.",
-          }],
+          results: [
+            {
+              drawer_id: OPEN_DRAWER_ID,
+              wing: PROJECT_WING,
+              room: "task-handoff",
+              content:
+                "[TASK:ongoing] Ticket #42: add greet() in src/greet.js. Next: handle an empty name.",
+            },
+          ],
         };
       }
       return { results: [] };
@@ -50,7 +67,11 @@ function canned(tool: string, args: Args, scenario: number): unknown {
     case "obsidian_edit_note":
       return { success: true };
     case "sequentialthinking":
-      return { thoughtNumber: args.thoughtNumber ?? 1, totalThoughts: args.totalThoughts ?? 1, nextThoughtNeeded: false };
+      return {
+        thoughtNumber: args.thoughtNumber ?? 1,
+        totalThoughts: args.totalThoughts ?? 1,
+        nextThoughtNeeded: false,
+      };
     default:
       return { results: [] };
   }
@@ -75,7 +96,10 @@ function main(): void {
     if (!logPath) return;
     const existing = fs.readFileSync(logPath, "utf8");
     const seq = existing.split("\n").filter(Boolean).length;
-    fs.appendFileSync(logPath, JSON.stringify({ seq, ts: new Date().toISOString(), surface, tool, args }) + "\n");
+    fs.appendFileSync(
+      logPath,
+      JSON.stringify({ seq, ts: new Date().toISOString(), surface, tool, args }) + "\n",
+    );
   };
 
   const rl = readline.createInterface({ input: process.stdin });
@@ -83,7 +107,7 @@ function main(): void {
     if (line.trim() === "") return;
     let msg: { id?: number | string; method?: string; params?: Record<string, unknown> };
     try {
-      msg = JSON.parse(line);
+      msg = JSON.parse(line) as typeof msg;
     } catch {
       return;
     }
@@ -91,35 +115,62 @@ function main(): void {
     const id = msg.id;
     switch (msg.method) {
       case "initialize":
-        send({ jsonrpc: "2.0", id, result: {
-          protocolVersion: typeof msg.params?.protocolVersion === "string" ? msg.params.protocolVersion : "2024-11-05",
-          capabilities: { tools: {} },
-          serverInfo: { name: `ab-stub-${surface}`, version: "0.0.0" },
-        } });
+        send({
+          jsonrpc: "2.0",
+          id,
+          result: {
+            protocolVersion:
+              typeof msg.params?.protocolVersion === "string"
+                ? msg.params.protocolVersion
+                : "2024-11-05",
+            capabilities: { tools: {} },
+            serverInfo: { name: `ab-stub-${surface}`, version: "0.0.0" },
+          },
+        });
         return;
       case "ping":
         send({ jsonrpc: "2.0", id, result: {} });
         return;
       case "tools/list":
-        send({ jsonrpc: "2.0", id, result: { tools: tools.map((name) => ({
-          name,
-          description: `Stub of ${name} (rules-split A/B)`,
-          inputSchema: { type: "object", additionalProperties: true },
-        })) } });
+        send({
+          jsonrpc: "2.0",
+          id,
+          result: {
+            tools: tools.map((name) => ({
+              name,
+              description: `Stub of ${name} (rules-split A/B)`,
+              inputSchema: { type: "object", additionalProperties: true },
+            })),
+          },
+        });
         return;
       case "tools/call": {
         const name = String(msg.params?.name ?? "");
         const args = (msg.params?.arguments ?? {}) as Args;
         logCall(name, args);
         if (!tools.includes(name)) {
-          send({ jsonrpc: "2.0", id, result: { isError: true, content: [{ type: "text", text: `unknown tool ${name}` }] } });
+          send({
+            jsonrpc: "2.0",
+            id,
+            result: { isError: true, content: [{ type: "text", text: `unknown tool ${name}` }] },
+          });
           return;
         }
-        send({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(canned(name, args, scenario)) }] } });
+        send({
+          jsonrpc: "2.0",
+          id,
+          result: {
+            content: [{ type: "text", text: JSON.stringify(canned(name, args, scenario)) }],
+          },
+        });
         return;
       }
       default:
-        send({ jsonrpc: "2.0", id, error: { code: -32601, message: `method not found: ${msg.method}` } });
+        send({
+          jsonrpc: "2.0",
+          id,
+          error: { code: -32601, message: `method not found: ${msg.method}` },
+        });
     }
   });
 }

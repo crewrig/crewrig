@@ -7,7 +7,12 @@ import os from "node:os";
 import path from "node:path";
 import { describe, test } from "node:test";
 
-import { buildClaudeArgs, buildEnv, createScratch, removeScratch } from "../lib/rules-split-ab/scratch.ts";
+import {
+  buildClaudeArgs,
+  buildEnv,
+  createScratch,
+  removeScratch,
+} from "../lib/rules-split-ab/scratch.ts";
 import { SCENARIOS } from "../lib/rules-split-ab/scenarios.ts";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ab-scratch-test-"));
@@ -17,7 +22,11 @@ fs.writeFileSync(toolsFile, "# tools\n");
 fs.writeFileSync(memoryFile, "# memory\n");
 const sc = (n: number) => SCENARIOS.find((s) => s.id === n)!;
 const git = (cwd: string, ...a: string[]) =>
-  spawnSync("git", a, { cwd, encoding: "utf8", env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_SYSTEM: "/dev/null" } }).stdout.trim();
+  spawnSync("git", a, {
+    cwd,
+    encoding: "utf8",
+    env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_SYSTEM: "/dev/null" },
+  }).stdout.trim();
 
 describe("createScratch", () => {
   test("installs exactly the arm's rule files into <home>/.claude/rules and nothing else there", () => {
@@ -25,7 +34,10 @@ describe("createScratch", () => {
     const b = createScratch({ ruleFiles: [toolsFile, memoryFile], scenario: sc(1) });
     try {
       assert.deepEqual(fs.readdirSync(path.join(a.home, ".claude", "rules")), ["60-tools.md"]);
-      assert.deepEqual(fs.readdirSync(path.join(b.home, ".claude", "rules")).sort(), ["60-memory.md", "60-tools.md"]);
+      assert.deepEqual(fs.readdirSync(path.join(b.home, ".claude", "rules")).sort(), [
+        "60-memory.md",
+        "60-tools.md",
+      ]);
     } finally {
       removeScratch(a);
       removeScratch(b);
@@ -35,7 +47,8 @@ describe("createScratch", () => {
   test("everything lives under one temp root, which is not the real HOME", () => {
     const s = createScratch({ ruleFiles: [toolsFile], scenario: sc(1) });
     try {
-      for (const p of [s.home, s.proj, s.bin, s.mcpJson, s.callLog]) assert.ok(p.startsWith(s.root + path.sep), p);
+      for (const p of [s.home, s.proj, s.bin, s.mcpJson, s.callLog])
+        assert.ok(p.startsWith(s.root + path.sep), p);
       assert.notEqual(s.home, os.homedir());
       assert.ok(s.root.startsWith(os.tmpdir()) || s.root.startsWith(fs.realpathSync(os.tmpdir())));
     } finally {
@@ -67,8 +80,14 @@ describe("createScratch", () => {
   test("mcp.json declares the three stub servers with the call log and scenario env", () => {
     const s = createScratch({ ruleFiles: [toolsFile], scenario: sc(3) });
     try {
-      const cfg = JSON.parse(fs.readFileSync(s.mcpJson, "utf8"));
-      assert.deepEqual(Object.keys(cfg.mcpServers).sort(), ["mempalace", "obsidian", "sequentialthinking"]);
+      const cfg = JSON.parse(fs.readFileSync(s.mcpJson, "utf8")) as {
+        mcpServers: Record<string, { env: Record<string, string> }>;
+      };
+      assert.deepEqual(Object.keys(cfg.mcpServers).sort(), [
+        "mempalace",
+        "obsidian",
+        "sequentialthinking",
+      ]);
       assert.equal(cfg.mcpServers.mempalace.env.AB_CALL_LOG, s.callLog);
       assert.equal(cfg.mcpServers.mempalace.env.AB_SCENARIO, "3");
     } finally {
@@ -81,7 +100,10 @@ describe("createScratch", () => {
     try {
       const gh = path.join(s.bin, "gh");
       assert.ok(fs.statSync(gh).mode & 0o100);
-      const r = spawnSync(gh, ["pr", "merge", "7"], { encoding: "utf8", env: { ...process.env, AB_GH_LOG: path.join(s.root, "gh.log") } });
+      const r = spawnSync(gh, ["pr", "merge", "7"], {
+        encoding: "utf8",
+        env: { ...process.env, AB_GH_LOG: path.join(s.root, "gh.log") },
+      });
       assert.notEqual(r.status, 0);
       assert.match(fs.readFileSync(path.join(s.root, "gh.log"), "utf8"), /pr merge 7/);
     } finally {
@@ -98,7 +120,13 @@ describe("createScratch", () => {
 
 describe("buildEnv and buildClaudeArgs", () => {
   const s = createScratch({ ruleFiles: [toolsFile], scenario: sc(2) });
-  const base = { PATH: "/usr/bin", HOME: "/Users/real", CI: "true", ANTHROPIC_API_KEY: "k", OTHER: "x" };
+  const base = {
+    PATH: "/usr/bin",
+    HOME: "/Users/real",
+    CI: "true",
+    ANTHROPIC_API_KEY: "k",
+    OTHER: "x",
+  };
   test("HOME points to the scratch home and PATH starts with the scratch bin", () => {
     const e = buildEnv(s, base);
     assert.equal(e.HOME, s.home);
@@ -112,10 +140,17 @@ describe("buildEnv and buildClaudeArgs", () => {
     assert.ok(!Object.values(e).some((v) => v === "/Users/real"));
   });
   const args = (n: number, settings?: string) =>
-    buildClaudeArgs({ scratch: s, scenario: sc(n), model: "claude-sonnet-5-5", maxBudgetUsd: 0.6, workerSettings: settings });
+    buildClaudeArgs({
+      scratch: s,
+      scenario: sc(n),
+      model: "claude-sonnet-5-5",
+      maxBudgetUsd: 0.6,
+      workerSettings: settings,
+    });
   test("flags: stream-json, verbose, strict mcp, budget, model, turns bound, no persistence", () => {
     const a = args(1);
-    for (const f of ["-p", "--verbose", "--strict-mcp-config", "--no-session-persistence"]) assert.ok(a.includes(f), f);
+    for (const f of ["-p", "--verbose", "--strict-mcp-config", "--no-session-persistence"])
+      assert.ok(a.includes(f), f);
     assert.equal(a[a.indexOf("--output-format") + 1], "stream-json");
     assert.equal(a[a.indexOf("--max-budget-usd") + 1], "0.6");
     assert.equal(a[a.indexOf("--model") + 1], "claude-sonnet-5-5");
@@ -125,7 +160,12 @@ describe("buildEnv and buildClaudeArgs", () => {
   });
   test("--settings is passed for scenario 2 only", () => {
     assert.ok(args(2, "/w/worker.settings.json").includes("--settings"));
-    assert.equal(args(2, "/w/worker.settings.json")[args(2, "/w/worker.settings.json").indexOf("--settings") + 1], "/w/worker.settings.json");
+    assert.equal(
+      args(2, "/w/worker.settings.json")[
+        args(2, "/w/worker.settings.json").indexOf("--settings") + 1
+      ],
+      "/w/worker.settings.json",
+    );
     assert.ok(!args(1, "/w/worker.settings.json").includes("--settings"));
     assert.ok(!args(3, "/w/worker.settings.json").includes("--settings"));
   });
