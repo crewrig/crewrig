@@ -115,3 +115,97 @@ describe("no silent pass", () => {
     assert.ok(envelope(r).findings.some((f) => f.rule === "fence-unclosed"));
   });
 });
+
+// The parser fails closed: every non-blank line is classified, and a line it does not understand is
+// an error, never a pass (review passes 1 to 3). Each row: the report, then the rules it must report
+// (an empty list means well formed).
+const OK = "   Where: src/a.ts:2\n   Threat: t\n   Evidence: e\n   Fix: f\n";
+const BAD = "   Where: src/a.ts:99\n   Threat: t\n   Evidence: e\n   Fix: f\n";
+const one = `1. [HIGH] First\n${OK}`;
+const TABLE: [string, string, string[]][] = [
+  ["a clean report", "No findings.\nExamined: src/a.ts:2, the query is parameterized\n", []],
+  ["No findings. beside a finding", `${one}\nNo findings.\n`, ["no-findings-conflict"]],
+  ["prose before the first finding", `Review of the handler\n\n${one}`, []],
+  ["a heading between findings", `${one}\n## Next\n2. [LOW] Second\n${OK}`, []],
+  ["prose and a numbered list after the findings", `${one}\nSummary:\n1. a\n2. b\n`, []],
+  ["a code fence in prose after the findings", `${one}\nNotes:\n\`\`\`\n1. [X] y\n\`\`\`\n`, []],
+  ["header shape 2)", `${one}2) [LOW] Second\n${BAD}`, ["unrecognized-line"]],
+  ["header shape **2.**", `${one}**2.** [LOW] Second\n${BAD}`, ["unrecognized-line"]],
+  ["header shape - [LOW]", `${one}- [LOW] Second\n${BAD}`, ["unrecognized-line"]],
+  ["header shape [LOW] at line start", `${one}[LOW] Second\n${BAD}`, ["unrecognized-line"]],
+  [
+    "header shape 2) after prose",
+    `${one}\nNotes\n\n2) [LOW] Second\n${BAD}`,
+    ["unrecognized-line"],
+  ],
+  ["labels after a prose line", `${one}\nNotes\n${BAD}`, ["unrecognized-line"]],
+  ["an orphan label before the first header", `Where: src/a.ts:2\n${one}`, ["unrecognized-line"]],
+  ["an orphan label after a heading", `${one}\n## Next\n${BAD}`, ["unrecognized-line"]],
+  [
+    "a column-0 continuation of Threat",
+    `1. [HIGH] First\n   Where: src/a.ts:2\n   Threat: t\ncontinued\n   Evidence: e\n   Fix: f\n`,
+    ["unrecognized-line"],
+  ],
+  [
+    "an indented line with no open field",
+    `1. [HIGH] First\n   stray text\n${OK}`,
+    ["unrecognized-line"],
+  ],
+  [
+    "a fence under the header, outside a field",
+    `1. [HIGH] First\n   \`\`\`\n   x\n   \`\`\`\n${OK}`,
+    ["unrecognized-line"],
+  ],
+  [
+    "a finding after prose is still checked",
+    `${one}\nNotes\n\n2. [LOW] Second\n${BAD}`,
+    ["where-line-out-of-range"],
+  ],
+  [
+    "an indented header is a finding",
+    `${one}   2. [LOW] Second\n${BAD}`,
+    ["where-line-out-of-range"],
+  ],
+  [
+    "a label given twice",
+    `1. [HIGH] First\n${OK}   Where: src/a.ts:99\n`,
+    ["field-duplicate", "where-line-out-of-range"],
+  ],
+  [
+    "an unclosed fence",
+    `1. [HIGH] First\n   Where: src/a.ts:2\n   Threat: t\n   Evidence:\n   \`\`\`\n   x\n   Fix: f\n`,
+    ["fence-unclosed"],
+  ],
+  [
+    "a blank line then an indented fence",
+    `1. [HIGH] First\n   Where: src/a.ts:2\n   Threat: t\n   Evidence:\n\n   \`\`\`\n   x\n   \`\`\`\n   Fix: f\n`,
+    [],
+  ],
+  [
+    "an unindented fence in Evidence",
+    `1. [HIGH] First\n   Where: src/a.ts:2\n   Threat: t\n   Evidence:\n\`\`\`\n2. [X] not a header\nFix: not a field\n\`\`\`\n   Fix: f\n`,
+    [],
+  ],
+  [
+    "prose only, no finding and no No findings. line",
+    "The code looks fine.\n",
+    ["no-findings-block"],
+  ],
+];
+describe("fail closed: every line is classified", () => {
+  for (const [name, report, expected] of TABLE)
+    test(name, () => {
+      const r = check(report);
+      const found = envelope(r).findings.map((f) => f.rule);
+      if (expected.length === 0) assert.deepEqual(found, [], r.stdout + r.stderr);
+      for (const rule of expected) assert.ok(found.includes(rule), `${rule} in ${found.join(",")}`);
+      assert.equal(r.status, expected.length === 0 ? 0 : 1);
+    });
+  test("an unrecognized line names its line number and what was expected", () => {
+    const f = envelope(check(`${one}2) [LOW] Second\n${BAD}`)).findings.find(
+      (x) => x.rule === "unrecognized-line",
+    );
+    assert.equal(f?.["line"], 6);
+    assert.match(f?.message ?? "", /line 6 .*N\. \[SEV\]/);
+  });
+});

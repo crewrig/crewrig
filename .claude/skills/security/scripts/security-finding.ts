@@ -23,9 +23,11 @@ Rules (each finding carries the finding number and a message that states the fix
   placeholder (a value that is still template text in angle brackets), where-format
   (<file>:<line> or <file>:<first>-<last>), where-file-missing, where-line-out-of-range,
   where-outside-root, numbering (1 to N in order), field-duplicate (a label given twice),
-  fence-unclosed (a code fence never closed), no-findings-block (no numbered finding and no line
+  fence-unclosed (a code fence never closed), unrecognized-line (a line that is not a header, a
+  field, a continuation, a fence, a heading or prose outside a finding), no-findings-conflict
+  ("No findings." beside a finding), no-findings-block (no numbered finding and no line
   "No findings."), precondition (unreadable report, root that is not a directory). A prose line
-  closes the open finding; the next header with a bracketed severity opens another.
+  after a blank line closes the open finding; a header with a bracketed severity opens another.
 
 Options:
   --root <dir>  directory that Where: paths resolve against (default: the working directory)
@@ -84,9 +86,9 @@ Exit codes: 0 no finding, 1 at least one error, 2 usage error, 3 unreadable repo
     return stop(3, "precondition", `cannot read the report ${inputs[0]}: ${(e as Error).message}`);
   }
 
-  // Split the report into numbered findings. A fenced block and its fence lines belong to the open
-  // field and a blank line does not close it. A prose line closes the open finding, and only a
-  // header with a bracketed severity opens one again, so that no finding is dropped silently.
+  // Fail closed: every non-blank line is exactly one of a finding header, a labelled field of the open
+  // finding, an indented continuation of the open field, a line inside a fence, a heading, the line
+  // "No findings.", or prose outside any finding. Anything else is an unrecognized-line error.
   type Block = {
     n: number;
     line: number;
@@ -95,40 +97,77 @@ Exit codes: 0 no finding, 1 at least one error, 2 usage error, 3 unreadable repo
     dups: string[];
   };
   const blocks: Block[] = [];
+  let mode: "pre" | "in" | "out" = "pre"; // before the first finding, inside one, after its prose
   let fenced = false;
-  let ended = false;
+  let blank = true;
   let field: string | undefined;
   let noFindings = false;
+  const LOOKS = /^\s{0,3}(\d+\)\s|\*\*\d+\.?\*\*|[-*+]\s+\[[A-Z]{2,}\]|\[[A-Z]{2,}\])/;
   text.split(/\r?\n/).forEach((line, i) => {
-    const inside = fenced || /^\s*```/.test(line);
-    if (/^\s*```/.test(line)) fenced = !fenced;
-    const h = inside
-      ? null
-      : (/^(\d+)\.\s+(.*)$/.exec(line) ?? /^\s{1,3}(\d+)\.\s+(\[.*)$/.exec(line));
-    const head = h !== null && (!ended || /^\[/.test(h[2] ?? "")) ? h : null;
-    const label = inside ? null : /^\s*(Where|Threat|Evidence|Fix):\s*(.*)$/.exec(line);
     const last = blocks[blocks.length - 1];
-    if (head !== null) {
-      blocks.push({
-        n: Number(head[1]),
+    const fence = /^\s*```/.test(line);
+    const inFence = fenced || fence;
+    if (fence) fenced = !fenced;
+    const wasBlank = blank;
+    blank = line.trim() === "";
+    if (blank) return;
+    const odd = (expected: string): void => {
+      const at = last === undefined || mode === "pre" ? {} : { finding: last.n };
+      findings.push({
+        rule: "unrecognized-line",
+        message: `line ${i + 1} is not understood: ${expected}`,
         line: i + 1,
-        head: head[2] ?? "",
-        fields: new Map(),
-        dups: [],
+        ...at,
       });
+    };
+    const append = (): void => {
+      if (last !== undefined && field !== undefined)
+        last.fields.set(field, `${last.fields.get(field) ?? ""} ${line.trim()}`.trim());
+    };
+    const col0 = !/^\s/.test(line);
+    const close = (): void => {
+      mode = "out";
       field = undefined;
-      ended = false;
-    } else if (label !== null && last !== undefined && !ended) {
+    };
+    if (inFence) {
+      if (mode !== "in") return;
+      if (field === undefined) return odd("a code fence belongs inside a field such as Evidence:");
+      return append();
+    }
+    if (line.trim() === "No findings.") {
+      noFindings = true;
+      if (mode === "in") close();
+      return;
+    }
+    const h = col0 ? /^(\d+)\.\s+(.*)$/.exec(line) : /^\s{1,3}(\d+)\.\s+(\[.*)$/.exec(line);
+    if (h !== null && (mode !== "out" || /^\[/.test(h[2] ?? ""))) {
+      blocks.push({ n: Number(h[1]), line: i + 1, head: h[2] ?? "", fields: new Map(), dups: [] });
+      mode = "in";
+      field = undefined;
+      return;
+    }
+    if (LOOKS.test(line))
+      return odd(
+        "a header looks malformed: write N. [SEV] <summary>, for example 1. [HIGH] Path traversal",
+      );
+    const label = /^\s*(Where|Threat|Evidence|Fix):\s*(.*)$/.exec(line);
+    if (label !== null) {
+      if (mode !== "in" || last === undefined)
+        return odd(`${label[1]}: sits outside a finding: put it under a header N. [SEV] <summary>`);
       field = label[1] ?? "";
       if (last.fields.has(field)) last.dups.push(field);
       last.fields.set(field, (label[2] ?? "").trim());
-    } else if ((inside || /^\s+\S/.test(line)) && last !== undefined && field !== undefined)
-      last.fields.set(field, `${last.fields.get(field) ?? ""} ${line.trim()}`.trim());
-    else if (line.trim() === "No findings.") noFindings = true;
-    else if (line.trim() !== "" && !/^\s/.test(line)) {
-      field = undefined;
-      ended = last !== undefined;
+      return;
     }
+    if (/^#{1,6}\s/.test(line)) return mode === "in" ? close() : undefined;
+    if (!col0) {
+      if (mode !== "in") return; // indented prose outside a finding
+      return field === undefined ? odd("an indented line with no open field above it") : append();
+    }
+    if (mode !== "in") return; // prose outside a finding
+    if (!wasBlank)
+      return odd("a line that continues a field must be indented, or follow a blank line as prose");
+    close();
   });
 
   const counts: Record<string, number> = Object.fromEntries(SEVS.map((s) => [s, 0]));
@@ -215,6 +254,11 @@ Exit codes: 0 no finding, 1 at least one error, 2 usage error, 3 unreadable repo
       message:
         "a code fence is never closed, so the lines after it are not read: close it with ```",
       ...(open === undefined ? {} : { finding: open.n }),
+    });
+  if (noFindings && blocks.length > 0)
+    findings.push({
+      rule: "no-findings-conflict",
+      message: 'the report has findings and also the line "No findings.": keep one of them',
     });
   if (blocks.length === 0 && !noFindings)
     findings.push({

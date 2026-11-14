@@ -54,7 +54,7 @@ Write the findings as a numbered list, one block each:
 
 - `[SEV]` is one of the five severities above. `Where:` is `<file>:<line>` or `<file>:<first>-<last>`, a line of the whole file in the checkout, so that a reader can open it. A value may continue on indented lines.
 - When the input is a diff, cite the path of the post-image from the `+++` header without its `a/` or `b/` prefix, and a line of the new-file side of the hunk. A path that exists only in the diff cannot be opened.
-- A clean review is the line `No findings.` followed by an `Examined:` line that names what you read, with file and line, so an empty report cannot pass for a clean one.
+- A clean review is the line `No findings.` followed by an `Examined:` line that names what you read, with file and line. `security-finding.ts` requires the `No findings.` line (and rejects it beside a finding) but does not read the `Examined:` line: that one is for the reader, who sees what the clean verdict covers.
 - A threat model opens with one line that names the trust boundary, then lists the threats in the same format. For a design with no code, cite the design document and a line of it in `Where:`; when the design exists only in the conversation, write it to a file next to the report and cite that, since `security-finding.ts` accepts only a real file and line.
 
 ## Scripts
