@@ -116,7 +116,8 @@ export type EvidenceMatch =
   | { readonly rule: "window"; readonly share: number };
 
 export type EvidenceVerdict =
-  ({ readonly ok: true } & EvidenceMatch) | { readonly ok: false; readonly reason: string };
+  | ({ readonly ok: true } & EvidenceMatch)
+  | { readonly ok: false; readonly reason: string };
 
 export function validateEvidence(
   evidence: string | undefined,

@@ -142,6 +142,9 @@ The pass rule is a **non-regression** check (#1963), not an absolute bar. One ru
 `PASS_THRESHOLD` (0.80) stays an advisory figure: a score or a probe rate below it adds an `advisory:` line to the report and never fails a skill.
 
 **Budget by construction.** A modified skill needs at most two paid runs: a baseline on `main` when no valid `evals/results.json` is recorded there, and the final run on the branch. A review fix that changes neither `SKILL.md` (apart from its `metadata.provenance.version` line) nor `evals/evals.json` leaves the hash unchanged and costs no run.
+
+The other statuses:
+
 - `invalid`: the `evals.json` is invalid, a symlink or a non-ignored untracked file sits under a hashed path (a cited shared reference included), a cited shared reference has no tracked source, or the skill source holds a top-level `references/shared-*.md` file (that prefix is reserved for the shared references the build adds). Always blocks.
 - `no-evals`: warning; exit 0 unless `MISSING_EVALS_BLOCKING`.
 - `mock`, and `error` (executor or judge failure with credentials present, a refused plan, a runtime cap).
