@@ -113,16 +113,42 @@ describe("never runs in CI", () => {
     assert.equal(warn.status, 0);
     assert.match(warn.stderr, /WARN: worker main/);
   });
-  test("no workflow, CI capability or pre-push tier references the probe", () => {
+  test("no workflow, CI capability, pre-push tier or CI taskfile runs the paid probe", () => {
     const files = [
       "ci/ci-capabilities.yml",
       "ci/pre-push-tier.json",
+      ".gitlab-ci.yml",
       ...fs.readdirSync(path.join(repo, ".github/workflows")).map((f) => `.github/workflows/${f}`),
       ...fs.readdirSync(path.join(repo, "taskfiles/ci")).map((f) => `taskfiles/ci/${f}`),
       "taskfiles/ci.yml",
     ];
+    // Only the unit suite (fixed-context-probe.test.ts, id fixed-context-probe-tests) and
+    // bare quoted `paths:`/`changes:` list items may name the probe; comments are prose.
+    // Every other line, quoted or not, must not invoke the script or the task.
+    const forbidden =
+      /task\s+(?:ci:)?fixed-context-probe\b|fixed-context-probe\.ts|ci:fixed-context-probe\b/;
+    const bareItem = /^\s*-\s*"scripts\/[^"\s]*"\s*$/;
     for (const f of files) {
-      assert.doesNotMatch(fs.readFileSync(path.join(repo, f), "utf8"), /fixed-context-probe/, f);
+      const code = fs
+        .readFileSync(path.join(repo, f), "utf8")
+        .split("\n")
+        .filter((l) => !/^\s*#/.test(l) && !bareItem.test(l));
+      assert.doesNotMatch(code.join("\n"), forbidden, f);
     }
+  });
+  test("the guard catches a quoted invocation (self-check)", () => {
+    const forbidden = /fixed-context-probe\.ts/;
+    const bareItem = /^\s*-\s*"scripts\/[^"\s]*"\s*$/;
+    assert.equal(bareItem.test('      - "scripts/fixed-context-probe.ts"'), true);
+    assert.equal(bareItem.test('    - "node scripts/fixed-context-probe.ts"'), false);
+    assert.match('    - "node scripts/fixed-context-probe.ts"', forbidden);
+  });
+  test("the unit suite runs inside the runtime-foundations capability, without the paid script", () => {
+    const cap = fs.readFileSync(path.join(repo, "ci/ci-capabilities.yml"), "utf8");
+    const block = cap.slice(cap.indexOf("  - id: runtime-foundations"));
+    const line = block
+      .split("\n")
+      .find((l) => l.includes("scripts/tests/node-floor-guard.test.ts"));
+    assert.match(line ?? "", /--test .* scripts\/tests\/fixed-context-probe\.test\.ts/);
   });
 });
