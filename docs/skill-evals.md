@@ -105,7 +105,7 @@ The figures below are computed from the functions of `scripts/lib/skill-evals/pl
 | 0.60 | 0.10 | 0.42 | 17.0 | 0.26 | 0.34 |
 | 0.65 | 0.21 | 0.54 | 18.5 | 0.51 | 0.61 |
 | 0.70 | 0.38 | 0.64 | 19.7 | 0.77 | 0.86 |
-| 0.75 | 0.60 | 0.68 | 20.2 | 0.94 | 0.97 |
+| 0.75 | 0.60 | 0.68 | 20.2 | 0.93 | 0.97 |
 | 0.80 | 0.80 | 0.65 | 19.8 | 0.99 | 1.00 |
 | 0.85 | 0.94 | 0.53 | 18.4 | 1.00 | 1.00 |
 | 0.90 | 0.99 | 0.34 | 16.0 | 1.00 | 1.00 |
@@ -145,7 +145,7 @@ Each run's slot is retried once after an infrastructure failure (an executor or 
 
 Each run's workspace, its outputs and its `metrics.json` go to `<out>/<skill>/eval-<id>/run-<r>/` (a probe to `probe-<n>/run-<r>/`), so a resumed measurement never overwrites a recorded run.
 
-A measurement stops when the executor's measured cost reaches `MAX_MEASUREMENT_USD`: no new run starts, the skill ends in `error` and the file stays `in-progress`. Resuming such a file is refused, unless every slot is already recorded, in which case the status is finalised with no model call.
+A measurement stops when its recorded spend (executor and judge, unknown costs at the assumed figures) reaches `MAX_MEASUREMENT_USD`: no new run starts, the runs already in flight finish and are recorded (so the spend can overshoot the cap by up to `EXECUTOR_CONCURRENCY` runs), the skill ends in `error` and the file stays `in-progress`. Resuming such a file is refused, unless every slot is already recorded, in which case the status is finalised with no model call.
 
 ## Ledger and anti-gaming
 

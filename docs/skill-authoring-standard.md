@@ -113,7 +113,7 @@ A wave migrates a skill in this order, which is the order the `pr-logbook` pilot
 1b. Dry-run the evals against hand-written samples: `task skill-evals -- <skill> --dry-run`. Every expectation should pass on a conforming sample before any baseline is paid for (see [Evals](#evals)).
 2. Measure a baseline on the unchanged skill under the runner's sampling plan (spec 0304 R1): each eval runs twice, a stage 2 of two more runs follows only when stage 1 leaves the pool open, and the verdict is `pass` only when both pools are accepted. Every run is recorded, so the spread of the eval runs is visible in `evals/results.json`; there is no separate spread measurement, and a repeat of the same content is refused.
 3. Extract the scripts and rewrite the body to this standard.
-4. Measure again on the same frozen cases. Keep the rewrite when the new measurement is not `regression`: the runner's regression test (spec 0304 R12, Fisher's exact test over the evals present on both sides, with a drop of 0.10 or more) does not hold against the baseline.
+4. Measure again on the same frozen cases. Keep the rewrite when the new measurement is `pass`, which includes not being a `regression`: the runner's regression test (spec 0304 R12, Fisher's exact test over the evals present on both sides, with a drop of 0.10 or more) does not hold against the baseline.
 
 Add these lessons of the pilot:
 
