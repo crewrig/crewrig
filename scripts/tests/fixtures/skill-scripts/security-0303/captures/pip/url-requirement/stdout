@@ -1,0 +1,1 @@
+{"dependencies": [{"name": "buildmarker", "skip_reason": "URL requirements cannot be pinned to a specific package version"}], "fixes": []}

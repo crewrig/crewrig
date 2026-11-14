@@ -1,0 +1,89 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "cookie": {
+      "name": "cookie",
+      "severity": "low",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1103907,
+          "name": "cookie",
+          "dependency": "cookie",
+          "title": "cookie accepts cookie name, path, and domain with out of bounds characters",
+          "url": "https://github.com/advisories/GHSA-pxg6-pf52-xh8x",
+          "severity": "low",
+          "cwe": [
+            "CWE-74"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<0.7.0"
+        }
+      ],
+      "effects": [],
+      "range": "<0.7.0",
+      "nodes": [
+        "node_modules/cookie"
+      ],
+      "fixAvailable": {
+        "name": "cookie",
+        "version": "2.0.2",
+        "isSemVerMajor": true
+      }
+    },
+    "semver": {
+      "name": "semver",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1112918,
+          "name": "semver",
+          "dependency": "semver",
+          "title": "semver vulnerable to Regular Expression Denial of Service",
+          "url": "https://github.com/advisories/GHSA-c2qf-rxjj-qqgw",
+          "severity": "high",
+          "cwe": [
+            "CWE-1333"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": ">=2.0.0-alpha <5.7.2"
+        }
+      ],
+      "effects": [],
+      "range": "2.0.0-alpha - 5.7.1",
+      "nodes": [
+        "node_modules/semver"
+      ],
+      "fixAvailable": {
+        "name": "semver",
+        "version": "5.7.3",
+        "isSemVerMajor": false
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 1,
+      "moderate": 0,
+      "high": 1,
+      "critical": 0,
+      "total": 2
+    },
+    "dependencies": {
+      "prod": 3,
+      "dev": 0,
+      "optional": 0,
+      "peer": 0,
+      "peerOptional": 0,
+      "total": 2
+    }
+  }
+}
