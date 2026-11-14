@@ -122,8 +122,10 @@
       ],
       "expectations": [
         "The threat model has a line that names the trust boundary of the endpoint: the untrusted client request (file name and file content) crossing into the server filesystem and the public uploads directory; judge it on that whole line and quote that whole line verbatim as the evidence.",
-        "The threat model has a line that says the client-supplied original file name is used to build the destination path and allows path traversal or overwriting another file, citing upload-endpoint.js.txt and a line number; quote that whole line.",
-        "The threat model has a line that says the file type, content or size is not validated so a script or oversized file can be published under the public uploads directory; quote that whole line.",
+        "The threat model has a Threat: line that says the client-supplied original file name is used to build the destination path, which allows path traversal or overwriting another file; quote that whole Threat: line.",
+        "The threat model has a full Where: line, for the finding about the original file name, that names upload-endpoint.js.txt and a line number of the whole file; quote that whole Where: line.",
+        "The threat model has a line (a Threat: line or a finding summary line) that says the file type or content is not validated, so a script can be published under the public uploads directory; quote that whole line.",
+        "The threat model has a line (a Threat: line or a finding summary line) that says the file size is not validated, so an oversized file can be published under the public uploads directory; quote that whole line.",
         "The threat model has a line that proposes a concrete mitigation such as generating a server-side file name, checking the content type against an allow-list and limiting the size; quote that whole line."
       ],
       "checks": [
@@ -150,7 +152,8 @@
         "The review has a numbered finding line that says the token verification ignores expiration (ignoreExpiration is true) so expired tokens are accepted; judge it on that whole finding line and quote that whole line verbatim as the evidence.",
         "The review has a numbered finding line that says the token audience is no longer validated (the audience option was removed); quote that whole line.",
         "The review has a full Where line naming auth-middleware.js.txt and a line number of the whole file that points at the verification options; quote that whole line.",
-        "The review has a full Fix line that says to remove ignoreExpiration and to set the expected audience in the verify options; quote that whole line."
+        "The review has a Fix: line, in the finding about ignoreExpiration, that says to remove ignoreExpiration from the verify options; quote that whole Fix: line.",
+        "The review has a Fix: line, in the finding about the token audience, that says to set the expected audience in the verify options; quote that whole Fix: line."
       ],
       "checks": [
         {
