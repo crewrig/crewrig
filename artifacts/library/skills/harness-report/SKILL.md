@@ -1,126 +1,88 @@
 ---
 name: harness-report
-description: "Tag a friction encountered during real work. Activate the moment
-  any recognition signal fires (user pushback, second-time tool surprise,
-  sibling-skill workaround, etc.). The single canonical implementation of
-  the friction-tagging protocol — all other skills point here."
+description: 'Tags a friction met during real work as a FRICTION payload in the harness-friction wing, attributed to the component that caused it, so the curator can turn it into a feedback issue. Use when a recognition signal fires: the user corrects or reverts an action, a tool surprises a second time, a rule forces a workaround, a documented step is missing or wrong, or a prompt misled. Trigger terms: friction, harness feedback, tag a friction, user pushback, tool surprise, workaround. Not for filing a product bug on the forge (use the forge CLI) or for clustering accumulated frictions (harness-curator).'
 type: skill
 license: Apache-2.0
+compatibility: Requires Node.js 24 or later for the bundled friction script and the mempalace MCP server for the normal write; without the server the friction is filed directly on the offender's forge through gh, glab or tea.
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.5.4"
+    version: "2.0.0"
 claude:
   allowed-tools:
     - Read
+    - Bash
   user-invocable: true
 ---
 
 # Harness Report
 
-The skill every other skill invokes when a friction signal fires. The
-protocol contract (payload schema, wing routing, fixed categories,
-what NOT to tag) lives in `config/TOOLS.md` → *Friction Reporting*.
-This skill is the *operational* counterpart: how to recognize a
-signal, how to fill the payload correctly, and especially how to
-attribute the friction to the right offender even when you are not
-currently operating under that offender's skill.
+A friction that is not tagged misleads the next agent the same way, and the maintainers never learn of it.
+This skill is the one place that says how to tag it: recognise the signal, attribute the friction to the
+right offender, build a valid payload, file it, and go back to the task.
 
-## When to activate
+## Recognition signals
 
-The moment any recognition signal fires. Listed in canonical form in
-`config/TOOLS.md` → *Friction Reporting → Recognition signals*; the
-short reminder list:
+Tag before resuming work, not when convenient: a tag costs seconds, a lost signal is lost for good.
 
-- **User pushback** — the user contests, corrects, or reverts the
-  action you just took, or reformulates the same intent because your
-  previous response was misaligned.
-- **Sibling-skill workaround** — you find yourself contorting around
-  a constraint set by another skill or agent, not the user's request.
-- **Tool surprise (second time)** — a tool produced surprising or
-  inconsistent behavior for the second time in the same session.
-  First time is bad luck; second time is a pattern.
-- **Process gap** — a documented workflow step turned out to be
-  missing, ambiguous, contradictory, or out of date.
-- **Safeguard friction** — a rule or guard blocked a legitimate action
-  and forced a workaround you had to explain explicitly to the user.
+- **User pushback:** the user contests, corrects or reverts what you just did, or restates the same intent
+  because your answer missed. A correction always counts, even when it looks like a change of mind; the
+  curator downgrades preference from defect, you do not have to.
+- **Sibling-skill workaround:** you contort around a constraint set by another skill or agent, not by the
+  user's request.
+- **Tool surprise, second time:** a tool behaved surprisingly or inconsistently for the second time in the
+  session. The first time is bad luck, the second a pattern.
+- **Process gap:** a documented step is missing, ambiguous, contradictory or out of date.
+- **Safeguard friction:** a rule or guard blocked a legitimate action and you had to explain the workaround.
 
-If a signal fires, **tag the friction before resuming work**. Not
-"consider tagging". Not "when convenient". Tagging normally takes
-seconds and costs nothing — the one exception is when the MemPalace
-write path is unavailable (a peer holds the write lock, or the server
-is disconnected), a documented failure mode with a fallback in step 4
-(`references/operating-mode.md`). Failing to tag loses the signal forever.
+When unsure, tag: curation discards noise, whereas silence cannot be recovered.
 
-## Operating mode
+## Step 1: identify the offender and the room
 
-### 1. Pause and identify the offender
+Read `references/identify-and-route.md`. The offender is the closest source of the contested action, which
+is often not the skill you were running, and never this skill. The room is one of `tool`, `prompt`,
+`format`, `behavior`, `process`.
 
-### 2. Pick the room
+## Step 2: build the payload
 
-Read `references/identify-and-route.md` for steps 1-2.
+```sh
+node scripts/friction.ts build --title "<one line>" --room <room> --writer-agent <your id> \
+  --evidence "<commit>:<path>:<line>" --canonical <repo url> [--severity low|med|high] \
+  [--subcategory <anchor>] [--suggestion "<fix idea>"]
+```
 
-### 3. Fill the payload
+It prints the payload on stdout. Exit `0` is a valid payload, `1` an error finding whose message states the
+fix (a missing `writer_agent` or evidence entry, a bad room or severity, a file URL as canonical), `2` a
+usage error. Use `node scripts/friction.ts validate <file|->` for a payload written by hand.
 
-Mandatory fields (the script will skip the drawer if either is
-missing or empty):
+Choosing the values:
 
-- `writer_agent` — your own identifier (`claude-code`, `gemini-cli`,
-  …). Non-empty.
-- ≥1 `evidence:` entry — at minimum a file path with line number; a
-  commit hash + path + line is better (the file may move but the
-  commit is permanent).
+- `writer_agent` is your own identifier (`claude-code`, `gemini-cli`). Evidence needs at least a file path
+  and a line; a commit hash in front survives the file moving.
+- `canonical` is the offender's repository root, `https://github.com/<owner>/<repo>`, never a file URL: the
+  curator routes the issue by stripping the host, so a `/blob/` URL breaks the route. The file path goes in
+  evidence. Leave it empty if you cannot name the offender; a routing failure beats a wrong target.
+- `severity` defaults to `med`. `high` is for blockers and forces the curator to promote the friction
+  without a second report.
+- `subcategory` bundles frictions of one cause into one issue; `suggestion` helps the curator weigh the cluster.
 
-Strongly encouraged:
+## Step 3: file it
 
-- `subcategory` — a free-form clustering anchor. Frictions sharing a
-  `subcategory` get bundled into the same MR by the Curator.
-- `canonical` — the canonical **repo** URL of the offending
-  component's home, in the GitHub `https://github.com/<owner>/<repo>`
-  form (as set in the component's `provenance.canonical` block at
-  build time). NOT a file URL: the Curator's apply step routes the
-  issue via `gh issue create --repo <owner>/<repo>` by stripping the
-  `https://github.com/` prefix (see
-  `apply.py` in the `harness-curator` skill, lines 23-36),
-  so a `/blob/<branch>/<path>` URL produces a malformed `--repo`
-  argument and the issue fails to land. Put the file path in
-  `evidence:` instead.
-- `severity` — `low` / `med` / `high`. Default `med`. Reserve `high`
-  for blockers; it bypasses the cluster threshold and forces an MR.
-  See *Reactive trigger for `severity: high`* in
-  `references/operating-mode.md` — high-severity
-  reports SHOULD be surfaced immediately, not deferred to the weekly
-  sweep.
-- `suggestion` — what you think would fix it. The Curator weighs
-  clusters with suggestions higher.
+One MCP call, fire and forget, no summary to the user:
 
-The full schema, including the inline `evidence: <single-value>`
-short form, lives in `config/TOOLS.md` → *Payload schema*. Do not
-re-derive it here; refer to it.
+```text
+mempalace_add_drawer(wing="harness-friction", room="<room>", content="<the payload>")
+```
 
-### 4. Tag
+If the call is refused or the server is unreachable, read `references/operating-mode.md` for the fallback
+that files the friction directly on the offender's forge. If the user asked you to tag it, confirm in one
+sentence that it landed; otherwise stay silent.
 
-### 5. Resume
+## Step 4: resume
 
-Read `references/operating-mode.md` for steps 4-5 and the reactive trigger for `severity: high`.
+Return to the interrupted task. For `severity: high`, `references/operating-mode.md` says how to surface it
+without waiting for the weekly sweep.
 
-## Output expectations
-
-- A single `mempalace_add_drawer` MCP call to
-  `wing="harness-friction"`. Nothing else — no summary to the user,
-  no inline narration. The point of fire-and-forget is to keep the
-  flow.
-- If the user explicitly asked you to tag a friction, briefly confirm
-  it landed (one sentence). Otherwise stay silent.
-
-## Self-reporting bias
-
-Read `references/self-reporting-bias.md` at the Resume step.
-
-## Friction reporting (recursive)
-
-If `harness-report` itself led to a malformed payload, a wrong
-attribution, or made you skip a tag that should have happened — tag
-it like any other friction, with `canonical` pointing at this skill's
-own URL. The reporter is not exempt from the loop it serves.
+If this skill itself led to a malformed payload or a wrong attribution, tag that too, with `canonical` set to
+this skill's own repository.
