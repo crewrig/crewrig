@@ -53,6 +53,36 @@ export const EVIDENCE_WINDOW_CHARS = 40;
 /** R49 rule 3: minimum share of the evidence's letters and digits that the longest verbatim run covers. */
 export const EVIDENCE_WINDOW_SHARE = 0.3;
 
+/** 0304 R16: minimum non-whitespace characters of a short whole-line evidence quote. */
+export const EVIDENCE_SHORT_MIN_CHARS = 6;
+
+/**
+ * 0304 R1: the sampling plan, declared once and copied into evals/results.json before the first
+ * model call. Pools (evals, probes) are decided apart; the values are never copied elsewhere.
+ */
+export const SAMPLING_PLAN = {
+  id: "two-stage-1",
+  /** Runs of every eval in stage 1 and in stage 2. */
+  evalRunsPerStage: [2, 2],
+  /** Runs of every probe in stage 1 and in stage 2. */
+  probeRunsPerStage: [1, 1],
+  acceptStage1: 0.9,
+  rejectStage1: 0.6,
+  acceptFinal: 0.75,
+  regression: { test: "fisher-one-sided", alpha: 0.1, minDrop: 0.1 },
+} as const;
+
+/** 0304 R21: US dollars allowed for one measurement (executor and judge), enforced at run time. */
+export const MAX_MEASUREMENT_USD = 5;
+/** 0304 R21: US dollars allowed per skill since the merge-base, whatever the ticket label. */
+export const MAX_SKILL_USD = 10;
+/** 0304 R21: US dollars allowed per ticket label, across skills. */
+export const MAX_TICKET_USD = 25;
+/** 0304 R23: cost assumed for one judge call whose cost is not recorded (checked against recorded costs, M1). */
+export const JUDGE_ASSUMED_USD = 0.03;
+/** 0304 R23: cost assumed for each run of a measurement in which no run reported a cost. */
+export const RUN_ASSUMED_USD = 0.1;
+
 /** Written to evals/results.json (R36). */
 export const RUNNER_VERSION = "2.2.0";
 
