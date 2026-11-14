@@ -5,7 +5,7 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, it } from "node:test";
@@ -104,4 +104,18 @@ describe("check-component-metadata-keys edge cases", () => {
       `Error: ${r.file}: duplicated mapping key in front matter\n\nFAILED: 1 rejection(s) across 1 source(s) (spec 0200 R8).\n`,
     );
   });
+});
+
+describe("the R17 sentence as amended by spec 0291 delta 01 is pinned in the docs", () => {
+  const ROOT = path.resolve(path.dirname(ENTRY), "..");
+  const NEW =
+    "an allowlist withholds every tool it does not name, so an editing agent's allowlist names skill";
+  const OLD = "an allowlist is declared only for an agent whose classes exclude execute and edit";
+  for (const doc of ["artifacts/FORMAT.md", "docs/authoring.md"]) {
+    it(`${doc} carries the new sentence and not the removed one`, () => {
+      const text = readFileSync(path.join(ROOT, doc), "utf8");
+      assert.ok(text.includes(NEW), `${doc} lacks: ${NEW}`);
+      assert.ok(!text.includes(OLD), `${doc} still carries the removed sentence`);
+    });
+  }
 });

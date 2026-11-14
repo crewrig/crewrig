@@ -108,12 +108,12 @@ describe("S2 — tier scoping (R8 last clause)", () => {
   }
 });
 
-describe("S4 — metadata.tools on agents only, and the rule of R17 (spec 0291 R9, R17)", () => {
+describe("S4 — metadata.tools on agents only, and the rule of R17 as amended (spec 0291 R9, R17, delta 01)", () => {
   const tools = (list: string): string => `name: probe\nmetadata:\n  tools: ${list}\n${PROV}`;
   const agentWith = (name: string, list: string, tier = "core"): string =>
     fixture(`artifacts/${tier}/agents/${name}/AGENT.md`, tools(list));
 
-  test("S4 read, search, web and agent are accepted on an agent source", () => {
+  test("S4 read, search, web and agent (no edit, no execute) are accepted on an agent source", () => {
     for (const [name, list] of [
       ["probe-tools-ok", "[read, search, web]"],
       ["probe-tools-agent", "[agent, read]"],
@@ -124,29 +124,48 @@ describe("S4 — metadata.tools on agents only, and the rule of R17 (spec 0291 R
     }
   });
 
-  test("S4 a declared execute is rejected, naming the file and the class", () => {
+  test("S4 an allowlist with execute and no skill is rejected, naming the file and the class skill", () => {
     const f = agentWith("probe-tools-execute", "[read, execute]");
     const r = run(f);
     assert.equal(r.status, 1);
-    assert.ok(r.stderr.includes(`${f}: K2 metadata.tools declares the class execute;`), r.stderr);
-    assert.doesNotMatch(r.stderr, /class edit/);
+    assert.ok(
+      r.stderr.includes(`${f}: K2 metadata.tools names edit or execute without the class skill;`),
+      r.stderr,
+    );
+    assert.match(r.stderr, /R17 as amended/);
     assert.match(r.stderr, /\nFAILED: 1 rejection\(s\) across 1 source\(s\)/);
   });
 
-  test("S4 a declared edit is rejected, and both banned classes are reported one by one", () => {
+  test("S4 an allowlist with edit and no skill is rejected once, however many classes need skill", () => {
     const edit = run(agentWith("probe-tools-edit", "[edit]"));
     assert.equal(edit.status, 1);
-    assert.match(edit.stderr, /: K2 metadata\.tools declares the class edit;/);
-    const both = run(agentWith("probe-tools-both", "[read, execute, edit]"));
+    assert.match(
+      edit.stderr,
+      /: K2 metadata\.tools names edit or execute without the class skill;/,
+    );
+    const both = run(agentWith("probe-tools-both", "[read, execute, edit, message]"));
     assert.equal(both.status, 1);
-    assert.match(both.stderr, /class execute;[\s\S]*class edit;/);
-    assert.match(both.stderr, /\nFAILED: 2 rejection\(s\)/);
+    assert.match(both.stderr, /\nFAILED: 1 rejection\(s\)/);
+  });
+
+  test("S4 an allowlist naming skill is accepted whatever else it holds", () => {
+    for (const [name, list] of [
+      ["probe-tools-es", "[read, execute, skill, message]"],
+      ["probe-tools-all", "[read, search, edit, execute, web, agent, skill, message]"],
+      ["probe-tools-skill", "[skill]"],
+      ["probe-tools-message", "[message, read]"],
+    ] as const) {
+      const r = run(agentWith(name, list));
+      assert.equal(r.status, 0, r.stderr);
+      assert.equal(r.stderr, "");
+    }
   });
 
   test("S4 library agents are governed too", () => {
     const r = run(agentWith("probe-tools-lib", "[execute]", "library"));
     assert.equal(r.status, 1);
-    assert.match(r.stderr, /K2 metadata\.tools declares the class execute/);
+    assert.match(r.stderr, /K2 metadata\.tools names edit or execute without the class skill/);
+    assert.equal(run(agentWith("probe-tools-lib-ok", "[execute, skill]", "library")).status, 0);
   });
 
   test("S4 community and org agents are outside the check", () => {
