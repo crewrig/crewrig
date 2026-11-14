@@ -13,7 +13,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.0"
+    version: "1.3.0"
 ---
 
 
@@ -139,6 +139,7 @@ Read one only when its subject is the task.
 - `references/reusable-workflows.md`: `workflow_call` contracts and limits.
 - `references/caching.md`: key and `restore-keys` semantics, per-language recipes.
 - `references/runners.md`: hosted and self-hosted runners, labels, limits.
+- `references/ci-failure-taxonomy.md` and `references/ci-fix-anti-patterns.md`: the failure categories of a failing run, and the fixes never to propose.
 
 ## Friction
 
