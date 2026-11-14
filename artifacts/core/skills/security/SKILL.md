@@ -1,16 +1,14 @@
 ---
 name: security
-description: "Security review skill for threat modeling, dependency audit,
-  secret hygiene, and code review through a security lens. Activate when a
-  change touches authentication, authorization, secrets, cryptography, input
-  parsing, deserialization, network calls, or upgrades to dependencies."
+description: 'Reviews code and designs through a security lens: threat models, findings that trace a path from a trust boundary to a sink, secret handling and dependency audits, then checks its own report with bundled scripts. Use when asked for a threat model, attack surface or trust boundary analysis, or a review of authentication, authorization, session handling, secrets, a credential leak, cryptography, deserialization, input validation or SSRF, or for a dependency audit, a CVE check or a dependency upgrade review. Not for authoring or hardening GitHub Actions workflows or GitLab pipelines (github-actions, gitlab-ci), applying a fix (developer), pull request verdicts (pr-reviewer), pull request descriptions (pr-logbook) or design alternatives (architect).'
 type: skill
 license: Apache-2.0
+compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts). npm and pip-audit are optional: only dep-audit.ts needs them, and it exits 3 without the one an ecosystem needs."
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.1.2"
+    version: "1.2.0"
 claude:
   allowed-tools:
     - Read
@@ -22,104 +20,67 @@ claude:
 
 # Security
 
-A focused review skill, not an exhaustive checklist. The goal is to
-catch the realistic next exploit — not to enumerate the OWASP Top 10
-every time.
+A review looks for the next realistic exploit; it does not walk a checklist of every weakness class. Two threats with a credible exploit path get fixed, twenty generic ones get skimmed past, so spend the effort on the first kind.
 
-## When to activate
+## Rules whose reason is not obvious
 
-Mandatory triggers:
+- **No traced path, no finding.** Read the function end to end, then follow the data from the untrusted input to the sink. A "potential" issue with no path costs the author time and costs you credibility, so leave it out. When no test covers the threat path, say so in the `Fix:` line and name the test to add: the fix has no regression guard otherwise.
+- **Review security-adjacent modules** (payment, personal data, audit log) even when the diff looks harmless. The stakes come from the module, not from the hunk.
+- **Reserve `BLOCKER` for what must be fixed before merge**, such as a credential leak, remote code execution or an authentication bypass. A reader triages by severity, so an inflated scale is ignored.
 
-- Authentication, authorization, or session-handling code changes.
-- Secret / credential / token storage or transmission paths.
-- Cryptographic primitive use (hashing, signing, encryption, RNG).
-- External input parsing (HTTP bodies, CLI args, file uploads, IPC).
-- Deserialization of untrusted data.
-- Outbound network calls (URLs from user input, redirects, SSRF surface).
-- Dependency additions or upgrades touching the surface above.
+| Severity | Meaning |
+|---|---|
+| `BLOCKER` | Fix before merge: leaked credential, code execution, authentication or authorization bypass. |
+| `HIGH` | Exploitable with real impact; fix before release. |
+| `MED` | Exploitable only under extra conditions, or with limited impact; schedule it. |
+| `LOW` | Hardening with a small gain. |
+| `INFO` | An observation that needs no action. |
 
-Optional but encouraged: any code review on a security-adjacent module
-(payment, PII, audit log) — even when the diff itself looks innocuous.
+- **Never echo a secret**, in a finding or in the transcript: both are persisted copies. Show evidence with the value masked, at most four characters followed by asterisks (`sk_l****`).
+- **Rotation is part of the finding.** Deleting the line does not revoke a key that sits in the history, so treat a secret as compromised the moment it reached a store that is not secret-grade, and put "rotate the exposed key" and "read it from an environment variable or a secret store" in the `Fix:` line.
+- **Flag a diff that adds** `.env`, `credentials.json`, `*.pem` or a file under a vault path: such files hold secrets by convention.
+- **Dependencies.** Read the changelog between the current and the target version. On a minor or patch bump, look at transitive changes and licence drift; on a major bump, name the breaking changes and require a migration note. `dep-audit.ts` reports advisories but not whether the code reaches the affected path, so reachability is your judgement: say whether the vulnerable function is called.
 
-## Operating mode
+## Report format
 
-### 1. Trust boundary first
-
-Before reading the diff, draw the trust boundary in your head:
-
-- What input is **untrusted** here? (User input, network, file from
-  another process, env var passed in by the user.)
-- What is **inside** the boundary? (Internal config, signed messages,
-  vetted constants.)
-- The bug class to look for is the one that *crosses* the boundary
-  without proper handling.
-
-### 2. Realistic threat, not paranoid theater
-
-Ask: *what would the next attacker actually try here?* Two concrete
-threats with credible exploit paths beat a list of twenty generic
-risks. Examples of credible threats per surface:
-
-- HTTP handler reading from JSON: prototype pollution, type confusion,
-  unbounded length / depth.
-- File path from user: traversal, symlink, race.
-- SQL: parameterized? If yes, also check ORDER BY / LIMIT / table
-  name interpolation, which most ORMs do *not* parameterize.
-- Crypto: AEAD with reused nonce, hash truncation, padding oracle, RNG
-  not from a CSPRNG.
-- Deserialization: gadget chains, auto-instantiation.
-
-### 3. Verify, do not assume
-
-For each suspected issue, verify by:
-
-- Reading the relevant function end-to-end (not just the diff hunk).
-- Tracing the data flow from boundary to sink.
-- Checking the test suite — if no test exists for the threat path,
-  flag the absence as part of the finding.
-
-Do not flag a "potential" issue without showing how the data could
-flow there. Speculation costs the user time and erodes credibility.
-
-### 4. Output format
-
-Report findings as a numbered list:
+Write the findings as a numbered list, one block each:
 
 ```text
 1. [SEV] <one-line summary>
    Where: <file:line>
    Threat: <what an attacker would do>
-   Evidence: <code snippet or trace>
+   Evidence: <code or trace, secrets masked>
    Fix: <concrete recommendation>
 ```
 
-Severity scale: `BLOCKER` / `HIGH` / `MED` / `LOW` / `INFO`. Reserve
-`BLOCKER` for issues that must be fixed before merge (e.g. credential
-leak, RCE, auth bypass).
+- `[SEV]` is one of the five severities above. `Where:` is `<file>:<line>` or `<file>:<first>-<last>`, a line of the whole file in the checkout, so that a reader can open it. A value may continue on indented lines.
+- When the input is a diff, cite the path of the post-image from the `+++` header without its `a/` or `b/` prefix, and a line of the new-file side of the hunk. A path that exists only in the diff cannot be opened.
+- A clean review is the line `No findings.` followed by an `Examined:` line that names what you read, with file and line. `security-finding.ts` requires the `No findings.` line (and rejects it beside a finding) but does not read the `Examined:` line: that one is for the reader, who sees what the clean verdict covers.
+- A threat model opens with one line that names the trust boundary, then lists the threats in the same format. For a design with no code, cite the design document and a line of it in `Where:`; when the design exists only in the conversation, write it to a file next to the report and cite that, since `security-finding.ts` accepts only a real file and line.
 
-## Secret hygiene
+## Scripts
 
-- Never commit `.env`, `credentials.json`, `*.pem`, or any file under
-  a vault path.
-- Never echo a secret in logs, even at debug level. Even if the log is
-  ephemeral, the transcript may be persisted.
-- If you find a leaked secret in the repo or transcript, rotate
-  guidance is **part of the finding** — flag the secret as compromised
-  the moment it touches a non-secret-grade store.
+Run `node scripts/<name>.ts` from the skill directory, or give the full path from elsewhere. None of them writes a file of your project.
 
-## Dependency audit
+| When | Command | Exit codes |
+|---|---|---|
+| Before handing over a report | `node scripts/security-finding.ts [--root <checkout>] <report.md or ->` (add `--json` for a structured result) | `0` well formed. `1` a defect: each message names the fix, and the finding number where it has one, so correct the report and run again. `2` usage error. `3` the report or `--root` cannot be read. |
+| A change touches dependencies, or the user asks for an audit | `node scripts/dep-audit.ts [--root <dir>] [--ecosystem npm\|pip] [--fail-on low\|moderate\|high\|critical] [--timeout <seconds>]` | `0` audited, nothing at or above `--fail-on`. `1` a vulnerable dependency. `2` usage error. `3` not audited. |
+| Reviewing CI definitions for exposed secrets | `node scripts/check-secrets-exposure.ts --platform <github\|gitlab> <file-or-dir>` | `0` clean or nothing to scan. `1` a finding or a missing target. `2` usage error, including a missing `--platform`. |
 
-When asked to review a dependency upgrade:
+`security-finding.ts` checks the shape of the report and that every `Where:` resolves to a real file and line. It does not check that your evidence occurs at that line, so read the line yourself.
 
-- Read the upstream changelog between current and target versions.
-- Check the GitHub Security Advisory database for known CVEs.
-- For minor / patch bumps, focus on transitive changes and license drift.
-- For major bumps, flag breaking changes and require a migration note.
+`dep-audit.ts` runs `npm audit` for a lockfile and `pip-audit` for `requirements.txt`, found on `PATH`, so it queries a package registry over the network. It installs and builds nothing, runs no project code and writes no file of the project (the tools keep their own cache and logs), and it runs on POSIX hosts only. For pip it audits only the pins written in `requirements.txt` (`name==version`), not what they pull in, because the mode that resolves dependencies builds packages and runs project code. An advisory below `--fail-on` is a warning, one at or above is an error, and an advisory with no severity (every pip one) counts as at or above.
 
-## Friction reporting
+- **Exit `3`, an `unsupported-ecosystem` warning and a `nothing-to-audit` warning all mean the dependencies were NOT audited.** Say so in the report: a silent gap reads as a clean audit. Exit `3` covers a missing or unrunnable tool, no network, a timeout, a `package.json` with no lockfile, an unpinned requirement and output the script could not classify. The likeliest cause for pip is a requirement the tool skipped, such as a private package or a `name @ url` entry: the finding names it, the whole pip ecosystem then reads not-audited (cause `unrecognized-output`) even when the other pins were checked, and you audit that dependency by hand. When the same run also finds an advisory, the exit is `1` and the skipped pin is listed as a warning, so read the warnings as well as the errors.
+- Only npm and pip are covered. For `pnpm-lock.yaml`, `yarn.lock` (the warning names `yarn audit` for Yarn 1 and `yarn npm audit` for Yarn 2 and later), `go.mod`, `Cargo.lock`, `poetry.lock`, `pom.xml`, `Gemfile.lock` and `composer.lock` the warning names the native tool to run by hand.
 
-When a recognition signal fires (see `config/TOOLS.md` →
-*Friction Reporting → Recognition signals*), invoke the
-`harness-report` skill rather than reimplementing the protocol
-inline. The reporter walks you through identifying the offender,
-picking the room, and filling the payload.
+`check-secrets-exposure.ts` is a text scan of one workflow or pipeline file, or a directory of them. The `github` profile looks for an echoed `secrets.*`, a workflow-level `env:` that references secrets, `set -x` and `toJSON(secrets)`; the `gitlab` profile looks for literal credentials and token shapes, echoed credential variables, `set -x` and `CI_DEBUG_TRACE`. It keeps its legacy exit codes, has no `--json` and no exit `3`. A clean result says no known pattern matched, not that no secret exists.
+
+## Hand-offs
+
+Applying a fix goes to `developer`: you find the issue and someone else closes it, which keeps the review honest. Hardening a pipeline goes to `github-actions` or `gitlab-ci`, and a design question to `architect`.
+
+## Friction
+
+See `references/shared-friction-reporting.md`.

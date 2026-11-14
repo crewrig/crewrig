@@ -1,0 +1,32 @@
+--- a/orders-handler.js.txt
++++ b/orders-handler.js.txt
+@@ -1,18 +1,27 @@
+ 'use strict';
+ 
+ const express = require('express');
++const path = require('path');
+ const db = require('./db');
+ const { requireLogin } = require('./session');
+ 
+ const router = express.Router();
++const EXPORT_DIR = '/srv/app/exports';
+ 
+-// List the signed-in user's orders, newest first.
++// List the signed-in user's orders, newest first by default.
+ router.get('/orders', requireLogin, async (req, res) => {
++  const sort = req.query.sort || 'created_at';
+   const rows = await db.query(
+-    'SELECT id, customer, total FROM orders WHERE owner_id = $1 ORDER BY created_at DESC',
++    `SELECT id, customer, total FROM orders WHERE owner_id = $1 ORDER BY ${sort}`,
+     [req.user.id]
+   );
+   res.json(rows);
+ });
+ 
++// Download a previously generated export file.
++router.get('/orders/export', requireLogin, (req, res) => {
++  const target = path.join(EXPORT_DIR, req.query.name);
++  res.sendFile(target);
++});
++
+ module.exports = router;

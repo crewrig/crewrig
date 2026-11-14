@@ -1,0 +1,60 @@
+Real captures for spec 0303 R10 and R11 (issue #1941), taken before dep-audit.ts was written.
+Each case directory holds `stdout`, `stderr` and `status` (the exit code) of one invocation.
+Scrubbed: temporary directories became <venv>, <work>, <bin>, <npm-cache>; no user, host or
+private index name remains. The text is otherwise untouched. No lockfile and no requirements
+file is stored here (a vulnerable pin in the tree would raise advisories on the repository);
+the inputs are described below.
+
+npm 11.8.0, run with an empty user config and a fresh cache, from a root with a lockfile:
+  npm audit --json --package-lock-only --ignore-scripts
+  npm/clean       is-number 7.0.0                                     exit 0, no vulnerability
+  npm/vulnerable  semver 5.7.1 (high) + cookie 0.4.0 (low)            exit 1, 1 high + 1 low
+  npm/offline     same lockfile, npm_config_registry=http://127.0.0.1:9
+                                                                      exit 1, stdout is a JSON
+                                                                      object with a `message` and
+                                                                      an empty `error`; stderr says
+                                                                      "audit endpoint returned an
+                                                                      error"
+  Exit 1 means both "a vulnerability" and "the query failed": the two are told apart by the stdout
+  JSON (`vulnerabilities` and `metadata`, or `message` and `error`), never by the exit code.
+
+pip-audit 2.10.1 (pipx, Python 3.13.1), HOME on an empty directory (no HTTP cache), pip config
+disabled (PIP_CONFIG_FILE=/dev/null; the host one points at an unreachable private index):
+  The default invocation, `pip-audit -r req.txt`, BUILDS: pip-audit creates a virtual
+  environment and runs pip on the requirements. With a requirement naming a source-only archive
+  whose setup.py writes a marker file (`buildmarker @ file://...tar.gz`), the marker WAS written
+  (pip/default-invocation-builds, exit 0). The default invocation therefore executes project
+  code and is not used.
+  The chosen vector, which builds nothing, is:
+    pip-audit -r <file> --disable-pip --no-deps --format json --progress-spinner off
+  With the same marker requirement the marker stays ABSENT (pip/url-requirement). `--no-deps`
+  audits only the pins written in the file, not their transitive dependencies. With `--strict`
+  added, a dependency that cannot be audited fails the run, so `--strict` is not part of the
+  vector: the rules read the skipped entries instead (below).
+  pip/clean                   six==1.16.0               exit 0, `vulns: []`
+  pip/vulnerable              idna==3.6                 exit 1, 4 `vulns` entries holding 2
+                                                        distinct ids (an id is repeated with a
+                                                        second description): findings are
+                                                        deduplicated by id. No severity field.
+  pip/offline                 HTTPS_PROXY=http://127.0.0.1:9, idna==3.6
+                                                        exit 1, stdout EMPTY, a Python traceback
+                                                        ending in requests.exceptions.ProxyError
+  pip/offline-strict          same with --strict        identical
+  pip/unpinned                `requests` (no pin)       exit 1, stdout EMPTY, stderr
+                                                        "requirement requests is not pinned"
+  pip/private-pinned          acme-internal-lib==1.2.3 (not on PyPI)
+                                                        exit 0, stdout lists the dependency with a
+                                                        `skip_reason` and no `version`; stderr
+                                                        still says "No known vulnerabilities
+                                                        found". A skipped dependency exits 0.
+  pip/private-pinned-strict   same with --strict        exit 1, stdout EMPTY, stderr
+                                                        "ERROR:... Dependency not found on PyPI
+                                                        and could not be audited"
+  pip/url-requirement         `buildmarker @ file://...`  exit 0, `skip_reason` "URL requirements
+                                                        cannot be pinned to a specific package
+                                                        version"
+  pip/url-requirement-strict  same with --strict        exit 1, stdout EMPTY
+  Consequences for the rules: exit 0 alone is never `clean`: a `dependencies` entry with a
+  `skip_reason` is `not-audited`. Exit 1 is a vulnerability only when stdout parses and holds a
+  non-empty `vulns`; empty stdout with a traceback is `offline`, with "is not pinned" is
+  `unpinned`, anything else is `unrecognized-output`.

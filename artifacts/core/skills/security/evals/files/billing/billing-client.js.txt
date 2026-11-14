@@ -1,0 +1,26 @@
+'use strict';
+
+const https = require('https');
+
+const BILLING_HOST = 'billing.internal.example.com';
+const BILLING_API_KEY = 'acme-svc-7Hq2Zp9XvT4mLw8RbN3cYd6F';
+
+function createInvoice(customerId, amountCents) {
+  const body = JSON.stringify({ customerId, amountCents });
+  const options = {
+    host: BILLING_HOST,
+    path: '/v2/invoices',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${BILLING_API_KEY}`,
+    },
+  };
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (res) => resolve(res.statusCode));
+    req.on('error', reject);
+    req.end(body);
+  });
+}
+
+module.exports = { createInvoice };

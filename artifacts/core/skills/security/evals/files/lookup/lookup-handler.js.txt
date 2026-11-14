@@ -1,0 +1,18 @@
+'use strict';
+
+const express = require('express');
+const db = require('./db');
+const { requireLogin } = require('./session');
+
+const router = express.Router();
+
+// Find the signed-in user's own customer record by e-mail address.
+router.get('/customers/lookup', requireLogin, async (req, res) => {
+  const rows = await db.query(
+    'SELECT id, name, email FROM customers WHERE owner_id = $1 AND email = $2',
+    [req.user.id, req.query.email]
+  );
+  res.json(rows);
+});
+
+module.exports = router;

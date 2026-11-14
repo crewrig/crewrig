@@ -1,0 +1,11 @@
+--- a/auth-middleware.js.txt
++++ b/auth-middleware.js.txt
+@@ -11,7 +11,7 @@
+   try {
+     const claims = jwt.verify(token, SECRET, {
+       algorithms: ['HS256'],
+-      audience: 'orders-api',
++      ignoreExpiration: true,
+     });
+     req.user = { id: claims.sub, role: claims.role };
+     next();

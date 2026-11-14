@@ -1,0 +1,4 @@
+Usage: check-secrets-exposure <workflow-file-or-directory>
+
+Flags patterns that may leak secrets into logs or widen their blast radius.
+Exit codes: 0 nothing found, 1 finding, 2 usage error.

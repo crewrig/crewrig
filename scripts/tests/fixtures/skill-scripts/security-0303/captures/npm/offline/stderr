@@ -1,0 +1,3 @@
+npm warn audit request to http://127.0.0.1:9/-/npm/v1/security/advisories/bulk failed, reason: connect ECONNREFUSED 127.0.0.1:9
+npm error audit endpoint returned an error
+npm error A complete log of this run can be found in: <npm-cache>/_logs/<timestamp>-debug-0.log
