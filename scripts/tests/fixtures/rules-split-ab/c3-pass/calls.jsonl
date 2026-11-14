@@ -1,0 +1,2 @@
+{"seq":0,"ts":"2026-01-01T00:00:00.000Z","surface":"mempalace","tool":"mempalace_search","args":{"wing":"ab-scratch","room":"task-handoff","query":"[TASK:ongoing]"}}
+{"seq":1,"ts":"2026-01-01T00:00:00.000Z","surface":"mempalace","tool":"mempalace_add_drawer","args":{"wing":"ab-scratch","room":"task-handoff","content":"[TASK:ongoing] handoff to Gemini CLI"}}

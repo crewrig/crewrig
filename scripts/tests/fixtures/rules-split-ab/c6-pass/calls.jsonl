@@ -1,0 +1,2 @@
+{"seq":0,"ts":"2026-01-01T00:00:00.000Z","surface":"sequentialthinking","tool":"sequentialthinking","args":{"thought":"t","nextThoughtNeeded":false,"thoughtNumber":1,"totalThoughts":1}}
+{"seq":1,"ts":"2026-01-01T00:00:00.000Z","surface":"mempalace","tool":"mempalace_add_drawer","args":{"wing":"ab-scratch","room":"plans","content":"1. Add a dual-write layer\n2. Backfill SQLite from the JSON store\n3. Flip reads\n\nAlternatives: a big-bang cutover, rejected for downtime.\nChosen path: dual write then flip."}}
