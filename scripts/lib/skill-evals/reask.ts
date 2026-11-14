@@ -51,7 +51,7 @@ export async function reaskRefused(input: ReaskInput): Promise<GradedExpectation
     return {
       text,
       passed: false,
-      evidence: `the PASS verdict was unsupported on the re-ask: ${v.reason}${a.evidence ? ` (evidence given: ${JSON.stringify(a.evidence.slice(0, 200))})` : ""}`,
+      evidence: `the PASS verdict was unsupported: ${v.reason}${a.evidence ? ` (evidence given: ${JSON.stringify(a.evidence.slice(0, 200))})` : ""} [after the re-ask]`,
       reasked: true,
     };
   });
