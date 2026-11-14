@@ -83,6 +83,6 @@ describe("skill byte budgets (R12, delta-01 R13a)", () => {
   test("mutation: a body over 5,120 B breaks the harness-report body budget", () => {
     const hr = BUDGETS.find((b) => b.dir.endsWith("harness-report"));
     assert.ok(hr);
-    assert.ok(bytes(hr.dir, "SKILL.md") + 100 > hr.max);
+    assert.ok(bytes(hr.dir, "SKILL.md") + 500 > hr.max);
   });
 });

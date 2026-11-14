@@ -47,10 +47,6 @@ export const CALLERS: readonly Caller[] = [
     file: "artifacts/library/skills/harness-report/references/identify-and-route.md",
     required: [],
   },
-  {
-    file: "artifacts/library/skills/harness-report/references/self-reporting-bias.md",
-    required: [],
-  },
   { file: "artifacts/FORMAT.md", required: ["scripts/curate.ts"] },
   { file: "README.md", required: [`${SKILL}/scripts/schedule-curator.ts`] },
   { file: CURATE_TASKFILE, required: [`${SKILL}/scripts/curate.ts`] },
