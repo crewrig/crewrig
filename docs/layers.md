@@ -117,7 +117,9 @@ user-home scope (e.g., `~/.claude/skills/`), available to every workflow on the
 machine rather than only inside a CrewRig project checkout. Friction reporting,
 friction curation, and user-gate validation are **instances** of this contract,
 not an exhaustive member list; a future cross-cutting tool belongs here when it
-matches the contract.
+matches the contract. The web and SEO agents and the four web skills (spec 0307) are
+library members too: they are installed at home scope and are no longer part of
+the project tree.
 
 | Path | Description |
 |---|---|
@@ -125,6 +127,21 @@ matches the contract.
 | `artifacts/library/skills/harness-curator/` | Harness skill — friction clustering and issue authoring. |
 | `artifacts/library/skills/user-validate/` | Cross-cutting skill — backend-configurable user-gate validation. |
 | `artifacts/library/agents/harness-curator/` | Harness agent — curator specialist. |
+| `artifacts/library/skills/astro/` | Web skill (spec 0307) — Astro sites and content collections. |
+| `artifacts/library/skills/copywriting/` | Web skill (spec 0307) — web copy with length and phrase linting. |
+| `artifacts/library/skills/frontend/` | Web skill (spec 0307) — framework-agnostic HTML, CSS, Tailwind and accessibility. |
+| `artifacts/library/skills/web-tester/` | Web skill (spec 0307) — Playwright, RobotFramework and axe-core scenarios. |
+| `artifacts/library/agents/accessibility-auditor/` | Web agent (spec 0307) — manual WCAG 2.1 AA audit. |
+| `artifacts/library/agents/accessibility-tester/` | Web agent (spec 0307) — axe-core scan and CI accessibility suite. |
+| `artifacts/library/agents/astro-developer/` | Web agent (spec 0307) — Astro implementation. |
+| `artifacts/library/agents/copywriter/` | Web agent (spec 0307) — page copy. |
+| `artifacts/library/agents/designer/` | Web agent (spec 0307) — design tokens and component specs. |
+| `artifacts/library/agents/frontend-developer/` | Web agent (spec 0307) — semantic HTML, CSS and accessible behaviour. |
+| `artifacts/library/agents/regression-sentinel/` | Web agent (spec 0307) — smoke and regression pass against a baseline. |
+| `artifacts/library/agents/scenario-author/` | Web agent (spec 0307) — end-to-end scenarios. |
+| `artifacts/library/agents/seo-specialist/` | Web agent (spec 0307) — technical SEO audit. |
+| `artifacts/library/agents/visual-regression-tester/` | Web agent (spec 0307) — screenshot diffs across viewports. |
+| `artifacts/library/agents/web-conformity-checker/` | Web agent (spec 0307) — conformity of a page to a specification. |
 
 **`artifacts/core/`** — SDLC lifecycle tools and operational role skills and
 agents. Deployed to project scope (e.g., `.claude/skills/` in the workspace).
@@ -370,15 +387,11 @@ adopting organizations building their own role skills.
 | Path |
 |---|
 | `artifacts/core/skills/architect/` |
-| `artifacts/core/skills/astro/` |
-| `artifacts/core/skills/copywriting/` |
 | `artifacts/core/skills/developer/` |
 | `artifacts/core/skills/doc-writer/` |
-| `artifacts/core/skills/frontend/` |
 | `artifacts/core/skills/github-actions/` |
 | `artifacts/core/skills/security/` |
 | `artifacts/core/skills/tester/` |
-| `artifacts/core/skills/web-tester/` |
 
 ### Illustrative agents
 
@@ -388,23 +401,12 @@ points for adopting organizations.
 
 | Path |
 |---|
-| `artifacts/core/agents/accessibility-auditor/` |
-| `artifacts/core/agents/accessibility-tester/` |
-| `artifacts/core/agents/astro-developer/` |
 | `artifacts/core/agents/ci-configurator/` |
 | `artifacts/core/agents/ci-debugger/` |
-| `artifacts/core/agents/copywriter/` |
-| `artifacts/core/agents/designer/` |
 | `artifacts/core/agents/developer/` |
 | `artifacts/core/agents/doc-writer/` |
-| `artifacts/core/agents/frontend-developer/` |
-| `artifacts/core/agents/regression-sentinel/` |
-| `artifacts/core/agents/scenario-author/` |
 | `artifacts/core/agents/security/` |
-| `artifacts/core/agents/seo-specialist/` |
 | `artifacts/core/agents/tester/` |
-| `artifacts/core/agents/visual-regression-tester/` |
-| `artifacts/core/agents/web-conformity-checker/` |
 
 ### Identity and configuration templates
 

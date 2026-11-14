@@ -73,7 +73,9 @@ describe("claude profiles (spec 0305)", () => {
       assert.equal(names.length, 11, "11 web and SEO agents");
       for (const n of names) {
         assert.ok(
-          fs.existsSync(path.join(REPO, "artifacts", "core", "agents", n, "AGENT.md")),
+          ["core", "library"].some((tier) =>
+            fs.existsSync(path.join(REPO, "artifacts", tier, "agents", n, "AGENT.md")),
+          ),
           `agent ${n} must exist`,
         );
       }
@@ -91,7 +93,9 @@ describe("claude profiles (spec 0305)", () => {
     for (const [name, mode] of Object.entries(worker.skillOverrides ?? {})) {
       assert.equal(mode, "off");
       assert.ok(
-        fs.existsSync(path.join(REPO, "artifacts", "core", "skills", name, "SKILL.md")),
+        ["core", "library"].some((tier) =>
+          fs.existsSync(path.join(REPO, "artifacts", tier, "skills", name, "SKILL.md")),
+        ),
         `skill ${name} must exist`,
       );
     }

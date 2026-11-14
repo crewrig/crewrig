@@ -96,7 +96,14 @@ const groupOf = (b: Builder) => () =>
   compare(`builder ${b.label}: ${b.name}`, casesOf(b, tmp, b.build(tmp)));
 
 const agentsDir = path.join(REPO, "artifacts", "core", "agents");
-const agents = fs.existsSync(agentsDir) ? fs.readdirSync(agentsDir).sort() : [];
+// Spec 0307: eleven of the 22 corpus agents moved to artifacts/library/agents; the corpus labels stay
+// `core agent <name>/<target>` so the recorded goldens keep their keys.
+const libraryAgentsDir = path.join(REPO, "artifacts", "library", "agents");
+const movedAgents = ["accessibility-auditor","accessibility-tester","astro-developer","copywriter","designer","frontend-developer","regression-sentinel","scenario-author","seo-specialist","visual-regression-tester","web-conformity-checker"];
+const agents = fs.existsSync(agentsDir)
+  ? [...fs.readdirSync(agentsDir), ...movedAgents].sort()
+  : [];
+const agentDirOf = (a: string): string => (movedAgents.includes(a) ? libraryAgentsDir : agentsDir);
 const TARGETS = ["claude", "gemini", "copilot", "antigravity"];
 const profileDir = path.join(REPO, "scripts", "tests", "fixtures", "agent-profiles");
 const fixtures = fs.existsSync(profileDir) ? fs.readdirSync(profileDir).sort() : [];
@@ -107,7 +114,7 @@ if (skip === undefined) {
     label: `core agent ${a}/${target}`,
     repoDir: oracleRoot(tmp),
     agent: a,
-    source: path.join(agentsDir, a, "AGENT.md"),
+    source: path.join(agentDirOf(a), a, "AGENT.md"),
     target,
   });
   const fixtureCases = fixtures.flatMap((f) =>
