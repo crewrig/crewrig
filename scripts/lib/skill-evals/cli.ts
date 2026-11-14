@@ -2,14 +2,18 @@
 //
 // Usage: task skill-evals -- <skill-name> | --changed [--out <dir>] [--mock] [--ticket <N>]
 //        [--base <ref>] [--judge-config <file>] [--use-api-key]
-// Exit: 0 ok, 1 a blocking outcome (invalid, error, and regression / no-evals under their
-// settings), 2 usage error or unknown skill, 3 failed precondition (not logged in to Claude Code,
+//        task skill-evals -- <skill-name> --dry-run [--eval <id>] (spec 0304 R20: judge the
+//        hand-written samples under evals/samples/<id>/, no executor run, nothing written)
+// Exit: 0 ok, 1 a blocking outcome (invalid, error, a refused or complete measurement, a sample-invalid
+// or sample-less dry-run, and regression / no-evals under their settings), 2 usage error, unknown skill
+// or unknown eval id, 3 failed precondition (not logged in to Claude Code,
 // --use-api-key without ANTHROPIC_API_KEY, refused judge configuration, temporary directory inside
 // HOME or a git work tree, no ticket to attribute the spend to).
 // Finding-line format: see report.ts.
 
 import path from "node:path";
 
+import { dryRun } from "./dry-run.ts";
 import { runEvals } from "./run.ts";
 import type { RunOptions } from "./run.ts";
 import { describeSkill, findSkill, mergeBase, selectChanged } from "./select.ts";
@@ -30,10 +34,12 @@ export interface ParsedArgs {
   base: string;
   judgeConfig?: string;
   useApiKey: boolean;
+  dryRun: boolean;
+  evalId?: number;
 }
 
 export const USAGE =
-  "Usage: task skill-evals -- <skill-name> | --changed [--out <dir>] [--mock] [--ticket <N>] [--base <ref>] [--judge-config <file>] [--use-api-key]";
+  "Usage: task skill-evals -- <skill-name> | --changed [--out <dir>] [--mock] [--ticket <N>] [--base <ref>] [--judge-config <file>] [--use-api-key] | <skill-name> --dry-run [--eval <id>]";
 
 export function parseArgs(argv: readonly string[]): ParsedArgs | { error: string } {
   const a: ParsedArgs = {
@@ -42,6 +48,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs | { error: string
     mock: false,
     base: "origin/main",
     useApiKey: false,
+    dryRun: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] as string;
@@ -50,7 +57,12 @@ export function parseArgs(argv: readonly string[]): ParsedArgs | { error: string
     else if (arg === "--changed") a.changed = true;
     else if (arg === "--mock") a.mock = true;
     else if (arg === "--use-api-key") a.useApiKey = true;
-    else if (
+    else if (arg === "--dry-run") a.dryRun = true;
+    else if (arg === "--eval") {
+      const v = value();
+      if (v === undefined || !/^\d+$/.test(v)) return { error: "--eval needs an eval id" };
+      a.evalId = Number(v);
+    } else if (
       arg === "--out" ||
       arg === "--ticket" ||
       arg === "--base" ||
@@ -68,6 +80,9 @@ export function parseArgs(argv: readonly string[]): ParsedArgs | { error: string
   }
   if (a.changed === (a.name !== undefined))
     return { error: "give exactly one of <skill-name> or --changed" };
+  if (a.evalId !== undefined && !a.dryRun)
+    return { error: "--eval is accepted only with --dry-run" };
+  if (a.dryRun && a.changed) return { error: "--dry-run takes one <skill-name>, not --changed" };
   return a;
 }
 
@@ -105,6 +120,29 @@ export async function main(
     if (base === undefined) {
       io.stderr(`cannot compute the merge-base of HEAD with ${args.base}; pass --base <ref>\n`);
       return 2;
+    }
+    if (args.dryRun) {
+      const rep = await dryRun({
+        repoRoot,
+        out: path.resolve(repoRoot, args.out),
+        skill: found.skill,
+        mergeBase: base,
+        mock: args.mock,
+        useApiKey: args.useApiKey,
+        env,
+        ...(args.evalId !== undefined ? { evalId: args.evalId } : {}),
+        ...(args.ticket !== undefined ? { ticket: args.ticket } : {}),
+        ...(args.judgeConfig !== undefined ? { judgeConfigFile: args.judgeConfig } : {}),
+        ...(extra.settings !== undefined ? { settings: extra.settings } : {}),
+        ...(extra.mockAnswer !== undefined ? { mockAnswer: extra.mockAnswer } : {}),
+        ...(extra.fetchImpl !== undefined ? { fetchImpl: extra.fetchImpl } : {}),
+        ...(extra.sleep !== undefined ? { sleep: extra.sleep } : {}),
+        ...(extra.declare !== undefined ? { declare: extra.declare } : {}),
+        ...(extra.tempRoot !== undefined ? { tempRoot: extra.tempRoot } : {}),
+      });
+      if (rep.stderr !== "") io.stderr(rep.stderr);
+      if (rep.stdout !== "") io.stdout(rep.stdout);
+      return rep.exitCode;
     }
     selections = [describeSkill(repoRoot, found.skill, base)];
   }

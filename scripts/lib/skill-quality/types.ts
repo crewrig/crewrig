@@ -30,8 +30,16 @@ export interface YamlNamespace {
 
 /** Rules whose finding is an error whether or not the skill ships evals (spec 0293 R18). */
 export const ALWAYS_ERROR: ReadonlySet<string> = new Set(["description-length", "evals-invalid"]);
-/** Rules whose finding is always a warning: the absence of evals is itself a warning (R18). */
-export const ALWAYS_WARNING: ReadonlySet<string> = new Set(["evals-missing"]);
+/**
+ * Rules whose finding is always a warning: the absence of evals is itself a warning (R18), and the
+ * three eval-authoring rules of spec 0304 R19 never break a protected skill.
+ */
+export const ALWAYS_WARNING: ReadonlySet<string> = new Set([
+  "evals-missing",
+  "evals-absence-expectation",
+  "evals-sample-missing",
+  "evals-too-many",
+]);
 
 export interface SkillDir {
   readonly name: string;

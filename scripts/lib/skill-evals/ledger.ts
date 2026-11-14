@@ -232,3 +232,9 @@ export function ledgerProblem(head: Record<string, unknown>, hist: History): str
   }
   return undefined;
 }
+
+/** R22(c): the spend since the merge-base of a skill, from its working-tree file and the history. */
+export function branchSpendOf(workingText: string | undefined, hist: History): number {
+  const docs = [...v2Docs([workingText]), ...v2Docs(hist.revisions), ...v2Docs([hist.mbText])];
+  return spendOf(branchEntries(unionEntries(docs), mergeBaseSet(hist)));
+}

@@ -10,6 +10,7 @@ import path from "node:path";
 
 import { validateEvals, formatViolation } from "../skill-evals/schema.ts";
 import { citations, sharedTopic } from "../skill-citations/grammar.ts";
+import { evalWarnings } from "./eval-rules.ts";
 import type { Raw, SkillDir } from "./types.ts";
 
 export const MIN_EVALS = 3;
@@ -109,6 +110,7 @@ export function evalsRules(skill: SkillDir, repo: string): Raw[] {
   }));
   void repo;
   if (evals === undefined) return out;
+  out.push(...evalWarnings(skill, evals, file));
   const probes = evals.trigger_probes;
   const positive = probes.filter((p) => p.should_trigger).length;
   const share = probes.length === 0 ? 0 : positive / probes.length;

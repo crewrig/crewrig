@@ -101,7 +101,7 @@ export function refuseSpend(
   rows: readonly SpendRow[],
   ticket: string,
   ticketSpent: number,
-  limits: Limits,
+  limits: Pick<Limits, "maxSkillUsd" | "maxTicketUsd">,
 ): string[] {
   const out: string[] = [];
   for (const r of rows)

@@ -24,20 +24,13 @@ import path from "node:path";
 
 import { CostMeter, preflight, refuseSpend, RunBudget } from "./budget.ts";
 import type { Limits } from "./budget.ts";
-import {
-  cannotStartMessage,
-  checkTempRoot,
-  notLoggedInMessage,
-  probeLogin,
-  resetLoginProbe,
-} from "./claude-child.ts";
-import { planCredentials, readOverride } from "./credentials.ts";
 import type { CredentialSource } from "./credentials.ts";
 import { ClaudeCodeExecutor } from "./executor/claude-code.ts";
 import { MockExecutor } from "./executor/mock.ts";
 import type { Executor } from "./executor/types.ts";
 import { createJudge } from "./judge.ts";
 import { skillOutDir } from "./layout.ts";
+import { checkPreconditions } from "./preconditions.ts";
 import { classify, refusedResult, startSkills } from "./prepare.ts";
 import { persist, skillResult } from "./progress.ts";
 import type { LiveSkill } from "./progress.ts";
@@ -108,27 +101,16 @@ export async function runEvals(
   const finish = (): RunReport => done(results.some((r) => r.blocking) ? 1 : 0);
 
   // 1. Credentials and judge configuration (R33): no model call is made if this fails.
-  const ov = readOverride(opts.judgeConfigFile ?? opts.env["SKILL_EVALS_JUDGE_CONFIG"]);
-  if ("error" in ov) return done(3, `${ov.error}\n`);
-  const cred = planCredentials({
+  const pre = await checkPreconditions({
     env: opts.env,
-    override: ov.override,
+    judgeConfigFile: opts.judgeConfigFile,
     mock: opts.mock,
     useApiKey: opts.useApiKey === true,
+    tempRoot,
   });
-  if (!cred.ok) return done(3, `${cred.message}\n`);
-  if (!opts.mock) {
-    resetLoginProbe(); // the probe runs once per invocation
-    const bad = checkTempRoot(tempRoot, opts.env["HOME"] ?? os.homedir());
-    if (bad !== undefined) return done(3, `${bad}\n`);
-    if (cred.source === "session") {
-      const state = await probeLogin(opts.env, { tempRoot });
-      if (state === "cannot-start") return done(3, `${cannotStartMessage(opts.env)}\n`);
-      if (state === "not-logged-in")
-        return done(3, `${notLoggedInMessage((opts.env["ANTHROPIC_API_KEY"] ?? "") !== "")}\n`);
-    }
-    source = cred.source;
-  }
+  if (!pre.ok) return done(pre.exit, pre.stderr);
+  const cred = pre.cred;
+  source = pre.source;
 
   // 2. Classification, the caps of the plan (R22 a, b) and the ticket label (no model call).
   const cls = classify(selections, cfg);
