@@ -46,7 +46,7 @@ When  the attestation check runs
 Then  the finding line ends with "[warning]" and the run exits 0
 ```
 
-**Scenario:** a stale attestation blocks on a ready pull request and on a push
+**Scenario:** a stale attestation blocks on a ready pull request or with no pull-request context
 
 ```text
 Given the same skill
