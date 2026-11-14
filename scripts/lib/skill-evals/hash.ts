@@ -333,6 +333,7 @@ export function withoutVersionLine(bytes: Buffer): Buffer {
     const line = (lines[i] ?? "").replace(/\r$/, "");
     if (line === "---") break;
     if (/^\s*provenance:\s*$/.test(line)) inProvenance = true;
+    else if (inProvenance && /^\S/.test(line)) inProvenance = false;
     else if (inProvenance && /^\s+version:/.test(line)) {
       lines.splice(i, 1);
       return Buffer.from(lines.join("\n"), "utf8");

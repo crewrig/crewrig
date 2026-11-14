@@ -76,7 +76,7 @@ An absence ("the workflow has no `pull_request_target`") is not an expectation f
 
 Grading order: every `checks` entry first (deterministic), then one judge call for all of the eval's `expectations`. In `grading.json` the checks therefore come first, then the expectations, each list in file order. A failed check does not prevent the judge call. The judge is not called for an eval with no expectation, or whose output directory cannot be read (its expectations are then recorded failed).
 
-`skill_loaded` is informational: it records whether the agent called the `Skill` tool for this skill during the run, is not scored and affects no status. With no run without the skill, it is the only indication that an eval passed because of the skill rather than from the model's own knowledge. The report counts the eval runs that loaded the skill.
+`skill_loaded` is informational: it records whether the agent called the `Skill` tool for this skill during the run, is not scored, but a skill that did not load in every eval is `fail` (#1963). With no run without the skill, it is the only indication that an eval passed because of the skill rather than from the model's own knowledge. The report counts the eval runs that loaded the skill.
 
 ### Judge call
 

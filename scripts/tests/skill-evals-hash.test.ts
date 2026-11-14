@@ -90,6 +90,8 @@ test("the metadata.provenance.version line is not hashed; any other frontmatter 
     assert.equal(hashOf(repo), base, "a version bump keeps the hash");
     writeSkill(repo, "demo", { "SKILL.md": md("1.0.1", "y") });
     assert.notEqual(hashOf(repo), base, "another frontmatter byte changes it");
+    const later = "---\nmetadata:\n  provenance:\n    source: x\nother:\n  version: 2\n---\n";
+    assert.equal(withoutVersionLine(Buffer.from(later)).toString(), later, "a later key keeps it");
     assert.deepEqual(
       withoutVersionLine(Buffer.from("no frontmatter\n    version: 1\n")).toString(),
       "no frontmatter\n    version: 1\n",
