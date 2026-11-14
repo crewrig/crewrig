@@ -1,7 +1,8 @@
 ---
 id: "0304"
 slug: skill-evals-sampling-gate
-status: approved
+status: superseded
+superseded-by: "0290"
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1958

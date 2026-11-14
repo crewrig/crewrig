@@ -344,7 +344,18 @@ const skills = path.join(process.cwd(), ".claude", "skills");
 const list = (d) => fs.existsSync(d) ? fs.readdirSync(d, { recursive: true }).map(String).sort() : null;
 fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify({ cwd: process.cwd(), skills: list(skills), exec: fs.existsSync(path.join(skills, "demo", "scripts", "run.sh")) && (fs.statSync(path.join(skills, "demo", "scripts", "run.sh")).mode & 0o100) !== 0, home: process.env.HOME }) + "\\n");
 fs.writeFileSync("answer.md", "x");
-${stream(assistant("the quick brown fox"), result())}`,
+${stream(
+  {
+    type: "assistant",
+    message: {
+      content: [
+        { type: "text", text: "the quick brown fox" },
+        { type: "tool_use", name: "Skill", input: { skill: "demo" } },
+      ],
+    },
+  },
+  result(),
+)}`,
   );
   const iso = isolatedDirs();
   const rig = makeRig({

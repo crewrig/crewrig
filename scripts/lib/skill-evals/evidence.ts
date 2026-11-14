@@ -2,12 +2,11 @@
 //
 // The judge answers each expectation with a line `<n> VERDICT=<word> EVIDENCE=<JSON string>`.
 // An expectation is `passed: true` only when the verdict is PASS and the evidence is valid:
-// at least 12 non-whitespace characters and either matches the run's transcript.md or a file the
+// non-empty and either matches the run's transcript.md or a file the
 // run produced under spec 0290 R49 (delta-05), or is a `path:line` reference naming a produced
 // file and an existing line of it. Anything else is an unsupported PASS. R49, in order:
 //   1. exact substring (line endings normalised);
-//   2. normalised match: NFKC, letters and digits only, ellipsis pieces (each at least 12 letters
-//      and digits) found whole-word and in order;
+//   2. normalised match: NFKC, letters and digits only, ellipsis pieces found whole-word and in order;
 //   3. the longest verbatim word run of the evidence holds at least EVIDENCE_WINDOW_CHARS letters
 //      and digits and at least EVIDENCE_WINDOW_SHARE of the evidence's letters and digits.
 // The result names the rule that accepted the evidence (spec 0290 R50): `exact`, `normalised`,
@@ -21,7 +20,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { EVIDENCE_MIN_CHARS, EVIDENCE_WINDOW_CHARS, EVIDENCE_WINDOW_SHARE } from "./settings.ts";
+import { EVIDENCE_WINDOW_CHARS, EVIDENCE_WINDOW_SHARE } from "./settings.ts";
 
 export interface ProducedFile {
   /** Path relative to the run's outputs/ directory, `/` separators. */
@@ -82,7 +81,6 @@ function matchNormalised(evidence: string, haystack: string): boolean {
   if (pieces.length === 0) return false;
   let from = 0;
   for (const piece of pieces) {
-    if (alnum(piece) < EVIDENCE_MIN_CHARS) return false;
     const needle = ` ${piece.join(" ")} `;
     const at = haystack.indexOf(needle, from);
     if (at < 0) return false;
@@ -118,8 +116,7 @@ export type EvidenceMatch =
   | { readonly rule: "window"; readonly share: number };
 
 export type EvidenceVerdict =
-  | ({ readonly ok: true } & EvidenceMatch)
-  | { readonly ok: false; readonly reason: string };
+  ({ readonly ok: true } & EvidenceMatch) | { readonly ok: false; readonly reason: string };
 
 export function validateEvidence(
   evidence: string | undefined,
@@ -127,11 +124,6 @@ export function validateEvidence(
 ): EvidenceVerdict {
   if (evidence === undefined || evidence.trim() === "")
     return { ok: false, reason: "no evidence was given" };
-  if (evidence.replace(/\s/g, "").length < EVIDENCE_MIN_CHARS)
-    return {
-      ok: false,
-      reason: `evidence has fewer than ${EVIDENCE_MIN_CHARS} non-whitespace characters`,
-    };
   const needle = norm(evidence);
   if (norm(material.transcript).includes(needle)) return { ok: true, rule: "exact" };
   for (const f of material.files)

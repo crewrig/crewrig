@@ -114,3 +114,38 @@ test("exit_code runs the head script with a minimal environment: no credential v
     fs.rmSync(d.root, { recursive: true, force: true });
   }
 });
+
+test("file_not_contains grades an absence deterministically: the file must exist and the pattern must not occur (#1963)", async () => {
+  const d = dirs();
+  try {
+    fs.writeFileSync(
+      path.join(d.outputsDir, "ci.yml"),
+      "on: push\npermissions:\n  contents: read\n",
+    );
+    const ctx = { outputsDir: d.outputsDir, skillDir: d.skillDir };
+    const absent = await runCheck(
+      { type: "file_not_contains", path: "ci.yml", pattern: "pull_request_target" },
+      ctx,
+    );
+    assert.equal(absent.passed, true);
+    assert.match(absent.evidence, /does not match \/pull_request_target\//);
+    const present = await runCheck(
+      { type: "file_not_contains", path: "ci.yml", pattern: "contents: read" },
+      ctx,
+    );
+    assert.equal(present.passed, false);
+    assert.match(present.evidence, /matches \/contents: read\/ at "contents: read"/);
+    const missing = await runCheck(
+      { type: "file_not_contains", path: "nope.yml", pattern: "x" },
+      ctx,
+    );
+    assert.equal(missing.passed, false, "an absence in a file that was never produced is no pass");
+    assert.match(missing.evidence, /was not produced/);
+    assert.equal(
+      checkText({ type: "file_not_contains", path: "a", pattern: "b" }),
+      "check file_not_contains: a does not match /b/",
+    );
+  } finally {
+    fs.rmSync(d.root, { recursive: true, force: true });
+  }
+});

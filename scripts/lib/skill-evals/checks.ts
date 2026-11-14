@@ -38,6 +38,8 @@ export function checkText(c: Check): string {
       return `check file_exists: ${c.path}`;
     case "file_contains":
       return `check file_contains: ${c.path} matches /${c.pattern}/`;
+    case "file_not_contains":
+      return `check file_not_contains: ${c.path} does not match /${c.pattern}/`;
   }
 }
 
@@ -59,7 +61,7 @@ export function resolveInside(base: string, rel: string): string | undefined {
 
 export async function runCheck(c: Check, ctx: CheckContext): Promise<CheckResult> {
   const text = checkText(c);
-  if (c.type === "file_exists" || c.type === "file_contains") {
+  if (c.type === "file_exists" || c.type === "file_contains" || c.type === "file_not_contains") {
     const abs = resolveInside(ctx.outputsDir, c.path);
     if (abs === undefined)
       return {
@@ -87,6 +89,19 @@ export async function runCheck(c: Check, ctx: CheckContext): Promise<CheckResult
       };
     const content = fs.readFileSync(abs, "utf8");
     const m = new RegExp(c.pattern).exec(content);
+    // an absence expectation: the file must exist (it was produced) and the pattern must not occur
+    if (c.type === "file_not_contains")
+      return m === null
+        ? {
+            text,
+            passed: true,
+            evidence: `observed: file "${c.path}" does not match /${c.pattern}/`,
+          }
+        : {
+            text,
+            passed: false,
+            evidence: `observed: file "${c.path}" matches /${c.pattern}/ at "${m[0].slice(0, 80)}"`,
+          };
     if (m === null)
       return {
         text,
@@ -111,7 +126,11 @@ export async function runCheck(c: Check, ctx: CheckContext): Promise<CheckResult
     const env: NodeJS.ProcessEnv = { HOME: home };
     for (const k of ["PATH", "LANG"]) if (process.env[k] !== undefined) env[k] = process.env[k];
     const code = await new Promise<number | string>((resolve) => {
-      const child = spawn(script, c.args, { cwd: ctx.outputsDir, env, stdio: "ignore" });
+      const child = spawn(script, c.args, {
+        cwd: ctx.outputsDir,
+        env,
+        stdio: "ignore",
+      });
       const timer = setTimeout(() => {
         child.kill("SIGKILL");
         resolve("timeout");
@@ -126,7 +145,11 @@ export async function runCheck(c: Check, ctx: CheckContext): Promise<CheckResult
       });
     });
     const passed = code === c.expected;
-    return { text, passed, evidence: `observed: exit code ${code} (expected ${c.expected})` };
+    return {
+      text,
+      passed,
+      evidence: `observed: exit code ${code} (expected ${c.expected})`,
+    };
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
   }

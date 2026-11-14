@@ -39,13 +39,13 @@ test("valid evidence: an exact substring of the transcript (line endings normali
   assert.equal(ok("outputs/pr-body.md:3"), true);
 });
 
-test("unsupported evidence: short, absent, not found, a path:line past the end or naming no produced file", () => {
+test("unsupported evidence: absent, not found, a path:line past the end or naming no produced file; a short quote that is really there is sound (#1963)", () => {
   const why = (e: string | undefined) => {
     const r = validateEvidence(e, material);
     return r.ok ? "ok" : r.reason;
   };
-  assert.match(why("ok"), /fewer than 12 non-whitespace/);
-  assert.match(why("a b c d e f g h i j k"), /fewer than 12/);
+  assert.match(why("ok"), /neither/, "a short quote that is not in the output is still rejected");
+  assert.match(why("   "), /no evidence/);
   assert.equal(
     why("abcdefghijkl and nothing else"),
     "evidence occurs in neither the transcript nor a produced file, and is not a path:line of a produced file",
@@ -53,17 +53,12 @@ test("unsupported evidence: short, absent, not found, a path:line past the end o
   assert.match(why(undefined), /no evidence/);
   assert.match(why("pr-body.md:99"), /neither/);
   assert.match(why("other-file.md:1"), /neither/);
-  // the 12 non-whitespace character boundary, with the text present in the transcript
+  // no length minimum: a short YAML line present in the output is valid evidence
   assert.equal(
     validateEvidence("twelve chars", { transcript: "twelve chars", files: [] }).ok,
-    false,
-    "11 non-whitespace characters",
-  );
-  assert.equal(
-    validateEvidence("twelve chars!", { transcript: "twelve chars!", files: [] }).ok,
     true,
-    "12 non-whitespace characters",
   );
+  assert.equal(validateEvidence("on: push", { transcript: "x\non: push\n", files: [] }).ok, true);
 });
 
 const grade = (answer: { verdict: string; evidence: string | undefined }) =>

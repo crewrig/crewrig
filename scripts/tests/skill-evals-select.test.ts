@@ -52,9 +52,11 @@ test("no change selects nothing; --changed says so through the empty selection",
   twoSkills((repo) => assert.deepEqual(names(selectChanged(repo.root, "origin/main")), []));
 });
 
-test("an edited line of references/ selects that skill; a results.json-only change selects the other not", () => {
+test("an edited line of SKILL.md selects that skill; a references/, script or results.json-only change selects the others not (#1963)", () => {
   twoSkills((repo) => {
-    fs.appendFileSync(path.join(repo.root, skillRel("alpha"), "references", "ref.md"), "more\n");
+    fs.appendFileSync(path.join(repo.root, skillRel("alpha"), "SKILL.md"), "more\n");
+    fs.appendFileSync(path.join(repo.root, skillRel("beta"), "references", "ref.md"), "more\n");
+    fs.appendFileSync(path.join(repo.root, skillRel("beta"), "scripts", "run.sh"), "echo more\n");
     fs.writeFileSync(path.join(repo.root, skillRel("beta"), "evals", "results.json"), "{}\n");
     commitAll(repo, "change");
     assert.deepEqual(names(selectChanged(repo.root, "origin/main")), ["alpha"]);

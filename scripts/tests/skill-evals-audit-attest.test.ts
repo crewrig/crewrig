@@ -53,7 +53,7 @@ const record = (sel: ReturnType<typeof selectionOf>): ResultsRecord => ({
   cost_usd: 0.4,
 });
 
-test("the executable bit makes a results file stale: index mode toggled, bytes untouched (scenario: exec bit through the index)", () => {
+test("a script change, even its executable bit, keeps the results file fresh; a SKILL.md byte makes it stale (#1963)", () => {
   const repo = makeRepo();
   try {
     writeSkill(repo, "demo");
@@ -66,6 +66,9 @@ test("the executable bit makes a results file stale: index mode toggled, bytes u
     repo.git("add", "-A");
     assert.equal(attestSelection(selectionOf(repo, "demo")).status, "pass");
     repo.git("update-index", "--chmod=-x", `${skillRel("demo")}/scripts/run.sh`);
+    assert.equal(selectionOf(repo, "demo").headHash, before.headHash);
+    assert.equal(attestSelection(selectionOf(repo, "demo")).status, "pass");
+    fs.appendFileSync(path.join(repo.root, skillRel("demo"), "SKILL.md"), "later\n");
     const after = selectionOf(repo, "demo");
     assert.notEqual(after.headHash, before.headHash);
     assert.equal(attestSelection(after).status, "stale");
@@ -83,15 +86,15 @@ test("the set `--changed` selects equals the set the attestation check examines 
     for (const n of ["alpha", "beta", "gamma", "delta"]) writeSkill(repo, n);
     commitAll(repo, "base");
     markOrigin(repo);
-    fs.appendFileSync(path.join(repo.root, skillRel("alpha"), "references", "ref.md"), "more\n");
+    fs.appendFileSync(path.join(repo.root, skillRel("alpha"), "SKILL.md"), "more\n");
     fs.writeFileSync(path.join(repo.root, skillRel("beta"), "evals", "results.json"), "{}\n");
-    fs.appendFileSync(path.join(repo.root, skillRel("gamma"), "scripts", "run.sh"), "echo x\n");
+    fs.appendFileSync(path.join(repo.root, skillRel("gamma"), "scripts", "run.sh"), "echo x\n"); // unhashed (#1963)
     writeSkill(repo, "epsilon");
     commitAll(repo, "changes");
     const picked = selectChanged(repo.root, "origin/main");
     assert.ok("selections" in picked);
     const names = picked.selections.map((s) => s.skill.name).sort();
-    assert.deepEqual(names, ["alpha", "epsilon", "gamma"]);
+    assert.deepEqual(names, ["alpha", "epsilon"]);
     const s = sink();
     attestMain([], cleanEnv(), repo.root, s.io);
     const examined = [...s.out.matchAll(/^(\w+): /gm)].map((m) => m[1]).sort();
@@ -115,7 +118,6 @@ test("docs/skill-evals.md documents every declared setting, the provisional cali
     (n) =>
       ![
         "RUNNER_VERSION",
-        "EVIDENCE_MIN_CHARS",
         "JUDGE_MAX_TOKENS",
         "JUDGE_RETRY_ALLOWANCE",
         "EXECUTOR_TOOLS",

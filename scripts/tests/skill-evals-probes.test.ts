@@ -49,7 +49,11 @@ test("R45: a stub that emits a Skill call naming the skill: the true probe passe
     const s = r.results[0];
     assert.equal(s?.probesPassed, 1, r.text + r.stderr);
     assert.equal(s?.probesTotal, 2);
-    assert.equal(s?.status, "fail", "1/2 probes is below the threshold");
+    assert.equal(
+      s?.status,
+      "pass",
+      "1/2 probes is below the advisory bar, which never fails a skill",
+    );
     const p1 = read(t.rig.out, "demo", "probe-1", "probe.json");
     assert.deepEqual(p1, {
       query: "do the thing",
@@ -170,7 +174,7 @@ test("R47: executor, probe and judge argv each carry --model claude-sonnet-5-5 a
   assert.equal(high.rec.effort, "high");
 });
 
-test("R48: skill_loaded is recorded per eval run and shown in the report, and it scores nothing", async () => {
+test("R48: skill_loaded is recorded per eval run and shown in the report; a skill that never loads fails (#1963)", async () => {
   const run = async (loadSkill: string | undefined) => {
     const t = stubRig({ loggedIn: true }, {}, { evals: 2, stub: loadSkill ? { loadSkill } : {} });
     try {
@@ -189,15 +193,21 @@ test("R48: skill_loaded is recorded per eval run and shown in the report, and it
     }
   };
   const yes = await run("demo");
-  const no = await run(undefined);
+  const dflt = await run(undefined);
   const other = await run("another-skill");
   assert.deepEqual(yes.loaded, [true, true]);
-  assert.deepEqual(no.loaded, [false, false]);
+  assert.deepEqual(
+    dflt.loaded,
+    [true, true],
+    "the session stub loads the installed skill by default",
+  );
   assert.deepEqual(other.loaded, [false, false], "another skill's load is not this skill's");
   assert.match(yes.r.text, /skill_loaded=2\/2/);
-  assert.match(no.r.text, /skill_loaded=0\/2/);
-  // not scored: the same eval outcomes and the same status whether or not the skill was loaded
-  assert.deepEqual(yes.passed, no.passed);
-  assert.equal(yes.r.results[0]?.status, no.r.results[0]?.status);
-  assert.equal(yes.r.results[0]?.evalPassRate, no.r.results[0]?.evalPassRate);
+  assert.match(other.r.text, /skill_loaded=0\/2/);
+  // #1963: the eval outcomes are the same, but a skill that never loads is a blocking fail
+  assert.deepEqual(yes.passed, other.passed);
+  assert.equal(yes.r.results[0]?.status, "pass");
+  assert.equal(other.r.results[0]?.status, "fail");
+  assert.equal(other.r.results[0]?.blocking, true);
+  assert.equal(yes.r.results[0]?.evalPassRate, other.r.results[0]?.evalPassRate);
 });

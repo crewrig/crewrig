@@ -111,13 +111,13 @@ test("fresh attestation passes with no credential variable set", () => {
   });
 });
 
-test("stale attestation blocks: scripts changed after the results file was written", () => {
+test("stale attestation blocks: SKILL.md changed after the results file was written", () => {
   changedSkill((repo) => {
     const sel = selectionOf(repo, "demo");
     writeResults(sel.skill.dirAbs, record(sel));
     commitAll(repo, "results");
-    fs.appendFileSync(path.join(repo.root, skillRel("demo"), "scripts", "run.sh"), "echo later\n");
-    commitAll(repo, "scripts");
+    fs.appendFileSync(path.join(repo.root, skillRel("demo"), "SKILL.md"), "later\n");
+    commitAll(repo, "skill");
     const s = sink();
     assert.equal(attestMain([], cleanEnv(), repo.root, s.io), 1);
     assert.match(s.out, /demo: stale: recorded content_hash .* differs from the current/);
@@ -255,7 +255,7 @@ test("a file of the former shape (a benchmark key, the status new) is stale and 
   });
 });
 
-test("a recorded fail is reported with both rates and the threshold, and blocks only under fail-blocking", () => {
+test("a recorded fail (the skill did not load in every eval) is reported and blocks only under fail-blocking", () => {
   changedSkill((repo) => {
     const sel = selectionOf(repo, "demo");
     writeResults(
@@ -263,11 +263,10 @@ test("a recorded fail is reported with both rates and the threshold, and blocks 
       record(sel, {
         status: "fail",
         eval_pass_rate: 0.75,
-        probe_pass_rate: 0.6,
         evals_passed: 3,
         evals_total: 4,
-        probes_passed: 3,
-        probes_total: 5,
+        tolerance: 0.25,
+        skill_loaded: 3,
       }),
     );
     repo.git("add", "-A");
@@ -279,13 +278,10 @@ test("a recorded fail is reported with both rates and the threshold, and blocks 
     const off = attestSelection(selectionOf(repo, "demo"), settings);
     assert.equal(off.status, "fail");
     assert.equal(off.blocking, false);
-    assert.match(off.reason, /eval pass rate 0\.75, probe pass rate 0\.6, threshold 0\.8/);
+    assert.match(off.reason, /the skill loaded in 3 of 4 evals/);
     const s = sink();
     assert.equal(attestMain([], cleanEnv(), repo.root, s.io, settings), 0, s.out);
-    assert.match(
-      s.out,
-      /^demo: fail: eval pass rate 0\.75, probe pass rate 0\.6, threshold 0\.8$/m,
-    );
+    assert.match(s.out, /^demo: fail: the skill loaded in 3 of 4 evals$/m);
     const on = sink();
     assert.equal(
       attestMain([], cleanEnv(), repo.root, on.io, { ...settings, failBlocking: true }),
@@ -301,18 +297,29 @@ test("a recorded fail is reported with both rates and the threshold, and blocks 
   });
 });
 
-test("the attestation decides from the recorded figures with the same decide() as the runner", () => {
+test("the attestation decides from the recorded figures with the same decide() as the runner, and a low score is only advisory", () => {
   changedSkill((repo) => {
     const sel = selectionOf(repo, "demo");
-    // the recorded status says pass, the recorded figures say fail: the figures decide the block
+    const settings = { regressionBlocking: true, failBlocking: true, missingEvalsBlocking: false };
+    // a recorded pass with a score of 0.5 and no base: not a failure, the advisory is in the reason
     writeResults(sel.skill.dirAbs, record(sel, { status: "pass", eval_pass_rate: 0.5 }));
     repo.git("add", "-A");
-    const settings = { regressionBlocking: false, failBlocking: true, missingEvalsBlocking: false };
-    assert.equal(attestSelection(selectionOf(repo, "demo"), settings).blocking, true);
-    // and the other way: a figure at the boundary (4/5 = 0.8 = threshold) is not a fail
-    writeResults(sel.skill.dirAbs, record(sel, { status: "fail", eval_pass_rate: 0.8 }));
+    const low = attestSelection(selectionOf(repo, "demo"), settings);
+    assert.equal(low.blocking, false);
+    assert.match(low.reason, /advisory: eval pass rate 0\.5 is below 0\.8/);
+    // the recorded status says pass, the figures say regression (base 1, head 0.5 of 2 evals): they decide
+    writeResults(
+      sel.skill.dirAbs,
+      record(sel, { status: "pass", eval_pass_rate: 0.5, base_eval_pass_rate: 1, tolerance: 0.5 }),
+    );
     repo.git("add", "-A");
-    assert.equal(attestSelection(selectionOf(repo, "demo"), settings).blocking, false);
+    assert.equal(attestSelection(selectionOf(repo, "demo"), settings).blocking, false, "one case");
+    writeResults(
+      sel.skill.dirAbs,
+      record(sel, { status: "pass", eval_pass_rate: 0, base_eval_pass_rate: 1, tolerance: 0.5 }),
+    );
+    repo.git("add", "-A");
+    assert.equal(attestSelection(selectionOf(repo, "demo"), settings).blocking, true);
   });
 });
 

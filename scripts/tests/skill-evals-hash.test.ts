@@ -1,4 +1,4 @@
-// skill-evals-hash.test.ts — the content hash (spec 0290 R32, R35, R25).
+// skill-evals-hash.test.ts — the content hash (spec 0290 R32, R35, R25 as narrowed by #1963).
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -11,6 +11,7 @@ import {
   installFiles,
   readRevision,
   readWorkingTree,
+  withoutVersionLine,
 } from "../lib/skill-evals/hash.ts";
 import type { Snapshot } from "../lib/skill-evals/hash.ts";
 import { commitAll, makeRepo, skillRel, tmpDir, writeSkill } from "./lib/skill-evals-fixtures.ts";
@@ -32,23 +33,17 @@ const withRepo = (f: (repo: Repo) => void) => {
   }
 };
 
-test("fixed vector: path NUL flag NUL size NUL bytes NUL, sorted by UTF-8 bytes", () => {
+test("fixed vector: path NUL flag NUL size NUL bytes NUL, sorted by UTF-8 bytes, over SKILL.md and evals/evals.json only (#1963)", () => {
   withRepo((repo) => {
     const snap = readWorkingTree(repo.root, skillRel("demo")) as Extract<Snapshot, { kind: "ok" }>;
     const h = createHash("sha256");
-    const records = [
-      ["SKILL.md", "0"],
-      ["evals/evals.json", "0"],
-      ["references/ref.md", "0"],
-      ["scripts/run.sh", "1"],
-    ] as const;
-    for (const [rel, flag] of records) {
+    for (const rel of ["SKILL.md", "evals/evals.json"]) {
       const bytes = fs.readFileSync(path.join(repo.root, skillRel("demo"), rel));
       h.update(
         Buffer.concat([
           Buffer.from(rel),
           Buffer.from([0]),
-          Buffer.from(flag),
+          Buffer.from("0"),
           Buffer.from([0]),
           Buffer.from(String(bytes.length)),
           Buffer.from([0]),
@@ -62,47 +57,55 @@ test("fixed vector: path NUL flag NUL size NUL bytes NUL, sorted by UTF-8 bytes"
   });
 });
 
-test("one byte, an added, a deleted and a renamed hashed file change the hash; unhashed files do not", () => {
+test("a byte of SKILL.md or of evals.json changes the hash; scripts, references, assets and unhashed files do not (#1963)", () => {
   withRepo((repo) => {
     const base = hashOf(repo);
     const dir = path.join(repo.root, skillRel("demo"));
     fs.writeFileSync(path.join(dir, "references", "ref.md"), "referencf\n");
-    repo.git("add", "-A");
-    const h1 = hashOf(repo);
-    assert.notEqual(h1, base);
-    fs.writeFileSync(path.join(dir, "references", "ref.md"), "reference\n");
-    assert.equal(hashOf(repo), base);
-    fs.writeFileSync(path.join(dir, "assets-new.txt"), "x");
+    fs.appendFileSync(path.join(dir, "scripts", "run.sh"), "echo more\n");
     fs.mkdirSync(path.join(dir, "assets"));
     fs.writeFileSync(path.join(dir, "assets", "a.txt"), "x");
-    repo.git("add", "-A");
-    const added = hashOf(repo);
-    assert.notEqual(added, base);
-    repo.git("mv", `${skillRel("demo")}/assets/a.txt`, `${skillRel("demo")}/assets/b.txt`);
-    assert.notEqual(hashOf(repo), added);
-    repo.git("rm", "-q", "-f", `${skillRel("demo")}/assets/b.txt`);
-    assert.equal(hashOf(repo), base);
-    // unhashed: results.json, evals/files, a stray notes.md
     fs.writeFileSync(path.join(dir, "evals", "results.json"), "{}");
     fs.writeFileSync(path.join(dir, "notes.md"), "n");
     fs.writeFileSync(path.join(dir, "evals", "files", "in.txt"), "changed");
     repo.git("add", "-A");
-    assert.equal(hashOf(repo), base);
+    assert.equal(hashOf(repo), base, "a script, reference or asset change selects no paid run");
+    fs.appendFileSync(path.join(dir, "SKILL.md"), "one more line\n");
+    const edited = hashOf(repo);
+    assert.notEqual(edited, base);
+    fs.appendFileSync(path.join(dir, "evals", "evals.json"), "\n");
+    assert.notEqual(hashOf(repo), edited);
   });
 });
 
-test("the git index mode is hashed; the filesystem mode and core.fileMode are not", () => {
+test("the metadata.provenance.version line is not hashed; any other frontmatter line is (#1963)", () => {
+  const md = (v: string, extra = "") =>
+    `---\nname: demo\ndescription: A test skill.\nmetadata:\n  provenance:\n    version: "${v}"\n    source: x${extra}\n---\n\n# demo\n`;
+  const repo = makeRepo();
+  try {
+    writeSkill(repo, "demo", { "SKILL.md": md("1.0.0") });
+    commitAll(repo, "base");
+    const base = hashOf(repo);
+    writeSkill(repo, "demo", { "SKILL.md": md("1.0.1") });
+    assert.equal(hashOf(repo), base, "a version bump keeps the hash");
+    writeSkill(repo, "demo", { "SKILL.md": md("1.0.1", "y") });
+    assert.notEqual(hashOf(repo), base, "another frontmatter byte changes it");
+    assert.deepEqual(
+      withoutVersionLine(Buffer.from("no frontmatter\n    version: 1\n")).toString(),
+      "no frontmatter\n    version: 1\n",
+    );
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test("the filesystem mode and core.fileMode never change the hash", () => {
   withRepo((repo) => {
     const base = hashOf(repo);
-    const file = path.join(repo.root, skillRel("demo"), "scripts", "run.sh");
-    fs.chmodSync(file, 0o644); // filesystem permission change, index mode untouched
+    const file = path.join(repo.root, skillRel("demo"), "SKILL.md");
+    fs.chmodSync(file, 0o755); // filesystem permission change, index mode untouched
     assert.equal(hashOf(repo), base);
     repo.git("config", "core.fileMode", "false");
-    assert.equal(hashOf(repo), base);
-    repo.git("config", "core.fileMode", "true");
-    repo.git("update-index", "--chmod=-x", `${skillRel("demo")}/scripts/run.sh`);
-    assert.notEqual(hashOf(repo), base);
-    repo.git("update-index", "--chmod=+x", `${skillRel("demo")}/scripts/run.sh`);
     assert.equal(hashOf(repo), base);
   });
 });
@@ -133,10 +136,10 @@ test("the hash equals the same content read from a git revision, whatever the cr
   });
 });
 
-test("an uncommitted edit to scripts/ changes the hash of a dirty tree, with no commit", () => {
+test("an uncommitted edit to SKILL.md changes the hash of a dirty tree, with no commit", () => {
   withRepo((repo) => {
     const base = hashOf(repo);
-    fs.appendFileSync(path.join(repo.root, skillRel("demo"), "scripts", "run.sh"), "echo more\n");
+    fs.appendFileSync(path.join(repo.root, skillRel("demo"), "SKILL.md"), "more\n");
     assert.notEqual(hashOf(repo), base);
   });
 });
@@ -175,14 +178,16 @@ test("an untracked non-ignored file is invalid with a git add message; ignored f
   });
 });
 
-test("a tracked file is hashed even when an ignore rule matches it", () => {
+test("a tracked file under scripts/ is installed even when an ignore rule matches it, and is not hashed", () => {
   withRepo((repo) => {
     const dir = path.join(repo.root, skillRel("demo"));
     const base = hashOf(repo);
     fs.mkdirSync(path.join(dir, "scripts", "__pycache__"));
     fs.writeFileSync(path.join(dir, "scripts", "__pycache__", "x.pyc"), "bytecode");
     repo.git("add", "-f", `${skillRel("demo")}/scripts/__pycache__/x.pyc`);
-    assert.notEqual(hashOf(repo), base);
+    assert.equal(hashOf(repo), base);
+    const snap = readWorkingTree(repo.root, skillRel("demo")) as Extract<Snapshot, { kind: "ok" }>;
+    assert.ok(snap.files.some((f) => f.rel === "scripts/__pycache__/x.pyc"));
   });
 });
 

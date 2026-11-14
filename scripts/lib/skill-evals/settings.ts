@@ -6,16 +6,14 @@
 // Usage: import { REGRESSION_BLOCKING, ... } from "./settings.ts".
 // Exit codes: not applicable (library). Finding-line format: not applicable.
 
-/** R19: a skill regresses when its eval pass rate is lower than the base's by MORE than this. */
-export const TOLERANCE = 0.05;
-/** R20: when true, a regression (measured or recorded) makes the run or the check exit non-zero. */
-export const REGRESSION_BLOCKING = false;
+/** #1963: a skill regresses when its eval score is lower than the base's by MORE than one case. */
+export const REGRESSION_BLOCKING = true;
 /** R21: when true, a changed skill without evals/ makes the run or the check exit non-zero. */
 export const MISSING_EVALS_BLOCKING = false;
-/** R46: the skill-level pass threshold, applied to the eval pass rate and to the probe pass rate. */
+/** #1963: the advisory score bar, printed in the report; falling below it never fails a skill. */
 export const PASS_THRESHOLD = 0.8;
-/** R46: when true, a skill whose result is `fail` makes the run or the check exit non-zero. */
-export const FAIL_BLOCKING = false;
+/** #1963: a skill whose result is `fail` (it did not load in every eval) blocks. */
+export const FAIL_BLOCKING = true;
 /** R47: the `--effort` level of the executor, the probe and the judge call. */
 export const EFFORT = "medium";
 
@@ -44,9 +42,6 @@ export const JUDGE_MAX_TOKENS = 512;
 /** R23: share of the one-call-per-eval judge estimate added for retries. */
 export const JUDGE_RETRY_ALLOWANCE = 0.25;
 
-/** R13: minimum non-whitespace characters of a valid evidence string. */
-export const EVIDENCE_MIN_CHARS = 12;
-
 /** R49 rule 3: minimum letters and digits of the longest verbatim run of the evidence. */
 export const EVIDENCE_WINDOW_CHARS = 40;
 
@@ -54,7 +49,7 @@ export const EVIDENCE_WINDOW_CHARS = 40;
 export const EVIDENCE_WINDOW_SHARE = 0.3;
 
 /** Written to evals/results.json (R36). */
-export const RUNNER_VERSION = "2.2.0";
+export const RUNNER_VERSION = "3.0.0";
 
 /** Tools the executor may use: the main security boundary, kept in one place. */
 export const EXECUTOR_TOOLS = ["Bash", "Read", "Write", "Edit", "Skill"] as const;

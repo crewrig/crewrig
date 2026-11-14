@@ -119,7 +119,11 @@ function composeShared(
       );
       continue;
     }
-    files.push({ rel: `references/shared-${topic}.md`, bytes, exec: found.mode === "100755" });
+    files.push({
+      rel: `references/shared-${topic}.md`,
+      bytes,
+      exec: found.mode === "100755",
+    });
   }
 }
 
@@ -129,7 +133,10 @@ export function readWorkingTree(repoRoot: string, skillDirRel: string): Snapshot
   const tracked = git(repoRoot, ["ls-files", "-s", "-z", "--", lit(dir)]);
   const untracked = git(repoRoot, ["ls-files", "-o", "--exclude-standard", "-z", "--", lit(dir)]);
   if (!tracked.ok || !untracked.ok)
-    return { kind: "invalid", problems: [`${dir}: git could not list the skill files`] };
+    return {
+      kind: "invalid",
+      problems: [`${dir}: git could not list the skill files`],
+    };
   const problems: string[] = [];
   const entries = new Map<string, string>();
   for (const rec of tracked.out.toString("utf8").split("\0")) {
@@ -256,7 +263,10 @@ export function readRevision(repoRoot: string, rev: string, skillDirRel: string)
     }
     const blob = git(repoRoot, ["cat-file", "blob", sha ?? ""]);
     if (!blob.ok)
-      return { kind: "invalid", problems: [`${dir}/${rel}: cannot read blob ${sha} at ${rev}`] };
+      return {
+        kind: "invalid",
+        problems: [`${dir}/${rel}: cannot read blob ${sha} at ${rev}`],
+      };
     files.push({ rel, bytes: blob.out, exec: mode === "100755" });
   }
   if (files.some((f) => f.rel === "SKILL.md")) {
@@ -310,9 +320,38 @@ function digest(files: readonly SnapFile[]): string {
   return `sha256:${h.digest("hex")}`;
 }
 
-/** R35 content hash: SKILL.md, scripts/, references/, assets/ and evals/evals.json. */
+/**
+ * SKILL.md without its `metadata.provenance.version` line: a version bump is bookkeeping, not a
+ * change of what the judge measures. Only the first indented `version:` line that follows a
+ * `provenance:` key inside the frontmatter is dropped.
+ */
+export function withoutVersionLine(bytes: Buffer): Buffer {
+  const lines = bytes.toString("utf8").split("\n");
+  if (lines[0]?.replace(/\r$/, "") !== "---") return bytes;
+  let inProvenance = false;
+  for (let i = 1; i < lines.length; i++) {
+    const line = (lines[i] ?? "").replace(/\r$/, "");
+    if (line === "---") break;
+    if (/^\s*provenance:\s*$/.test(line)) inProvenance = true;
+    else if (inProvenance && /^\s+version:/.test(line)) {
+      lines.splice(i, 1);
+      return Buffer.from(lines.join("\n"), "utf8");
+    }
+  }
+  return bytes;
+}
+
+/**
+ * #1963 content hash: SKILL.md minus its version line, plus evals/evals.json. Scripts,
+ * references and assets are covered by their unit tests, not by a paid run; they are still
+ * installed into the executor's snapshot (`installFiles`).
+ */
 export function contentHash(files: readonly SnapFile[]): string {
-  return digest(files.filter((f) => isSelected(f.rel)));
+  return digest(
+    files
+      .filter((f) => f.rel === "SKILL.md" || f.rel === EVALS_JSON)
+      .map((f) => (f.rel === "SKILL.md" ? { ...f, bytes: withoutVersionLine(f.bytes) } : f)),
+  );
 }
 
 /** R32: write the installed content (never evals/) into `dest`, restoring the recorded exec bit. */
