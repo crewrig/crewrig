@@ -2224,7 +2224,7 @@ runtime-foundations:
   image: node:24
   script:
     - "npm ci"
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/with-stub-daemon.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/with-stub-daemon.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts scripts/tests/fixed-context-probe.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/prune-transcripts-oracle.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import.test.ts scripts/tests/prune-transcripts-ts.test.ts scripts/tests/prune-transcripts-ts-run.test.ts scripts/tests/history-import-python.test.ts scripts/tests/history-import-prune-python.test.ts"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/stop-mcp-server-oracle.test.ts scripts/tests/uninstall-mcp-daemon-oracle.test.ts scripts/tests/switch-mempalace-http-args-oracle.test.ts"
@@ -2269,21 +2269,6 @@ ticket-pickup:
         - "scripts/tests/fixtures/ticket-pickup/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *ticket-pickup-changes-1
-
-fixed-context-probe-tests:
-  image: node:24
-  script:
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/fixed-context-probe.test.ts"
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &fixed-context-probe-tests-changes-1
-        - "scripts/fixed-context-probe.ts"
-        - "scripts/fixed-context-threshold.json"
-        - "scripts/lib/fixed-context-probe.ts"
-        - "scripts/tests/fixed-context-probe.test.ts"
-        - "scripts/tests/fixtures/fixed-context-probe/**"
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *fixed-context-probe-tests-changes-1
 
 playwright-mcp:
   image: node:24

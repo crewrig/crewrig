@@ -143,9 +143,12 @@ describe("never runs in CI", () => {
     assert.equal(bareItem.test('    - "node scripts/fixed-context-probe.ts"'), false);
     assert.match('    - "node scripts/fixed-context-probe.ts"', forbidden);
   });
-  test("the unit suite is wired in CI as its own capability, without the paid script", () => {
+  test("the unit suite runs inside the runtime-foundations capability, without the paid script", () => {
     const cap = fs.readFileSync(path.join(repo, "ci/ci-capabilities.yml"), "utf8");
-    assert.match(cap, /id: fixed-context-probe-tests/);
-    assert.match(cap, /--test scripts\/tests\/fixed-context-probe\.test\.ts\n/);
+    const block = cap.slice(cap.indexOf("  - id: runtime-foundations"));
+    const line = block
+      .split("\n")
+      .find((l) => l.includes("scripts/tests/node-floor-guard.test.ts"));
+    assert.match(line ?? "", /--test .* scripts\/tests\/fixed-context-probe\.test\.ts/);
   });
 });
