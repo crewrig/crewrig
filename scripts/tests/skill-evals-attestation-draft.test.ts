@@ -104,7 +104,11 @@ test("CI draft: invalid still blocks, and a mixed run names only the invalid ski
 });
 
 test("pre-push: ci:pre-push hands the draft signal to the attestation task only (and lint-specs)", () => {
-  const opts = { cwd: "/repo", env: { PATH: "/usr/bin", CREWRIG_PR_DRAFT: "true" }, baseRef: "origin/main" };
+  const opts = {
+    cwd: "/repo",
+    env: { PATH: "/usr/bin", CREWRIG_PR_DRAFT: "true" },
+    baseRef: "origin/main",
+  };
   assert.equal(taskEnv("skill-evals-attestation", opts)["CREWRIG_PR_DRAFT"], "true");
   assert.equal(taskEnv("lint-specs", opts)["CREWRIG_PR_DRAFT"], "true");
   assert.equal(taskEnv("lint-markdown", opts)["CREWRIG_PR_DRAFT"], undefined);
@@ -130,9 +134,9 @@ test("CI wiring: the GitHub job and the GitLab capability map the PR draft state
     gate.jobs["lint-specs"]?.env?.["CREWRIG_PR_DRAFT"],
     "same mapping as spec 0168 delta-01",
   );
-  const caps = yaml.load(
-    fs.readFileSync(path.join(ROOT, "ci/ci-capabilities.yml"), "utf8"),
-  ) as { capabilities?: Array<{ id: string; env?: Record<string, string> }> } | Array<{ id: string; env?: Record<string, string> }>;
+  const caps = yaml.load(fs.readFileSync(path.join(ROOT, "ci/ci-capabilities.yml"), "utf8")) as
+    | { capabilities?: Array<{ id: string; env?: Record<string, string> }> }
+    | Array<{ id: string; env?: Record<string, string> }>;
   const list = Array.isArray(caps) ? caps : (caps.capabilities ?? []);
   assert.equal(
     list.find((c) => c.id === "skill-evals-attestation")?.env?.["CREWRIG_PR_DRAFT"],
