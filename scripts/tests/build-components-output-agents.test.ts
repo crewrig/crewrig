@@ -483,3 +483,25 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
     }
   }
 });
+
+describe("a block-scalar description is folded onto one line (issue #1956)", () => {
+  test("every CLI file carries a single-line quoted description", () => {
+    const tree = createFixtureTree();
+    tree.config(CONFIG);
+    tree.artifact(
+      "core/agents/ag/AGENT.md",
+      source(["name: ag", "description: |", "  First line.", "  Second line."], "Agent body.\n"),
+    );
+    const res = tree.run([]);
+    assert.equal(res.status, 0, res.stderr + res.stdout);
+    for (const file of [
+      ".claude/agents/ag.md",
+      ".gemini/agents/ag.md",
+      ".github/agents/ag.md",
+      ".agents/agents/ag.md",
+    ]) {
+      const out = tree.read(file);
+      assert.ok(out.includes('description: "First line. Second line."\n'), `${file}:\n${out}`);
+    }
+  });
+});
