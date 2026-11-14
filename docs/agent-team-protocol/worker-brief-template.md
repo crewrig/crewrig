@@ -32,7 +32,8 @@ Implement <issue URL>. The issue body is the contract.
 
 ## Hygiene rules
 
-The sections _Waiting rules in a worker brief_ and _Output hygiene and
+The sections _Waiting rules in a worker brief_ (three rules, including reading
+the annotations of a `cancelled` job before any rerun) and _Output hygiene and
 stage-scoped sessions in a worker brief_ of
 `docs/agent-team-protocol/orchestrator.md` apply in full. The coordinator
 pastes their bullets here verbatim; no paraphrase.
@@ -46,6 +47,9 @@ You do not merge. When ALL hold, report the PR as merge-ready and stop:
 - the latest review pass has no blocking finding;
 - every required check is green (a ghost check counts as resolved);
 - the branch is up to date with <target branch>, re-verified in CI.
+
+If CI is still pending when your longest foreground wait ends, report "merge-ready
+pending CI" with the head SHA; the coordinator takes the wait and the merge.
 
 The coordinator asks the owner for permission, then executes the merge. After
 the merge, follow `docs/post-merge-flow.md` and close the issue only if the

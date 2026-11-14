@@ -130,10 +130,11 @@ Rule: [`docs/plan-review-protocol.md`](../plan-review-protocol.md) →
 
 ### Waiting rules in a worker brief
 
-Every brief for a worker or a `pr-reviewer` carries these two rules:
+Every brief for a worker or a `pr-reviewer` carries these three rules:
 
-- **One call to wait for CI.** Run `gh pr checks <n> --watch` as one background command; it exits when no check is pending. Never poll with `sleep`, `until` loops, a monitor or repeated `gh pr checks` and `ci-preflight` calls: each call re-reads a large context. A check still pending after its workflow run is `completed/success` is a ghost check and counts as resolved when the merge state is `CLEAN`.
+- **One call to wait for CI.** Run `gh pr checks <n> --watch` once, in the foreground with the longest timeout the tool allows; a background task does not wake every session (an Orca structured worker stays asleep). Never poll with `sleep`, `until` loops, a monitor or repeated `gh pr checks` and `ci-preflight` calls: each call re-reads a large context. A check still pending after its workflow run is `completed/success` is a ghost check and counts as resolved when the merge state is `CLEAN`. If CI is still pending when the timeout ends, report "merge-ready pending CI" with the head SHA and let the coordinator take the wait.
 - **Never end a turn to wait.** Do not end a turn to wait for CI or for a subagent: nothing wakes a session in that state. End a turn only on a question to the coordinator or on the worker's final report.
+- **A `cancelled` job is a failure until proven otherwise.** `cancel-on-failure` cancels the whole run when one job fails, so the failing job reads `cancelled` too. With no newer push, read the `failure` annotations (`gh api repos/<o>/<r>/check-runs/<id>/annotations`) or the run summary before any rerun ([runbook](../runbooks/ci-cancelled-run-diagnosis.md)).
 
 ### Output hygiene and stage-scoped sessions in a worker brief
 
