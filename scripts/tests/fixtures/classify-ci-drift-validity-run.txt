@@ -1,0 +1,6 @@
+FAILED: 2 reference-validity violation(s) in /repo/ci/ci-capabilities.yml:
+  - capability 'build': trigger kind 'bogus' is outside the neutral vocabulary (validity rule 2)
+  - capability 'pages-deploy': engine-specific capability with empty exception.evidence (validity rule 3)
+
+The reference is the source of truth; refusing to check the engines against
+a malformed reference (spec 0049 R2).
