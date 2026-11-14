@@ -1856,13 +1856,13 @@ capabilities:
       - "scripts/check-test-wiring.ts"
       - "scripts/check-test-strays.ts"
       - "scripts/lib/governance/**"
-      - "scripts/tests/lib/governance-*.ts"
       - "scripts/ci-cache-guard.ts"
       - "scripts/lib/ci-cache-guard/**"
       - "taskfiles/**"
       - ".github/workflows/build.yml"
       - ".github/workflows/_ci-governance.yml"
       - "ci/ci-capabilities.yml"
+      - "artifacts/*/skills/**/*.md"
       - "scripts/tests/**"
     portability: portable
     changeset-gated: true
