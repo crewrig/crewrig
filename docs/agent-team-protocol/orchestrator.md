@@ -167,14 +167,15 @@ each rule below removes a call or a decision from the workers.
    new issues" constraint, where open sizing drifts toward delta-specs.
 2. **Group by area.** Tickets that share files or a spec go to one worker and
    one PR. Check the shared files of the whole run before assigning work.
-3. **Pre-authorise merges.** The owner grants the authorisation and the
-   coordinator relays it in the brief under explicit conditions: the latest
-   review pass has no blocking finding, every required check is green, and the
-   branch is up to date with the target. It is the merge permission of
-   `AGENTS.md` given in advance, never a replacement for it. The worker merges,
-   then reports; it does not ask. A denied merge is retried once, then
-   escalated to the owner through the coordinator, never delegated to a
-   sibling.
+3. **Batch merge approvals.** A worker never merges on its own. When its
+   conditions hold (the latest review pass has no blocking finding, every
+   required check is green, the branch is up to date with `main`), it reports
+   the PR as merge-ready with that evidence in its final report and stops. The
+   coordinator groups the merge-ready PRs of the run and asks the owner once
+   per group, just before executing those merges; the merges follow that
+   permission immediately, as `AGENTS.md` requires. A denied merge is retried
+   once, then escalated to the owner, never delegated. A standing
+   authorisation given in advance is out of scope here and tracked in #1984.
 4. **Trust worker evidence.** Re-verify a PR only on a gap or a contradiction
    in the final report, or by sampling. Re-reading every PR before approval
    repeats work the workers already evidenced.

@@ -39,18 +39,17 @@ pastes their bullets here verbatim; no paraphrase.
 
 <verbatim bullets of both sections>
 
-## Merge, pre-authorised by the owner through the coordinator
+## Merge: report merge-ready, never merge
 
-Squash-merge yourself, without asking, when ALL hold:
+You do not merge. When ALL hold, report the PR as merge-ready and stop:
 
 - the latest review pass has no blocking finding;
 - every required check is green (a ghost check counts as resolved);
 - the branch is up to date with <target branch>, re-verified in CI.
 
-This is the `AGENTS.md` merge permission given in advance under these
-conditions only. If the merge is denied, retry once, then escalate to the
-coordinator. Never delegate it. After merging, follow
-`docs/post-merge-flow.md` and close the issue.
+The coordinator asks the owner for permission, then executes the merge. After
+the merge, follow `docs/post-merge-flow.md` and close the issue only if the
+coordinator asks you to.
 
 ## Final report: evidence list
 
@@ -60,6 +59,6 @@ coordinator. Never delegate it. After merging, follow
 - Version bumps.
 - Paid measurements: count, status, cost.
 - Frictions met.
-- A failure to merge (red CI you cannot fix, review cap hit, permission
-  denied twice) is a failed task: report it with the blocker.
+- A PR that cannot become merge-ready (red CI you cannot fix, review cap hit)
+  is a failed task: report it with the blocker.
 ```
