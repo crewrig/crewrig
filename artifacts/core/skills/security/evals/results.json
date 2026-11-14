@@ -1,0 +1,22 @@
+{
+  "skill_name": "security",
+  "content_hash": "sha256:808ec21b5b128761ea4bf745c120239479320e8732cdc2165ea4e0160fa7d743",
+  "runner_version": "2.2.0",
+  "executor_model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "date": "2026-11-14T02:27:48.602Z",
+  "status": "fail",
+  "eval_pass_rate": 0.16666666666666666,
+  "probe_pass_rate": 0.9166666666666666,
+  "base_eval_pass_rate": null,
+  "threshold": 0.8,
+  "tolerance": 0.05,
+  "evals_passed": 1,
+  "evals_total": 6,
+  "probes_passed": 11,
+  "probes_total": 12,
+  "executor_runs": 18,
+  "judge_calls": 6,
+  "cost_usd": null
+}
