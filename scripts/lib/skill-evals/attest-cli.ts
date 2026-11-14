@@ -7,7 +7,7 @@
 // check proves freshness, not truth.
 //
 // Usage: node scripts/skill-evals-attestation.ts [<base-ref>]   (BASE_REF is read when no argument)
-// Exit: 0 clean, 1 a blocking outcome (invalid, stale, and no-evals / fail / regression under their
+// Exit: 0 clean, 1 a blocking outcome (invalid, stale unless CREWRIG_PR_DRAFT=true, and no-evals / fail / regression under their
 // settings), 2 base ref unresolvable.
 // Finding line: `<skill>: <status>[: <reason>]`.
 
@@ -42,6 +42,10 @@ export function attestMain(
     for (const l of unresolvableBaseLines(baseRef)) io.stderr(`${l}\n`);
     return 2;
   }
+  // Spec 0290 R52: only the exact string `true` (a draft PR, or a push through ci:pre-push) turns a
+  // `stale` outcome into a warning; unset, empty and every other value keep it blocking.
+  const effective: AttestSettings =
+    env["CREWRIG_PR_DRAFT"] === "true" ? { ...settings, staleBlocking: false } : settings;
   const sel = selectChanged(repoRoot, baseRef);
   if ("error" in sel) {
     io.stderr(`${sel.error}\n`);
@@ -54,10 +58,10 @@ export function attestMain(
   const lines: string[] = [];
   let blocking = false;
   for (const s of sel.selections) {
-    const o = attestSelection(s, settings);
+    const o = attestSelection(s, effective);
     blocking ||= o.blocking;
     lines.push(
-      `${o.skill}: ${o.status}${o.status === "pass" ? "" : `: ${o.reason}`}${o.blocking ? " [blocking]" : ""}`,
+      `${o.skill}: ${o.status}${o.status === "pass" ? "" : `: ${o.reason}`}${o.blocking ? " [blocking]" : o.status === "stale" ? " [warning]" : ""}`,
     );
   }
   const text = `${lines.join("\n")}\n`;

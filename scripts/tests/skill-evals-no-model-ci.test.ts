@@ -33,7 +33,7 @@ const byId = (id: string): Capability => {
   return c;
 };
 
-test("skill-evals-attestation: pull-request only, full history, no secret, only BASE_REF in env, command task ci:skill-evals-attestation", () => {
+test("skill-evals-attestation: pull-request only, full history, no secret, BASE_REF and the draft signal in env (spec 0290 R52), command task ci:skill-evals-attestation", () => {
   const c = byId("skill-evals-attestation");
   assert.deepEqual(
     c.trigger?.map((t) => t.on),
@@ -41,7 +41,7 @@ test("skill-evals-attestation: pull-request only, full history, no secret, only 
   );
   assert.equal(c.paths, undefined, "unfiltered: the check selects changed skills itself");
   assert.equal(c.requires?.["history-depth"], "full");
-  assert.deepEqual(Object.keys(c.env ?? {}), ["BASE_REF"]);
+  assert.deepEqual(Object.keys(c.env ?? {}), ["BASE_REF", "CREWRIG_PR_DRAFT"]);
   assert.deepEqual(c.command, ["task ci:skill-evals-attestation"]);
   assert.equal(c.portability, "portable");
   assert.equal("secrets" in c, false);

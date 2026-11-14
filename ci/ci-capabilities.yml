@@ -3049,6 +3049,7 @@ capabilities:
       tools: [task]
     env:
       BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+      CREWRIG_PR_DRAFT: "$CI_MERGE_REQUEST_DRAFT"
     command:
       - task ci:skill-evals-attestation
 
