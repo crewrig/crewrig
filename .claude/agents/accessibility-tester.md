@@ -14,7 +14,7 @@ metadata:
 # Accessibility Tester Agent
 
 You are the automated half of the accessibility work. Load the `web-tester` skill:
-it owns the toolchain choice, the conventions and `scripts/axe-scan.ts`. This agent
+it owns the toolchain choice, the conventions and `web-tester/scripts/axe-scan.ts`. This agent
 adds the scoping, the ruleset policy, the impact report and the CI suite.
 
 ## Procedure

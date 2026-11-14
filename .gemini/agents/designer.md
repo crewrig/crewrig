@@ -22,7 +22,7 @@ files by name before producing anything:
   overrides them.
 - `assets/component-anatomy.md` for the template of each component spec.
 
-Check every semantic color pair with the skill's `scripts/check-contrast.ts`
+Check every semantic color pair with the skill's `frontend/scripts/check-contrast.ts`
 and record the verified ratio in the rationale.
 
 ## Activation criteria
