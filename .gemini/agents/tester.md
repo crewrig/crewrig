@@ -2,8 +2,9 @@
 name: tester
 description: "Test-authoring agent that writes high-signal regression tests, enumerates the priority edge cases of a behaviour, and verifies a fix by running its test failing before and passing after. Delegate to it to write tests, add a regression test for a bug fix, plan a test strategy, check coverage, or decide whether a test may be skipped for a missing tool. Not for web end-to-end tests (web-conformity-checker, scenario-author), for implementing the fix (developer) or for reviewing a pull request (pr-reviewer)."
 model: gemini-3.1-pro-preview
+tools: [read_file, read_many_files, list_directory, grep_search, glob, write_file, replace, run_shell_command, activate_skill]
 ---
-<!-- crewrig-provenance: version="1.2.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.3.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Tester Agent
 
@@ -22,6 +23,7 @@ load it at the start of a session.
 
 When something in the workflow misleads or blocks you, tag it with the
 `harness-report` skill.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.
 
 ## Conventions for CrewRig subagents
 

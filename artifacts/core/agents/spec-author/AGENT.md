@@ -5,10 +5,11 @@ type: agent
 metadata:
   model:
     intelligence: high
+  tools: [read, search, edit, execute, skill]
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.5.0"
+    version: "1.6.0"
 ---
 
 # Spec Author Agent
@@ -29,3 +30,4 @@ reason and stop. You never assign or unassign anyone.
 
 When something in the workflow misleads you, tag it with the `harness-report`
 skill.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.

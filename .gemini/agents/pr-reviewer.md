@@ -2,8 +2,9 @@
 name: pr-reviewer
 description: "Delegate to review a pull request or a spec pull request cold, with no authoring context, and get a posted verdict (Approve, Request Changes or Comment) with a seat line and class-tagged findings. Use when a PR needs an independent review, a REVIEW pass, a second opinion before merge or a re-review of a change after fixes; spawn it with a references-only brief (seat, artifact, examined revision, prior verdicts, disposition). Trigger terms - review PR, cold review, audit pull request, verdict, REVIEW pass. Not for fixing the change, writing a PR body or composing a commit message."
 model: gemini-3.1-pro-preview
+tools: [read_file, read_many_files, list_directory, grep_search, glob, write_file, replace, run_shell_command, activate_skill]
 ---
-<!-- crewrig-provenance: version="2.0.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="2.1.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # PR Reviewer Agent
 
@@ -54,6 +55,7 @@ When re-activated with no new assignment, answer in one sentence that names the 
 ## Friction
 
 When something in the workflow misleads or blocks the review, report it with the `harness-report` skill.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.
 
 ## Conventions for CrewRig subagents
 

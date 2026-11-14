@@ -5,7 +5,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.3.1"
+    version: "1.4.0"
 ---
 
 
@@ -28,6 +28,7 @@ to learn the conventions of this project before composing.
   stage transitions.
 
 When a friction blocks you, use the `harness-report` skill to tag it.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.
 
 ## Conventions for CrewRig subagents
 

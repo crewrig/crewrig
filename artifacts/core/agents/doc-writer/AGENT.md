@@ -5,10 +5,11 @@ type: agent
 metadata:
   model:
     intelligence: medium
+  tools: [read, search, edit, execute, skill]
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.3.0"
+    version: "1.4.0"
 ---
 
 # Doc Writer Agent
@@ -28,3 +29,4 @@ you.
 
 When something in the workflow misleads you, tag it with the `harness-report`
 skill.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.

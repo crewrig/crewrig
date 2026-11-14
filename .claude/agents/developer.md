@@ -2,12 +2,13 @@
 name: developer
 description: "Implementation agent that makes a code change with the smallest correct diff and verifies it locally before reporting done. Delegate to it to implement, fix, modify, refactor or rename code inside existing contracts, in one or a few files. Not for a new abstraction or a contract change (architect), security-sensitive code (security), or tests (tester)."
 model: sonnet
+tools: Read, Grep, Glob, Edit, Write, Bash, Skill
 omitClaudeMd: true
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.3.1"
+    version: "1.4.0"
 ---
 
 
@@ -30,6 +31,7 @@ method; load it at the start of a session.
 
 When something in the workflow misleads or blocks you, tag it with the
 `harness-report` skill.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.
 
 ## Conventions for CrewRig subagents
 

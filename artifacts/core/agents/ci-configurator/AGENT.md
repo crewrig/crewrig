@@ -6,10 +6,11 @@ license: Apache-2.0
 metadata:
   model:
     intelligence: high
+  tools: [read, search, edit, execute, skill]
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.4.0"
+    version: "1.5.0"
 ---
 
 # CI Configurator Agent
@@ -143,3 +144,4 @@ request or to watch the first run: `pr-logbook` writes the pull request, `ci-deb
 takes a failing first run, `ci-parity` takes later drift.
 
 When something in the workflow misleads you, tag it with the `harness-report` skill.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.

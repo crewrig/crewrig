@@ -5,7 +5,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "2.0.0"
+    version: "2.1.0"
 ---
 
 
@@ -24,6 +24,7 @@ Return the design note, the ADR or the verdict to whoever delegated it, with the
 ## Friction
 
 When something in the workflow misleads or blocks the work, report it with the `harness-report` skill.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.
 
 ## Conventions for CrewRig subagents
 

@@ -1,11 +1,12 @@
 ---
 name: ci-parity
 description: "Operates the CI drift-check harness and reconciles reported divergences: runs it, classifies each divergence with the classifier script, applies only the deterministic regenerate-and-re-verify of a stale derived pipeline and proposes every other change. Use when the drift check is red, `check-ci-parity` failed, the capability reference and a pipeline diverge, the generated `.gitlab-ci.yml` is stale, a job is untraceable or a `ci-capability` annotation is missing or wrong. Trigger terms: drift check, check-ci-parity, ci-capabilities.yml, stale .gitlab-ci.yml, untraceable job, ci-capability annotation. Not for a new pipeline (ci-configurator) or a failing application run such as a red test or a broken deploy (ci-debugger)."
+tools: [read, search, edit, execute]
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.0"
+    version: "1.3.0"
 ---
 
 
@@ -139,6 +140,7 @@ When the divergences are reconciled or the proposals delivered, your work is don
 
 When something in this workflow misleads or blocks you, report it with the
 `harness-report` skill.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.
 
 ## Conventions for CrewRig subagents
 

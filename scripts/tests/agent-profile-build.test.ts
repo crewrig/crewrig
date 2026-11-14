@@ -25,7 +25,8 @@ process.env.GIT_CONFIG_NOSYSTEM = "1";
 
 const NOTE = /^model-note.*claude.*guard-withheld/;
 const DROP = /^model-drop.*copilot.*metadata\.model\.intelligence.*unsupported-on-cli/;
-const TOOLS_DROP = /^tools-drop\t[^\t]+\tantigravity\tmetadata\.tools\t[^\t]+\tunsupported-on-cli$/;
+const TOOLS_DROP =
+  /^tools-drop\t[^\t]+\t(antigravity|copilot|gemini)\tmetadata\.tools\t[^\t]+\t(unsupported|no-equivalent)-on-cli$/;
 const GUIDANCE = "Run this agent on the";
 const CONFIG = ["crewrig.config.toml", "model-mappings"];
 
@@ -69,13 +70,21 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
 
   // The stream is composed, not a constant (spec 0291 R7): 22 copilot model-drop lines, one
   // guard-withheld note per agent only while the committed guard is `withheld`, and one
-  // antigravity tools-drop line per source that declares `metadata.tools`. The shipped tree
-  // gives 24 lines; `--check` emits the same 24 (it no longer runs the assembly suite), and the 4
-  // no-mapping notes of that suite's own synthetic root make 28 (docs/agent-profile-migration.md).
+  // tools-drop line per declaring source and per CLI that cannot carry a declared class (spec 0291
+  // R13, R29, issue #2020): the count follows the declarations, it is not pinned to a literal.
   const declaring = sources.filter((f) => {
     const meta = (readFrontmatter(tree.read(f)).metadata ?? {}) as Record<string, unknown>;
     return Object.hasOwn(meta, "tools");
   });
+  // Spec 0291 R13, R29: one antigravity line per declaring source, one copilot line when it declares
+  // `skill` or `message`, one gemini line when it declares `agent` or `message`.
+  const wantToolsDrops = declaring.reduce((n, f) => {
+    const meta = (readFrontmatter(tree.read(f)).metadata ?? {}) as { tools?: string[] };
+    const classes = meta.tools ?? [];
+    const copilot = classes.some((c) => c === "skill" || c === "message") ? 1 : 0;
+    const gemini = classes.some((c) => c === "agent" || c === "message") ? 1 : 0;
+    return n + 1 + copilot + gemini;
+  }, 0);
   test("T4 — a plain build over the 22-source root emits 22 model-drop, the guard notes the committed state implies, and one tools-drop per declaring source", () => {
     assert.equal(sources.length, 22, "the root is seeded with all 22 core AGENT.md");
     assert.equal(built.status, 0, built.stderr);
@@ -94,10 +103,10 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
         other,
       },
       {
-        total: 22 + wantNotes + declaring.length,
+        total: 22 + wantNotes + wantToolsDrops,
         notes: wantNotes,
         drops: 22,
-        tools: declaring.length,
+        tools: wantToolsDrops,
         other: [],
       },
     );
