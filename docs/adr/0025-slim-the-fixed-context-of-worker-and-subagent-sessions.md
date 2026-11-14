@@ -141,6 +141,7 @@ Not adopted now: O3 beyond a documentation note (no honest glob for the heavy ru
 - Positive: the profile is a file plus a recipe, reversible by not passing the flag.
 - Negative: two profiles to maintain (worker, coordinator/owner), and the conventions block, which exists once in source and is duplicated only in generated output; drift is prevented by the build, which is the only writer, and by a check that every emitted body carries the current block.
 - Negative: a subagent no longer inherits `AGENTS.md`; a rule outside the six is invisible to it.
+- Negative: for an adopting organization the conventions block is core-owned and hard-codes `gh` and Gitmoji, a subagent stops loading `AGENTS.org.md`, and the `strict` policy of `artifacts/core/fragments` forbids a local edit; a follow-up may append an org-owned fragment after the core one (spec 0306).
 - Negative: the 3.7k margin on the worker target is thin if the harness grows its tool definitions; F7 tracks it.
 - Neutral: the owner's interactive sessions are unchanged.
 

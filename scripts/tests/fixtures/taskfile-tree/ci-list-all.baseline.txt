@@ -23,6 +23,7 @@ task: Available tasks for this project:
 * check-seat-brief:                          Fail when a seated-pass brief breaches the references-only form (spec 0276). Orchestrator-side, before the spawn: task check-seat-brief -- <file> (or pipe the brief on stdin; --template <specs|plan|review> prints a skeleton)
 * check-skill-quality:                       Lint skill sources against the authoring standard; a skill that ships evals is protected (spec 0293). Author-side: task check-skill-quality -- <skill> [--strict] [--json]
 * check-skill-versions:                      Enforce provenance.version bump on changed skill/agent sources (local mirror of the CI guard)
+* check-subagent-conventions:                Check every compiled agent ends with the subagent conventions block and the Claude Code key (local mirror of the CI guard, spec 0306)
 * check-taskfile-commands:                   Check Taskfile.yml names no POSIX-only command, modulo the owned exemption list (local mirror of the CI guard, spec 0266 R13)
 * create-extension:                          Scaffold a new extension from skeleton (task create-extension NAME=my-ext)
 * default:                                   
@@ -108,6 +109,7 @@ task: Available tasks for this project:
 * ci:check-rules-size:                       Fail when the rules size budget is exceeded (pre-push mirror of the CI job)
 * ci:check-seat-brief:                       Run the check-seat-brief CI capability (pre-push mirror of the CI job)
 * ci:check-skill-versions:                   Enforce the provenance version bump on changed skill and agent sources (pre-push mirror of the CI job)
+* ci:check-subagent-conventions:             Run the check-subagent-conventions CI capability (pre-push mirror of the CI job)
 * ci:check-task-provisioning:                Check the pinned Task provisioning (pre-push mirror of the CI job)
 * ci:check-task-provisioning-selftest:       Run the Task provisioning self-tests (pre-push mirror of the CI job)
 * ci:check-taskfile-commands:                Check the Taskfile tree names no POSIX-only command (pre-push mirror of the CI job)

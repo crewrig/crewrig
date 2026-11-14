@@ -3,6 +3,7 @@ name: ci-parity
 description: "Operates the CI drift-check harness and reconciles reported divergences: runs it, classifies each divergence with the classifier script, applies only the deterministic regenerate-and-re-verify of a stale derived pipeline and proposes every other change. Use when the drift check is red, `check-ci-parity` failed, the capability reference and a pipeline diverge, the generated `.gitlab-ci.yml` is stale, a job is untraceable or a `ci-capability` annotation is missing or wrong. Trigger terms: drift check, check-ci-parity, ci-capabilities.yml, stale .gitlab-ci.yml, untraceable job, ci-capability annotation. Not for a new pipeline (ci-configurator) or a failing application run such as a red test or a broken deploy (ci-debugger)."
 license: Apache-2.0
 model: sonnet
+omitClaudeMd: true
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
@@ -141,3 +142,12 @@ When the divergences are reconciled or the proposals delivered, your work is don
 
 When something in this workflow misleads or blocks you, report it with the
 `harness-report` skill.
+
+## Conventions for CrewRig subagents
+
+1. **Pre-Edit Guard:** edit a file only when an issue exists for the work, the branch is a feature branch named `<prefix>/<NNNN>-<slug>` (never `main`), and the ticket worktree `.worktrees/<ticket-id>/` is your working directory.
+2. **Gitmoji only** for commit, issue and PR titles (`<emoji> <Short description>`); never a `feat:` or `fix:` prefix.
+3. **English for project content** (repository files and every GitHub artifact); the user's language for dialogue.
+4. **No merge, no push to `main`.** Forge operations go through `gh`. Never run `git reset --hard`, `git stash` or `git clean` in a shared worktree.
+5. **No secrets or `.env` in the repository.** A change to a shipped skill or agent bumps its `metadata.provenance.version`; a change under `artifacts/` runs the build and stages its outputs in the same commit.
+6. **Report a denied action to your caller** instead of re-running it another way or through another agent.

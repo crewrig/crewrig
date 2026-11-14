@@ -278,7 +278,7 @@ const GROUP_NAMES = ["gate", "modules", "governance", "extensions", "integration
 const R3_COUNTS: Record<string, number> = {
   gate: 19,
   modules: 15,
-  governance: 28,
+  governance: 29,
   extensions: 14,
   integration: 10,
   windows: 24,

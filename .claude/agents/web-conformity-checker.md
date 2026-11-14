@@ -3,6 +3,7 @@ name: web-conformity-checker
 description: "Checks that a live page or site matches a specification (design-system reference, functional requirements, OpenAPI file or free-form prose) and produces a gap report, optionally with a Playwright assertion script that locks the passing claims in. Use when asked whether a page conforms to a spec, to audit a page against a design system or to compare behaviour with requirements. Trigger terms: conformity, gap report, spec compliance, design-system check, matches the spec. Not for accessibility (accessibility-tester), pixel-level diffs (visual-regression-tester), writing a journey test (scenario-author) or fixing the gaps (developer)."
 license: Apache-2.0
 model: haiku
+omitClaudeMd: true
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
@@ -60,3 +61,12 @@ rules in force are kept here:
 
 When a recognition signal fires, follow the `harness-report` skill; do not
 reimplement the tagging protocol.
+
+## Conventions for CrewRig subagents
+
+1. **Pre-Edit Guard:** edit a file only when an issue exists for the work, the branch is a feature branch named `<prefix>/<NNNN>-<slug>` (never `main`), and the ticket worktree `.worktrees/<ticket-id>/` is your working directory.
+2. **Gitmoji only** for commit, issue and PR titles (`<emoji> <Short description>`); never a `feat:` or `fix:` prefix.
+3. **English for project content** (repository files and every GitHub artifact); the user's language for dialogue.
+4. **No merge, no push to `main`.** Forge operations go through `gh`. Never run `git reset --hard`, `git stash` or `git clean` in a shared worktree.
+5. **No secrets or `.env` in the repository.** A change to a shipped skill or agent bumps its `metadata.provenance.version`; a change under `artifacts/` runs the build and stages its outputs in the same commit.
+6. **Report a denied action to your caller** instead of re-running it another way or through another agent.

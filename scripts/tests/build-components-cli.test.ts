@@ -230,7 +230,7 @@ describe("R5 --list-output-dirs", () => {
   });
 
   test("it answers with no config, no artifacts/, no node_modules: the module loads alone", () => {
-    const tree = createFixtureTree({ deps: "none" });
+    const tree = createFixtureTree({ deps: "none", fragment: false });
     const script = `
       import { parseArgs } from "./scripts/lib/build-components/args.ts";
       import { outputDirLines } from "./scripts/lib/build-components/output-dirs.ts";

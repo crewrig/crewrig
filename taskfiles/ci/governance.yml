@@ -117,6 +117,20 @@ tasks:
     cmds:
       - '{{.NODE_SCRIPTS}}/check-seat-brief.ts {{.REPO_DIR}}/scripts/tests/fixtures/seat-brief/conforming-review.txt'
       - '! {{.NODE_SCRIPTS}}/check-seat-brief.ts {{.REPO_DIR}}/scripts/tests/fixtures/seat-brief/breach-1410.txt'
+  check-subagent-conventions:
+    desc: Run the check-subagent-conventions CI capability (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - '{{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - 'CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/pass {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/fragment-invalid {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/fragment-invalid-provenance {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/missing-block {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/stale-block {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/missing-omit-key {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/foreign-omit-key {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/source-carries-block {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/no-fragment {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
   check-model-mappings:
     desc: Run the check-model-mappings CI capability (pre-push mirror of the CI job)
     preconditions: *needs-js-yaml

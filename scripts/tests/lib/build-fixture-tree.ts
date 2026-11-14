@@ -16,6 +16,8 @@
 //                                                `crewrig.config.toml`
 //   FixtureTree.run(args, options?)              the entry in this tree, as a child process
 //   productionClosure()                          top-level package names, sorted
+//   conventionsFragment() / seedConventionsFragment(root)
+//                                                the repo's subagent conventions block (spec 0306)
 // Every tree is removed when the importing test file finishes (an `after` hook registered
 // on import); `dispose()` removes one earlier. `scripts/tests/` is not copied (the build
 // never reads it, and it is the bulk of `scripts/`).
@@ -41,6 +43,26 @@ export function claudeGuardState(): "withheld" | "directed" {
   if (found?.[1] !== "withheld" && found?.[1] !== "directed")
     throw new Error("model-mappings/claude.yml records no guard state");
   return found[1];
+}
+
+/** The conventions block's source, relative to a repository root (spec 0306 R1). */
+export const FRAGMENT_REL = "artifacts/core/fragments/subagent-conventions.md";
+
+/** The repository's fragment, verbatim. Throws a readable error when the file is missing. */
+export function conventionsFragment(repo: string = REPO): string {
+  const file = path.join(repo, ...FRAGMENT_REL.split("/"));
+  if (!fs.existsSync(file)) throw new Error(`${FRAGMENT_REL} is missing (spec 0306 R1)`);
+  return fs.readFileSync(file, "utf8");
+}
+
+/**
+ * Copy the repository's fragment into a tree that builds outside `createFixtureTree`
+ * (the build reads it for every agent it emits, spec 0306 R10). Bytes are copied, never rewritten.
+ */
+export function seedConventionsFragment(root: string): void {
+  const target = path.join(root, ...FRAGMENT_REL.split("/"));
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, conventionsFragment());
 }
 
 interface LockEntry {
@@ -141,6 +163,13 @@ export interface FixtureTreeOptions {
    * (what `--list-output-dirs` and the floor diagnostic need).
    */
   readonly deps?: "full" | "no-packages" | "none";
+  /**
+   * `true` (default): the repository's conventions fragment is seeded, so any agent the tree
+   * builds gets the block (spec 0306). `false`: no fragment, for the missing-fragment cases.
+   * Seeding is skipped while the repository itself holds no fragment, so a suite stays
+   * runnable before the fragment exists; the build then fails on its own R10 check.
+   */
+  readonly fragment?: boolean;
 }
 
 /**
@@ -148,7 +177,12 @@ export interface FixtureTreeOptions {
  * and `ENFILE`, so a directory still held for a moment by the previous step (the "rename with a held
  * handle" test of the Windows install proof) does not fail the job; 10 tries 100 ms apart.
  */
-export const REMOVE_OPTIONS = { recursive: true, force: true, maxRetries: 10, retryDelay: 100 };
+export const REMOVE_OPTIONS = {
+  recursive: true,
+  force: true,
+  maxRetries: 10,
+  retryDelay: 100,
+};
 
 const live = new Set<string>();
 after(() => {
@@ -170,7 +204,10 @@ function copyClosure(root: string): void {
   for (const name of productionClosure()) {
     const from = path.join(REPO, "node_modules", name);
     if (!fs.existsSync(from)) throw new Error(`${from} is missing: run the setup dependency step`);
-    fs.cpSync(from, path.join(root, "node_modules", name), { recursive: true, dereference: true });
+    fs.cpSync(from, path.join(root, "node_modules", name), {
+      recursive: true,
+      dereference: true,
+    });
   }
 }
 
@@ -193,6 +230,8 @@ export function createFixtureTree(options: FixtureTreeOptions = {}): FixtureTree
     if (mode !== undefined) fs.chmodSync(file, mode);
     return file;
   };
+  if ((options.fragment ?? true) && fs.existsSync(path.join(REPO, ...FRAGMENT_REL.split("/"))))
+    seedConventionsFragment(root);
   return {
     root,
     resolve,
@@ -204,7 +243,10 @@ export function createFixtureTree(options: FixtureTreeOptions = {}): FixtureTree
     mapping: (rel, content) => write(`model-mappings/${rel}`, content),
     config: (toml) => write("crewrig.config.toml", toml),
     run(args, run = {}) {
-      const env: Record<string, string | undefined> = { ...process.env, REPO_DIR: undefined };
+      const env: Record<string, string | undefined> = {
+        ...process.env,
+        REPO_DIR: undefined,
+      };
       for (const [key, value] of Object.entries(run.env ?? {})) env[key] = value;
       const entry = resolve(run.entry ?? "scripts/build-components.ts");
       const res = spawnSync(process.execPath, [...(run.nodeFlags ?? []), entry, ...args], {

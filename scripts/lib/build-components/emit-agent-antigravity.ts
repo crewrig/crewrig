@@ -30,6 +30,8 @@ export interface AgentJob {
   readonly description: string;
   readonly source: SourceDoc;
   readonly outRoot: string;
+  /** The compiled body every CLI writes: source body, a blank line, the conventions block (R6). */
+  readonly body: string;
   /** The validated `metadata.tools` classes in vocabulary order; `null` when not declared. */
   readonly tools: readonly ToolClass[] | null;
 }
@@ -54,6 +56,6 @@ export function emitAntigravityAgent(ctx: Ctx, model: ResolveContext, job: Agent
     emitDiagLine(ctx, toolsDrop(name, "antigravity", job.tools, "unsupported-on-cli"));
 
   const target = joinRoot(ctx.platform, job.outRoot, `.agents/agents/${name}.md`);
-  checkOrWrite(ctx, target, markdownFile(frontmatter, source.body), source, job.outRoot);
+  checkOrWrite(ctx, target, markdownFile(frontmatter, job.body), source, job.outRoot);
   reconcileRetiredAgentDir(ctx, job.outRoot, name);
 }

@@ -92,6 +92,10 @@
     "desc": "Fail when a seated-pass brief breaches the references-only form (spec 0276). Orchestrator-side, before the spawn: task check-seat-brief -- <file> (or pipe the brief on stdin; --template <specs|plan|review> prints a skeleton)"
   },
   {
+    "name": "check-subagent-conventions",
+    "desc": "Check every compiled agent ends with the subagent conventions block and the Claude Code key (local mirror of the CI guard, spec 0306)"
+  },
+  {
     "name": "check-skill-versions",
     "desc": "Enforce provenance.version bump on changed skill/agent sources (local mirror of the CI guard)"
   },
@@ -790,6 +794,10 @@
   {
     "name": "ci:check-seat-brief",
     "desc": "Run the check-seat-brief CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:check-subagent-conventions",
+    "desc": "Run the check-subagent-conventions CI capability (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:extension-render",

@@ -220,6 +220,7 @@ build-components-ts:
       changes: &build-components-ts-changes-1
         - "scripts/build-components.*"
         - "scripts/lib/build-components/**"
+        - "artifacts/core/fragments/**"
         - "scripts/lib/skill-citations/**"
         - "scripts/lib/render-command.ts"
         - "scripts/lib/component-resolve.ts"
@@ -820,12 +821,14 @@ governance-checks-ts:
         - "scripts/tests/check-rules-size.test.ts"
         - "scripts/tests/check-comment-size*"
         - "scripts/tests/check-seat-brief*"
+        - "scripts/tests/check-subagent-conventions*"
         - "scripts/tests/check-plan-review*"
         - "scripts/tests/seat-ledger.test.ts"
         - "scripts/tests/economy-measure.test.ts"
         - "artifacts/core/skills/pr-reviewer/scripts/check-comment-size.ts"
         - "scripts/tests/fixtures/comment-size/**"
         - "scripts/tests/fixtures/seat-brief/**"
+        - "scripts/tests/fixtures/subagent-conventions/**"
         - "scripts/tests/fixtures/plan-review/**"
         - "scripts/tests/fixtures/seat-ledger/**"
         - "scripts/tests/fixtures/economy-1410/**"
@@ -2658,6 +2661,31 @@ check-seat-brief:
         - "scripts/tests/fixtures/seat-brief/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *check-seat-brief-changes-1
+
+check-subagent-conventions:
+  stage: governance
+  image: node:24
+  before_script:
+    - !reference [.task-install, script]
+  script:
+    - "task ci:check-subagent-conventions"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes: &check-subagent-conventions-changes-1
+        - "scripts/check-subagent-conventions.ts"
+        - "scripts/lib/governance/subagent-conventions.ts"
+        - "scripts/lib/governance/report.ts"
+        - "scripts/tests/check-subagent-conventions*"
+        - "scripts/tests/fixtures/subagent-conventions/**"
+        - "artifacts/core/fragments/**"
+        - "artifacts/*/agents/**"
+        - ".claude/agents/**"
+        - ".gemini/agents/**"
+        - ".github/agents/**"
+        - ".agents/agents/**"
+        - "scripts/lib/build-components/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes: *check-subagent-conventions-changes-1
 
 check-plan-review:
   stage: governance

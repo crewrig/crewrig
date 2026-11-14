@@ -17,6 +17,7 @@
 //   resources.ts    `propagateSkillResources`, `copyResource`, `readUmask`  (:415-456)
 //   tiers.ts staging.ts diagnostics.ts resolve-arm.ts emit-*.ts main.ts  — the rest.
 
+import type { ConventionsBlock } from "./conventions-block.ts";
 import type { RenderCommand } from "../render-command.ts";
 import type { YamlEntry, YamlPath, YamlText } from "../yaml-text.ts";
 
@@ -87,6 +88,8 @@ export interface BuildState {
   compare: boolean;
   /** `CHECK_STAGING_ROOT`: the empty string until `staging.ts` creates it. */
   stagingRoot: string;
+  /** The validated conventions fragment, read on first use (spec 0306 R10). */
+  conventions?: ConventionsBlock;
 }
 
 /**

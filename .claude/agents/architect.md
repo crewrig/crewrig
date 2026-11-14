@@ -2,6 +2,7 @@
 name: architect
 description: "Delegate to draft an ADR or RFC, run a design review, weigh alternatives with explicit trade-offs, map the blast radius of a change, check that a plan fits a size budget, or review a plan or a spec. Use when a change crosses components or a shared contract, introduces an abstraction or a migration, or needs an independent design opinion before implementation. Trigger terms: design review, ADR, RFC, architecture, alternatives, trade-off, blast radius, ripple effect, plan review. Not for writing code, specs or documentation."
 model: opus
+omitClaudeMd: true
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
@@ -25,3 +26,12 @@ Return the design note, the ADR or the verdict to whoever delegated it, with the
 ## Friction
 
 When something in the workflow misleads or blocks the work, report it with the `harness-report` skill.
+
+## Conventions for CrewRig subagents
+
+1. **Pre-Edit Guard:** edit a file only when an issue exists for the work, the branch is a feature branch named `<prefix>/<NNNN>-<slug>` (never `main`), and the ticket worktree `.worktrees/<ticket-id>/` is your working directory.
+2. **Gitmoji only** for commit, issue and PR titles (`<emoji> <Short description>`); never a `feat:` or `fix:` prefix.
+3. **English for project content** (repository files and every GitHub artifact); the user's language for dialogue.
+4. **No merge, no push to `main`.** Forge operations go through `gh`. Never run `git reset --hard`, `git stash` or `git clean` in a shared worktree.
+5. **No secrets or `.env` in the repository.** A change to a shipped skill or agent bumps its `metadata.provenance.version`; a change under `artifacts/` runs the build and stages its outputs in the same commit.
+6. **Report a denied action to your caller** instead of re-running it another way or through another agent.
