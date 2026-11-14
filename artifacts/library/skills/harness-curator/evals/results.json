@@ -1,0 +1,23 @@
+{
+  "skill_name": "harness-curator",
+  "content_hash": "sha256:ad014d4f01428309b99aab5a8b55eef2d254a47b7f4bd1b2f07d580d9ec0f4f1",
+  "runner_version": "3.0.0",
+  "executor_model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "date": "2026-11-14T12:51:29.562Z",
+  "status": "pass",
+  "eval_pass_rate": 1,
+  "probe_pass_rate": 1,
+  "base_eval_pass_rate": null,
+  "threshold": 0.8,
+  "tolerance": 0.2,
+  "evals_passed": 5,
+  "evals_total": 5,
+  "probes_passed": 8,
+  "probes_total": 8,
+  "executor_runs": 13,
+  "judge_calls": 5,
+  "cost_usd": 0.44278,
+  "skill_loaded": 5
+}

@@ -1,0 +1,23 @@
+{
+  "skill_name": "user-validate",
+  "content_hash": "sha256:964d848df9afe781535e5bfd6b48f98a82f2e5755d39dc615efefb6d608ef586",
+  "runner_version": "3.0.0",
+  "executor_model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "date": "2026-11-14T12:51:27.998Z",
+  "status": "pass",
+  "eval_pass_rate": 1,
+  "probe_pass_rate": 0.875,
+  "base_eval_pass_rate": null,
+  "threshold": 0.8,
+  "tolerance": 0.2,
+  "evals_passed": 5,
+  "evals_total": 5,
+  "probes_passed": 7,
+  "probes_total": 8,
+  "executor_runs": 13,
+  "judge_calls": 5,
+  "cost_usd": 0.418863,
+  "skill_loaded": 5
+}

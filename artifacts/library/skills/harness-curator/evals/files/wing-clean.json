@@ -1,0 +1,38 @@
+[
+  {
+    "drawer_id": "drw-001",
+    "room": "prompt",
+    "filed_at": "2026-10-02T09:00:00.000000",
+    "content": "FRICTION: Prompt wording issue 1\n\nwriter_agent: claude-code\nsubcategory: wording-a\ncanonical: https://github.com/acme/agent-config\nseverity: med\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-002",
+    "room": "prompt",
+    "filed_at": "2026-10-03T09:00:00.000000",
+    "content": "FRICTION: Prompt wording issue 2\n\nwriter_agent: claude-code\nsubcategory: wording-a\ncanonical: https://github.com/acme/agent-config\nseverity: med\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-003",
+    "room": "prompt",
+    "filed_at": "2026-10-04T09:00:00.000000",
+    "content": "FRICTION: Prompt wording issue 3\n\nwriter_agent: claude-code\nsubcategory: wording-a\ncanonical: https://github.com/acme/agent-config\nseverity: med\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-004",
+    "room": "prompt",
+    "filed_at": "2026-10-05T09:00:00.000000",
+    "content": "FRICTION: Prompt wording issue 4\n\nwriter_agent: claude-code\nsubcategory: wording-b\ncanonical: https://github.com/acme/agent-config\nseverity: med\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-005",
+    "room": "prompt",
+    "filed_at": "2026-10-06T09:00:00.000000",
+    "content": "FRICTION: Prompt wording issue 5\n\nwriter_agent: claude-code\nsubcategory: wording-b\ncanonical: https://github.com/acme/agent-config\nseverity: med\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-006",
+    "room": "prompt",
+    "filed_at": "2026-10-07T09:00:00.000000",
+    "content": "FRICTION: Prompt wording issue 6\n\nwriter_agent: claude-code\nsubcategory: wording-b\ncanonical: https://github.com/acme/agent-config\nseverity: med\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  }
+]

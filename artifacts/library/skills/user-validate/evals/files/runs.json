@@ -1,0 +1,7 @@
+[
+  {"run": 1, "exit_code": 0, "stdout": "{\"decision\":\"approved\"}"},
+  {"run": 2, "exit_code": 0, "stdout": "{\"decision\":\"annotated\",\"feedback\":\"Tighten section 2 and add a rollback step\"}"},
+  {"run": 3, "exit_code": 0, "stdout": "{\"decision\":\"dismissed\"}"},
+  {"run": 4, "exit_code": 1, "stdout": "{\"decision\":\"approved\"}"},
+  {"run": 5, "exit_code": 0, "stdout": "Review closed by the user"}
+]

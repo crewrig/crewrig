@@ -1,0 +1,50 @@
+[
+  {
+    "drawer_id": "drw-001",
+    "room": "prompt",
+    "filed_at": "2026-10-02T09:00:00.000000",
+    "content": "stray text one"
+  },
+  {
+    "drawer_id": "drw-002",
+    "room": "tool",
+    "filed_at": "2026-10-03T09:00:00.000000",
+    "content": "FRICTION: missing writer\n\nseverity: med\nevidence:\n  - a.md:1\n"
+  },
+  {
+    "drawer_id": "drw-003",
+    "room": "process",
+    "filed_at": "2026-10-04T09:00:00.000000",
+    "content": "FRICTION: no evidence\n\nwriter_agent: x\nseverity: med\n"
+  },
+  {
+    "drawer_id": "drw-004",
+    "room": "behavior",
+    "filed_at": "2026-10-05T09:00:00.000000",
+    "content": "unrelated note"
+  },
+  {
+    "drawer_id": "drw-005",
+    "room": "prompt",
+    "filed_at": "2026-10-06T09:00:00.000000",
+    "content": "FRICTION: Valid one\n\nwriter_agent: claude-code\nsubcategory: a\ncanonical: https://github.com/acme/agent-config\nseverity: med\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-006",
+    "room": "prompt",
+    "filed_at": "2026-10-07T09:00:00.000000",
+    "content": "FRICTION: Valid two\n\nwriter_agent: claude-code\nsubcategory: a\ncanonical: https://github.com/acme/agent-config\nseverity: med\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-007",
+    "room": "tool",
+    "filed_at": "2026-10-08T09:00:00.000000",
+    "content": "FRICTION: Valid three, nowhere to route\n\nwriter_agent: claude-code\nsubcategory: b\nseverity: high\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-008",
+    "room": "format",
+    "filed_at": "2026-10-09T09:00:00.000000",
+    "content": "FRICTION: Valid four\n\nwriter_agent: claude-code\nsubcategory: c\ncanonical: https://github.com/acme/agent-config\nseverity: low\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  }
+]
