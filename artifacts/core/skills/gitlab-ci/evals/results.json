@@ -1,15 +1,15 @@
 {
   "skill_name": "gitlab-ci",
-  "content_hash": "sha256:6c3de40800fdbf9ec98fcbe9bb99edf6d0d0fc6a4ca57456423b001c2f0fd220",
+  "content_hash": "sha256:ef8d010fc28c5f8ca096701a4e96c692c2db7b0c458c7f12828499e80d2d41bd",
   "runner_version": "2.2.0",
   "executor_model": "claude-sonnet-5-5",
   "judge_model": "claude-sonnet-5-5",
   "effort": "medium",
-  "date": "2026-11-13T22:10:29.595Z",
+  "date": "2026-11-14T02:30:26.650Z",
   "status": "pass",
   "eval_pass_rate": 0.8333333333333334,
   "probe_pass_rate": 1,
-  "base_eval_pass_rate": 0.5,
+  "base_eval_pass_rate": 0.8333333333333334,
   "threshold": 0.8,
   "tolerance": 0.05,
   "evals_passed": 5,
@@ -18,5 +18,5 @@
   "probes_total": 12,
   "executor_runs": 18,
   "judge_calls": 6,
-  "cost_usd": 0.775797
+  "cost_usd": 0.757451
 }
