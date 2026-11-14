@@ -226,7 +226,7 @@ Unverified Claude Code claims, none relied on: `CLAUDE_CODE_DISABLE_CLAUDE_MDS`,
 
 ## Appendix: Copilot probes (F8, 2026-11-14, issue #1995)
 
-Appended as a record; the decision above is unchanged. Copilot CLI 1.0.112, per-call tokens read from `session.usage_record` events in `~/.copilot/session-state/<id>/events.jsonl`, scratch directories and `COPILOT_HOME` overrides only (no file under `~/.copilot/` edited). Six runs, 31.95 AI credits in all (the paid unit Copilot reports); the evidence and its caveats live in cli-matrix rows 7b, 7e, 4c and 33, which supersede the "not probed" cells of *CLI parity* for Copilot.
+Appended as a record; the decision above is unchanged. Copilot CLI 1.0.112, per-call tokens read from `session.usage_record` events in `~/.copilot/session-state/<id>/events.jsonl`, scratch directories and `COPILOT_HOME` overrides only (no file under `~/.copilot/` edited). Six runs, 31.95 AI credits in all (the paid unit Copilot reports); the evidence and its caveats live in cli-matrix rows 7b, 7e, 4c and 33, which now hold the Copilot evidence where the *CLI parity* table above still says "not probed" (that table is left as written, being the record at decision time).
 
 | Run | Variation | First-call input tokens |
 |---|---|---|

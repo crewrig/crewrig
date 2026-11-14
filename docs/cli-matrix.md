@@ -172,7 +172,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `config.json`) instead of the pinned `gemini-3.8-flash`, and token counts differ by model: compare figures within a
   model only. A first attempt with the real home failed: the user-level
   `preToolUse` hook of `~/.copilot/hooks/` errored in the Copilot session sandbox (`EPERM` on its script) and Copilot
-  denied the `task` call (`Denied by preToolUse hook ... (hook errored)`), so a hook that cannot run blocks delegation
+  denied the `task` call (`Denied by preToolUse hook ... (hook errored)`), observed once, on this hook and this sandbox: a failing `preToolUse` hook can block delegation
 - **Antigravity CLI:** ❌ Not emitted: no `tools` key is written (spec 0053 delta-01 R12, R13). Antigravity documents
   `view_file`, `replace_file_content`, `grep_search` and `run_command` and warns that a misspelled name may hang the
   subagent, so the class-to-name mapping is unverified and is not guessed; the build emits one `tools-drop …
@@ -1726,7 +1726,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   such as `claude-sonnet-5.5` is out of scope here and tracked in issue #1877. **Honored when served** (Copilot CLI 1.0.112, probe of 2026-11-14, issue #1995): a `task`
   subagent running a personal agent that declares `model: gemini-3.8-flash` answered on that model while the session ran
   on `claude-sonnet-5.5`, and the built-in `explore` subagent ran on a third model, so a declared model that the
-  account serves is applied per subagent and only an unserved one falls back to the session model
+  account serves was applied per subagent in this probe (the fallback for an unserved model is the one recorded above,
+  not re-tested here)
 - **Antigravity CLI:** ⚠️ guidance surface only — no per-agent frontmatter surface exists on this target (spec
   0197 Premise 1)
 
