@@ -65,8 +65,12 @@ Ratified from the `pr-logbook` pilot, which applied it to three scripts without 
 The schema of `evals/evals.json` is owned by [spec 0290](../specs/0290-skill-eval-runner.md); this standard refers to it and does not redefine it. `evals/` stays in the repository and is never copied to a CLI target.
 
 - **Checked.** The file validates under the runner's schema. It holds at least 3 evals and at least 5 trigger probes, and each of the positive and the negative kinds is at least 40 percent of the probes.
-- **Guidance.** Write at least 5 evals: at 5, one miss is exactly 0.80 and leaves no margin over the 0.80 threshold, as the pilot measured. Make the negative probes near-misses that share vocabulary with your domain (reviewing a pull request, writing a spec, writing a local commit message), not unrelated requests. One-shot probes are noisy: two probes flipped between runs of the pilot.
+- **Guidance.** Write at most 6 evals that carry expectations. The runner refuses a skill with 7 or more of them, because its worst-case judge calls exceed the judge cap; the linter warns above 6. A skill with more than 6 evals is split, or its evals are reduced, before it is measured. Make the negative probes near-misses that share vocabulary with your domain (reviewing a pull request, writing a spec, writing a local commit message), not unrelated requests. Probes are sampled once per stage, and a probe pool is decided on its own, so a probe set that is too small gives a verdict that is too noisy to act on.
 - **Guidance.** Write every expectation on the observable output of the run, never on how it was produced, so the same cases measure the skill before and after its steps move into scripts. Never ask an eval to write to a forge; ask for the text and the command as files.
+- **Guidance.** Write every expectation so that a conforming output can quote it on one whole line of a produced file. A quote of one line is the strongest evidence; a quote that spans lines is accepted only when the normalised or window rule matches it, and a paraphrase is refused as evidence. The judge's one re-ask does not turn a paraphrase into a quote.
+- **Guidance.** Write one fact per expectation. An expectation that bundles two facts fails when either fails, and the failure does not say which.
+- **Guidance.** Do not write an expectation that is only an absence ("does not mention", "never writes"). A judge cannot prove an absence from a quoted line. When the absence concerns a produced file, write a `file_not_contains` check with a regular expression; when it concerns the content of the output, quote the lines that enumerate it.
+- **Guidance.** Dry-run the evals against hand-written samples before the baseline run: `task skill-evals -- <skill> --dry-run`, with one `evals/samples/<id>/` directory per eval holding a conforming output. The dry-run runs the check scripts and makes judge calls, with no executor run, and writes nothing to the skill. Every expectation should pass on a conforming sample; a `FAIL` on one is a defect of the case or of the sample, to fix before any paid run.
 
 ## Prompt style
 
@@ -106,15 +110,16 @@ The shutdown and idle texts are present in fewer skills than the epic estimated;
 A wave migrates a skill in this order, which is the order the `pr-logbook` pilot followed and measured.
 
 1. Write the evals first and commit them without touching the skill.
-2. Measure a baseline on the unchanged skill, more than once if the skill sits near the 0.80 threshold, and record the spread.
+1b. Dry-run the evals against hand-written samples: `task skill-evals -- <skill> --dry-run`. Every expectation should pass on a conforming sample before any baseline is paid for (see [Evals](#evals)).
+2. Measure a baseline on the unchanged skill under the runner's sampling plan (spec 0304 R1): each eval runs twice, a stage 2 of two more runs follows only when stage 1 leaves the pool open, and the verdict is `pass` only when both pools are accepted. Every run is recorded, so the spread of the eval runs is visible in `evals/results.json`; there is no separate spread measurement, and a repeat of the same content is refused.
 3. Extract the scripts and rewrite the body to this standard.
-4. Measure again on the same frozen cases. Keep the rewrite only when the pass rate does not fall below the baseline by more than the runner's tolerance.
+4. Measure again on the same frozen cases. Keep the rewrite when the new measurement is not `regression`: the runner's regression test (spec 0304 R12, Fisher's exact test over the evals present on both sides, with a drop of 0.10 or more) does not hold against the baseline.
 
 Add these lessons of the pilot:
 
 - Present the measuring tool's cost model when the wave's specification is validated, not at the spend gate. The pilot's paired-run runner was rejected only at the spend gate, which cost a re-scope.
 - When a trigger probe fails, revise the description before the body. It is the cheapest and most effective change.
-- A skill that already sits at its pass threshold is re-measured after any later edit of its `SKILL.md`, because a wording change can fall below the line with no margin.
+- A skill whose pools sit near an acceptance threshold (0.90 at stage 1, 0.75 over both stages) is re-measured after any later edit of its `SKILL.md`, because a wording change can move it across the line. Each re-measurement is a new content hash, and the ledger counts it.
 - Evaluate the eval runner before the skill: a runner that cannot parse one malformed judge answer voids a paid run.
 
 ## Scope: agents
