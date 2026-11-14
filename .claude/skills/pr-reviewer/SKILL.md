@@ -12,7 +12,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "2.3.0"
+    version: "2.3.2"
 ---
 
 
@@ -38,11 +38,13 @@ Run `node scripts/ci-preflight.ts <pr> --json` (add `--required` when the reposi
 - Exit `1`: read `data.verdict_ceiling`. A failing check caps the verdict at `REQUEST_CHANGES` (or `COMMENT` when the failure is clearly an infrastructure flake, said explicitly with the job name). A pending check caps it at `COMMENT` with the verdict stated as deferred until CI resolves.
 - Exit `3`: gh is unusable; say so in the verdict instead of guessing a status.
 
-To wait for CI, make ONE call: run `gh pr checks <pr> --watch` as a background command; it exits when no check is pending and you get a single notification. Never wait with a `sleep`, an `until` loop, a monitor or repeated queries, since each one re-reads a large context. Never end your turn to wait; nothing wakes a session that did.
+To wait for CI, make ONE call: `gh pr checks <pr> --watch` in the foreground, with the longest timeout the tool allows (a background task does not wake every session). Never wait with a `sleep`, an `until` loop, a monitor or repeated queries, since each re-reads a large context. Never end your turn to wait; nothing wakes a session that did. If CI is still pending at the timeout, post the verdict capped at `COMMENT` with the CI status; do not wait again.
 
-When that command exits, make one direct `ci-preflight.ts` query before composing the verdict. A background task reporting "done" is a cue to look, not the look itself, because it watches a process from outside the check. (`--wait <attempts> --interval <seconds>` also works, but it is a polling loop kept for scripts, not the way to wait.)
+When that command exits, make one direct `ci-preflight.ts` query before composing the verdict, since the watch only observes the checks from outside.
 
-Ghost check: a check still pending although its workflow run is `completed/success` counts as resolved when the merge state is `CLEAN`. `ci-preflight.ts` reports it apart, as bucket `ghost` and in `data.ghosts`, and does not count it as pending. Name the ghost check in the verdict's CI section; do not defer the verdict because of it.
+A `cancelled` check with no newer push is a failure until proven otherwise: `cancel-on-failure` cancels the run when any job fails. Read the `failure` annotations (`gh api repos/<o>/<r>/check-runs/<id>/annotations`) or the run summary, and name the failing job in the verdict (`docs/runbooks/ci-cancelled-run-diagnosis.md`).
+
+Ghost check: a check still pending although its workflow run is `completed/success` counts as resolved when the merge state is `CLEAN`. `ci-preflight.ts` reports it apart, as bucket `ghost` and in `data.ghosts`, and does not count it as pending. Name it in the verdict's CI section; do not defer the verdict because of it.
 
 The CI status goes into the verdict in writing (pass, fail or pending, with the failing job). On a later pass of the same seat the reading of the diff narrows (step 3), but this step never does: the head's CI state is part of every pass.
 
