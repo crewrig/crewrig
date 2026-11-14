@@ -215,7 +215,7 @@ test("R22: the refusals and the spend counting are pure functions of the figures
       Array.from({ length: 12 }, (_, i) => plan(`s${i}`, 6, 12)),
       limits,
     )[0] ?? "",
-    /planned worst-case cost 108 dollars/,
+    /planned worst-case cost 108.00 dollars/,
   );
 });
 

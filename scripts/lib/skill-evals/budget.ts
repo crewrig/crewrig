@@ -14,6 +14,7 @@
 //        new RunBudget(maxRuns), new CostMeter(capUsd).
 // Exit codes: not applicable (library). Finding-line format: not applicable.
 
+import { usd as money } from "./money.ts";
 import { planMaximum } from "./plan.ts";
 import { JUDGE_RETRY_ALLOWANCE, SAMPLING_PLAN } from "./settings.ts";
 import type { EvalsFile } from "./schema.ts";
@@ -83,7 +84,7 @@ export function preflight(plans: readonly SkillPlan[], limits: Limits): string[]
   );
   if (usd > limits.maxInvocationUsd)
     errors.push(
-      `planned worst-case cost ${usd} dollars exceeds max-invocation-usd ${limits.maxInvocationUsd}; select fewer skills per invocation (planned ${usd} dollars, cap ${limits.maxInvocationUsd} dollars)`,
+      `planned worst-case cost ${money(usd)} dollars exceeds max-invocation-usd ${limits.maxInvocationUsd}; select fewer skills per invocation (planned ${money(usd)} dollars, cap ${limits.maxInvocationUsd} dollars)`,
     );
   return errors;
 }
@@ -107,12 +108,12 @@ export function refuseSpend(
   for (const r of rows)
     if (r.spent + r.worst > limits.maxSkillUsd + 1e-9)
       out.push(
-        `${r.skill}: spent since the merge-base ${r.spent.toFixed(2)} USD plus the worst case ${r.worst.toFixed(2)} USD exceeds max-skill-usd ${limits.maxSkillUsd} USD`,
+        `${r.skill}: spent since the merge-base ${money(r.spent)} USD plus the worst case ${money(r.worst)} USD exceeds max-skill-usd ${limits.maxSkillUsd} USD`,
       );
   const worst = rows.reduce((n, r) => n + r.worst, 0);
   if (ticketSpent + worst > limits.maxTicketUsd + 1e-9)
     out.push(
-      `ticket ${ticket}: spent ${ticketSpent.toFixed(2)} USD plus the summed worst case ${worst.toFixed(2)} USD exceeds max-ticket-usd ${limits.maxTicketUsd} USD`,
+      `ticket ${ticket}: spent ${money(ticketSpent)} USD plus the summed worst case ${money(worst)} USD exceeds max-ticket-usd ${limits.maxTicketUsd} USD`,
     );
   return out;
 }

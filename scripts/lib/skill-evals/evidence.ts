@@ -134,6 +134,12 @@ export type EvidenceVerdict =
   | ({ readonly ok: true } & EvidenceMatch)
   | { readonly ok: false; readonly reason: string };
 
+/** The lines of a file as an editor counts them: a final newline does not add a line. */
+const lineCount = (content: string): number => {
+  const n = norm(content).split("\n").length;
+  return content.endsWith("\n") || content.endsWith("\r") ? n - 1 : n;
+};
+
 /** R15: the evidence starts with a `path:line` of a produced file, the token reaching the floor. */
 function matchPathLine(evidence: string, material: EvidenceMaterial): boolean {
   const trimmed = evidence.trim();
@@ -144,8 +150,7 @@ function matchPathLine(evidence: string, material: EvidenceMaterial): boolean {
     const rel = (ref[1] ?? "").replace(/^(?:\.\/|\/)?(?:outputs\/)?/, "");
     const line = Number(ref[2]);
     const file = material.files.find((f) => f.rel === rel);
-    if (file !== undefined && line >= 1 && line <= norm(file.content).split("\n").length)
-      return true;
+    if (file !== undefined && line >= 1 && line <= lineCount(file.content)) return true;
   }
   return false;
 }

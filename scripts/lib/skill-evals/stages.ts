@@ -16,6 +16,7 @@ import path from "node:path";
 import type { CostMeter } from "./budget.ts";
 import type { Credential } from "./credentials.ts";
 import type { Executor, ExecOutcome } from "./executor/types.ts";
+import { usd } from "./money.ts";
 import { gradeRun, JudgeFailure } from "./grade.ts";
 import type { Grading } from "./grade.ts";
 import { installFiles } from "./hash.ts";
@@ -99,14 +100,14 @@ async function attempt(ctx: StageCtx, s: LiveSkill, slot: Slot): Promise<Attempt
     try {
       if (s.controller.signal.aborted || ctx.invocation.signal.aborted) return ABORTED;
       if (ctx.invMeter.reached) {
-        ctx.invocationError ??= `max-invocation-usd ${ctx.cfg.maxInvocationUsd} reached (measured ${ctx.invMeter.spent.toFixed(2)})`;
+        ctx.invocationError ??= `max-invocation-usd ${ctx.cfg.maxInvocationUsd} reached (measured ${usd(ctx.invMeter.spent)})`;
         ctx.invocation.abort();
         return ABORTED;
       }
       if (s.meter.total >= ctx.cfg.maxMeasurementUsd) {
         stopSkill(
           s,
-          `the measurement is at its cap: ${s.meter.total.toFixed(2)} USD reached max-measurement-usd ${ctx.cfg.maxMeasurementUsd}; no new run started`,
+          `the measurement is at its cap: ${usd(s.meter.total)} USD reached max-measurement-usd ${ctx.cfg.maxMeasurementUsd}; no new run started`,
         );
         return ABORTED;
       }

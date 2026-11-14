@@ -119,7 +119,7 @@ test("an over-cost plan (12 skills at 9 dollars against 100) makes no model call
     assert.equal(rig.executor.calls.length, 0);
     assert.equal(r.exitCode, 1);
     assert.ok(r.results.every((s) => s.status === "error"));
-    assert.match(r.stderr, /planned worst-case cost 108 dollars exceeds max-invocation-usd 100/);
+    assert.match(r.stderr, /planned worst-case cost 108.00 dollars exceeds max-invocation-usd 100/);
     assert.match(r.stderr, /select fewer skills per invocation/);
     assert.match(r.stderr, /cap 100 dollars/);
   } finally {

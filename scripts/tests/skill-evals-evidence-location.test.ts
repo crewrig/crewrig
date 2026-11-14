@@ -41,8 +41,13 @@ test("R15: the commentary is not checked and does not count toward the floor", (
 test("R15: a line number beyond the file is refused, even with a token that reaches the floor", () => {
   assert.equal(verdict(`${CI}:99 the job sets contents: read`).ok, false);
   assert.equal(verdict(`${CI}:0 line zero does not exist`).ok, false);
-  // the file has 6 split elements (the last is the empty tail after the final newline)
   assert.equal(verdict(`${CI}:7 beyond the end`).ok, false);
+});
+
+test("R15: a final newline does not add a line: the last line is accepted, the empty tail is not", () => {
+  const five = { transcript: "x", files: [{ rel: "five-lines.yml", content: "a\nb\nc\nd\ne\n" }] };
+  assert.equal(validateEvidence("five-lines.yml:5 the last line is here", five).ok, true);
+  assert.equal(validateEvidence("five-lines.yml:6 the empty tail of the file", five).ok, false);
 });
 
 test("R15: the path must name a produced file", () => {

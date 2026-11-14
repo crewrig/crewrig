@@ -13,6 +13,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { usd } from "./money.ts";
 import { decideRecord } from "./base.ts";
 import { evalsViolations, snapshotEvalsText } from "./attest.ts";
 import { planSkill } from "./budget.ts";
@@ -169,7 +170,7 @@ export function startSkills(a: StartArgs): {
       results.push(
         refusedResult(
           name,
-          `the measurement of ${start.record.content_hash} is at its cap: ${(a.cfg.maxMeasurementUsd - start.worst).toFixed(2)} USD recorded, max-measurement-usd ${a.cfg.maxMeasurementUsd}; change the skill content for a new measurement`,
+          `the measurement of ${start.record.content_hash} is at its cap: ${usd(a.cfg.maxMeasurementUsd - start.worst)} USD recorded, max-measurement-usd ${a.cfg.maxMeasurementUsd}; change the skill content for a new measurement`,
         ),
       );
       continue;

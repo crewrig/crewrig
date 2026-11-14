@@ -16,6 +16,8 @@
 // Usage: formatReport(results, source?). Exit codes: not applicable (library).
 // Finding-line format: `<skill>: status=<status> ...`.
 
+import { usd } from "./money.ts";
+
 export type RunStatus =
   | "pass"
   | "fail"
@@ -82,10 +84,8 @@ const ratio = (passes: number | undefined, runs: number | undefined, stage?: num
     : `${(passes / runs).toFixed(2)} (${passes}/${runs}${stage === undefined ? "" : `, stage ${stage}`})`;
 
 function costFigure(r: SkillResult): string {
-  if (r.costAssumedUsd !== undefined) return `assumed ${r.costAssumedUsd.toFixed(2)}`;
-  return r.costUsd === null
-    ? `unknown (at least ${(r.costLowerBound ?? 0).toFixed(2)})`
-    : r.costUsd.toFixed(2);
+  if (r.costAssumedUsd !== undefined) return `assumed ${usd(r.costAssumedUsd)}`;
+  return r.costUsd === null ? `unknown (at least ${usd(r.costLowerBound ?? 0)})` : usd(r.costUsd);
 }
 
 export function formatSkill(r: SkillResult): string {
@@ -99,7 +99,7 @@ export function formatSkill(r: SkillResult): string {
       ? "n/a"
       : r.judgeCostUsd === null
         ? JUDGE_ASSUMED_NOTE
-        : r.judgeCostUsd.toFixed(2);
+        : usd(r.judgeCostUsd);
   lines.push(
     `${r.skill}: status=${r.status} eval_pass_rate=${ratio(r.evalPasses, r.evalRuns, r.evalStage)} ` +
       `probe_pass_rate=${ratio(r.probePasses, r.probeRuns, r.probeStage)} ` +
@@ -153,7 +153,7 @@ export function formatReport(
   const calls = results.reduce((n, r) => n + r.judgeCalls, 0);
   lines.push(
     `invocation: skills=${results.length} executor_runs=${runs} judge_calls=${calls} cost_usd=${
-      anyUnknown ? `unknown or assumed (at least ${lower.toFixed(2)})` : lower.toFixed(2)
+      anyUnknown ? `unknown or assumed (at least ${usd(lower)})` : usd(lower)
     }`,
   );
   if (source !== undefined) lines.push(`credential_source: ${CREDENTIAL_LABELS[source]}`);
