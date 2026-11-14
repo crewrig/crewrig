@@ -34,8 +34,10 @@ Implement <issue URL>. The issue body is the contract.
 
 The sections _Waiting rules in a worker brief_ and _Output hygiene and
 stage-scoped sessions in a worker brief_ of
-`docs/agent-team-protocol/orchestrator.md` apply in full. Reference them; do
-not paraphrase.
+`docs/agent-team-protocol/orchestrator.md` apply in full. The coordinator
+pastes their bullets here verbatim; no paraphrase.
+
+<verbatim bullets of both sections>
 
 ## Merge, pre-authorised by the owner through the coordinator
 

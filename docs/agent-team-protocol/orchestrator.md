@@ -186,7 +186,8 @@ each rule below removes a call or a decision from the workers.
    not deep reasoning.
 7. **Carry the hygiene rules in the brief.** Include the sections *Waiting
    rules in a worker brief* and *Output hygiene and stage-scoped sessions in a
-   worker brief* above, by reference, never restated.
+   worker brief* above: copy their bullets verbatim into the brief and
+   point back to those sections; never paraphrase or restate them here.
 
 The reusable brief is in
 [`worker-brief-template.md`](worker-brief-template.md). At the end of a run the
