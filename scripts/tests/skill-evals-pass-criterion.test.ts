@@ -61,7 +61,8 @@ async function runTable(
       };
     const m = /eval-(\d+)\/run-(\d+)$/.exec(req.label);
     const ok = evalRuns[Number(m?.[1]) - 1]?.[Number(m?.[2]) - 1] === true;
-    return { files: ok ? { "answer.md": "x" } : {} };
+    const files: Record<string, string> = ok ? { "answer.md": "x" } : {};
+    return { files };
   };
   const rig = makeRig({
     evalsCount: 1,

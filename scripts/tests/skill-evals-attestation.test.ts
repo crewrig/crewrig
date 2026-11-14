@@ -251,6 +251,34 @@ test("a branch measured against 24/24 is recomputed after main advances with a b
   }
 });
 
+test("the check prints the branch count: a head ledger with one entry beyond the merge-base set gives 2", () => {
+  const r = sixRig({ base: { evalRuns: allPass(6, 4) } });
+  try {
+    const extra = {
+      content_hash: "sha256:" + "a".repeat(64),
+      ticket: "1958",
+      declared_at: "2026-01-15T00:00:00.000Z",
+      status: "fail",
+      eval_pass_rate: 0.5,
+      probe_pass_rate: null,
+      executor_runs: 12,
+      judge_calls: 12,
+      cost_usd: 0.1,
+      judge_cost_usd: 0.1,
+      cost_assumed: false,
+    };
+    writeRecord(r.dir, r.head({ evalRuns: allPass(6, 2), ledger: [...r.mbLedger, extra] }));
+    const o = attest(r);
+    assert.equal(o.status, "pass", o.reason);
+    assert.equal(o.branchMeasurements, 2);
+    const s = sink();
+    attestMain([], cleanEnv(), r.repo.root, s.io);
+    assert.match(s.out, /^ {2}measurements on this branch: 2$/m);
+  } finally {
+    r.cleanup();
+  }
+});
+
 test("no-evals warns and blocks only under missing-evals-blocking; invalid always blocks", () => {
   const repo = makeRepo();
   try {

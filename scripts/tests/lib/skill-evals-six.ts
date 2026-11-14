@@ -6,6 +6,12 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { snapshotEvalsText } from "../../lib/skill-evals/attest.ts";
+import { caseHashesOf } from "../../lib/skill-evals/case-hash.ts";
+import { readHistory } from "../../lib/skill-evals/ledger.ts";
+import type { StartInput } from "../../lib/skill-evals/measure.ts";
+import { validateEvals } from "../../lib/skill-evals/schema.ts";
+
 import {
   commitAll,
   makeRepo,
@@ -70,5 +76,31 @@ export function sixRig(
       }),
     sel: () => selectionOf(repo, "demo"),
     cleanup: () => repo.cleanup(),
+  };
+}
+
+/** The input of `decideStart` for the rig's skill as it stands now (working file, history, hash). */
+export function startInput(rig: SixRig, over: Partial<StartInput> = {}): StartInput {
+  const sel = rig.sel();
+  const text = snapshotEvalsText(sel) ?? "";
+  const parsed = validateEvals(text, {
+    file: `${sel.skill.dirRel}/evals/evals.json`,
+    skillDir: sel.skill.dirAbs,
+    skillName: "demo",
+  });
+  const rf = path.join(rig.dir, "evals", "results.json");
+  return {
+    skill: "demo",
+    contentHash: sel.headHash ?? "",
+    ticket: "1958",
+    now: "2026-03-01T00:00:00.000Z",
+    evals: parsed.evals as NonNullable<typeof parsed.evals>,
+    caseHashes: caseHashesOf(text, sel.skill.dirAbs),
+    workingText: fs.existsSync(rf) ? fs.readFileSync(rf, "utf8") : undefined,
+    history: readHistory(rig.repo.root, sel.mergeBase, sel.skill.dirRel),
+    executorModel: "m",
+    judgeModel: "j",
+    effort: "medium",
+    ...over,
   };
 }

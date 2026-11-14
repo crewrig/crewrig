@@ -238,12 +238,7 @@ test("R12: p exactly equal to alpha is not below it (strict), found by a search 
 });
 
 test("R3: a rejected pool is fail before the regression test, whatever the base", () => {
-  const d = decideSkill({
-    evals: pool(6, 4, 15),
-    compare: { head: { passes: 15, runs: 24 }, base: { passes: 24, runs: 24 } },
-  });
-  // 15 of 24 at stage 2; stage 1 (12 runs) must have continued for the pool to reach stage 2.
-  assert.equal(d.status === "fail" || d.status === "in-progress", true);
+  // stage 1 at 8 of 12 continues; stage 2 adds nothing: 8 of 24 is rejected and the test is not evaluated
   const rows = [
     [true, true, false, false],
     [true, true, false, false],
@@ -258,6 +253,8 @@ test("R3: a rejected pool is fail before the regression test, whatever the base"
   });
   assert.equal(fail.status, "fail");
   assert.equal(fail.regression, null);
+  // a pool rejected at stage 1 never reaches stage 2 either
+  assert.equal(decideSkill({ evals: pool(6, 2, 7) }).status, "fail");
 });
 
 test("R3: an unfinished pool is in-progress and never pass", () => {
@@ -265,25 +262,26 @@ test("R3: an unfinished pool is in-progress and never pass", () => {
   assert.equal(decideSkill({ evals: pool(6, 2, 8) }).status, "in-progress");
 });
 
-test("R3: pass and regression come from the pools then the test; the probes are decided apart", () => {
-  const evalsOk = pool(6, 2, 12);
-  assert.equal(decideSkill({ evals: evalsOk }).status, "pass");
-  const reg = decideSkill({
-    evals: evalsOk,
-    compare: { head: { passes: 12, runs: 12 }, base: { passes: 12, runs: 12 } },
-  });
-  assert.equal(reg.status, "pass");
-  assert.equal(reg.regression?.holds, false);
-  // 18 of 24 head (stage 2) against 24 of 24 is a regression.
-  const rows = pool(6, 4, 18);
-  const stage1Mixed = rows.map((r, i) =>
-    i < 4 ? [true, true, r[2], r[3]] : [i === 4, i === 4, r[2], r[3]],
-  );
-  const d = decideSkill({
-    evals: stage1Mixed,
-    compare: { head: { passes: 18, runs: 24 }, base: { passes: 24, runs: 24 } },
-  });
-  assert.equal(d.evals.stage, 2);
+test("R3: pass and regression come from the pools then the test: 20 of 24 against 24 of 24 is a regression, against 12 of 24 a pass", () => {
+  // stage 1: 8 of 12 (continues), stage 2: 12 of 12 more = 20 of 24, accepted by the absolute bar
+  const rows = [
+    [true, true, true, true],
+    [true, true, true, true],
+    [true, true, true, true],
+    [true, true, true, true],
+    [false, false, true, true],
+    [false, false, true, true],
+  ];
+  const head = { passes: 20, runs: 24 };
+  const reg = decideSkill({ evals: rows, compare: { head, base: { passes: 24, runs: 24 } } });
+  assert.equal(reg.status, "regression");
+  assert.equal(reg.regression?.holds, true);
+  assert.deepEqual(reg.stageReached, { evals: 2, probes: null });
+  const better = decideSkill({ evals: rows, compare: { head, base: { passes: 12, runs: 24 } } });
+  assert.equal(better.status, "pass");
+  assert.equal(better.regression?.holds, false);
+  assert.equal(decideSkill({ evals: rows }).status, "pass", "not compared: the pools alone decide");
+  assert.equal(decideSkill({ evals: rows, compare: null }).regression, null);
 });
 
 test("R2/R3: the probe pool is decided apart (8 of 8 accepted, evals continue) and a skill with no probe has none", () => {
