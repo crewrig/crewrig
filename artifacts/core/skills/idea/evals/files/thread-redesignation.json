@@ -1,0 +1,68 @@
+{
+  "body": "## IDEA Session \u2014 Audit trail storage\n\n**Parent issue:** #58\n**Governance mode:** vote\n**Voters:** alice, bob, carol, dave\n**Quorum:** 60\n\n---\n\n### Proposals\n\n_Proposals are submitted as comments._\n",
+  "comments": [
+    {
+      "author": {
+        "login": "alice"
+      },
+      "body": "## Proposal: Event sourcing\n\n**Submitter:** alice\n\n### Summary\nStore every change as an immutable event.\n\n### Rationale\nAddresses the parent issue.\n\n### Trade-offs\nCosts differ.\n\n### Open questions\nNone.",
+      "createdAt": "2026-03-02T10:00:00Z"
+    },
+    {
+      "author": {
+        "login": "bob"
+      },
+      "body": "## Proposal: Append-only table\n\n**Submitter:** bob\n\n### Summary\nKeep a single append-only audit table.\n\n### Rationale\nAddresses the parent issue.\n\n### Trade-offs\nCosts differ.\n\n### Open questions\nNone.",
+      "createdAt": "2026-03-02T10:01:00Z"
+    },
+    {
+      "author": {
+        "login": "maintainer"
+      },
+      "body": "[CANDIDATE] Proposal: Event sourcing",
+      "createdAt": "2026-03-02T10:02:00Z"
+    },
+    {
+      "author": {
+        "login": "alice"
+      },
+      "body": "VOTE: APPROVE",
+      "createdAt": "2026-03-02T10:03:00Z"
+    },
+    {
+      "author": {
+        "login": "bob"
+      },
+      "body": "VOTE: APPROVE",
+      "createdAt": "2026-03-02T10:04:00Z"
+    },
+    {
+      "author": {
+        "login": "carol"
+      },
+      "body": "VOTE: APPROVE",
+      "createdAt": "2026-03-02T10:05:00Z"
+    },
+    {
+      "author": {
+        "login": "maintainer"
+      },
+      "body": "[CANDIDATE] Proposal: Append-only table",
+      "createdAt": "2026-03-02T10:06:00Z"
+    },
+    {
+      "author": {
+        "login": "carol"
+      },
+      "body": "VOTE: APPROVE",
+      "createdAt": "2026-03-02T10:07:00Z"
+    },
+    {
+      "author": {
+        "login": "dave"
+      },
+      "body": "VOTE: REJECT",
+      "createdAt": "2026-03-02T10:08:00Z"
+    }
+  ]
+}

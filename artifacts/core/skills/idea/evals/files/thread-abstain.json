@@ -1,0 +1,75 @@
+{
+  "body": "## IDEA Session \u2014 Release cadence\n\n**Parent issue:** #61\n**Governance mode:** vote\n**Voters:** alice, bob, carol, dave, erin\n**Quorum:** 60\n\n---\n",
+  "comments": [
+    {
+      "author": {
+        "login": "alice"
+      },
+      "body": "## Proposal: Weekly releases\n\n**Submitter:** alice\n\n### Summary\nCut a release every Friday.\n\n### Rationale\nAddresses the parent issue.\n\n### Trade-offs\nCosts differ.\n\n### Open questions\nNone.",
+      "createdAt": "2026-03-02T10:00:00Z"
+    },
+    {
+      "author": {
+        "login": "bob"
+      },
+      "body": "## Proposal: Daily releases\n\n**Submitter:** bob\n\n### Summary\nCut a release every day.\n\n### Rationale\nShips faster.\n\n### Trade-offs\nHeavy on the pipeline.\n\n### Open questions\nNone.",
+      "createdAt": "2026-03-02T10:01:00Z"
+    },
+    {
+      "author": {
+        "login": "maintainer"
+      },
+      "body": "[TRIAGE-REJECTED] Proposal: Daily releases\n\n**Criterion failed:** Feasibility\n**Reason:** Not realizable with the current pipeline.",
+      "createdAt": "2026-03-02T10:02:00Z"
+    },
+    {
+      "author": {
+        "login": "alice"
+      },
+      "body": "VOTE: APPROVE",
+      "createdAt": "2026-03-02T10:03:00Z"
+    },
+    {
+      "author": {
+        "login": "bob"
+      },
+      "body": "VOTE: APPROVE",
+      "createdAt": "2026-03-02T10:04:00Z"
+    },
+    {
+      "author": {
+        "login": "carol"
+      },
+      "body": "VOTE: ABSTAIN",
+      "createdAt": "2026-03-02T10:05:00Z"
+    },
+    {
+      "author": {
+        "login": "dave"
+      },
+      "body": "VOTE: REJECT",
+      "createdAt": "2026-03-02T10:06:00Z"
+    },
+    {
+      "author": {
+        "login": "erin"
+      },
+      "body": "VOTE: APPROVE (looks good to me)",
+      "createdAt": "2026-03-02T10:07:00Z"
+    },
+    {
+      "author": {
+        "login": "mallory"
+      },
+      "body": "VOTE: APPROVE",
+      "createdAt": "2026-03-02T10:08:00Z"
+    },
+    {
+      "author": {
+        "login": "dave"
+      },
+      "body": "+1 on the weekly cadence actually",
+      "createdAt": "2026-03-02T10:09:00Z"
+    }
+  ]
+}
