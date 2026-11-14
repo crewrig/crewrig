@@ -2,8 +2,9 @@
 name: architect
 description: "Delegate to draft an ADR or RFC, run a design review, weigh alternatives with explicit trade-offs, map the blast radius of a change, check that a plan fits a size budget, or review a plan or a spec. Use when a change crosses components or a shared contract, introduces an abstraction or a migration, or needs an independent design opinion before implementation. Trigger terms: design review, ADR, RFC, architecture, alternatives, trade-off, blast radius, ripple effect, plan review. Not for writing code, specs or documentation."
 model: gemini-3.1-pro-preview
+tools: [read_file, read_many_files, list_directory, grep_search, glob, write_file, replace, run_shell_command, activate_skill]
 ---
-<!-- crewrig-provenance: version="2.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="2.1.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Architect Agent
 
@@ -20,6 +21,7 @@ Return the design note, the ADR or the verdict to whoever delegated it, with the
 ## Friction
 
 When something in the workflow misleads or blocks the work, report it with the `harness-report` skill.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.
 
 ## Conventions for CrewRig subagents
 

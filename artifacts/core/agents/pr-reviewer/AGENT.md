@@ -5,10 +5,11 @@ type: agent
 metadata:
   model:
     intelligence: high
+  tools: [read, search, edit, execute, skill, message]
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "2.0.1"
+    version: "2.1.0"
 ---
 
 # PR Reviewer Agent
@@ -60,3 +61,4 @@ When re-activated with no new assignment, answer in one sentence that names the 
 ## Friction
 
 When something in the workflow misleads or blocks the review, report it with the `harness-report` skill.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.

@@ -2,8 +2,9 @@
 name: pr-logbook
 description: "Delegate to compose or update a PR title and body, a logbook entry, a squash-merge message, or to mark a spec implemented. Use when opening or editing a PR, logging a stage transition, or marking a spec implemented. Not for local commit messages."
 model: gemini-3.5-flash
+tools: [read_file, read_many_files, list_directory, grep_search, glob, write_file, replace, run_shell_command, activate_skill]
 ---
-<!-- crewrig-provenance: version="1.3.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.4.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # PR & Logbook Agent
 
@@ -24,6 +25,7 @@ to learn the conventions of this project before composing.
   stage transitions.
 
 When a friction blocks you, use the `harness-report` skill to tag it.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.
 
 ## Conventions for CrewRig subagents
 

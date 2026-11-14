@@ -5,7 +5,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.3.0"
+    version: "1.4.0"
 ---
 
 
@@ -113,6 +113,7 @@ Once the fix is identified your work is done. Delegate the rest:
 
 When something in this workflow misleads or blocks you, report it with the
 `harness-report` skill.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.
 
 ## Conventions for CrewRig subagents
 

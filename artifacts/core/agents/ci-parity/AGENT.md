@@ -6,10 +6,11 @@ license: Apache-2.0
 metadata:
   model:
     intelligence: high
+  tools: [read, search, edit, execute, skill]
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.2.0"
+    version: "1.3.0"
 ---
 
 # CI Parity Agent
@@ -142,3 +143,4 @@ When the divergences are reconciled or the proposals delivered, your work is don
 
 When something in this workflow misleads or blocks you, report it with the
 `harness-report` skill.
+This agent's tool allowlist withholds the MCP tools, so it reports any friction (offender, signal, evidence) in its final reply for the delegating session to tag.
