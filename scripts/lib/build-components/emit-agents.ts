@@ -23,7 +23,7 @@
 import { resolveAgent } from "../model-resolve.ts";
 import type { ResolveContext, ResolveResult } from "../model-resolve.ts";
 import { joinRoot } from "./args.ts";
-import { noGeminiTool, readAgentTools, toolsDrop, toolsLine } from "./agent-tools.ts";
+import { noToolName, readAgentTools, toolsDrop, toolsLine } from "./agent-tools.ts";
 import { assertNoHandCopy, loadConventions, withConventions } from "./conventions-block.ts";
 import { emitDiagLine } from "./diagnostics.ts";
 import { emitAntigravityAgent } from "./emit-agent-antigravity.ts";
@@ -49,13 +49,14 @@ function resolveFor(ctx: Ctx, model: ResolveContext, job: AgentJob, cli: CliId):
 
 /**
  * The `tools:` line of `cli`, after the directed lines (spec 0291 R11); none when the source
- * declares none (R12). Gemini has no name for the `agent` class: it is dropped with a record,
- * and the build fails when nothing else remains (R13).
+ * declares none (R12). A class with no name on Gemini (`agent`, `message`) or Copilot (`skill`,
+ * `message`) is dropped with a record, and the build fails when nothing else remains (R13, R29).
  */
 function toolsLines(ctx: Ctx, job: AgentJob, cli: "gemini" | "claude" | "copilot"): string[] {
   if (job.tools === null) return [];
   const { line, omitted } = toolsLine(cli, job.tools);
-  if (omitted.length === job.tools.length) throw noGeminiTool(job.source, job.tools);
+  if (cli !== "claude" && omitted.length === job.tools.length)
+    throw noToolName(job.source, cli, job.tools);
   if (omitted.length > 0) {
     emitDiagLine(ctx, toolsDrop(job.name, cli, omitted, "no-equivalent-on-cli"));
   }

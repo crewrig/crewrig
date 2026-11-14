@@ -153,25 +153,36 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 ### 4c — Agent tool mapping / capabilities
 
 - **Feature:** Agent tool mapping / capabilities — maps the tool classes an agent source declares under
-  `metadata.tools` (`read`, `search`, `edit`, `execute`, `web`, `agent`; spec 0291) to each CLI's own tool allowlist in
+  `metadata.tools` (`read`, `search`, `edit`, `execute`, `web`, `agent`, `skill`, `message`; spec 0291 and its delta 01) to each CLI's own tool allowlist in
   the output agent definition. Opt-in: a source that declares nothing gets no `tools` key on any CLI. An allowlist
   withholds every tool it does not name (MCP tools, `SendMessage`, `Skill`, `ToolSearch` and `TodoWrite` on Claude Code), so
-  it is declared only for an agent whose classes exclude `execute` and `edit`, enforced by
-  `scripts/check-component-metadata-keys.ts` on `artifacts/core/` and `artifacts/library/` (spec 0291 R17).
+  an allowlist may be declared for any agent, and one that contains `edit` or `execute` must name `skill`, enforced by
+  `scripts/check-component-metadata-keys.ts` on `artifacts/core/` and `artifacts/library/`; `message` is left to review
+  (spec 0291 R17 as amended by delta 01).
 - **Source of truth:** `scripts/lib/build-components/agent-tools.ts`, `scripts/lib/build-components/emit-agents.ts`
   (`buildAgents`; shell origin `build_agents`), `scripts/lib/build-components/emit-agent-antigravity.ts`
 - **Claude Code:** ✅ Mapped: `tools: Read, Grep, Glob, …` (a comma-separated string, after `model:`), names per
-  <https://code.claude.com/docs/en/sub-agents> read 2026-11-11. The old `claude.allowed-tools` of an agent source is read
+  <https://code.claude.com/docs/en/sub-agents> read 2026-11-11; delta 01 adds `skill` → `Skill` and `message` →
+  `SendMessage`, both named by the background-subagent tool list of that page (read 2026-11-14). The old `claude.allowed-tools` of an agent source is read
   by no agent emitter (only skills and commands); the dead declaration was removed from `pr-reviewer` (spec 0291 R19)
 - **Gemini CLI:** ✅ Mapped: `tools: [read_file, read_many_files, list_directory, …]`, the native identifiers of
   <https://geminicli.com/docs/reference/tools/> read 2026-11-11, under the strict `tools` key of row 43 (Gemini CLI
   0.28.2). The `agent` class has no Gemini name (subagents cannot call other subagents): it is omitted with one
-  `tools-drop … no-equivalent-on-cli` record, and a declaration that leaves no tool stops the build
+  `tools-drop … no-equivalent-on-cli` record, and a declaration that leaves no tool stops the build. Delta 01 adds
+  `skill` → `activate_skill` ("loads specialized procedural expertise from the `.gemini/skills` directory", read
+  2026-11-14, no CLI version stated) and no name for `message`: `complete_task` returns the result to the parent agent
+  and ends the mission, so it is not a message channel and is not mapped. `[GAP-confirmation]`
 - **Copilot CLI:** ✅ Mapped: `tools: [read, search, …]` in `.github/agents/`, the primary names of
-  <https://docs.github.com/en/copilot/reference/custom-agents-configuration> read 2026-11-11. Copilot also honors
+  <https://docs.github.com/en/copilot/reference/custom-agents-configuration> read 2026-11-11. The `skill` and `message` classes have no Copilot name: the primary aliases
+  are `execute`, `read`, `edit`, `search`, `agent`, `web` and `todo`, and
+  <https://docs.github.com/en/copilot/concepts/agents/about-agent-skills> (read 2026-11-14) states no way to name a skill in
+  a custom agent's `tools` list (skills are discovered from `.github/skills`, `.claude/skills`, `.agents/skills`,
+  `~/.copilot/skills` and `~/.agents/skills`, which are discovery paths, not an allowlist name); no user-level,
+  hook-level or alternative-path mechanism was found. Each is omitted with one `tools-drop … no-equivalent-on-cli`
+  record and a declaration that leaves no tool stops the build; `[GAP-confirmation]`. Copilot also honors
   `tools:` in the shared `.claude/agents/` (row 32), where it aliases `Bash`, `Read`, `Edit`, `Write`, `Grep`, `Glob`,
-  `WebFetch`, `WebSearch` and `Task`; `Agent` is not an alias there, so a declared `agent` class does not reach a
-  Copilot reader of that directory, which fails toward fewer tools. **Subagent fixed context** (Copilot CLI 1.0.112, probe of 2026-11-14, issue #1995, CrewRig
+  `WebFetch`, `WebSearch` and `Task`; `Agent`, `Skill` and `SendMessage` are not aliases there, so a declared `agent`,
+  `skill` or `message` class does not reach a Copilot reader of that directory, which fails toward fewer tools. **Subagent fixed context** (Copilot CLI 1.0.112, probe of 2026-11-14, issue #1995, CrewRig
   worktree, a personal `developer` agent declaring `tools:` and `model: gemini-3.8-flash`): a `task` subagent starts with
   **4.3k** first-call input tokens (built-in `explore`: 4,301 with 11 tool definitions, 2.7k; `developer`: 4,315 with
   9 tools, 2.1k) against a main session of **74.9k** on the same run (26 tools, 21.0k; `custom_instructions` 39.4k).
@@ -2369,6 +2380,18 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   `view_file`, `replace_file_content`, `grep_search` and `run_command` and warns that a misspelled name may hang the
   subagent, so the class-to-name mapping is unverified and is not guessed. Lifted when each class's exact Antigravity
   name is established by a probe on a named ticket.
+- [GAP-confirmation] Copilot CLI agent `tools` names for `skill` and `message` (row 4c) — no Copilot name exists in
+  <https://docs.github.com/en/copilot/reference/custom-agents-configuration> (primary aliases `execute`, `read`,
+  `edit`, `search`, `agent`, `web`, `todo`) nor in <https://docs.github.com/en/copilot/concepts/agents/about-agent-skills>
+  (read 2026-11-14), which lists skill discovery paths and no allowlist name; no user-level, hook-level or
+  alternative-path mechanism was found. The build omits both with one `tools-drop … no-equivalent-on-cli` per agent and
+  fails when nothing else remains (spec 0291 delta 01 R29). Lifted by a documented name or a probe on a named ticket;
+  a name is not guessed.
+- [GAP-confirmation] Gemini CLI agent `tools` name for `message` (row 4c) — <https://geminicli.com/docs/reference/tools/>
+  lists no tool that sends a message to a parent agent (`complete_task` returns the result and ends the mission, so it is
+  not mapped) and <https://geminicli.com/docs/core/subagents/> (read 2026-11-14) states only that a subagent reports back
+  on completion. Omitted with one `tools-drop … no-equivalent-on-cli` per agent (spec 0291 delta 01 R29). Lifted by a
+  documented name or a probe on a named ticket.
 - [GAP] Antigravity CLI per-agent model frontmatter surface (row 33) — no per-agent `model:` field exists on this
   target; `model-mappings/antigravity.yml` states its declination on the guidance surface instead. Empirical
   reproduction: `agy --help`, `agy models`, `~/.gemini/antigravity-cli/settings.json`, and ten on-disk documentation
