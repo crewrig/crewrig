@@ -22,7 +22,8 @@
     "**/rules/10-level.md",
     "**/rules/30-profile.md",
     "**/rules/40-expertise.md",
-    "**/rules/50-team.md"
+    "**/rules/50-team.md",
+    "**/rules/60-memory.md"
   ],
   "disableBundledSkills": true,
   "skillOverrides": {
