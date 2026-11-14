@@ -1,0 +1,23 @@
+{
+  "skill_name": "copywriting",
+  "content_hash": "sha256:ed47ce1890616066c859a196e8ff155a391a134ee6dc1d012e93a45213584ddf",
+  "runner_version": "3.0.0",
+  "executor_model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "date": "2026-11-14T12:52:29.005Z",
+  "status": "pass",
+  "eval_pass_rate": 0.4,
+  "probe_pass_rate": 0.9,
+  "base_eval_pass_rate": 0.2,
+  "threshold": 0.8,
+  "tolerance": 0.2,
+  "evals_passed": 2,
+  "evals_total": 5,
+  "probes_passed": 9,
+  "probes_total": 10,
+  "executor_runs": 15,
+  "judge_calls": 5,
+  "cost_usd": 0.500561,
+  "skill_loaded": 5
+}

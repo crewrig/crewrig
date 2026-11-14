@@ -1,0 +1,12 @@
+:root {
+  --primitive-color-white: #ffffff;
+  --primitive-color-gray-400: #9ca3af;
+  --primitive-color-gray-700: #374151;
+  --primitive-color-blue-500: #3b82f6;
+  --primitive-color-blue-700: #1d4ed8;
+
+  --color-surface: var(--primitive-color-white);
+  --color-text: var(--primitive-color-gray-400);
+  --color-accent: var(--primitive-color-blue-500);
+  --color-on-accent: var(--primitive-color-white);
+}

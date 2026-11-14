@@ -1,0 +1,11 @@
+---
+import Newsletter from "../components/Newsletter.tsx";
+import Globe from "../components/Globe.tsx";
+---
+<main>
+  <h1>Acme Trails</h1>
+  <img src="/images/summit.jpg" width="1200" height="800" />
+  <p>Guided hikes in the Alps.</p>
+  <Globe client:only />
+  <Newsletter client:load />
+</main>
