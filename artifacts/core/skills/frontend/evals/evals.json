@@ -125,11 +125,11 @@
     },
     {
       "id": 4,
-      "prompt": "tokens.css in the current directory holds our CSS custom properties and dyn.js builds Tailwind class names at runtime. Write tailwind.config.js that exposes the semantic tokens (accent with a foreground, surface, text) as Tailwind colors without discarding Tailwind's defaults, scans html, js, ts and jsx files under ./src, and then write dyn-fixed.js so every Tailwind class the badge can emit is visible to the scanner. Do not run gh, glab, tea or git push and do not create, edit or comment on any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "prompt": "tokens.css in the current directory holds our CSS custom properties and dyn.js.txt (a script stored with a .txt suffix) builds Tailwind class names at runtime. Write tailwind.config.js that exposes the semantic tokens (accent with a foreground, surface, text) as Tailwind colors without discarding Tailwind's defaults, scans html, js, ts and jsx files under ./src, and then write dyn-fixed.js so every Tailwind class the badge can emit is visible to the scanner. Do not run gh, glab, tea or git push and do not create, edit or comment on any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
       "expected_output": "tailwind.config.js extends the theme with var(--color-*) references and has content globs; dyn-fixed.js maps red, green and amber to complete class names.",
       "files": [
         "evals/files/tokens.css",
-        "evals/files/dyn.js"
+        "evals/files/dyn.js.txt"
       ],
       "expectations": [
         "tailwind.config.js puts the colors under theme.extend, not directly under theme, so the default palette is kept.",

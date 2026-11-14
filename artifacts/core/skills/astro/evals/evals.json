@@ -3,10 +3,10 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "The current directory is the root of an Astro 5 marketing site: astro.config.mjs at the root and the page at src/pages/index.astro. Review them and write the review to review.md: one entry per problem, each with the file, what is wrong and the fix. Do not modify the two files. Do not run gh, glab, tea or git push and do not touch any forge artifact: only write the files asked for, in the current directory.",
+      "prompt": "The current directory is the root of an Astro 5 marketing site: astro.config.mjs.txt at the root is its astro.config.mjs (stored with a .txt suffix) and the page is src/pages/index.astro. Review them and write the review to review.md: one entry per problem, each with the file, what is wrong and the fix. Do not modify the two files. Do not run gh, glab, tea or git push and do not touch any forge artifact: only write the files asked for, in the current directory.",
       "expected_output": "review.md lists the missing site option (the sitemap integration needs it), the image without alt text, the client:only directive without a framework name, and the page without a layout.",
       "files": [
-        "evals/files/astro.config.mjs",
+        "evals/files/astro.config.mjs.txt",
         "evals/files/src/pages/index.astro"
       ],
       "expectations": [
@@ -158,10 +158,10 @@
     },
     {
       "id": 5,
-      "prompt": "The Astro project in the portal/ directory (astro.config.mjs and src/pages/index.astro) is about to ship. Check it with the skill's project checker, fix what the checker reports directly in those two files, then write check.md with the checker's findings before the fix and the checker's verdict after the fix. Do not run gh, glab, tea or git push and do not touch any forge artifact: only write the files asked for, in the current directory.",
+      "prompt": "The Astro project in the portal/ directory (portal/astro.config.mjs.txt is its astro.config.mjs, stored with a .txt suffix: rename it to astro.config.mjs first; the page is src/pages/index.astro) is about to ship. Check it with the skill's project checker, fix what the checker reports directly in those two files, then write check.md with the checker's findings before the fix and the checker's verdict after the fix. Do not run gh, glab, tea or git push and do not touch any forge artifact: only write the files asked for, in the current directory.",
       "expected_output": "portal/astro.config.mjs gets a site URL, portal/src/pages/index.astro gets a descriptive alt on the img, and check.md lists the two findings (site-missing, img-missing-alt) and a clean re-run.",
       "files": [
-        "evals/files/portal/astro.config.mjs",
+        "evals/files/portal/astro.config.mjs.txt",
         "evals/files/portal/src/pages/index.astro"
       ],
       "expectations": [
