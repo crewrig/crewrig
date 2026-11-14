@@ -105,8 +105,7 @@ URL reference.
 
 ### 7. Flag performance signals with direct SEO impact
 
-These overlap with the accessibility-auditor's performance pass but
-are surfaced here for their ranking impact:
+These are surfaced here for their ranking impact:
 
 - **LCP > 2.5 s** on mobile under throttled 4G.
 - Web fonts without `font-display: swap` (causes FOIT, hurts LCP).
