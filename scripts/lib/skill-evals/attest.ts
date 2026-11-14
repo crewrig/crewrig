@@ -104,11 +104,15 @@ export function attestSelection(
   if (!v.ok) return mk("stale", v.reason, true);
   const r = v.record;
   const d = decide(figuresOf(r));
+  const advisory =
+    d.belowThreshold && r.status === "pass"
+      ? ` (advisory: eval pass rate ${r.eval_pass_rate} is below ${r.threshold})`
+      : "";
   const reason =
     r.status === "regression"
       ? `base eval pass rate ${r.base_eval_pass_rate}, eval pass rate ${r.eval_pass_rate}, tolerance ${r.tolerance}`
       : r.status === "fail"
-        ? `eval pass rate ${r.eval_pass_rate}, probe pass rate ${r.probe_pass_rate ?? "n/a"}, threshold ${r.threshold}`
-        : `recorded status ${r.status}`;
+        ? `the skill loaded in ${r.skill_loaded ?? "?"} of ${r.evals_total} evals`
+        : `recorded status ${r.status}${advisory}`;
   return mk(r.status, reason, blocks(d, settings), r);
 }

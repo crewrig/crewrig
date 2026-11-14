@@ -80,6 +80,14 @@ export function formatSkill(r: SkillResult): string {
     lines.push(`  evidence_window: ${r.evidenceWindow ?? 0} of ${r.evidenceAccepted}`);
   if (r.baseEvalPassRate === null)
     lines.push("  not compared: no valid evals/results.json at the merge-base");
+  if (
+    r.evalPassRate !== undefined &&
+    r.threshold !== undefined &&
+    r.threshold - r.evalPassRate > 1e-9
+  )
+    lines.push(
+      `  advisory: eval pass rate ${fmt(r.evalPassRate)} is below ${fmt(r.threshold)}; not a failure`,
+    );
   if (r.regression === true)
     lines.push(
       `  regression: ${r.skill} base eval pass rate ${fmt(r.baseEvalPassRate)}, head ${fmt(r.evalPassRate)}, diff ${diff}, tolerance ${fmt(r.tolerance)}`,

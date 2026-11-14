@@ -70,10 +70,10 @@ const problems = (s: Snapshot): string => {
   return (s as { problems: string[] }).problems.join("\n");
 };
 
-/** Hash the plain files of a skill directory the way R35 did before delta-07 (SKILL.md, scripts, references, evals). */
+/** Hash the plain files of a skill directory the way #1963 does (SKILL.md and evals/evals.json only). */
 function plainHash(repo: Repo, name = "demo"): string {
   const dir = path.join(repo.root, skillRel(name));
-  const rels = ["SKILL.md", "evals/evals.json", "references/ref.md", "scripts/run.sh"];
+  const rels = ["SKILL.md", "evals/evals.json"];
   const h = createHash("sha256");
   for (const rel of rels) {
     const bytes = fs.readFileSync(path.join(dir, rel));
@@ -81,7 +81,7 @@ function plainHash(repo: Repo, name = "demo"): string {
       Buffer.concat([
         Buffer.from(rel),
         Buffer.from([0]),
-        Buffer.from(rel === "scripts/run.sh" ? "1" : "0"),
+        Buffer.from("0"),
         Buffer.from([0]),
         Buffer.from(String(bytes.length)),
         Buffer.from([0]),
@@ -132,14 +132,18 @@ test("identical content hashes identically on head and base", () => {
   });
 });
 
-test("editing the shared source changes the content hash of the citing skill", () => {
+test("editing the shared source does not change the content hash of the citing skill (#1963), yet the snapshot still holds the new bytes", () => {
   withRepo((repo) => {
     writeShared(repo, "friction-reporting", "shared v1\n");
     writeSkill(repo, "demo", { "SKILL.md": skillMd(cite("friction-reporting")) });
     commitAll(repo, "base");
     const before = contentHash(ok(head(repo)));
     writeShared(repo, "friction-reporting", "shared v1 edited\n");
-    assert.notEqual(contentHash(ok(head(repo))), before);
+    assert.equal(contentHash(ok(head(repo))), before);
+    assert.equal(
+      bytesOf(ok(head(repo)), "references/shared-friction-reporting.md"),
+      "shared v1 edited\n",
+    );
   });
 });
 
@@ -181,7 +185,7 @@ test("a topic named only in the frontmatter, or never cited, adds no file", () =
   });
 });
 
-test("a skill citing no topic keeps the hash it had before this change", () => {
+test("a skill citing no topic hashes SKILL.md and evals.json alone", () => {
   withRepo((repo) => {
     writeShared(repo, "friction-reporting", "shared\n");
     writeSkill(repo, "demo");
@@ -389,7 +393,7 @@ test("no CLI build tree is read: decoy built copies with other bytes are ignored
   });
 });
 
-test("describeSkill selects a skill when only the shared source changed since the merge-base", () => {
+test("describeSkill selects nothing when only the shared source changed since the merge-base (#1963)", () => {
   withRepo((repo) => {
     writeShared(repo, "friction-reporting", "v1\n");
     writeSkill(repo, "demo", { "SKILL.md": skillMd(cite("friction-reporting")) });
@@ -403,13 +407,10 @@ test("describeSkill selects a skill when only the shared source changed since th
     commitAll(repo, "edit shared only");
     const r = selectChanged(repo.root, "origin/main");
     assert.ok(!("error" in r));
-    assert.deepEqual(
-      r.selections.map((s) => s.skill.name),
-      ["demo"],
-    );
+    assert.deepEqual(r.selections, []);
     const sel = selectionOf(repo, "demo");
     assert.equal(sel.isNew, false);
-    assert.notEqual(sel.baseHash, sel.headHash);
+    assert.equal(sel.baseHash, sel.headHash);
   });
 });
 

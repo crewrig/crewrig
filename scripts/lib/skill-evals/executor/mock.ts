@@ -21,10 +21,20 @@ export interface MockResult {
   readonly limit?: LimitName;
   readonly failure?: string;
   readonly turns?: number;
-  /** Skill names the run "loaded" (reported as skillsLoaded); default none. */
+  /** Skill names the run "loaded" (reported as skillsLoaded); default: an eval run (no `tools` override) loads the skill installed in its workspace, a probe loads none. */
   readonly skillsLoaded?: readonly string[];
   /** Resolve after this many milliseconds (concurrency tests). */
   readonly delayMs?: number;
+}
+
+/** The skills installed in the run's workspace, when the request is an eval run rather than a probe. */
+function installedSkills(req: ExecRequest): string[] {
+  if (req.tools !== undefined) return [];
+  try {
+    return fs.readdirSync(path.join(req.workspaceDir, ".claude", "skills"));
+  } catch {
+    return [];
+  }
 }
 
 export type MockScript = (req: ExecRequest) => MockResult | Promise<MockResult>;
@@ -76,7 +86,7 @@ export class MockExecutor implements Executor {
         usage: cost === null ? null : { input_tokens: 100, output_tokens: 20 },
         turns: r.turns ?? 1,
         seconds: 0,
-        skillsLoaded: r.skillsLoaded ?? [],
+        skillsLoaded: r.skillsLoaded ?? installedSkills(req),
         ...(r.limit !== undefined ? { limit: r.limit } : {}),
         ...(r.failure !== undefined ? { failure: r.failure } : {}),
       };

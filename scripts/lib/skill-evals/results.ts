@@ -30,6 +30,7 @@ export interface ResultsRecord {
   probe_pass_rate: number | null;
   base_eval_pass_rate: number | null;
   threshold: number;
+  /** One case: 1 / evals_total (#1963). */
   tolerance: number;
   evals_passed: number;
   evals_total: number;
@@ -38,6 +39,8 @@ export interface ResultsRecord {
   executor_runs: number;
   judge_calls: number;
   cost_usd: number | null;
+  /** Eval runs that loaded the skill; absent in a file written before runner 3.0.0. */
+  skill_loaded?: number;
 }
 
 const KEYS = [
@@ -61,6 +64,7 @@ const KEYS = [
   "executor_runs",
   "judge_calls",
   "cost_usd",
+  "skill_loaded",
 ] as const satisfies readonly (keyof ResultsRecord)[];
 
 /** The figures `decide` works from; recorded in the results file, so the attestation can recompute. */
@@ -70,16 +74,23 @@ export interface Figures {
   readonly probePassRate: number | null;
   /** null when not compared (R19). */
   readonly baseEvalPassRate: number | null;
+  /** The advisory score bar; never fails a skill. */
   readonly threshold: number;
+  /** One case (1 / eval count): the room a head score has below the base's. */
   readonly tolerance: number;
+  readonly evalsTotal?: number;
+  /** Eval runs that loaded the skill; null or absent when unknown. */
+  readonly skillLoaded?: number | null;
 }
 
 export interface Decision {
-  /** R46: an eval or probe pass rate is below the threshold. */
+  /** #1963: the skill did not load in every eval. */
   readonly fail: boolean;
-  /** R19: the eval pass rate is below the base's by more than the tolerance. */
+  /** #1963: the eval score is below the base's by more than one case. */
   readonly regression: boolean;
-  /** `fail` wins over `regression` (R46). */
+  /** Advisory only: an eval or probe pass rate is below the threshold. Never changes the status. */
+  readonly belowThreshold: boolean;
+  /** `fail` wins over `regression`. */
   readonly status: ResultStatus;
 }
 
@@ -91,11 +102,21 @@ export function isRegression(head: number, base: number, tolerance: number): boo
 /** R20, R46: the one function that decides `fail` and `regression`, for the runner and the attestation. */
 export function decide(f: Figures): Decision {
   const fail =
+    f.skillLoaded !== undefined &&
+    f.skillLoaded !== null &&
+    f.evalsTotal !== undefined &&
+    f.skillLoaded < f.evalsTotal;
+  const belowThreshold =
     f.threshold - f.evalPassRate > 1e-9 ||
     (f.probePassRate !== null && f.threshold - f.probePassRate > 1e-9);
   const regression =
     f.baseEvalPassRate !== null && isRegression(f.evalPassRate, f.baseEvalPassRate, f.tolerance);
-  return { fail, regression, status: fail ? "fail" : regression ? "regression" : "pass" };
+  return {
+    fail,
+    regression,
+    belowThreshold,
+    status: fail ? "fail" : regression ? "regression" : "pass",
+  };
 }
 
 /** R20: each condition blocks only under its own setting. */
@@ -112,6 +133,8 @@ export const figuresOf = (r: ResultsRecord): Figures => ({
   baseEvalPassRate: r.base_eval_pass_rate,
   threshold: r.threshold,
   tolerance: r.tolerance,
+  evalsTotal: r.evals_total,
+  skillLoaded: r.skill_loaded ?? null,
 });
 
 export const resultsPath = (skillDirAbs: string): string =>
@@ -149,7 +172,8 @@ export function verifyResults(
   const o = doc as Record<string, unknown>;
   if (o["mock"] === true) return { ok: false, reason: "evals/results.json records a mock run" };
   for (const k of KEYS)
-    if (!(k in o)) return { ok: false, reason: `evals/results.json lacks the key ${k}` };
+    if (k !== "skill_loaded" && !(k in o))
+      return { ok: false, reason: `evals/results.json lacks the key ${k}` };
   if (o["skill_name"] !== skillName)
     return {
       ok: false,
@@ -165,7 +189,10 @@ export function verifyResults(
       return { ok: false, reason: `evals/results.json ${k} is not a number` };
   for (const k of ["probe_pass_rate", "base_eval_pass_rate"] as const)
     if (o[k] !== null && typeof o[k] !== "number")
-      return { ok: false, reason: `evals/results.json ${k} is neither a number nor null` };
+      return {
+        ok: false,
+        reason: `evals/results.json ${k} is neither a number nor null`,
+      };
   if (currentHash !== undefined && o["content_hash"] !== currentHash)
     return {
       ok: false,

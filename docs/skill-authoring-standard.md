@@ -65,7 +65,7 @@ Ratified from the `pr-logbook` pilot, which applied it to three scripts without 
 The schema of `evals/evals.json` is owned by [spec 0290](../specs/0290-skill-eval-runner.md); this standard refers to it and does not redefine it. `evals/` stays in the repository and is never copied to a CLI target.
 
 - **Checked.** The file validates under the runner's schema. It holds at least 3 evals and at least 5 trigger probes, and each of the positive and the negative kinds is at least 40 percent of the probes.
-- **Guidance.** Write at least 5 evals: at 5, one miss is exactly 0.80 and leaves no margin over the 0.80 threshold, as the pilot measured. Make the negative probes near-misses that share vocabulary with your domain (reviewing a pull request, writing a spec, writing a local commit message), not unrelated requests. One-shot probes are noisy: two probes flipped between runs of the pilot.
+- **Guidance.** Write at least 5 evals: the gate allows a drop of one case against the recorded base, so a larger set makes that allowance finer; the 0.80 bar is advisory and one run of five evals moves by 0.20. Make the negative probes near-misses that share vocabulary with your domain (reviewing a pull request, writing a spec, writing a local commit message), not unrelated requests. One-shot probes are noisy: two probes flipped between runs of the pilot.
 - **Guidance.** Write every expectation on the observable output of the run, never on how it was produced, so the same cases measure the skill before and after its steps move into scripts. Never ask an eval to write to a forge; ask for the text and the command as files.
 
 ## Prompt style
@@ -106,15 +106,15 @@ The shutdown and idle texts are present in fewer skills than the epic estimated;
 A wave migrates a skill in this order, which is the order the `pr-logbook` pilot followed and measured.
 
 1. Write the evals first and commit them without touching the skill.
-2. Measure a baseline on the unchanged skill, more than once if the skill sits near the 0.80 threshold, and record the spread.
+2. Measure a baseline on the unchanged skill, once (the gate records it in `evals/results.json` for the merge-base; a second run is a choice, not a requirement).
 3. Extract the scripts and rewrite the body to this standard.
-4. Measure again on the same frozen cases. Keep the rewrite only when the pass rate does not fall below the baseline by more than the runner's tolerance.
+4. Measure again on the same frozen cases. Keep the rewrite only when the skill loads in every eval and the score does not fall below the baseline by more than one case. A modified skill costs at most two paid runs (baseline, final); a fix that leaves `SKILL.md` and `evals/evals.json` unchanged costs none.
 
 Add these lessons of the pilot:
 
 - Present the measuring tool's cost model when the wave's specification is validated, not at the spend gate. The pilot's paired-run runner was rejected only at the spend gate, which cost a re-scope.
 - When a trigger probe fails, revise the description before the body. It is the cheapest and most effective change.
-- A skill that already sits at its pass threshold is re-measured after any later edit of its `SKILL.md`, because a wording change can fall below the line with no margin.
+- Write an absence as a `file_not_contains` check, never as a judge expectation: a quote cannot prove that something is missing.
 - Evaluate the eval runner before the skill: a runner that cannot parse one malformed judge answer voids a paid run.
 
 ## Scope: agents
