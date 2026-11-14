@@ -103,6 +103,10 @@ describe("claude profiles (spec 0305)", () => {
     );
     assert.ok(entry, "claude descriptor deploys the profiles");
     assert.equal(entry.dest, ".crewrig/claude-profiles");
+    assert.ok(
+      fs.existsSync(path.join(REPO, entry.src)),
+      "the deployed source exists in the repository",
+    );
     for (const d of [copilotDescriptor, geminiDescriptor, antigravityDescriptor]) {
       assert.ok(
         !(d.rules.homeDirs ?? []).some((f) => f.src === "artifacts/core/claude-profiles") &&

@@ -91,6 +91,7 @@ export const claudeDescriptor: SetupDescriptor = {
         src: "artifacts/core/claude-profiles",
         dest: ".crewrig/claude-profiles",
         label: "artifacts/core/claude-profiles -> ~/.crewrig/claude-profiles",
+        optional: true,
       },
     ],
     pickOrder: ["team", "expertise", "level"],

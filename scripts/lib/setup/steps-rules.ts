@@ -145,7 +145,10 @@ const rulesShared: StepFn = async (env) => {
 const homeDirs: StepFn = async (env) => {
   const { ctx, descriptor } = env;
   const dirs = descriptor.rules.homeDirs ?? [];
-  for (const dir of dirs) placeShared(env, dir, true);
+  for (const dir of dirs) {
+    if (dir.optional === true && !fs.existsSync(path.join(ctx.repoDir, dir.src))) continue;
+    placeShared(env, dir, true);
+  }
   if (dirs.length > 0) ctx.io.out("");
 };
 
