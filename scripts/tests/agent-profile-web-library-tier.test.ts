@@ -110,5 +110,9 @@ describe("spec 0307 R18 — web components live in the library tier", () => {
       compared++;
     }
     t.diagnostic(`compared ${compared} of ${COMPONENTS.length} against ${BASE_REF}`);
+    if (compared === 0)
+      t.skip(
+        `named skip: no-core-base (none of the ${COMPONENTS.length} exists under artifacts/core on ${BASE_REF}: already moved)`,
+      );
   });
 });
