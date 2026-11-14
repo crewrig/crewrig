@@ -44,3 +44,17 @@ tasks:
   test-skill-evals:
     desc: "Run the skill eval runner suites in mock mode (no key, no network), as CI does (spec 0290)"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/skill-evals-*.test.ts
+
+  # Issue #1994 (ADR-0025 F7): the fixed-context probe. PAID model calls: never wired in CI or
+  # ci:pre-push, and the script refuses when CI is set. Pass the arguments after --, e.g.
+  #   task fixed-context-probe -- --settings path/to/worker-profile.json
+  #   task fixed-context-probe -- --session <id> --warn-only     (free: reads an existing session)
+  fixed-context-probe:
+    desc: "PAID: measure first-call input tokens of a worker and a developer subagent against the ADR-0025 threshold (never in CI)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/fixed-context-probe.ts {{.CLI_ARGS}}
+
+  test-fixed-context-probe:
+    desc: "Run the fixed-context probe's unit suite on fixture transcripts (no model call)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/fixed-context-probe.test.ts
