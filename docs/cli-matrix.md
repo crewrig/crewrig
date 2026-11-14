@@ -162,7 +162,17 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   <https://docs.github.com/en/copilot/reference/custom-agents-configuration> read 2026-11-11. Copilot also honors
   `tools:` in the shared `.claude/agents/` (row 32), where it aliases `Bash`, `Read`, `Edit`, `Write`, `Grep`, `Glob`,
   `WebFetch`, `WebSearch` and `Task`; `Agent` is not an alias there, so a declared `agent` class does not reach a
-  Copilot reader of that directory, which fails toward fewer tools
+  Copilot reader of that directory, which fails toward fewer tools. **Subagent fixed context** (Copilot CLI 1.0.112, probe of 2026-11-14, issue #1995, CrewRig
+  worktree, a personal `developer` agent declaring `tools:` and `model: gemini-3.8-flash`): a `task` subagent starts with
+  **4.3k** first-call input tokens (built-in `explore`: 4,301 with 11 tool definitions, 2.7k; `developer`: 4,315 with
+  9 tools, 2.1k) against a main session of **74.9k** on the same run (26 tools, 21.0k; `custom_instructions` 39.4k).
+  Custom instructions (`AGENTS.md`, `~/.copilot/instructions/*`) are therefore **not inherited** by `task` subagents, so
+  O1 of ADR-0025 is already the Copilot behaviour and needs no switch there. The main-session figure differs from the
+  49.3k of row 7b because that run used `claude-sonnet-5.5` (the model of a scratch home copied from the real
+  `config.json`) instead of the pinned `gemini-3.8-flash`, and token counts differ by model: compare figures within a
+  model only. A first attempt with the real home failed: the user-level
+  `preToolUse` hook of `~/.copilot/hooks/` errored in the Copilot session sandbox (`EPERM` on its script) and Copilot
+  denied the `task` call (`Denied by preToolUse hook ... (hook errored)`), observed once, on this hook and this sandbox: a failing `preToolUse` hook can block delegation
 - **Antigravity CLI:** ❌ Not emitted: no `tools` key is written (spec 0053 delta-01 R12, R13). Antigravity documents
   `view_file`, `replace_file_content`, `grep_search` and `run_command` and warns that a misspelled name may hang the
   subagent, so the class-to-name mapping is unverified and is not guessed; the build emits one `tools-drop …
@@ -352,7 +362,25 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   enrolled likewise, see row 7e) (#576)
 - **Copilot CLI:** ✅ `~/.copilot/instructions/60-tools.instructions.md` (core) +
   `~/.copilot/instructions/65-org-tools.instructions.md` (overlay), plus other `*.instructions.md` files — deployed by
-  `setup-copilot-interactive.ts`
+  `setup-copilot-interactive.ts`. **Fixed-context evidence** (Copilot CLI 1.0.112, probes of 2026-11-14, issue #1995;
+  method of ADR-0025's appendix, tokens read from the per-call `session.usage_record` and `system_segments` events of
+  `~/.copilot/session-state/<id>/events.jsonl`; main model pinned to `gemini-3.8-flash`, prompt "Reply with the single
+  word OK."): (1) CrewRig worktree, real home: **49,273** first-call input tokens, of which `custom_instructions`
+  24,984, `tool_instructions` 6,612, 26 tool definitions 13,111 (C1 of the ADR read 49.0k). `copilot instruction list`
+  (no model run) shows what loads: `.github/copilot-instructions.md`, `AGENTS.md` and `CLAUDE.md` of the repository
+  (Copilot reads `CLAUDE.md` but does not resolve its `@AGENTS.md` import, so it adds almost nothing), nine personal
+  files and `~/.copilot/AGENTS.md`. (2) **`COPILOT_HOME` pointing to a scratch home** holding `config.json` and only
+  `20-organization`, `60-tools`, `65-org-tools` and `66-org-rules`: **40,664** (−8.6k, −17%), `custom_instructions`
+  17,717; the instruction set, the hooks and the user agents of the home are all swapped by one variable, and the
+  repository files still load. Authentication survives the override (the copied `config.json`). (3) **`applyTo`
+  frontmatter**, scratch git project outside the repository, one 32 KB `*.instructions.md` in `.github/instructions/`
+  and one in the scratch home, both `applyTo: "nothing-matches-this/**"`: **15,721** with `custom_instructions` **204**
+  (both files out of context); the same files with `applyTo: "**"`: 31,779, `custom_instructions` 15,375 (both in).
+  `applyTo` therefore works at project and personal scope, and `copilot instruction list` reports a non-matching file as
+  discovered, so the list shows sources, not what enters the context. The 15.7k floor with no instruction is the
+  built-in prompt (system segments 6.0k) and the tool definitions (10.1k). Not isolated: the tool definitions grew to
+  13.0k and `tool_instructions` to 6.5k in the CrewRig worktree, probably because the `task` tool lists the repository's
+  agents
 - **Antigravity CLI:** ✅ `~/.gemini/antigravity-cli/` — priority `[0-6][0-9]_*.md` files deployed by
   `setup-antigravity-interactive.ts`; concatenated into `~/.gemini/config/AGENTS.md` (the single system context file
   Antigravity CLI reads) at the end of each setup run; any superseded `~/.gemini/GEMINI.md` context file is removed to
@@ -481,7 +509,9 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Copilot CLI:** ✅ Fallback: `setup-copilot-interactive.ts` deploys `AGENTS.org.md` →
   `~/.copilot/instructions/66-org-rules.instructions.md`. Copilot does not resolve `@file` includes in instruction files
   and auto-reads only the standard `AGENTS.md` name. **Fallback drift:** the deployed copy is taken at setup time;
-  editing `AGENTS.org.md` requires re-running setup (org rules change rarely; setup is idempotent)
+  editing `AGENTS.org.md` requires re-running setup (org rules change rarely; setup is idempotent). **Verified** (`copilot instruction list`, Copilot CLI 1.0.112, issue
+  #1995): the repository's `AGENTS.org.md` is not among the discovered sources, so the deployed priority-66 copy is the
+  only way the org rules reach a Copilot session; `AGENTS.md` and `CLAUDE.md` load, `CLAUDE.md` without its `@` imports
 - **Antigravity CLI:** ✅ Fallback: `setup-antigravity-interactive.ts` deploys `AGENTS.org.md` →
   `~/.gemini/antigravity-cli/66_ORG_RULES.md` (priority 66); included in the `~/.gemini/config/AGENTS.md` concatenation
   (spec 0061 delta-01). Same pattern as Gemini CLI (spec 0054)
@@ -1693,7 +1723,11 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `.claude/agents/`; `copilot -p` without an agent gave zero warnings, `copilot --agent <name>` gave exactly one
   `Warning: Custom agent "<name>" specifies model "sonnet" which is not available; using "<session model>" instead`, the
   session model on that account being a Gemini model). Whether Copilot should instead receive a dotted Claude model id
-  such as `claude-sonnet-5.5` is out of scope here and tracked in issue #1877
+  such as `claude-sonnet-5.5` is out of scope here and tracked in issue #1877. **Honored when served** (Copilot CLI 1.0.112, probe of 2026-11-14, issue #1995): a `task`
+  subagent running a personal agent that declares `model: gemini-3.8-flash` answered on that model while the session ran
+  on `claude-sonnet-5.5`, and the built-in `explore` subagent ran on a third model, so a declared model that the
+  account serves was applied per subagent in this probe (the fallback for an unserved model is the one recorded above,
+  not re-tested here)
 - **Antigravity CLI:** ⚠️ guidance surface only — no per-agent frontmatter surface exists on this target (spec
   0197 Premise 1)
 
