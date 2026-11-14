@@ -1,0 +1,276 @@
+{
+  "skill_name": "frontend",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "landing-bad.html in the current directory is a page with accessibility problems. Fix it without changing its visible content or structure beyond what the fixes need, and save the result as landing.html. Then write audit.md listing each problem you found and how you fixed it. Do not run gh, glab, tea or git push and do not create, edit or comment on any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "landing.html passes the static accessibility check: html has lang, every img has alt, every form control is labelled, headings do not skip levels, the two nav elements are named. audit.md lists the problems.",
+      "files": [
+        "evals/files/landing-bad.html"
+      ],
+      "expectations": [
+        "landing.html gives the <html> element a non-empty lang attribute.",
+        "In landing.html every <img> has an alt attribute: the beans photo has a real description and the logo alt is not the file name logo.svg.",
+        "In landing.html the email input and the grind select each have an accessible label (a label with for/id, a wrapping label, or aria-label), not only a placeholder.",
+        "In landing.html no heading level is skipped: the h3 and h4 headings are renumbered or restructured so that levels follow h1 without gaps, and exactly one h1 remains.",
+        "In landing.html the two <nav> elements each carry a distinct aria-label.",
+        "audit.md lists at least the missing lang attribute, the missing image alt text, the unlabelled form controls, the heading level gaps and the unnamed nav landmarks."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "landing.html"
+        },
+        {
+          "type": "file_exists",
+          "path": "audit.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "landing.html",
+          "pattern": "<html[^>]*\\blang=[\\\"'][a-zA-Z-]+[\\\"']"
+        },
+        {
+          "type": "exit_code",
+          "script": "scripts/check-html-a11y.ts",
+          "args": [
+            "landing.html"
+          ],
+          "expected": 0
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "tokens.css in the current directory defines the color tokens of our design system, with --color-text on --color-surface and --color-on-accent on --color-accent as the text pairs. Measure the contrast of both pairs against WCAG 2.1 AA for normal text, write the numbers in contrast-report.md, and write tokens-fixed.css where every failing pair reaches at least 4.5:1 while keeping the primitive, semantic layering. Do not run gh, glab, tea or git push and do not create, edit or comment on any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "contrast-report.md gives 2.53:1 for the text pair and 3.67:1 for the accent pair and says both fail AA normal text; tokens-fixed.css repoints the semantic tokens to darker primitives.",
+      "files": [
+        "evals/files/tokens.css"
+      ],
+      "expectations": [
+        "contrast-report.md states a contrast ratio of 2.53:1 for --color-text on --color-surface and says it fails the 4.5:1 AA threshold for normal text.",
+        "contrast-report.md states a contrast ratio of 3.67:1 for --color-on-accent on --color-accent and says it fails the 4.5:1 AA threshold for normal text.",
+        "tokens-fixed.css still defines --primitive-* tokens and semantic tokens that reference them with var(), so components still consume only the semantic layer.",
+        "In tokens-fixed.css --color-text points to a darker primitive such as --primitive-color-gray-700, and --color-accent points to a darker blue such as --primitive-color-blue-700; the white on-accent token is kept.",
+        "contrast-report.md or the final answer gives the ratio of each replacement pair and each is at least 4.5:1."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "contrast-report.md"
+        },
+        {
+          "type": "file_exists",
+          "path": "tokens-fixed.css"
+        },
+        {
+          "type": "file_contains",
+          "path": "contrast-report.md",
+          "pattern": "2\\.53"
+        },
+        {
+          "type": "file_contains",
+          "path": "contrast-report.md",
+          "pattern": "3\\.67"
+        },
+        {
+          "type": "file_contains",
+          "path": "tokens-fixed.css",
+          "pattern": "--color-text:\\s*var\\(--primitive-color-gray-700\\)|--color-text:\\s*var\\(--primitive-color-gray-[5-9]00\\)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Write hero.html in the current directory: a complete page head and hero section for a marketing landing page. The hero shows one large photo (/img/hero-800.jpg and /img/hero-1600.jpg, 1600x900), the page uses one self-hosted font file /fonts/Inter-Regular.woff2, and it loads /js/app.js (an independent analytics-free script that attaches menu behaviour) and /js/reveal.js (an ES module). Optimise it for Core Web Vitals and keep it accessible. Also add a short performance-notes.md that says which metric each choice protects. Do not run gh, glab, tea or git push and do not create, edit or comment on any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "hero.html preloads the LCP image with high priority, sets width and height, does not lazy-load the hero image, preloads the WOFF2 font with crossorigin, uses font-display swap, and loads scripts with defer or type=module.",
+      "files": [],
+      "expectations": [
+        "The hero <img> in hero.html has width and height attributes, fetchpriority=\"high\", srcset with both image files, and no loading=\"lazy\".",
+        "hero.html preloads the font with <link rel=\"preload\" as=\"font\" type=\"font/woff2\" crossorigin> and the @font-face rule uses font-display: swap or optional.",
+        "hero.html loads /js/app.js with defer (or type=module) and /js/reveal.js with type=\"module\"; no plain blocking <script src> remains in the head.",
+        "The hero image has a meaningful alt attribute, and the page has an html lang attribute and a single h1.",
+        "performance-notes.md ties choices to the metrics: LCP for the preload and fetchpriority, CLS for the width and height or font swap, and mentions INP or script deferral."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "hero.html"
+        },
+        {
+          "type": "file_exists",
+          "path": "performance-notes.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "hero.html",
+          "pattern": "fetchpriority=[\\\"']high[\\\"']"
+        },
+        {
+          "type": "file_contains",
+          "path": "hero.html",
+          "pattern": "width=[\\\"']\\d+[\\\"']"
+        },
+        {
+          "type": "file_contains",
+          "path": "hero.html",
+          "pattern": "rel=[\\\"']preload[\\\"']"
+        },
+        {
+          "type": "file_contains",
+          "path": "hero.html",
+          "pattern": "font-display:\\s*(swap|optional)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "tokens.css in the current directory holds our CSS custom properties and dyn.js builds Tailwind class names at runtime. Write tailwind.config.js that exposes the semantic tokens (accent with a foreground, surface, text) as Tailwind colors without discarding Tailwind's defaults, scans html, js, ts and jsx files under ./src, and then write dyn-fixed.js so every Tailwind class the badge can emit is visible to the scanner. Do not run gh, glab, tea or git push and do not create, edit or comment on any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "tailwind.config.js extends the theme with var(--color-*) references and has content globs; dyn-fixed.js maps red, green and amber to complete class names.",
+      "files": [
+        "evals/files/tokens.css",
+        "evals/files/dyn.js"
+      ],
+      "expectations": [
+        "tailwind.config.js puts the colors under theme.extend, not directly under theme, so the default palette is kept.",
+        "The colors in tailwind.config.js reference the CSS custom properties with var(--color-accent), var(--color-on-accent), var(--color-surface) or var(--color-text) rather than copying hex values.",
+        "The content array of tailwind.config.js has a glob under ./src that covers html, js, ts and jsx files.",
+        "dyn-fixed.js no longer builds a class with string interpolation such as bg-${color}-600; it uses a lookup object whose values are complete class names for red, green and amber."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "tailwind.config.js"
+        },
+        {
+          "type": "file_exists",
+          "path": "dyn-fixed.js"
+        },
+        {
+          "type": "file_contains",
+          "path": "tailwind.config.js",
+          "pattern": "extend\\s*:\\s*\\{"
+        },
+        {
+          "type": "file_contains",
+          "path": "tailwind.config.js",
+          "pattern": "var\\(--color-accent\\)"
+        },
+        {
+          "type": "file_contains",
+          "path": "dyn-fixed.js",
+          "pattern": "bg-red-600"
+        },
+        {
+          "type": "file_contains",
+          "path": "dyn-fixed.js",
+          "pattern": "bg-amber-600"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Write disclosure.html in the current directory: a self-contained page with a native-JavaScript FAQ disclosure (a button that shows and hides a panel) and a button that loads /api/faq with fetch into the panel. No framework, no bundler, a module script. It must work with the keyboard and cancel the request when the user navigates away or clicks the button again. Do not run gh, glab, tea or git push and do not create, edit or comment on any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "disclosure.html uses a real button with aria-expanded and aria-controls, a module script, fetch with an AbortController signal that is aborted, and handles non-ok responses.",
+      "files": [],
+      "expectations": [
+        "The disclosure trigger in disclosure.html is a <button> element, not a div or a span with a role.",
+        "The trigger sets aria-expanded and updates it between \"true\" and \"false\" when toggled, and references the panel with aria-controls.",
+        "The script is inline or external with type=\"module\", and uses no framework or library import.",
+        "The fetch call receives an AbortSignal from an AbortController, aborts it (on pagehide, beforeunload or when a new request starts) and ignores the AbortError.",
+        "The fetch code checks response.ok (or the status) before using the body."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "disclosure.html"
+        },
+        {
+          "type": "file_contains",
+          "path": "disclosure.html",
+          "pattern": "<button"
+        },
+        {
+          "type": "file_contains",
+          "path": "disclosure.html",
+          "pattern": "aria-expanded"
+        },
+        {
+          "type": "file_contains",
+          "path": "disclosure.html",
+          "pattern": "AbortController"
+        },
+        {
+          "type": "file_contains",
+          "path": "disclosure.html",
+          "pattern": "type=[\\\"']module[\\\"']"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Review the markup of landing-good.html in the current directory for accessibility and write review.md with your verdict. It was written by a colleague who says it is accessible. Report only problems that really exist in the file; if you find none, say so and list which checks you ran and which you could not run on static markup alone. Do not run gh, glab, tea or git push and do not create, edit or comment on any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "review.md says the static checks found no error and states that keyboard, focus and real-background contrast were not verified.",
+      "files": [
+        "evals/files/landing-good.html"
+      ],
+      "expectations": [
+        "review.md concludes that no accessibility error was found in the static markup of landing-good.html and does not invent a missing alt, label or lang problem.",
+        "review.md lists the checks that were run, covering at least alt text, form labels, heading order, landmarks and the lang attribute.",
+        "review.md states that keyboard navigation, focus visibility or color contrast against real backgrounds was not verified by the static check."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "review.md"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "Review this landing page HTML for WCAG 2.1 AA problems: missing alt text, unlabeled inputs and heading order.",
+      "should_trigger": true
+    },
+    {
+      "query": "What contrast ratio does #777 on white give, and does it pass AA for body text?",
+      "should_trigger": true
+    },
+    {
+      "query": "Extend my tailwind.config.js with design tokens from CSS custom properties and fix the content globs so classes are not purged.",
+      "should_trigger": true
+    },
+    {
+      "query": "Our LCP is 4.2 s on mobile; the hero image is lazy-loaded. How do I fix LCP, CLS and font loading?",
+      "should_trigger": true
+    },
+    {
+      "query": "Write a vanilla JS IntersectionObserver reveal and a fetch with AbortController, no framework.",
+      "should_trigger": true
+    },
+    {
+      "query": "Create an Astro page with a content collection for blog posts and configure the Tailwind integration in astro.config.mjs.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write the hero headline, the subheading and the call-to-action text for our pricing landing page.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write a Playwright spec with a page object that asserts the hero image keeps its alt text and every nav has an aria-label.",
+      "should_trigger": false
+    },
+    {
+      "query": "Run an axe-core scan against http://localhost:3000/pricing in a real browser and rank the violations by impact.",
+      "should_trigger": false
+    },
+    {
+      "query": "Review my login form handler for XSS and secret leaks in the request parsing.",
+      "should_trigger": false
+    },
+    {
+      "query": "Run an SEO audit of the meta tags, sitemap and structured data of my site.",
+      "should_trigger": false
+    }
+  ]
+}

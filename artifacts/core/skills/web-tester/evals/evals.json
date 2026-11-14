@@ -1,0 +1,214 @@
+{
+  "skill_name": "web-tester",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "axe-results.json is the axe-core output of our signup page, produced by CI. Classify its violations and write the result to a11y-report.md: the violations grouped by impact, each with its rule id, help URL and number of affected nodes, then one line saying whether the page passes the default quality gate. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "a11y-report.md groups the four violations by impact (image-alt critical 1 node, color-contrast serious 3 nodes, region moderate 2 nodes, landmark-unique minor 1 node) with help URLs, and states the page fails the default gate (serious or worse).",
+      "files": [
+        "evals/files/axe-results.json"
+      ],
+      "expectations": [
+        "The report lists image-alt as critical with 1 node and color-contrast as serious with 3 nodes.",
+        "The report lists region as moderate with 2 nodes and landmark-unique as minor with 1 node.",
+        "Each violation is given with its dequeuniversity help URL.",
+        "The report states that the page fails the default gate, because of the critical and the serious violations, and does not say that it passes."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "a11y-report.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "a11y-report.md",
+          "pattern": "image-alt"
+        },
+        {
+          "type": "file_contains",
+          "path": "a11y-report.md",
+          "pattern": "color-contrast"
+        },
+        {
+          "type": "file_contains",
+          "path": "a11y-report.md",
+          "pattern": "dequeuniversity\\.com"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "axe-results-minor.json is the axe-core output of our home page. Tell me, in verdict.md, whether the page passes an accessibility gate that fails on serious or worse, and whether it still passes if the gate is tightened to fail on moderate or worse. Name the violation that decides each case. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "verdict.md says the page passes the serious gate (only a moderate violation, region) and fails the moderate gate because of region.",
+      "files": [
+        "evals/files/axe-results-minor.json"
+      ],
+      "expectations": [
+        "The verdict says the page passes the gate that fails on serious or worse.",
+        "The verdict says the page fails the gate tightened to moderate or worse, and names the region rule as the cause.",
+        "The verdict does not claim the page is fully accessible or WCAG conformant."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "verdict.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "region"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Scan signup.html for accessibility violations with axe-core and write what you find to scan-result.md. This directory is the whole project. If the scan cannot run, say why in scan-result.md and say exactly what is missing and how to install it; do not install anything. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "scan-result.md states the live scan could not run because playwright (and axe) is not installed in the project, gives an npm install command and the browser install command, and reports no violation count as if a scan had run.",
+      "files": [
+        "evals/files/signup.html"
+      ],
+      "expectations": [
+        "scan-result.md says the automated axe scan could not run, instead of reporting the page as clean.",
+        "scan-result.md names the missing package (playwright, with axe-core or @axe-core/playwright) and gives an npm install command for it.",
+        "scan-result.md does not present invented axe results, such as a list of violations with node counts, as the output of a scan."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "scan-result.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "scan-result.md",
+          "pattern": "npm install"
+        },
+        {
+          "type": "file_contains",
+          "path": "scan-result.md",
+          "pattern": "[Pp]laywright"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Our project uses Playwright with TypeScript. Write the end-to-end test for this journey: the user opens /login, enters an email and a password, submits, and lands on /dashboard where the heading 'Welcome back' is visible; with a wrong password the page shows the alert 'Invalid credentials'. Write the page object to tests/pages/login.page.ts and the spec to tests/login.spec.ts. Do not run the tests, no browser is installed. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "A LoginPage page object holding the selectors and semantic methods, and a spec with two scenarios (success and wrong password) that only calls the page object and asserts with messages.",
+      "files": [],
+      "expectations": [
+        "tests/pages/login.page.ts defines a LoginPage class that holds every selector (locators by role, label or test id) and exposes a semantic method such as login(email, password).",
+        "tests/login.spec.ts imports LoginPage and contains no raw selector string such as a CSS selector or a locator() call.",
+        "The spec covers both the successful login ending on /dashboard with the 'Welcome back' heading and the wrong-password case with the 'Invalid credentials' alert.",
+        "At least one assertion of the spec carries a descriptive message as the second argument of expect.",
+        "The spec uses no fixed sleep such as waitForTimeout."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "tests/pages/login.page.ts"
+        },
+        {
+          "type": "file_exists",
+          "path": "tests/login.spec.ts"
+        },
+        {
+          "type": "file_contains",
+          "path": "tests/login.spec.ts",
+          "pattern": "LoginPage"
+        },
+        {
+          "type": "file_contains",
+          "path": "tests/pages/login.page.ts",
+          "pattern": "class LoginPage"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Audit signup.html for accessibility problems by reading the markup and write the findings to audit.md. Say which of the problems an automated axe scan would catch, and which kinds of check an automated scan cannot do and would still need a manual pass. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "audit.md lists the missing alt on the image, the input without a label and the missing lang on the html element, and says keyboard operability and ARIA semantics need a manual pass.",
+      "files": [
+        "evals/files/signup.html"
+      ],
+      "expectations": [
+        "The audit reports that the img has no alt attribute.",
+        "The audit reports that the email input has no associated label (a placeholder is not a label).",
+        "The audit reports that the html element has no lang attribute.",
+        "The audit says that keyboard operability or ARIA semantics need a manual check beyond an automated axe scan."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "audit.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "audit.md",
+          "pattern": "\\b[Aa]lt\\b"
+        },
+        {
+          "type": "file_contains",
+          "path": "audit.md",
+          "pattern": "[Ll]abel"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "Write a Playwright test for our checkout flow, using a page object for the cart and payment pages.",
+      "should_trigger": true
+    },
+    {
+      "query": "Run an axe-core scan on http://localhost:3000/pricing and tell me which violations are serious or critical.",
+      "should_trigger": true
+    },
+    {
+      "query": "Our RobotFramework login suite is flaky on staging; find out why and make it stable.",
+      "should_trigger": true
+    },
+    {
+      "query": "Do a visual regression pass of the pricing page across mobile and desktop viewports and show me what changed.",
+      "should_trigger": true
+    },
+    {
+      "query": "Here is an axe results JSON exported by CI; summarise the violations by impact with the rule ids.",
+      "should_trigger": true
+    },
+    {
+      "query": "Write a GitHub Actions workflow that runs our Playwright tests on every pull request and uploads the HTML report.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write unit tests with Jest for the parseDate function, including the leap-year edge cases.",
+      "should_trigger": false
+    },
+    {
+      "query": "Rewrite the header CSS around design tokens and fix the colour contrast so it meets WCAG AA.",
+      "should_trigger": false
+    },
+    {
+      "query": "Review this pull request that adds a Playwright spec and post a verdict with findings.",
+      "should_trigger": false
+    },
+    {
+      "query": "Convert the blog section of my Astro site to content collections and add an RSS feed.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write the hero headline and call to action for the landing page of my SaaS.",
+      "should_trigger": false
+    },
+    {
+      "query": "Review the keyboard navigation and ARIA roles of my modal dialog by hand and list the problems.",
+      "should_trigger": false
+    },
+    {
+      "query": "Check this static HTML file for missing alt text, unlabelled inputs and skipped heading levels; no browser is needed.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write a Playwright test that checks the cookie banner can be dismissed and stays dismissed after a reload.",
+      "should_trigger": true
+    }
+  ]
+}

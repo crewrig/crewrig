@@ -1,125 +1,58 @@
 ---
 name: web-tester
-description: "Web test automation skill. Activate when writing Playwright or RobotFramework tests, auditing page conformity or accessibility, authoring test scenarios, or running regression passes on a web application."
+description: "Automates web tests and accessibility checks: writes Playwright or RobotFramework scenarios with page objects, scans a page or a local HTML file with axe-core and ranks violations by impact, checks a page against a design system or spec, and runs regression or visual-diff passes. Use when writing or fixing an end-to-end browser test, running an axe scan of a rendered page or classifying an axe results file, turning a user journey into an executable scenario, or running a smoke or regression pass on staging. Trigger terms: Playwright, RobotFramework, end-to-end test, axe-core, accessibility audit, WCAG, page object, visual regression, regression pass, conformity. Not for unit or integration tests (tester), manual keyboard and ARIA review (accessibility-auditor agent), static HTML accessibility review or HTML and CSS authoring (frontend) or CI workflow files (github-actions)."
 license: Apache-2.0
+compatibility: "Requires Node.js 24 for scripts/axe-scan.ts. A live axe scan also needs @axe-core/playwright, or playwright plus axe-core, with an installed browser, in the project; --from-json needs none of them."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.2"
+    version: "2.0.0"
 ---
 
 
 # Web Tester
 
-End-to-end web testing covers behaviors a unit test cannot reach: real
-browser rendering, network conditions, accessibility tree, visual
-output. Bias toward fewer, sharper scenarios that exercise critical
-user journeys — not exhaustive click-throughs.
+End-to-end tests cover what a unit test cannot reach: real rendering, network conditions, the accessibility tree, visual output. Prefer a few sharp scenarios on critical user journeys over exhaustive click-throughs.
 
-## When to activate
+## When to use
 
-- **Conformity checks** — verify a page matches a design system,
-  functional spec, or API contract.
-- **Accessibility audits** — automated WCAG 2.1/2.2 scans via
-  axe-core. For keyboard operability and ARIA semantics, delegate
-  to the `accessibility-auditor` agent.
-- **Scenario authoring** — translate a user journey into an
-  executable Playwright or RobotFramework script.
-- **Regression passes** — run an existing suite against staging or
-  production, diff against a baseline.
-- **Visual regression** — screenshot diff across viewports to catch
-  unintended layout or styling drift.
+- **Conformity check**: a page against a design system, functional spec or API contract.
+- **Accessibility audit**: automated axe-core scan. Keyboard operability and ARIA semantics need a human-style pass: hand them to the `accessibility-auditor` agent.
+- **Scenario authoring**: a user journey as a Playwright or RobotFramework script.
+- **Regression or visual pass**: run the existing suite against staging or production, diff against a baseline or across viewports.
 
-If the project has no web-test infrastructure and the user has not
-asked for one, do not invent it — say so and stop.
+When the project has no web-test infrastructure and the user did not ask for one, say so and stop: inventing a framework is a larger decision than the task.
 
-## Toolchain
+## Rules that decide most choices
 
-- **Playwright** (TypeScript or Python) — primary choice for new
-  suites. Built-in waiting, tracing, screenshot/video capture, and
-  parallel execution.
-- **RobotFramework** with **Browser Library** (Playwright-backed) or
-  **SeleniumLibrary** — preferred when the project already runs
-  Robot, or when keyword-driven tests serve non-developer authors.
-- **pytest-playwright** — when the Python side of the project
-  already standardizes on pytest.
-- **axe-core** via `@axe-core/playwright` (TS), `axe-playwright`
-  (Python), or `robotframework-axelibrary` — for accessibility
-  assertions inside functional tests.
+- Use the framework already in the project; Playwright for a new suite. Details and the Playwright MCP fallback: `references/toolchain.md`.
+- Page objects own the selectors, tests own the assertions. Fixtures set up state once per worker. Independent tests run in parallel. Retry only known flaky network steps. Conventions, reporting and CI wiring: `references/conventions.md`.
+- A scenario is one journey and one outcome. Stop adding scenarios when the next one is contrived.
+- Report an unverified result as unverified. A scan that did not run is not a clean page.
 
-Match the project's existing convention. Do not introduce a second
-framework alongside the one already present.
+## Accessibility scan
 
-## Playwright MCP server (optional)
-
-At session start, detect whether `@playwright/mcp` is registered in
-the harness. If present, **prefer the MCP tools** for browser
-interaction — DOM inspection, screenshot capture, network
-introspection, and step-by-step exploration are faster and produce
-better artifacts than subprocess invocations.
-
-If absent, fall back to:
-
-- `npx playwright` (Node projects) or `python -m playwright`
-  (Python projects) for direct CLI invocation.
-- `subprocess` / `Bash` for one-shot scripts.
-
-Installation is opt-in and lives in **global user config only**:
+Run from this skill's directory, or give the script's full path:
 
 ```sh
-task setup:playwright-mcp
+node scripts/axe-scan.ts <url-or-html-file> [--fail-on <impact>] [--json]
+node scripts/axe-scan.ts --from-json <axe-results.json> [--fail-on <impact>] [--json]
 ```
 
-Never add the MCP server to a project-level config — the dependency
-is the operator's choice, not the repository's.
+It lists violations by impact (critical, serious, moderate, minor) with the rule id, help URL and node count. `--fail-on` sets the lowest impact that fails the run and defaults to `serious`. A live scan uses the project's own packages, looked up from the current directory: `@axe-core/playwright`, or `playwright` with `axe-core`. The script installs nothing. `--from-json` classifies an axe results file (one results object, or an array of them) without a browser, which suits a results file produced in CI or by another tool.
 
-## Conventions
+Network: the only network use is the browser navigating to the URL you pass. A local HTML file and `--from-json` use none. Only scan URLs the user gave.
 
-- **Page-object model** — one class per page or component, exposing
-  semantic methods (`login(email, password)`) rather than raw
-  selectors. Selectors live inside the page object, never inline in
-  the test.
-- **Data-driven tests** — parameterize with fixtures or
-  `test.describe.each`. Inline test data only when it is small and
-  unique to one assertion.
-- **Fixtures** — set up authenticated state, seeded data, and
-  service mocks once per worker. Avoid per-test login when storage
-  state suffices.
-- **Parallel execution** — design tests to be independent. Shared
-  mutable state (a single user, a single record) serializes the
-  suite and hides flakiness.
-- **Meaningful assertion messages** — `expect(locator,
-  "checkout button visible after adding item").toBeVisible()` beats
-  a bare `toBeVisible()` when the failure log is read at 02:00.
-- **Retry strategy** — retry on `retries: 1` for known flaky
-  network-dependent steps; never blanket-retry to hide real
-  failures. Quarantine flaky tests, do not silence them.
+| Exit | Meaning | What to do |
+|---|---|---|
+| `0` | No violation at or above `--fail-on`. Lower impacts may be listed. | Report them as non-blocking. Automated rules find only part of the WCAG issues, so do not claim full conformance. |
+| `1` | At least one violation at or above `--fail-on`. | Report each rule id with its help URL and node count, then fix or hand off. |
+| `2` | Usage error (unknown option, bad `--fail-on`, missing or extra argument). | Fix the command line. |
+| `3` | Precondition failure: the finding names the missing package or browser and the install command, or the input is unreadable or not an axe results file. | Tell the user what is missing. Install it only when they agree, or classify an existing results file with `--from-json`. Never report exit 3 as a pass. |
 
-## Reporting
+`--json` prints one `{ok, data, findings}` object on standard output; each violation is a finding with the rule `axe:<rule id>`, an error at or above `--fail-on` and a warning below it.
 
-- **HTML report** — `playwright show-report` for local triage.
-- **JUnit XML** — for CI integration (`reporter: 'junit'`).
-- **Allure** — when the project already publishes Allure dashboards.
-- **GitHub Actions wiring** — headless Chromium on
-  `ubuntu-latest`, install browsers with
-  `npx playwright install --with-deps chromium`, upload
-  `playwright-report/` and `test-results/` as artifacts on failure
-  for trace inspection.
+## Friction
 
-## Test quality bar
-
-Same philosophy as the `tester` skill: high-signal tests, not
-coverage theater. A scenario that exercises five clicks to assert
-one outcome is one test, not five. A scenario that asserts ten
-unrelated outcomes is a leaky fixture, not a test.
-
-Stop adding scenarios when the marginal one becomes contrived.
-Coverage of contrived journeys costs maintenance forever.
-
-## Friction reporting
-
-When a recognition signal fires (see `config/TOOLS.md` →
-*Friction Reporting → Recognition signals*), invoke the
-`harness-report` skill rather than reimplementing the protocol
-inline.
+When something in this workflow misleads or blocks you, tag it with the `harness-report` skill.

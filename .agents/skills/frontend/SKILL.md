@@ -1,561 +1,92 @@
 ---
 name: frontend
-description: "Practitioner-grade frontend reference: HTML semantics, CSS tokens, Tailwind, WCAG 2.1 AA, Core Web Vitals, asset optimization, framework-agnostic JavaScript. Activate when authoring or reviewing HTML, CSS, Tailwind config, accessibility audits, performance budgets, or framework-free UI work."
+description: "Practitioner reference for framework-agnostic frontend work: semantic HTML, CSS design tokens, Tailwind configuration, WCAG 2.1 AA accessibility, Core Web Vitals, asset loading and vanilla JavaScript, with bundled scripts that compute a WCAG contrast ratio and check static HTML for alt text, form labels, heading order, landmarks and lang. Use when authoring or reviewing HTML, CSS or a Tailwind config, auditing static HTML for accessibility, checking color contrast, fixing LCP, CLS or INP, or tuning fonts, images and script loading. Trigger terms: HTML, CSS, Tailwind, design tokens, WCAG, contrast ratio, alt text, Core Web Vitals, LCP, INP. Not for Astro pages or builds (astro), marketing copy (copywriting), browser end-to-end tests or axe scans of a rendered page (web-tester) or GitHub Actions workflows (github-actions)."
 license: Apache-2.0
-compatibility: "No runtime prerequisites; this skill is documentation-only."
+compatibility: "Requires Node.js 24 to run the scripts (node scripts/<name>.ts); the references need nothing. The scripts read local files only and make no network call."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.3"
+    version: "2.0.0"
 ---
 
 
 # Frontend
 
-Practitioner reference for modern, framework-agnostic frontend work.
-Activate whenever the change touches HTML, CSS, design tokens, Tailwind
-configuration, accessibility, asset delivery, or vanilla JavaScript
-concerns that are not bound to a specific framework. Framework wiring
-(Astro, React, Vue, Svelte) belongs to its dedicated specialist — this
-skill stops at the platform boundary.
-
-## When to activate
-
-- Writing or reviewing HTML markup, including semantic structure and
-  forms.
-- Authoring CSS, design tokens, or Tailwind configuration.
-- Running an accessibility audit against WCAG 2.1 AA.
-- Diagnosing Core Web Vitals regressions (LCP, CLS, INP).
-- Optimizing fonts, images, or script loading.
-- Writing framework-agnostic JavaScript: observers, fetch, ES modules.
-
-## HTML semantics
-
-Semantics are the cheapest accessibility win and the foundation every
-later layer depends on. Generic `<div>` soup forces you to bolt ARIA
-back on; semantic elements come with the correct role, focus
-behavior, and assistive-tech mapping for free.
-
-### Document outline
-
-Each page has exactly one `<h1>` — typically the hero title. Heading
-levels descend without gaps (`h1 → h2 → h3`). Screen readers expose a
-heading tree; gaps and duplicate `h1` tags break that navigation.
-
-### Landmark roles
-
-Wrap the page in landmark elements rather than `<div>`s. Each landmark
-appears in the AT rotor and gives keyboard users a skip target.
-
-```html
-<body>
-  <a class="skip-link" href="#main">Skip to content</a>
-  <header><nav aria-label="Primary">…</nav></header>
-  <main id="main">
-    <article>
-      <h1>Page title</h1>
-      <section aria-labelledby="features">
-        <h2 id="features">Features</h2>
-      </section>
-    </article>
-    <aside aria-label="Related">…</aside>
-  </main>
-  <footer>…</footer>
-</body>
-```
-
-### Semantic element checklist
-
-- `<button>` for in-page actions; `<a href>` for navigation.
-- `<nav>` for navigation groups; label with `aria-label` when more than
-  one exists on the page.
-- `<main>` once per page; everything outside lives in `<header>`,
-  `<aside>`, or `<footer>`.
-- `<figure>` + `<figcaption>` for images that need attribution or a
-  caption.
-- `<time datetime="…">` for machine-readable dates.
-- `<dl>` / `<dt>` / `<dd>` for definition lists and key/value pairs.
-
-### Forms
-
-- Every input has a `<label for>` (or wraps the input). Placeholders
-  are not labels.
-- Group related inputs in `<fieldset>` with a `<legend>`.
-- Use the right `type` (`email`, `tel`, `url`, `number`, `date`) — it
-  drives mobile keyboards, validation, and assistive announcements.
-- Use `autocomplete` tokens (`name`, `email`, `current-password`,
-  `one-time-code`) — password managers and AT depend on them.
-- Surface validation errors with `aria-invalid="true"` and
-  `aria-describedby` pointing to the error message.
-
-## CSS
-
-### Custom properties and design tokens
-
-CSS custom properties are the runtime substrate for design tokens.
-They cascade, can be themed at any DOM depth, and respond to media
-queries — which `:root`-only Sass variables cannot.
-
-```css
-:root {
-  --primitive-color-white:    #ffffff;
-  --primitive-color-blue-400: #60a5fa;
-  --primitive-color-blue-500: #3b82f6;
-  --primitive-space-4: 1rem;
-
-  --color-accent:    var(--primitive-color-blue-500);
-  --color-on-accent: var(--primitive-color-white);
-  --space-md: var(--primitive-space-4);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-accent:    var(--primitive-color-blue-400);
-    --color-on-accent: var(--primitive-color-white);
-  }
-}
-```
-
-### Container queries
-
-Container queries let a component respond to its container, not the
-viewport. Prefer them for reusable components that may live in
-sidebars, modals, or full-width layouts.
-
-```css
-.card-host {
-  container-type: inline-size;
-  container-name: card;
-}
-
-@container card (min-width: 32rem) {
-  .card {
-    grid-template-columns: 1fr 2fr;
-  }
-}
-```
-
-### `@layer`
-
-Cascade layers let you order origins explicitly and stop specificity
-arms races. Declare the order once at the top of the entry stylesheet.
-
-```css
-@layer reset, tokens, base, components, utilities;
-
-@layer components {
-  .button { /* … */ }
-}
-```
-
-Tailwind's `base`, `components`, `utilities` map onto this model.
-
-### Logical properties
-
-Use logical properties (`margin-inline`, `padding-block`,
-`border-inline-start`, `inset-inline-end`) instead of physical
-(`left` / `right`). They flip automatically under
-`direction: rtl` and `writing-mode: vertical-rl`.
-
-### Fluid typography with `clamp()`
-
-```css
-:root {
-  --font-size-h1: clamp(2rem, 1.5rem + 2.5vw, 3.5rem);
-}
-```
-
-`clamp(min, preferred, max)` removes most named breakpoints for
-typography. Pair the preferred value with a viewport-relative term so
-it scales between the bounds.
-
-### Dark mode
-
-Prefer `prefers-color-scheme` and token swaps over `.dark` class
-toggling unless the product needs an explicit user override.
-
-```css
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-surface: #0b0f17;
-    --color-text: #e6edf3;
-  }
-}
-```
-
-When a manual override is required, gate the swap on a
-`data-theme="dark"` attribute on `<html>` and persist the choice in
-`localStorage`.
-
-## Design systems
-
-### Token taxonomy
-
-Three layers, in this order:
-
-1. **Primitive** — raw values, no meaning. Prefix with
-   `--primitive-color-*`, `--primitive-space-*`, `--primitive-font-*`.
-   Never reference primitives directly from components.
-2. **Semantic** — intent-bound aliases of primitives.
-   `--color-accent`, `--color-surface`, `--space-md`,
-   `--radius-card`. Components consume only this layer.
-3. **Component** — local tokens scoped to a component.
-   `--button-bg`, `--button-padding-inline`. Defined inside the
-   component scope, defaulted from semantic tokens.
-
-```css
-.button {
-  --button-bg: var(--color-accent);
-  --button-fg: var(--color-on-accent);
-  background: var(--button-bg);
-  color: var(--button-fg);
-}
-
-.button[data-variant="ghost"] {
-  --button-bg: transparent;
-  --button-fg: var(--color-accent);
-}
-```
-
-This taxonomy is what makes a design system theme-able. Swap
-primitives to rebrand; swap semantics to retheme; swap component
-tokens to vary a single component.
-
-## Tailwind CSS
-
-### Configuration extension
-
-Tailwind's defaults are the floor, not the ceiling. Extend with
-`theme.extend` so you keep the defaults and add tokens; replace
-`theme.colors` only when you have a complete palette.
-
-```js
-// tailwind.config.js
-export default {
-  content: ['./src/**/*.{html,js,ts,astro,jsx,tsx}'],
-  theme: {
-    extend: {
-      colors: {
-        accent: {
-          DEFAULT: 'var(--color-accent)',
-          fg: 'var(--color-on-accent)',
-        },
-      },
-      spacing: {
-        gutter: 'var(--space-md)',
-      },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-      },
-    },
-  },
-};
-```
-
-Reference CSS custom properties from the config — that keeps Tailwind
-utilities theme-aware without rebuilding.
-
-### `@apply` vs utility-first
-
-Default to utility-first in markup. Reach for `@apply` only when:
-
-- The same utility cluster repeats in three or more places and the
-  cluster names a real concept (`.button`, `.card`).
-- A third-party component (CMS, email) cannot accept utilities.
-- You need a selector that utilities cannot express
-  (`:has`, `:nth-child`, complex `@container`).
-
-`@apply` chains longer than ~8 utilities are a smell — extract a
-component layer rule instead.
-
-### JIT and content scanning
-
-Tailwind v3+ runs JIT by default; the only knob that matters is
-`content`. Misconfigured globs are the number-one cause of "my class
-does not apply" reports.
-
-- Include every file extension where class names can appear.
-- Avoid dynamic class concatenation (`bg-${color}`) — JIT cannot see
-  it. Use a safelist or a lookup map of full class names.
-
-### Plugin authoring
-
-Plugins are the right tool when you need utilities the core does not
-ship (focus-visible variants, custom typography, design-system
-shortcuts). Stay framework-agnostic — emit CSS, not JavaScript.
-
-```js
-import plugin from 'tailwindcss/plugin';
-
-export default plugin(({ addUtilities, theme }) => {
-  addUtilities({
-    '.text-balance': { 'text-wrap': 'balance' },
-    '.focus-ring': {
-      'outline': '2px solid transparent',
-      'outline-offset': '2px',
-      '&:focus-visible': {
-        'outline-color': theme('colors.accent.DEFAULT'),
-      },
-    },
-  });
-});
-```
-
-## Accessibility — WCAG 2.1 AA
-
-WCAG 2.1 AA is the legal baseline in most jurisdictions and the
-practical baseline everywhere else. Treat it as a floor, not a goal.
-
-### Focus management
-
-- Every interactive element has a visible `:focus-visible` style.
-  Remove the default outline only if you replace it with something at
-  least as legible.
-- Focus order follows the visual order. `tabindex="0"` makes a
-  non-interactive element focusable; never use positive `tabindex`
-  values.
-- After a route change or modal open, move focus to the new context
-  (the modal title, the page heading).
-
-### Skip links
-
-Provide a skip link as the first focusable element. Style it visible
-on focus so it is discoverable.
-
-```css
-.skip-link {
-  position: absolute;
-  inset-block-start: -100px;
-  inset-inline-start: 0;
-}
-
-.skip-link:focus-visible {
-  inset-block-start: 0;
-}
-```
-
-### `aria-*` attributes
-
-The first rule of ARIA is: do not use ARIA. Pick the right semantic
-element first; reach for ARIA only when no element fits.
-
-- `aria-label` / `aria-labelledby` — accessible name when the visible
-  text is missing or ambiguous (icon-only buttons).
-- `aria-describedby` — supplementary description (form hints, error
-  messages).
-- `aria-expanded` / `aria-controls` — disclosure widgets and menus.
-- `aria-current="page"` — the active item in a navigation list.
-- `aria-live="polite"` — status updates, toast regions.
-
-Never set `role="button"` on a `<div>` when `<button>` would do.
-
-### Color contrast ratios
-
-| Content                                                    | Minimum |
-|------------------------------------------------------------|---------|
-| Normal text (under 18 pt, or under 14 pt bold)             | 4.5 : 1 |
-| Large text (18 pt+, or 14 pt+ bold)                        | 3 : 1   |
-| Non-text UI: icons, focus rings, form borders, separators  | 3 : 1   |
-| Decorative / disabled UI                                   | Exempt  |
-
-Verify with a contrast checker against the actual background, not the
-nominal one — gradients and translucent layers shift the result.
-
-### Touch targets
-
-Interactive controls have a minimum hit area of **44×44 CSS pixels**
-(WCAG 2.5.5 AAA, but practical baseline). When the visible target is
-smaller, expand the hit area with padding or a transparent pseudo-
-element — do not scale the visible glyph.
-
-## Core Web Vitals
-
-### Targets
-
-| Metric                              | Good     | Needs improvement | Poor     |
-|-------------------------------------|----------|-------------------|----------|
-| **LCP** — Largest Contentful Paint  | ≤ 2.5 s  | ≤ 4.0 s           | > 4.0 s  |
-| **CLS** — Cumulative Layout Shift   | ≤ 0.1    | ≤ 0.25            | > 0.25   |
-| **INP** — Interaction to Next Paint | ≤ 200 ms | ≤ 500 ms          | > 500 ms |
-
-INP replaced FID as a Core Web Vital in March 2024. It measures the
-worst input latency across the page lifetime, not the first.
-
-### Measurement
-
-- **Lighthouse** in Chrome DevTools — synthetic lab data. Use it for
-  before/after diffs.
-- **`web-vitals`** library — real-user metrics emitted from the page.
-
-```js
-import { onLCP, onCLS, onINP } from 'web-vitals';
-
-onLCP((m) => navigator.sendBeacon('/rum', JSON.stringify(m)));
-onCLS((m) => navigator.sendBeacon('/rum', JSON.stringify(m)));
-onINP((m) => navigator.sendBeacon('/rum', JSON.stringify(m)));
-```
-
-- **Chrome User Experience Report (CrUX)** — field data aggregated by
-  Google. Use it for ground truth at a domain level.
-
-### LCP levers
-
-- Preload the LCP image with `<link rel="preload" as="image" fetchpriority="high">`.
-- Set `fetchpriority="high"` on the LCP `<img>`.
-- Inline critical CSS, defer the rest with `media="print"` + onload swap.
-- Eliminate render-blocking third-party scripts above the fold.
-
-### CLS levers
-
-- Reserve space with explicit `width` and `height` attributes on
-  `<img>` and `<iframe>`, or `aspect-ratio` in CSS.
-- Load custom fonts with `font-display: swap` and a metric-matched
-  fallback to keep layout stable during swap.
-- Reserve space for ads, embeds, and skeleton states.
-
-### INP levers
-
-- Break long tasks (> 50 ms) with `scheduler.yield()` or
-  `requestIdleCallback`.
-- Defer non-critical hydration. Ship less JavaScript.
-- Debounce input handlers; batch DOM reads and writes.
-
-## Asset optimization
-
-### Fonts
-
-- Self-host critical fonts; third-party font services add a DNS lookup
-  and a TCP handshake to the critical path.
-- Subset to the glyphs you actually use (`pyftsubset`, `glyphhanger`).
-- Serve WOFF2 only. Browsers without WOFF2 support are below relevance.
-- Set `font-display: swap` (or `optional` for non-critical faces) to
-  prevent invisible text during font load.
-- Preload the one or two faces used above the fold:
-
-```html
-<link rel="preload" href="/fonts/Inter-Regular.woff2" as="font"
-      type="font/woff2" crossorigin>
-```
-
-### Responsive images
-
-```html
-<img
-  src="/img/hero-800.jpg"
-  srcset="/img/hero-400.jpg 400w,
-          /img/hero-800.jpg 800w,
-          /img/hero-1600.jpg 1600w"
-  sizes="(min-width: 64rem) 50vw, 100vw"
-  width="1600" height="900"
-  alt="Product dashboard showing weekly revenue"
-  loading="lazy"
-  decoding="async">
-```
-
-- Always set `width` / `height` to reserve layout space.
-- `loading="lazy"` for below-the-fold images; never for the LCP image.
-- Prefer AVIF, fall back to WebP, then JPEG via `<picture>`.
-
-### Script loading
-
-| Attribute            | Effect                                                      |
-|----------------------|-------------------------------------------------------------|
-| `<script>`           | Blocks parser. Avoid in `<head>`.                           |
-| `<script defer>`     | Downloads in parallel, executes after parse, preserves order. |
-| `<script async>`     | Downloads in parallel, executes ASAP, order undefined.      |
-| `<script type="module">` | `defer` by default. Use for ES modules.                 |
-
-Default to `defer` (or `type="module"`) unless the script genuinely
-needs to run before parse completes — which it almost never does.
-
-## JavaScript baseline
-
-Framework-agnostic patterns. Assume an evergreen browser baseline.
-
-### ES modules
-
-```js
-// src/components/disclosure.js
-export function attach(root) {
-  const trigger = root.querySelector('[data-disclosure-trigger]');
-  const panel = root.querySelector('[data-disclosure-panel]');
-  trigger.addEventListener('click', () => {
-    const open = trigger.getAttribute('aria-expanded') === 'true';
-    trigger.setAttribute('aria-expanded', String(!open));
-    panel.hidden = open;
-  });
-}
-```
-
-Use native ESM (`<script type="module">`); no bundler is required for
-small islands of interactivity.
-
-### IntersectionObserver
-
-Use for lazy reveals, infinite scroll, and view-tracking. Cheaper than
-`scroll` listeners and runs off the main thread.
-
-```js
-const io = new IntersectionObserver((entries) => {
-  for (const entry of entries) {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('is-visible');
-      io.unobserve(entry.target);
-    }
-  }
-}, { rootMargin: '0px 0px -10% 0px' });
-
-document.querySelectorAll('[data-reveal]').forEach((el) => io.observe(el));
-```
-
-### ResizeObserver
-
-Use for container-aware components when `@container` is not enough.
-
-```js
-const ro = new ResizeObserver((entries) => {
-  for (const entry of entries) {
-    const { width } = entry.contentRect;
-    entry.target.dataset.size = width > 600 ? 'lg' : 'sm';
-  }
-});
-ro.observe(document.querySelector('.card-host'));
-```
-
-### Fetch and async patterns
-
-```js
-async function loadPosts(signal) {
-  const res = await fetch('/api/posts', { signal });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-const controller = new AbortController();
-loadPosts(controller.signal).catch((err) => {
-  if (err.name !== 'AbortError') console.error(err);
-});
-// later, on navigation away:
-controller.abort();
-```
-
-Always pass an `AbortSignal` to `fetch` so in-flight requests cancel
-when the consumer unmounts. Unhandled aborts pollute INP and leak
-memory in long-lived SPAs.
+Framework-agnostic rules for HTML, CSS, accessibility and delivery performance.
+The model knows the syntax; this skill holds the decisions it gets wrong and two
+checks that settle fixed questions. Framework wiring (Astro, React, Vue, Svelte)
+belongs to its own specialist: stop at the platform boundary.
+
+## Where the detail lives
+
+Read only the reference the task needs.
+
+| Task | Reference |
+|---|---|
+| Semantic HTML, forms, landmarks, focus, ARIA, contrast, touch targets | `references/accessibility.md` |
+| Core Web Vitals, fonts, responsive images, script loading | `references/performance.md` |
+| Design tokens, token taxonomy, color, type, spacing, shadow and radius scales, Tailwind config, `@apply`, plugins, modern CSS, dark mode | `references/tailwind.md` |
+| ES modules, observers, `fetch` with `AbortSignal` | `references/javascript.md` |
+| Component spec to hand to an implementer (parts, states, tokens, a11y, motion) | `assets/component-anatomy.md` |
+
+## Scripts
+
+Run them from this skill's directory. They need only Node.js 24, read local
+files, and write nothing.
+
+| Script | When | Exit codes |
+|---|---|---|
+| `node scripts/check-html-a11y.ts <file or ->` | After writing or changing markup, and at the start of an accessibility audit. `-` reads standard input. | `0` no error finding (warnings allowed), `1` an error finding, `2` usage error, `3` unreadable input. |
+| `node scripts/check-contrast.ts <fg> <bg> [--large] [--level AA\|AAA]` | For every text or UI color pair you choose or review. Colors are hex or `rgb()`. | `0` the pair meets the threshold, `1` it does not, `2` usage error or an unparseable color. |
+
+Add `--json` for one `{ok, data, findings}` object on standard output.
+
+- `check-html-a11y.ts` reads static markup only. It cannot see what scripts add
+  later, and it does not test keyboard use or contrast, so exit `0` is
+  necessary, not sufficient. Say which checks you did not run.
+- A fragment (no `<html>` element) skips the page-level rules for `lang`, `main`
+  and `h1`.
+- `check-contrast.ts` checks normal text at 4.5:1 for AA unless you pass
+  `--large` (text from 18 pt, or 14 pt bold) or `--level AAA`. Use `--large`
+  for icons, focus rings and form borders, which need 3:1.
+- Exit `2` or `3` means the call or the input is wrong, not the page: fix the
+  command first.
 
 ## Quick checklist
 
 ```text
-☐ One <h1>, no heading gaps, landmarks in place
-☐ Labels on every input, autocomplete tokens set
-☐ Focus visible, skip link, focus order matches visual order
-☐ Contrast ≥ 4.5:1 normal text, ≥ 3:1 large/UI
-☐ Touch targets ≥ 44×44 CSS px
-☐ Tokens follow primitive → semantic → component
-☐ Tailwind content globs cover all class-bearing files
-☐ LCP image preloaded, width/height set, fetchpriority=high
-☐ Fonts: WOFF2, subset, font-display: swap, preloaded
-☐ Scripts: defer by default, async only when independent
-☐ web-vitals reporting LCP, CLS, INP from the field
+[ ] One <h1>, no heading gaps, landmarks in place
+[ ] Labels on every input, autocomplete tokens set
+[ ] Every <img> has alt (alt="" when decorative)
+[ ] Focus visible, skip link, focus order matches visual order
+[ ] Contrast >= 4.5:1 normal text, >= 3:1 large text and UI
+[ ] Touch targets >= 44x44 CSS px
+[ ] Tokens follow primitive -> semantic -> component
+[ ] Tailwind content globs cover all class-bearing files
+[ ] LCP image preloaded, width/height set, fetchpriority=high
+[ ] Fonts: WOFF2, subset, font-display: swap, preloaded
+[ ] Scripts: defer by default, async only when independent
+[ ] web-vitals reporting LCP, CLS, INP from the field
 ```
+
+## Decision rules
+
+- Pick the semantic element before ARIA: a `<button>` brings role, focus and
+  keyboard handling that `role="button"` on a `<div>` does not.
+- Components consume semantic tokens, never primitives, so a rebrand touches
+  one layer. Details in `references/tailwind.md` under *Token taxonomy*.
+- Prefer utility classes; use `@apply` only for a repeated, named concept.
+- Prefer `prefers-color-scheme` token swaps over a `.dark` class unless the
+  product needs a user override.
+- Never lazy-load the LCP image, and never use `async` for a script that
+  depends on another.
+- Reserve space (`width` and `height`, or `aspect-ratio`) for every image,
+  iframe and embed to protect CLS.
+- Hand a change that touches authentication, user input handling or secrets to
+  the **security** skill.
+
+## Friction reporting
+
+When something in this workflow misleads or blocks you, tag it with the
+`harness-report` skill.
