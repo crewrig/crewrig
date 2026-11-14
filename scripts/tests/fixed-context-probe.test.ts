@@ -123,16 +123,25 @@ describe("never runs in CI", () => {
       "taskfiles/ci.yml",
     ];
     // Only the unit suite (fixed-context-probe.test.ts, id fixed-context-probe-tests) and
-    // quoted `paths:` entries may name the probe; comments are prose.
+    // bare quoted `paths:`/`changes:` list items may name the probe; comments are prose.
+    // Every other line, quoted or not, must not invoke the script or the task.
     const forbidden =
-      /task\s+(?:ci:)?fixed-context-probe\b|fixed-context-probe\.ts(?!["'])|ci:fixed-context-probe\b/;
+      /task\s+(?:ci:)?fixed-context-probe\b|fixed-context-probe\.ts|ci:fixed-context-probe\b/;
+    const bareItem = /^\s*-\s*"scripts\/[^"\s]*"\s*$/;
     for (const f of files) {
       const code = fs
         .readFileSync(path.join(repo, f), "utf8")
         .split("\n")
-        .filter((l) => !/^\s*#/.test(l));
+        .filter((l) => !/^\s*#/.test(l) && !bareItem.test(l));
       assert.doesNotMatch(code.join("\n"), forbidden, f);
     }
+  });
+  test("the guard catches a quoted invocation (self-check)", () => {
+    const forbidden = /fixed-context-probe\.ts/;
+    const bareItem = /^\s*-\s*"scripts\/[^"\s]*"\s*$/;
+    assert.equal(bareItem.test('      - "scripts/fixed-context-probe.ts"'), true);
+    assert.equal(bareItem.test('    - "node scripts/fixed-context-probe.ts"'), false);
+    assert.match('    - "node scripts/fixed-context-probe.ts"', forbidden);
   });
   test("the unit suite is wired in CI as its own capability, without the paid script", () => {
     const cap = fs.readFileSync(path.join(repo, "ci/ci-capabilities.yml"), "utf8");
