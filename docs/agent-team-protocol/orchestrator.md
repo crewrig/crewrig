@@ -151,6 +151,49 @@ REVIEW) to a fresh subagent with a self-contained brief and keeps only that
 subagent's result, or it compacts its own context between stages. It never
 carries the raw output of one heavy stage into the next.
 
+<a id="coordinator-playbook"></a>
+
+## Coordinator playbook
+
+A coordinator is the session that owns a multi-ticket run and assigns one
+worker session per ticket or ticket group. The playbook is tool-agnostic: it
+says what the coordinator decides and what the brief carries, never how a
+given tool delivers it. Every coordinator call re-reads a large context, so
+each rule below removes a call or a decision from the workers.
+
+1. **Size before assignment.** Decide the tier, whether a spec or delta-spec is
+   needed, the interaction mode and the branch name, and write them in the
+   brief. A worker is never left to choose the tier, least of all under a "no
+   new issues" constraint, where open sizing drifts toward delta-specs.
+2. **Group by area.** Tickets that share files or a spec go to one worker and
+   one PR. Check the shared files of the whole run before assigning work.
+3. **Batch merge approvals.** A worker never merges on its own. When its
+   conditions hold (the latest review pass has no blocking finding, every
+   required check is green, the branch is up to date with `main`), it reports
+   the PR as merge-ready with that evidence in its final report and stops. The
+   coordinator groups the merge-ready PRs of the run and asks the owner once
+   per group, just before executing those merges; the merges follow that
+   permission immediately, as `AGENTS.md` requires. A denied merge is retried
+   once, then escalated to the owner, never delegated. A standing
+   authorisation given in advance is out of scope here and tracked in #1984.
+4. **Trust worker evidence.** Re-verify a PR only on a gap or a contradiction
+   in the final report, or by sampling. Re-reading every PR before approval
+   repeats work the workers already evidenced.
+5. **Intervene on defects only.** Mid-flight, step in for a defect (a failing
+   check, a violated rule, a wrong scope), never for a style preference. A
+   preference becomes a follow-up item for the owner after the run.
+6. **Pick the coordinator model.** A mid-tier model by default; the top-tier
+   model only on the owner's request. Coordination is routing and checking,
+   not deep reasoning.
+7. **Carry the hygiene rules in the brief.** Include the sections *Waiting
+   rules in a worker brief* and *Output hygiene and stage-scoped sessions in a
+   worker brief* above: copy their bullets verbatim into the brief and
+   point back to those sections; never paraphrase or restate them here.
+
+The reusable brief is in
+[`worker-brief-template.md`](worker-brief-template.md). At the end of a run the
+coordinator reports its own calls and tokens, to compare runs.
+
 <a id="no-coordination-surface"></a>
 
 ## On CLIs with no multi-agent coordination surface (e.g. Gemini CLI)
