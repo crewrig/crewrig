@@ -11,6 +11,7 @@ Installing shared layered context to <HOME>/.copilot/instructions ...
   Copied: ORGANIZATION.md -> instructions/20-organization.instructions.md
   Copied: PROFILE.md -> instructions/30-profile.instructions.md
   Copied: artifacts/core/rules/60-tools.md -> instructions/60-tools.instructions.md
+  Copied: artifacts/core/rules/60-memory.md -> instructions/60-memory.instructions.md
   Copied: TOOLS.md -> instructions/65-org-tools.instructions.md
   Copied dir: artifacts/core/system-context -> ~/.crewrig/system-context
 
@@ -89,6 +90,7 @@ Active user-level instruction files:
 <HOME>/.copilot/instructions/00-soul.instructions.md
 <HOME>/.copilot/instructions/20-organization.instructions.md
 <HOME>/.copilot/instructions/30-profile.instructions.md
+<HOME>/.copilot/instructions/60-memory.instructions.md
 <HOME>/.copilot/instructions/60-tools.instructions.md
 <HOME>/.copilot/instructions/65-org-tools.instructions.md
 

@@ -66,6 +66,11 @@ export const claudeDescriptor: SetupDescriptor = {
         label: "artifacts/core/rules/60-tools.md -> rules/60-tools.md",
       },
       {
+        src: "artifacts/core/rules/60-memory.md",
+        dest: "60-memory.md",
+        label: "artifacts/core/rules/60-memory.md -> rules/60-memory.md",
+      },
+      {
         src: "config/TOOLS.md",
         dest: "65-org-tools.md",
         label: "TOOLS.md -> rules/65-org-tools.md",

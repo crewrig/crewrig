@@ -86,7 +86,7 @@ describe("rules-shared", posix, () => {
     fs.writeFileSync(path.join(box.repo, "AGENTS.org.md"), "# org\n");
     const withOrg = await runRules(rulesDescriptor("gemini", ["rules-shared"]), VALIDATION);
     const lines = withOrg.out.split("\n").filter((l) => l.startsWith("  Copied"));
-    assert.deepEqual(lines.slice(3, 6), [
+    assert.deepEqual(lines.slice(4, 7), [
       "  Copied dir: artifacts/core/system-context -> ~/.crewrig/system-context",
       "  Copied: AGENTS.org.md -> 66_ORG_RULES.md",
       "  Copied: SOUL.md -> 00_SOUL.md",
@@ -108,8 +108,8 @@ describe("rules-shared", posix, () => {
       VALIDATION,
     );
     const lines = result.out.split("\n").filter((l) => l.startsWith("  Copied"));
-    assert.equal(lines.length, 5);
-    assert.match(lines[4] ?? "", /^ {2}Copied dir: artifacts\/core\/system-context/);
+    assert.equal(lines.length, 6);
+    assert.match(lines[5] ?? "", /^ {2}Copied dir: artifacts\/core\/system-context/);
     assert.ok(!result.out.includes("66_ORG_RULES"));
   });
 });
@@ -183,6 +183,25 @@ describe("rules-selection: markers and the fail-closed policy", posix, () => {
     assert.equal(result.status, 0);
     assert.ok(!result.out.includes("Select your"));
     assert.deepEqual(fs.readdirSync(path.join(box.home, ".claude")).sort(), ["rules"]);
+  });
+});
+
+describe("rules-shared: a missing core rule (spec 0308 R4)", posix, () => {
+  test("an absent 60-memory.md makes the step reject, naming the file", async () => {
+    const rules = path.join(box.repo, "artifacts-copy", "core", "rules");
+    fs.mkdirSync(rules, { recursive: true });
+    fs.copyFileSync(
+      path.join(box.repo, "artifacts", "core", "rules", "60-tools.md"),
+      path.join(rules, "60-tools.md"),
+    );
+    fs.rmSync(path.join(box.repo, "artifacts"), { force: true });
+    fs.renameSync(path.join(box.repo, "artifacts-copy"), path.join(box.repo, "artifacts"));
+    const result = await runRules(
+      { ...rulesDescriptor("claude", ["rules-shared"]), rules: claudeDescriptor.rules },
+      [...VALIDATION],
+    ).catch((e: unknown) => ({ status: 1, out: "", err: String(e) }));
+    assert.notEqual(result.status, 0);
+    assert.match(result.err, /60-memory\.md/);
   });
 });
 

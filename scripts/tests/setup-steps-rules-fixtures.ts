@@ -22,19 +22,22 @@ interface Style {
   readonly cliHome: string;
   readonly prefix: string;
   readonly names: readonly string[];
+  /** The 60-memory deployment name (spec 0308 R4). */
+  readonly memory: string;
   readonly selNames: readonly string[];
   readonly orgRules?: string;
   readonly texts: readonly string[];
 }
 
 const SEL = "Team / expertise / level / profile selection will be skipped.";
-// names: soul, organization, profile, 60-tools, 65-tools; selNames: level, expertise, team.
+// names: soul, organization, profile, 60-tools, 65-tools; memory: 60-memory (spec 0308); selNames: level, expertise, team.
 const STYLES: Readonly<Record<Cli, Style>> = {
   claude: {
     rulesDir: ".claude/rules",
     cliHome: ".claude",
     prefix: "rules/",
     names: ["00-soul.md", "20-organization.md", "30-profile.md", "60-tools.md", "65-org-tools.md"],
+    memory: "60-memory.md",
     selNames: ["10-level.md", "40-expertise.md", "50-team.md"],
     texts: [
       "Existing rule files found in",
@@ -48,6 +51,7 @@ const STYLES: Readonly<Record<Cli, Style>> = {
     cliHome: ".gemini",
     prefix: "",
     names: ["00_SOUL.md", "20_ORGANIZATION.md", "30_USER_PROFILE.md", "60_TOOLS.md", "65_TOOLS.md"],
+    memory: "60_MEMORY.md",
     selNames: ["10_USER_LEVEL.md", "40_USER_EXPERTISE.md", "50_USER_TEAM.md"],
     orgRules: "66_ORG_RULES.md",
     texts: [
@@ -68,6 +72,7 @@ const STYLES: Readonly<Record<Cli, Style>> = {
       "60-tools.instructions.md",
       "65-org-tools.instructions.md",
     ],
+    memory: "60-memory.instructions.md",
     selNames: [
       "10-level.instructions.md",
       "40-expertise.instructions.md",
@@ -86,6 +91,7 @@ const STYLES: Readonly<Record<Cli, Style>> = {
     cliHome: ".gemini/antigravity-cli",
     prefix: "",
     names: ["00_SOUL.md", "20_ORGANIZATION.md", "30_USER_PROFILE.md", "60_TOOLS.md", "65_TOOLS.md"],
+    memory: "60_MEMORY.md",
     selNames: ["10_USER_LEVEL.md", "40_USER_EXPERTISE.md", "50_USER_TEAM.md"],
     orgRules: "66_ORG_RULES.md",
     texts: [
@@ -117,6 +123,11 @@ export function rulesData(cli: Cli): Pick<SetupDescriptor, "homes" | "rules"> {
   const org = file("config/ORGANIZATION.md", "ORGANIZATION.md", orgN);
   const profile = file("config/PROFILE.md", "PROFILE.md", profN);
   const t60 = file("artifacts/core/rules/60-tools.md", "artifacts/core/rules/60-tools.md", t60N);
+  const t60m = file(
+    "artifacts/core/rules/60-memory.md",
+    "artifacts/core/rules/60-memory.md",
+    s.memory,
+  );
   const t65 = file("config/TOOLS.md", "TOOLS.md", t65N);
   const store: RuleFile = {
     src: "artifacts/core/system-context",
@@ -136,8 +147,8 @@ export function rulesData(cli: Cli): Pick<SetupDescriptor, "homes" | "rules"> {
         ];
   const copilot = cli === "copilot";
   const shared = copilot
-    ? [soul, org, profile, t60, t65, store, ...orgRules]
-    : [org, t60, t65, store, ...orgRules, soul];
+    ? [soul, org, profile, t60, t60m, t65, store, ...orgRules]
+    : [org, t60, t60m, t65, store, ...orgRules, soul];
   const sel = (kind: PickKind, dir: string, short: string, name: string): RuleFile => ({
     src: `config/${dir}`,
     dest: name,

@@ -15,6 +15,7 @@ For production use, prefer copy mode (the default).
 Installing shared configuration...
   Linked: ORGANIZATION.md -> 20_ORGANIZATION.md
   Linked: artifacts/core/rules/60-tools.md -> 60_TOOLS.md
+  Linked: artifacts/core/rules/60-memory.md -> 60_MEMORY.md
   Linked: TOOLS.md -> 65_TOOLS.md
   Linked dir: artifacts/core/system-context -> ~/.crewrig/system-context
   Linked: SOUL.md -> 00_SOUL.md
@@ -108,6 +109,7 @@ Active context files:
   <HOME>/.gemini/30_USER_PROFILE.md
   <HOME>/.gemini/40_USER_EXPERTISE.md
   <HOME>/.gemini/50_USER_TEAM.md
+  <HOME>/.gemini/60_MEMORY.md
   <HOME>/.gemini/60_TOOLS.md
   <HOME>/.gemini/65_TOOLS.md
 
