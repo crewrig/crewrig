@@ -1,0 +1,23 @@
+{
+  "skill_name": "init-expertise",
+  "content_hash": "sha256:2e7a0f28c08abb0eb98a9921d579bf34d0dfd100728bb0c8229a081f37663f7c",
+  "runner_version": "3.0.0",
+  "executor_model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "date": "2026-11-14T12:51:30.772Z",
+  "status": "pass",
+  "eval_pass_rate": 0.8,
+  "probe_pass_rate": 0.7,
+  "base_eval_pass_rate": null,
+  "threshold": 0.8,
+  "tolerance": 0.2,
+  "evals_passed": 4,
+  "evals_total": 5,
+  "probes_passed": 7,
+  "probes_total": 10,
+  "executor_runs": 15,
+  "judge_calls": 5,
+  "cost_usd": 0.458376,
+  "skill_loaded": 5
+}
