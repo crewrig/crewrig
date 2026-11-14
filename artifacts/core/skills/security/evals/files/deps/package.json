@@ -1,0 +1,16 @@
+{
+  "name": "orders-service",
+  "version": "2.4.0",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^5.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.5"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

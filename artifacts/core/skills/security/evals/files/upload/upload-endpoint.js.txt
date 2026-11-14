@@ -1,0 +1,20 @@
+'use strict';
+
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const { requireLogin } = require('./session');
+
+const UPLOAD_DIR = '/srv/app/public/uploads';
+const upload = multer({ dest: '/tmp/incoming' });
+const router = express.Router();
+
+// Accept one profile picture per request and publish it under /uploads.
+router.post('/profile/picture', requireLogin, upload.single('picture'), (req, res) => {
+  const finalName = req.file.originalname;
+  const finalPath = path.join(UPLOAD_DIR, finalName);
+  require('fs').renameSync(req.file.path, finalPath);
+  res.json({ url: `/uploads/${finalName}` });
+});
+
+module.exports = router;

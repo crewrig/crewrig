@@ -1,0 +1,218 @@
+{
+  "skill_name": "security",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Review the change in orders-handler.diff as a security reviewer. The whole file after the change is orders-handler.js.txt: cite lines of that whole file, not of the diff. Do not modify either file. Write your review to security-review.md. Do not run gh, glab, tea or git push, do not call any GitLab or GitHub instance, do not run any network command, package-manager or audit command, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the file asked for, in the current directory.",
+      "expected_output": "security-review.md reports the sort value interpolated into the ORDER BY clause and the request name joined to the export directory, each as a numbered finding located at a line of orders-handler.js.txt, with a concrete fix.",
+      "files": [
+        "evals/files/orders/orders-handler.js.txt",
+        "evals/files/orders/orders-handler.diff"
+      ],
+      "expectations": [
+        "The review has a numbered finding line that says the sort query parameter is interpolated into the ORDER BY clause of the SQL query (SQL injection); judge it on that whole finding line, and quote that whole line verbatim as the evidence.",
+        "The review has a full Where line for the ORDER BY finding that names orders-handler.js.txt and a line number of the whole file, and that line number points at the query built from the sort value; quote that whole line verbatim as the evidence.",
+        "The review has a numbered finding line that says the name query parameter is joined to the export directory and can escape it with path traversal, and a full Fix line recommending to resolve the path and check it stays inside the directory or to accept only a fixed allow-list of names; quote both whole lines.",
+        "The review has a full Fix line for the ORDER BY finding that recommends an allow-list of sortable column names rather than escaping the value; quote that whole line."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "security-review.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "security-review.md",
+          "pattern": "orders-handler\\.js\\.txt:\\d+"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Review the change in billing-client.diff as a security reviewer. The whole file after the change is billing-client.js.txt: cite lines of that whole file, not of the diff. Do not modify either file. Write your review to credential-review.md. Do not run gh, glab, tea or git push, do not call any GitLab or GitHub instance, do not run any network command, package-manager or audit command, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the file asked for, in the current directory.",
+      "expected_output": "credential-review.md reports the literal API key as a BLOCKER, with an Evidence line showing the code with the key masked, and a Fix line to read the key from an environment variable or a secret store and rotate the exposed key.",
+      "files": [
+        "evals/files/billing/billing-client.js.txt",
+        "evals/files/billing/billing-client.diff"
+      ],
+      "expectations": [
+        "The review has a numbered finding line marked BLOCKER that says a literal API key is committed in the code; judge it on that whole finding line, and quote that whole line verbatim as the evidence.",
+        "The review has a full Where line naming billing-client.js.txt and a line number of the whole file where the key constant is declared; quote that whole line verbatim as the evidence.",
+        "The review has a full Fix line that says to read the key from an environment variable or a secret store and to rotate the exposed key; quote that whole line.",
+        "The review has a full Evidence line that shows the code with the key masked, at most four characters of the key followed by asterisks; quote that whole line. As a secondary clause only, the full key value does not appear anywhere in the file."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "credential-review.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "credential-review.md",
+          "pattern": "BLOCKER"
+        },
+        {
+          "type": "file_contains",
+          "path": "credential-review.md",
+          "pattern": "^(?![\\s\\S]*7Hq2Zp9XvT4mLw8RbN3cYd6F)[\\s\\S]+$"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Review the dependency upgrade in package.json.diff as a security reviewer. The whole manifest after the change is package.json and the upstream changelog excerpt is express-changelog-excerpt.md: cite lines of package.json. Do not modify any of the files. Write your review to dependency-review.md. Do not run gh, glab, tea or git push, do not call any GitLab or GitHub instance, do not run any network command, package-manager or audit command, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the file asked for, in the current directory.",
+      "expected_output": "dependency-review.md reports the express major bump from 4 to 5 with a migration note, located at the line of package.json, with a concrete fix.",
+      "files": [
+        "evals/files/deps/package.json",
+        "evals/files/deps/package.json.diff",
+        "evals/files/deps/express-changelog-excerpt.md"
+      ],
+      "expectations": [
+        "The review has a numbered finding line about the major version bump of express from 4 to 5 that mentions its breaking changes or a migration note; judge it on that whole finding line, and quote that whole line verbatim as the evidence. It may also state that the dependencies were not audited against an advisory database; that clause is optional and is not required.",
+        "The review has a full Where line that names package.json and a line number of the whole manifest where express is declared; quote that whole line verbatim as the evidence.",
+        "The review has a full Fix line that requires a migration note or migration steps for the breaking changes of express 5 (for example removed APIs or route path syntax) and tests before merge; quote that whole line."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "dependency-review.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "dependency-review.md",
+          "pattern": "package\\.json:\\d+"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Review the change in lookup-handler.diff as a security reviewer. The whole file after the change is lookup-handler.js.txt: cite lines of that whole file, not of the diff. Do not modify either file. Write your review to lookup-review.md. If you find no issue, write the line No findings. followed by a line starting with Examined: that says what you examined and where. Do not run gh, glab, tea or git push, do not call any GitLab or GitHub instance, do not run any network command, package-manager or audit command, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the file asked for, in the current directory.",
+      "expected_output": "lookup-review.md reports No findings. and an Examined line naming the parameterized query of lookup-handler.js.txt.",
+      "files": [
+        "evals/files/lookup/lookup-handler.js.txt",
+        "evals/files/lookup/lookup-handler.diff"
+      ],
+      "expectations": [
+        "The review reports no finding, and the line that starts with Examined: and follows No findings. says which query of lookup-handler.js.txt was examined and that it is parameterized with bound values; judge it on that whole Examined line and quote that whole line verbatim as the evidence.",
+        "The Examined line names lookup-handler.js.txt and a line number of the whole file where the examined query is; quote that whole line."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "lookup-review.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "lookup-review.md",
+          "pattern": "No findings\\."
+        },
+        {
+          "type": "file_contains",
+          "path": "lookup-review.md",
+          "pattern": "Examined:"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Write a threat model for the profile-picture upload endpoint in upload-endpoint.js.txt, citing lines of that file. Do not modify it. Write the threat model to threat-model.md. Do not run gh, glab, tea or git push, do not call any GitLab or GitHub instance, do not run any network command, package-manager or audit command, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the file asked for, in the current directory.",
+      "expected_output": "threat-model.md names the trust boundary where the client request reaches the server filesystem and lists the threats of the file name and the file content with mitigations.",
+      "files": [
+        "evals/files/upload/upload-endpoint.js.txt"
+      ],
+      "expectations": [
+        "The threat model has a line that names the trust boundary of the endpoint: the untrusted client request (file name and file content) crossing into the server filesystem and the public uploads directory; judge it on that whole line and quote that whole line verbatim as the evidence.",
+        "The threat model has a line that says the client-supplied original file name is used to build the destination path and allows path traversal or overwriting another file, citing upload-endpoint.js.txt and a line number; quote that whole line.",
+        "The threat model has a line that says the file type, content or size is not validated so a script or oversized file can be published under the public uploads directory; quote that whole line.",
+        "The threat model has a line that proposes a concrete mitigation such as generating a server-side file name, checking the content type against an allow-list and limiting the size; quote that whole line."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "threat-model.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "threat-model.md",
+          "pattern": "upload-endpoint\\.js\\.txt"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Review the change in auth-middleware.diff as a security reviewer. The whole file after the change is auth-middleware.js.txt: cite lines of that whole file, not of the diff. Do not modify either file. Write your review to token-review.md. Do not run gh, glab, tea or git push, do not call any GitLab or GitHub instance, do not run any network command, package-manager or audit command, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the file asked for, in the current directory.",
+      "expected_output": "token-review.md reports that the token verification skips the expiry check and no longer validates the audience, each located at a line of auth-middleware.js.txt, with a fix.",
+      "files": [
+        "evals/files/jwt/auth-middleware.js.txt",
+        "evals/files/jwt/auth-middleware.diff"
+      ],
+      "expectations": [
+        "The review has a numbered finding line that says the token verification ignores expiration (ignoreExpiration is true) so expired tokens are accepted; judge it on that whole finding line and quote that whole line verbatim as the evidence.",
+        "The review has a numbered finding line that says the token audience is no longer validated (the audience option was removed); quote that whole line.",
+        "The review has a full Where line naming auth-middleware.js.txt and a line number of the whole file that points at the verification options; quote that whole line.",
+        "The review has a full Fix line that says to remove ignoreExpiration and to set the expected audience in the verify options; quote that whole line."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "token-review.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "token-review.md",
+          "pattern": "auth-middleware\\.js\\.txt:\\d+"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "We are about to expose a small service that lets customers upload CSV files that our workers parse. Before we build it, walk me through what could go wrong and where the trust boundaries are.",
+      "should_trigger": true
+    },
+    {
+      "query": "Dependabot opened a PR bumping jsonwebtoken from 8.5.1 to 9.0.2 and pg from 8.7 to 8.11. Can you review this dependency upgrade before I merge it?",
+      "should_trigger": true
+    },
+    {
+      "query": "I just noticed that my last commit contains a live API token in config/settings.py. Look at the diff and tell me what to do about it.",
+      "should_trigger": true
+    },
+    {
+      "query": "This Python endpoint calls pickle.loads on a cookie value sent by the browser. Review it and tell me whether it is a problem.",
+      "should_trigger": true
+    },
+    {
+      "query": "Review this fetch-preview endpoint: it takes a url query parameter from the user and the server downloads that URL and returns a thumbnail. Is that safe to ship?",
+      "should_trigger": true
+    },
+    {
+      "query": "Our GET /invoices/{id} endpoint returns the invoice for any id as long as the caller is logged in; there is no check that the invoice belongs to the caller. Review this handler and tell me how bad it is.",
+      "should_trigger": true
+    },
+    {
+      "query": "Harden my GitHub Actions workflow: pin the actions to commit SHAs and set minimal permissions on the jobs.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write a .gitlab-ci.yml with lint, test and build stages for a Go service, using rules to avoid duplicate pipelines.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write the pull request description for my branch that renames the OrderService methods and moves them into a new package.",
+      "should_trigger": false
+    },
+    {
+      "query": "Review pull request 482 and post your verdict: approve, request changes or comment.",
+      "should_trigger": false
+    },
+    {
+      "query": "Refactor this utility module: extract the date formatting helpers into their own file and rename two private functions for clarity.",
+      "should_trigger": false
+    },
+    {
+      "query": "How do I install the requests package for Python 3.12 inside a virtual environment?",
+      "should_trigger": false
+    }
+  ]
+}
