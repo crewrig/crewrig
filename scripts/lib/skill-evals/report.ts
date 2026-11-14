@@ -1,47 +1,69 @@
-// report.ts — the per-skill summary the runner prints (spec 0290 R22 as modified by delta-04).
+// report.ts — the per-skill summary the runner prints (spec 0304 R24, R17, R7, R23; 0290 R22 as
+// modified).
 //
-// One block per skill: status, the eval pass rate with evals passed/total, the probe pass rate with
-// probes passed/total (n/a without probes), the threshold, the base eval pass rate and the
-// difference (n/a when not compared, with a line saying so), the number of eval runs that loaded
-// the skill (R48), a line `evidence_window: <n> of <m>` counting the expectations accepted by the
-// window rule among those accepted from a judge PASS (R50), executor runs used, judge calls used and measured cost, plus the reason and,
-// when the regression condition holds, the regression line. Statuses: pass, fail, regression,
-// invalid, no-evals, mock, error (and `stale`, reported by the attestation check only).
+// One block per skill: the status; the eval rate with passes/runs and the stage reached; the probe
+// rate with passes/runs (n/a without probes); the base figure (passes/runs, n/a when not compared,
+// legacy for a schema-1 base) with the drop and the p-value; the number of eval runs that loaded the
+// skill (0290 R48); executor runs, judge calls and the costs (a figure that is assumed says so).
+// Then `measurements on this branch: <n>`, `evidence_reask: <n> of <m>` (always printed for a judged
+// skill), the `evidence_window: <n> of <m>` line (0290 R50), the run counts of each eval, and as a
+// diagnostic that affects no status the evals whose pass fraction fell by 0.5 or more against the
+// base. Statuses: pass, fail, regression, in-progress, invalid, no-evals, mock, error (and `stale`,
+// reported by the attestation check only).
 //
 // R43: in a real run the report ends with `credential_source: <label>` (no secret value).
 //
 // Usage: formatReport(results, source?). Exit codes: not applicable (library).
 // Finding-line format: `<skill>: status=<status> ...`.
 
-export type RunStatus = "pass" | "fail" | "regression" | "invalid" | "no-evals" | "mock" | "error";
+export type RunStatus =
+  | "pass"
+  | "fail"
+  | "regression"
+  | "in-progress"
+  | "invalid"
+  | "no-evals"
+  | "mock"
+  | "error";
 
 export interface SkillResult {
   skill: string;
   status: RunStatus;
   blocking: boolean;
-  evalPassRate?: number;
-  evalsPassed?: number;
-  evalsTotal?: number;
-  /** null when the skill has no probe. */
-  probePassRate?: number | null;
-  probesPassed?: number;
-  probesTotal?: number;
-  threshold?: number;
-  /** null when not compared (R19). */
-  baseEvalPassRate?: number | null;
-  tolerance?: number;
-  /** The R19 regression condition holds (it can hold under status `fail`). */
-  regression?: boolean;
-  /** Eval runs that loaded the skill (R48), informational. */
+  evalPasses?: number;
+  evalRuns?: number;
+  evalStage?: 1 | 2;
+  /** Absent without probes. */
+  probePasses?: number;
+  probeRuns?: number;
+  probeStage?: 1 | 2;
+  /** The base figures; null when not compared; `legacy` for a schema-1 base. */
+  base?: { passes: number; runs: number; legacy: boolean } | null;
+  drop?: number | null;
+  pValue?: number | null;
+  /** Eval runs that loaded the skill (0290 R48), informational. */
   skillLoaded?: number;
-  /** R50: expectations accepted from a judge PASS, and those accepted by the window rule (rule 3). */
+  /** 0290 R50: expectations accepted from a judge PASS, and those accepted by the window rule. */
   evidenceAccepted?: number;
   evidenceWindow?: number;
+  /** R17: eval runs that were judged, and those that were re-asked. */
+  judged?: number;
+  reasked?: number;
+  /** R10: the branch entries including the current measurement. */
+  branch?: number;
+  /** R7: the pass and run counts of each eval, in order. */
+  evalCounts?: { id: number; passes: number; runs: number }[];
+  /** R24: ids of the evals whose pass fraction fell by 0.5 or more against the base (diagnostic). */
+  fallen?: number[];
   executorRuns: number;
   judgeCalls: number;
-  /** Sum of measured run costs; null when any run's cost is unknown (a lower bound is printed). */
+  /** Measured executor cost; null when some run's cost is unknown (a lower bound is printed). */
   costUsd: number | null;
   costLowerBound?: number;
+  /** R23: the executor cost is assumed (no run reported one), at this figure. */
+  costAssumedUsd?: number;
+  /** Measured judge cost; null when no call reported one. */
+  judgeCostUsd?: number | null;
   messages: string[];
 }
 
@@ -52,38 +74,61 @@ export const CREDENTIAL_LABELS = {
   "api-key": "ANTHROPIC_API_KEY (--use-api-key)",
 } as const;
 
-const fmt = (n: number | null | undefined): string =>
-  n === null || n === undefined ? "n/a" : n.toFixed(2);
+const JUDGE_ASSUMED_NOTE = "assumed (the driver reports no judge cost)";
 
-const ratio = (rate: number | null | undefined, n?: number, of?: number): string =>
-  rate === null || rate === undefined ? "n/a" : `${rate.toFixed(2)} (${n}/${of})`;
+const ratio = (passes: number | undefined, runs: number | undefined, stage?: number): string =>
+  passes === undefined || runs === undefined || runs === 0
+    ? "n/a"
+    : `${(passes / runs).toFixed(2)} (${passes}/${runs}${stage === undefined ? "" : `, stage ${stage}`})`;
+
+function costFigure(r: SkillResult): string {
+  if (r.costAssumedUsd !== undefined) return `assumed ${r.costAssumedUsd.toFixed(2)}`;
+  return r.costUsd === null
+    ? `unknown (at least ${(r.costLowerBound ?? 0).toFixed(2)})`
+    : r.costUsd.toFixed(2);
+}
 
 export function formatSkill(r: SkillResult): string {
   const lines: string[] = [];
-  const diff =
-    r.baseEvalPassRate === null || r.baseEvalPassRate === undefined || r.evalPassRate === undefined
+  const base =
+    r.base === undefined || r.base === null
       ? "n/a"
-      : (r.evalPassRate - r.baseEvalPassRate >= 0 ? "+" : "") +
-        (r.evalPassRate - r.baseEvalPassRate).toFixed(2);
-  const head =
-    `${r.skill}: status=${r.status} eval_pass_rate=${ratio(r.evalPassRate, r.evalsPassed, r.evalsTotal)} ` +
-    `probe_pass_rate=${ratio(r.probePassRate, r.probesPassed, r.probesTotal)} threshold=${fmt(r.threshold)} ` +
-    `base=${fmt(r.baseEvalPassRate)} diff=${diff} ` +
-    `skill_loaded=${r.skillLoaded === undefined ? "n/a" : `${r.skillLoaded}/${r.evalsTotal}`} ` +
-    `executor_runs=${r.executorRuns} judge_calls=${r.judgeCalls} cost_usd=${
-      r.costUsd === null
-        ? `unknown (at least ${(r.costLowerBound ?? 0).toFixed(2)})`
-        : r.costUsd.toFixed(2)
-    }`;
-  lines.push(head);
+      : `${r.base.passes}/${r.base.runs}${r.base.legacy ? " legacy" : ""}`;
+  const judgeCost =
+    r.judgeCostUsd === undefined || (r.judgeCostUsd === null && r.judgeCalls === 0)
+      ? "n/a"
+      : r.judgeCostUsd === null
+        ? JUDGE_ASSUMED_NOTE
+        : r.judgeCostUsd.toFixed(2);
+  lines.push(
+    `${r.skill}: status=${r.status} eval_pass_rate=${ratio(r.evalPasses, r.evalRuns, r.evalStage)} ` +
+      `probe_pass_rate=${ratio(r.probePasses, r.probeRuns, r.probeStage)} ` +
+      `base=${base} drop=${r.drop === undefined || r.drop === null ? "n/a" : r.drop.toFixed(3)} ` +
+      `p_value=${r.pValue === undefined || r.pValue === null ? "n/a" : r.pValue.toFixed(3)} ` +
+      `skill_loaded=${r.skillLoaded === undefined ? "n/a" : `${r.skillLoaded}/${r.evalRuns}`} ` +
+      `executor_runs=${r.executorRuns} judge_calls=${r.judgeCalls} cost_usd=${costFigure(r)} judge_cost_usd=${judgeCost}`,
+  );
+  if (r.branch !== undefined) lines.push(`  measurements on this branch: ${r.branch}`);
+  if (r.judged !== undefined) lines.push(`  evidence_reask: ${r.reasked ?? 0} of ${r.judged}`);
   if (r.evidenceAccepted !== undefined)
     lines.push(`  evidence_window: ${r.evidenceWindow ?? 0} of ${r.evidenceAccepted}`);
-  if (r.baseEvalPassRate === null)
-    lines.push("  not compared: no valid evals/results.json at the merge-base");
-  if (r.regression === true)
+  if (r.evalCounts !== undefined && r.evalCounts.length > 0)
     lines.push(
-      `  regression: ${r.skill} base eval pass rate ${fmt(r.baseEvalPassRate)}, head ${fmt(r.evalPassRate)}, diff ${diff}, tolerance ${fmt(r.tolerance)}`,
+      `  eval runs: ${r.evalCounts.map((e) => `${e.id}=${e.passes}/${e.runs}`).join(" ")}`,
     );
+  if (r.base === null) lines.push("  not compared: no usable evals/results.json at the merge-base");
+  if (r.status === "regression" && r.base !== null && r.base !== undefined)
+    lines.push(
+      `  regression: ${r.skill} base ${base}, head ${r.evalPasses}/${r.evalRuns}, drop ${(r.drop ?? 0).toFixed(3)}, p ${(r.pValue ?? 0).toFixed(3)}`,
+    );
+  if (r.fallen !== undefined && r.fallen.length > 0)
+    lines.push(
+      `  diagnostic: pass fraction fell by 0.5 or more against the base on eval ${r.fallen.join(", ")}`,
+    );
+  if (r.judgeCostUsd === null && r.judgeCalls > 0)
+    lines.push(`  judge cost is ${JUDGE_ASSUMED_NOTE}`);
+  if (r.costAssumedUsd !== undefined)
+    lines.push("  executor cost is assumed (no run reported a cost)");
   for (const m of r.messages) lines.push(`  ${m}`);
   return lines.join("\n");
 }
@@ -93,17 +138,22 @@ export function formatReport(
   source?: keyof typeof CREDENTIAL_LABELS,
 ): string {
   const lines = results.map(formatSkill);
-  const known = results.filter((r) => r.costUsd !== null).reduce((n, r) => n + (r.costUsd ?? 0), 0);
   const lower = results.reduce(
-    (n, r) => n + (r.costUsd === null ? (r.costLowerBound ?? 0) : r.costUsd),
+    (n, r) =>
+      n +
+      (r.costAssumedUsd !== undefined
+        ? r.costAssumedUsd
+        : r.costUsd === null
+          ? (r.costLowerBound ?? 0)
+          : r.costUsd),
     0,
   );
-  const anyUnknown = results.some((r) => r.costUsd === null);
+  const anyUnknown = results.some((r) => r.costUsd === null || r.costAssumedUsd !== undefined);
   const runs = results.reduce((n, r) => n + r.executorRuns, 0);
   const calls = results.reduce((n, r) => n + r.judgeCalls, 0);
   lines.push(
     `invocation: skills=${results.length} executor_runs=${runs} judge_calls=${calls} cost_usd=${
-      anyUnknown ? `unknown (at least ${lower.toFixed(2)})` : known.toFixed(2)
+      anyUnknown ? `unknown or assumed (at least ${lower.toFixed(2)})` : lower.toFixed(2)
     }`,
   );
   if (source !== undefined) lines.push(`credential_source: ${CREDENTIAL_LABELS[source]}`);

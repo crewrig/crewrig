@@ -8,7 +8,8 @@
 // the counter file is race-free. Only PASS can pass (grade.ts checks its evidence); any other word
 // is a failed expectation, and a missing index is a failed "no verdict".
 //
-// Usage: const j = createJudge({...}); j.fn is a JudgeFn; j.callsUsed() reads the counter.
+// Usage: const j = createJudge({...}); j.fn is a JudgeFn; j.callsUsed() reads the counter; j.costUsd()
+// the cost the driver reported (spec 0304 R23).
 // Exit codes: not applicable (library). Finding-line format: not applicable.
 
 import fs from "node:fs";
@@ -30,6 +31,8 @@ const MAX_FILES_TOTAL = 40_000;
 export function buildJudgeMessage(
   expectations: readonly string[],
   material: JudgeMaterial,
+  /** Re-ask (0304 R17): why each expectation's earlier PASS was refused, parallel to `expectations`. */
+  reasons?: readonly string[],
 ): string {
   let transcript = material.transcript;
   if (transcript.length > MAX_TRANSCRIPT)
@@ -50,6 +53,11 @@ export function buildJudgeMessage(
     "12 non-whitespace characters, copied exactly from the TRANSCRIPT or from a PRODUCED FILE, or a " +
     "reference `path:line` naming a produced file and an existing line of it. For FAIL, EVIDENCE is " +
     "a short reason.\n\n" +
+    (reasons === undefined
+      ? ""
+      : "Your earlier answer for the expectations below was refused for lack of supported evidence. " +
+        "Answer again, quoting evidence that is valid, or FAIL. Reasons, by number:\n" +
+        `${reasons.map((r, i) => `  (${i + 1}) ${r}`).join("\n")}\n\n`) +
     `EXPECTATIONS:\n${expectations.map((e, i) => `${i + 1}. ${e}`).join("\n")}\n\n` +
     `TRANSCRIPT:\n${transcript}\n\nPRODUCED FILES:\n${files.length > 0 ? files.join("\n") : "(none)"}`
   );
@@ -143,6 +151,8 @@ export const defaultMockAnswer = (e: readonly string[], m: JudgeMaterial): strin
 export interface Judge {
   readonly fn: JudgeFn;
   callsUsed(): number;
+  /** R23: the summed cost the driver reported for the calls of this judge; null when none reported one. */
+  costUsd(): number | null;
   preflight(): Promise<
     | { ok: true }
     | {
@@ -186,6 +196,7 @@ export function createJudge(setup: JudgeSetup): Judge {
     sleep: setup.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms))),
     ...(setup.fetchImpl !== undefined ? { fetch: setup.fetchImpl } : {}),
   });
+  let reported: number | null = null;
   let queue: Promise<unknown> = Promise.resolve();
   const serial = <T>(f: () => Promise<T>): Promise<T> => {
     const next = queue.then(f, f);
@@ -199,7 +210,7 @@ export function createJudge(setup: JudgeSetup): Judge {
         : undefined;
       const r = await llmJudgeEvidence(
         depsFor(mockResponse),
-        buildJudgeMessage(expectations, material),
+        buildJudgeMessage(expectations, material, opts?.reasons),
         { maxTokens: JUDGE_MAX_TOKENS * expectations.length },
       );
       switch (r.kind) {
@@ -213,6 +224,7 @@ export function createJudge(setup: JudgeSetup): Judge {
         case "cap-exceeded":
           throw new JudgeFailure("cap", `judge max_calls ${r.maxCalls} reached (count ${r.count})`);
         case "answer": {
+          if (r.costUsd !== undefined) reported = (reported ?? 0) + r.costUsd;
           if (opts?.rawFile !== undefined) writeRaw(opts.rawFile, r.text);
           const entries = parseJudgeAnswer(r.text, expectations.length);
           if (entries.every((e) => e === undefined))
@@ -230,6 +242,7 @@ export function createJudge(setup: JudgeSetup): Judge {
         return 0;
       }
     },
+    costUsd: () => reported,
     async preflight() {
       const r = await judgeEvidencePreflight(depsFor(setup.mock ? "" : undefined));
       if (r.kind === "ok") return { ok: true };

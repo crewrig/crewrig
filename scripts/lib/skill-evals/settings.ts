@@ -1,29 +1,26 @@
 // settings.ts — every declared, documented setting of the skill eval runner (spec 0290 R19-R23,
 // R27-R31). One constant per line so that flipping or recalibrating a value is a one-line change.
 // Documented in docs/skill-evals.md; the caps and the regression tolerance are provisional until
-// the pr-logbook pilot (issue #1852) calibrates them from measured costs.
+// the pr-logbook pilot (issue #1852) calibrates them from measured costs. The sampling plan, the
+// caps and the assumed costs are spec 0304 R1, R21 and R23.
 //
 // Usage: import { REGRESSION_BLOCKING, ... } from "./settings.ts".
 // Exit codes: not applicable (library). Finding-line format: not applicable.
 
-/** R19: a skill regresses when its eval pass rate is lower than the base's by MORE than this. */
-export const TOLERANCE = 0.05;
 /** R20: when true, a regression (measured or recorded) makes the run or the check exit non-zero. */
 export const REGRESSION_BLOCKING = false;
 /** R21: when true, a changed skill without evals/ makes the run or the check exit non-zero. */
 export const MISSING_EVALS_BLOCKING = false;
-/** R46: the skill-level pass threshold, applied to the eval pass rate and to the probe pass rate. */
-export const PASS_THRESHOLD = 0.8;
 /** R46: when true, a skill whose result is `fail` makes the run or the check exit non-zero. */
 export const FAIL_BLOCKING = false;
 /** R47: the `--effort` level of the executor, the probe and the judge call. */
 export const EFFORT = "medium";
 
-/** R23 (per skill): executor runs (one per eval, one per probe) allowed per invocation. */
-export const MAX_EXECUTOR_RUNS = 20;
-/** R23 (per skill): the judge's `max_calls` for the invocation. */
-export const JUDGE_MAX_CALLS = 20;
-/** R28: worst-case executor cost (planned runs x per-run budget) allowed across all skills. */
+/** 0304 R21 (per skill): the plan maximum of executor runs allowed per measurement, retries included. */
+export const MAX_EXECUTOR_RUNS = 60;
+/** 0304 R21 (per skill): the judge's `max_calls` for the invocation. */
+export const JUDGE_MAX_CALLS = 60;
+/** 0304 R22: aggregate bound: the sum over the selected skills of the smaller of the plan-maximum runs x per-run budget and the measurement cap plus the concurrency term. */
 export const MAX_INVOCATION_USD = 100;
 /** R29: executor runs in flight at once. */
 export const EXECUTOR_CONCURRENCY = 4;
@@ -84,7 +81,7 @@ export const JUDGE_ASSUMED_USD = 0.03;
 export const RUN_ASSUMED_USD = 0.1;
 
 /** Written to evals/results.json (R36). */
-export const RUNNER_VERSION = "2.2.0";
+export const RUNNER_VERSION = "3.0.0";
 
 /** Tools the executor may use: the main security boundary, kept in one place. */
 export const EXECUTOR_TOOLS = ["Bash", "Read", "Write", "Edit", "Skill"] as const;

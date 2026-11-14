@@ -25,7 +25,7 @@ import {
   ISOLATION_FLAGS,
   probeLogin,
 } from "../../../../scripts/lib/skill-evals/claude-child.ts";
-import type { Ctx, Driver, Preflight } from "../llm_judge.ts";
+import type { Ctx, Driver, EvidenceCompletion, Preflight } from "../llm_judge.ts";
 
 export const TOKEN_ENV = "CLAUDE_CODE_OAUTH_TOKEN";
 const TIMEOUT_MS = 120_000;
@@ -43,7 +43,7 @@ export function buildJudgeArgs(model: string, effort = ""): string[] {
   return [
     "-p",
     "--output-format",
-    "text",
+    "json",
     "--model",
     model,
     "--tools",
@@ -83,13 +83,43 @@ function runClaude(
   });
 }
 
+/**
+ * The result record of `--output-format json` (`result`, `is_error`, `total_cost_usd`), or the whole
+ * output as text when it is not such a record (spec 0304 R23): JSON output is never empty, so the
+ * retry rule of spec 0290 R15 tests the parsed `result`.
+ */
+export function parseCliOutput(stdout: string): {
+  text: string;
+  isError: boolean;
+  costUsd: number | undefined;
+} {
+  try {
+    const doc: unknown = JSON.parse(stdout);
+    if (typeof doc === "object" && doc !== null && !Array.isArray(doc)) {
+      const o = doc as Record<string, unknown>;
+      if (typeof o["result"] === "string") {
+        const cost = o["total_cost_usd"];
+        return {
+          text: o["result"],
+          isError: o["is_error"] === true,
+          costUsd: typeof cost === "number" && Number.isFinite(cost) ? cost : undefined,
+        };
+      }
+      if (o["is_error"] === true) return { text: "", isError: true, costUsd: undefined };
+    }
+  } catch {
+    // plain text: the whole output is the answer
+  }
+  return { text: stdout, isError: false, costUsd: undefined };
+}
+
 async function complete(
   ctx: Ctx,
   token: string,
   message: string,
   _maxTokens: number,
-): Promise<string | undefined> {
-  if (ctx.mock) return ctx.deps.env["E2E_JUDGE_MOCK_RESPONSE"] ?? "";
+): Promise<EvidenceCompletion | undefined> {
+  if (ctx.mock) return { text: ctx.deps.env["E2E_JUDGE_MOCK_RESPONSE"] ?? "" };
   const binary = ctx.deps.env["SKILL_EVALS_CLAUDE_BIN"] || "claude";
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "skill-evals-judge-"));
   try {
@@ -100,15 +130,20 @@ async function complete(
       token === "" ? undefined : { name: TOKEN_ENV, value: token },
     );
     const args = buildJudgeArgs(ctx.cfg.model, ctx.cfg.effort);
-    // One retry on a non-zero exit, a timeout or an empty output (spec 0290 R15). It is a call of
-    // its own: refused when the cap is reached, counted in `judge.count` otherwise.
+    // One retry on a non-zero exit, a timeout, an error result or an empty answer (spec 0290 R15).
+    // It is a call of its own: refused when the cap is reached, counted in `judge.count` otherwise,
+    // and its cost is added to the first attempt's.
+    let cost: number | undefined;
     for (let attempt = 0; attempt < 2; attempt++) {
       if (attempt > 0) {
         if (ctx.count() >= ctx.cfg.maxCalls) return undefined;
         ctx.bump();
       }
       const res = await runClaude(binary, args, env, cwd, message);
-      if (res.code === 0 && res.stdout.trim() !== "") return res.stdout;
+      const out = parseCliOutput(res.stdout);
+      if (out.costUsd !== undefined) cost = (cost ?? 0) + out.costUsd;
+      if (res.code === 0 && !out.isError && out.text.trim() !== "")
+        return { text: out.text, ...(cost !== undefined ? { costUsd: cost } : {}) };
     }
     return undefined;
   } finally {

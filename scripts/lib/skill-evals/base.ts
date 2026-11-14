@@ -110,3 +110,19 @@ export function decideRecord(
   });
   return { decision, comparison };
 }
+
+/** R24: the ids of the common evals whose pass fraction fell by 0.5 or more against the base (a diagnostic only). */
+export function fallenEvals(headEvals: readonly EvalEntry[], base: BaseDoc | undefined): number[] {
+  if (base === undefined || base.kind !== "v2") return [];
+  const bycase = new Map(base.evals.map((e) => [e.caseHash, e.runs]));
+  const out: number[] = [];
+  for (const e of headEvals) {
+    const b = bycase.get(e.case_hash);
+    if (b === undefined || b.length === 0 || e.runs.length === 0) continue;
+    const bp = b.filter(Boolean).length;
+    const hp = e.runs.filter((r) => r.passed).length;
+    // bp/bn - hp/hn >= 1/2, on integers
+    if ((bp * e.runs.length - hp * b.length) * 2 >= b.length * e.runs.length) out.push(e.id);
+  }
+  return out;
+}

@@ -67,7 +67,14 @@ export interface Driver {
     token: string,
     message: string,
     maxTokens: number,
-  ): Promise<string | undefined>;
+  ): Promise<EvidenceCompletion | undefined>;
+}
+
+/** The raw text of an evidence call and, when the driver reports it, its measured cost (spec 0304 R23). */
+export interface EvidenceCompletion {
+  readonly text: string;
+  /** Sum of the measured cost of every attempt of the call; absent when the driver reports none. */
+  readonly costUsd?: number;
 }
 
 export interface JudgeResult {
@@ -291,7 +298,7 @@ export type EvidenceJudgment =
       readonly stderr: string;
     }
   | { readonly kind: "cap-exceeded"; readonly count: number; readonly maxCalls: number }
-  | { readonly kind: "answer"; readonly text: string };
+  | { readonly kind: "answer"; readonly text: string; readonly costUsd?: number };
 
 export type EvidencePreflight =
   | { readonly kind: "ok"; readonly backend: string }
@@ -347,8 +354,12 @@ export async function llmJudgeEvidence(
   const count = readCount();
   if (count >= cfg.maxCalls) return { kind: "cap-exceeded", count, maxCalls: cfg.maxCalls };
   ctx.bump();
-  const text = await driver.complete(ctx, pf.token, message, opts.maxTokens ?? 512);
-  return { kind: "answer", text: text ?? "" };
+  const done = await driver.complete(ctx, pf.token, message, opts.maxTokens ?? 512);
+  return {
+    kind: "answer",
+    text: done?.text ?? "",
+    ...(done?.costUsd !== undefined ? { costUsd: done.costUsd } : {}),
+  };
 }
 
 export async function llmJudge(

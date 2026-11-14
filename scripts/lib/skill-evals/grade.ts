@@ -36,6 +36,8 @@ export interface GradeSummary {
 export interface Grading {
   expectations: GradedExpectation[];
   summary: GradeSummary;
+  /** 0304 R17: a judge PASS of this run was refused and re-asked once. */
+  reasked?: true;
   mock?: true;
 }
 
@@ -55,7 +57,7 @@ export type JudgeFn = (
   expectations: readonly string[],
   material: JudgeMaterial,
   /** `rawFile`: where to persist the raw judge answer, before it is parsed. */
-  opts?: { readonly rawFile?: string },
+  opts?: { readonly rawFile?: string; readonly reasons?: readonly string[] },
 ) => Promise<readonly (JudgeAnswer | undefined)[]>;
 
 export class JudgeFailure extends Error {

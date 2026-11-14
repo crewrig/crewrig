@@ -1,17 +1,21 @@
-// budget.ts — planning and enforcing the caps of a run (spec 0290 R23 as modified, R28, R29).
+// budget.ts — planning and enforcing the caps of a run (spec 0304 R21, R22; 0290 R23, R28, R29 as
+// modified).
 //
-// Pre-flight (after credentials, before the first model call): per selected skill, planned
-// executor runs (one per eval and one per probe) against `max-executor-runs`, worst-case judge
-// calls (one per eval that has expectations, plus a retry allowance) against the judge
-// `max_calls`, and across all skills the worst-case executor cost (planned runs x per-run budget)
-// against `max-invocation-usd`.
-// Runtime: executor runs are reserved BEFORE each starts, so concurrent runs cannot exceed the cap;
-// the summed measured cost stops new runs once it reaches `max-invocation-usd`.
+// Pre-flight (after credentials, before the first model call): per selected skill, the plan maximum
+// of executor runs against `max-executor-runs` (a), the worst-case judge calls (eval runs of the
+// plan maximum that have expectations, times two, plus 25 percent rounded up) against the judge
+// `max_calls` (b), the skill's spend since the merge-base plus its worst case against
+// `max-skill-usd` (c), the ticket's recorded spend plus the summed worst cases against
+// `max-ticket-usd` (d), and the aggregate bound against `max-invocation-usd`. Every refusal names
+// the planned or spent figure, the worst case and the cap. Runtime: executor runs are reserved
+// BEFORE each starts, so concurrent runs cannot exceed the cap.
 //
-// Usage: planSkill(...), preflight(plans, limits), new RunBudget(limits).
+// Usage: planSkill(...), preflight(plans, limits), refuseSpend(rows, ticket, spent, limits),
+//        new RunBudget(maxRuns), new CostMeter(capUsd).
 // Exit codes: not applicable (library). Finding-line format: not applicable.
 
-import { JUDGE_RETRY_ALLOWANCE } from "./settings.ts";
+import { planMaximum } from "./plan.ts";
+import { JUDGE_RETRY_ALLOWANCE, SAMPLING_PLAN } from "./settings.ts";
 import type { EvalsFile } from "./schema.ts";
 
 export interface Limits {
@@ -19,14 +23,28 @@ export interface Limits {
   readonly judgeMaxCalls: number;
   readonly maxInvocationUsd: number;
   readonly perRunUsd: number;
+  readonly maxMeasurementUsd: number;
+  readonly maxSkillUsd: number;
+  readonly maxTicketUsd: number;
+  readonly executorConcurrency: number;
 }
 
 export interface SkillPlan {
   readonly skill: string;
   readonly evals: number;
   readonly probes: number;
+  /** The plan maximum of executor runs (both stages for every eval and probe). */
   readonly executorRuns: number;
+  /** The evals that carry expectations. */
+  readonly judged: number;
+  /** R22(b): the worst-case judge calls of the plan maximum. */
   readonly judgeCalls: number;
+}
+
+/** R22(b): worst-case judge calls for `judged` evals: two per eval run, plus 25 percent for retries. */
+export function judgeWorstCase(judged: number): number {
+  const runs = judged * (SAMPLING_PLAN.evalRunsPerStage[0] + SAMPLING_PLAN.evalRunsPerStage[1]);
+  return runs * 2 + Math.ceil(runs * JUDGE_RETRY_ALLOWANCE);
 }
 
 export function planSkill(skill: string, evals: EvalsFile): SkillPlan {
@@ -35,34 +53,71 @@ export function planSkill(skill: string, evals: EvalsFile): SkillPlan {
     skill,
     evals: evals.evals.length,
     probes: evals.trigger_probes.length,
-    executorRuns: evals.evals.length + evals.trigger_probes.length,
-    judgeCalls: judged + Math.ceil(judged * JUDGE_RETRY_ALLOWANCE),
+    executorRuns: planMaximum(evals.evals.length, evals.trigger_probes.length),
+    judged,
+    judgeCalls: judgeWorstCase(judged),
   };
 }
 
-/** Pre-flight refusals: empty when every plan fits, else one message per breach (planned vs cap). */
+/** R22 (a), (b) and the aggregate bound: empty when every plan fits, else one message per breach. */
 export function preflight(plans: readonly SkillPlan[], limits: Limits): string[] {
   const errors: string[] = [];
   for (const p of plans) {
     if (p.executorRuns > limits.maxExecutorRuns)
       errors.push(
-        `${p.skill}: planned executor runs ${p.executorRuns} exceed max-executor-runs ${limits.maxExecutorRuns}`,
+        `${p.skill}: planned executor runs ${p.executorRuns} exceed max-executor-runs ${limits.maxExecutorRuns}; split the skill's evals or reduce them`,
       );
     if (p.judgeCalls > limits.judgeMaxCalls)
       errors.push(
-        `${p.skill}: worst-case judge calls ${p.judgeCalls} exceed the judge max_calls ${limits.judgeMaxCalls}`,
+        `${p.skill}: worst-case judge calls ${p.judgeCalls} exceed the judge max_calls ${limits.judgeMaxCalls}; split the skill's evals or reduce them (at most 6 evals that carry expectations)`,
       );
   }
-  const runs = plans.reduce((n, p) => n + p.executorRuns, 0);
-  const usd = runs * limits.perRunUsd;
+  const usd = plans.reduce(
+    (n, p) =>
+      n +
+      Math.min(
+        p.executorRuns * limits.perRunUsd,
+        limits.maxMeasurementUsd + limits.executorConcurrency * limits.perRunUsd,
+      ),
+    0,
+  );
   if (usd > limits.maxInvocationUsd)
     errors.push(
-      `planned executor cost ${usd} dollars (${runs} runs x ${limits.perRunUsd}) exceeds max-invocation-usd ${limits.maxInvocationUsd}; select fewer skills per invocation (planned ${runs} runs, cap ${limits.maxInvocationUsd} dollars)`,
+      `planned worst-case cost ${usd} dollars exceeds max-invocation-usd ${limits.maxInvocationUsd}; select fewer skills per invocation (planned ${usd} dollars, cap ${limits.maxInvocationUsd} dollars)`,
     );
   return errors;
 }
 
-/** Runtime counters of one invocation; one instance per skill for runs, one shared for cost. */
+export interface SpendRow {
+  readonly skill: string;
+  /** The skill's recorded spend since the merge-base (its branch entries, and a resumed measurement). */
+  readonly spent: number;
+  /** The worst case of the new (or resumed) measurement. */
+  readonly worst: number;
+}
+
+/** R22 (c) per skill, then (d) once: refusals naming the spent figure, the worst case and the cap. */
+export function refuseSpend(
+  rows: readonly SpendRow[],
+  ticket: string,
+  ticketSpent: number,
+  limits: Limits,
+): string[] {
+  const out: string[] = [];
+  for (const r of rows)
+    if (r.spent + r.worst > limits.maxSkillUsd + 1e-9)
+      out.push(
+        `${r.skill}: spent since the merge-base ${r.spent.toFixed(2)} USD plus the worst case ${r.worst.toFixed(2)} USD exceeds max-skill-usd ${limits.maxSkillUsd} USD`,
+      );
+  const worst = rows.reduce((n, r) => n + r.worst, 0);
+  if (ticketSpent + worst > limits.maxTicketUsd + 1e-9)
+    out.push(
+      `ticket ${ticket}: spent ${ticketSpent.toFixed(2)} USD plus the summed worst case ${worst.toFixed(2)} USD exceeds max-ticket-usd ${limits.maxTicketUsd} USD`,
+    );
+  return out;
+}
+
+/** Runtime counters of one invocation; one instance per skill for runs. */
 export class RunBudget {
   readonly maxRuns: number;
   used = 0;
@@ -82,6 +137,7 @@ export class RunBudget {
   }
 }
 
+/** The measured cost of the whole invocation, stopping new runs once it reaches the cap. */
 export class CostMeter {
   readonly capUsd: number;
   spent = 0;

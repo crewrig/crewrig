@@ -7,7 +7,7 @@
 // exported POST helper, and is resolved only by `evidenceDriverFor`, never by `driverFor`.
 
 import { dig, parseJson, str } from "../llm_judge.ts";
-import type { Ctx, Driver } from "../llm_judge.ts";
+import type { Ctx, Driver, EvidenceCompletion } from "../llm_judge.ts";
 import { anthropicDriver, postWithRetry } from "./anthropic.ts";
 
 async function complete(
@@ -15,8 +15,8 @@ async function complete(
   token: string,
   message: string,
   maxTokens: number,
-): Promise<string | undefined> {
-  if (ctx.mock) return ctx.deps.env["E2E_JUDGE_MOCK_RESPONSE"] ?? "";
+): Promise<EvidenceCompletion | undefined> {
+  if (ctx.mock) return { text: ctx.deps.env["E2E_JUDGE_MOCK_RESPONSE"] ?? "" };
   const body = JSON.stringify({
     model: ctx.cfg.model,
     max_tokens: maxTokens,
@@ -43,7 +43,8 @@ async function complete(
     body,
   );
   if (raw === undefined) return undefined;
-  return str(dig(parseJson(raw), "content", 0, "text"));
+  const text = str(dig(parseJson(raw), "content", 0, "text"));
+  return text === undefined ? undefined : { text };
 }
 
 export const anthropicCompleteDriver: Driver = {
