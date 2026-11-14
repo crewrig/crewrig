@@ -34,6 +34,36 @@ store content is byte-identical regardless of which path serves it.
 
 ---
 
+## Memory obligations that bind every agent
+
+The full memory protocol is in `60-memory.md` (orchestrators). These two obligations bind workers too:
+
+Obsidian (Tier 3) writes require prior user consent:
+
+- **Write**: User-controlled only — MUST ask the user before writing.
+  Never write without explicit consent.
+
+> **MCP-only access from the agent prompt.** Every MemPalace operation
+> in this document (`mempalace_status`, `mempalace_search`,
+> `mempalace_add_drawer`, `mempalace_update_drawer`, `mempalace_diary_*`,
+> `mempalace_kg_*`, etc.) invoked **directly from an agent's reasoning
+> loop** is an **MCP tool call** routed through the registered
+> `mempalace` MCP server. **Never** invoke a `mempalace …` shell command
+> ad-hoc via the Bash tool. The `mempalace` CLI binary on `$PATH` exists
+> for human admin tasks (`init`, `migrate`, debug); calling it
+> opportunistically from an agent bypasses the MCP server's session
+> context, file locking, audit trail, and protocol negotiation, and
+> produces drawers the rest of the agent network cannot see. If a
+> procedure cannot be expressed via the MCP tools listed in *MCP Tools
+> Reference*, ask the user — do not reach for the CLI as a workaround.
+>
+> **Carve-out for bundled skill/agent scripts.** A versioned,
+> source-controlled script may use the MemPalace Python library (never the
+> shell CLI) when MCP alone is infeasible. Conditions and the *Stdout hazard*:
+> `docs/mempalace-bundled-scripts.md`.
+
+---
+
 ## Forge Access
 
 Forge access is CLI-only. Every forge operation — issues, pull/merge requests,

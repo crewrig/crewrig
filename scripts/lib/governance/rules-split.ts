@@ -12,6 +12,13 @@ const N_COUNT = 4;
 const P_MAX = 250;
 const P_TOTAL_MAX = 450;
 const PREAMBLE = "(preamble)";
+/** Owner decision on #1990: the one section 60-tools.md adds so no worker obligation leaves workers. */
+export const OBLIGATIONS_HEADING = "Memory obligations that bind every agent";
+/** Size ceiling of that section (heading to its `---`), in bytes; the measured section is 1,475 B. */
+export const OBLIGATIONS_MAX = 1600;
+const W1_START = "- **Write**: User-controlled only";
+const W2_START = "> **MCP-only access from the agent prompt.**";
+const W2_END = "`docs/mempalace-bundled-scripts.md`.";
 /** Heading prefixes of the sections that move (R1). */
 const MOVED = [
   "Memory Architecture",
@@ -48,10 +55,45 @@ function firstDiff(a: string, b: string): number {
   return i;
 }
 
+/** The verbatim W1 (Tier 3 consent bullet) and W2 (MCP-only and carve-out blockquotes) of 60-memory.md. */
+function obligationCopies(memory: string): string[] {
+  const lines = memory.split("\n");
+  const w1 = lines.findIndex((l) => l.startsWith(W1_START));
+  const w2 = lines.findIndex((l) => l.startsWith(W2_START));
+  const w2End = lines.findIndex((l, i) => i > w2 && l.endsWith(W2_END));
+  if (w1 < 0 || w2 < 0 || w2End < 0) return [];
+  return [lines.slice(w1, w1 + 2).join("\n"), lines.slice(w2, w2End + 1).join("\n")];
+}
+
 export function checkRulesSplit(base: string, tools: string, memory: string): string[] {
   const f: string[] = [];
   const baseChunks = chunks(base);
-  const toolsChunks = chunks(tools);
+  // The obligations section is the only permitted addition to 60-tools.md: found by heading,
+  // present exactly once, size-bounded, holding byte-equal copies of W1 and W2; then dropped.
+  const allTools = chunks(tools);
+  const found = allTools.filter((c) => c.heading === OBLIGATIONS_HEADING);
+  const toolsChunks = allTools.filter((c) => c.heading !== OBLIGATIONS_HEADING);
+  if (found.length !== 1) {
+    f.push(
+      `FAIL section "${OBLIGATIONS_HEADING}": found ${found.length} time(s) in 60-tools.md, expected 1`,
+    );
+  } else {
+    const section = found[0].text;
+    if (Buffer.byteLength(section) > OBLIGATIONS_MAX) {
+      f.push(
+        `FAIL section "${OBLIGATIONS_HEADING}": ${Buffer.byteLength(section)} B, above ${OBLIGATIONS_MAX} B`,
+      );
+    }
+    const copies = obligationCopies(memory);
+    if (copies.length !== 2) f.push("FAIL W1/W2 originals not found in 60-memory.md");
+    copies.forEach((c, i) => {
+      if (!section.includes(c)) {
+        f.push(
+          `FAIL section "${OBLIGATIONS_HEADING}": W${i + 1} differs from its original in 60-memory.md`,
+        );
+      }
+    });
+  }
   const memChunks = chunks(memory);
 
   const memPointer = memChunks[0];

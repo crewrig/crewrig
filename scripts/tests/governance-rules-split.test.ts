@@ -3,29 +3,39 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { checkRulesSplit, N_NEW, N_OLD } from "./../lib/governance/rules-split.ts";
+import {
+  checkRulesSplit,
+  N_NEW,
+  N_OLD,
+  OBLIGATIONS_HEADING,
+  OBLIGATIONS_MAX,
+} from "./../lib/governance/rules-split.ts";
 
 const SCRIPTS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ENTRY = path.join(SCRIPTS, "check-rules-split.ts");
 const tmp = mkdtempSync(path.join(tmpdir(), "rules-split-"));
 after(() => rmSync(tmp, { recursive: true, force: true }));
 
+const W1 =
+  "- **Write**: User-controlled only — MUST ask the user before writing.\n  Never write without explicit consent.";
+const W2 =
+  "> **MCP-only access from the agent prompt.** Never use the CLI.\n>\n> **Carve-out.** See `docs/mempalace-bundled-scripts.md`.";
 const stub = (name: string) =>
   `> Moved — \`${name}.md\`. Retrieve it via the protocol ${N_OLD} (direct read).`;
 const sec = (heading: string, body: string) => `\n## ${heading}\n\n${body}\n\n---\n`;
 const PRE = "# Tools\n\nIntro line.\n\n---\n";
 const SECTIONS: Array<[string, string, boolean]> = [
   ["Retrieving the system-context store", "Retrieval text.", false],
-  ["Memory Architecture — Three-Tier Model", "Tiers.", true],
+  ["Memory Architecture — Three-Tier Model", `Tiers.\n\n${W1}`, true],
   ["Forge Access", "Forge text.", false],
   [
     "MemPalace — Agent Memory Protocol",
-    `Palace.\n\n${stub("a")}\n\n${stub("b")}\n\n${stub("c")}`,
+    `Palace.\n\n${W2}\n\n${stub("a")}\n\n${stub("b")}\n\n${stub("c")}`,
     true,
   ],
   ["Friction Reporting — Harness Feedback Loop", `Friction.\n\n${stub("f")}`, false],
@@ -36,6 +46,7 @@ const SECTIONS: Array<[string, string, boolean]> = [
 ];
 const BASE = PRE + SECTIONS.map(([h, b]) => sec(h, b)).join("");
 const P_TOOLS = "\nThe orchestrator memory protocol lives in `60-memory.md`.\n";
+const OBLIGATIONS = `\n## ${OBLIGATIONS_HEADING}\n\nPointer to 60-memory.md.\n\n${W1}\n\n${W2}\n\n---\n`;
 const P_MEM = "# Memory Protocol\n\nMoved verbatim from `60-tools.md`.\n";
 
 function split(base: string): { tools: string; memory: string } {
@@ -48,7 +59,13 @@ function split(base: string): { tools: string; memory: string } {
     .join("");
   void base;
   const pre = `# Tools\n\nIntro line.\n${P_TOOLS}\n---\n`;
-  return { tools: pre + kept, memory: P_MEM + moved };
+  return { tools: injectObligations(pre + kept), memory: P_MEM + moved };
+}
+
+/** The obligations section sits right after the first kept section, as in the real file. */
+function injectObligations(tools: string): string {
+  const i = tools.indexOf("\n## Forge Access");
+  return tools.slice(0, i) + OBLIGATIONS + tools.slice(i);
 }
 
 describe("checkRulesSplit (library)", () => {
@@ -100,6 +117,43 @@ describe("checkRulesSplit (library)", () => {
     const memory = good.memory.replace("verbatim", "verbatim " + "x".repeat(200));
     assert.ok(checkRulesSplit(BASE, tools, memory).some((l) => l.includes("450")));
   });
+  it("fails when the obligations section is missing", () => {
+    const tools = good.tools.replace(OBLIGATIONS, "");
+    const f = checkRulesSplit(BASE, tools, good.memory);
+    assert.ok(
+      f.some((l) => l.includes(`FAIL section "${OBLIGATIONS_HEADING}"`)),
+      f.join("\n"),
+    );
+  });
+  it("fails when the obligations section appears twice", () => {
+    assert.notEqual(checkRulesSplit(BASE, injectObligations(good.tools), good.memory).length, 0);
+  });
+  it("fails when the W1 copy differs from the original in 60-memory.md", () => {
+    const tools = good.tools.replace(
+      "Never write without explicit consent.",
+      "Never write without consent.",
+    );
+    const f = checkRulesSplit(BASE, tools, good.memory);
+    assert.ok(
+      f.some((l) => l.includes("W1 differs")),
+      f.join("\n"),
+    );
+  });
+  it("fails when the W2 copy differs from the original in 60-memory.md", () => {
+    const tools = good.tools.replace("Never use the CLI.", "Use the CLI.");
+    const f = checkRulesSplit(BASE, tools, good.memory);
+    assert.ok(
+      f.some((l) => l.includes("W2 differs")),
+      f.join("\n"),
+    );
+  });
+  it("fails when the obligations section exceeds its ceiling", () => {
+    const big = OBLIGATIONS.replace("Pointer", "x".repeat(OBLIGATIONS_MAX) + " Pointer");
+    const tools = good.tools.replace(OBLIGATIONS, big);
+    assert.ok(
+      checkRulesSplit(BASE, tools, good.memory).some((l) => l.includes(`${OBLIGATIONS_MAX} B`)),
+    );
+  });
   it("fails when 60-memory.md ends in a blank line after the last separator", () => {
     assert.notEqual(checkRulesSplit(BASE, good.tools, good.memory + "\n").length, 0);
   });
@@ -138,5 +192,18 @@ describe("check-rules-split CLI", () => {
     const r = run("--base", "HEAD");
     assert.equal(r.status, 1);
     assert.match(r.stdout, /FAIL section "Sequential Thinking/);
+  });
+});
+
+describe("real rules size ceiling (spec 0308 R6 and the #1990 owner decision)", () => {
+  // Spec R6 ceiling 24,686 + 450 (pointers) + 8 (N) + 30 (title) = 25,174 B, plus the
+  // obligations section, itself bounded by OBLIGATIONS_MAX: 25,174 + 1,600 = 26,774 B.
+  const CEILING = 25_174 + OBLIGATIONS_MAX;
+  it(`60-tools.md plus 60-memory.md stay within ${CEILING} B`, () => {
+    const dir = path.resolve(SCRIPTS, "..", "artifacts", "core", "rules");
+    const total = ["60-tools.md", "60-memory.md"]
+      .map((f) => readFileSync(path.join(dir, f)).length)
+      .reduce((a, b) => a + b, 0);
+    assert.ok(total <= CEILING, `${total} B above ${CEILING} B`);
   });
 });

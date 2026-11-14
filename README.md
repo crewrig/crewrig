@@ -54,7 +54,7 @@ to form the agent's full context:
 | 40 | `config/expertise/<ROLE>.md` | Technical specialization |
 | 50 | `config/teams/<TEAM>.md` | Team practices and norms |
 | 60 | `artifacts/core/rules/60-memory.md` | Memory architecture and orchestrator memory protocol (excluded from Claude Code workers) |
-| 60 | `artifacts/core/rules/60-tools.md` | Core tool rules |
+| 60 | `artifacts/core/rules/60-tools.md` | Core tool rules and the memory obligations that bind every agent |
 | 65 | `config/TOOLS.md` | Organization-specific tool guidelines |
 
 **Gemini CLI** loads these via numeric-prefix files in `~/.gemini/` with

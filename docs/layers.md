@@ -178,7 +178,7 @@ Core rules files (deployed to user home at a fixed priority number):
 | Path | Description |
 |---|---|
 | `artifacts/core/rules/60-memory.md` | Orchestrator memory protocol, moved verbatim from `60-tools.md` (spec 0308): three-tier memory architecture, MemPalace protocol, Sequential Thinking, Obsidian access model stub, Memory Activation Summary. Deployed at priority 60 next to `60-tools.md`. The Claude Code worker profile excludes it. NOT a template — upstream content. |
-| `artifacts/core/rules/60-tools.md` | Framework-critical tool instructions that every session needs: system-context retrieval, forge access, user-gate validation backend, friction reporting (harness engineering loop), scannable recap format, idiomatic French. Deployed at priority 60. NOT a template — upstream content. |
+| `artifacts/core/rules/60-tools.md` | Framework-critical tool instructions that every session needs: system-context retrieval, the memory obligations that bind every agent (Obsidian write consent, MCP-only MemPalace access, copied verbatim from `60-memory.md`), forge access, user-gate validation backend, friction reporting (harness engineering loop), scannable recap format, idiomatic French. Deployed at priority 60. NOT a template — upstream content. |
 
 Core system-context store (installed to user home, read on demand):
 
