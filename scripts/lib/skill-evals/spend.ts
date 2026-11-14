@@ -25,7 +25,8 @@ export interface JudgeCounters {
   costUsd(): number | null;
 }
 
-const round6 = (n: number): number => Math.round(n * 1e6) / 1e6;
+/** Costs are summed as integer micro-dollars, so no float drift builds up across resume sessions. */
+export const micros = (usd: number): number => Math.round(usd * 1e6);
 
 /** The live cost counter of one measurement; `prior` is what the resumed file already holds. */
 export class MeasureMeter {
@@ -69,13 +70,13 @@ export class MeasureMeter {
   get costUsd(): number | null {
     const p = this.prior?.cost_usd;
     if (p === null || this.costs.some((c) => c === null)) return null;
-    return round6((p ?? 0) + this.costs.reduce<number>((n, c) => n + (c ?? 0), 0));
+    return (micros(p ?? 0) + this.costs.reduce<number>((n, c) => n + micros(c ?? 0), 0)) / 1e6;
   }
   /** The file's `judge_cost_usd`: the measured sum, null when no call reported a cost. */
   get judgeCostUsd(): number | null {
     const mine = this.judge.costUsd();
     const before = this.prior?.judge_cost_usd ?? null;
-    return mine === null ? before : round6((before ?? 0) + mine);
+    return mine === null ? before : (micros(before ?? 0) + micros(mine)) / 1e6;
   }
 }
 

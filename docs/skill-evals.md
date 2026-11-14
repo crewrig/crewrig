@@ -137,6 +137,7 @@ The runner acts on the content hash and status of an existing `evals/results.jso
 |---|---|
 | Same hash, `in-progress`, same plan and ticket | Resume: the recorded runs count, only the missing slots of the stage they reach are run, and the decision is recomputed. |
 | Same hash, a final status (`pass`, `fail`, `regression`) | Refuse, exit 1, no model call: `measurement complete for <hash>`. Change the skill content for a new measurement, or read the recorded status. |
+| Same hash, `in-progress`, same plan and ticket, but a recorded `case_hash` no longer matches the tree (a fixture or an eval edited since the interruption) | Refuse, exit 1, no model call, naming the eval: resuming would end in a file that stays `stale`. Restore the case, or change the skill content to start a new measurement. |
 | Same hash, `in-progress`, another ticket | Refuse, exit 1, naming both tickets. |
 | Different hash, or `in-progress` with another plan | A new measurement starts; the previous file moves into the ledger, as `abandoned` when unfinished. |
 | Absent, unparseable or schema 1 | A new measurement starts. A schema-1 file is not carried into the ledger. |

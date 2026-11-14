@@ -16,6 +16,7 @@ import type { Comparison } from "./base.ts";
 import type { SkillDecision } from "./plan.ts";
 import { KEYS, RESULT_STATUSES } from "./results.ts";
 import type { ResultsRecord } from "./results.ts";
+import { micros } from "./spend.ts";
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
@@ -138,9 +139,10 @@ export function verifyRecord(doc: Record<string, unknown>, ctx: VerifyContext): 
     r.probes.reduce((n, x) => n + x.runs.length, 0);
   if (r.executor_runs < recordedRuns)
     return bad(`executor_runs ${r.executor_runs} is below the ${recordedRuns} recorded runs`);
-  const runCosts = r.evals.flatMap((x) => x.runs).reduce((n, x) => n + (x.cost_usd ?? 0), 0);
-  if (r.cost_usd !== null && r.cost_usd + 1e-6 < runCosts)
-    return bad(`cost_usd ${r.cost_usd} is below the ${runCosts} of the recorded eval runs`);
+  // integer micro-dollars, as the runner sums them: no float drift across resume sessions
+  const runMicros = r.evals.flatMap((x) => x.runs).reduce((n, x) => n + micros(x.cost_usd ?? 0), 0);
+  if (r.cost_usd !== null && micros(r.cost_usd) < runMicros)
+    return bad(`cost_usd ${r.cost_usd} is below the ${runMicros / 1e6} of the recorded eval runs`);
   const e = decision.evals;
   const p = decision.probes;
   const diff = (name: string, recorded: unknown, computed: unknown): Verified =>

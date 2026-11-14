@@ -215,3 +215,69 @@ test("i1-F4: the verifier ties passed to assertions, executor_runs to the runs a
     rig.cleanup();
   }
 });
+
+test("i1-F6: runs in flight when the measurement cost cap is reached finish, are recorded and counted; no new run starts", async () => {
+  const rig = makeRig({
+    evalsCount: 4,
+    ...KEY,
+    settings: { ...caps, maxMeasurementUsd: 0.5, executorConcurrency: 3 },
+    script: (req) =>
+      req.label.includes("probe-")
+        ? { skillsLoaded: ["demo"], costUsd: 0.01 }
+        : /eval-1\/run-1$/.test(req.label)
+          ? { files: { "answer.md": "x" }, transcript: FOX, costUsd: 0.6 }
+          : { files: { "answer.md": "x" }, transcript: FOX, costUsd: 0.1, delayMs: 100 },
+  });
+  try {
+    const r = await rig.run({ fetchImpl: judgeFetch().fetch });
+    assert.equal(r.exitCode, 1);
+    assert.match(r.text, /the measurement is at its cap/);
+    assert.equal(rig.executor.calls.length, 3, "three runs started, none after the cap");
+    const rec = readRec(rig.repo.root);
+    assert.equal(rec.status, "in-progress");
+    assert.equal(rec.eval_runs, 3, "the two runs in flight finished and are recorded");
+    assert.ok(Math.abs(rec.cost_usd - 0.8) < 1e-9, `their cost is counted: ${rec.cost_usd}`);
+    assert.equal(rec.executor_runs, 3);
+  } finally {
+    rig.cleanup();
+  }
+});
+
+test("i1-F7: several resume sessions of one measurement keep a valid file: costs are summed in integer micro-dollars", async () => {
+  let allowed = 0;
+  const rig = makeRig({
+    evalsCount: 3,
+    ...KEY,
+    settings: { ...caps, executorConcurrency: 1 },
+    script: (req) =>
+      allowed <= 0
+        ? { failure: "session over", costUsd: 0 }
+        : (allowed--,
+          req.label.includes("probe-")
+            ? { skillsLoaded: ["demo"], costUsd: 0.1234554 }
+            : { files: { "answer.md": "x" }, transcript: FOX, costUsd: 0.1234554 }),
+  });
+  try {
+    let sessions = 0;
+    let rec = readRecOrNone(rig.repo.root);
+    while (rec?.status !== "pass" && sessions < 12) {
+      allowed = 1; // one run per session, then the executor fails twice and the skill stops
+      await rig.run({ fetchImpl: judgeFetch().fetch });
+      sessions++;
+      rec = readRec(rig.repo.root);
+    }
+    assert.equal(rec.status, "pass");
+    assert.ok(sessions >= 7, `${sessions} sessions`);
+    const ctx = { skillName: "demo", baseText: undefined, mergeBase: "" };
+    const v = verifyRecord(rec, ctx);
+    assert.equal(v.ok, true, v.ok ? "" : v.reason);
+    assert.equal(Math.round(rec.cost_usd * 1e6), 7 * 123455, "no rounding drift across sessions");
+  } finally {
+    rig.cleanup();
+  }
+});
+
+const FOX = "Assistant: the quick brown fox";
+function readRecOrNone(root: string) {
+  return fs.existsSync(fileOf(root)) ? readRec(root) : undefined;
+}
