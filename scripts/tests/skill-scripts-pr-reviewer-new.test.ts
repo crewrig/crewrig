@@ -75,6 +75,70 @@ describe("ci-preflight", () => {
     assert.equal(r.status, 1);
     assert.equal(envelope(r).data?.["verdict_ceiling"], "COMMENT");
   });
+  test("ghost check: pending with a completed/success run and a CLEAN merge state is resolved and reported apart", () => {
+    const f = file(
+      "ghost.json",
+      JSON.stringify([
+        { name: "a", bucket: "pass" },
+        { name: "ghost-job", bucket: "pending", run: "completed/success" },
+      ]),
+    );
+    const r = run(skill, "ci-preflight", ["--json", "--checks-file", f, "--merge-state", "CLEAN"]);
+    assert.equal(r.status, 0, r.stderr);
+    const data = envelope(r).data;
+    assert.equal(data?.["overall"], "pass");
+    assert.deepEqual(data?.["ghosts"], ["ghost-job"]);
+    assert.equal((data?.["checks"] as { bucket: string }[])[1]?.bucket, "ghost");
+  });
+  test("ghost check: not resolved when the merge state is not CLEAN, nor when the run is unfinished", () => {
+    const f = file(
+      "ghost2.json",
+      JSON.stringify([{ name: "g", bucket: "pending", run: "completed/success" }]),
+    );
+    const blocked = run(skill, "ci-preflight", [
+      "--json",
+      "--checks-file",
+      f,
+      "--merge-state",
+      "BLOCKED",
+    ]);
+    assert.equal(blocked.status, 1);
+    assert.equal(envelope(blocked).data?.["overall"], "pending");
+    const g2 = file(
+      "ghost3.json",
+      JSON.stringify([{ name: "g", bucket: "pending", run: "in_progress/null" }]),
+    );
+    const live = run(skill, "ci-preflight", [
+      "--json",
+      "--checks-file",
+      g2,
+      "--merge-state",
+      "CLEAN",
+    ]);
+    assert.equal(envelope(live).data?.["overall"], "pending");
+    assert.equal(envelope(live).data?.["ghosts"], undefined);
+  });
+  test("ghost check via gh: run id from the check link, merge state from gh pr view", () => {
+    answer(
+      "pr_checks",
+      JSON.stringify([
+        {
+          name: "g",
+          bucket: "pending",
+          link: "https://github.com/o/r/actions/runs/777/job/1",
+        },
+      ]),
+    );
+    fs.writeFileSync(path.join(gh.state, "pr_view.out"), '{"mergeStateStatus":"CLEAN"}');
+    fs.writeFileSync(
+      path.join(gh.state, "run_view.out"),
+      '{"status":"completed","conclusion":"success"}',
+    );
+    const r = run(skill, "ci-preflight", ["12", "--json"], withGh);
+    assert.equal(r.status, 0, r.stderr);
+    assert.deepEqual(envelope(r).data?.["ghosts"], ["g"]);
+    assert.ok(calls().some((l) => /^run view 777 --json status,conclusion$/.test(l)));
+  });
   test("fail wins over pending", () => {
     const r = run(skill, "ci-preflight", [
       "--json",
@@ -87,7 +151,7 @@ describe("ci-preflight", () => {
     answer("pr_checks", checks(["a", "pass"]));
     const r = run(skill, "ci-preflight", ["12", "--repo", "o/r", "--required", "--json"], withGh);
     assert.equal(r.status, 0, r.stderr);
-    assert.match(calls()[0] ?? "", /^pr checks 12 --repo o\/r --required --json name,bucket$/);
+    assert.match(calls()[0] ?? "", /^pr checks 12 --repo o\/r --required --json name,bucket,link$/);
   });
   test("--wait repeats the query while pending and reports the last one", () => {
     fs.writeFileSync(path.join(gh.state, "pr_checks.1.out"), checks(["a", "pending"]));
@@ -110,7 +174,7 @@ describe("ci-preflight", () => {
       withGh,
     );
     assert.equal(r.status, 1);
-    assert.equal(calls().length, 2);
+    assert.equal(calls().filter((l) => l.startsWith("pr checks")).length, 2);
     assert.equal(envelope(r).data?.["overall"], "pending");
   });
   test("no checks reported is a pass, not an error", () => {

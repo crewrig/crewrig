@@ -7,7 +7,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "2.1.0"
+    version: "2.2.0"
 ---
 
 
@@ -33,7 +33,11 @@ Run `node scripts/ci-preflight.ts <pr> --json` (add `--required` when the reposi
 - Exit `1`: read `data.verdict_ceiling`. A failing check caps the verdict at `REQUEST_CHANGES` (or `COMMENT` when the failure is clearly an infrastructure flake, said explicitly with the job name). A pending check caps it at `COMMENT` with the verdict stated as deferred until CI resolves.
 - Exit `3`: gh is unusable; say so in the verdict instead of guessing a status.
 
-Whenever a check was pending during the pass, finish with one direct `ci-preflight.ts` query before composing the verdict. A background task or monitor reporting "done" is a cue to look, not the look itself, because it watches a process from outside the check. To wait, prefer `--wait <attempts> --interval <seconds>`: its last query is the direct one.
+To wait for CI, make ONE call: run `gh pr checks <pr> --watch` as a background command; it exits when no check is pending and you get a single notification. Never wait with a `sleep`, an `until` loop, a monitor or repeated queries, since each one re-reads a large context. Never end your turn to wait; nothing wakes a session that did.
+
+When that command exits, make one direct `ci-preflight.ts` query before composing the verdict. A background task reporting "done" is a cue to look, not the look itself, because it watches a process from outside the check. (`--wait <attempts> --interval <seconds>` also works, but it is a polling loop kept for scripts, not the way to wait.)
+
+Ghost check: a check still pending although its workflow run is `completed/success` counts as resolved when the merge state is `CLEAN`. `ci-preflight.ts` reports it apart, as bucket `ghost` and in `data.ghosts`, and does not count it as pending. Name the ghost check in the verdict's CI section; do not defer the verdict because of it.
 
 The CI status goes into the verdict in writing (pass, fail or pending, with the failing job). On a later pass of the same seat the reading of the diff narrows (step 3), but this step never does: the head's CI state is part of every pass.
 
