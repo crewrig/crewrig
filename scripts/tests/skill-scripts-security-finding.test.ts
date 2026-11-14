@@ -35,7 +35,8 @@ const block = (o: Partial<Record<string, string>> = {}, n = 1): string => {
   };
   const lines = [`${n}. ${v.head}`];
   for (const f of ["Where", "Threat", "Evidence", "Fix"])
-    if (v[f as "Where"] !== undefined && v[f as "Where"] !== "") lines.push(`   ${f}: ${v[f as "Where"]}`);
+    if (v[f as "Where"] !== undefined && v[f as "Where"] !== "")
+      lines.push(`   ${f}: ${v[f as "Where"]}`);
   return lines.join("\n");
 };
 let counter = 0;
@@ -89,7 +90,11 @@ describe("well formed reports", () => {
 describe("each rule fires, and its compliant counterpart passes", () => {
   const cases: [string, string, string][] = [
     ["severity-missing", block({ head: "SQL injection" }), block()],
-    ["severity-unknown", block({ head: "[CRITICAL] SQL injection" }), block({ head: "[BLOCKER] SQL injection" })],
+    [
+      "severity-unknown",
+      block({ head: "[CRITICAL] SQL injection" }),
+      block({ head: "[BLOCKER] SQL injection" }),
+    ],
     ["field-missing", block({ Fix: "" }), block()],
     ["placeholder", block({ Threat: "<what an attacker would do>" }), block()],
     ["where-format", block({ Where: "src/a.ts" }), block({ Where: "src/a.ts:3" })],
@@ -102,18 +107,26 @@ describe("each rule fires, and its compliant counterpart passes", () => {
       const r = check(`${bad}\n`, ["--json"]);
       assert.equal(r.status, 1, r.stdout);
       const e = envelope(r);
-      assert.ok(e.findings.some((f) => f.rule === rule), `${rule} in ${JSON.stringify(e.findings)}`);
+      assert.ok(
+        e.findings.some((f) => f.rule === rule),
+        `${rule} in ${JSON.stringify(e.findings)}`,
+      );
       assert.ok(e.findings.every((f) => typeof f.message === "string" && f.message !== ""));
       assert.equal(check(`${good}\n`).status, 0, `the compliant counterpart of ${rule}`);
     });
 
   test("a finding carries its number and line", () => {
     const e = envelope(check(`${block()}\n\n${block({ Fix: "" }, 2)}\n`, ["--json"]));
-    assert.deepEqual(e.findings.map((f) => [f.rule, f.finding, f.line]), [["field-missing", 2, 7]]);
+    assert.deepEqual(
+      e.findings.map((f) => [f.rule, f.finding, f.line]),
+      [["field-missing", 2, 7]],
+    );
   });
   test("a range that ends before it starts, or ends past the file, is out of range", () => {
     assert.deepEqual(rulesOf(`${block({ Where: "src/a.ts:5-3" })}\n`), ["where-line-out-of-range"]);
-    assert.deepEqual(rulesOf(`${block({ Where: "src/a.ts:8-11" })}\n`), ["where-line-out-of-range"]);
+    assert.deepEqual(rulesOf(`${block({ Where: "src/a.ts:8-11" })}\n`), [
+      "where-line-out-of-range",
+    ]);
     assert.deepEqual(rulesOf(`${block({ Where: "src/a.ts:0" })}\n`), ["where-line-out-of-range"]);
   });
   test("a link that leads out of the root is outside the root", () => {
@@ -145,7 +158,10 @@ describe("each rule fires, and its compliant counterpart passes", () => {
 
 describe("input, root and options", () => {
   test("standard input with -", () => {
-    const ok = run(skill, "security-finding", ["--root", checkout, "-"], { cwd: root, input: `${block()}\n` });
+    const ok = run(skill, "security-finding", ["--root", checkout, "-"], {
+      cwd: root,
+      input: `${block()}\n`,
+    });
     assert.equal(ok.status, 0, ok.stderr);
     const bad = run(skill, "security-finding", ["--root", checkout, "-"], { cwd: root, input: "" });
     assert.equal(bad.status, 1);
@@ -155,16 +171,27 @@ describe("input, root and options", () => {
     fs.writeFileSync(file, `${block()}\n`);
     assert.equal(run(skill, "security-finding", [file], { cwd: checkout }).status, 0);
     assert.equal(run(skill, "security-finding", [file], { cwd: root }).status, 1);
-    assert.equal(run(skill, "security-finding", [`--root=${checkout}`, file], { cwd: root }).status, 0);
+    assert.equal(
+      run(skill, "security-finding", [`--root=${checkout}`, file], { cwd: root }).status,
+      0,
+    );
   });
   test("--help: usage on stdout, exit 0, no stderr, lists every rule", () => {
     const r = run(skill, "security-finding", ["--help"], { cwd: root });
     assert.equal(r.status, 0);
     assert.equal(r.stderr, "");
     for (const rule of [
-      "severity-missing", "severity-unknown", "field-missing", "placeholder", "where-format",
-      "where-file-missing", "where-line-out-of-range", "where-outside-root", "numbering",
-      "no-findings-block", "precondition",
+      "severity-missing",
+      "severity-unknown",
+      "field-missing",
+      "placeholder",
+      "where-format",
+      "where-file-missing",
+      "where-line-out-of-range",
+      "where-outside-root",
+      "numbering",
+      "no-findings-block",
+      "precondition",
     ])
       assert.ok(r.stdout.includes(rule), rule);
   });
@@ -186,8 +213,13 @@ describe("exit 2 and exit 3", () => {
   test("--json on exit 2 and 3: data null, one finding, ok false", () => {
     const usage = run(skill, "security-finding", ["--json"], { cwd: root });
     assert.equal(usage.status, 2);
-    assert.deepEqual([envelope(usage).ok, envelope(usage).data, rules(usage)], [false, null, ["usage"]]);
-    const missing = run(skill, "security-finding", ["--json", path.join(root, "nope.md")], { cwd: root });
+    assert.deepEqual(
+      [envelope(usage).ok, envelope(usage).data, rules(usage)],
+      [false, null, ["usage"]],
+    );
+    const missing = run(skill, "security-finding", ["--json", path.join(root, "nope.md")], {
+      cwd: root,
+    });
     assert.equal(missing.status, 3);
     assert.deepEqual([envelope(missing).data, rules(missing)], [null, ["precondition"]]);
   });
@@ -196,7 +228,9 @@ describe("exit 2 and exit 3", () => {
     assert.equal(dir.status, 3);
     const file = path.join(root, "r.md");
     fs.writeFileSync(file, `${block()}\n`);
-    const badRoot = run(skill, "security-finding", ["--root", path.join(root, "nope"), file], { cwd: root });
+    const badRoot = run(skill, "security-finding", ["--root", path.join(root, "nope"), file], {
+      cwd: root,
+    });
     assert.equal(badRoot.status, 3);
     assert.match(badRoot.stderr, /--root is not a directory/);
   });

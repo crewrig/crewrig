@@ -18,7 +18,10 @@ const SEC = (name: string): string => path.join(SKILLS, "security", "scripts", `
 export function securityCases(c: Ctx): void {
   const empty = path.join(c.box.work, "sec-empty");
   fs.mkdirSync(empty, { recursive: true });
-  fs.writeFileSync(path.join(c.box.work, "sec-report.md"), "No findings.\r\nExamined: sec-report.md:1.\r\n");
+  fs.writeFileSync(
+    path.join(c.box.work, "sec-report.md"),
+    "No findings.\r\nExamined: sec-report.md:1.\r\n",
+  );
 
   attempt(c, "ws-dep-audit-platform", () => {
     const r = exec(c, SEC("dep-audit"), ["--json", "--root", "sec-empty"]);

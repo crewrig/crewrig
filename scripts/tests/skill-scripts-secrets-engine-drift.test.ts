@@ -9,7 +9,10 @@ import { describe, test } from "node:test";
 
 import { COPIES, defaultOf, firstDrift, type Copy } from "./lib/skill-scripts-secrets-engine.ts";
 
-const copies: Copy[] = COPIES.map((c) => ({ name: c.skill, text: fs.readFileSync(c.file, "utf8") }));
+const copies: Copy[] = COPIES.map((c) => ({
+  name: c.skill,
+  text: fs.readFileSync(c.file, "utf8"),
+}));
 
 describe("engine copies", () => {
   test("the three copies differ only on the marked line", () => {
@@ -28,7 +31,11 @@ describe("engine copies", () => {
     const at = lines.findIndex((l) => l.includes("not a file or directory"));
     assert.ok(at > 0);
     lines[at] = `${lines[at]} `;
-    const mutated: Copy[] = [copies[0] as Copy, { name: "github-actions", text: lines.join("\n") }, copies[2] as Copy];
+    const mutated: Copy[] = [
+      copies[0] as Copy,
+      { name: "github-actions", text: lines.join("\n") },
+      copies[2] as Copy,
+    ];
     assert.equal(firstDrift(mutated), `github-actions:${at + 1}`);
   });
   test("a change on the marked line alone is not drift, a second marked line is not tolerated", () => {

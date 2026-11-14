@@ -17,12 +17,19 @@ after(() => fs.rmSync(root, { recursive: true, force: true }));
 assert.ok(!root.startsWith(REPO), "the copies must live outside the repository");
 
 const security = copySkill(root, "security");
-const gha = copySkill(path.join(root, "gha"), "github-actions", path.join(SKILLS_ROOT, "github-actions"));
+const gha = copySkill(
+  path.join(root, "gha"),
+  "github-actions",
+  path.join(SKILLS_ROOT, "github-actions"),
+);
 const glc = copySkill(path.join(root, "glc"), "gitlab-ci", path.join(SKILLS_ROOT, "gitlab-ci"));
 const work = path.join(root, "work");
 fs.mkdirSync(work);
 // a GitHub workflow that echoes a secret, a GitLab pipeline with an inline credential, a clean file
-fs.writeFileSync(path.join(work, "wf.yml"), "jobs:\n  a:\n    steps:\n      - run: echo ${{ secrets.TOKEN }}\n");
+fs.writeFileSync(
+  path.join(work, "wf.yml"),
+  "jobs:\n  a:\n    steps:\n      - run: echo ${{ secrets.TOKEN }}\n",
+);
 fs.writeFileSync(path.join(work, "pipe.yml"), "variables:\n  PASSWORD: hunter2\n");
 fs.writeFileSync(path.join(work, "clean.yml"), "build:\n  script: make\n");
 
@@ -63,8 +70,16 @@ describe("the security copy (no default platform)", () => {
     ["a missing value", ["--platform"], /--platform takes one of: github, gitlab \(got nothing\)/],
     ["an unknown value", ["--platform", "jenkins", "wf.yml"], /\(got jenkins\)/],
     ["an empty value", ["--platform=", "wf.yml"], /--platform takes one of/],
-    ["a repeated option", ["--platform", "github", "--platform", "gitlab", "wf.yml"], /more than once/],
-    ["a repeated option, same value", ["--platform=github", "--platform=github", "wf.yml"], /more than once/],
+    [
+      "a repeated option",
+      ["--platform", "github", "--platform", "gitlab", "wf.yml"],
+      /more than once/,
+    ],
+    [
+      "a repeated option, same value",
+      ["--platform=github", "--platform=github", "wf.yml"],
+      /more than once/,
+    ],
   ] as [string, string[], RegExp][])
     test(`exit 2: ${name}`, () => {
       const r = check(security, args);
@@ -113,7 +128,10 @@ describe("a sibling copy keeps its own legacy behaviour", () => {
     assert.equal(check(gha, ["--platform", "gitlab", "--help"]).stdout, ghHelp.stdout);
     assert.equal(check(gha, ["--platform", "x", "--help"]).stdout, ghHelp.stdout);
     const glHelp = check(glc, ["--help"]);
-    assert.match(glHelp.stdout, /^Usage: node scripts\/check-secrets-exposure\.ts <pipeline-file-or-directory>/);
+    assert.match(
+      glHelp.stdout,
+      /^Usage: node scripts\/check-secrets-exposure\.ts <pipeline-file-or-directory>/,
+    );
     assert.equal(check(glc, ["--platform", "github", "--help"]).stdout, glHelp.stdout);
     assert.notEqual(ghHelp.stdout, glHelp.stdout);
   });
@@ -121,6 +139,7 @@ describe("a sibling copy keeps its own legacy behaviour", () => {
     assert.equal(check(glc, ["clean.yml", "--help"]).status, 2);
   });
   test("a bad --platform value on a sibling copy is exit 2, like on the security copy", () => {
-    for (const dir of [gha, glc]) assert.equal(check(dir, ["--platform", "bogus", "clean.yml"]).status, 2);
+    for (const dir of [gha, glc])
+      assert.equal(check(dir, ["--platform", "bogus", "clean.yml"]).status, 2);
   });
 });

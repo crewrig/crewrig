@@ -73,10 +73,14 @@ describe("security scripts from a copy of the whole skill directory", () => {
         const noPlatform = run(dir, "check-secrets-exposure", ["ci.yml"], { cwd: work });
         assert.equal(noPlatform.status, 2);
         assert.match(noPlatform.stderr, /--platform <github\|gitlab> is required/);
-        const ok = run(dir, "check-secrets-exposure", ["--platform", "gitlab", "ci.yml"], { cwd: work });
+        const ok = run(dir, "check-secrets-exposure", ["--platform", "gitlab", "ci.yml"], {
+          cwd: work,
+        });
         assert.equal(ok.status, 0, ok.stdout + ok.stderr);
         assert.doesNotMatch(ok.stderr, WARNING);
-        const miss = run(dir, "check-secrets-exposure", ["--platform", "github", "nope.yml"], { cwd: work });
+        const miss = run(dir, "check-secrets-exposure", ["--platform", "github", "nope.yml"], {
+          cwd: work,
+        });
         assert.equal(miss.status, 1);
       });
     });

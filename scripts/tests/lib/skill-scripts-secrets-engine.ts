@@ -15,7 +15,8 @@ export const COPIES = ["security", "github-actions", "gitlab-ci"].map((skill) =>
 }));
 
 /** The one line that may differ between the copies: the default platform of the copy. */
-const MARKED = /^(\s*const defaultPlatform = \(\): string \| undefined => )(.*)(; \/\/ crewrig:default-platform)$/;
+const MARKED =
+  /^(\s*const defaultPlatform = \(\): string \| undefined => )(.*)(; \/\/ crewrig:default-platform)$/;
 
 export interface Copy {
   name: string;
@@ -50,7 +51,8 @@ export const LEGACY_ROOT = path.resolve(
   "legacy",
 );
 
-const GH = "name: ci\non: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ${{ secrets.TOKEN }}\n";
+const GH =
+  "name: ci\non: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ${{ secrets.TOKEN }}\n";
 const GL = "variables:\n  PASSWORD: hunter2\nbuild:\n  script:\n    - make\n";
 
 /** Written at test time (no committed JS file): makes the file named by UNREADABLE mode 000 for the run. */

@@ -134,7 +134,8 @@ export function toolStubs(root: string): Tools {
   const empty = path.join(root, "empty-bin");
   fs.mkdirSync(bin, { recursive: true });
   fs.mkdirSync(empty, { recursive: true });
-  for (const tool of ["npm", "pip-audit"]) fs.writeFileSync(path.join(bin, tool), STUB, { mode: 0o755 });
+  for (const tool of ["npm", "pip-audit"])
+    fs.writeFileSync(path.join(bin, tool), STUB, { mode: 0o755 });
   const log = path.join(root, "stub-calls.log");
   const base = { PATH: bin, STUB_LOG: log };
   /** A capture name, or an absolute directory of a derived fixture written by the test. */
@@ -149,7 +150,10 @@ export function toolStubs(root: string): Tools {
       ...(cases.npm === undefined ? {} : { STUB_NPM: at("npm", cases.npm) }),
       ...(cases.pip === undefined ? {} : { STUB_PIP: at("pip", cases.pip) }),
     }),
-    hang: (tool, pidFile) => ({ ...base, [tool === "npm" ? "STUB_NPM_HANG" : "STUB_PIP_HANG"]: pidFile }),
+    hang: (tool, pidFile) => ({
+      ...base,
+      [tool === "npm" ? "STUB_NPM_HANG" : "STUB_PIP_HANG"]: pidFile,
+    }),
     calls: () =>
       fs.existsSync(log)
         ? fs

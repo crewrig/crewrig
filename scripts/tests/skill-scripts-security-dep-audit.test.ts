@@ -76,7 +76,10 @@ describe("npm", () => {
     const e = envelope(r);
     assert.equal(e.ok, true);
     assert.deepEqual(e.findings, []);
-    assert.deepEqual(audited(e).map((a) => [a.ecosystem, a.verdict]), [["npm", "clean"]]);
+    assert.deepEqual(
+      audited(e).map((a) => [a.ecosystem, a.verdict]),
+      [["npm", "clean"]],
+    );
     assert.deepEqual(tools.calls(), [NPM_ARGS]);
   });
 
@@ -99,17 +102,26 @@ describe("npm", () => {
     const env = tools.replay({ npm: "vulnerable" });
     const low = audit(project(NPM_LOCK), ["--fail-on", "low"], env);
     assert.equal(low.status, 1);
-    assert.deepEqual(envelope(low).findings.map((f) => f.severity), ["error", "error"]);
+    assert.deepEqual(
+      envelope(low).findings.map((f) => f.severity),
+      ["error", "error"],
+    );
     const critical = audit(project(NPM_LOCK), ["--fail-on", "critical"], env);
     assert.equal(critical.status, 0, critical.stderr);
-    assert.deepEqual(envelope(critical).findings.map((f) => f.severity), ["warning", "warning"]);
+    assert.deepEqual(
+      envelope(critical).findings.map((f) => f.severity),
+      ["warning", "warning"],
+    );
   });
 
   test("an offline capture is exit 3 with cause offline, never clean", () => {
     const r = audit(project(NPM_LOCK), [], tools.replay({ npm: "offline" }));
     assert.equal(r.status, 3, r.stderr);
     const e = envelope(r);
-    assert.deepEqual(audited(e).map((a) => [a.verdict, a.cause]), [["not-audited", "offline"]]);
+    assert.deepEqual(
+      audited(e).map((a) => [a.verdict, a.cause]),
+      [["not-audited", "offline"]],
+    );
     const pre = e.findings.find((f) => f.rule === "precondition");
     assert.equal(pre?.cause, "offline");
     assert.match(pre?.message ?? "", /NOT audited/);
@@ -155,13 +167,20 @@ describe("pip", () => {
   test("clean capture: exit 0, the non-building vector", () => {
     const r = audit(project(PIP_FILE), [], tools.replay({ pip: "clean" }));
     assert.equal(r.status, 0, r.stderr);
-    assert.deepEqual(audited(envelope(r)).map((a) => [a.ecosystem, a.verdict]), [["pip", "clean"]]);
+    assert.deepEqual(
+      audited(envelope(r)).map((a) => [a.ecosystem, a.verdict]),
+      [["pip", "clean"]],
+    );
     assert.deepEqual(tools.calls(), [PIP_ARGS]);
     assert.ok(!tools.calls()[0]?.includes("--strict"));
   });
 
   test("vulnerable capture: advisories deduplicated by id, no severity counts as at or above", () => {
-    const r = audit(project(PIP_FILE), ["--fail-on", "critical"], tools.replay({ pip: "vulnerable" }));
+    const r = audit(
+      project(PIP_FILE),
+      ["--fail-on", "critical"],
+      tools.replay({ pip: "vulnerable" }),
+    );
     assert.equal(r.status, 1, r.stderr);
     const e = envelope(r);
     assert.equal(e.findings.length, 2, "four entries, two distinct ids");
@@ -224,7 +243,10 @@ describe("roots and ecosystems", () => {
     assert.equal(r.status, 0, r.stderr);
     const e = envelope(r);
     assert.deepEqual(audited(e), []);
-    assert.deepEqual(e.findings.map((f) => [f.rule, f.severity]), [["nothing-to-audit", "warning"]]);
+    assert.deepEqual(
+      e.findings.map((f) => [f.rule, f.severity]),
+      [["nothing-to-audit", "warning"]],
+    );
     assert.deepEqual(tools.calls(), []);
   });
 
@@ -241,7 +263,10 @@ describe("roots and ecosystems", () => {
   test("an unsupported manifest next to an audited clean one is still exit 0 and keeps the warning", () => {
     const r = audit(project({ ...NPM_LOCK, "yarn.lock": "" }), [], tools.replay({ npm: "clean" }));
     assert.equal(r.status, 0, r.stderr);
-    assert.deepEqual(envelope(r).findings.map((f) => f.rule), ["unsupported-ecosystem"]);
+    assert.deepEqual(
+      envelope(r).findings.map((f) => f.rule),
+      ["unsupported-ecosystem"],
+    );
   });
 
   test("a mixed root: a finding wins over a precondition and data lists every ecosystem", () => {
@@ -264,9 +289,16 @@ describe("roots and ecosystems", () => {
 
   test("--ecosystem restricts the run; a named ecosystem with no manifest is exit 3 with data null", () => {
     const both = project({ ...NPM_LOCK, ...PIP_FILE });
-    const only = audit(both, ["--ecosystem", "pip"], tools.replay({ pip: "clean", npm: "vulnerable" }));
+    const only = audit(
+      both,
+      ["--ecosystem", "pip"],
+      tools.replay({ pip: "clean", npm: "vulnerable" }),
+    );
     assert.equal(only.status, 0, only.stderr);
-    assert.deepEqual(tools.calls().map((c) => c[0]), ["pip-audit"]);
+    assert.deepEqual(
+      tools.calls().map((c) => c[0]),
+      ["pip-audit"],
+    );
     const none = audit(project(PIP_FILE), ["--ecosystem", "npm"], tools.replay({ npm: "clean" }));
     assert.equal(none.status, 3);
     assert.equal(envelope(none).data, null);
@@ -276,7 +308,9 @@ describe("roots and ecosystems", () => {
 describe("check order and the CLI", () => {
   test("arguments first (2), then the root (3), then the tools", () => {
     const missing = path.join(root, "no-such-dir");
-    const usage = run(skill, "dep-audit", ["--root", missing, "--ecosystem", "rust"], { cwd: root });
+    const usage = run(skill, "dep-audit", ["--root", missing, "--ecosystem", "rust"], {
+      cwd: root,
+    });
     assert.equal(usage.status, 2);
     const badRoot = run(skill, "dep-audit", ["--root", missing, "--json"], {
       cwd: root,
