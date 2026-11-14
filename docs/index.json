@@ -351,6 +351,11 @@
           "title": "ADR 0023 — Skill eval executor, judge routing and attestation",
           "path": "docs/adr/0023-skill-eval-executor.md",
           "nav_order": 230
+        },
+        {
+          "title": "ADR 0024 — Skill evals sampling gate",
+          "path": "docs/adr/0024-skill-evals-sampling-gate.md",
+          "nav_order": 240
         }
       ]
     }
