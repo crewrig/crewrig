@@ -42,11 +42,29 @@ function filesUnder(dir: string): string[] {
   });
 }
 
+// Spec 0307: eleven of the 22 baseline agents live under artifacts/library/agents; the throwaway root
+// is still seeded with all 22 sources.
+const WEB_LIBRARY_AGENTS = [
+  "accessibility-auditor",
+  "accessibility-tester",
+  "astro-developer",
+  "copywriter",
+  "designer",
+  "frontend-developer",
+  "regression-sentinel",
+  "scenario-author",
+  "seo-specialist",
+  "visual-regression-tester",
+  "web-conformity-checker",
+].map((n) => `artifacts/library/agents/${n}`);
+
 describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway root", () => {
   const tree = createFixtureTree();
-  const sources = copyFromWorktree(tree, ["artifacts/core/agents", ...CONFIG]).filter((f) =>
-    f.endsWith("/AGENT.md"),
-  );
+  const sources = copyFromWorktree(tree, [
+    "artifacts/core/agents",
+    ...WEB_LIBRARY_AGENTS,
+    ...CONFIG,
+  ]).filter((f) => f.endsWith("/AGENT.md"));
   const built = build(tree);
 
   // The stream is composed, not a constant (spec 0291 R7): 22 copilot model-drop lines, one
@@ -97,9 +115,11 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
 
 describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
   const tree = createFixtureTree();
-  const sources = copyFromWorktree(tree, ["artifacts/core/agents", ...CONFIG]).filter((f) =>
-    f.endsWith("/AGENT.md"),
-  );
+  const sources = copyFromWorktree(tree, [
+    "artifacts/core/agents",
+    ...WEB_LIBRARY_AGENTS,
+    ...CONFIG,
+  ]).filter((f) => f.endsWith("/AGENT.md"));
   // a replaced guard term is a whole node, so the override carries every required key
   tree.write(
     "model-mappings/claude.org.yml",
@@ -121,7 +141,15 @@ describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
   const built = build(tree);
   // security and seo-specialist gain `tools` and pr-reviewer loses `claude:` (spec 0291 R18-R20)
   const EDITED = new Set(["security", "seo-specialist", "pr-reviewer"]);
-  const names = sources.map((f) => path.basename(path.dirname(f)));
+  // Spec 0307: the eleven moved agents are built into the gitignored dist/library staging root of the
+  // throwaway tree, and only the core agents have a committed Claude file to compare with.
+  const claudeFile = (name: string, f: string): string =>
+    f.includes("/library/agents/")
+      ? `dist/library/.claude/agents/${name}.md`
+      : `.claude/agents/${name}.md`;
+  const coreNames = sources
+    .filter((f) => f.startsWith("artifacts/core/"))
+    .map((f) => path.basename(path.dirname(f)));
 
   test("R5 — every Claude file has no model: key, keeps the sentence, and 22 guard-withheld notes are emitted", () => {
     assert.equal(built.status, 0, built.stderr);
@@ -130,16 +158,17 @@ describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
       22,
       "one guard-withheld note per agent",
     );
-    for (const name of names) {
-      const fm = readFrontmatter(tree.read(`.claude/agents/${name}.md`));
+    for (const f of sources) {
+      const name = path.basename(path.dirname(f));
+      const fm = readFrontmatter(tree.read(claudeFile(name, f)));
       assert.equal(Object.hasOwn(fm, "model"), false, `${name} has no model key`);
       assert.match(String(fm.description), /Run this agent on the \S+ model\.$/, name);
     }
   });
 
-  test("R5 — each of the 19 unedited Claude files is the committed file with model: removed and the sentence restored", () => {
-    const unedited = names.filter((n) => !EDITED.has(n));
-    assert.equal(unedited.length, 19);
+  test("R5 — each of the 9 unedited committed core Claude files is the committed file with model: removed and the sentence restored", () => {
+    const unedited = coreNames.filter((n) => !EDITED.has(n));
+    assert.equal(unedited.length, 9);
     for (const name of unedited) {
       const committed = fs.readFileSync(path.join(REPO, `.claude/agents/${name}.md`), "utf8");
       const model = /^model: (\S+)$/m.exec(committed)?.[1];

@@ -150,19 +150,36 @@ describe("T3 — R15: no effort: frontmatter field on any of the four agent tree
 });
 
 describe("T7 — R1,R2,R4: the 22-row baseline, checked four ways over the sources", () => {
-  const core = (name: string): string => `artifacts/core/agents/${name}/AGENT.md`;
+  // Spec 0307: eleven baseline agents moved from the core to the library tier; the baseline stays 22 rows.
+  const LIBRARY_WEB = new Set([
+    "accessibility-auditor",
+    "accessibility-tester",
+    "astro-developer",
+    "copywriter",
+    "designer",
+    "frontend-developer",
+    "regression-sentinel",
+    "scenario-author",
+    "seo-specialist",
+    "visual-regression-tester",
+    "web-conformity-checker",
+  ]);
+  const core = (name: string): string =>
+    `artifacts/${LIBRARY_WEB.has(name) ? "library" : "core"}/agents/${name}/AGENT.md`;
   const rungOf = (name: string): unknown =>
     (frontOf(core(name)).metadata as { model?: { intelligence?: unknown } } | undefined)?.model
       ?.intelligence;
 
-  test("T7(a) baseline::name set equals artifacts/core/agents listing (22)", () => {
-    const actual = fs
-      .readdirSync(path.join(REPO, "artifacts/core/agents"), {
-        withFileTypes: true,
-      })
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name)
-      .sort();
+  test("T7(a) baseline::name set equals the core listing (11) plus the eleven moved library agents (22)", () => {
+    const actual = [
+      ...fs
+        .readdirSync(path.join(REPO, "artifacts/core/agents"), {
+          withFileTypes: true,
+        })
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name),
+      ...[...LIBRARY_WEB].filter((n) => fs.existsSync(path.join(REPO, core(n)))),
+    ].sort();
     assert.equal(actual.length, 22);
     assert.deepEqual(BASELINE.map(([n]) => n).sort(), actual);
   });

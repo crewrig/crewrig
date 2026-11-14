@@ -145,7 +145,7 @@ tasks:
     desc: Run the agent-profile migration regression suite (cached by the ci-cache-guard capability key)
     preconditions: *needs-js-yaml
     cmds:
-      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability agent-profile-migration -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/agent-profile-baseline-doc.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-build.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-committed.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability agent-profile-migration -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/agent-profile-baseline-doc.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-build.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-committed.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-web-library-tier.test.ts'
   ci-parity:
     desc: Test the CI generator and parity harness (cached by the ci-cache-guard capability key)
     preconditions: *needs-js-yaml
