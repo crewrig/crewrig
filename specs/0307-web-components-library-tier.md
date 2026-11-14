@@ -1,7 +1,7 @@
 ---
 id: "0307"
 slug: web-components-library-tier
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1992
