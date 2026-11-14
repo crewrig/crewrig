@@ -329,18 +329,6 @@ jobs:
           id: check-seat-brief
           install: none
 
-  # Spec 0306 R19: the conventions block of every compiled agent; CI runs the script on the repository and on committed fixtures.
-  check-subagent-conventions:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-      - uses: ./.github/actions/ci-job
-        with:
-          id: check-subagent-conventions
-          install: none
-
   # Spec 0277 R19-R20: author-side plan review gate; CI only checks the script against committed fixtures, never a live plan.
   check-plan-review:
     runs-on: ubuntu-latest

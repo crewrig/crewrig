@@ -47,6 +47,17 @@ tasks:
       - task: :check-description-length
       - task: :check-agent-script-citations
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/agent-script-citations.test.ts
+      - task: :check-subagent-conventions
+      - 'CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/pass {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/fragment-invalid {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/fragment-invalid-provenance {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/missing-block {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/stale-block {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/missing-omit-key {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/foreign-omit-key {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/source-carries-block {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/no-fragment {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-subagent-conventions.test.ts {{.REPO_DIR}}/scripts/tests/check-subagent-conventions-ci-wiring.test.ts
       - task: :check-skill-quality
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-skill-quality.test.ts {{.REPO_DIR}}/scripts/tests/check-skill-quality-contract.test.ts {{.REPO_DIR}}/scripts/tests/check-skill-quality-grammar.test.ts
   test-wiring:
@@ -117,20 +128,6 @@ tasks:
     cmds:
       - '{{.NODE_SCRIPTS}}/check-seat-brief.ts {{.REPO_DIR}}/scripts/tests/fixtures/seat-brief/conforming-review.txt'
       - '! {{.NODE_SCRIPTS}}/check-seat-brief.ts {{.REPO_DIR}}/scripts/tests/fixtures/seat-brief/breach-1410.txt'
-  check-subagent-conventions:
-    desc: Run the check-subagent-conventions CI capability (pre-push mirror of the CI job)
-    preconditions: *needs-js-yaml
-    cmds:
-      - '{{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
-      - 'CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/pass {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
-      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/fragment-invalid {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
-      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/fragment-invalid-provenance {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
-      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/missing-block {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
-      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/stale-block {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
-      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/missing-omit-key {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
-      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/foreign-omit-key {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
-      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/source-carries-block {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
-      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/no-fragment {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
   check-model-mappings:
     desc: Run the check-model-mappings CI capability (pre-push mirror of the CI job)
     preconditions: *needs-js-yaml

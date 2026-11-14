@@ -1,8 +1,9 @@
-// check-subagent-conventions-ci-wiring.test.ts — the CI reference, the GitHub workflow, the GitLab
-// pipeline and the Taskfile wire the subagent conventions check (spec 0306 R19; plan v2 v1-F1):
-// a focused, path-filtered, changeset-gated job that runs the script on the repository, on a
-// conforming and on every breaching committed root, plus the unit and wiring tests in the
-// governance job, and the new build test in the build-components job.
+// check-subagent-conventions-ci-wiring.test.ts — the subagent conventions check JOINS the existing
+// check-description-length capability, GitHub job, GitLab job and task (spec 0306 R19 as amended by
+// delta 01, R25 line budget): no capability, GitHub job or GitLab job of its own; the task runs the
+// script on the repository, on a conforming and on every breaching committed root, then the unit and
+// wiring tests; the path filter covers the script, its tests and fixtures, the fragment, the agent
+// sources and the four agent trees, and the build library; the GitLab `changes` list equals it.
 //
 // Assertions are functions over text so the mutation tests run the same functions on mutated copies.
 
@@ -11,18 +12,20 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
+import { globToRegExp } from "../lib/glob-engine.ts";
 import { loadTaskfileTree, taskCmds, type TaskfileTree } from "../lib/taskfile-tree.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
 import {
   ciTaskCommands,
+  ciTaskDelegatedCommands,
   effectivePaths,
   resolveCapabilityCommands,
 } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
-import { gatePaths } from "./lib/capability-path-scan.ts";
 import { readWorkflowUnionText } from "./lib/workflow-union.ts";
 
 const ID = "check-subagent-conventions";
+const HOST = "check-description-length";
 const SCRIPT = "scripts/check-subagent-conventions.ts";
 const FIXTURES = "scripts/tests/fixtures/subagent-conventions";
 const BREACHING_ROOTS = [
@@ -35,33 +38,41 @@ const BREACHING_ROOTS = [
   "source-carries-block",
   "no-fragment",
 ];
-const GOVERNANCE_TESTS = [
+const TESTS = [
   "scripts/tests/check-subagent-conventions.test.ts",
   "scripts/tests/check-subagent-conventions-ci-wiring.test.ts",
 ];
 const BUILD_TEST = "scripts/tests/build-components-conventions-block.test.ts";
-const PATHS = [
+// The entries delta 01 adds to the host capability (R25), and sample files the filter must select.
+const ADDED = [
   SCRIPT,
-  "scripts/lib/governance/subagent-conventions.ts",
   "scripts/tests/check-subagent-conventions*",
   `${FIXTURES}/**`,
-  "artifacts/core/fragments/**",
-  "artifacts/*/agents/**",
-  ".claude/agents/**",
-  ".gemini/agents/**",
-  ".github/agents/**",
-  ".agents/agents/**",
   "scripts/lib/build-components/**",
 ];
-const GOVERNANCE_PATHS = ["scripts/tests/check-subagent-conventions*", `${FIXTURES}/**`];
+const COVERED = [
+  SCRIPT,
+  TESTS[0] as string,
+  `${FIXTURES}/pass/artifacts/core/agents/alpha/AGENT.md`,
+  "artifacts/core/fragments/subagent-conventions.md",
+  "artifacts/core/agents/developer/AGENT.md",
+  ".claude/agents/developer.md",
+  ".gemini/agents/developer.md",
+  ".github/agents/developer.md",
+  ".agents/agents/developer.md",
+  "scripts/lib/build-components/emit.ts",
+];
+/** The host task's own commands plus those of the root tasks it delegates to. */
+const hostCmds = (): string[] => [...ciTaskCommands(HOST), ...ciTaskDelegatedCommands(HOST)];
 const read = (...p: string[]): string => fs.readFileSync(path.join(REPO, ...p), "utf8");
 
 const runsScript = (c: string): boolean => c.includes(SCRIPT);
 const onRoot = (c: string, root: string): boolean =>
   new RegExp(`${FIXTURES}/${root}(?![\\w-])`).test(c);
 
-/** The commands the job runs: the repository, the conforming root, every breaching root negated. */
+/** The commands the task runs: the repository, the conforming root, every breaching root negated, the tests. */
 function assertCommands(cmds: string[]): void {
+  for (const t of TESTS) assert.ok(cmds.join(" ").includes(t), `the task runs ${t}`);
   const mine = cmds.filter(runsScript);
   assert.ok(
     mine.some((c) => !c.startsWith("!") && !c.includes(FIXTURES)),
@@ -86,128 +97,108 @@ function jobBlock(text: string, header: RegExp, gitlab = false): string {
   return next < 0 ? rest : rest.slice(0, next);
 }
 
-function assertCapabilities(text: string): void {
-  const caps = (
-    yamlLib.load(text) as {
-      capabilities: {
-        id: string;
-        group?: string;
-        portability?: string;
-        command?: string[];
-        "changeset-gated"?: boolean;
-        paths?: string[];
-        trigger?: { on?: string; branches?: string[]; paths?: string[] }[];
-        requires?: { runtime?: string; tools?: string[] };
-      }[];
-    }
-  ).capabilities;
-  const cap = caps.find((c) => c.id === ID);
-  assert.ok(cap, `capability ${ID}`);
-  assert.equal(cap.group, "governance");
-  assert.equal(cap.portability, "portable");
-  assert.equal(cap.requires?.runtime, "node@24");
-  assert.deepEqual(cap.requires?.tools, ["task"]);
-  assert.deepEqual(cap.command, [`task ci:${ID}`]);
-  assertCommands(resolveCapabilityCommands(cap.command));
-  assert.equal(cap["changeset-gated"], true);
-  assert.deepEqual(cap.trigger?.map((t) => t.on).sort(), ["pull-request", "push"]);
+interface Cap {
+  id: string;
+  paths?: string[];
+  command?: string[];
+  trigger?: { on?: string; branches?: string[]; paths?: string[] }[];
+}
+const capsOf = (text: string): Cap[] =>
+  (yamlLib.load(text) as { capabilities: Cap[] }).capabilities;
+
+function assertCapabilities(text: string, cmds: string[] = hostCmds()): void {
+  const caps = capsOf(text);
+  assert.equal(caps.filter((c) => c.id === ID).length, 0, `no capability ${ID} of its own`);
+  const cap = caps.find((c) => c.id === HOST);
+  assert.ok(cap, `capability ${HOST}`);
+  assert.deepEqual(cap.command, [`task ci:${HOST}`]);
+  assertCommands(cmds);
   for (const t of cap.trigger ?? []) {
-    assert.deepEqual(t.branches, ["main", "release/**"]);
-    for (const p of PATHS) assert.ok(effectivePaths(cap, t).includes(p), `trigger paths has ${p}`);
+    const eff = effectivePaths(cap, t);
+    for (const p of ADDED) assert.ok(eff.includes(p), `${HOST} paths have ${p}`);
+    for (const f of COVERED)
+      assert.ok(
+        eff.some((g) => globToRegExp(g).test(f)),
+        `paths select ${f}`,
+      );
   }
-  const gov = caps.find((c) => c.id === "governance-checks-ts");
-  assert.ok(gov);
-  for (const t of GOVERNANCE_TESTS)
-    assert.ok(resolveCapabilityCommands(gov.command).join(" ").includes(t), `governance runs ${t}`);
   const build = caps.find((c) => c.id === "build-components-ts");
   assert.ok(build);
   assert.ok(
     resolveCapabilityCommands(build.command).join(" ").includes(BUILD_TEST),
     `build-components-ts runs ${BUILD_TEST}`,
   );
-}
-
-function assertPaths(): void {
-  for (const p of GOVERNANCE_PATHS)
-    assert.ok(
-      gatePaths("governance-checks-ts").includes(p),
-      `governance-checks-ts paths have ${p}`,
-    );
   assert.ok(
-    gatePaths("build-components-ts").includes("artifacts/core/fragments/**"),
+    effectivePaths(build, build.trigger?.[0] ?? {}).includes("artifacts/core/fragments/**"),
     "build-components-ts paths have the fragment",
   );
 }
 
-function assertGithub(
-  text: string,
-  govCmds: string[] = ciTaskCommands("governance-checks-ts"),
-  cmds: string[] = ciTaskCommands(ID),
-  buildCmds: string[] = ciTaskCommands("build-components-ts"),
-): void {
-  const job = jobBlock(text, new RegExp(`\\n  ${ID}:\\n`));
-  assert.ok(job.includes(`id: ${ID}`) && job.includes("./.github/actions/ci-job"), "calls ci-job");
-  assertCommands(cmds);
-  for (const t of GOVERNANCE_TESTS)
-    assert.ok(govCmds.join(" ").includes(t), `governance-checks-ts runs ${t}`);
-  assert.ok(buildCmds.join(" ").includes(BUILD_TEST), `build-components-ts runs ${BUILD_TEST}`);
-  jobBlock(text, /\n {2}governance-checks-ts:\n/);
+function assertGithub(text: string): void {
+  assert.ok(!new RegExp(`\\n  ${ID}:\\n`).test(text), `no GitHub job ${ID}`);
+  const job = jobBlock(text, new RegExp(`\\n  ${HOST}:\\n`));
+  assert.ok(job.includes(`id: ${HOST}`) && job.includes("./.github/actions/ci-job"), "host job");
 }
 
-function assertGitlab(
-  text: string,
-  govCmds: string[] = ciTaskCommands("governance-checks-ts"),
-  cmds: string[] = ciTaskCommands(ID),
-): void {
-  const job = jobBlock(text, new RegExp(`\\n${ID}:\\n`), true);
-  assert.ok(job.includes("image: node:24"));
-  assert.ok(job.includes(`task ci:${ID}`), "runs the task");
-  assertCommands(cmds);
-  for (const t of GOVERNANCE_TESTS)
-    assert.ok(govCmds.join(" ").includes(t), `governance-checks-ts runs ${t}`);
+function gitlabChanges(job: string): string[] {
+  const m = /changes: &\S+\n((?: {8}- .+\n)+)/.exec(job);
+  assert.ok(m, "the GitLab job has a changes list");
+  return (m[1] ?? "")
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => l.replace(/^ +- "?|"?$/g, ""));
+}
+
+function assertGitlab(text: string, paths: readonly string[]): void {
+  assert.ok(!new RegExp(`\\n${ID}:\\n`).test(text), `no GitLab job ${ID}`);
+  const job = jobBlock(text, new RegExp(`\\n${HOST}:\\n`), true);
+  assert.ok(job.includes(`task ci:${HOST}`), "runs the host task");
+  assert.deepEqual(gitlabChanges(job), [...paths], "GitLab changes equal the capability paths");
 }
 
 function assertTaskfile(tree: TaskfileTree): void {
-  assert.ok(tree.byName.has(ID), "Taskfile target");
+  assert.ok(!tree.byName.has(`ci:${ID}`), `no ci:${ID} task`);
+  assert.ok(tree.byName.has(ID), "local mirror task");
   assert.ok(taskCmds(tree, ID).some((c) => c.includes(SCRIPT)));
 }
 
-describe("check-subagent-conventions CI wiring", () => {
-  test("ci/ci-capabilities.yml", () => assertCapabilities(read("ci", "ci-capabilities.yml")));
-  test("path filters of governance-checks-ts and build-components-ts", () => assertPaths());
-  test("GitHub workflow", () => assertGithub(readWorkflowUnionText(REPO)));
-  test("GitLab pipeline", () => assertGitlab(read(".gitlab-ci.yml")));
-  test("Taskfile target", () => assertTaskfile(loadTaskfileTree(REPO)));
+const capPaths = (): string[] => {
+  const cap = capsOf(read("ci", "ci-capabilities.yml")).find((c) => c.id === HOST);
+  return effectivePaths(cap as Cap, (cap as Cap).trigger?.[0] ?? {});
+};
 
-  test("mutation: a job that does not run a breaching root is rejected", () => {
-    assert.throws(() =>
-      assertGithub(
-        readWorkflowUnionText(REPO),
-        ciTaskCommands("governance-checks-ts"),
-        ciTaskCommands(ID).filter((c) => !onRoot(c, "stale-block")),
-      ),
-    );
-  });
-  test("mutation: a build-components job without the new test is rejected", () => {
-    assert.throws(() =>
-      assertGithub(
-        readWorkflowUnionText(REPO),
-        ciTaskCommands("governance-checks-ts"),
-        ciTaskCommands(ID),
-        ciTaskCommands("build-components-ts").map((c) =>
-          c.replaceAll("build-components-conventions-block.test.ts", ""),
-        ),
-      ),
-    );
-  });
-  test("mutation: a capability on the wrong runtime is rejected", () => {
+describe("check-subagent-conventions CI wiring (joined to check-description-length)", () => {
+  test("ci/ci-capabilities.yml", () => assertCapabilities(read("ci", "ci-capabilities.yml")));
+  test("GitHub workflow", () => assertGithub(readWorkflowUnionText(REPO)));
+  test("GitLab pipeline", () => assertGitlab(read(".gitlab-ci.yml"), capPaths()));
+  test("Taskfile mirror", () => assertTaskfile(loadTaskfileTree(REPO)));
+  test("mutation: a task that does not run a breaching root is rejected", () => {
     assert.throws(() =>
       assertCapabilities(
-        read("ci", "ci-capabilities.yml").replace(
-          /(id: check-subagent-conventions[\s\S]*?runtime: )node@24/,
-          "$1node@22",
-        ),
+        read("ci", "ci-capabilities.yml"),
+        hostCmds().filter((c) => !onRoot(c, "stale-block")),
       ),
     );
+  });
+  test("mutation: a task without the wiring test is rejected", () => {
+    assert.throws(() =>
+      assertCapabilities(
+        read("ci", "ci-capabilities.yml"),
+        hostCmds().map((c) => c.replaceAll("check-subagent-conventions-ci-wiring.test.ts", "")),
+      ),
+    );
+  });
+  test("mutation: a dedicated capability or GitLab job is rejected", () => {
+    assert.throws(() =>
+      assertCapabilities(
+        `${read("ci", "ci-capabilities.yml")}  - id: ${ID}\n`.replace(/\n$/, "\n"),
+      ),
+    );
+    assert.throws(() =>
+      assertGitlab(`${read(".gitlab-ci.yml")}\n${ID}:\n  stage: governance\n`, capPaths()),
+    );
+  });
+  test("mutation: a GitLab changes list that drifts from the paths is rejected", () => {
+    assert.throws(() => assertGitlab(read(".gitlab-ci.yml"), capPaths().slice(1)));
   });
 });

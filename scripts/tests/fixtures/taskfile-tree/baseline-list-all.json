@@ -796,10 +796,6 @@
     "desc": "Run the check-seat-brief CI capability (pre-push mirror of the CI job)"
   },
   {
-    "name": "ci:check-subagent-conventions",
-    "desc": "Run the check-subagent-conventions CI capability (pre-push mirror of the CI job)"
-  },
-  {
     "name": "ci:extension-render",
     "desc": "Run the extension-render CI capability (pre-push mirror of the CI job)"
   },

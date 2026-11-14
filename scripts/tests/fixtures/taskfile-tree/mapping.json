@@ -194,7 +194,6 @@
   "ci:worktree-guard": "taskfiles/ci/integration.yml",
   "ci:mempalace-transcript": "taskfiles/ci/integration.yml",
   "ci:check-seat-brief": "taskfiles/ci/governance.yml",
-  "ci:check-subagent-conventions": "taskfiles/ci/governance.yml",
   "ci:extension-render": "taskfiles/ci/extensions.yml",
   "ci:extension-install": "taskfiles/ci/extensions.yml",
   "ci:core-paths": "taskfiles/ci/extensions.yml",
