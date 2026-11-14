@@ -33,7 +33,7 @@ replaces the default list.
 |---|---|---|
 | SEO title | front matter key `title` | `<title>` |
 | Meta description | front matter key `description` | `<meta name="description" content="...">` |
-| Headline | first `# ` heading outside code fences | first `<h1>` |
+| Headline | first level-1 heading (a line starting with `#` and a space) outside code fences | first `<h1>` |
 | CTA | a link alone on its line (optionally in a list item or bold) | each `<button>`; each `<a>` with `btn`, `button` or `cta` as a word of its class, or `role="button"` |
 
 A link inside a sentence is not a CTA, so write the primary action as its own line. Front

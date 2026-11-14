@@ -257,11 +257,11 @@
       "should_trigger": false
     },
     {
-      "query": "Write a Playwright test that logs in and checks the dashboard heading is visible.",
+      "query": "Write a Playwright spec with a page object that asserts the hero image keeps its alt text and every nav has an aria-label.",
       "should_trigger": false
     },
     {
-      "query": "Pin the actions in my CI workflow to commit SHAs and add a permissions block to my GitHub Actions file.",
+      "query": "Run an axe-core scan against http://localhost:3000/pricing in a real browser and rank the violations by impact.",
       "should_trigger": false
     },
     {

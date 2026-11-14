@@ -3,9 +3,9 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "astro.config.mjs and index.astro come from an Astro 5 marketing site (index.astro lives in src/pages). Review them and write the review to review.md: one entry per problem, each with the file, what is wrong and the fix. Do not modify the two inputs. Do not run gh, glab, tea or git push and do not touch any forge artifact: only write the files asked for, in the current directory.",
+      "prompt": "The current directory is the root of an Astro 5 marketing site: astro.config.mjs at the root and the page at src/pages/index.astro. Review them and write the review to review.md: one entry per problem, each with the file, what is wrong and the fix. Do not modify the two files. Do not run gh, glab, tea or git push and do not touch any forge artifact: only write the files asked for, in the current directory.",
       "expected_output": "review.md lists the missing site option (the sitemap integration needs it), the image without alt text, the client:only directive without a framework name, and the page without a layout.",
-      "files": ["evals/files/astro.config.mjs", "evals/files/index.astro"],
+      "files": ["evals/files/astro.config.mjs", "evals/files/src/pages/index.astro"],
       "expectations": [
         "review.md says that astro.config.mjs sets no site option while the sitemap integration is used, and proposes adding a site URL.",
         "review.md says that the img in index.astro has no alt attribute and proposes descriptive alt text (or an empty alt if decorative).",
@@ -81,22 +81,18 @@
     },
     {
       "id": 5,
-      "prompt": "A static Astro site lives in the GitHub repository alice/trail-notes and must be published as a GitHub Pages project page. Write astro.config.mjs, .github/workflows/deploy.yml and DEPLOY.md (one short paragraph naming the repository setting that must be changed). Do not run gh, glab, tea or git push and do not touch any forge artifact or trigger a workflow: only write the files asked for, in the current directory.",
-      "expected_output": "An astro.config.mjs with site https://alice.github.io and base /trail-notes, a deploy workflow that builds with npm ci and npm run build and publishes dist through the Pages actions with scoped permissions, and a DEPLOY.md naming the Pages source setting.",
+      "prompt": "A static Astro site lives in the GitHub repository alice/trail-notes and must be published as a GitHub Pages project page. Write astro.config.mjs and DEPLOY.md (one short paragraph naming the repository setting that must be changed and saying why you set site and base the way you did). Do not run gh, glab, tea or git push and do not touch any forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "An astro.config.mjs with site https://alice.github.io and base /trail-notes, and a DEPLOY.md that names the Pages source setting and explains site and base.",
       "files": [],
       "expectations": [
         "astro.config.mjs sets site to https://alice.github.io and base to /trail-notes.",
-        "The workflow runs on push to main and builds with npm ci and npm run build.",
-        "The workflow publishes the dist output through the GitHub Pages actions (upload-pages-artifact and deploy-pages, or withastro/action).",
-        "The workflow declares permissions with pages: write and id-token: write and does not grant write-all.",
+        "DEPLOY.md explains that base is needed because a project page is served under /trail-notes/, and that site is the user origin.",
         "DEPLOY.md says the repository's Pages source must be set to GitHub Actions."
       ],
       "checks": [
         { "type": "file_exists", "path": "astro.config.mjs" },
         { "type": "file_contains", "path": "astro.config.mjs", "pattern": "alice\\.github\\.io" },
         { "type": "file_contains", "path": "astro.config.mjs", "pattern": "base:\\s*[\"']/trail-notes" },
-        { "type": "file_exists", "path": ".github/workflows/deploy.yml" },
-        { "type": "file_contains", "path": ".github/workflows/deploy.yml", "pattern": "pages:\\s*write" },
         { "type": "file_contains", "path": "DEPLOY.md", "pattern": "GitHub Actions" }
       ]
     },

@@ -6,7 +6,7 @@
 - [Tailwind](#tailwind)
 - [MDX](#mdx)
 - [Sitemap](#sitemap)
-- [astro:assets](#astroassets)
+- [Image optimization](#image-optimization)
 
 ## Registering integrations
 
@@ -38,7 +38,7 @@ export default defineConfig({
 
 `@astrojs/sitemap` writes `sitemap-index.xml` and `sitemap-0.xml` at build time and requires the top-level `site` option. Without `site` the integration cannot build absolute URLs, which is why the project checker reports it.
 
-## astro:assets
+## Image optimization
 
 Built in, nothing to install. `<Image>`, `<Picture>` and `getImage()` optimise images at build time. `alt` is required.
 
