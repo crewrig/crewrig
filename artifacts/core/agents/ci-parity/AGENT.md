@@ -6,10 +6,11 @@ license: Apache-2.0
 metadata:
   model:
     intelligence: high
+  tools: [read, search, edit, execute, skill]
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.2.0"
+    version: "1.3.0"
 ---
 
 # CI Parity Agent

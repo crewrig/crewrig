@@ -1,11 +1,12 @@
 ---
 name: tester
 description: "Test-authoring agent that writes high-signal regression tests, enumerates the priority edge cases of a behaviour, and verifies a fix by running its test failing before and passing after. Delegate to it to write tests, add a regression test for a bug fix, plan a test strategy, check coverage, or decide whether a test may be skipped for a missing tool. Not for web end-to-end tests (web-conformity-checker, scenario-author), for implementing the fix (developer) or for reviewing a pull request (pr-reviewer)."
+tools: [read, search, edit, execute]
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.1"
+    version: "1.3.0"
 ---
 
 

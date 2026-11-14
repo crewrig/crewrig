@@ -2,12 +2,13 @@
 name: spec-author
 description: "Specification authoring agent. Delegate to it when a non-trivial ticket needs a spec before planning, when the user asks to write, draft or specify a feature, its requirements or Given/When/Then scenarios, or when a spec-class review finding needs a delta-spec. It turns the raw intent into one draft spec file under specs/ in the interaction mode of the parent ticket. Not for implementation plans, ADRs, PR descriptions or code."
 model: sonnet
+tools: Read, Grep, Glob, Edit, Write, Bash, Skill
 omitClaudeMd: true
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.5.0"
+    version: "1.6.0"
 ---
 
 

@@ -3,12 +3,13 @@ name: ci-debugger
 description: "Diagnoses a failing GitHub Actions run and returns a symptom, hypothesis, evidence and fix chain, without editing any file. Use when a workflow run failed or is red, when the user pastes a `gh run view` URL or a log excerpt, when a job stays queued too long, on `Resource not accessible by integration`, a cache miss, an empty secret, an OIDC or permission error, a flaky step, or a workflow that broke after an action version bump. Trigger terms: failed run, red pipeline, why is this broken, gh run view, queued, flaky. Not for a new pipeline (ci-configurator), applying the change (developer), drift against the capability reference (ci-parity) or GitLab pipelines."
 license: Apache-2.0
 model: sonnet
+tools: Read, Grep, Glob, Bash, Skill
 omitClaudeMd: true
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.3.0"
+    version: "1.4.0"
 ---
 
 
