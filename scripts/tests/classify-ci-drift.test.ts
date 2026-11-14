@@ -272,20 +272,31 @@ test("a run aborted by ShellAbort keeps its records, has no footer and exits 1 (
   assert.ok(report.data && "records" in report.data);
   assert.equal(report.data.count, 1);
   assert.equal(report.data.records[0]?.kind, "untraceable-job");
+  assert.equal(report.findings.length, 1, "one error finding per record");
+  assert.equal(report.findings[0]?.rule, "untraceable-job");
+  assert.deepEqual(
+    report.findings.filter((f) => f.severity === "warning"),
+    [],
+    "no warning finding: exit 1 already fails closed (spec 0302 delta-01)",
+  );
 });
 
 test("a FAILED footer with no record exits 3 with a precondition finding (fail closed)", () => {
   const { status, report } = classify(FOOTER(2));
   assert.equal(status, 3);
   assert.equal(report.data, null);
+  assert.equal(report.findings.length, 1);
   assert.equal(report.findings[0]?.rule, "precondition");
-  assert.match(report.findings[0]?.message ?? "", /FAILED/);
+  assert.match(report.findings[0]?.message ?? "", /FAILED.*no divergence record/);
 });
 
 test("a validity header with no bullet exits 3 as well", () => {
   const { status, report } = classify(`${VALIDITY_HEAD}\n`);
   assert.equal(status, 3);
+  assert.equal(report.data, null);
+  assert.equal(report.findings.length, 1);
   assert.equal(report.findings[0]?.rule, "precondition");
+  assert.match(report.findings[0]?.message ?? "", /FAILED.*no divergence record/);
 });
 
 test("non-harness input (no record, no OK, no FAILED) exits 3 and prints no record", () => {
