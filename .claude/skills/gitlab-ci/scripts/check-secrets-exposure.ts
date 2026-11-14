@@ -1,50 +1,102 @@
-// check-secrets-exposure.ts — flag patterns in a GitLab CI pipeline that may leak secrets into job
-// logs or widen the secret blast radius (the TypeScript entry of check-secrets-exposure.sh; same
-// text scan, same output).
-//
-// Usage: node check-secrets-exposure.ts <pipeline-file-or-directory>
-//        node check-secrets-exposure.ts --help
-//
-// Five checks, run in order on every line (one line may report several findings):
-//   1. a credential-named key set to an inline literal in `variables:` or a shell assignment;
-//   2. a well-known token shape (GitLab, GitHub, AWS) or a PEM private-key header as a literal;
-//   3. `echo` / `printf` of a credential-named variable;
-//   4. `set -x` / `set +x`, shell xtrace;
-//   5. `CI_DEBUG_TRACE` enabled.
-// Directory mode scans `<dir>/.gitlab-ci.yml` plus any YAML under `<dir>/.gitlab/`.
-//
-// Exit: 0 clean or nothing to scan, 1 a finding or a bad target, 2 usage.
-//
-// Self-contained on purpose: one file, no import, runs under any package type (spec 0258).
+// check-secrets-exposure.ts — flag patterns in a CI definition that may leak secrets into logs or
+// widen their blast radius. One engine, two profiles: `github` (GitHub Actions workflows) and
+// `gitlab` (GitLab CI pipelines), each keeping its own patterns, messages, usage, discovery and
+// write style so that each platform answers as its former script did.
+// Usage: node scripts/check-secrets-exposure.ts --platform <github|gitlab> <file-or-directory>
+// Exit: 0 clean or nothing to scan, 1 a finding or a bad target, 2 usage. No --json, no exit 3.
+// Copied byte for byte into github-actions and gitlab-ci: only the line marked
+// `crewrig:default-platform` differs. Self-contained: one file, no import.
 
 process.removeAllListeners("warning");
 
-void (async () => {
+void (() => {
   const fs = process.getBuiltinModule("node:fs");
   const path = process.getBuiltinModule("node:path");
-  await Promise.resolve();
+  const defaultPlatform = (): string | undefined => "gitlab"; // crewrig:default-platform
 
   const tty = process.stdout.isTTY === true;
-  const RED = tty ? "\u001b[0;31m" : "";
-  const GREEN = tty ? "\u001b[0;32m" : "";
-  const YELLOW = tty ? "\u001b[0;33m" : "";
-  const RESET = tty ? "\u001b[0m" : "";
+  const [RED, GREEN, YELLOW, RESET] = tty
+    ? ["\u001b[0;31m", "\u001b[0;32m", "\u001b[0;33m", "\u001b[0m"]
+    : ["", "", "", ""];
+  /** Bytes of a UTF-8 string, held as a latin1 string (the files are read as latin1). */
+  const u = (s: string): string => Buffer.from(s, "utf8").toString("latin1");
+  const argv = process.argv.slice(2);
+  const base = path.basename(process.argv[1] ?? "check-secrets-exposure.ts");
+  const SP = "[ \\t\\n\\v\\f\\r]";
+  const WS = "[ \\t\\n\\v\\f\\r]";
+  type Report = (file: string, line: number, pattern: string, risk: string) => void;
+  type Walk = (dir: string, acc: string[]) => void;
 
-  // Output is collected as latin1 text (file content is read as latin1) and written as bytes; a
-  // path is re-expressed as its UTF-8 bytes so it survives the round trip.
-  const out: string[] = [];
-  const err: string[] = [];
-  const bytes = (s: string): string => Buffer.from(s, "utf8").toString("latin1");
-  const flush = (): void => {
-    if (out.length > 0) process.stdout.write(Buffer.from(out.join(""), "latin1"));
-    if (err.length > 0) process.stderr.write(Buffer.from(err.join(""), "latin1"));
+  const github = {
+    arg: "workflow-file-or-directory",
+    buffered: false,
+    helpAnywhere: true,
+    self: () => u(process.argv[1]?.split(/[\\/]/).pop() ?? ""),
+    help: (self: string) =>
+      `Usage: ${self} <workflow-file-or-directory>\n\nFlags patterns that may leak secrets into logs or widen their blast radius.\nExit codes: 0 nothing found, 1 finding, 2 usage error.\n`,
+    empty: "no workflow files found under",
+    discover: (target: string, walk: Walk) => {
+      const files: string[] = [];
+      let start = `${target}/.github/workflows`;
+      if (!fs.statSync(start, { throwIfNoEntry: false })?.isDirectory()) start = target;
+      if (fs.lstatSync(start).isDirectory()) walk(start, files);
+      return files.sort((a, b) => Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8")));
+    },
+    read: (f: string) => fs.readFileSync(f).toString("latin1"),
+    fail: (e: unknown, _f: string, self: string) =>
+      `${self}: ${e instanceof Error ? u(e.message) : String(e)}\n`,
+    scan: (f: string, rows: string[], report: Report) => {
+      const echoRe = new RegExp(`echo${SP}[^]*\\$\\{\\{${SP}*secrets\\.`);
+      const envRe = new RegExp(`^env:${SP}*$`);
+      const nonIndentRe = new RegExp(`^[^ \\t\\n\\v\\f\\r#]`);
+      const secretRe = new RegExp(`\\$\\{\\{${SP}*secrets\\.`);
+      const setRe = new RegExp(`(^|[^A-Za-z0-9_])set${SP}+[-+]x(${SP}|$)`);
+      const jsonRe = new RegExp(`toJSON\\(${SP}*secrets${SP}*\\)`);
+      let inEnv = false;
+      let envLine = 0;
+      let sawEnv = false;
+      rows.forEach((line, i) => {
+        const lineno = i + 1;
+        const r = (pattern: string, risk: string, at = lineno): void =>
+          report(f, at, pattern, risk);
+        if (echoRe.test(line))
+          r(
+            "echo ${{ secrets.* }}",
+            "secret value is written to stdout and persisted in the run log",
+          );
+        if (envRe.test(line) && !sawEnv) {
+          inEnv = true;
+          envLine = lineno;
+          sawEnv = true;
+        } else if (inEnv && lineno > envLine) {
+          if (nonIndentRe.test(line)) inEnv = false;
+          else if (secretRe.test(line)) {
+            const why =
+              "secrets defined at workflow level are inherited by every job (broad blast radius)";
+            r("top-level env: references ${{ secrets.* }}", why, envLine);
+            inEnv = false;
+          }
+        }
+        if (setRe.test(line))
+          r(
+            "set -x / set +x",
+            "shell xtrace prints every expanded command, including secret env values",
+          );
+        if (jsonRe.test(line))
+          r(
+            "toJSON(secrets)",
+            "serializes the entire secrets context — any later echo, env, or file write leaks them all",
+          );
+      });
+    },
   };
 
-  const name = path.basename(process.argv[1] ?? "check-secrets-exposure.ts");
-  const args = process.argv.slice(2);
-  if (args.length === 1 && args[0] === "--help") {
-    process.stdout.write(
-      `Usage: node scripts/${name} <pipeline-file-or-directory>
+  const gitlab: typeof github = {
+    arg: "pipeline-file-or-directory",
+    buffered: true,
+    helpAnywhere: false,
+    self: () => base,
+    help: (name) => `Usage: node scripts/${name} <pipeline-file-or-directory>
        node scripts/${name} --help
 
 Flags patterns in a GitLab CI pipeline that may leak secrets into job logs: a credential-named
@@ -55,25 +107,137 @@ network. Directory mode scans <dir>/.gitlab-ci.yml plus the YAML under <dir>/.gi
 Exit codes (legacy): 0 clean or nothing to scan, 1 a finding or a missing target, 2 usage error.
 This script has no --json option and does not use exit 3.
 `,
-    );
-    return;
-  }
-  if (args.length !== 1) {
-    err.push(`Usage: ${name} <pipeline-file-or-directory>\n`);
-    process.exitCode = 2;
-    flush();
-    return;
-  }
-  const target = args[0] ?? "";
+    empty: "no GitLab pipeline file found under",
+    discover: (target, walk) => {
+      const files: string[] = [];
+      if (fs.statSync(`${target}/.gitlab-ci.yml`, { throwIfNoEntry: false })?.isFile())
+        files.push(`${target}/.gitlab-ci.yml`);
+      const sub = `${target}/.gitlab`;
+      if (
+        fs.statSync(sub, { throwIfNoEntry: false })?.isDirectory() &&
+        !fs.lstatSync(sub).isSymbolicLink()
+      ) {
+        const found: string[] = [];
+        walk(sub, found);
+        files.push(...found.sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b))));
+      }
+      return files;
+    },
+    read: (f) => fs.readFileSync(f, "latin1").replaceAll("\0", ""),
+    fail: (_e, f, name) => `${name}: ${u(f)}: cannot read the file\n`,
+    scan: (f, lines, report) => {
+      const KEY =
+        "(SECRET|TOKEN|PASSWORD|PASSWD|API_?KEY|ACCESS_?KEY|PRIVATE_?KEY|CREDENTIAL|AUTH|PASSPHRASE)";
+      const ASSIGN = new RegExp(
+        `^(export${WS}+)?[A-Za-z0-9_]*${KEY}[A-Za-z0-9_]*${WS}*[:=]${WS}*([^]+)$`,
+      );
+      const PEM_HEADER = new RegExp(`BEGIN${WS}[^]*PRIVATE${WS}KEY`);
+      const PRINTS = new RegExp(`(echo|printf)${WS}[^]*\\$\\{?[A-Za-z0-9_]*${KEY}`);
+      const XTRACE = new RegExp(`(^|[^A-Za-z0-9_])set${WS}+[-+]x(${WS}|$)`);
+      const DEBUG_TRACE = new RegExp(`CI_DEBUG_TRACE${WS}*:?=?${WS}*["']?(true|1)["']?`);
+      const TRIM = /^[ \t\n\v\f\r]+|[ \t\n\v\f\r]+$/g;
+      lines.forEach((line, i) => {
+        const r = (pattern: string, risk: string): void => report(f, i + 1, pattern, risk);
+        // One leading list dash is dropped so `- export TOKEN=...` reads as an assignment.
+        let probe = line.replace(/^[ \t\n\v\f\r]+/, "");
+        if (probe.startsWith("- ")) probe = probe.slice(2);
+        const assign = ASSIGN.exec(probe);
+        if (assign !== null) {
+          const val = ((assign[3] ?? "").split("#")[0] ?? "").replace(TRIM, "");
+          const bare = val.replace(/"$/, "").replace(/^"/, "").replace(/'$/, "").replace(/^'/, "");
+          if (bare !== "" && !["$", "!reference", "&", "*"].some((x) => bare.startsWith(x)))
+            r(
+              "hardcoded value for a credential-named key",
+              "a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable",
+            );
+        }
+        const shape =
+          /glpat-[A-Za-z0-9_-]{20}|(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36}|AKIA[0-9A-Z]{16}/;
+        if (shape.test(line) || PEM_HEADER.test(line))
+          r(
+            "literal access token / private key",
+            "a recognizable credential literal is committed in the pipeline — revoke it and store it as a masked + protected CI/CD variable",
+          );
+        if (PRINTS.test(line))
+          r(
+            "echo/printf of a credential-named variable",
+            "printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it",
+          );
+        if (XTRACE.test(line))
+          r(
+            "set -x / set +x",
+            "shell xtrace prints every expanded command, including secret variable values",
+          );
+        if (DEBUG_TRACE.test(line))
+          r(
+            "CI_DEBUG_TRACE enabled",
+            "debug trace logs every variable in the job, including masked and protected ones",
+          );
+      });
+    },
+  };
 
-  const kindOf = (p: string): "dir" | "file" | "none" => {
-    try {
-      const st = fs.statSync(p);
-      return st.isDirectory() ? "dir" : st.isFile() ? "file" : "none";
-    } catch {
-      return "none";
+  const PROFILES: Record<string, typeof github | undefined> = { github, gitlab };
+  const ENGINE_USAGE = `Usage: node scripts/${base} --platform <github|gitlab> <file-or-directory>
+       node scripts/${base} --help
+
+Flags patterns in a CI definition that may leak secrets into logs or widen their blast radius:
+literal credentials and token shapes, echoed secrets, set -x, CI_DEBUG_TRACE (gitlab), workflow-level
+env: secrets and toJSON(secrets) (github). A text scan: no live forge, no network.
+  --platform github   a workflow file, or a directory (its .github/workflows when it exists)
+  --platform gitlab   a pipeline file, or <dir>/.gitlab-ci.yml plus the YAML under <dir>/.gitlab/
+--platform is required in this copy; github-actions and gitlab-ci ship the same engine with their
+own platform as the default. Exit codes (legacy): 0 clean or nothing to scan, 1 a finding or a
+missing target, 2 usage error. This script has no --json option and does not use exit 3.
+`;
+
+  // Take --platform <value> / --platform=<value> out of the arguments; help wins over validation.
+  let value: string | undefined;
+  let given = 0;
+  const rest: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i] ?? "";
+    if (a === "--platform") {
+      given += 1;
+      value = argv[++i];
+    } else if (a.startsWith("--platform=")) {
+      given += 1;
+      value = a.slice("--platform=".length);
+    } else rest.push(a);
+  }
+  const dflt = PROFILES[defaultPlatform() ?? ""];
+  const usageError = (msg: string): void => {
+    process.stderr.write(`${base}: ${msg}\n`);
+    process.exitCode = 2;
+  };
+  const helpAnywhere = given > 0 || dflt?.helpAnywhere === true;
+  if (helpAnywhere ? argv.includes("--help") : argv.length === 1 && argv[0] === "--help") {
+    process.stdout.write(dflt === undefined ? ENGINE_USAGE : dflt.help(dflt.self()));
+    return;
+  }
+  if (given > 1) return usageError("--platform given more than once; use one of: github, gitlab");
+  if (given === 1 && (value === undefined || PROFILES[value] === undefined))
+    return usageError(`--platform takes one of: github, gitlab (got ${value ?? "nothing"})`);
+  const p = given === 1 ? PROFILES[value ?? ""] : dflt;
+  if (p === undefined)
+    return usageError("--platform <github|gitlab> is required; no platform is guessed");
+  const args = given === 1 ? rest : argv;
+
+  const self = p.self();
+  const queue = ["", ""];
+  const flush = (): void => {
+    for (const fd of [0, 1] as const) {
+      const text = queue[fd] ?? "";
+      if (text !== "")
+        (fd === 0 ? process.stdout : process.stderr).write(Buffer.from(text, "latin1"));
+      queue[fd] = "";
     }
   };
+  const put = (fd: 0 | 1) => (s: string) => {
+    queue[fd] += s;
+    if (!p.buffered) flush();
+  };
+  const [out, err] = [put(0), put(1)];
 
   // find -type f under a directory: lstat enumeration, symlinked files and directories skipped.
   const walk = (dir: string, acc: string[]): void => {
@@ -84,157 +248,51 @@ This script has no --json option and does not use exit 3.
       return;
     }
     for (const n of names) {
-      const p = `${dir}/${n}`;
-      const st = fs.lstatSync(p, { throwIfNoEntry: false });
+      const q = dir.endsWith("/") ? dir + n : `${dir}/${n}`;
+      const st = fs.lstatSync(q, { throwIfNoEntry: false });
       if (st === undefined) continue;
-      if (st.isDirectory()) walk(p, acc);
-      else if (st.isFile() && (n.endsWith(".yml") || n.endsWith(".yaml"))) acc.push(p);
+      if (st.isDirectory()) walk(q, acc);
+      else if (st.isFile() && /\.ya?ml$/.test(n)) acc.push(q);
     }
   };
 
-  const files: string[] = [];
-  const targetKind = kindOf(target);
-  if (targetKind === "dir") {
-    if (kindOf(`${target}/.gitlab-ci.yml`) === "file") files.push(`${target}/.gitlab-ci.yml`);
-    const sub = `${target}/.gitlab`;
-    if (kindOf(sub) === "dir" && !fs.lstatSync(sub).isSymbolicLink()) {
-      const found: string[] = [];
-      walk(sub, found);
-      found.sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
-      files.push(...found);
+  let current = "";
+  const run = (): number => {
+    if (args.length !== 1) {
+      err(`Usage: ${self} <${p.arg}>\n`);
+      return 2;
     }
-  } else if (targetKind === "file") {
-    files.push(target);
-  } else {
-    err.push(`${RED}[FAIL] not a file or directory: ${bytes(target)}${RESET}\n`);
-    process.exitCode = 1;
-    flush();
-    return;
-  }
-  if (files.length === 0) {
-    out.push(`no GitLab pipeline file found under: ${bytes(target)}\n`);
-    flush();
-    return;
-  }
-
-  const WS = "[ \\t\\n\\v\\f\\r]";
-  const KEY =
-    "(SECRET|TOKEN|PASSWORD|PASSWD|API_?KEY|ACCESS_?KEY|PRIVATE_?KEY|CREDENTIAL|AUTH|PASSPHRASE)";
-  const ASSIGN = new RegExp(
-    `^(export${WS}+)?[A-Za-z0-9_]*${KEY}[A-Za-z0-9_]*${WS}*[:=]${WS}*([^]+)$`,
-  );
-  const GITLAB_PAT = /glpat-[A-Za-z0-9_-]{20}/;
-  const GITHUB_TOKEN = /(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36}/;
-  const AWS_KEY_ID = /AKIA[0-9A-Z]{16}/;
-  const PEM_HEADER = new RegExp(`BEGIN${WS}[^]*PRIVATE${WS}KEY`);
-  const PRINTS = new RegExp(`(echo|printf)${WS}[^]*\\$\\{?[A-Za-z0-9_]*${KEY}`);
-  const XTRACE = new RegExp(`(^|[^A-Za-z0-9_])set${WS}+[-+]x(${WS}|$)`);
-  const DEBUG_TRACE = new RegExp(`CI_DEBUG_TRACE${WS}*:?=?${WS}*["']?(true|1)["']?`);
-  const LTRIM = /^[ \t\n\v\f\r]+/;
-  const TRIM = /^[ \t\n\v\f\r]+|[ \t\n\v\f\r]+$/g;
-
-  let violations = 0;
-  const report = (file: string, lineno: number, pattern: string, risk: string): void => {
-    out.push(`${RED}[RISK]${RESET} ${bytes(file)}:${String(lineno)}: ${pattern}\n`);
-    out.push(`       ${YELLOW}why:${RESET} ${bytes(risk)}\n`);
-    violations += 1;
+    const target = args[0] ?? "";
+    const st = fs.statSync(target, { throwIfNoEntry: false });
+    if (!st?.isDirectory() && !st?.isFile()) {
+      err(`${RED}[FAIL] not a file or directory: ${u(target)}${RESET}\n`);
+      return 1;
+    }
+    const files = st.isDirectory() ? p.discover(target, walk) : [target];
+    if (files.length === 0) {
+      out(`${p.empty}: ${u(target)}\n`);
+      return 0;
+    }
+    let violations = 0;
+    const report: Report = (file, lineno, pattern, risk) => {
+      out(`${RED}[RISK]${RESET} ${u(file)}:${String(lineno)}: ${pattern}\n`);
+      out(`       ${YELLOW}why:${RESET} ${u(risk)}\n`);
+      violations += 1;
+    };
+    for (const f of files) {
+      current = f;
+      const rows = p.read(f).split("\n");
+      if (rows[rows.length - 1] === "") rows.pop();
+      p.scan(f, rows, report);
+    }
+    if (violations === 0) out(`${GREEN}[OK]${RESET} no secret-exposure patterns detected\n`);
+    else err(`${RED}${String(violations)} risky pattern(s) found${RESET}\n`);
+    return violations === 0 ? 0 : 1;
   };
-
-  for (const f of files) {
-    let text: string;
-    try {
-      text = fs.readFileSync(f, "latin1").replaceAll("\0", "");
-    } catch {
-      err.push(`${name}: ${bytes(f)}: cannot read the file\n`);
-      process.exitCode = 1;
-      flush();
-      return;
-    }
-    const lines = text.split("\n");
-    if (lines[lines.length - 1] === "") lines.pop();
-    lines.forEach((line, i) => {
-      const lineno = i + 1;
-
-      // Leading whitespace, then ONE leading list dash, so `- export TOKEN=...` reads as a shell
-      // assignment too.
-      let probe = line.replace(LTRIM, "");
-      if (probe.startsWith("- ")) probe = probe.slice(2);
-
-      // 1. A credential-named key with an inline literal value.
-      const assign = ASSIGN.exec(probe);
-      if (assign !== null) {
-        let val = ((assign[3] ?? "").split("#")[0] ?? "").replace(TRIM, "");
-        if (val.endsWith('"')) val = val.slice(0, -1);
-        if (val.startsWith('"')) val = val.slice(1);
-        if (val.endsWith("'")) val = val.slice(0, -1);
-        if (val.startsWith("'")) val = val.slice(1);
-        const skipped =
-          val === "" ||
-          val.startsWith("$") ||
-          val.startsWith("!reference") ||
-          val.startsWith("&") ||
-          val.startsWith("*");
-        if (!skipped) {
-          report(
-            f,
-            lineno,
-            "hardcoded value for a credential-named key",
-            "a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable",
-          );
-        }
-      }
-
-      // 2. Well-known token shapes as literals.
-      if (
-        GITLAB_PAT.test(line) ||
-        GITHUB_TOKEN.test(line) ||
-        AWS_KEY_ID.test(line) ||
-        PEM_HEADER.test(line)
-      ) {
-        report(
-          f,
-          lineno,
-          "literal access token / private key",
-          "a recognizable credential literal is committed in the pipeline — revoke it and store it as a masked + protected CI/CD variable",
-        );
-      }
-
-      // 3. echo / printf of a credential-named variable.
-      if (PRINTS.test(line)) {
-        report(
-          f,
-          lineno,
-          "echo/printf of a credential-named variable",
-          "printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it",
-        );
-      }
-
-      // 4. set -x / set +x, shell xtrace.
-      if (XTRACE.test(line)) {
-        report(
-          f,
-          lineno,
-          "set -x / set +x",
-          "shell xtrace prints every expanded command, including secret variable values",
-        );
-      }
-
-      // 5. CI_DEBUG_TRACE enabled.
-      if (DEBUG_TRACE.test(line)) {
-        report(
-          f,
-          lineno,
-          "CI_DEBUG_TRACE enabled",
-          "debug trace logs every variable in the job, including masked and protected ones",
-        );
-      }
-    });
-  }
-
-  if (violations === 0) {
-    out.push(`${GREEN}[OK]${RESET} no secret-exposure patterns detected\n`);
-  } else {
-    err.push(`${RED}${String(violations)} risky pattern(s) found${RESET}\n`);
+  try {
+    process.exitCode = run();
+  } catch (e) {
+    err(p.fail(e, current, self));
     process.exitCode = 1;
   }
   flush();
