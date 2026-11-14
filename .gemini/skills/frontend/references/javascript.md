@@ -79,3 +79,9 @@ controller.abort();
 Pass an `AbortSignal` to `fetch` so in-flight requests cancel when the
 consumer unmounts. Unhandled aborts pollute INP and leak memory in
 long-lived SPAs.
+
+## Layout thrash
+
+Read layout properties (`offsetHeight`, `getBoundingClientRect`) in one pass
+and write styles in the next. Interleaving reads and writes forces a
+synchronous reflow on every iteration.
