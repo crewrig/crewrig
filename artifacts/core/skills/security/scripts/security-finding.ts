@@ -18,7 +18,7 @@ Threat:, Evidence: and Fix: (a value may continue on indented lines). It reads t
 files named by Where:; it writes nothing and makes no network call. It does not check that the
 Evidence occurs at the cited line.
 
-Rules (each finding carries the finding number and a message that states the fix):
+Rules (each message states the fix, and names the finding number where there is one):
   severity-missing, severity-unknown (BLOCKER, HIGH, MED, LOW or INFO), field-missing,
   placeholder (a value that is still template text in angle brackets), where-format
   (<file>:<line> or <file>:<first>-<last>), where-file-missing, where-line-out-of-range,
@@ -102,7 +102,8 @@ Exit codes: 0 no finding, 1 at least one error, 2 usage error, 3 unreadable repo
   let blank = true;
   let field: string | undefined;
   let noFindings = false;
-  const LOOKS = /^\s{0,3}(\d+\)\s|\*\*\d+\.?\*\*|[-*+]\s+\[[A-Z]{2,}\]|\[[A-Z]{2,}\])/;
+  const LOOKS =
+    /^(\s{0,3}(\d+\)\s|\*\*\d+\.?\*\*|[-*+]\s+\[[A-Z]{2,}\]|\[[A-Z]{2,}\])|\s*\d+\.\s*\[[A-Z]{2,}\])/;
   text.split(/\r?\n/).forEach((line, i) => {
     const last = blocks[blocks.length - 1];
     const fence = /^\s*```/.test(line);
@@ -148,7 +149,7 @@ Exit codes: 0 no finding, 1 at least one error, 2 usage error, 3 unreadable repo
     }
     if (LOOKS.test(line))
       return odd(
-        "a header looks malformed: write N. [SEV] <summary>, for example 1. [HIGH] Path traversal",
+        "this line looks like a finding header but is not one: write N. [SEV] <summary> from the first column (at most 3 spaces), with a space after the dot, or reword the line if it is prose",
       );
     const label = /^\s*(Where|Threat|Evidence|Fix):\s*(.*)$/.exec(line);
     if (label !== null) {
@@ -181,7 +182,7 @@ Exit codes: 0 no finding, 1 at least one error, 2 usage error, 3 unreadable repo
       bad(
         b,
         "numbering",
-        `finding ${b.n} stands at position ${i + 1}: number the findings 1 to N in order`,
+        `finding ${b.n} stands at position ${i + 1}: number the findings 1 to N in order (a numbered line with a bracketed severity is read as a finding, so do not restate findings in a summary list)`,
       );
     const sev = /^\[([^\]]*)\]\s*(.*)$/.exec(b.head);
     if (sev === null)
@@ -194,7 +195,10 @@ Exit codes: 0 no finding, 1 at least one error, 2 usage error, 3 unreadable repo
     if (summary.trim() === "") bad(b, "field-missing", "add a one-line summary after the severity");
     else if (holes.test(summary.trim()))
       bad(b, "placeholder", "replace the summary placeholder with a one-line summary");
-    for (const name of ["Where", "Threat", "Evidence", "Fix"]) {
+    const none =
+      "no Where:, Threat:, Evidence: or Fix: line under this header: add the four fields, or, if it is prose such as a summary list, do not start it with N. [SEV]";
+    if (b.fields.size === 0) bad(b, "field-missing", none);
+    for (const name of b.fields.size === 0 ? [] : ["Where", "Threat", "Evidence", "Fix"]) {
       const value = b.fields.get(name);
       if (value === undefined || value === "")
         bad(b, "field-missing", `add the ${name}: field with a value`);

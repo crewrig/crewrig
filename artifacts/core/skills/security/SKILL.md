@@ -64,7 +64,7 @@ Run `node scripts/<name>.ts` from the skill directory, or give the full path fro
 
 | When | Command | Exit codes |
 |---|---|---|
-| Before handing over a report | `node scripts/security-finding.ts [--root <checkout>] <report.md or ->` (add `--json` for a structured result) | `0` well formed. `1` a defect: each finding names the finding number and the fix, so correct the report and run again. `2` usage error. `3` the report or `--root` cannot be read. |
+| Before handing over a report | `node scripts/security-finding.ts [--root <checkout>] <report.md or ->` (add `--json` for a structured result) | `0` well formed. `1` a defect: each message names the fix, and the finding number where it has one, so correct the report and run again. `2` usage error. `3` the report or `--root` cannot be read. |
 | A change touches dependencies, or the user asks for an audit | `node scripts/dep-audit.ts [--root <dir>] [--ecosystem npm\|pip] [--fail-on low\|moderate\|high\|critical] [--timeout <seconds>]` | `0` audited, nothing at or above `--fail-on`. `1` a vulnerable dependency. `2` usage error. `3` not audited. |
 | Reviewing CI definitions for exposed secrets | `node scripts/check-secrets-exposure.ts --platform <github\|gitlab> <file-or-dir>` | `0` clean or nothing to scan. `1` a finding or a missing target. `2` usage error, including a missing `--platform`. |
 

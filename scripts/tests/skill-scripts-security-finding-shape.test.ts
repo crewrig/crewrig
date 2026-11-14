@@ -187,6 +187,26 @@ const TABLE: [string, string, string[]][] = [
     [],
   ],
   [
+    "a 4-space indented header after a finding",
+    `${one}    2. [LOW] Second\n`,
+    ["unrecognized-line"],
+  ],
+  [
+    "a header with no space after the dot, after a blank line",
+    `${one}\n2.[LOW] Second\n`,
+    ["unrecognized-line"],
+  ],
+  [
+    "a Summary list with 1) items",
+    `${one}\nSummary:\n1) first\n2) second\n`,
+    ["unrecognized-line"],
+  ],
+  [
+    "a Summary list restating a finding",
+    `${one}\nSummary:\n1. [LOW] first\n`,
+    ["numbering", "field-missing"],
+  ],
+  [
     "prose only, no finding and no No findings. line",
     "The code looks fine.\n",
     ["no-findings-block"],
@@ -207,5 +227,35 @@ describe("fail closed: every line is classified", () => {
     );
     assert.equal(f?.["line"], 6);
     assert.match(f?.message ?? "", /line 6 .*N\. \[SEV\]/);
+  });
+});
+
+describe("messages say what is wrong and what to write", () => {
+  const msg = (report: string, rule: string): string =>
+    envelope(check(report)).findings.find((f) => f.rule === rule)?.message ?? "";
+  test("a header-like line that is not accepted says how to write a header, or to reword prose", () => {
+    const m = msg(`${one}\nSummary:\n1) first\n`, "unrecognized-line");
+    assert.match(m, /looks like a finding header but is not one: write N\. \[SEV\] <summary>/);
+    assert.match(m, /reword the line if it is prose/);
+  });
+  test("a restated finding is blamed on the summary list, not on the numbering alone", () => {
+    const found = envelope(check(`${one}\nSummary:\n1. [LOW] first\n`)).findings;
+    assert.match(
+      found.find((f) => f.rule === "numbering")?.message ?? "",
+      /do not restate findings in a summary list/,
+    );
+    const missing = found.filter((f) => f.rule === "field-missing");
+    assert.equal(missing.length, 1, "one message for a header with no field lines, not four");
+    assert.match(
+      missing[0]?.message ?? "",
+      /no Where:, Threat:, Evidence: or Fix: line under this header/,
+    );
+  });
+  test("a report-level rule has no finding number, and --help says so", () => {
+    const f = envelope(check("The code looks fine.\n")).findings[0];
+    assert.equal(f?.rule, "no-findings-block");
+    assert.equal(f?.["finding"], undefined);
+    const help = run(skill, "security-finding", ["--help"], { cwd: root }).stdout;
+    assert.match(help, /names the finding number where there is one/);
   });
 });
