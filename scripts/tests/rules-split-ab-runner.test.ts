@@ -74,6 +74,19 @@ describe("rules-split-ab runner", () => {
     assert.ok(lines.every((l) => /scenario 2\b/.test(l)));
   });
 
+  test("--auth-home real prints the isolation flags on every scenario; an unknown mode is exit 2", () => {
+    const r = run(["--dry-run", ...rules, "--auth-home", "real"], { CI: undefined });
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /auth: real HOME kept/);
+    assert.doesNotMatch(r.stdout, /HOME=<scratch>\/home/);
+    const lines = r.stdout.split("\n").filter((l) => l.startsWith("scenario "));
+    assert.equal(lines.length, 16);
+    assert.ok(
+      lines.every((l) => l.includes("--setting-sources project,local") && l.includes("--settings")),
+    );
+    assert.equal(run(["--dry-run", ...rules, "--auth-home", "x"], { CI: undefined }).status, 2);
+  });
+
   test("--scenarios narrows the plan", () => {
     const r = run(["--dry-run", ...rules, "--scenarios", "1,8"], { CI: undefined });
     assert.match(r.stdout, /scenario 1\b/);

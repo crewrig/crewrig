@@ -10,7 +10,17 @@
 //
 // Options: --arm-a-ref <ref> (arm A: only 60-tools.md, via `git show <ref>:...`), --arm-a-rule and
 // --arm-b-rule <path> (repeatable; override the refs and the working tree), --worker-settings <path>
-// (passed as --settings in scenario 2 only), --scenarios 1,8, --runs 2, --model, --out, --keep-scratch.
+// (scratch-HOME mode: passed as --settings in scenario 2 only; real-HOME mode: merged into the
+// per-run settings file in scenario 2), --scenarios 1,8, --runs 2, --model, --out, --keep-scratch.
+//
+// Auth modes (--auth-home auto|scratch|real, default auto). `scratch` overrides HOME, so the arm's
+// rules are the only user rules, but the macOS keychain login is out of reach (needs
+// ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN). `real` keeps HOME and isolates instead:
+// --setting-sources project,local (no user settings, hooks or plugins), the arm's rules in the
+// scratch project's .claude/rules (loaded as project memory), and a generated --settings file whose
+// claudeMdExcludes holds <real home>/.claude/** (no personal CLAUDE.md, RTK.md or rule), merged with
+// the worker profile in scenario 2. `auto` tries scratch and falls back to real on an auth failure.
+// Nothing is written under the real ~/.claude by the runner.
 // Exit: 0 done, 1 regression, 2 usage, 3 refused under CI, 4 cost guard stop, 5 auth error, 6 blocked
 // (an invalid or truncated run prevents a conclusion).
 
@@ -57,6 +67,7 @@ function main(): void {
         resume: { type: "string" },
         "approved-cap": { type: "string" },
         "keep-scratch": { type: "boolean" },
+        "auth-home": { type: "string" },
       },
       strict: true,
     }));
@@ -64,6 +75,9 @@ function main(): void {
     usage((e as Error).message);
   }
 
+  const authHome = values["auth-home"] ?? "auto";
+  if (authHome !== "auto" && authHome !== "scratch" && authHome !== "real")
+    usage("--auth-home must be auto, scratch or real");
   const model = values.model ?? "claude-sonnet-5-5";
   const runs = Number(values.runs ?? "2");
   if (!Number.isInteger(runs) || runs < 1 || runs > 5)
@@ -90,7 +104,7 @@ function main(): void {
     if (!fs.existsSync(f)) usage(`rule file not found: ${f}`);
 
   if (values["dry-run"]) {
-    dryRun({ scenarios, model, runs, cap, aRef, explicitA, armB, workerSettings });
+    dryRun({ authHome, scenarios, model, runs, cap, aRef, explicitA, armB, workerSettings });
     return;
   }
 
@@ -134,6 +148,7 @@ function main(): void {
     outDir,
     skillDirs: [skillDir],
     keepScratch: values["keep-scratch"],
+    authHome,
   });
 
   const persist = (
@@ -174,6 +189,7 @@ function main(): void {
 }
 
 function dryRun(p: {
+  authHome: "auto" | "scratch" | "real";
   scenarios: typeof SCENARIOS;
   model: string;
   runs: number;
@@ -195,16 +211,26 @@ function dryRun(p: {
   out.push(
     `worst case: ${n} runs x ${PER_RUN} = ${(n * PER_RUN).toFixed(1)} USD before extensions; the guard stops the runner at the cap`,
   );
+  out.push(
+    p.authHome === "real"
+      ? "auth: real HOME kept (keychain); isolation by --setting-sources project,local, the arm rules in <scratch>/proj/.claude/rules and a per-run --settings file excluding <real home>/.claude/**"
+      : p.authHome === "scratch"
+        ? "auth: scratch HOME (no keychain login: needs ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN)"
+        : "auth: scratch HOME first; once its auth check fails the runner switches to the real-HOME mode (--auth-home real)",
+  );
   for (const s of p.scenarios) {
     for (const arm of ["A", "B"] as const) {
+      const real = p.authHome === "real";
       const scratch = {
         root: "<scratch>",
-        home: "<scratch>/home",
+        home: real ? "<real home>" : "<scratch>/home",
         proj: "<scratch>/proj",
         bin: "<scratch>/bin",
         mcpJson: "<scratch>/mcp.json",
         callLog: "<scratch>/calls.jsonl",
         ghLog: "<scratch>/gh.log",
+        authHome: p.authHome === "real" ? ("real" as const) : ("scratch" as const),
+        settingsFile: real ? "<scratch>/run.settings.json" : null,
       };
       const args = buildClaudeArgs({
         scratch,
@@ -214,7 +240,7 @@ function dryRun(p: {
         workerSettings: p.workerSettings,
       });
       out.push(
-        `scenario ${s.id} arm ${arm} (${s.role}): HOME=<scratch>/home claude ${args.map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ")}`,
+        `scenario ${s.id} arm ${arm} (${s.role}): ${p.authHome === "real" ? "" : "HOME=<scratch>/home "}claude ${args.map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ")}`,
       );
     }
   }

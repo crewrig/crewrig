@@ -18,7 +18,13 @@ export interface Scratch {
   mcpJson: string;
   callLog: string;
   ghLog: string;
+  /** `scratch`: HOME overridden. `real`: the real HOME is kept (keychain auth) and isolated by settings. */
+  authHome: AuthHome;
+  /** Per-run settings file (real mode only), passed with --settings. */
+  settingsFile: string | null;
 }
+
+export type AuthHome = "scratch" | "real";
 
 export interface ScratchOptions {
   /** Rule files installed as the only user rules, in `<home>/.claude/rules/<basename>`. */
@@ -26,6 +32,37 @@ export interface ScratchOptions {
   scenario: Scenario;
   /** Optional skill directory copied to `<home>/.claude/skills/<basename>` (e.g. harness-report). */
   skillDirs?: string[];
+  /** Default `scratch`. In `real` mode the rules and skills go to the scratch PROJECT's `.claude/`. */
+  authHome?: AuthHome;
+  /** Real home directory (real mode); default `os.homedir()`. Never written. */
+  realHome?: string;
+  /** Worker profile path, merged into the real-mode settings for a worker scenario. */
+  workerSettings?: string;
+}
+
+/**
+ * Real-mode settings: `claudeMdExcludes` gains the absolute glob `<realHome>/.claude/**` (the
+ * matchesGlob semantics of the worker profile patterns, here anchored on an absolute path), so no personal CLAUDE.md, RTK.md or rule loads. For a worker the profile's own
+ * `claudeMdExcludes` (kept, so its 60-memory.md pattern still matches the project rule file) and
+ * `permissions.deny` are merged in, and every other key of the profile is kept.
+ */
+export function buildRealSettings(
+  realHome: string,
+  worker: Record<string, unknown> | null,
+): Record<string, unknown> {
+  const base = worker ?? {};
+  const excludes = Array.isArray(base.claudeMdExcludes) ? (base.claudeMdExcludes as string[]) : [];
+  const perms =
+    typeof base.permissions === "object" && base.permissions !== null
+      ? (base.permissions as Record<string, unknown>)
+      : {};
+  const deny = Array.isArray(perms.deny) ? (perms.deny as string[]) : [];
+  const extra = `${realHome.replace(/\/+$/, "")}/.claude/**`;
+  return {
+    ...base,
+    claudeMdExcludes: [...excludes.filter((e) => e !== extra), extra],
+    permissions: { ...perms, deny: [...deny] },
+  };
 }
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -76,15 +113,30 @@ export function createScratch(opts: ScratchOptions): Scratch {
   const ghLog = path.join(root, "gh.log");
   const mcpJson = path.join(root, "mcp.json");
 
-  fs.mkdirSync(path.join(home, ".claude", "rules"), { recursive: true });
-  fs.mkdirSync(path.join(home, ".crewrig", "system-context"), { recursive: true });
+  const authHome: AuthHome = opts.authHome ?? "scratch";
+  const realHome = opts.realHome ?? os.homedir();
+  // scratch mode: user rules and skills live in the scratch HOME; real mode: in the scratch project
+  const claudeDir =
+    authHome === "scratch" ? path.join(home, ".claude") : path.join(proj, ".claude");
+  fs.mkdirSync(path.join(claudeDir, "rules"), { recursive: true });
+  if (authHome === "scratch")
+    fs.mkdirSync(path.join(home, ".crewrig", "system-context"), { recursive: true });
   fs.mkdirSync(bin, { recursive: true });
   fs.mkdirSync(path.join(proj, "src"), { recursive: true });
   for (const f of opts.ruleFiles)
-    fs.copyFileSync(f, path.join(home, ".claude", "rules", path.basename(f)));
+    fs.copyFileSync(f, path.join(claudeDir, "rules", path.basename(f)));
   for (const d of opts.skillDirs ?? []) {
     if (fs.existsSync(d))
-      fs.cpSync(d, path.join(home, ".claude", "skills", path.basename(d)), { recursive: true });
+      fs.cpSync(d, path.join(claudeDir, "skills", path.basename(d)), { recursive: true });
+  }
+  let settingsFile: string | null = null;
+  if (authHome === "real") {
+    const worker =
+      opts.scenario.role === "worker" && opts.workerSettings
+        ? (JSON.parse(fs.readFileSync(opts.workerSettings, "utf8")) as Record<string, unknown>)
+        : null;
+    settingsFile = path.join(root, "run.settings.json");
+    fs.writeFileSync(settingsFile, JSON.stringify(buildRealSettings(realHome, worker), null, 2));
   }
 
   fs.writeFileSync(path.join(bin, "gh"), GH_STUB, { mode: 0o755 });
@@ -130,7 +182,17 @@ export function createScratch(opts: ScratchOptions): Scratch {
       2,
     ),
   );
-  return { root, home, proj, bin, mcpJson, callLog, ghLog };
+  return {
+    root,
+    home: authHome === "scratch" ? home : realHome,
+    proj,
+    bin,
+    mcpJson,
+    callLog,
+    ghLog,
+    authHome,
+    settingsFile,
+  };
 }
 
 export function removeScratch(s: Scratch): void {
@@ -152,11 +214,16 @@ export function buildEnv(
   base: Record<string, string | undefined>,
 ): Record<string, string> {
   const env: Record<string, string> = {
-    HOME: s.home,
+    // real mode keeps the real HOME (keychain auth): HOME is left to the parent environment
+    ...(s.authHome === "scratch" ? { HOME: s.home } : base.HOME ? { HOME: base.HOME } : {}),
     PATH: `${s.bin}${path.delimiter}${base.PATH ?? ""}`,
     AB_CALL_LOG: s.callLog,
     AB_GH_LOG: s.ghLog,
   };
+  // the keychain lookup of the real-HOME mode needs the login identity
+  if (s.authHome === "real")
+    for (const k of ["USER", "LOGNAME", "SHELL", "CLAUDE_CONFIG_DIR"])
+      if (base[k] !== undefined) env[k] = base[k] as string;
   for (const k of PASSTHROUGH) if (base[k] !== undefined) env[k] = base[k] as string;
   return env;
 }
@@ -211,6 +278,12 @@ export function buildClaudeArgs(i: ClaudeArgsInput): string[] {
     "--disallowed-tools",
     DENIED.join(","),
   ];
-  if (i.scenario.role === "worker" && i.workerSettings) a.push("--settings", i.workerSettings);
+  if (i.scratch.authHome === "real") {
+    // no user settings, hooks or plugins; the generated file carries the excludes (and the worker profile)
+    a.push("--setting-sources", "project,local");
+    if (i.scratch.settingsFile) a.push("--settings", i.scratch.settingsFile);
+  } else if (i.scenario.role === "worker" && i.workerSettings) {
+    a.push("--settings", i.workerSettings);
+  }
   return a;
 }

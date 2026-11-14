@@ -10,6 +10,7 @@ import { describe, test } from "node:test";
 import {
   buildClaudeArgs,
   buildEnv,
+  buildRealSettings,
   createScratch,
   removeScratch,
 } from "../lib/rules-split-ab/scratch.ts";
@@ -178,5 +179,147 @@ describe("buildEnv and buildClaudeArgs", () => {
     assert.match(allowed, /Bash\(gh:\*\)/);
     assert.match(denied, /Agent/);
     assert.match(denied, /WebFetch/);
+  });
+});
+
+describe("real-HOME mode (keychain auth)", () => {
+  const fakeHome = path.join(tmp, "realhome");
+  fs.mkdirSync(path.join(fakeHome, ".claude", "rules"), { recursive: true });
+  fs.writeFileSync(path.join(fakeHome, ".claude", "rules", "00-soul.md"), "soul\n");
+  const workerFile = path.join(tmp, "worker.settings.json");
+  fs.writeFileSync(
+    workerFile,
+    JSON.stringify({
+      permissions: { deny: ["Artifact", "Agent(designer)"] },
+      claudeMdExcludes: ["**/rules/00-soul.md", "**/rules/60-memory.md"],
+      disableBundledSkills: true,
+    }),
+  );
+  const mk = (n: number, files = [toolsFile, memoryFile]) =>
+    createScratch({
+      ruleFiles: files,
+      scenario: sc(n),
+      authHome: "real",
+      realHome: fakeHome,
+      workerSettings: workerFile,
+    });
+  const readSettings = (f: string | null) =>
+    JSON.parse(fs.readFileSync(f as string, "utf8")) as {
+      claudeMdExcludes: string[];
+      permissions: { deny: string[] };
+      disableBundledSkills?: boolean;
+    };
+
+  test("the arm's rules go to the scratch project's .claude/rules, not to any home", () => {
+    const s = mk(1);
+    try {
+      assert.deepEqual(fs.readdirSync(path.join(s.proj, ".claude", "rules")).sort(), [
+        "60-memory.md",
+        "60-tools.md",
+      ]);
+      assert.equal(fs.existsSync(path.join(s.root, "home")), false);
+      assert.equal(s.authHome, "real");
+    } finally {
+      removeScratch(s);
+    }
+  });
+
+  test("the real home is never written", () => {
+    const before = fs.readdirSync(path.join(fakeHome, ".claude"), { recursive: true }).sort();
+    const s = mk(2);
+    removeScratch(s);
+    assert.deepEqual(
+      fs.readdirSync(path.join(fakeHome, ".claude"), { recursive: true }).sort(),
+      before,
+    );
+  });
+
+  test("orchestrator settings exclude everything under <real home>/.claude and nothing else", () => {
+    const s = mk(1);
+    try {
+      const cfg = readSettings(s.settingsFile);
+      assert.deepEqual(cfg.claudeMdExcludes, [`${fakeHome}/.claude/**`]);
+      assert.deepEqual(cfg.permissions.deny, []);
+      assert.ok(s.settingsFile?.startsWith(s.root + path.sep));
+    } finally {
+      removeScratch(s);
+    }
+  });
+
+  test("worker settings merge the profile's excludes and denies with the home pattern", () => {
+    const s = mk(2);
+    try {
+      const cfg = readSettings(s.settingsFile);
+      assert.deepEqual(cfg.claudeMdExcludes, [
+        "**/rules/00-soul.md",
+        "**/rules/60-memory.md",
+        `${fakeHome}/.claude/**`,
+      ]);
+      assert.deepEqual(cfg.permissions.deny, ["Artifact", "Agent(designer)"]);
+      assert.equal(cfg.disableBundledSkills, true);
+    } finally {
+      removeScratch(s);
+    }
+  });
+
+  test("buildRealSettings tolerates a profile without excludes and a trailing slash on the home", () => {
+    assert.deepEqual(buildRealSettings("/h/", {}).claudeMdExcludes, ["/h/.claude/**"]);
+    assert.deepEqual(buildRealSettings("/h", null).claudeMdExcludes, ["/h/.claude/**"]);
+  });
+
+  test("the worker profile's 60-memory.md exclude is kept, and the project rule file it targets exists", () => {
+    // Claude's own matcher (not node's matchesGlob, which treats a leading slash differently) applies it:
+    // verified by hand with a worker run in arm B, where 60-memory.md is absent from the loaded files.
+    const s = mk(2);
+    try {
+      const cfg = readSettings(s.settingsFile);
+      assert.ok(cfg.claudeMdExcludes.includes("**/rules/60-memory.md"));
+      assert.equal(
+        path.basename(path.join(s.proj, ".claude", "rules", "60-memory.md")),
+        "60-memory.md",
+      );
+      assert.ok(fs.existsSync(path.join(s.proj, ".claude", "rules", "60-memory.md")));
+    } finally {
+      removeScratch(s);
+    }
+  });
+
+  test("the home pattern matches CLAUDE.md, RTK.md and rules under the real home only", () => {
+    const g = `${fakeHome}/.claude/**`;
+    for (const f of ["CLAUDE.md", "RTK.md", "rules/00-soul.md", "rules/10-level.md"])
+      assert.ok(path.matchesGlob(`${fakeHome}/.claude/${f}`, g), f);
+    assert.ok(!path.matchesGlob("/tmp/x/proj/.claude/rules/60-tools.md", g));
+  });
+
+  test("env keeps the real HOME and does not point HOME at a scratch directory", () => {
+    const s = mk(1);
+    try {
+      const e = buildEnv(s, { PATH: "/usr/bin", HOME: "/Users/real", USER: "u" });
+      assert.equal(e.HOME, "/Users/real");
+      assert.equal(e.USER, "u");
+      assert.equal(e.AB_CALL_LOG, s.callLog);
+    } finally {
+      removeScratch(s);
+    }
+  });
+
+  test("args isolate with --setting-sources project,local and --settings for every scenario", () => {
+    for (const n of [1, 2, 4]) {
+      const s = mk(n);
+      try {
+        const a = buildClaudeArgs({
+          scratch: s,
+          scenario: sc(n),
+          model: "claude-sonnet-5-5",
+          maxBudgetUsd: 0.6,
+          workerSettings: workerFile,
+        });
+        assert.equal(a[a.indexOf("--setting-sources") + 1], "project,local");
+        assert.equal(a[a.indexOf("--settings") + 1], s.settingsFile);
+        assert.equal(a.filter((x) => x === "--settings").length, 1);
+      } finally {
+        removeScratch(s);
+      }
+    }
   });
 });
