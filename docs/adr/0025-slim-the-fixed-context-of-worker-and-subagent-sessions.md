@@ -42,7 +42,8 @@ Savings are deltas against the baseline of the same session kind, from the probe
 
 ### O1. Subagents drop CLAUDE.md memory (`omitClaudeMd: true`)
 
-- **Mechanism.** The agent build emits `omitClaudeMd: true` in each agent's frontmatter; the agent body carries the conventions a subagent needs.
+- **Mechanism.** The agent build emits `omitClaudeMd: true` in each agent's frontmatter and **inlines the conventions block into every emitted agent body**. The block has **one source file** in the repository, `artifacts/core/fragments/subagent-conventions.md`; nobody edits the block in an agent by hand, and an agent source carries no copy of it.
+- **Why that path.** `artifacts/core/system-context/` was considered and rejected: it is installed verbatim to every user home and mirrored into MemPalace drawers as a read-on-demand reference store (`docs/layers.md`), so a build input placed there would ship an unused file to every home and invite the run-time-read misuse rejected below. A `_shared/` directory under `artifacts/core/agents/` would be enumerated by the agent build as an agent without an `AGENT.md`. A new `artifacts/core/fragments/` zone collides with neither; it needs one line in `docs/layers.md` and one in `.crewrig/core-paths.txt`, owned by F2.
 - **Saving.** Subagent 59,276 → 36,108 (**−23.2k**, P1, `--agents` JSON). Emitted as file frontmatter in `.claude/agents/<name>.md`, the mechanism works too: two agents with identical bodies, one with the key, measured 30,396 and 14,479 (**−15.9k**, P11). P11 ran in a scratch project that loads no `AGENTS.md`, so its delta is user memory only (`60-tools`, personal rules, `RTK.md`); the extra saving for the project `AGENTS.md` family is the P1 delta minus P11, about **−7.3k**, consistent with its 6.9k estimate. The remaining 36k is harness tools, skill listing and the system prompt, so O1 alone does not reach 30k in a vanilla session (P10: 36,499).
 - **Cost.** A subagent no longer sees `AGENTS.md`, `AGENTS.org.md` or any rule file. Rules it still needs must live in its body. The set, deliberately short (about 1.2k characters, probed in P9 and P10):
   1. **Pre-Edit Guard:** edit only with an issue, a feature branch named `<prefix>/<NNNN>-<slug>` (never `main`) and the ticket worktree `.worktrees/<ticket-id>/` as working directory. The tool-boundary worktree guard (cli-matrix row 29) backs the worktree clause mechanically.
@@ -129,7 +130,7 @@ No target is out of reach, so none is revised. Three reservations:
 Adopt, in this order, as follow-up issues (*Follow-up work*):
 
 1. **A CrewRig worker settings profile for Claude Code (O2: W1, W2, W3, W5 and a strict MCP flag set), shipped as a committed file with a documented launch recipe.** The measured 36.8k worker saving (P9) includes adopter-local parts (user skills, plugins, synced skills, connectors) that CrewRig cannot commit; the committed generic profile is *estimated* at about 38k and must be re-measured by F1 before the target is claimed. The −27.0k subagent saving (P9) depends on the same profile. It touches no file a user owns. Applying it is the launcher's job; the open question is how Orca passes it.
-2. **`omitClaudeMd: true` on every CrewRig agent, with the six-rule conventions block in each body (O1).** It carries the subagent from 32.3k to 15.3k inside a worker and removes the dependency on `AGENTS.md` for subagents, matching Gemini's behaviour.
+2. **`omitClaudeMd: true` on every CrewRig agent, with the six-rule conventions block inlined at build time into each body from one source file, `artifacts/core/fragments/subagent-conventions.md` (O1).** It carries the subagent from 32.3k to 15.3k inside a worker and removes the dependency on `AGENTS.md` for subagents, matching Gemini's behaviour.
 3. **Split `60-tools.md` by audience (O4b), after the paired measurement of O4.** Worker about 31.5k afterwards. O4a alone (−1.25k) is not worth a spec.
 
 Not adopted now: O3 beyond a documentation note (no honest glob for the heavy rules, user scope unverified), `skillListingBudgetFraction` (names-only degrades skill routing), the tier move of the web agents (an owner call on distribution, listed as F5), and a `tools` allowlist for editing agents (F4, gated on a spec delta).
@@ -138,7 +139,7 @@ Not adopted now: O3 beyond a documentation note (no honest glob for the heavy ru
 
 - Positive: both targets are met on measured numbers on this user home, and the committed generic profile is estimated to meet the worker target with about 2k of margin (F1 re-measures it); the fixed context of a worker falls from 73k to about 36k, and a subagent from 59k to about 15k, per API call.
 - Positive: the profile is a file plus a recipe, reversible by not passing the flag.
-- Negative: two profiles to maintain (worker, coordinator/owner), and a conventions block duplicated in 22 agent bodies; F2 must generate it from one source to avoid drift.
+- Negative: two profiles to maintain (worker, coordinator/owner), and the conventions block, which exists once in source and is duplicated only in generated output; drift is prevented by the build, which is the only writer, and by a check that every emitted body carries the current block.
 - Negative: a subagent no longer inherits `AGENTS.md`; a rule outside the six is invisible to it.
 - Negative: the 3.7k margin on the worker target is thin if the harness grows its tool definitions; F7 tracks it.
 - Neutral: the owner's interactive sessions are unchanged.
@@ -164,6 +165,7 @@ The asymmetry this ADR creates is deliberate and bounded: O2 is a Claude Code la
 - **`CLAUDE_CODE_DISABLE_CLAUDE_MDS` for subagents.** Documented, not probed here: it drops `AGENTS.md` for the whole session, so the worker loses the rules O1 deliberately keeps.
 - **Cut `AGENTS.md` in place.** Saves up to 6.9k but the orchestrator reads it for the lifecycle; the size is a symptom of one file serving three audiences, which O1 and O4b address by audience instead.
 - **`skillListingBudgetFraction` as the listing fix.** The only value probed (0.002) removes every description, so skills stop self-selecting. The listing is cut by hiding unrelated skills instead.
+- **Agents read the shared file at run time (a one-line pointer in each body).** The block is about 300 tokens, while a run-time `Read` costs one extra tool round trip that re-reads the subagent's whole context (about 15k tokens), so the pointer is more expensive than the text it avoids. A "read X first" instruction is also followed less reliably than inline text, and the Pre-Edit Guard must hold before the first edit. The mixed variant (critical rules inline, the rest read on demand) is rejected for the same two reasons at a smaller scale: the on-demand part still pays the round trip and may be skipped.
 - **Keep the harness tools and raise the target.** Rejected: 16.1k of the 73k is three tool definitions no CrewRig worker calls.
 
 ## Follow-up work
@@ -173,7 +175,7 @@ Each item is one issue. "Spec" follows ADR-0024: yes when the change alters a de
 | # | Title | Tier | Spec |
 |---|---|---|---|
 | F1 | ⚡️ Ship a Claude Code worker settings profile and launch recipe (O2) | small | yes (new deployed surface, cli-matrix row) |
-| F2 | ⚡️ Emit `omitClaudeMd` and a generated conventions block from the agent build (O1) | standard | yes (frontmatter and emitter format) |
+| F2 | ⚡️ Emit `omitClaudeMd` and inline the single-source conventions block (`artifacts/core/fragments/subagent-conventions.md`) from the agent build, with a check that every emitted agent body carries the current block byte for byte, and the `docs/layers.md` and core-paths entries for the new zone (O1) | standard | yes (frontmatter and emitter format) |
 | F3 | ⚡️ Split `60-tools.md` by audience, with the paired behavioural measurement (O4b, amends 0270 delta-01 2a) | standard | yes |
 | F4 | ⚡️ Add `skill` and `message` tool classes so editing agents can take an allowlist (amends 0291 R17) | small | yes (delta) |
 | F5 | 📝 Decide: move the web/SEO agents and four web skills to the `library` tier | small | no (owner decision, then F-issue) |
