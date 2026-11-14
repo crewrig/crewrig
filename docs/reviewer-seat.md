@@ -351,7 +351,7 @@ A seated pass is a subagent: its brief is supplied by another agent. It runs
 no step of the memory sweep and makes no memory call before reading its
 dossier from the forge, per [`AGENTS.md`](../AGENTS.md) → *Session Bootstrap*
 and
-[`artifacts/core/rules/60-tools.md`](../artifacts/core/rules/60-tools.md)
+[`artifacts/core/rules/60-memory.md`](../artifacts/core/rules/60-memory.md)
 → *Memory Activation Protocol*. Its brief carries neither the `handoff_key`
 nor the handoff drawer id, and a later audit records no finding for that
 absence.

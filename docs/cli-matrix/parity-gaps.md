@@ -123,7 +123,7 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   library and the `mempalace` CLI (`wake-up`) but is **absent from the agent-facing MCP tool surface** on the installed **3.6.0**
   (pinned `>=3.6.0,<3.7`; re-verified 2026-07-20 against the live 36-tool surface, issue #566). Unlike the gaps above,
   this is **not** a cross-CLI asymmetry: all four CLIs share the one MCP surface (row 7d), so the gap is uniform across
-  them. The **MCP-only access** guard in `artifacts/core/rules/60-tools.md` forbids reaching it ad-hoc, and the
+  them. The **MCP-only access** guard in `artifacts/core/rules/60-memory.md` forbids reaching it ad-hoc, and the
   deterministic session-start sweep (that file's *Wake-up budget* stub; full figures in
   `docs/mempalace-wakeup-budget.md`) is its bounded substitute. Candidate follow-up: an upstream request to expose the
   wake-up through MCP (consent-gated, out of scope for spec 0069).

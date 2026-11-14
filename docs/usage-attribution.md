@@ -301,7 +301,7 @@ A task or asset with zero `uncaptured` records reports that count as zero, never
 
 When the framework's own session-start protocol establishes or resumes a task-handoff drawer, it records the drawer's own task-handoff key with a declaration record named `protocol` (R3). This write is made by the orchestrator, before any task work in the session begins, establishing channel 4 as a fallback for records captured later in that session.
 
-The session-start protocol documentation — `artifacts/core/rules/60-tools.md` → *Memory Activation Protocol* → *Session Start — Deterministic orchestrator-only sweep* and `~/.crewrig/system-context/long-running-task-convention.md` — now names requirement 3's recording step explicitly (R4).
+The session-start protocol documentation — `artifacts/core/rules/60-memory.md` → *Memory Activation Protocol* → *Session Start — Deterministic orchestrator-only sweep* and `~/.crewrig/system-context/long-running-task-convention.md` — now names requirement 3's recording step explicitly (R4).
 
 ## Prune
 

@@ -31,7 +31,7 @@
       "crewrig/e2e-mempalace:latest",
       "/home/agent/.local/pipx/venvs/mempalace/bin/python",
       "-c",
-      "\nimport os, sys\n# mempalace.mcp_server swaps sys.stdout at import time to protect its\n# JSON-RPC channel; dup fd 1 BEFORE importing so we can still write\n# RESULT: to the real stdout (see ~/.claude/rules/60-tools.md → \"Stdout hazard\").\n_REAL_STDOUT = os.fdopen(os.dup(1), \"w\", encoding=\"utf-8\", closefd=False)\nos.environ[\"MEMPALACE_PALACE_DIR\"] = \"/home/agent/.mempalace/palace\"\nfrom mempalace.mcp_server import tool_add_drawer\ncontent = sys.stdin.read()\nresult = tool_add_drawer(\n    wing=\"e2e-cross-tool\",\n    room=\"task-handoff\",\n    content=content,\n    added_by=os.environ.get(\"WRITER_AGENT_ID\", \"e2e-test\"),\n)\nprint(\"RESULT:\", result, file=_REAL_STDOUT, flush=True)\nsys.exit(0 if result.get(\"success\") else 1)\n"
+      "\nimport os, sys\n# mempalace.mcp_server swaps sys.stdout at import time to protect its\n# JSON-RPC channel; dup fd 1 BEFORE importing so we can still write\n# RESULT: to the real stdout (see ~/.claude/rules/60-memory.md → \"Stdout hazard\").\n_REAL_STDOUT = os.fdopen(os.dup(1), \"w\", encoding=\"utf-8\", closefd=False)\nos.environ[\"MEMPALACE_PALACE_DIR\"] = \"/home/agent/.mempalace/palace\"\nfrom mempalace.mcp_server import tool_add_drawer\ncontent = sys.stdin.read()\nresult = tool_add_drawer(\n    wing=\"e2e-cross-tool\",\n    room=\"task-handoff\",\n    content=content,\n    added_by=os.environ.get(\"WRITER_AGENT_ID\", \"e2e-test\"),\n)\nprint(\"RESULT:\", result, file=_REAL_STDOUT, flush=True)\nsys.exit(0 if result.get(\"success\") else 1)\n"
     ],
     [
       "run",

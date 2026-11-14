@@ -7,8 +7,8 @@
 # IMPORTANT: This file covers ORGANIZATION-SPECIFIC tool preferences only.
 # Framework-critical instructions (three-tier memory architecture, MemPalace
 # protocol, harness engineering loop, Sequential Thinking, Obsidian access
-# model) are shipped by the upstream CrewRig framework in the core rules file
-# deployed at priority 60 (~/.claude/rules/60-tools.md). This file is
+# model) are shipped by the upstream CrewRig framework in the core rules files
+# deployed at priority 60 (~/.claude/rules/60-memory.md and 60-tools.md). This file is
 # deployed at priority 65 and layers organization-specific settings on top.
 #
 # Do NOT duplicate framework content here. Use this file for:
