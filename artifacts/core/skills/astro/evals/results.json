@@ -1,23 +1,26 @@
 {
   "skill_name": "astro",
-  "content_hash": "sha256:0ddbefc4d4d35ff065c6ef8c87da6f72889f37b75596014d5c13c1b6c0ccbc0b",
+  "content_hash": "sha256:1d4656834ce1cbc7049d53164d2a23de3b8d8861c3f587db3e5c8cfb325e3c9b",
   "runner_version": "3.0.0",
   "executor_model": "claude-sonnet-5-5",
   "judge_model": "claude-sonnet-5-5",
   "effort": "medium",
-  "date": "2026-11-14T12:50:17.407Z",
+  "date": "2026-11-14T13:24:36.039Z",
   "status": "fail",
-  "eval_pass_rate": 0.8333333333333334,
+  "eval_pass_rate": 1,
   "probe_pass_rate": 1,
   "base_eval_pass_rate": 0.6666666666666666,
   "threshold": 0.8,
   "tolerance": 0.16666666666666666,
-  "evals_passed": 5,
+  "evals_passed": 6,
   "evals_total": 6,
   "probes_passed": 11,
   "probes_total": 11,
   "executor_runs": 17,
   "judge_calls": 6,
-  "cost_usd": 0.604921,
-  "skill_loaded": 5
+  "cost_usd": 0.583421,
+  "skill_loaded": 5,
+  "unloaded_evals": [
+    3
+  ]
 }
