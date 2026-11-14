@@ -352,8 +352,6 @@ Every setting is one declared constant in `scripts/lib/skill-evals/settings.ts`,
 | `EXECUTOR_MODEL` | `claude-sonnet-5-5` | The executor model, a Sonnet-class model; a run never silently uses another one. |
 | `JUDGE_MODEL` | `claude-sonnet-5-5` | The judge model used by the runner, the same Sonnet-class model. |
 
-The regression tolerance (`TOLERANCE`) and the pass threshold (`PASS_THRESHOLD`) of earlier revisions are removed; the plan and the test above replace them.
-
 ## Tests
 
 The runner's own suites run in mock mode with no key and no network (`task test-skill-evals`, and `task ci:skill-evals-tests` in CI): a stub `claude` that fails any model call, a throwing `fetch`, temporary git repositories for hashing and selection. The sampling plan is tested as a pure module, `plan.ts`, with the boundaries, the Fisher figures and the exact comparisons above.
