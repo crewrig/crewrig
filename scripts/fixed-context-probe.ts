@@ -70,8 +70,14 @@ if (typeof opts.transcript === "string") {
   const refusal = refuseInCi(process.env);
   if (refusal !== null) fail(refusal);
   const cmd = [
-    "-p", PROMPT, "--model", String(opts.model ?? "claude-sonnet-5-5"),
-    "--output-format", "json", "--allowedTools", "Agent",
+    "-p",
+    PROMPT,
+    "--model",
+    String(opts.model ?? "claude-sonnet-5-5"),
+    "--output-format",
+    "json",
+    "--allowedTools",
+    "Agent",
   ];
   if (typeof opts.settings === "string") cmd.push("--settings", opts.settings);
   const run = spawnSync("claude", cmd, {
@@ -82,7 +88,7 @@ if (typeof opts.transcript === "string") {
   if (run.status !== 0) fail(`claude exited ${run.status}: ${(run.stderr ?? "").slice(-300)}`);
   let result: { session_id?: string; total_cost_usd?: number };
   try {
-    result = JSON.parse(run.stdout);
+    result = JSON.parse(run.stdout) as typeof result;
   } catch {
     fail("claude did not print JSON");
   }

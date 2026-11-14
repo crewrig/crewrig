@@ -42,7 +42,7 @@ export function firstCallTokens(jsonl: string): number | null {
     if (line.trim() === "") continue;
     let entry: { type?: string; message?: { usage?: Usage } };
     try {
-      entry = JSON.parse(line);
+      entry = JSON.parse(line) as typeof entry;
     } catch {
       continue;
     }
@@ -89,7 +89,9 @@ export function measureSession(transcript: string): SessionMeasure[] {
 
 function agentType(transcript: string): string {
   try {
-    const meta = JSON.parse(fs.readFileSync(transcript.replace(/\.jsonl$/, ".meta.json"), "utf8"));
+    const meta = JSON.parse(
+      fs.readFileSync(transcript.replace(/\.jsonl$/, ".meta.json"), "utf8"),
+    ) as { agentType?: unknown };
     if (typeof meta.agentType === "string" && meta.agentType !== "") return meta.agentType;
   } catch {
     // no sidecar: fall through
@@ -99,13 +101,14 @@ function agentType(transcript: string): string {
 
 /** Parse the committed threshold file; throws on a missing or non-positive limit. */
 export function parseThreshold(text: string): Threshold {
-  const raw = JSON.parse(text);
+  const raw = JSON.parse(text) as Record<string, unknown>;
   for (const key of ["worker", "subagent"] as const) {
-    if (!Number.isInteger(raw[key]) || raw[key] <= 0) {
+    const v = raw[key];
+    if (typeof v !== "number" || !Number.isInteger(v) || v <= 0) {
       throw new Error(`threshold "${key}" must be a positive integer`);
     }
   }
-  return { worker: raw.worker, subagent: raw.subagent };
+  return { worker: raw.worker as number, subagent: raw.subagent as number };
 }
 
 /** Every measure strictly above its limit; equal to the limit passes. */

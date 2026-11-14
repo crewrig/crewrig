@@ -28,6 +28,7 @@ task: Available tasks for this project:
 * default:                                   
 * erasable-ts:                               Reject TypeScript syntax Node type stripping cannot erase (spec 0238 R5)
 * fix-markdown:                              Auto-fix Markdown formatting issues
+* fixed-context-probe:                       PAID: measure first-call input tokens of a worker and a developer subagent against the ADR-0025 threshold (never in CI)
 * format-ts:                                 Check TypeScript formatting with Oxfmt (spec 0238 R8)
 * harness-curate:                            Run the Harness Curator (task harness-curate -- [--apply | --from-stdin])
 * host-safety:                               Run the test-harness host-safety check, as CI does (spec 0267)
@@ -76,6 +77,7 @@ task: Available tasks for this project:
 * skill-evals:                               Run the evals of one skill, or of every changed skill (--changed), locally (spec 0290); pass the arguments after --
 * test-components:                           Test the build-components canonical_repo validator
 * test-derive-spec-status:                   Run the merged-spec status derivation suite, as CI does (spec 0109 delta-04)
+* test-fixed-context-probe:                  Run the fixed-context probe's unit suite on fixture transcripts (no model call)
 * test-harness-curate:                       Smoke-test the Harness Curator against the bundled fixture
 * test-playwright-mcp:                       Run the Playwright MCP registration suites (model, JSONC scanner, config reader), as CI does (spec 0245)
 * test-runtime-foundations:                  Run the floor guard, dependency-step and shared-module suites, as CI does (spec 0240)

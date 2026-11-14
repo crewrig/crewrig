@@ -26,7 +26,8 @@ describe("firstCallTokens", () => {
     assert.equal(firstCallTokens(fs.readFileSync(sess1, "utf8")), 73003);
   });
   test("skips attachments, user turns and malformed lines", () => {
-    const text = 'oops\n{"type":"attachment"}\n{"type":"assistant","message":{"usage":{"input_tokens":5}}}';
+    const text =
+      'oops\n{"type":"attachment"}\n{"type":"assistant","message":{"usage":{"input_tokens":5}}}';
     assert.equal(firstCallTokens(text), 5);
   });
   test("is null without any assistant usage", () => {
@@ -51,7 +52,9 @@ describe("measureSession", () => {
 });
 
 describe("threshold", () => {
-  const t = parseThreshold(fs.readFileSync(path.join(repo, "scripts/fixed-context-threshold.json"), "utf8"));
+  const t = parseThreshold(
+    fs.readFileSync(path.join(repo, "scripts/fixed-context-threshold.json"), "utf8"),
+  );
   test("the committed thresholds are the ADR-0025 targets", () => {
     assert.deepEqual(t, { worker: 40000, subagent: 30000 });
   });
@@ -61,7 +64,10 @@ describe("threshold", () => {
       b.map((x) => [x.kind, x.agent, x.excess]),
       [["worker", "main", 33003]],
     );
-    assert.equal(compare([{ kind: "subagent", agent: "d", tokens: 30001, transcript: "" }], t).length, 1);
+    assert.equal(
+      compare([{ kind: "subagent", agent: "d", tokens: 30001, transcript: "" }], t).length,
+      1,
+    );
   });
   test("rejects a non-positive limit", () => {
     assert.throws(() => parseThreshold('{"worker":0,"subagent":1}'));
@@ -75,16 +81,33 @@ describe("never runs in CI", () => {
     for (const v of [undefined, "", "0", "false"]) assert.equal(refuseInCi({ CI: v }), null);
   });
   test("the script refuses with exit 3 before any model call when CI is set", () => {
-    const r = spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", path.join(repo, "scripts/fixed-context-probe.ts")], {
-      env: { ...process.env, CI: "true" },
-      encoding: "utf8",
-    });
+    const r = spawnSync(
+      process.execPath,
+      [
+        "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+        path.join(repo, "scripts/fixed-context-probe.ts"),
+      ],
+      {
+        env: { ...process.env, CI: "true" },
+        encoding: "utf8",
+      },
+    );
     assert.equal(r.status, 3, r.stderr);
     assert.match(r.stderr, /never runs in CI/);
   });
   test("free mode exits 1 on a breach and 0 with --warn-only", () => {
     const run = (extra: string[]) =>
-      spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", path.join(repo, "scripts/fixed-context-probe.ts"), "--transcript", sess1, ...extra], { env: { ...process.env, CI: "true" }, encoding: "utf8" });
+      spawnSync(
+        process.execPath,
+        [
+          "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+          path.join(repo, "scripts/fixed-context-probe.ts"),
+          "--transcript",
+          sess1,
+          ...extra,
+        ],
+        { env: { ...process.env, CI: "true" }, encoding: "utf8" },
+      );
     assert.equal(run([]).status, 1);
     const warn = run(["--warn-only"]);
     assert.equal(warn.status, 0);

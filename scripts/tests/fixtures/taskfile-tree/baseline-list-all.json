@@ -400,6 +400,10 @@
     "desc": "Auto-fix Markdown formatting issues"
   },
   {
+    "name": "fixed-context-probe",
+    "desc": "PAID: measure first-call input tokens of a worker and a developer subagent against the ADR-0025 threshold (never in CI)"
+  },
+  {
     "name": "format-ts",
     "desc": "Check TypeScript formatting with Oxfmt (spec 0238 R8)"
   },
@@ -642,6 +646,10 @@
   {
     "name": "test-derive-spec-status",
     "desc": "Run the merged-spec status derivation suite, as CI does (spec 0109 delta-04)"
+  },
+  {
+    "name": "test-fixed-context-probe",
+    "desc": "Run the fixed-context probe's unit suite on fixture transcripts (no model call)"
   },
   {
     "name": "test-harness-curate",
