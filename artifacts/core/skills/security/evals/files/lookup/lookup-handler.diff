@@ -1,0 +1,16 @@
+--- a/lookup-handler.js.txt
++++ b/lookup-handler.js.txt
+@@ -9,10 +9,10 @@
+ // Find the signed-in user's own customer record by e-mail address.
+ router.get('/customers/lookup', requireLogin, async (req, res) => {
+   const rows = await db.query(
+-    'SELECT id, name, email FROM customers WHERE owner_id = $1',
+-    [req.user.id]
++    'SELECT id, name, email FROM customers WHERE owner_id = $1 AND email = $2',
++    [req.user.id, req.query.email]
+   );
+-  res.json(rows.filter((r) => r.email === req.query.email));
++  res.json(rows);
+ });
+ 
+ module.exports = router;

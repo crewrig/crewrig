@@ -1,0 +1,11 @@
+Goldens of the UNMODIFIED check-secrets-exposure.ts scripts of github-actions and gitlab-ci (spec
+0303 R8, R11), taken from the scripts as they stood on main before issue #1941 edited them, through
+scripts/tests/lib/skill-scripts-observe.ts (entry leg) and stored in the form of
+scripts/tests/lib/skill-scripts-golden.ts. Only the forms that no existing golden pins:
+  github  help-alone, help-then-file, file-then-help, short-help (-h: a missing path), json-alone,
+          json-then-file, unreadable-file, non-ascii-path
+  gitlab  unreadable-file, non-ascii-path
+The other legacy forms are pinned by fixtures/skill-scripts/github-actions/check-secrets-exposure
+(spec 0258) and fixtures/skill-scripts/gitlab-ci-0301/baseline (arg-form-*, two-arguments,
+empty-argument, no-argument, missing-path). The unreadable-file input is the file `x` made
+mode 000 by a preload during the run.

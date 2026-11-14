@@ -1,0 +1,1 @@
+check-secrets-exposure: EACCES: permission denied, open 'x'

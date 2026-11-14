@@ -15,6 +15,7 @@ import { defaultIsFile } from "../lib/worktree-claim/launch-windows.ts";
 import type { Proof } from "./lib/windows-packaging-driver.ts";
 import { resolveInterpreters, WIN } from "./lib/windows-proof-support.ts";
 import { lintJson, textScans, wrapped } from "./lib/windows-skill-cases.ts";
+import { securityCases } from "./lib/windows-skill-cases-security.ts";
 import { lintSkill, noCarriageReturn, refusals } from "./lib/windows-skill-lint.ts";
 import { makeBox } from "./lib/windows-skill-proof.ts";
 import type { Ctx, Leg } from "./lib/windows-skill-proof.ts";
@@ -31,7 +32,15 @@ function runLeg(leg: Leg): string[] {
     console.log(`windows-skill-scripts: ${leg}: ${interpreters.notes.join("; ")}`);
     const proof: Proof = { interpreters, failures: [], landed: [], current: "setup" };
     const c: Ctx = { proof, leg, box: makeBox(root) };
-    for (const cases of [textScans, wrapped, lintJson, lintSkill, refusals, noCarriageReturn])
+    for (const cases of [
+      textScans,
+      wrapped,
+      lintJson,
+      securityCases,
+      lintSkill,
+      refusals,
+      noCarriageReturn,
+    ])
       cases(c);
     return proof.failures;
   } finally {

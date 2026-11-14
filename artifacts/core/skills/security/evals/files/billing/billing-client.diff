@@ -1,0 +1,22 @@
+--- a/billing-client.js.txt
++++ b/billing-client.js.txt
+@@ -3,6 +3,7 @@
+ const https = require('https');
+ 
+ const BILLING_HOST = 'billing.internal.example.com';
++const BILLING_API_KEY = 'acme-svc-7Hq2Zp9XvT4mLw8RbN3cYd6F';
+ 
+ function createInvoice(customerId, amountCents) {
+   const body = JSON.stringify({ customerId, amountCents });
+@@ -10,7 +11,10 @@
+     host: BILLING_HOST,
+     path: '/v2/invoices',
+     method: 'POST',
+-    headers: { 'Content-Type': 'application/json' },
++    headers: {
++      'Content-Type': 'application/json',
++      Authorization: `Bearer ${BILLING_API_KEY}`,
++    },
+   };
+   return new Promise((resolve, reject) => {
+     const req = https.request(options, (res) => resolve(res.statusCode));

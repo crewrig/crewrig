@@ -1,0 +1,3 @@
+WARNING:pip_audit._cli:--no-deps is supported, but users are encouraged to fully hash their pinned dependencies
+WARNING:pip_audit._cli:Consider using a tool like `pip-compile`: https://pip-tools.readthedocs.io/en/latest/#using-hashes
+ERROR:pip_audit._cli:acme-internal-lib: Dependency not found on PyPI and could not be audited: acme-internal-lib (1.2.3)
