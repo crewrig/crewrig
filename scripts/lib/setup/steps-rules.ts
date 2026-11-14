@@ -144,12 +144,13 @@ const rulesShared: StepFn = async (env) => {
 /** `home-dirs` (spec 0305): independent of `skipRules`, so a kept rule set still gets the profiles. */
 const homeDirs: StepFn = async (env) => {
   const { ctx, descriptor } = env;
-  const dirs = descriptor.rules.homeDirs ?? [];
-  for (const dir of dirs) {
+  let placed = 0;
+  for (const dir of descriptor.rules.homeDirs ?? []) {
     if (dir.optional === true && !fs.existsSync(path.join(ctx.repoDir, dir.src))) continue;
     placeShared(env, dir, true);
+    placed += 1;
   }
-  if (dirs.length > 0) ctx.io.out("");
+  if (placed > 0) ctx.io.out("");
 };
 
 export const rulesSteps: StepRegistry = {

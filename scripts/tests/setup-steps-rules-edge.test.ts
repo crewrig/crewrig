@@ -215,4 +215,19 @@ describe("home-dirs (spec 0305)", posix, () => {
     assert.equal((await run(["rules-action=refresh", ...VALIDATION])).status, 0);
     assert.ok(fs.existsSync(profile()));
   });
+
+  test("an absent optional source places nothing and prints nothing", async () => {
+    fs.rmSync(path.join(box.repo, "artifacts"), { force: true });
+    fs.mkdirSync(path.join(box.repo, "artifacts"));
+    const result = await runRules(
+      {
+        ...rulesDescriptor("claude", ["home-dirs"]),
+        rules: claudeDescriptor.rules,
+      },
+      [],
+    );
+    assert.equal(result.status, 0);
+    assert.equal(result.out, "");
+    assert.ok(!fs.existsSync(path.join(box.home, ".crewrig")));
+  });
 });
