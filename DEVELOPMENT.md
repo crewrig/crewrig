@@ -307,6 +307,8 @@ generated and can only shrink:
   configuration file a third-party tool requires in JavaScript. Add it to
   `ci/js-exceptions.txt` as `<path><TAB><node-floor-guard|tool-config> <NNNN> <reason>`,
   where `NNNN` is the spec that names and justifies the file.
+- JavaScript under an eval fixture directory (`artifacts/**/skills/*/evals/files/`)
+  is exempt: it is test data the eval agent reads, never executed or shipped.
 - An added Python file must import the `mempalace` library.
 
 **Why `--disable-warning=MODULE_TYPELESS_PACKAGE_JSON`.** The root

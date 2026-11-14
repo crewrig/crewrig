@@ -91,9 +91,15 @@ export function isShellFile(rel: string): boolean {
   return SHELL_SHEBANG.test(firstLine(abs));
 }
 
-/** True for a JavaScript path covered by the spec 0238 R3 ratchet. */
+/**
+ * Eval fixtures (`artifacts/**\/skills/*\/evals/files/**`): test data the eval agent reads, never
+ * executed or shipped as code. The single place this exemption is stated (issue #1976).
+ */
+const EVAL_FIXTURE = /^artifacts\/(?:.*\/)?skills\/[^/]+\/evals\/files\//;
+
+/** True for a JavaScript path covered by the spec 0238 R3 ratchet; eval fixtures are exempt. */
 export function isJsFile(rel: string): boolean {
-  return /\.(js|mjs|cjs)$/.test(rel);
+  return /\.(js|mjs|cjs)$/.test(rel) && !EVAL_FIXTURE.test(rel);
 }
 
 /** Tracked `*.ts` sources outside the built-copy trees, sorted. */
