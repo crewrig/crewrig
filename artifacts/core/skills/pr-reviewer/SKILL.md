@@ -8,7 +8,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "2.0.0"
+    version: "2.1.0"
 claude:
   allowed-tools:
     - Read
@@ -66,6 +66,10 @@ Read `references/step-5-compose.md` (the seat line's placement per transport is 
 Run `node scripts/post-verdict.ts <pr> --event <approve|request-changes|comment> --body-file <file> --dry-run` first, then without `--dry-run`. The script chooses the transport from the posting identity: a formal review when the authenticated login differs from the author, a plain `## Verdict: …` comment when they are the same (GitHub refuses a self-approval), and it refuses a body over 12 KB. Exit `3` with `data.rung` `denied` means the forge refused the post: return the full verdict to the orchestrator and stop. Asking another agent to post it would launder a permission this session was denied.
 
 Before posting, read `references/assert-fresh-observation.md`: observe the artifact you quote immediately before the post.
+
+## Blocking and non-blocking
+
+Mark every finding blocking or non-blocking. Approve when nothing blocks: the loop ends on a pass with no blocking finding, and non-blocking findings go to the deferred-findings ledger or a follow-up issue, never to another pass. Passes are capped at 2 at `trivial`/`small` and 3 at `standard`; a fix pass reads only the change since the last examined revision.
 
 ## Finding tags
 

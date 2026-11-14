@@ -67,8 +67,8 @@ These five pillars are also stated normatively in
 
 Non-trivial work in CrewRig flows through a four-stage lifecycle —
 **SPECS → PLAN → DEV → REVIEW** — where a review pass routes findings back to
-the stage that can fix them, and the cycle terminates only when a full review
-produces zero findings. The full contract lives in
+the stage that can fix them, and the cycle terminates when a review pass
+has no blocking finding. The full contract lives in
 [ADR-0010](adr/0010-spec-plan-review-lifecycle.md); the working rules layer the
 operational protocol on top of it in [`AGENTS.md`](../AGENTS.md).
 
