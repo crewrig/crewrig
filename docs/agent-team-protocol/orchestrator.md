@@ -151,6 +151,100 @@ REVIEW) to a fresh subagent with a self-contained brief and keeps only that
 subagent's result, or it compacts its own context between stages. It never
 carries the raw output of one heavy stage into the next.
 
+<a id="coordinator-playbook"></a>
+
+### Coordinator playbook for multi-ticket runs
+
+A coordinator dispatches several tickets to workers (for example through
+Orca). Its own calls are the costliest in the run, because each one re-reads a
+large context. These seven rules keep them few.
+
+1. **Size before dispatch.** Decide the tier, whether a spec or delta-spec is
+   needed, the interaction mode and the branch name, and write them in the
+   brief. A worker never decides them; left open, a worker under a "no new
+   issues" constraint defaults to delta-specs.
+2. **Group by area.** Tickets that share files, a runner or a spec go to one
+   worker and one PR.
+3. **Pre-authorise the merge.** The brief carries the owner's permission to
+   merge, given in advance under explicit conditions: the latest review pass has
+   no blocking finding, every required check is green, and the branch is up to
+   date with the target. The worker merges, then reports; it does not ask. The
+   authorisation comes from the owner and the coordinator only relays it in the
+   brief. It never replaces the rule in `AGENTS.md` → *Branching Strategy* that
+   a merge needs the owner's permission; it is that permission, given in
+   advance.
+4. **Trust worker evidence.** Re-verify a PR only on a gap or a contradiction
+   in the `worker_done` evidence, or by sampling. Do not re-read every PR, diff
+   and check list before accepting.
+5. **Intervene mid-flight on defects only.** A failing check, a broken
+   contract or a violated rule justifies a correction. A style preference does
+   not: record it for a later ticket.
+6. **Pick the coordinator model.** Sonnet by default; Opus only when the owner
+   asks for it.
+7. **Carry the sibling rules in every brief.** The CI-wait rules and the
+   output-hygiene and stage-scoped-session rules above go into each brief by
+   reference; never restate or reword them here.
+
+Measure a run by its coordinator calls and tokens, and compare it with the
+previous run.
+
+#### Worker brief template
+
+Copy it, fill every placeholder, delete none. A field with no value is written
+`none`.
+
+```markdown
+# Worker brief — <repo> issue #<N>
+
+Implement <issue URL>; read its body with `gh issue view <N> --json body --jq .body`.
+The issue is the contract.
+
+## Sizing (decided by the coordinator — do not re-decide)
+
+- Tier: <trivial | small | standard | large>; spec: <none | required | delta of <id>>.
+- Mode: <FULL | INTERMEDIATE | MINIMAL | AUTO>. Review cap: <passes>.
+- Branch: `git branch -m <prefix>/<N>-<slug>`.
+- Bundled tickets: <none | #M, #K>.
+
+## Scope
+
+- May edit: <paths>.
+- Must not touch: <paths, skills, agents, evals>. If a hook asks for it, stop and ask.
+- Consistency edits outside the scope: ask the coordinator first.
+
+## Paid-eval budget
+
+<none expected | at most <n> runs, <cost> ceiling>. Read `grading.json` before any
+re-run; re-run only after a code change that targets a graded failure.
+
+## Common rules
+
+- Subagent of the coordinator: no session-start sweep, no handoff drawer or diary.
+- Ticket pickup already ran (verdict `<proceed>`, owner `<login>`).
+- No new issues; do not open any. Gitmoji on commits and PR title; English for
+  repository and forge content; PR body per `docs/pr-format.md`.
+- Logbook: the issue is its own logbook; one short comment per stage transition.
+- Never `--no-verify`. If a hook blocks, ask the coordinator.
+- Waiting rules and output-hygiene rules: <paste the wording of the two
+  worker-brief sections above, unchanged>.
+- Review: cold `pr-reviewer` with a references-only seat brief; the loop ends
+  on a pass with no blocking finding.
+
+## Merge (pre-authorised by the owner, relayed by the coordinator)
+
+Squash-merge yourself, without asking, when ALL hold: <review condition>;
+<CI condition, ghost checks count as resolved>; the branch is up to date with
+`<remote>/<base>` (update, then re-verify CI). If the merge is denied, retry
+once, then ask the coordinator. After the merge, follow `docs/post-merge-flow.md`
+and close the issue. A failure to merge is a FAILED task: report it.
+
+## `worker_done` evidence
+
+PR number; merge SHA; review verdict URLs; tests shown failing before and
+passing after (command and one-line result); version bumps; paid-eval
+measurements (count, status, cost); frictions met.
+```
+
 <a id="no-coordination-surface"></a>
 
 ## On CLIs with no multi-agent coordination surface (e.g. Gemini CLI)
