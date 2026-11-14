@@ -6,7 +6,6 @@ complexity: small
 interaction-mode: AUTO
 related-issue: 1988
 version: 1.0.0
-unsecured-id: true
 ---
 
 # Claude Code worker settings profile
