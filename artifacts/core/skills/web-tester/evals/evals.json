@@ -201,6 +201,14 @@
     {
       "query": "Review the keyboard navigation and ARIA roles of my modal dialog by hand and list the problems.",
       "should_trigger": false
+    },
+    {
+      "query": "Check this static HTML file for missing alt text, unlabelled inputs and skipped heading levels; no browser is needed.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write a Playwright test that checks the cookie banner can be dismissed and stays dismissed after a reload.",
+      "should_trigger": true
     }
   ]
 }

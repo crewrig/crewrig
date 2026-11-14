@@ -1,6 +1,6 @@
 ---
 name: frontend
-description: "Practitioner reference for framework-agnostic frontend work: semantic HTML, CSS design tokens, Tailwind configuration, WCAG 2.1 AA accessibility, Core Web Vitals, asset loading and vanilla JavaScript, with bundled scripts that compute a WCAG contrast ratio and check static HTML for alt text, form labels, heading order, landmarks and lang. Use when authoring or reviewing HTML, CSS or a Tailwind config, running an accessibility audit, checking color contrast, fixing LCP, CLS or INP, or tuning fonts, images and script loading. Trigger terms: HTML, CSS, Tailwind, design tokens, WCAG, contrast ratio, alt text, Core Web Vitals, LCP, INP. Not for Astro pages or builds (astro), marketing copy (copywriting), browser end-to-end tests (web-tester) or GitHub Actions workflows (github-actions)."
+description: "Practitioner reference for framework-agnostic frontend work: semantic HTML, CSS design tokens, Tailwind configuration, WCAG 2.1 AA accessibility, Core Web Vitals, asset loading and vanilla JavaScript, with bundled scripts that compute a WCAG contrast ratio and check static HTML for alt text, form labels, heading order, landmarks and lang. Use when authoring or reviewing HTML, CSS or a Tailwind config, auditing static HTML for accessibility, checking color contrast, fixing LCP, CLS or INP, or tuning fonts, images and script loading. Trigger terms: HTML, CSS, Tailwind, design tokens, WCAG, contrast ratio, alt text, Core Web Vitals, LCP, INP. Not for Astro pages or builds (astro), marketing copy (copywriting), browser end-to-end tests or axe scans of a rendered page (web-tester) or GitHub Actions workflows (github-actions)."
 type: skill
 license: Apache-2.0
 metadata:
@@ -33,8 +33,9 @@ Read only the reference the task needs.
 |---|---|
 | Semantic HTML, forms, landmarks, focus, ARIA, contrast, touch targets | `references/accessibility.md` |
 | Core Web Vitals, fonts, responsive images, script loading | `references/performance.md` |
-| Design tokens, token taxonomy, Tailwind config, `@apply`, plugins, modern CSS, dark mode | `references/tailwind.md` |
+| Design tokens, token taxonomy, color, type, spacing, shadow and radius scales, Tailwind config, `@apply`, plugins, modern CSS, dark mode | `references/tailwind.md` |
 | ES modules, observers, `fetch` with `AbortSignal` | `references/javascript.md` |
+| Component spec to hand to an implementer (parts, states, tokens, a11y, motion) | `assets/component-anatomy.md` |
 
 ## Scripts
 
