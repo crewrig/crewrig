@@ -394,9 +394,21 @@ description: <description>
 license: <license>        # when the source declares it
 model: <model>            # directed by the model mapping when the source declares an intelligence rung
 tools: <Claude names>     # when the source declares metadata.tools
+omitClaudeMd: true        # always, last line before the spliced metadata block (spec 0306)
 ---
 <body>
+
+<conventions block>
 ```
+
+Every compiled agent, on all four CLIs, ends with a blank line and the
+verbatim text of `artifacts/core/fragments/subagent-conventions.md` (spec
+0306), appended by the build; an agent source never carries it, and a body
+line equal to the fragment's heading fails the build. The `omitClaudeMd` key
+exists on Claude Code only. Trade-off for adopters: the six rules are
+hard-coded in core (`gh`, Gitmoji), a subagent does not load `AGENTS.org.md`,
+and the fragment path is `strict` in `.crewrig/core-paths.txt`, so a local edit
+is not kept.
 
 Copilot CLI → `.github/agents/<name>.md` carries the same `name`,
 `description`, directed lines and `tools:` (its own primary names, as a flow

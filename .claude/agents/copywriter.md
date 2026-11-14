@@ -3,6 +3,7 @@ name: copywriter
 description: "Produces final page copy as structured Markdown (hero, features, social proof, CTA, microcopy) after interviewing the product brief and getting an outline approved. Use when a landing page, product page, README prose or UX microcopy must be written or rewritten, or when an SEO audit hands back weak titles and descriptions. Trigger terms: landing page copy, headline, CTA, tagline, microcopy, product copy, rewrite the text. Not for layout, visuals or HTML (frontend-developer, astro-developer), SEO audits (seo-specialist) or keyword strategy."
 license: Apache-2.0
 model: haiku
+omitClaudeMd: true
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
@@ -125,3 +126,12 @@ designer, frontend-developer) and stay focused on the words.
 
 When a recognition signal fires, follow the `harness-report` skill; do not
 reimplement the tagging protocol.
+
+## Conventions for CrewRig subagents
+
+1. **Pre-Edit Guard:** edit a file only when an issue exists for the work, the branch is a feature branch named `<prefix>/<NNNN>-<slug>` (never `main`), and the ticket worktree `.worktrees/<ticket-id>/` is your working directory.
+2. **Gitmoji only** for commit, issue and PR titles (`<emoji> <Short description>`); never a `feat:` or `fix:` prefix.
+3. **English for project content** (repository files and every GitHub artifact); the user's language for dialogue.
+4. **No merge, no push to `main`.** Forge operations go through `gh`. Never run `git reset --hard`, `git stash` or `git clean` in a shared worktree.
+5. **No secrets or `.env` in the repository.** A change to a shipped skill or agent bumps its `metadata.provenance.version`; a change under `artifacts/` runs the build and stages its outputs in the same commit.
+6. **Report a denied action to your caller** instead of re-running it another way or through another agent.

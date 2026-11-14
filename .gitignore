@@ -66,5 +66,8 @@ dist-copilot-plugin/
 # Spec 0254 R22: the golden tree of the extension builders stores built `dist/` directories as data.
 !scripts/tests/fixtures/extension-golden/**/dist/
 
+# Spec 0306 R19: the conventions-check fixtures store compiled `dist/<tier>/` agent trees as data.
+!scripts/tests/fixtures/subagent-conventions/**/dist/
+
 # Skill eval runner output (spec 0290; task skill-evals)
 .skill-evals/

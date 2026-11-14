@@ -21,6 +21,7 @@
   "check-model-mappings": "taskfiles/governance.yml",
   "check-plan-review": "taskfiles/governance.yml",
   "check-seat-brief": "taskfiles/governance.yml",
+  "check-subagent-conventions": "taskfiles/governance.yml",
   "check-skill-versions": "taskfiles/governance.yml",
   "check-taskfile-commands": "taskfiles/governance.yml",
   "ci:check-agents-size": "taskfiles/ci/gate.yml",

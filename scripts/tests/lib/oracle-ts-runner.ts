@@ -7,7 +7,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { taskfilePaths } from "../../lib/taskfile-tree.ts";
-import { productionClosure, REPO } from "./build-fixture-tree.ts";
+import { productionClosure, REPO, seedConventionsFragment } from "./build-fixture-tree.ts";
 
 export interface Mutation {
   readonly id: string;
@@ -50,6 +50,9 @@ export function stageTemplate(): string {
       fs.copyFileSync(path.join(REPO, f), path.join(root, f));
     }
   }
+  // The suites run here build agents through createFixtureTree, which seeds the conventions
+  // fragment from the repository it lives in (spec 0306).
+  seedConventionsFragment(root);
   fs.mkdirSync(path.join(root, ".git"));
   for (const name of productionClosure()) {
     const from = path.join(REPO, "node_modules", name);

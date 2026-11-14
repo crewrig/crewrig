@@ -3,6 +3,7 @@ name: visual-regression-tester
 description: "Detects unintended visual changes between two states of a page by comparing screenshots at desktop, tablet and mobile viewports against a stored baseline, using Playwright toHaveScreenshot or an equivalent diff threshold. Reports what changed and where, not why. Use when asked for a visual regression check, a screenshot diff, a layout-shift check across breakpoints or a baseline capture. Trigger terms: visual regression, screenshot diff, toHaveScreenshot, baseline image, viewport, pixel diff. Not for functional failures (regression-sentinel), spec conformity (web-conformity-checker) or accessibility (accessibility-tester)."
 license: Apache-2.0
 model: haiku
+omitClaudeMd: true
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
@@ -58,3 +59,12 @@ raising the global threshold.
 
 When a recognition signal fires, follow the `harness-report` skill; do not
 reimplement the tagging protocol.
+
+## Conventions for CrewRig subagents
+
+1. **Pre-Edit Guard:** edit a file only when an issue exists for the work, the branch is a feature branch named `<prefix>/<NNNN>-<slug>` (never `main`), and the ticket worktree `.worktrees/<ticket-id>/` is your working directory.
+2. **Gitmoji only** for commit, issue and PR titles (`<emoji> <Short description>`); never a `feat:` or `fix:` prefix.
+3. **English for project content** (repository files and every GitHub artifact); the user's language for dialogue.
+4. **No merge, no push to `main`.** Forge operations go through `gh`. Never run `git reset --hard`, `git stash` or `git clean` in a shared worktree.
+5. **No secrets or `.env` in the repository.** A change to a shipped skill or agent bumps its `metadata.provenance.version`; a change under `artifacts/` runs the build and stages its outputs in the same commit.
+6. **Report a denied action to your caller** instead of re-running it another way or through another agent.

@@ -14,11 +14,17 @@
 // `metadata:` (Gemini rejects it, issue #54), so the provenance travels as an HTML comment
 // on the line after the closing `---`, an empty line when there is none, and no splice
 // (the source argument of the write is `null`).
+//
+// Conventions block (spec 0306). Every body is `job.body`: the source body, a blank line, the
+// fragment `artifacts/core/fragments/subagent-conventions.md` (conventions-block.ts). Only the
+// Claude Code emitter adds the frontmatter line `omitClaudeMd: true`, last, before the `metadata`
+// block that the write splices in.
 
 import { resolveAgent } from "../model-resolve.ts";
 import type { ResolveContext, ResolveResult } from "../model-resolve.ts";
 import { joinRoot } from "./args.ts";
 import { noGeminiTool, readAgentTools, toolsDrop, toolsLine } from "./agent-tools.ts";
+import { assertNoHandCopy, loadConventions, withConventions } from "./conventions-block.ts";
 import { emitDiagLine } from "./diagnostics.ts";
 import { emitAntigravityAgent } from "./emit-agent-antigravity.ts";
 import type { AgentJob } from "./emit-agent-antigravity.ts";
@@ -79,7 +85,7 @@ function emitGemini(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
     ...toolsLines(ctx, job, "gemini"),
   ];
   const comment = geminiProvenanceComment(job.source);
-  const content = `---\n${frontmatter.join("\n")}\n---\n${comment}\n${job.source.body}`;
+  const content = `---\n${frontmatter.join("\n")}\n---\n${comment}\n${job.body}`;
   const target = joinRoot(ctx.platform, job.outRoot, `.gemini/agents/${job.name}.md`);
   checkOrWrite(ctx, target, content, null, job.outRoot);
 }
@@ -91,9 +97,11 @@ function emitClaude(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
     ...licenseLines(job.source),
     ...resolved.fmLines,
     ...toolsLines(ctx, job, "claude"),
+    // Last line assembled, ahead of the spliced `metadata` block (spec 0306 R8).
+    "omitClaudeMd: true",
   ];
   const target = joinRoot(ctx.platform, job.outRoot, `.claude/agents/${job.name}.md`);
-  checkOrWrite(ctx, target, markdownFile(frontmatter, job.source.body), job.source, job.outRoot);
+  checkOrWrite(ctx, target, markdownFile(frontmatter, job.body), job.source, job.outRoot);
 }
 
 function emitCopilot(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
@@ -104,7 +112,7 @@ function emitCopilot(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
     ...toolsLines(ctx, job, "copilot"),
   ];
   const target = joinRoot(ctx.platform, job.outRoot, `.github/agents/${job.name}.md`);
-  checkOrWrite(ctx, target, markdownFile(frontmatter, job.source.body), job.source, job.outRoot);
+  checkOrWrite(ctx, target, markdownFile(frontmatter, job.body), job.source, job.outRoot);
 }
 
 /** `build_agents <tier> <tier_dir>`, writing under `outRoot`. */
@@ -127,11 +135,19 @@ export function buildAgents(
     // Validated for every agent whichever CLIs are selected (spec 0291 R10): an invalid
     // declaration stops the build before any file of this agent is written.
     const tools = readAgentTools(source);
+    // The conventions block (spec 0306): read once, only here where an agent is emitted and a
+    // CLI is selected; a refusal comes before any file of this agent is written.
+    const anySelected = (["gemini", "claude", "copilot", "antigravity"] as const).some((c) =>
+      selects(ctx, c),
+    );
+    const block = anySelected ? loadConventions(ctx) : null;
+    if (block !== null) assertNoHandCopy(block, source.file, source.body);
     const job: AgentJob = {
       name,
       description: foldDescription(source.field("description")),
       source,
       outRoot,
+      body: block === null ? source.body : withConventions(block, source.body),
       tools,
     };
     if (selects(ctx, "gemini")) emitGemini(ctx, model, job);

@@ -10,7 +10,7 @@ import { describe, test } from "node:test";
 
 import { reconcileRetiredAgentDir } from "../lib/build-components/retire-agent.ts";
 import { makeCtx, tempDir } from "./fixtures/build-components/ctx-kit.ts";
-import { createFixtureTree } from "./lib/build-fixture-tree.ts";
+import { conventionsFragment, createFixtureTree } from "./lib/build-fixture-tree.ts";
 import {
   agent,
   CONFIG,
@@ -19,6 +19,11 @@ import {
   seedMappings,
   source,
 } from "./fixtures/build-components/entry-kit.ts";
+
+// Spec 0306 R6, R8: every compiled agent ends with a blank line and the fragment; only the Claude
+// Code file gains `omitClaudeMd: true` as its last assembled frontmatter line.
+const BLOCK = `\n${conventionsFragment()}`;
+const OMIT = "omitClaudeMd: true\n";
 
 function build(extra: readonly string[], body = "Agent body.\n") {
   const tree = createFixtureTree();
@@ -36,19 +41,22 @@ describe("the four CLI shapes (R13)", () => {
     const tree = build(extra);
     assert.equal(
       tree.read(".gemini/agents/ag.md"),
-      '---\nname: ag\ndescription: "An agent."\n---\n\nAgent body.\n',
+      '---\nname: ag\ndescription: "An agent."\n---\n\nAgent body.\n' + BLOCK,
     );
     assert.equal(
       tree.read(".claude/agents/ag.md"),
-      '---\nname: ag\ndescription: "An agent."\nlicense: MIT\ncompatibility: "c"\n---\n\nAgent body.\n',
+      '---\nname: ag\ndescription: "An agent."\nlicense: MIT\ncompatibility: "c"\n' +
+        OMIT +
+        "---\n\nAgent body.\n" +
+        BLOCK,
     );
     assert.equal(
       tree.read(".github/agents/ag.md"),
-      '---\nname: ag\ndescription: "An agent."\n---\n\nAgent body.\n',
+      '---\nname: ag\ndescription: "An agent."\n---\n\nAgent body.\n' + BLOCK,
     );
     assert.equal(
       tree.read(".agents/agents/ag.md"),
-      '---\nname: ag\ndescription: "An agent."\n---\n\nAgent body.\n',
+      '---\nname: ag\ndescription: "An agent."\n---\n\nAgent body.\n' + BLOCK,
     );
   });
 
@@ -212,7 +220,8 @@ describe("the Gemini provenance comment (R12)", () => {
     assert.equal(
       tree.read(".gemini/agents/ag.md"),
       '---\nname: ag\ndescription: "An agent."\n---\n' +
-        '<!-- crewrig-provenance: version="1.0" canonical="https://example.test/o/r" feedback="" -->\nAgent body.\n',
+        '<!-- crewrig-provenance: version="1.0" canonical="https://example.test/o/r" feedback="" -->\nAgent body.\n' +
+        BLOCK,
     );
     for (const file of [".claude/agents/ag.md", ".github/agents/ag.md", ".agents/agents/ag.md"]) {
       const text = tree.read(file);
@@ -285,8 +294,8 @@ describe("a profile-bearing agent against the committed trees (R13, R19)", () =>
 describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)", () => {
   const CLASSES = "read, search, edit, execute, web, agent";
   const meta = (list: string): string[] => ["metadata:", `  tools: ${list}`];
-  const fmFile = (lines: string[]): string =>
-    `---\nname: ag\ndescription: "An agent."\n${lines.join("\n")}${lines.length > 0 ? "\n" : ""}---\n\nAgent body.\n`;
+  const fmFile = (lines: string[], claude = false): string =>
+    `---\nname: ag\ndescription: "An agent."\n${lines.join("\n")}${lines.length > 0 ? "\n" : ""}${claude ? OMIT : ""}---\n\nAgent body.\n${BLOCK}`;
   const BODY = "Agent body.\n";
 
   function built(list: string, ...args: string[]) {
@@ -317,7 +326,7 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
         const { tree, res } = built(`[${cls}]`, "--target", target);
         assert.equal(res.status, 0, res.stderr);
         if (target === "all" || target === "claude")
-          assert.equal(tree.read(".claude/agents/ag.md"), fmFile([`tools: ${claude}`]));
+          assert.equal(tree.read(".claude/agents/ag.md"), fmFile([`tools: ${claude}`], true));
         if (target === "all" || target === "copilot")
           assert.equal(tree.read(".github/agents/ag.md"), fmFile([`tools: ${copilot}`]));
         if (target === "all")
@@ -333,7 +342,7 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
     assert.equal(res.status, 0, res.stderr);
     assert.equal(
       tree.read(".claude/agents/ag.md"),
-      fmFile(["tools: Read, Grep, Glob, Edit, Write, Bash, WebFetch, WebSearch, Agent"]),
+      fmFile(["tools: Read, Grep, Glob, Edit, Write, Bash, WebFetch, WebSearch, Agent"], true),
     );
     assert.equal(
       tree.read(".github/agents/ag.md"),
@@ -382,7 +391,7 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
     for (const rel of [".claude", ".github", ".gemini", ".agents"].map(
       (d) => `${d}/agents/ag.md`,
     )) {
-      assert.equal(tree.read(rel), fmFile([]), rel);
+      assert.equal(tree.read(rel), fmFile([], rel.startsWith(".claude")), rel);
       assert.doesNotMatch(tree.read(rel), /tools/);
     }
   });
@@ -408,9 +417,12 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
     const keys = (claude.split("---\n")[1] ?? "").split("\n").filter((l) => /^\S.*:/.test(l));
     assert.deepEqual(
       keys.map((l) => l.split(":")[0]),
-      ["name", "description", "license", "model", "tools", "metadata"],
+      ["name", "description", "license", "model", "tools", "omitClaudeMd", "metadata"],
     );
-    assert.match(claude, /\nmodel: sonnet\ntools: Read, Grep, Glob\nmetadata:\n/);
+    assert.match(
+      claude,
+      /\nmodel: sonnet\ntools: Read, Grep, Glob\nomitClaudeMd: true\nmetadata:\n/,
+    );
     assert.match(tree.read(".github/agents/ag.md"), /\ntools: \[read, search\]\nmetadata:\n/);
   });
 
@@ -454,7 +466,10 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
         "tools: [read_file, read_many_files, list_directory, write_file, replace, run_shell_command]",
       ]),
     );
-    assert.equal(tree.read(".claude/agents/ag.md"), fmFile(["tools: Read, Edit, Write, Bash"]));
+    assert.equal(
+      tree.read(".claude/agents/ag.md"),
+      fmFile(["tools: Read, Edit, Write, Bash"], true),
+    );
     assert.equal(tree.read(".github/agents/ag.md"), fmFile(["tools: [read, edit, execute]"]));
     assert.equal(tree.exists(".agents/agents/ag.md"), true);
   });

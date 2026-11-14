@@ -45,7 +45,12 @@ const frontOf = (rel: string): Record<string, unknown> => readFrontmatter(read(r
 const has = (fm: Record<string, unknown>, key: string): boolean => Object.hasOwn(fm, key);
 const GUIDANCE = "Run this agent on the";
 
-type Rung = { name: string; claude: string; gemini: string; antigravity: string };
+type Rung = {
+  name: string;
+  claude: string;
+  gemini: string;
+  antigravity: string;
+};
 const RUNGS: Rung[] = [
   {
     name: "doc-writer",
@@ -152,7 +157,9 @@ describe("T7 — R1,R2,R4: the 22-row baseline, checked four ways over the sourc
 
   test("T7(a) baseline::name set equals artifacts/core/agents listing (22)", () => {
     const actual = fs
-      .readdirSync(path.join(REPO, "artifacts/core/agents"), { withFileTypes: true })
+      .readdirSync(path.join(REPO, "artifacts/core/agents"), {
+        withFileTypes: true,
+      })
       .filter((e) => e.isDirectory())
       .map((e) => e.name)
       .sort();
@@ -194,5 +201,38 @@ describe("T7 — R1,R2,R4: the 22-row baseline, checked four ways over the sourc
       counts[key] = (counts[key] ?? 0) + 1;
     }
     assert.deepEqual(counts, { medium: 10, high: 11, xhigh: 1 });
+  });
+});
+
+describe("T8 — spec 0306 R9, R20: omitClaudeMd on the committed agent trees", () => {
+  // The agent list comes from the committed sources, never from a literal count (plan v2 v1-F5).
+  const core = fs
+    .readdirSync(path.join(REPO, "artifacts/core/agents"), {
+      withFileTypes: true,
+    })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort();
+
+  test("T8 committed::there is at least one core agent source to check", () => {
+    assert.ok(core.length > 0);
+  });
+
+  test("T8 committed::every .claude/agents/*.md carries omitClaudeMd: true in its frontmatter, once", () => {
+    const bad = core.filter((name) => {
+      const text = read(`.claude/agents/${name}.md`);
+      const fmBlock = text.split("---\n")[1] ?? "";
+      return fmBlock.split("\n").filter((l) => l === "omitClaudeMd: true").length !== 1;
+    });
+    assert.deepEqual(bad, []);
+    for (const name of core)
+      assert.strictEqual(frontOf(`.claude/agents/${name}.md`).omitClaudeMd, true, name);
+  });
+
+  test("T8 committed::no Gemini, Copilot or Antigravity agent file has an omitClaudeMd key", () => {
+    const bad = ["gemini", "github", "agents"].flatMap((d) =>
+      core.map((name) => `.${d}/agents/${name}.md`).filter((rel) => /omitClaudeMd/.test(read(rel))),
+    );
+    assert.deepEqual(bad, []);
   });
 });

@@ -3,6 +3,7 @@ name: astro-developer
 description: "Implements Astro projects: scaffolds and configures them, builds pages, layouts and components, wires Content Collections and integrations, chooses the output mode and adapter, sets up the build step, and diagnoses build failures. Use when a `.astro` file, `astro.config.mjs`, a content collection schema or an Astro integration must be written or fixed, when `astro check` or `astro build` fails, when a hydration mismatch appears, or when the output mode or adapter is in question. Trigger terms: Astro, island, `client:` directive, content collection, astro.config, adapter, astro build. Not for generic CSS or framework-agnostic JavaScript (frontend-developer), design tokens (designer), copy (copywriter), SEO audits (seo-specialist), accessibility audits (accessibility-auditor) or deploy pipelines beyond the build step (ci-configurator)."
 license: Apache-2.0
 model: sonnet
+omitClaudeMd: true
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
@@ -87,3 +88,12 @@ interface you need and hand off.
 
 When a recognition signal fires, follow the `harness-report` skill; do not
 reimplement the tagging protocol.
+
+## Conventions for CrewRig subagents
+
+1. **Pre-Edit Guard:** edit a file only when an issue exists for the work, the branch is a feature branch named `<prefix>/<NNNN>-<slug>` (never `main`), and the ticket worktree `.worktrees/<ticket-id>/` is your working directory.
+2. **Gitmoji only** for commit, issue and PR titles (`<emoji> <Short description>`); never a `feat:` or `fix:` prefix.
+3. **English for project content** (repository files and every GitHub artifact); the user's language for dialogue.
+4. **No merge, no push to `main`.** Forge operations go through `gh`. Never run `git reset --hard`, `git stash` or `git clean` in a shared worktree.
+5. **No secrets or `.env` in the repository.** A change to a shipped skill or agent bumps its `metadata.provenance.version`; a change under `artifacts/` runs the build and stages its outputs in the same commit.
+6. **Report a denied action to your caller** instead of re-running it another way or through another agent.

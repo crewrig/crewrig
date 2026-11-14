@@ -89,6 +89,9 @@ artifacts/core/system-context	strict
 # Claude Code worker and coordinator settings profiles (spec 0305). Nested strict
 # entry under artifacts/core — deployed to ~/.crewrig/claude-profiles/ by the Claude setup.
 artifacts/core/claude-profiles	strict
+# Build-input fragments (spec 0306): the subagent conventions block, appended to every compiled
+# agent by the build; never installed to a user home.
+artifacts/core/fragments	strict
 artifacts/library
 
 # Built outputs

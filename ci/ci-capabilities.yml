@@ -212,6 +212,7 @@ capabilities:
     paths:
       - "scripts/build-components.*"
       - "scripts/lib/build-components/**"
+      - "artifacts/core/fragments/**"
       - "scripts/lib/skill-citations/**"
       - "scripts/lib/render-command.ts"
       - "scripts/lib/component-resolve.ts"
@@ -3224,7 +3225,7 @@ capabilities:
   # artifacts/ sources and on the compiled outputs of every CLI. Spec 0293 R19: the same job lints the skill sources.
   - id: check-description-length
     group: governance
-    name: "Cap descriptions at 1024 characters, lint skill sources and fence agent script citations"
+    name: "Cap descriptions at 1024 characters, lint skill sources, fence agent script citations and check the subagent conventions block"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
@@ -3242,10 +3243,14 @@ capabilities:
       - ".agents/agents/**"
       - "scripts/check-description-length.ts"
       - "scripts/check-agent-script-citations.ts"
+      - "scripts/check-subagent-conventions.ts"
+      - "scripts/tests/check-subagent-conventions*"
+      - "scripts/tests/fixtures/subagent-conventions/**"
       - "scripts/tests/agent-script-citations.test.ts"
       - "scripts/tests/fixtures/*script-citations/**"
       - "artifacts/core/skills/pr-reviewer/scripts/lint-skill.ts"
       - "scripts/lib/governance/**"
+      - "scripts/lib/build-components/**"
       - "scripts/lib/require-dependency.ts"
       - "scripts/check-skill-quality.ts"
       - "scripts/lib/skill-*/**"
