@@ -1,7 +1,7 @@
 // ci-preflight.ts — classifies the checks of a pull request before a review is written.
 //
 // Usage: node ci-preflight.ts <pr> [--repo <owner/repo>] [--required] [--wait <attempts>]
-//          [--interval <seconds>] [--checks-file <file>] [--json]
+//          [--interval <seconds>] [--checks-file <file>] [--merge-state <state>] [--json]
 //
 // Each check is `pass`, `fail` (a cancelled check counts as failing) or `pending` (a skipped check
 // counts as passing). `data` is {overall, checks: [{name, bucket}], verdict_ceiling}: `overall` is
@@ -11,7 +11,16 @@
 // With --wait the query is repeated while the result is pending, at most <attempts> times,
 // <interval> seconds apart (default 30); the result reported is always that of the last, direct
 // query, never of a background signal. With --checks-file the checks come from a JSON array of
-// {name, bucket} (or the output of `gh pr checks --json name,bucket`) and no call is made.
+// {name, bucket[, link][, run]} (or the output of `gh pr checks --json name,bucket,link`) and no
+// call is made.
+//
+// Ghost check: a check still `pending` although its workflow run is `completed/success` is a
+// `ghost` (bucket `ghost`) and counts as resolved when the merge state of the pull request is
+// `CLEAN`. It is reported on its own in `data.ghosts` (present only when there is one), never
+// lumped with the pending checks. The run is read from the check's `run` field ("completed/success")
+// or, for a gh query, from `gh run view <id>` with the id taken from the check's link; the merge
+// state from `--merge-state` or `gh pr view --json mergeStateStatus`. Both are queried only when a
+// check is pending. A pending check whose run is unknown, unfinished or unsuccessful stays pending.
 //
 // Exit: 0 every check passes, 1 a check fails or is pending (one finding per such check), 2 usage
 // error, 3 `gh` is missing or its answer is not usable. With --json it prints one
@@ -25,7 +34,7 @@ void (() => {
 
   const USAGE =
     "Usage: node ci-preflight.ts <pr> [--repo <owner/repo>] [--required] [--wait <attempts>]\n" +
-    "         [--interval <seconds>] [--checks-file <file>] [--json]\n" +
+    "         [--interval <seconds>] [--checks-file <file>] [--merge-state <state>] [--json]\n" +
     "  Classifies the checks of a pull request. Exit 0 all pass, 1 a check fails or is pending,\n" +
     "  2 usage error, 3 gh missing or its answer unusable.\n";
 
@@ -35,10 +44,12 @@ void (() => {
   }
   interface Check {
     name: string;
-    bucket: "pass" | "fail" | "pending";
+    bucket: "pass" | "fail" | "pending" | "ghost";
+    link?: string;
+    run?: string;
   }
 
-  const BUCKETS: Record<string, Check["bucket"]> = {
+  const BUCKETS: Record<string, "pass" | "fail" | "pending"> = {
     pass: "pass",
     skipping: "pass",
     fail: "fail",
@@ -53,7 +64,10 @@ void (() => {
       if (typeof item !== "object" || item === null) return undefined;
       const rec = item as Record<string, unknown>;
       const bucket = BUCKETS[String(rec["bucket"] ?? "")] ?? "pending";
-      out.push({ name: String(rec["name"] ?? ""), bucket });
+      const check: Check = { name: String(rec["name"] ?? ""), bucket };
+      if (typeof rec["link"] === "string") check.link = rec["link"];
+      if (typeof rec["run"] === "string") check.run = rec["run"];
+      out.push(check);
     }
     return out;
   }
@@ -64,6 +78,7 @@ void (() => {
     let required = false;
     let repo: string | undefined;
     let checksFile: string | undefined;
+    let mergeState: string | undefined;
     let wait = 1;
     let interval = 30;
     let error: string | undefined;
@@ -85,6 +100,7 @@ void (() => {
       else if (name === "--required") required = true;
       else if (name === "--repo") repo = take();
       else if (name === "--checks-file") checksFile = take();
+      else if (name === "--merge-state") mergeState = take();
       else if (name === "--wait" || name === "--interval") {
         const v = take();
         if (v !== undefined && /^[1-9][0-9]*$/.test(v)) {
@@ -131,7 +147,7 @@ void (() => {
         ...(repo === undefined ? [] : ["--repo", repo]),
         ...(required ? ["--required"] : []),
         "--json",
-        "name,bucket",
+        "name,bucket,link",
       ];
       const res = cp.spawnSync("gh", args, { encoding: "utf8" });
       if (res.error !== undefined) return `gh could not run: ${res.error.message}`;
@@ -156,6 +172,47 @@ void (() => {
       human(`ci-preflight: ${checks}`);
       return done(3, null, [{ rule: "precondition", message: checks }]);
     }
+    // Ghost resolution: only when a check is pending, and only if the merge state is CLEAN.
+    if (checks.some((c) => c.bucket === "pending")) {
+      const ghcall = (args: string[]): string | undefined => {
+        const res = cp.spawnSync("gh", [...args, ...(repo === undefined ? [] : ["--repo", repo])], {
+          encoding: "utf8",
+        });
+        return res.error !== undefined || res.status !== 0 ? undefined : (res.stdout ?? "");
+      };
+      let state = mergeState;
+      if (state === undefined && checksFile === undefined) {
+        const out = ghcall(["pr", "view", pr as string, "--json", "mergeStateStatus"]);
+        try {
+          state = String(
+            (JSON.parse(out ?? "") as Record<string, unknown>)["mergeStateStatus"] ?? "",
+          );
+        } catch {
+          state = undefined;
+        }
+      }
+      if (state === "CLEAN") {
+        for (const c of checks) {
+          if (c.bucket !== "pending") continue;
+          let run = c.run;
+          if (run === undefined && checksFile === undefined) {
+            const id = /\/actions\/runs\/([0-9]+)/.exec(c.link ?? "")?.[1];
+            const out =
+              id === undefined
+                ? undefined
+                : ghcall(["run", "view", id, "--json", "status,conclusion"]);
+            try {
+              const rec = JSON.parse(out ?? "") as Record<string, unknown>;
+              run = `${String(rec["status"])}/${String(rec["conclusion"])}`;
+            } catch {
+              run = undefined;
+            }
+          }
+          if (run === "completed/success") c.bucket = "ghost";
+        }
+      }
+    }
+    const ghosts = checks.filter((c) => c.bucket === "ghost");
     const failing = checks.filter((c) => c.bucket === "fail");
     const pending = checks.filter((c) => c.bucket === "pending");
     const overall = failing.length > 0 ? "fail" : pending.length > 0 ? "pending" : "pass";
@@ -172,10 +229,19 @@ void (() => {
       })),
     ];
     human(`ci-preflight: ${overall} (${checks.length} checks, verdict ceiling ${ceiling})`);
+    for (const g of ghosts)
+      human(
+        `ci-preflight: ghost check \`${g.name}\` (run completed/success, merge state CLEAN) counts as resolved`,
+      );
     for (const f of findings) human(`ci-preflight: ${f.message}`);
     return done(
       overall === "pass" ? 0 : 1,
-      { overall, checks, verdict_ceiling: ceiling },
+      {
+        overall,
+        checks,
+        verdict_ceiling: ceiling,
+        ...(ghosts.length > 0 ? { ghosts: ghosts.map((g) => g.name) } : {}),
+      },
       findings,
     );
   }
