@@ -11,9 +11,16 @@
 //   3. the longest verbatim word run of the evidence holds at least EVIDENCE_WINDOW_CHARS letters
 //      and digits and at least EVIDENCE_WINDOW_SHARE of the evidence's letters and digits.
 // The result names the rule that accepted the evidence (spec 0290 R50): `exact`, `normalised`,
-// `window` (with the share of the evidence the longest verbatim run covers) or `path_line`.
-// The rules only widen acceptance. Rule 3 proves the quote is grounded in real output, not that it
-// entails the expectation.
+// `window` (with the share of the evidence the longest verbatim run covers), `path_line` or
+// `short_line`. The rules only widen acceptance. Rule 3 proves the quote is grounded in real
+// output, not that it entails the expectation.
+//
+// Spec 0304 R15: evidence that begins with a `path:line` token (a path, a colon, a decimal line
+// number, then whitespace or the end) is a `path_line` reference when the path names a produced
+// file, the line exists and the token itself reaches EVIDENCE_MIN_CHARS non-whitespace characters;
+// what follows is commentary, unchecked and not counted. R16: evidence of 6 to 11 non-whitespace
+// characters is a `short_line` when, trimmed, it equals one whole trimmed line of exactly one
+// produced file; the transcript never serves as the source of a short line.
 //
 // Usage: validateEvidence(evidence, { transcript, files }) -> { ok } | { ok: false, reason }
 // Exit codes: not applicable (library). Finding-line format: not applicable.
@@ -21,7 +28,13 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { EVIDENCE_MIN_CHARS, EVIDENCE_WINDOW_CHARS, EVIDENCE_WINDOW_SHARE } from "./settings.ts";
+import type { GradedExpectation } from "./grade.ts";
+import {
+  EVIDENCE_MIN_CHARS,
+  EVIDENCE_SHORT_MIN_CHARS,
+  EVIDENCE_WINDOW_CHARS,
+  EVIDENCE_WINDOW_SHARE,
+} from "./settings.ts";
 
 export interface ProducedFile {
   /** Path relative to the run's outputs/ directory, `/` separators. */
@@ -114,12 +127,39 @@ function matchWindow(evidence: string, haystack: string): number | undefined {
 
 /** The rule that accepted a piece of evidence (spec 0290 R50). */
 export type EvidenceMatch =
-  | { readonly rule: "exact" | "normalised" | "path_line" }
+  | { readonly rule: "exact" | "normalised" | "path_line" | "short_line" }
   | { readonly rule: "window"; readonly share: number };
 
 export type EvidenceVerdict =
   | ({ readonly ok: true } & EvidenceMatch)
   | { readonly ok: false; readonly reason: string };
+
+/** R15: the evidence starts with a `path:line` of a produced file, the token reaching the floor. */
+function matchPathLine(evidence: string, material: EvidenceMaterial): boolean {
+  const trimmed = evidence.trim();
+  // a bare reference keeps its former reading (the path may hold spaces); else the first word is the token
+  for (const re of [/^(.+):(\d+)$/, /^(\S+):(\d+)(?=\s)/]) {
+    const ref = re.exec(trimmed);
+    if (ref === null || (ref[0] ?? "").replace(/\s/g, "").length < EVIDENCE_MIN_CHARS) continue;
+    const rel = (ref[1] ?? "").replace(/^(?:\.\/|\/)?(?:outputs\/)?/, "");
+    const line = Number(ref[2]);
+    const file = material.files.find((f) => f.rel === rel);
+    if (file !== undefined && line >= 1 && line <= norm(file.content).split("\n").length)
+      return true;
+  }
+  return false;
+}
+
+/** R16: the evidence equals one whole trimmed line of exactly one produced file. */
+function matchShortLine(evidence: string, material: EvidenceMaterial): boolean {
+  const want = evidence.trim();
+  const holders = material.files.filter((f) =>
+    norm(f.content)
+      .split("\n")
+      .some((l) => l.trim() === want),
+  );
+  return holders.length === 1;
+}
 
 export function validateEvidence(
   evidence: string | undefined,
@@ -127,11 +167,19 @@ export function validateEvidence(
 ): EvidenceVerdict {
   if (evidence === undefined || evidence.trim() === "")
     return { ok: false, reason: "no evidence was given" };
-  if (evidence.replace(/\s/g, "").length < EVIDENCE_MIN_CHARS)
+  const nonWs = evidence.replace(/\s/g, "").length;
+  if (nonWs < EVIDENCE_SHORT_MIN_CHARS)
     return {
       ok: false,
       reason: `evidence has fewer than ${EVIDENCE_MIN_CHARS} non-whitespace characters`,
     };
+  if (nonWs < EVIDENCE_MIN_CHARS)
+    return matchShortLine(evidence, material)
+      ? { ok: true, rule: "short_line" }
+      : {
+          ok: false,
+          reason: `evidence has fewer than ${EVIDENCE_MIN_CHARS} non-whitespace characters and is not a whole line of exactly one produced file`,
+        };
   const needle = norm(evidence);
   if (norm(material.transcript).includes(needle)) return { ok: true, rule: "exact" };
   for (const f of material.files)
@@ -142,18 +190,26 @@ export function validateEvidence(
   if (haystacks.some((h) => matchNormalised(evidence, h))) return { ok: true, rule: "normalised" };
   const shares = haystacks.flatMap((h) => matchWindow(evidence, h) ?? []);
   if (shares.length > 0) return { ok: true, rule: "window", share: Math.max(...shares) };
-  const ref = /^(.+):(\d+)$/.exec(evidence.trim());
-  if (ref !== null) {
-    const rel = (ref[1] ?? "").replace(/^\.?\/?(outputs\/)?/, "");
-    const line = Number(ref[2]);
-    const file = material.files.find((f) => f.rel === rel);
-    if (file !== undefined && line >= 1 && line <= norm(file.content).split("\n").length)
-      return { ok: true, rule: "path_line" };
-  }
+  if (matchPathLine(evidence, material)) return { ok: true, rule: "path_line" };
   return {
     ok: false,
     reason:
       "evidence occurs in neither the transcript nor a produced file, and is not a path:line of a produced file",
+  };
+}
+
+/** A judge PASS whose evidence is valid, as a graded entry (R50: the rule that accepted it is recorded). */
+export function acceptedEntry(
+  text: string,
+  evidence: string,
+  v: Extract<EvidenceVerdict, { ok: true }>,
+): GradedExpectation {
+  return {
+    text,
+    passed: true,
+    evidence,
+    evidence_match: v.rule,
+    ...(v.rule === "window" ? { window_share: Math.round(v.share * 100) / 100 } : {}),
   };
 }
 

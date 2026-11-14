@@ -1,10 +1,11 @@
 // grade.ts — grading of one run into `grading.json` (spec 0290 R11, R12, R13).
 //
 // Order: every check first (R12), in file order, then every expectation, in file order. The judge
-// is called ONCE, only when the eval has `expectations` and its outputs directory can be read. A
-// PASS needs valid evidence (evidence.ts); an unsupported PASS, any other verdict word and a missing
-// entry ("no verdict") are recorded `passed: false`. A judge that cannot answer raises
-// `JudgeFailure`, which the caller turns into status `error`.
+// is called once, only when the eval has `expectations` and its outputs directory can be read, plus
+// at most one re-ask (reask.ts, spec 0304 R17) when a PASS was refused for unsupported evidence. A
+// PASS needs valid evidence (evidence.ts); an unsupported PASS that the re-ask does not rescue, any
+// other verdict word and a missing entry ("no verdict") are recorded `passed: false`. A judge that
+// cannot answer raises `JudgeFailure`, which the caller turns into status `error`.
 //
 // Usage: const g = await gradeRun({ evalCase, outputsDir, skillDir, transcript, judge });
 // Exit codes: not applicable (library). Finding-line format: not applicable.
@@ -12,8 +13,9 @@
 import fs from "node:fs";
 
 import { runCheck } from "./checks.ts";
-import { readProducedFiles, validateEvidence } from "./evidence.ts";
+import { acceptedEntry, readProducedFiles, validateEvidence } from "./evidence.ts";
 import type { ProducedFile } from "./evidence.ts";
+import { reaskRefused } from "./reask.ts";
 import type { EvalCase } from "./schema.ts";
 
 export interface GradedExpectation {
@@ -21,7 +23,9 @@ export interface GradedExpectation {
   passed: boolean;
   evidence: string;
   /** R50: the rule that accepted a judge PASS; absent on checks and on failed entries. */
-  evidence_match?: "exact" | "normalised" | "window" | "path_line";
+  evidence_match?: "exact" | "normalised" | "window" | "path_line" | "short_line";
+  /** 0304 R17: the entry was resolved by the one re-ask. */
+  reasked?: true;
   /** R50: with `window`, the share of the evidence covered by the longest verbatim run, 2 decimals. */
   window_share?: number;
 }
@@ -84,6 +88,8 @@ export interface GradeInput {
   readonly judge: JudgeFn;
   /** The eval's `judge.txt`: the raw judge answer is written there, even when parsing fails. */
   readonly judgeRawFile?: string;
+  /** Where the raw answer of the re-ask is written (R17). */
+  readonly judgeReaskRawFile?: string;
   readonly mock?: boolean;
 }
 
@@ -99,6 +105,7 @@ export async function gradeRun(input: GradeInput): Promise<Grading> {
   } catch {
     readable = false;
   }
+  let reasked = false;
   const texts = input.evalCase.expectations;
   if (texts.length > 0 && !readable) {
     for (const text of texts)
@@ -114,40 +121,42 @@ export async function gradeRun(input: GradeInput): Promise<Grading> {
       { transcript: input.transcript, files },
       input.judgeRawFile !== undefined ? { rawFile: input.judgeRawFile } : undefined,
     );
-    texts.forEach((text, i) => {
+    const material = { transcript: input.transcript, files };
+    const refused: { index: number; reason: string }[] = [];
+    const judged: GradedExpectation[] = texts.map((text, i) => {
       const answer = answers[i];
       if (answer === undefined)
-        entries.push({
-          text,
-          passed: false,
-          evidence: "the judge gave no verdict for this expectation",
-        });
-      else if (answer.verdict !== "PASS")
-        entries.push({
+        return { text, passed: false, evidence: "the judge gave no verdict for this expectation" };
+      if (answer.verdict !== "PASS")
+        return {
           text,
           passed: false,
           evidence: `the judge verdict was ${answer.verdict}${answer.evidence ? `: ${answer.evidence}` : ""}`,
-        });
-      else {
-        const v = validateEvidence(answer.evidence, { transcript: input.transcript, files });
-        if (v.ok)
-          entries.push({
-            text,
-            passed: true,
-            evidence: answer.evidence ?? "",
-            evidence_match: v.rule,
-            ...(v.rule === "window" ? { window_share: Math.round(v.share * 100) / 100 } : {}),
-          });
-        else
-          entries.push({
-            text,
-            passed: false,
-            evidence: `the PASS verdict was unsupported: ${v.reason}${answer.evidence ? ` (evidence given: ${JSON.stringify(answer.evidence.slice(0, 200))})` : ""}`,
-          });
-      }
+        };
+      const v = validateEvidence(answer.evidence, material);
+      if (v.ok) return acceptedEntry(text, answer.evidence ?? "", v);
+      refused.push({ index: i, reason: v.reason });
+      return {
+        text,
+        passed: false,
+        evidence: `the PASS verdict was unsupported: ${v.reason}${answer.evidence ? ` (evidence given: ${JSON.stringify(answer.evidence.slice(0, 200))})` : ""}`,
+      };
     });
+    if (refused.length > 0) {
+      reasked = true;
+      const again = await reaskRefused({
+        judge: input.judge,
+        texts: refused.map((r) => texts[r.index] as string),
+        reasons: refused.map((r) => r.reason),
+        material,
+        ...(input.judgeReaskRawFile !== undefined ? { rawFile: input.judgeReaskRawFile } : {}),
+      });
+      refused.forEach((r, k) => void (judged[r.index] = again[k] as GradedExpectation));
+    }
+    entries.push(...judged);
   }
   const grading: Grading = { expectations: entries, summary: summarize(entries) };
+  if (reasked) grading.reasked = true;
   if (input.mock === true) grading.mock = true;
   return grading;
 }

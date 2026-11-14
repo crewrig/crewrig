@@ -192,6 +192,7 @@ async function attempt(ctx: StageCtx, s: LiveSkill, slot: Slot): Promise<Attempt
           transcript: outcome.transcript,
           judge: s.judge.fn,
           judgeRawFile: path.join(dir, "judge.txt"),
+          judgeReaskRawFile: path.join(dir, "judge-reask.txt"),
           mock: ctx.mock,
         });
       } catch (e) {

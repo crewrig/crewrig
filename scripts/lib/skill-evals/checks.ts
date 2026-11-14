@@ -1,6 +1,7 @@
 // checks.ts — deterministic checks of a run (spec 0290 R4, R12).
 //
-// A check is evaluated before any judge call. `path` is relative to the run's `outputs/`
+// A check is evaluated before any judge call (`file_not_contains`, 0304 R18, is the deterministic
+// absence check: it fails when the file was not produced). `path` is relative to the run's `outputs/`
 // directory and never escapes it (guard on the resolved real path). `exit_code` runs a script of
 // the HEAD skill directory (the measuring instrument, R19) with a minimal environment: PATH, a
 // throwaway HOME, LANG and no credential variable.
@@ -38,6 +39,8 @@ export function checkText(c: Check): string {
       return `check file_exists: ${c.path}`;
     case "file_contains":
       return `check file_contains: ${c.path} matches /${c.pattern}/`;
+    case "file_not_contains":
+      return `check file_not_contains: ${c.path} does not match /${c.pattern}/`;
   }
 }
 
@@ -59,7 +62,7 @@ export function resolveInside(base: string, rel: string): string | undefined {
 
 export async function runCheck(c: Check, ctx: CheckContext): Promise<CheckResult> {
   const text = checkText(c);
-  if (c.type === "file_exists" || c.type === "file_contains") {
+  if (c.type === "file_exists" || c.type === "file_contains" || c.type === "file_not_contains") {
     const abs = resolveInside(ctx.outputsDir, c.path);
     if (abs === undefined)
       return {
@@ -77,7 +80,11 @@ export async function runCheck(c: Check, ctx: CheckContext): Promise<CheckResult
       return {
         text,
         passed: false,
-        evidence: `observed: file "${c.path}" was not produced by the run`,
+        // 0304 R18: a run that wrote nothing has not shown an absence
+        evidence:
+          c.type === "file_not_contains"
+            ? "observed: file not produced"
+            : `observed: file "${c.path}" was not produced by the run`,
       };
     if (c.type === "file_exists")
       return {
@@ -87,6 +94,18 @@ export async function runCheck(c: Check, ctx: CheckContext): Promise<CheckResult
       };
     const content = fs.readFileSync(abs, "utf8");
     const m = new RegExp(c.pattern).exec(content);
+    if (c.type === "file_not_contains")
+      return m === null
+        ? {
+            text,
+            passed: true,
+            evidence: `observed: file "${c.path}" exists and does not match /${c.pattern}/`,
+          }
+        : {
+            text,
+            passed: false,
+            evidence: `observed: file "${c.path}" matches /${c.pattern}/ at "${m[0].slice(0, 80)}"`,
+          };
     if (m === null)
       return {
         text,

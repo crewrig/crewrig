@@ -21,7 +21,8 @@ export interface Violation {
 export type Check =
   | { type: "exit_code"; script: string; args: string[]; expected: number }
   | { type: "file_exists"; path: string }
-  | { type: "file_contains"; path: string; pattern: string };
+  | { type: "file_contains"; path: string; pattern: string }
+  | { type: "file_not_contains"; path: string; pattern: string };
 
 export interface EvalCase {
   id: number;
@@ -244,7 +245,11 @@ function validateCheck(
     const p = relPath("path", false);
     return p === undefined ? undefined : { type, path: p };
   }
-  if (type === "file_contains") {
+  if (type === "file_contains" || type === "file_not_contains") {
+    if (type === "file_not_contains")
+      for (const k of Object.keys(c))
+        if (!["type", "path", "pattern"].includes(k))
+          bad(`${at}.${k}`, "R4", "unknown field (allowed: type, path, pattern)");
     const p = relPath("path", false);
     const pattern = c["pattern"];
     let ok = typeof pattern === "string";
@@ -261,6 +266,6 @@ function validateCheck(
   return void bad(
     `${at}.type`,
     "R4",
-    `unknown check type ${JSON.stringify(type)} (allowed: exit_code, file_exists, file_contains)`,
+    `unknown check type ${JSON.stringify(type)} (allowed: exit_code, file_exists, file_contains, file_not_contains)`,
   );
 }

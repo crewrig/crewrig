@@ -51,7 +51,8 @@ export function buildJudgeMessage(
     "  <n> VERDICT=<PASS|FAIL> EVIDENCE=<a JSON string>\n\n" +
     "where <n> is the expectation's number. For PASS, EVIDENCE MUST be a verbatim excerpt of at least " +
     "12 non-whitespace characters, copied exactly from the TRANSCRIPT or from a PRODUCED FILE, or a " +
-    "reference `path:line` naming a produced file and an existing line of it. For FAIL, EVIDENCE is " +
+    "reference `path:line` naming a produced file and an existing line of it (a remark may follow it), " +
+    "or a whole line of one produced file of 6 to 11 non-whitespace characters. For FAIL, EVIDENCE is " +
     "a short reason.\n\n" +
     (reasons === undefined
       ? ""
