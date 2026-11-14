@@ -142,7 +142,7 @@ const rulesShared: StepFn = async (env) => {
 };
 
 /** `home-dirs` (spec 0305): independent of `skipRules`, so a kept rule set still gets the profiles. */
-const homeDirs: StepFn = (env) => {
+const homeDirs: StepFn = async (env) => {
   const { ctx, descriptor } = env;
   const dirs = descriptor.rules.homeDirs ?? [];
   for (const dir of dirs) placeShared(env, dir, true);

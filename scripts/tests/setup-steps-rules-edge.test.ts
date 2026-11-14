@@ -187,7 +187,8 @@ describe("rules-selection: markers and the fail-closed policy", posix, () => {
 });
 
 describe("home-dirs (spec 0305)", posix, () => {
-  const profile = (): string => path.join(box.home, ".crewrig", "claude-profiles", "worker.settings.json");
+  const profile = (): string =>
+    path.join(box.home, ".crewrig", "claude-profiles", "worker.settings.json");
   const run = (answers: readonly string[]) =>
     runRules(
       {
