@@ -10,7 +10,7 @@ version: 1.1.0
 
 # Make the skill-evals gate statistically sound: a pre-declared sampling plan, a regression test and an honest evidence rule
 
-*Delta 01 of `specs/0304-skill-evals-sampling-gate.md`. Source: the seat review of the implementation pull request (#1960), findings i1-F1 and i1-F5. Requirements modified: R3 (a `fail` is final only when no pool is pending), R10 (a residual risk is stated), R21 (the per-skill unit costs and the one-run column), and the parent Intent ("on one branch"). One scenario is added. Every other requirement is unchanged. This delta opens no question.*
+*Delta 01 of `specs/0304-skill-evals-sampling-gate.md`. Source: the seat review of the implementation pull request (#1960), findings i1-F1 and i1-F5. Requirements modified: R3 (a `fail` is final only when no pool is pending), R10 (a residual risk is stated), R21 (the per-skill unit costs and the one-run column), R8(a) (refusal to resume on an edited case), R22 (runs in flight at the runtime cap), and the parent Intent ("on one branch"). Three scenarios are added. Every other requirement is unchanged. This delta opens no question.*
 
 ## ADDED
 
@@ -22,6 +22,24 @@ version: 1.1.0
 - **Given** the same measurement resumed until the probe pool is decided (accepted, rejected or, after stage 2, decided on the cumulative rate),
 - **When** the last slot of the last pending pool is graded,
 - **Then** the status becomes `fail` (the evals pool is rejected), the ledger entry is final (R8(f)), and the verifier reports it valid.
+
+### A resume refuses an edited case
+
+- **Given** an `in-progress` file for the current hash, the same ticket and an equal plan, whose recorded `case_hash` of eval 3 no longer matches the case in the working tree (a fixture or the case was edited between the interruption and the resume, which leaves `content_hash` unchanged),
+- **When** the runner is invoked,
+- **Then** it exits 1 with a message naming eval 3, makes no model call, leaves `evals/results.json` byte-identical, and the message names the two ways out: restore the case, or change the skill content (a new hash, so a new measurement).
+- **Given** the same file with the recorded case hashes matching the tree and the same eval list,
+- **When** the runner is invoked,
+- **Then** it resumes as in "Resume runs only the missing slots".
+
+### Runs in flight at the runtime cap finish and are counted
+
+- **Given** an `EXECUTOR_CONCURRENCY` of 4, a measurement whose recorded cost reaches `MAX_MEASUREMENT_USD` when the first of four concurrent runs completes, and three runs still in flight,
+- **When** the cap is reached,
+- **Then** the three in-flight runs finish and are recorded and counted, no further run starts, the skill ends with status `error` and a non-zero exit, the file stays `in-progress`, and the recorded spend may exceed `MAX_MEASUREMENT_USD` by at most the cost of those runs, each bounded by its per-run limit.
+- **Given** a budget that the preflight refuses (R22(a) to (d)),
+- **When** the runner is invoked,
+- **Then** it refuses before any model call, as before: the in-flight rule applies only to runs already started.
 
 ## MODIFIED
 
@@ -41,9 +59,17 @@ version: 1.1.0
 
 **Amended (Intent):** "... and that re-running on one branch cannot shop for." Across branches and fresh clones the residual risk of R10 applies.
 
+5. **R8(a), original:** "(a) the same `content_hash`, status `in-progress`, a plan equal to `SAMPLING_PLAN` and the same ticket: the measurement is *resumed*, the recorded runs count, only the missing slots of the stage the recorded runs reach are run, and the stage decisions are recomputed by `plan.ts`;"
+
+**Amended (R8(a)):** the resume additionally requires that every recorded `case_hash` and the recorded eval list match the working tree. A resume for which they do not match (a fixture or a case edited between the interruption and the resume, which leaves `content_hash` unchanged and would leave the finished file permanently `stale` under R14 and, being final for its hash, unmeasurable under R8(b)) SHALL be refused: exit 1 with a message naming the eval, no model call, `evals/results.json` untouched. The message SHALL name the way out: restore the case, or change the skill content, which gives a new hash and a new measurement. The refusal is checked after the ticket and plan conditions of (a) and before any slot runs.
+
+6. **R22 (runtime cap), the runtime sentence, original:** "At runtime, when the measured cost of the measurement (executor and judge) reaches `MAX_MEASUREMENT_USD` the runner SHALL start no new run, SHALL end the skill with status `error` and a non-zero exit and SHALL keep the file `in-progress`."
+
+**Amended (R22):** at runtime, when the recorded cost of the measurement (executor and judge) reaches `MAX_MEASUREMENT_USD`, the runner SHALL start no new run; runs already in flight SHALL finish and SHALL be recorded and counted (a paid run is never discarded); then the runner SHALL end the skill with status `error` and a non-zero exit and SHALL keep the file `in-progress`. Hence the recorded spend of a measurement, and so the spend of a skill against `MAX_SKILL_USD`, can exceed the cap by at most `EXECUTOR_CONCURRENCY` runs, each bounded by its per-run limit; the aggregate bound of R22 already carries that term. The preflight refusals (a) to (d) are unchanged and still happen before any model call.
+
 ## REMOVED
 
-Nothing is removed as a requirement. Removed from the original text and replaced under MODIFIED: the generic unit-cost sentence of R21, the one-run figures 0.71 and 0.96, the unqualified "cannot shop for" of the Intent, and the first two sentences of R3.
+Nothing is removed as a requirement. Removed from the original text and replaced under MODIFIED: the generic unit-cost sentence of R21, the one-run figures 0.71 and 0.96, the unqualified "cannot shop for" of the Intent, the first two sentences of R3, the unconditional resume of R8(a) and the runtime sentence of R22.
 
 ### Out of scope
 
