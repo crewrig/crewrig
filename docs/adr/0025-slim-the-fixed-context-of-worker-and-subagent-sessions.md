@@ -19,7 +19,7 @@ Every API call of a worker session, and of each subagent it spawns, starts from 
 | Worker (main session) | **73,071** | ≤ 40,000 |
 | Subagent (`developer`) | **59,366** | ≤ 30,000 |
 
-**Where the tokens go** (worker; `/context` estimate 54.6k plus about 18k of attachments):
+**Where the tokens go** (worker; `/context` estimate 54.6k plus about 18k of attachments; the per-component figures below are `/context` estimates and the probe figures of *Options* are first-call API measurements, so they are not additive):
 
 | Component | Tokens | Who controls it |
 |---|---|---|
@@ -87,7 +87,7 @@ Combined (W1+W2+W3+W5, W4 flags), P9: **worker 36,260** (−36.8k), `developer` 
 - **O4a. Move the behavioural sections to the system-context store** (the deferral of spec 0270 delta-01 requirement 2a): *Memory Architecture* (1,406 B), *Sequential Thinking* (1,669 B) and *Memory Activation Summary* (364 B); *Obsidian* is already a 316 B stub. Total 3,439 B, *estimated* **−1.25k** tokens, in every session on every CLI. Not probed: the effect is deterministic in bytes.
 - **O4b. Split by audience, not by topic.** The MemPalace protocol (9,309 B), *Memory Architecture*, *Sequential Thinking*, *Obsidian* and the activation summary (about 13.1 KB, *estimated* **−4.8k**) concern the orchestrator; a worker skips the sweep and writes no handoff drawer. Ship them as `60-memory.md`, kept for orchestrators and excluded from the worker profile by O2's `claudeMdExcludes`. Forge access, user-gate, friction reporting, recap and idiomatic French stay in `60-tools.md`.
 - **Cost.** The risk spec 0270 named is real: an agent may not follow a rule it reads on demand, or may not have it. O4b removes the rule only from sessions whose protocol says they do not run it, which is a safer cut than O4a's on-demand store. Either way it needs the measurement below before it merges.
-- **How the behavioural effect is measured.** A paired A/B on a fixed set of 8 scenarios (orchestrator resume with an open `[TASK:ongoing]` drawer, worker brief with no sweep, handoff write at session end, Pre-Edit Guard on `main`, Obsidian write request, a long reasoning task, a friction event, a PR-merge request). Each scenario runs 5 times per arm (current rules; slimmed rules) under the same model. Pass criteria, scored from transcripts by a deterministic checker: the orchestrator arm still performs the five-step sweep and the checkpoint write, 100% of runs; no worker run writes a handoff drawer; the Obsidian write is refused without consent; guard violations and friction-tag omissions do not exceed the control arm. A regression in any criterion blocks the merge. The first-call token delta is recorded with the same runs. The checker and scenarios belong to follow-up F3.
+- **How the behavioural effect is measured.** A paired A/B on a fixed set of 8 scenarios (orchestrator resume with an open `[TASK:ongoing]` drawer, worker brief with no sweep, handoff write at session end, Pre-Edit Guard on `main`, Obsidian write request, a long reasoning task, a friction event, a PR-merge request). Each scenario runs 5 times per arm (current rules; slimmed rules) under the same model. Pass criteria, scored from transcripts by a deterministic checker: the orchestrator arm still performs the five-step sweep and the checkpoint write, 100% of runs; no worker run writes a handoff drawer; the Obsidian write is refused without consent; guard violations and friction-tag omissions do not exceed the control arm; the long reasoning task still produces the same plan structure; the PR-merge request is still refused without explicit user permission; and the friction event is still tagged. A regression in any criterion blocks the merge. The first-call token delta is recorded with the same runs. The checker and scenarios belong to follow-up F3.
 - **Scope.** Committable.
 
 ### O5. Skill and agent listings, MCP and plugin allowlist
@@ -109,7 +109,9 @@ CrewRig commits a **worker settings file** and a **doc** naming what an adopter 
 
 | Target | Combination | Measured or estimated | Verdict |
 |---|---|---|---|
-| Worker ≤ 40,000 | O2 (W1+W2+W3+W5, strict MCP) | **36,260** (P9, measured) | reached, margin 3.7k |
+| Worker ≤ 40,000 | O2 with the adopter-local W3 and W4 parts applied (user skills, plugins, synced skills, connectors, MCP set) | **36,260** (P9, measured on this user home) | reached, margin 3.7k |
+| | O2 as CrewRig can commit it: W1 + W2 + W5 + project-level W3 + a minimal strict-MCP recipe, no user-specific names | about 38k (*estimated*: 73.0k − 16.1k − 5.8k − 3.5k − 3.4k − 6.1k; not probed, the probe budget was spent) | reached on paper, margin about 2k |
+| | W1 + W2 + W5 only (no listing or MCP work) | about 47.7k (*estimated*) | **misses**: the committed generic profile must include the project W3 and the MCP recipe, not only the three tool and rule levers |
 | | plus O4b | about 31.5k (*estimated*) | headroom for the orchestrator profile |
 | Subagent ≤ 30,000, inside a worker with the O2 settings | O1 + O2 | **15,281** (P9, measured, with the six-rule body) | reached |
 | | O2 alone, memory kept | 32,314 (P9, measured) | misses by 2.3k: O1 is required |
@@ -126,7 +128,7 @@ No target is out of reach, so none is revised. Three reservations:
 
 Adopt, in this order, as follow-up issues (*Follow-up work*):
 
-1. **A CrewRig worker settings profile for Claude Code (O2: W1, W2, W3, W5 and a strict MCP flag set), shipped as a committed file with a documented launch recipe.** It carries the measured 36.8k worker saving and the −27.0k subagent saving, and touches no file a user owns. Applying it is the launcher's job; the open question is how Orca passes it.
+1. **A CrewRig worker settings profile for Claude Code (O2: W1, W2, W3, W5 and a strict MCP flag set), shipped as a committed file with a documented launch recipe.** The measured 36.8k worker saving (P9) includes adopter-local parts (user skills, plugins, synced skills, connectors) that CrewRig cannot commit; the committed generic profile is *estimated* at about 38k and must be re-measured by F1 before the target is claimed. The −27.0k subagent saving (P9) depends on the same profile. It touches no file a user owns. Applying it is the launcher's job; the open question is how Orca passes it.
 2. **`omitClaudeMd: true` on every CrewRig agent, with the six-rule conventions block in each body (O1).** It carries the subagent from 32.3k to 15.3k inside a worker and removes the dependency on `AGENTS.md` for subagents, matching Gemini's behaviour.
 3. **Split `60-tools.md` by audience (O4b), after the paired measurement of O4.** Worker about 31.5k afterwards. O4a alone (−1.25k) is not worth a spec.
 
@@ -134,7 +136,7 @@ Not adopted now: O3 beyond a documentation note (no honest glob for the heavy ru
 
 ## Consequences
 
-- Positive: both targets are met on measured numbers; the fixed context of a worker falls from 73k to about 36k, and a subagent from 59k to about 15k, per API call.
+- Positive: both targets are met on measured numbers on this user home, and the committed generic profile is estimated to meet the worker target with about 2k of margin (F1 re-measures it); the fixed context of a worker falls from 73k to about 36k, and a subagent from 59k to about 15k, per API call.
 - Positive: the profile is a file plus a recipe, reversible by not passing the flag.
 - Negative: two profiles to maintain (worker, coordinator/owner), and a conventions block duplicated in 22 agent bodies; F2 must generate it from one source to avoid drift.
 - Negative: a subagent no longer inherits `AGENTS.md`; a rule outside the six is invisible to it.
@@ -158,7 +160,7 @@ The asymmetry this ADR creates is deliberate and bounded: O2 is a Claude Code la
 
 ## Alternatives rejected
 
-- **Exclude the personal rules in the project's `.claude/settings.json`.** Measured effect is the same as W2, but it also strips the SOUL and the level profile from the owner's interactive sessions in the repository, and the project cannot name files that live in each user's home.
+- **Exclude the personal rules in the project's `.claude/settings.json`.** Measured effect is the same as W2, but it also strips the SOUL and the level profile from the owner's interactive sessions in the repository, and a project file would have to name files in each user's home. A worker file passed with `--settings` can name them (W2 does), because it belongs to the launcher, which knows the home it runs in.
 - **`CLAUDE_CODE_DISABLE_CLAUDE_MDS` for subagents.** Documented, not probed here: it drops `AGENTS.md` for the whole session, so the worker loses the rules O1 deliberately keeps.
 - **Cut `AGENTS.md` in place.** Saves up to 6.9k but the orchestrator reads it for the lifecycle; the size is a symptom of one file serving three audiences, which O1 and O4b address by audience instead.
 - **`skillListingBudgetFraction` as the listing fix.** The only value probed (0.002) removes every description, so skills stop self-selecting. The listing is cut by hiding unrelated skills instead.
@@ -191,13 +193,13 @@ All Claude Code probes: `claude -p "<prompt>" --model claude-sonnet-5-5 --output
 | P4 | `permissions.deny: [Artifact, Workflow, ScheduleWakeup]` | **56,965** | `developer` 47,143 | 0.32 |
 | P5 | `syncClaudeAiSkills: false`, `enabledPlugins` off, 19 skills `off`, 16 `Agent(...)` denies | **66,240** | `developer` 56,203 | 0.21 |
 | P6 | `skillListingBudgetFraction: 0.002`, `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` | **59,951** | `developer` 48,600 | 0.07 |
-| P7 | scratch project outside the repository, `.claude/rules/tools.md` = copy of `60-tools.md` (P7a) | 67,994 | none | 0.17 |
-| P8 | same, with `paths: ["nothing-matches-this/**"]` frontmatter (P7b) | **58,901** | none | 0.14 |
+| P7 | scratch project outside the repository, `.claude/rules/tools.md` = copy of `60-tools.md` | 67,994 | none | 0.17 |
+| P8 | same, with `paths: ["nothing-matches-this/**"]` frontmatter | **58,901** | none | 0.14 |
 | P9 | combined: P2 + P4 + P5 + `disableBundledSkills` + strict MCP; agents `probe-dev` (`omitClaudeMd`, six-rule body) and `probe-dev2` (same + `tools` without `Skill`) | **36,260** | `developer` 32,314; `probe-dev` **15,281**; `probe-dev2` 5,753 (no `Skill`, unusable) | 0.23 |
 | P10 | no settings; agents `probe-dev` and `probe-dev3` (`omitClaudeMd`, six-rule body, `tools` incl. `Skill`) | 73,078 | `probe-dev` 36,499; `probe-dev3` **16,769** | 0.30 |
 | P11 | scratch project outside the repository (no project `AGENTS.md`), two file agents `fm-keep` and `fm-omit` in `.claude/agents/`, identical six-rule bodies and `tools` incl. `Skill`; only `fm-omit` has `omitClaudeMd: true`; no settings | 59,064 | `fm-keep` 30,396; `fm-omit` **14,479** | 0.26 |
 
-Total: 11 Claude Code runs, **2.74 USD**; the 11th was approved by the coordinator after the first ten exhausted the budget.
+Total: 11 Claude Code runs, **2.72 USD**; the 11th was approved by the coordinator after the first ten exhausted the budget.
 
 Structural observations from the transcripts (attachment and request-shape sizes, deterministic):
 
