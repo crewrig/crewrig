@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
+import { claudeDescriptor } from "../lib/setup/cli-claude.ts";
 import { listExisting } from "../lib/setup/steps-rules.ts";
 import {
   PICKS,
@@ -182,5 +183,51 @@ describe("rules-selection: markers and the fail-closed policy", posix, () => {
     assert.equal(result.status, 0);
     assert.ok(!result.out.includes("Select your"));
     assert.deepEqual(fs.readdirSync(path.join(box.home, ".claude")).sort(), ["rules"]);
+  });
+});
+
+describe("home-dirs (spec 0305)", posix, () => {
+  const profile = (): string =>
+    path.join(box.home, ".crewrig", "claude-profiles", "worker.settings.json");
+  const run = (answers: readonly string[]) =>
+    runRules(
+      {
+        ...rulesDescriptor("claude", ["rules-existing", "rules-shared", "home-dirs"]),
+        rules: claudeDescriptor.rules,
+      },
+      answers,
+    );
+
+  test("the profiles are deployed when the existing rules are kept, and ~/.claude gains nothing", async () => {
+    const rules = path.join(box.home, ".claude", "rules");
+    fs.mkdirSync(rules, { recursive: true });
+    fs.writeFileSync(path.join(rules, "00-soul.md"), "seeded\n");
+    const run1 = await run(["rules-action=keep"]);
+    assert.equal(run1.status, 0);
+    assert.ok(fs.existsSync(profile()), "worker profile deployed under keep");
+    assert.deepEqual(fs.readdirSync(rules), ["00-soul.md"]);
+    assert.deepEqual(fs.readdirSync(path.join(box.home, ".claude")), ["rules"]);
+  });
+
+  test("a second run refreshes the directory in place", async () => {
+    assert.equal((await run([...VALIDATION])).status, 0);
+    assert.ok(fs.existsSync(profile()));
+    assert.equal((await run(["rules-action=refresh", ...VALIDATION])).status, 0);
+    assert.ok(fs.existsSync(profile()));
+  });
+
+  test("an absent optional source places nothing and prints nothing", async () => {
+    fs.rmSync(path.join(box.repo, "artifacts"), { force: true });
+    fs.mkdirSync(path.join(box.repo, "artifacts"));
+    const result = await runRules(
+      {
+        ...rulesDescriptor("claude", ["home-dirs"]),
+        rules: claudeDescriptor.rules,
+      },
+      [],
+    );
+    assert.equal(result.status, 0);
+    assert.equal(result.out, "");
+    assert.ok(!fs.existsSync(path.join(box.home, ".crewrig")));
   });
 });

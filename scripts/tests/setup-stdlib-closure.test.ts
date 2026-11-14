@@ -122,6 +122,7 @@ const PRE_DEPS_STEP_FILES: Readonly<Record<string, readonly string[]>> = {
   "copilot-workspace-files": [`${SETUP}/steps-copilot.ts`],
   "rules-existing": [`${SETUP}/steps-rules.ts`],
   "rules-shared": [`${SETUP}/steps-rules.ts`],
+  "home-dirs": [`${SETUP}/steps-rules.ts`],
   "rules-selection": [`${SETUP}/steps-rules.ts`],
   // steps-agy.ts loads mcp-agy-step.ts by a computed specifier: resolved here as a literal file.
   "mcp-prepare": [`${SETUP}/steps-agy.ts`, `${SETUP}/mcp-agy-step.ts`],

@@ -86,6 +86,9 @@ artifacts/core
 # artifacts/core (same pattern as docs/index.json under docs) — the store is
 # installed to ~/.crewrig/system-context/ and read on demand.
 artifacts/core/system-context	strict
+# Claude Code worker and coordinator settings profiles (spec 0305). Nested strict
+# entry under artifacts/core — deployed to ~/.crewrig/claude-profiles/ by the Claude setup.
+artifacts/core/claude-profiles	strict
 artifacts/library
 
 # Built outputs

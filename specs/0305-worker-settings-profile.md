@@ -1,7 +1,7 @@
 ---
 id: "0305"
 slug: worker-settings-profile
-status: approved
+status: implemented
 complexity: small
 interaction-mode: AUTO
 related-issue: 1988

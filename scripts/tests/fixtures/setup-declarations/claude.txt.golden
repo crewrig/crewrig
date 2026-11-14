@@ -7,16 +7,17 @@ step 4: prerequisites
 step 5: identity-check
 step 6: rules-existing
 step 7: rules-shared
-step 8: tls-offer
-step 9: deps-install
-step 10: mcp
-step 11: rules-selection
-step 12: tiers
-step 13: hooks-rewrite-installed
-step 14: session-recording
-step 15: usage-capture
-step 16: session-check
-step 17: summary
+step 8: home-dirs
+step 9: tls-offer
+step 10: deps-install
+step 11: mcp
+step 12: rules-selection
+step 13: tiers
+step 14: hooks-rewrite-installed
+step 15: session-recording
+step 16: usage-capture
+step 17: session-check
+step 18: summary
 prompts.link-confirm=link-confirm
 prompts.rules-existing=rules-action
 prompts.rules-shared=validation.backend,validation.translate,validation.pedagogy,validation.illustration
@@ -117,6 +118,7 @@ rules.shared.3=config/TOOLS.md -> <HOME>/.claude/rules/65-org-tools.md
 rules.shared.4=artifacts/core/system-context -> <HOME>/.crewrig/system-context
 rules.shared.5=config/SOUL.md -> <HOME>/.claude/rules/00-soul.md
 rules.store=artifacts/core/system-context -> <HOME>/.crewrig/system-context
+rules.home-dir.1=artifacts/core/claude-profiles -> <HOME>/.crewrig/claude-profiles
 rules.pick-order=team,expertise,level
 rules.selection.team=config/teams/{name}.md -> <HOME>/.claude/rules/50-team.md
 rules.marker.team=<HOME>/.claude/.selected_team

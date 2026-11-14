@@ -598,6 +598,7 @@ setup-modules-ts:
         - "scripts/tests/setup-chroma-install-win.test.ts"
         - "scripts/tests/setup-chroma-unit.test.ts"
         - "scripts/tests/setup-cli-claude-gemini.test.ts"
+        - "scripts/tests/claude-profiles.test.ts"
         - "scripts/tests/setup-cli-copilot-antigravity.test.ts"
         - "scripts/tests/setup-declarations.test.ts"
         - "scripts/tests/setup-deps.test.ts"
