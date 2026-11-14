@@ -9,6 +9,11 @@ that every spec under `/specs/` SHALL satisfy and that downstream
 tooling (the `spec-author` skill in issue #168, the routing engine in
 issue #172, the future spec linter) will rely on.
 
+A spec exists only for a change that alters behaviour observable by a CrewRig user
+or adopter, or a contract shared across components or CLIs (ADR-0024). Component
+content changes, bundled scripts implementing an existing contract, eval cases and
+bug fixes restoring documented behaviour have no spec: the issue is the contract.
+
 The format is intentionally minimal: YAML frontmatter for machine-read
 fields, Markdown body for human-read content, a fixed set of mandatory
 sections so a reviewer always knows where to look.
@@ -290,7 +295,8 @@ implements. It reads only the tree under test; it needs no forge access.
 3. **No match is a notice, not a failure.** When no file in the tree has
    `related-issue` equal to `T`, the linter prints a non-blocking notice on
    stderr naming `T` and stating that no spec or delta-spec was checked for
-   `status: implemented`. The exit status is unaffected. A `trivial` ticket
+   `status: implemented`. The exit status is unaffected. A `trivial` ticket or an
+   issue-only ticket of the no-spec kind (ADR-0024)
    has no spec by design (ADR-0010 → *Complexity tiers*), so failing it would
    be wrong; staying silent would make a missing spec look like a checked one.
    The match is computed over the files being linted. CI lints the whole

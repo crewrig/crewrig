@@ -26,7 +26,9 @@ Rules:
 - A `tech` finding describing a foldable bug is also tracked as a folded item — see *Folded bugs*.
 - The loop SHALL NOT change the logbook issue (Rule A still holds).
 
-**Termination.** The lifecycle terminates at MERGE iff a REVIEW pass verdict is APPROVE AND the pass surfaces zero findings of any class AND CI is green on the head commit reviewed.
+**Termination.** The lifecycle terminates at MERGE iff a REVIEW pass verdict is APPROVE AND the pass surfaces no blocking finding AND CI is green on the head commit reviewed (ADR-0024, amending ADR-0010). Non-blocking findings are recorded in the findings ledger (#961) or a follow-up issue and never trigger another pass on their own.
+
+**Pass cap.** REVIEW runs at most **2 passes** at `trivial`/`small` and **3** at `standard`. Beyond the cap the coordinator decides: merge with ledger entries, or escalate. A fix pass is scoped to the change since the last reviewed revision (`docs/reviewer-seat.md` → *Bounded scope from the second pass*). The max-iteration guardrail below remains the outer bound.
 
 **Max-iteration guardrail.** The loop halts after **5 iterations** (configurable in the spec frontmatter, default 5) without termination. On halt, the orchestrator posts a structured summary on the logbook issue and pages the user regardless of mode (including AUTO).
 
