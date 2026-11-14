@@ -108,7 +108,7 @@ A wave migrates a skill in this order, which is the order the `pr-logbook` pilot
 1. Write the evals first and commit them without touching the skill.
 2. Measure a baseline on the unchanged skill, once (the gate records it in `evals/results.json` for the merge-base; a second run is a choice, not a requirement).
 3. Extract the scripts and rewrite the body to this standard.
-4. Measure again on the same frozen cases. Keep the rewrite only when the skill loads in every eval and the score does not fall below the baseline by more than one case. A modified skill costs at most two paid runs (baseline, final); a fix that leaves `SKILL.md` and `evals/evals.json` unchanged costs none.
+4. Measure again on the same frozen cases. Keep the rewrite only when the score does not fall below the baseline by more than one case; an eval that does not load the skill is reported as a warning (#1973), and is a reason to rework that eval, not to retune the description. A modified skill costs at most two paid runs (baseline, final); a fix that leaves `SKILL.md` and `evals/evals.json` unchanged costs none.
 
 Add these lessons of the pilot:
 

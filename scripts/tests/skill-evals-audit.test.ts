@@ -128,10 +128,10 @@ test("declared defaults: each field of DEFAULT_SETTINGS is its settings.ts const
     failBlocking: S.FAIL_BLOCKING,
   });
   // the literals that are not provisional: the knobs, the threshold, the effort and the model (R20, R31, R46, R47)
-  // #1963: a regression and a skill that never loads block; the 0.80 bar is advisory
+  // #1963/#1973: a regression blocks; a skill that does not load only warns; the 0.80 bar is advisory
   assert.equal(DEFAULT_SETTINGS.regressionBlocking, true);
   assert.equal(DEFAULT_SETTINGS.missingEvalsBlocking, false);
-  assert.equal(DEFAULT_SETTINGS.failBlocking, true);
+  assert.equal(DEFAULT_SETTINGS.failBlocking, false, "#1973: an unloaded skill is a warning");
   assert.equal(DEFAULT_SETTINGS.passThreshold, 0.8);
   assert.equal(DEFAULT_SETTINGS.effort, "medium");
   assert.match(DEFAULT_SETTINGS.executorModel, /sonnet/i);

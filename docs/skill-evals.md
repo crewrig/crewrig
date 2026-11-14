@@ -76,7 +76,7 @@ An absence ("the workflow has no `pull_request_target`") is not an expectation f
 
 Grading order: every `checks` entry first (deterministic), then one judge call for all of the eval's `expectations`. In `grading.json` the checks therefore come first, then the expectations, each list in file order. A failed check does not prevent the judge call. The judge is not called for an eval with no expectation, or whose output directory cannot be read (its expectations are then recorded failed).
 
-`skill_loaded` is informational: it records whether the agent called the `Skill` tool for this skill during the run, is not scored, but a skill that did not load in every eval is `fail` (#1963). With no run without the skill, it is the only indication that an eval passed because of the skill rather than from the model's own knowledge. The report counts the eval runs that loaded the skill.
+`skill_loaded` is informational: it records whether the agent called the `Skill` tool for this skill during the run, is not scored, but a skill that did not load in every eval is `fail`, a warning that does not block (#1973). With no run without the skill, it is the only indication that an eval passed because of the skill rather than from the model's own knowledge: an eval that passes without the skill does not measure it, which says something about the eval, not a reason to hold the merge. The report and the attestation name the ids of the evals that did not load the skill (`unloaded_evals` in `results.json`), so you can rework those evals; trigger probes already measure whether the skill loads when it should.
 
 ### Judge call
 
@@ -105,7 +105,7 @@ Every setting is one declared constant in `scripts/lib/skill-evals/settings.ts`,
 | Setting | Default | Meaning |
 |---|---|---|
 | `PASS_THRESHOLD` | `0.8` | Advisory only: the report prints a line when the eval or probe pass rate is below it, and the attestation reason repeats it. It never changes a status or an exit code. |
-| `FAIL_BLOCKING` | `true` | When `true`, a `fail` (the skill did not load in every eval) makes the run and the attestation check exit non-zero. |
+| `FAIL_BLOCKING` | `false` | When `true`, a `fail` (the skill did not load in every eval) makes the run and the attestation check exit non-zero. By default it only warns and names the unloaded eval ids (#1973). |
 | `REGRESSION_BLOCKING` | `true` | When `true`, a regression (measured, or recorded in a results file) makes the run and the attestation check exit non-zero. |
 
 There is no tolerance setting: the tolerance is one case, `1 / evals_total`, recorded in `evals/results.json` as `tolerance`.
@@ -136,7 +136,7 @@ The eval pass rate is the evals that passed divided by the evals; an eval passes
 The pass rule is a **non-regression** check (#1963), not an absolute bar. One run of five or six evals cannot support an absolute threshold: a single flipped case moves the score by 0.17, and the same skill content measured 1.00, 0.83, 0.83 and 0.67 in the pilot.
 
 - `pass`: the skill loaded in every eval (`skill_loaded` equals `evals_total`) and the eval score is not below the score recorded at the merge-base by more than one case. A skill with no recorded base is compared with nothing and passes.
-- `fail`: the skill did not load in every eval. Exit 0 unless `FAIL_BLOCKING`.
+- `fail`: the skill did not load in every eval. A warning that names the unloaded eval ids; exit 0 unless `FAIL_BLOCKING`. A `regression` still blocks when it holds alongside a `fail`.
 - `regression`: the head eval pass rate is lower than the base's by more than one case, `1 / evals_total` (exit 0 unless `REGRESSION_BLOCKING`). When both `fail` and `regression` hold, the status is `fail` and the regression line is printed too.
 
 `PASS_THRESHOLD` (0.80) stays an advisory figure: a score or a probe rate below it adds an `advisory:` line to the report and never fails a skill.

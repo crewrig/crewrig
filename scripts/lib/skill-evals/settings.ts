@@ -12,8 +12,8 @@ export const REGRESSION_BLOCKING = true;
 export const MISSING_EVALS_BLOCKING = false;
 /** #1963: the advisory score bar, printed in the report; falling below it never fails a skill. */
 export const PASS_THRESHOLD = 0.8;
-/** #1963: a skill whose result is `fail` (it did not load in every eval) blocks. */
-export const FAIL_BLOCKING = true;
+/** #1973: a skill whose result is `fail` (it did not load in every eval) is a warning naming the evals to rework, not a blocker. */
+export const FAIL_BLOCKING = false;
 /** R47: the `--effort` level of the executor, the probe and the judge call. */
 export const EFFORT = "medium";
 

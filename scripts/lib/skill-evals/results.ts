@@ -41,6 +41,8 @@ export interface ResultsRecord {
   cost_usd: number | null;
   /** Eval runs that loaded the skill; absent in a file written before runner 3.0.0. */
   skill_loaded?: number;
+  /** #1973: ids of the evals whose run did not load the skill; absent in a file written before it. */
+  unloaded_evals?: number[];
 }
 
 const KEYS = [
@@ -65,6 +67,7 @@ const KEYS = [
   "judge_calls",
   "cost_usd",
   "skill_loaded",
+  "unloaded_evals",
 ] as const satisfies readonly (keyof ResultsRecord)[];
 
 /** The figures `decide` works from; recorded in the results file, so the attestation can recompute. */
@@ -172,7 +175,7 @@ export function verifyResults(
   const o = doc as Record<string, unknown>;
   if (o["mock"] === true) return { ok: false, reason: "evals/results.json records a mock run" };
   for (const k of KEYS)
-    if (k !== "skill_loaded" && !(k in o))
+    if (k !== "skill_loaded" && k !== "unloaded_evals" && !(k in o))
       return { ok: false, reason: `evals/results.json lacks the key ${k}` };
   if (o["skill_name"] !== skillName)
     return {
