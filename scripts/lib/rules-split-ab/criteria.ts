@@ -36,31 +36,70 @@ const isMem = (e: ToolEvent, name: string): boolean => e.server === "mempalace" 
 
 const FILE_WRITERS = new Set(["Edit", "Write", "NotebookEdit", "MultiEdit"]);
 const ALWAYS_TASK = new Set(["Agent", "Task", ...FILE_WRITERS]);
-/** Metacharacters that chain, redirect, substitute or continue a command: never allowed. */
-const SHELL_META = /[;&|<>`$()\n\r\\]/;
-const READ_ONLY_BASH = [
-  // git subcommands that only read; `git branch` only without a positional argument (that creates one)
-  /^git\s+(status|log|diff|show|rev-parse)(\s+(?!--output\b)[^\s]+)*$/,
-  /^git\s+branch(\s+(--show-current|--list|-a|-r|-v|-vv|--all|--remotes))*$/,
-  /^(ls|cat|pwd)(\s+[^\s]+)*$/,
-  /^node\s+\S*usage-task\S*(\s+[^\s]+)*$/,
-  /^\S*floor[-_ ]?guard\S*(\s+[^\s]+)*$/,
-];
+/** Metacharacters that chain, redirect, substitute or continue a command: never allowed in a segment. */
+const SHELL_META = /[;&|<>`$()\n\r\\*?{}!"'#]/;
+
+/** Closed per-command sets of display flags. Anything else, a `--output` or a `-c` included, is rejected. */
+const FLAGS: Record<string, ReadonlySet<string>> = {
+  "git status": new Set(["-s", "--short", "-b", "--branch", "--porcelain"]),
+  "git log": new Set(["--oneline", "--stat", "--no-color", "-1"]),
+  "git diff": new Set([
+    "--stat",
+    "--name-only",
+    "--name-status",
+    "--cached",
+    "--staged",
+    "--no-color",
+  ]),
+  "git show": new Set(["--stat", "--oneline", "--name-only", "--no-color", "-s"]),
+  "git rev-parse": new Set(["--abbrev-ref", "--show-toplevel", "--short", "--is-inside-work-tree"]),
+  "git branch": new Set(["--show-current", "-a", "-r", "--list"]),
+  ls: new Set(["-l", "-a", "-la", "-al", "-1"]),
+  cat: new Set(),
+  pwd: new Set(),
+};
+/** Commands that take positional revisions or paths (never flag-like, absolute, `~` or `..`). */
+const POSITIONAL = new Set(["git log", "git diff", "git show", "git rev-parse", "ls", "cat"]);
+const SAFE_POSITIONAL = /^[A-Za-z0-9_@^][A-Za-z0-9_./@^~:+-]*$/;
+const FLOOR_GUARD = "node scripts/lib/node-floor-guard.js";
+
+function readOnlyCommand(seg: string): boolean {
+  if (seg === FLOOR_GUARD) return true;
+  const t = seg.split(/\s+/);
+  const key = t[0] === "git" ? `git ${t[1] ?? ""}` : (t[0] ?? "");
+  const flags = FLAGS[key];
+  if (!flags) return false;
+  const args = t.slice(t[0] === "git" ? 2 : 1);
+  const positional = POSITIONAL.has(key);
+  for (let k = 0; k < args.length; k++) {
+    const a = args[k] as string;
+    if (flags.has(a)) continue;
+    if (key === "git log") {
+      if (/^-\d+$/.test(a)) continue;
+      if (a === "-n" && /^\d+$/.test(args[k + 1] ?? "")) {
+        k++;
+        continue;
+      }
+      if (/^--format=[A-Za-z0-9%:.,_-]*$/.test(a)) continue;
+    }
+    if (positional && !a.startsWith("-") && SAFE_POSITIONAL.test(a) && !a.includes("..")) continue;
+    return false;
+  }
+  return true;
+}
 
 /**
- * Whether a Bash command only reads (S1 recalibration, spec 0308 delta): one or more simple commands
- * from a conservative allowlist, joined by `;`, `&&` or `||`. `2>&1` and `2>/dev/null` are
- * tolerated; a pipe, redirection, substitution, background `&`, line break or writing form is not.
+ * Whether a Bash command only reads (S1 recalibration, spec 0308 delta): an exact, closed set of
+ * display commands with closed flag sets, joined by `;`, `&&` or `||`. `2>&1` and `2>/dev/null` are
+ * tolerated; a pipe, other redirection, substitution, background `&`, line break, glob or quote is not.
  */
 export function isReadOnlyBash(command: string): boolean {
-  const c = command.replace(/\s+2>(&1|\/dev\/null)/g, "").trim();
+  const c = command.replace(/\s+2>(&1|\/dev\/null)(?=\s|;|&|\||$)/g, "").trim();
   if (c === "") return false;
   return c
     .split(/&&|\|\||;/)
     .map((seg) => seg.trim())
-    .every(
-      (seg) => seg !== "" && !SHELL_META.test(seg) && READ_ONLY_BASH.some((re) => re.test(seg)),
-    );
+    .every((seg) => seg !== "" && !SHELL_META.test(seg) && readOnlyCommand(seg));
 }
 
 /** A task tool call: an editing or delegating tool, or Bash other than a read-only command. */

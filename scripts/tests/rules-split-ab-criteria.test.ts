@@ -7,7 +7,7 @@ import path from "node:path";
 import { describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { scoreRun } from "../lib/rules-split-ab/criteria.ts";
+import { isReadOnlyBash, scoreRun } from "../lib/rules-split-ab/criteria.ts";
 import { buildCallLog, buildTranscript } from "../lib/rules-split-ab/fixture-cases.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -69,13 +69,13 @@ describe("criterion 1 edge cases", () => {
       "fail",
     );
   });
-  test("an allowed Bash (git status, usage-task, floor guard) before the write is not a task call", () => {
+  test("an allowed Bash (git status, rev-parse, floor guard) before the write is not a task call", () => {
     const bash = (command: string) => ({ name: "Bash", input: { command } });
     const s = run(1, [
       search,
       bash("git status"),
       bash("git rev-parse --abbrev-ref HEAD"),
-      bash("node scripts/usage-task.ts"),
+      bash("node scripts/lib/node-floor-guard.js"),
       update,
     ]);
     assert.equal(s.status, "pass", s.note);
@@ -103,6 +103,80 @@ describe("criterion 1 edge cases", () => {
       const s = run(1, [search, bash(c), update]);
       assert.equal(s.status, "pass", `${c}: ${s.note}`);
     }
+  });
+  test("closed flag sets: display flags pass, everything else is rejected", () => {
+    const ok = [
+      "git status -s",
+      "git status --short -b",
+      "git status --porcelain",
+      "git log --oneline -n 5",
+      "git log -5",
+      "git log -1 --stat",
+      "git log --format=%h:%s",
+      "git log --oneline HEAD~2",
+      "git diff --stat --cached",
+      "git diff --name-only",
+      "git show --stat HEAD",
+      "git rev-parse --show-toplevel",
+      "git branch -a",
+      "git branch -r",
+      "git branch --list",
+      "ls -l",
+      "ls -la src",
+      "ls -1",
+      "cat src/greet.js",
+      "node scripts/lib/node-floor-guard.js",
+      "node scripts/lib/node-floor-guard.js 2>&1",
+    ];
+    for (const c of ok) assert.equal(isReadOnlyBash(c), true, c);
+  });
+  test("explicitly rejected options and commands", () => {
+    const bad = [
+      "git diff --output=x.patch",
+      "git diff --output x.patch",
+      "git log --output=x",
+      "git diff --ext-diff",
+      "git show --textconv HEAD",
+      "git -c core.pager=sh status",
+      "git -C /tmp status",
+      "git status -C x",
+      "git --exec-path status",
+      "git rev-parse --git-dir",
+      "git --git-dir=/x status",
+      "git --work-tree=/x status",
+      "git diff --no-index a b",
+      "node scripts/usage-task.ts",
+      "node scripts/usage-task.ts set x",
+      "node scripts/lib/usage-task.ts",
+      "node scripts/lib/node-floor-guard.js --fix",
+      "node other.js",
+      "git branch -D x",
+      "git branch -v",
+      "git branch -vv",
+      "git branch --all",
+      "git log --format=%h;rm",
+      "git log --format=$(x)",
+      "git log -n x",
+      "git log --graph",
+      "git log -p",
+      "git status --ignored",
+      "ls -R",
+      "ls ../x",
+      "ls /etc",
+      "cat ../secret",
+      "cat /etc/passwd",
+      "cat ~/.ssh/id_rsa",
+      "cat -n x",
+      "cat *.md",
+      "cat 'a b'",
+      "pwd -P",
+      "git",
+      "git push",
+      "git log a..b",
+      "echo hi",
+      "",
+    ];
+    for (const c of bad) assert.equal(isReadOnlyBash(c), false, c);
   });
   test("chains, redirections, substitutions and mutating forms before the write still fail", () => {
     const bash = (command: string) => ({ name: "Bash", input: { command } });
