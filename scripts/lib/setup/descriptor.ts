@@ -91,6 +91,8 @@ export interface SetupDescriptor {
     /** Placed by `rules-shared`, in this order (Copilot's order differs from the others'). */
     readonly shared: readonly RuleFile[];
     readonly store: RuleFile;
+    /** Directories installed with `installDir` into the user home after the store (spec 0305): Claude only. */
+    readonly homeDirs?: readonly RuleFile[];
     readonly pickOrder: readonly PickKind[];
     readonly selections: Readonly<Record<PickKind, RuleFile>>;
     /** `method`: ask `profile-method` when it differs; `direct`: a plain install (Copilot). */

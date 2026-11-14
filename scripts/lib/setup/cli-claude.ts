@@ -85,6 +85,13 @@ export const claudeDescriptor: SetupDescriptor = {
       dest: ".crewrig/system-context",
       label: "artifacts/core/system-context -> ~/.crewrig/system-context",
     },
+    homeDirs: [
+      {
+        src: "artifacts/core/claude-profiles",
+        dest: ".crewrig/claude-profiles",
+        label: "artifacts/core/claude-profiles -> ~/.crewrig/claude-profiles",
+      },
+    ],
     pickOrder: ["team", "expertise", "level"],
     selections: {
       team: {

@@ -117,6 +117,7 @@ rules.shared.3=config/TOOLS.md -> <HOME>/.claude/rules/65-org-tools.md
 rules.shared.4=artifacts/core/system-context -> <HOME>/.crewrig/system-context
 rules.shared.5=config/SOUL.md -> <HOME>/.claude/rules/00-soul.md
 rules.store=artifacts/core/system-context -> <HOME>/.crewrig/system-context
+rules.home-dir.1=artifacts/core/claude-profiles -> <HOME>/.crewrig/claude-profiles
 rules.pick-order=team,expertise,level
 rules.selection.team=config/teams/{name}.md -> <HOME>/.claude/rules/50-team.md
 rules.marker.team=<HOME>/.claude/.selected_team

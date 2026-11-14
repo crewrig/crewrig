@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "deny": [
+      "Artifact",
+      "Workflow",
+      "ScheduleWakeup",
+      "Agent(accessibility-auditor)",
+      "Agent(accessibility-tester)",
+      "Agent(astro-developer)",
+      "Agent(copywriter)",
+      "Agent(designer)",
+      "Agent(frontend-developer)",
+      "Agent(regression-sentinel)",
+      "Agent(scenario-author)",
+      "Agent(seo-specialist)",
+      "Agent(visual-regression-tester)",
+      "Agent(web-conformity-checker)"
+    ]
+  },
+  "claudeMdExcludes": [
+    "**/rules/00-soul.md",
+    "**/rules/10-level.md",
+    "**/rules/30-profile.md",
+    "**/rules/40-expertise.md",
+    "**/rules/50-team.md"
+  ],
+  "disableBundledSkills": true,
+  "skillOverrides": {
+    "astro": "off",
+    "copywriting": "off",
+    "frontend": "off",
+    "web-tester": "off"
+  }
+}

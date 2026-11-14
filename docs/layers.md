@@ -167,6 +167,12 @@ Core system-context store (installed to user home, read on demand):
 |---|---|
 | `artifacts/core/system-context/` | Reference-heavy sections extracted from `60-tools.md` (spec 0068): Palace Structure Conventions, Long-Running Task Convention, MCP Tools Reference, Friction Reporting reference detail, Obsidian Protocol. Installed verbatim to `~/.crewrig/system-context/` by every `setup-<cli>-interactive.ts` entry (its `install_dir` twin), then read on demand — direct file read by default, MemPalace optional, explicit signal on failure (never silently omitted). NOT a template — upstream content. |
 
+Core Claude Code profiles (installed to user home, applied only by an explicit launcher flag):
+
+| Path | Description |
+|---|---|
+| `artifacts/core/claude-profiles/` | The worker and coordinator Claude Code settings files (spec 0305, ADR-0025 O2): `worker.settings.json` and `coordinator.settings.json`. Deployed to `~/.crewrig/claude-profiles/` by `setup-claude-interactive.ts` only (its `install_dir` twin); never written under `~/.claude/`. Passed with `claude --settings`; see [`worker-profile.md`](worker-profile.md). NOT a template — upstream content. |
+
 ### Built outputs
 
 Built by `scripts/build-components.ts` from `artifacts/`. These

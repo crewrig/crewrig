@@ -137,6 +137,7 @@ const rulesShared: StepFn = async (env) => {
     storePlaced = storePlaced || isStore;
   }
   if (!storePlaced) placeShared(env, rules.store, true);
+  for (const dir of rules.homeDirs ?? []) placeShared(env, dir, true);
   await configureValidationBackend({ ctx, session });
   ctx.io.out("");
 };

@@ -99,6 +99,7 @@ function buildRepo(repo: string, options: SetupSandboxOptions): void {
     path.join(repo, "artifacts/core/rules/60-tools.md"),
   );
   copy("artifacts/core/system-context", repo);
+  copy("artifacts/core/claude-profiles", repo);
   if (options.omitIdentity !== true) {
     for (const name of ["SOUL", "PROFILE"]) {
       fs.copyFileSync(

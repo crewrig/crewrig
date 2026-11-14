@@ -220,6 +220,16 @@
           "title": "Skill authoring standard",
           "path": "docs/skill-authoring-standard.md",
           "nav_order": 166
+        },
+        {
+          "title": "Claude Code worker settings profile and launch recipe",
+          "path": "docs/worker-profile.md",
+          "nav_order": 167
+        },
+        {
+          "title": "Claude Code allowlist: plugins, skills, connectors and MCP",
+          "path": "docs/claude-allowlist.md",
+          "nav_order": 168
         }
       ]
     },
