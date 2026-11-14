@@ -121,7 +121,7 @@ void (async () => {
     } else if (a === "--dry-run") {
       dryRun = true;
     } else if (a === "-h" || a === "--help") {
-      usage();
+      process.stdout.write(`${USAGE.join("\n")}\n`);
       return;
     } else {
       err(`ERROR: unknown argument: ${a}`);

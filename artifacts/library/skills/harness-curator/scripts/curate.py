@@ -806,4 +806,13 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    if "--help" in sys.argv[1:] or "-h" in sys.argv[1:]:
+        print(
+            "usage: curate.py\n\n"
+            "Backend of curate.ts: reads the friction wing and prints the cluster report as JSON.\n"
+            "Run it through `node scripts/curate.ts`; it takes its settings from the environment\n"
+            "(FRICTION_WING, THRESHOLD, MAX_ISSUES, TARGET_REPO_OVERRIDE, FROM_STDIN_FILE,\n"
+            "DEEP_MODE, DEEP_WINDOW)."
+        )
+        sys.exit(0)
     sys.exit(main())
