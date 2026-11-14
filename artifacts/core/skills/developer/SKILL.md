@@ -8,7 +8,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.2.0"
+    version: "1.3.0"
 claude:
   allowed-tools:
     - Read
@@ -134,6 +134,15 @@ serialize them.
   diff is the summary.
 - Comments only where the *why* is non-obvious. The code already says
   *what* it does.
+
+## Output hygiene
+
+Every tool result stays in context and is re-read on each later call.
+
+- Query `gh` with `--json` and `--jq` fields, never the full payload.
+- `tail` or `grep` logs down to the failing lines.
+- Read files by line range, never a whole spec.
+- Run `git diff --stat` before reading hunks.
 
 ## Findings from a review loop
 

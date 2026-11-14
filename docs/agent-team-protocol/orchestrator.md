@@ -135,6 +135,22 @@ Every brief for a worker or a `pr-reviewer` carries these two rules:
 - **One call to wait for CI.** Run `gh pr checks <n> --watch` as one background command; it exits when no check is pending. Never poll with `sleep`, `until` loops, a monitor or repeated `gh pr checks` and `ci-preflight` calls: each call re-reads a large context. A check still pending after its workflow run is `completed/success` is a ghost check and counts as resolved when the merge state is `CLEAN`.
 - **Never end a turn to wait.** Do not end a turn to wait for CI or for a subagent: nothing wakes a session in that state. End a turn only on a question to the coordinator or on `worker_done`.
 
+### Output hygiene and stage-scoped sessions in a worker brief
+
+Every brief for a worker or a `pr-reviewer` also carries these four rules, with
+this wording, because every tool result stays in context and is re-read on each
+later call:
+
+- Query `gh` with `--json` and `--jq` fields, never the full payload.
+- `tail` or `grep` logs down to the failing lines.
+- Read files by line range, never a whole spec.
+- Run `git diff --stat` before reading hunks.
+
+A worker also scopes its session by stage. It hands each heavy stage (DEV,
+REVIEW) to a fresh subagent with a self-contained brief and keeps only that
+subagent's result, or it compacts its own context between stages. It never
+carries the raw output of one heavy stage into the next.
+
 <a id="no-coordination-surface"></a>
 
 ## On CLIs with no multi-agent coordination surface (e.g. Gemini CLI)

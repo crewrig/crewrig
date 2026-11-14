@@ -8,7 +8,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "2.2.0"
+    version: "2.3.0"
 claude:
   allowed-tools:
     - Read
@@ -104,6 +104,15 @@ gh api "repos/<owner>/<repo>/contents/<path>?ref=<headRef>" --header "Accept: ap
 ```
 
 `gh pr diff` alone is insufficient: it shows added lines, not the rule numbering they point to.
+
+## Output hygiene
+
+Every tool result stays in context and is re-read on each later call.
+
+- Query `gh` with `--json` and `--jq` fields, never the full payload.
+- `tail` or `grep` logs down to the failing lines.
+- Read files by line range, never a whole spec.
+- Run `git diff --stat` before reading hunks.
 
 ## Friction
 

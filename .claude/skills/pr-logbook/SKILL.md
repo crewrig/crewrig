@@ -11,7 +11,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.5.0"
+    version: "1.6.0"
 ---
 
 
@@ -176,6 +176,15 @@ from your brief. Without one, write "see diff" or omit it; never estimate.
 Re-read the draft once before returning and strip any number or invariant
 you cannot trace, since a fabricated claim that reaches a reviewer is
 costly.
+
+## Output hygiene
+
+Every tool result stays in context and is re-read on each later call.
+
+- Query `gh` with `--json` and `--jq` fields, never the full payload.
+- `tail` or `grep` logs down to the failing lines.
+- Read files by line range, never a whole spec.
+- Run `git diff --stat` before reading hunks.
 
 ## Output
 
