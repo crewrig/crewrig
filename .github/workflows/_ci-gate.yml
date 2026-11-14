@@ -124,10 +124,7 @@ jobs:
       # empty value hands the linter back to its own default derivation
       # (first `crewrig|origin` remote + /main).
       BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.event.pull_request.base.ref) || '' }}
-      # Spec 0168 delta-01 R9/R11: map the PR's draft state onto the one
-      # engine-neutral input the linter reads. Only the exact string
-      # 'true' skips R1; a non-draft PR (false) and a push (no PR context)
-      # both yield the empty string, so R1 stays enforced.
+      # CREWRIG_PR_DRAFT: 'true' only on a draft PR, else empty (spec 0168 delta-01 R9-R11, spec 0290 delta-08 R52).
       CREWRIG_PR_DRAFT: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'true' || '' }}
     steps:
       - uses: actions/checkout@v4

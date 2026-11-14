@@ -5,7 +5,7 @@
 // (evals.json missing or invalid under R6, or a symlink / non-ignored untracked file under a
 // hashed path), `stale` (results file absent, unparseable, incomplete, mock, another skill, a
 // status other than pass/fail/regression, a former-shape file, or a different content hash), else
-// the recorded status. `invalid` and `stale` always block; `no-evals`, a recorded `fail` and a
+// the recorded status. `invalid` always blocks and `stale` blocks except under the draft signal of spec 0290 R52 (`staleBlocking: false`), where it warns; `no-evals`, a recorded `fail` and a
 // recorded `regression` block only under `missing-evals-blocking`, `fail-blocking` and
 // `regression-blocking`; the `fail` and `regression` conditions are decided by `decide()` from the
 // recorded figures, the same function the runner uses (R20, R37).
@@ -36,6 +36,8 @@ export interface AttestSettings {
   readonly regressionBlocking: boolean;
   readonly failBlocking: boolean;
   readonly missingEvalsBlocking: boolean;
+  /** Spec 0290 R52: false (the draft signal) reports `stale` as a warning; absent or true blocks. */
+  readonly staleBlocking?: boolean;
 }
 
 export const DEFAULT_ATTEST_SETTINGS: AttestSettings = {
@@ -101,7 +103,7 @@ export function attestSelection(
   const rf = resultsPath(sel.skill.dirAbs);
   const text = fs.existsSync(rf) ? fs.readFileSync(rf, "utf8") : undefined;
   const v = verifyResults(text, name, sel.headHash);
-  if (!v.ok) return mk("stale", v.reason, true);
+  if (!v.ok) return mk("stale", v.reason, settings.staleBlocking !== false);
   const r = v.record;
   const d = decide(figuresOf(r));
   const advisory =

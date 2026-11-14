@@ -2425,6 +2425,7 @@ skill-evals-attestation:
   variables:
     GIT_DEPTH: "0"
     BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    CREWRIG_PR_DRAFT: "$CI_MERGE_REQUEST_DRAFT"
   before_script:
     - !reference [.task-install, script]
   script:
