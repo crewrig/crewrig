@@ -279,10 +279,16 @@ test("a recorded fail (the skill did not load in every eval) is reported and blo
     const off = attestSelection(selectionOf(repo, "demo"), settings);
     assert.equal(off.status, "fail");
     assert.equal(off.blocking, false);
-    assert.match(off.reason, /warning: the skill loaded in 3 of 4 evals; unloaded evals: 2; rework them/);
+    assert.match(
+      off.reason,
+      /warning: the skill loaded in 3 of 4 evals; unloaded evals: 2; rework them/,
+    );
     const s = sink();
     assert.equal(attestMain([], cleanEnv(), repo.root, s.io, settings), 0, s.out);
-    assert.match(s.out, /^demo: fail: warning: the skill loaded in 3 of 4 evals; unloaded evals: 2; rework them$/m);
+    assert.match(
+      s.out,
+      /^demo: fail: warning: the skill loaded in 3 of 4 evals; unloaded evals: 2; rework them$/m,
+    );
     const on = sink();
     assert.equal(
       attestMain([], cleanEnv(), repo.root, on.io, { ...settings, failBlocking: true }),
