@@ -1,0 +1,245 @@
+{
+  "skill_name": "copywriting",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "landing-draft.md is the draft landing page of our product. Check it against the copy limits and banned phrases, fix every problem, and write the corrected page to landing-fixed.md, keeping the same meaning. List each problem you found in your answer. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "landing-fixed.md keeps the page structure but its SEO title, meta description, headline and CTAs fit the limits, with no banned phrase and no CTA that names no action; the answer lists the problems found.",
+      "files": [
+        "evals/files/landing-draft.md"
+      ],
+      "expectations": [
+        "The answer lists the problems of the draft: the SEO title, the meta description and the headline are over their length limits.",
+        "The answer reports that the draft uses banned filler phrases (leverage, best-in-class, seamless) and that the 'Click here' CTA names no action.",
+        "In landing-fixed.md the front matter title is at most 60 characters and the description at most 155 characters.",
+        "In landing-fixed.md the first H1 is at most 70 characters and the primary CTA label is at most 25 characters and starts with a verb.",
+        "landing-fixed.md contains none of the phrases leverage, best-in-class, seamless or 'Click here'."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "landing-fixed.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "landing-fixed.md",
+          "pattern": "(^|\\n)title:\\s*[\\\"']?[^\\n\\\"']{1,60}[\\\"']?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "landing-fixed.md",
+          "pattern": "\\ndescription:\\s*[\\\"']?[^\\n\\\"']{1,155}[\\\"']?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "landing-fixed.md",
+          "pattern": "\\n# [^\\n]{1,70}\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "landing-fixed.md",
+          "pattern": "^(?![\\s\\S]*(?:[Cc]lick here|[Ll]everage|best-in-class|[Ss]eamless|[Ss]ynergy|cutting-edge))[\\s\\S]+$"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Write the landing page copy for the product described in product-brief.md, as page.md: front matter with title and description for search engines, a hero (headline, subheadline, one primary call to action), a short value proposition, and a final call to action. Check the page with the skill's copy linter and fix what it reports before you finish; state the linter's final result in your answer. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "page.md is Markdown copy with front matter, an outcome-focused headline within 70 characters, specific proof from the brief, a verb-first primary CTA of at most 25 characters on its own line, and the answer reports that the linter passes.",
+      "files": [
+        "evals/files/product-brief.md"
+      ],
+      "expectations": [
+        "page.md starts with front matter holding a title of at most 60 characters and a description of at most 155 characters.",
+        "The headline names an outcome for the reader (finding the failing request fast), not what the product is, and is at most 70 characters.",
+        "The primary CTA is a link alone on its line with a verb-first label of at most 25 characters, and the same primary action is repeated in the final CTA.",
+        "The page uses the specific figures of the brief (200 ms, 4k weekly downloads or 50 servers) rather than superlatives.",
+        "The answer states that the copy linter exited with 0 on the final page."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "page.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "page.md",
+          "pattern": "^---\\n[\\s\\S]*?\\ntitle:\\s*[\\\"']?[^\\n\\\"']{1,60}[\\\"']?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "page.md",
+          "pattern": "\\ndescription:\\s*[\\\"']?[^\\n\\\"']{1,155}[\\\"']?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "page.md",
+          "pattern": "\\n# [^\\n]{1,70}\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "page.md",
+          "pattern": "\\n[ \\t]*(?:[-*+] )?(?:\\*\\*)?\\[[^\\]]{1,25}\\]\\([^)]+\\)(?:\\*\\*)?[ \\t]*\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "page.md",
+          "pattern": "^(?![\\s\\S]*(?:[Cc]lick here|[Ll]everage|best-in-class|[Ss]eamless|[Ss]ynergy|cutting-edge))[\\s\\S]+$"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Review landing-draft.html, a marketing page of ours, for copy problems only (not markup or accessibility). Write the review to review.md as a list with, for each finding, the element, the weakness and a concrete rewrite. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "review.md lists the over-long SEO title, the banned phrases cutting-edge and synergy, the weak Submit CTA and the over-long trial CTA, each with a rewrite within the limits.",
+      "files": [
+        "evals/files/landing-draft.html"
+      ],
+      "expectations": [
+        "review.md reports that the SEO title (68 characters) is over the 60-character limit and proposes a shorter title.",
+        "review.md flags the banned phrases 'cutting-edge' and 'synergy' with plain-word rewrites.",
+        "review.md flags the 'Submit' button as a CTA that names no action and proposes a verb-first replacement.",
+        "review.md flags 'Start your free trial of Acme Deploy now' as too long for a CTA (over 25 characters) and proposes a shorter label.",
+        "review.md does not report the meta description or the headline as too long, since both are within their limits."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "review.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "review.md",
+          "pattern": "cutting-edge"
+        },
+        {
+          "type": "file_contains",
+          "path": "review.md",
+          "pattern": "synergy"
+        },
+        {
+          "type": "file_contains",
+          "path": "review.md",
+          "pattern": "Submit"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Our brand guide forbids the words in brand-banned.txt. Check landing-clean.md against that list (and the standard limits), write the findings to lint-report.md with the line number of each, then write a version of the page that avoids the forbidden words to landing-brand.md without changing the meaning. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "lint-report.md lists the uses of preview on lines 3 and 8 and rollback on line 8; landing-brand.md avoids both words.",
+      "files": [
+        "evals/files/landing-clean.md",
+        "evals/files/brand-banned.txt"
+      ],
+      "expectations": [
+        "lint-report.md reports the banned word 'preview' on line 3 and on line 8 of landing-clean.md.",
+        "lint-report.md reports the banned word 'rollback' on line 8 of landing-clean.md.",
+        "lint-report.md does not report any length-limit finding, since the page is within every limit.",
+        "landing-brand.md contains neither 'preview' nor 'rollback' in any capitalisation and keeps the title within 60 characters and the description within 155."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "lint-report.md"
+        },
+        {
+          "type": "file_exists",
+          "path": "landing-brand.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "lint-report.md",
+          "pattern": "[Rr]ollback"
+        },
+        {
+          "type": "file_contains",
+          "path": "landing-brand.md",
+          "pattern": "^(?![\\s\\S]*(?:[Pp]review|rollback|Rollback))[\\s\\S]+$"
+        },
+        {
+          "type": "file_contains",
+          "path": "landing-brand.md",
+          "pattern": "(^|\\n)title:\\s*[\\\"']?[^\\n\\\"']{1,60}[\\\"']?\\n"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Write the interface text asked for in ui-brief.md to microcopy.md, one section per item: for the dialog give the body and the button labels, for the empty state the text and its action, for the error the message. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "microcopy.md has a dialog that names the consequence (12 saved searches and 3 alert rules permanently deleted) with a verb-first destructive button, an empty state that explains and offers an action, and an error that says what went wrong and what to do.",
+      "files": [
+        "evals/files/ui-brief.md"
+      ],
+      "expectations": [
+        "The deletion dialog body states the consequence with the figures of the brief (12 saved searches and 3 alert rules) and that it is permanent.",
+        "The dialog buttons are a Cancel and a verb-first label that names the action (such as 'Delete project'), not 'OK' or 'Confirm'.",
+        "The empty state explains what the Saved searches screen will show and gives an action that fills it.",
+        "The error message says the name is already used and tells the user what to do (choose another name), with no internal code or stack trace."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "microcopy.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "microcopy.md",
+          "pattern": "Delete[^\\n]{0,30}"
+        },
+        {
+          "type": "file_contains",
+          "path": "microcopy.md",
+          "pattern": "12 saved searches"
+        },
+        {
+          "type": "file_contains",
+          "path": "microcopy.md",
+          "pattern": "^(?![\\s\\S]*\\[(?:OK|Confirm)\\])[\\s\\S]+$"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "Rewrite the hero section of our landing page: the headline is vague and the call to action just says 'Submit'.",
+      "should_trigger": true
+    },
+    {
+      "query": "Check that my SEO title and meta description fit the length limits before I ship this page.",
+      "should_trigger": true
+    },
+    {
+      "query": "Write the error message and the empty-state text for the billing screen of our app.",
+      "should_trigger": true
+    },
+    {
+      "query": "Draft a README introduction and a one-line tagline for our CLI tool, using the PAS framework.",
+      "should_trigger": true
+    },
+    {
+      "query": "Lint the copy of pricing.md for banned filler phrases like 'synergy' and 'best-in-class' and for over-long button labels.",
+      "should_trigger": true
+    },
+    {
+      "query": "Fix the Tailwind classes of the hero section so the call to action button stays centred on mobile.",
+      "should_trigger": false
+    },
+    {
+      "query": "Create the Astro landing page with a content collection for the features list.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write the README section that documents the command-line flags and the configuration schema.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write the pull request title and description for the copy changes on the landing page.",
+      "should_trigger": false
+    },
+    {
+      "query": "Audit the landing page for WCAG contrast and heading hierarchy problems with axe-core.",
+      "should_trigger": false
+    }
+  ]
+}

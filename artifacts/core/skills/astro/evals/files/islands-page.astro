@@ -1,0 +1,18 @@
+---
+import Base from "../layouts/Base.astro";
+import SiteSearch from "../components/SiteSearch.tsx";
+import ReviewsCarousel from "../components/ReviewsCarousel.tsx";
+import CookieBanner from "../components/CookieBanner.tsx";
+import RouteMap3D from "../components/RouteMap3D.tsx";
+---
+<Base title="Trails">
+  <header>
+    <SiteSearch />
+  </header>
+  <main>
+    <h1>Trails</h1>
+    <ReviewsCarousel />
+    <RouteMap3D />
+  </main>
+  <CookieBanner />
+</Base>
