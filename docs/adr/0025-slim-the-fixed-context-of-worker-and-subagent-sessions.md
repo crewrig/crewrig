@@ -223,3 +223,18 @@ Other CLIs (no Claude Code budget used):
 | A1 | `agy -p "Reply with the single word OK." --output-format json` | no run: asks for an interactive Google login |
 
 Unverified Claude Code claims, none relied on: `CLAUDE_CODE_DISABLE_CLAUDE_MDS`, `disableClaudeAiConnectors`, `paths:` at user scope. `omitClaudeMd` as file frontmatter is verified (P11); F2 still carries a test that the built `.claude/agents/` output keeps the key.
+
+## Appendix: Copilot probes (F8, 2026-11-14, issue #1995)
+
+Appended as a record; the decision above is unchanged. Copilot CLI 1.0.112, per-call tokens read from `session.usage_record` events in `~/.copilot/session-state/<id>/events.jsonl`, scratch directories and `COPILOT_HOME` overrides only (no file under `~/.copilot/` edited). Six runs, 31.95 AI credits in all (the paid unit Copilot reports); the evidence and its caveats live in cli-matrix rows 7b, 7e, 4c and 33, which supersede the "not probed" cells of *CLI parity* for Copilot.
+
+| Run | Variation | First-call input tokens |
+|---|---|---|
+| H1 | C1 baseline re-run, `gemini-3.8-flash` (`custom_instructions` 24,984, tool definitions 13,111) | **49,273** |
+| H2 | `task` subagents, real home | no result: the user `preToolUse` hook errored in the session sandbox and denied `task` |
+| H3 | scratch home with a copy of the real instructions, no hooks, `task` to `explore` and `developer` (session on `claude-sonnet-5.5`) | main 74,893; subagents **4,301** and **4,315** |
+| H4 | `COPILOT_HOME` scratch home with four instruction files (O2 equivalent) | **40,664** (−8.6k) |
+| H5 | scratch project, one project and one personal file, `applyTo` matching nothing | **15,721** (`custom_instructions` 204) |
+| H6 | same files, `applyTo: "**"` | 31,779 (`custom_instructions` 15,375) |
+
+Reading: `task` subagents do not inherit custom instructions (O1 already holds on Copilot); `applyTo` excludes a non-matching file at project and personal scope (O3 works); `COPILOT_HOME` is a per-launch worker profile that swaps instructions, hooks and agents at once (O2), but still at file granularity. Gemini CLI and Antigravity CLI remain unprobed and open on #1995.
