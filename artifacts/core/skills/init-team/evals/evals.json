@@ -1,0 +1,250 @@
+{
+  "skill_name": "init-team",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "The current directory is the root of my repository. Create the team file for a new team called Atlas, the way the init-team flow does it, under config/teams/. Answer every interview question from the values below and do not ask me anything: they are my final answers, and the written file is all I need. Team name: Atlas. Tagline: Platform & Infrastructure. Mission: Atlas owns the shared platform layer (CI/CD pipelines, cloud infrastructure, developer tooling and observability) so that every other squad can ship reliably. Technology stack: Infrastructure is Terraform, Kubernetes (GKE) and Helm; CI/CD is GitHub Actions with self-hosted runners; Observability is Prometheus, Grafana and Loki; Languages are Go for internal tooling and Bash for automation. Development practices: every infrastructure change goes through code review with the Terraform plan attached to the pull request; pipelines run lint, test, build, security scan, then deploy; incidents get a blameless post-mortem within 48 hours; alerting targets symptoms such as latency and error rate rather than causes. I want no optional sections.",
+      "expected_output": "config/teams/ATLAS.md exists with the H1 `# Team Atlas`, the three core sections and no optional section, every item taken from the answers.",
+      "files": [],
+      "expectations": [
+        "config/teams/ATLAS.md opens with a single H1 that names the team Atlas and carries the tagline Platform & Infrastructure.",
+        "The Technology Stack section lists the infrastructure, CI/CD, observability and language items given in the answers, and no technology that the answers did not mention.",
+        "The Development Practices section holds the four practices from the answers, none invented and none dropped.",
+        "The file contains no optional section: no Rituals, Collaboration Norms, Documentation, Issue Tracking or Key Contacts heading."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "config/teams/ATLAS.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/ATLAS.md",
+          "pattern": "(^|\\n)# Team Atlas\\b"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/ATLAS.md",
+          "pattern": "\\n## Mission\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/ATLAS.md",
+          "pattern": "\\n## Technology Stack\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/ATLAS.md",
+          "pattern": "\\n## Development Practices\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/ATLAS.md",
+          "pattern": "^(?![\\s\\S]*\\n## (Rituals|Collaboration Norms|Documentation|Issue Tracking|Key Contacts))"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The current directory is the root of my repository. Create the team file for a new team called Data Platform, the way the init-team flow does it, under config/teams/. Answer every interview question from the values below and do not ask me anything: they are my final answers, and the written file is all I need. Team name: Data Platform. Tagline: Analytics Foundations. Mission: Data Platform builds the ingestion and warehouse layer that analysts and data scientists rely on. Technology stack: Language is Python 3.12; Orchestration is Airflow; Storage is BigQuery and GCS; Transformation is dbt. Development practices: every pipeline ships with data-quality tests; schemas change only through reviewed migrations; dashboards read from curated marts, never from raw tables. Optional sections: I want Rituals and Key Contacts only. Rituals: Kanban flow with a weekly planning session and a daily 15-minute standup. Key Contacts: Tech Lead is data-lead@example.com; Slack channel is #team-data-platform.",
+      "expected_output": "config/teams/DATA-PLATFORM.md holds the core sections plus Rituals and Key Contacts, and no other optional section.",
+      "files": [],
+      "expectations": [
+        "The filename derived from the team name Data Platform is DATA-PLATFORM.md, uppercase with the words joined by a hyphen.",
+        "The Key Contacts section carries both the Tech Lead e-mail address and the Slack channel from the answers.",
+        "The Rituals section reflects the Kanban flow, the weekly planning and the daily standup of the answers, and invents no other ceremony."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "config/teams/DATA-PLATFORM.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/DATA-PLATFORM.md",
+          "pattern": "\\n## Rituals\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/DATA-PLATFORM.md",
+          "pattern": "\\n## Key Contacts\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/DATA-PLATFORM.md",
+          "pattern": "data-lead@example\\.com"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/DATA-PLATFORM.md",
+          "pattern": "#team-data-platform"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/DATA-PLATFORM.md",
+          "pattern": "^(?![\\s\\S]*\\n## (Collaboration Norms|Documentation|Issue Tracking))"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "The current directory is the root of my repository. Before anything else run `mkdir -p config/teams && cp existing-atlas.md config/teams/ATLAS.md`: that is a team file written earlier, and it must not be lost unless I say so. Now create the team file for a new team called Atlas, the way the init-team flow does it. Answer every interview question from the values below and do not ask me anything: they are my final answers, and the written file is all I need. Team name: Atlas. Tagline: Internal Developer Portal. Mission: Atlas now runs the internal developer portal and the golden-path templates. Technology stack: Portal is Backstage; Language is TypeScript; Hosting is Kubernetes. Development practices: templates are versioned and released with a changelog; every template has an end-to-end smoke test; portal plugins are reviewed by two maintainers. No optional sections. The name Atlas collides with the existing file, and my decision is: pick a different name, namely Atlas Edge.",
+      "expected_output": "The earlier config/teams/ATLAS.md is unchanged and the new team is written to config/teams/ATLAS-EDGE.md.",
+      "files": [
+        "evals/files/existing-atlas.md"
+      ],
+      "expectations": [
+        "The new team file is config/teams/ATLAS-EDGE.md and its Mission describes the internal developer portal and the golden-path templates.",
+        "config/teams/ATLAS.md still holds the earlier team's content: the legacy build farm mission, untouched."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "config/teams/ATLAS-EDGE.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/ATLAS-EDGE.md",
+          "pattern": "internal developer portal"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/ATLAS.md",
+          "pattern": "legacy build farm"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/ATLAS.md",
+          "pattern": "^(?![\\s\\S]*internal developer portal)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "The current directory is the root of my repository. Before anything else run `mkdir -p config/teams && cp existing-atlas.md config/teams/ATLAS.md`: that is a team file written earlier, and it must not be lost unless I say so. Now create the team file for a new team called Atlas, the way the init-team flow does it. Answer every interview question from the values below and do not ask me anything: they are my final answers, and the written file is all I need. Team name: Atlas. Tagline: Internal Developer Portal. Mission: Atlas now runs the internal developer portal and the golden-path templates. Technology stack: Portal is Backstage; Language is TypeScript; Hosting is Kubernetes. Development practices: templates are versioned and released with a changelog; every template has an end-to-end smoke test; portal plugins are reviewed by two maintainers. No optional sections. The name Atlas collides with the existing file, and my decision is: overwrite the existing file.",
+      "expected_output": "The user chose to overwrite: config/teams/ATLAS.md now holds the new team and the earlier content is gone; no other team file is created.",
+      "files": [
+        "evals/files/existing-atlas.md"
+      ],
+      "expectations": [
+        "config/teams/ATLAS.md now describes the internal developer portal team, with the Backstage, TypeScript and Kubernetes stack from the answers.",
+        "The earlier mission about the legacy build farm no longer appears in config/teams/ATLAS.md."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "config/teams/ATLAS.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/ATLAS.md",
+          "pattern": "internal developer portal"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/ATLAS.md",
+          "pattern": "Backstage"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/ATLAS.md",
+          "pattern": "^(?![\\s\\S]*legacy build farm)"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/ATLAS.md",
+          "pattern": "(^|\\n)# Team Atlas\\b"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "The current directory is the root of my repository. Create the team file for a new team, the way the init-team flow does it, under config/teams/. I answered the interview in French, as follows: Answer every interview question from the values below and do not ask me anything: they are my final answers, and the written file is all I need. Nom de l'équipe : Sentinelle. Slogan : Qualité et fiabilité. Mission : Sentinelle garantit la qualité des livraisons grâce à l'automatisation des tests et au suivi des défauts. Pile technique : Tests de bout en bout avec Playwright ; Tests d'API avec Postman et Newman ; Intégration continue avec GitHub Actions. Pratiques : chaque défaut critique reçoit un test de non-régression avant correction ; les tests instables sont mis en quarantaine sous 48 heures ; les rapports de test sont publiés à chaque fusion. Aucune section optionnelle.",
+      "expected_output": "config/teams/SENTINELLE.md is written in English, translated faithfully from the French answers.",
+      "files": [],
+      "expectations": [
+        "The whole of config/teams/SENTINELLE.md is written in English, headings and content alike: no French sentence remains.",
+        "The mission and the three practices of the French answers are all present in English with their meaning kept, such as a regression test for each critical defect and quarantining flaky tests within 48 hours.",
+        "The technology stack lists Playwright, Postman with Newman, and GitHub Actions, and nothing else."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "config/teams/SENTINELLE.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/SENTINELLE.md",
+          "pattern": "(^|\\n)# Team Sentinelle\\b"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/SENTINELLE.md",
+          "pattern": "\\n## Mission\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/SENTINELLE.md",
+          "pattern": "\\n## Technology Stack\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/SENTINELLE.md",
+          "pattern": "\\n## Development Practices\\r?\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/SENTINELLE.md",
+          "pattern": "^(?![\\s\\S]*\\n## (Pratiques|Pile technique|Mission technique))"
+        },
+        {
+          "type": "file_contains",
+          "path": "config/teams/SENTINELLE.md",
+          "pattern": "^(?![\\s\\S]*\\n## (Rituals|Collaboration Norms|Documentation|Issue Tracking|Key Contacts))"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "I want to add a team profile for my squad to the repository.",
+      "should_trigger": true
+    },
+    {
+      "query": "/init-team",
+      "should_trigger": true
+    },
+    {
+      "query": "Create a config/teams file for the team Horizon through the guided interview.",
+      "should_trigger": true
+    },
+    {
+      "query": "Set up a per-team context and configuration profile for our platform team.",
+      "should_trigger": true
+    },
+    {
+      "query": "Interview me and write the team configuration file for the Nova team.",
+      "should_trigger": true
+    },
+    {
+      "query": "Create an expertise role file for a Data Engineer under config/expertise.",
+      "should_trigger": false
+    },
+    {
+      "query": "Fill in my personal profile config/PROFILE.md through the guided interview.",
+      "should_trigger": false
+    },
+    {
+      "query": "Change the Slack channel in the existing config/teams/FORGE.md to #team-forge-eng.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write a README for the Atlas team's repository.",
+      "should_trigger": false
+    },
+    {
+      "query": "Explain what the config/teams directory is used for.",
+      "should_trigger": false
+    }
+  ]
+}
