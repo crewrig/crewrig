@@ -1,7 +1,7 @@
 ---
 id: "0306"
 slug: subagent-conventions-block
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1989
