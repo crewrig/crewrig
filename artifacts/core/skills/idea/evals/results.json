@@ -1,0 +1,23 @@
+{
+  "skill_name": "idea",
+  "content_hash": "sha256:d141a2e918bf4aa303bc0b546e467403f452b13ca3406b12034f5c4bba7de4ec",
+  "runner_version": "3.0.0",
+  "executor_model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "date": "2026-11-14T12:51:35.514Z",
+  "status": "pass",
+  "eval_pass_rate": 1,
+  "probe_pass_rate": 1,
+  "base_eval_pass_rate": null,
+  "threshold": 0.8,
+  "tolerance": 0.16666666666666666,
+  "evals_passed": 6,
+  "evals_total": 6,
+  "probes_passed": 8,
+  "probes_total": 8,
+  "executor_runs": 14,
+  "judge_calls": 6,
+  "cost_usd": 0.529056,
+  "skill_loaded": 6
+}

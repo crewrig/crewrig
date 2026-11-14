@@ -1,0 +1,259 @@
+{
+  "skill_name": "idea",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "thread-redesignation.json is the exported session issue of an IDEA session (its body with the governance parameters, then every comment in order) in which the candidate was designated twice. Work out which proposal is the current candidate, how the eligible votes stand and whether the governance threshold is met. Write verdict.md whose first three lines are exactly `Candidate: <proposal title, or none>`, `Votes: APPROVE=<n> REJECT=<n> ABSTAIN=<n>` (the votes that count) and `Threshold met: yes` or `Threshold met: no`, followed by a short justification. Do not run gh, glab, tea or git push, and do not create, edit, comment on, label or close any issue or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "verdict.md names the second candidate, counts only the votes cast after it, and reports the threshold as not met.",
+      "files": [
+        "evals/files/thread-redesignation.json"
+      ],
+      "expectations": [
+        "verdict.md explains that the votes cast before the second candidate designation do not count, so the eligible voters had to vote again on 'Append-only table'.",
+        "verdict.md reports one APPROVE and one REJECT as the counted votes and the vote-mode quorum of 60 percent as not reached."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "verdict.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "(^|\\n)Candidate: Append-only table\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "\\nVotes: APPROVE=1 REJECT=1 ABSTAIN=0\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "\\nThreshold met: no\\n"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "thread-abstain.json is the exported session issue of an IDEA session (its body with the governance parameters, then every comment in order) in which only one proposal survived triage and abstentions were cast. Work out which proposal is the current candidate, how the eligible votes stand and whether the governance threshold is met. Write verdict.md whose first three lines are exactly `Candidate: <proposal title, or none>`, `Votes: APPROVE=<n> REJECT=<n> ABSTAIN=<n>` (the votes that count) and `Threshold met: yes` or `Threshold met: no`, followed by a short justification. Do not run gh, glab, tea or git push, and do not create, edit, comment on, label or close any issue or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "verdict.md names the lone surviving proposal as the implicit candidate, excludes abstentions from the denominator and ignores malformed and ineligible votes, and reports the threshold as met.",
+      "files": [
+        "evals/files/thread-abstain.json"
+      ],
+      "expectations": [
+        "verdict.md explains that ABSTAIN is excluded from the denominator, so 2 approvals out of 3 non-abstain votes (about 67 percent) reach the quorum of 60 percent.",
+        "verdict.md explains that the comment 'VOTE: APPROVE (looks good to me)' is not a valid vote because it does not match the exact vote form, and that the vote of 'mallory' does not count because she is not a declared voter."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "verdict.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "(^|\\n)Candidate: Weekly releases\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "\\nVotes: APPROVE=2 REJECT=1 ABSTAIN=1\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "\\nThreshold met: yes\\n"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "thread-invalid-candidate.json is the exported session issue of an IDEA session (its body with the governance parameters, then every comment in order) in solo mode, with a candidate designation naming a title absent from the session. Work out which proposal is the current candidate, how the eligible votes stand and whether the governance threshold is met. Write verdict.md whose first three lines are exactly `Candidate: <proposal title, or none>`, `Votes: APPROVE=<n> REJECT=<n> ABSTAIN=<n>` (the votes that count) and `Threshold met: yes` or `Threshold met: no`, followed by a short justification. Do not run gh, glab, tea or git push, and do not create, edit, comment on, label or close any issue or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "verdict.md keeps the first, valid candidate because the later designation names an unknown title, counts the owner's approval, ignores the non-owner's vote and reports the threshold as met.",
+      "files": [
+        "evals/files/thread-invalid-candidate.json"
+      ],
+      "expectations": [
+        "verdict.md explains that the later '[CANDIDATE] Proposal: JSON config' comment names a title that is not in the session, so it designates nothing and does not void the owner's earlier vote.",
+        "verdict.md explains that alice's REJECT is not counted because only the declared owner decides in solo mode."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "verdict.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "(^|\\n)Candidate: YAML config\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "\\nVotes: APPROVE=1 REJECT=0 ABSTAIN=0\\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "verdict.md",
+          "pattern": "\\nThreshold met: yes\\n"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Open an IDEA session for parent issue 58, whose brief description is \"Audit trail storage\": governance mode vote, voters alice, bob, carol and dave, quorum 60 percent. Write the session issue body to session-body.md and the exact gh commands you would run (create the session issue, then log the opening on the parent issue) to open-commands.sh. Do not run gh, glab, tea or git push, and do not create, edit, comment on, label or close any issue or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "session-body.md records the parent issue, the vote mode, the four voters and the quorum; open-commands.sh creates the [IDEA] issue with the idea-session and idea-vote labels and comments on parent issue 58.",
+      "files": [],
+      "expectations": [
+        "session-body.md states the parent issue 58, the governance mode vote, the four declared voters alice, bob, carol and dave, and the quorum of 60.",
+        "session-body.md has a Proposals section, a Comparison section and a Vote tally section for the owner to fill later."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "session-body.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "open-commands.sh",
+          "pattern": "gh issue create"
+        },
+        {
+          "type": "file_contains",
+          "path": "open-commands.sh",
+          "pattern": "\\[IDEA\\] Audit trail storage \\(parent #58\\)"
+        },
+        {
+          "type": "file_contains",
+          "path": "open-commands.sh",
+          "pattern": "idea-session"
+        },
+        {
+          "type": "file_contains",
+          "path": "open-commands.sh",
+          "pattern": "idea-vote"
+        },
+        {
+          "type": "file_contains",
+          "path": "open-commands.sh",
+          "pattern": "gh issue comment 58"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "The IDEA session is issue 91, opened against parent issue 58. The owner is closing it without consensus: the two camps never converged on event sourcing versus an append-only table and the owner wants to revisit after the Q3 load tests. Write the closing comment to closure-comment.md and the exact gh commands you would run to label and close the session to close-commands.sh. Do not run gh, glab, tea or git push, and do not create, edit, comment on, label or close any issue or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "closure-comment.md states the reason, that no SPECS issue was created and that parent issue 58 stays open; close-commands.sh labels the session idea-no-consensus and closes it, without the idea-resolved label.",
+      "files": [],
+      "expectations": [
+        "closure-comment.md states the reason in the owner's terms (no convergence between the two camps, revisit after the Q3 load tests).",
+        "closure-comment.md says that no SPECS issue was created and that parent issue 58 remains open for a future session."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "closure-comment.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "closure-comment.md",
+          "pattern": "Closed Without Consensus"
+        },
+        {
+          "type": "file_contains",
+          "path": "closure-comment.md",
+          "pattern": "Q3 load tests"
+        },
+        {
+          "type": "file_contains",
+          "path": "close-commands.sh",
+          "pattern": "idea-no-consensus"
+        },
+        {
+          "type": "file_contains",
+          "path": "close-commands.sh",
+          "pattern": "gh issue close"
+        },
+        {
+          "type": "file_contains",
+          "path": "close-commands.sh",
+          "pattern": "^(?![\\s\\S]*idea-resolved)"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "proposals.md holds the four proposals received on an IDEA session for parent issue 80, in submission order. Run the triage: reject what must be rejected and say which criterion failed, keep the rest, and say whether any surviving proposals are complementary enough to compose. Write the triage to triage.md, with one rejection comment per rejected proposal and the survivors listed. Do not run gh, glab, tea or git push, and do not create, edit, comment on, label or close any issue or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "triage.md rejects 'Parallel test shards' as a duplicate of the earlier 'Shard the test suite' and 'Rewrite the build in Rust' as infeasible, keeps the two others, and notes that sharding and caching are complementary.",
+      "files": [
+        "evals/files/proposals.md"
+      ],
+      "expectations": [
+        "triage.md rejects 'Parallel test shards' for failing non-duplication, naming 'Shard the test suite' (submitted earlier by alice) as the proposal it duplicates.",
+        "triage.md rejects 'Rewrite the build in Rust' for failing feasibility, with a reason drawn from the proposal (a year of work, the whole team learning Rust).",
+        "triage.md lists 'Shard the test suite' and 'Cache dependencies between runs' as survivors and notes that they are complementary, so a composition is possible."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "triage.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "triage.md",
+          "pattern": "\\[TRIAGE-REJECTED\\] Proposal: Parallel test shards"
+        },
+        {
+          "type": "file_contains",
+          "path": "triage.md",
+          "pattern": "\\[TRIAGE-REJECTED\\] Proposal: Rewrite the build in Rust"
+        },
+        {
+          "type": "file_contains",
+          "path": "triage.md",
+          "pattern": "^(?![\\s\\S]*\\[TRIAGE-REJECTED\\] Proposal: Shard the test suite)"
+        },
+        {
+          "type": "file_contains",
+          "path": "triage.md",
+          "pattern": "^(?![\\s\\S]*\\[TRIAGE-REJECTED\\] Proposal: Cache dependencies)"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "Three of us proposed different designs for the same ticket and nobody agrees. Set up a structured convergence session before we write the spec.",
+      "should_trigger": true
+    },
+    {
+      "query": "Tally the VOTE comments on our IDEA session issue and tell me whether the 60 percent quorum is reached.",
+      "should_trigger": true
+    },
+    {
+      "query": "Close the IDEA session issue with no consensus and write the closing comment.",
+      "should_trigger": true
+    },
+    {
+      "query": "The proposals on this session are near duplicates; triage them and compare the survivors.",
+      "should_trigger": true
+    },
+    {
+      "query": "The intent of issue 58 is clear and agreed: write the spec for it.",
+      "should_trigger": false
+    },
+    {
+      "query": "Summarise the approvals and change requests on this pull request and tell me whether it can merge.",
+      "should_trigger": false
+    },
+    {
+      "query": "Brainstorm ten ideas to improve our onboarding flow.",
+      "should_trigger": false
+    },
+    {
+      "query": "Open a GitHub issue to track this bug, with the stack trace.",
+      "should_trigger": false
+    }
+  ]
+}
