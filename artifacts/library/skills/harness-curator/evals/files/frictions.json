@@ -1,0 +1,56 @@
+[
+  {
+    "drawer_id": "drw-001",
+    "room": "prompt",
+    "filed_at": "2026-10-02T09:00:00.000000",
+    "content": "FRICTION: yq merge syntax does not exist\n\nwriter_agent: claude-code\nsubcategory: yq-merge\ncanonical: https://github.com/acme/agent-config\nseverity: med\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-002",
+    "room": "prompt",
+    "filed_at": "2026-10-03T09:00:00.000000",
+    "content": "FRICTION: yq merge example gave an empty file\n\nwriter_agent: claude-code\nsubcategory: yq-merge\ncanonical: https://github.com/acme/agent-config\nseverity: med\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-003",
+    "room": "prompt",
+    "filed_at": "2026-10-04T09:00:00.000000",
+    "content": "FRICTION: yq merge flag rejected on v4\n\nwriter_agent: claude-code\nsubcategory: yq-merge\ncanonical: https://github.com/acme/agent-config\nseverity: med\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-004",
+    "room": "tool",
+    "filed_at": "2026-10-05T09:00:00.000000",
+    "content": "FRICTION: gh auth check flaked once\n\nwriter_agent: claude-code\nsubcategory: gh-auth-flake\ncanonical: https://github.com/acme/agent-config\nseverity: low\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-005",
+    "room": "process",
+    "filed_at": "2026-10-06T09:00:00.000000",
+    "content": "FRICTION: Release checklist skips the tag step\n\nwriter_agent: claude-code\nsubcategory: release-checklist\ncanonical: https://github.com/acme/agent-config\nseverity: high\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-006",
+    "room": "behavior",
+    "filed_at": "2026-10-07T09:00:00.000000",
+    "content": "FRICTION: Agent silently skipped the review step\n\nwriter_agent: claude-code\nsubcategory: silent-skip\nseverity: high\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-007",
+    "room": "process",
+    "filed_at": "2026-10-08T09:00:00.000000",
+    "content": "Not a friction at all, just a stray note about lunch."
+  },
+  {
+    "drawer_id": "drw-008",
+    "room": "format",
+    "filed_at": "2026-10-09T09:00:00.000000",
+    "content": "FRICTION: JSON output mixes log lines\n\nwriter_agent: claude-code\nsubcategory: json-output\ncanonical: https://github.com/acme/agent-config\nseverity: low\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  },
+  {
+    "drawer_id": "drw-009",
+    "room": "format",
+    "filed_at": "2026-10-10T09:00:00.000000",
+    "content": "FRICTION: JSON output has trailing text\n\nwriter_agent: claude-code\nsubcategory: json-output\ncanonical: https://github.com/acme/agent-config\nseverity: low\nevidence:\n  - artifacts/core/skills/foo/SKILL.md:12\nsuggestion: Fix the wording.\n"
+  }
+]
