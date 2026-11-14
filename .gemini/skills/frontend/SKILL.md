@@ -1,6 +1,6 @@
 ---
 name: frontend
-description: "Practitioner reference for framework-agnostic frontend work: semantic HTML, CSS design tokens, Tailwind configuration, WCAG 2.1 AA accessibility, Core Web Vitals, asset loading and vanilla JavaScript, with bundled scripts that compute a WCAG contrast ratio and check static HTML for alt text, form labels, heading order, landmarks and lang. Use when authoring or reviewing HTML, CSS or a Tailwind config, auditing static HTML for accessibility, checking color contrast, fixing LCP, CLS or INP, or tuning fonts, images and script loading. Trigger terms: HTML, CSS, Tailwind, design tokens, WCAG, contrast ratio, alt text, Core Web Vitals, LCP, INP. Not for Astro pages or builds (astro), marketing copy (copywriting), browser end-to-end tests or axe scans of a rendered page (web-tester) or GitHub Actions workflows (github-actions)."
+description: "Practitioner reference for framework-agnostic frontend work: semantic HTML, CSS design tokens, Tailwind configuration, WCAG 2.1 AA accessibility, Core Web Vitals, asset loading and plain browser JavaScript (disclosure, accordion or FAQ widgets with a button or details element, fetch with AbortController), with bundled scripts that compute a WCAG contrast ratio and check static HTML for alt text, form labels, heading order, landmarks and lang. Use when authoring or reviewing HTML, CSS or a Tailwind config, building a framework-free interactive page or widget, auditing static HTML for accessibility, checking color contrast, fixing LCP, CLS or INP, or tuning fonts, images and script loading. Not for Astro pages or builds (astro), marketing copy (copywriting), browser end-to-end tests or axe scans of a rendered page (web-tester) or GitHub Actions workflows (github-actions)."
 license: Apache-2.0
 compatibility: "Requires Node.js 24 to run the scripts (node scripts/<name>.ts); the references need nothing. The scripts read local files only and make no network call."
 metadata:
@@ -12,6 +12,8 @@ metadata:
 
 
 # Frontend
+
+Load this skill for any framework-free HTML, CSS or browser JavaScript task, including interactive widgets such as an FAQ disclosure.
 
 Framework-agnostic rules for HTML, CSS, accessibility and delivery performance.
 The model knows the syntax; this skill holds the decisions it gets wrong and two

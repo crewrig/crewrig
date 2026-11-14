@@ -170,7 +170,7 @@
     },
     {
       "id": 5,
-      "prompt": "Write disclosure.html in the current directory: a self-contained page with a native-JavaScript FAQ disclosure (a button that shows and hides a panel) and a button that loads /api/faq with fetch into the panel. No framework, no bundler, a module script. It must work with the keyboard and cancel the request when the user navigates away or clicks the button again. Do not run gh, glab, tea or git push and do not create, edit or comment on any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "prompt": "Write disclosure.html in the current directory: a self-contained page with an FAQ where a question opens and closes its answer, plus a button that loads /api/faq with fetch into the answer. Plain browser JavaScript only: no framework, no bundler, a module script. It must work with the keyboard and cancel the request when the user navigates away or clicks the button again. Do not run gh, glab, tea or git push and do not touch any forge artifact: only write the files asked for, in the current directory.",
       "expected_output": "disclosure.html uses a real button with aria-expanded and aria-controls, a module script, fetch with an AbortController signal that is aborted, and handles non-ok responses.",
       "files": [],
       "expectations": [

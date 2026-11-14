@@ -1,6 +1,6 @@
 ---
 name: astro
-description: "Guides building and reviewing Astro sites: .astro components, islands and client directives, file-based routing and getStaticPaths, Content Collections, static versus server output and adapters, integrations (Tailwind, MDX, sitemap, astro:assets), environment variables, deployment, performance and security, and bundles a script that checks an Astro project for a missing site option, missing collection config, pages without a layout, images without alt and bare client:only. Use when authoring or reviewing .astro files, astro.config.mjs or a project with astro in package.json, or when an Astro build fails. Trigger terms: Astro, .astro, islands, client:load, getStaticPaths, content collections, astro.config, astro:assets. Not for generic HTML or CSS or WCAG audits (frontend), page copy (copywriting), Playwright tests (web-tester) or GitHub Actions workflow authoring (github-actions)."
+description: "Guides building and reviewing Astro sites: .astro components, islands and client directives (client:load, client:visible, client:idle, client:only), file-based routing and getStaticPaths, Content Collections (src/content, src/content.config.ts, Zod schemas), static versus server output and adapters, integrations (Tailwind, MDX, sitemap, astro:assets), environment variables, deployment, performance and security, and bundles a script that checks an Astro project for a missing site option, missing collection config, pages without a layout, images without alt and bare client:only. Use when authoring or reviewing .astro files, astro.config.mjs, a content collection for blog posts, hydration directives on framework components, or a project with astro in package.json, or when an Astro build fails. Not for generic HTML or CSS or WCAG audits (frontend), page copy (copywriting), Playwright tests (web-tester) or GitHub Actions workflow authoring (github-actions)."
 license: Apache-2.0
 compatibility: "Astro 4 or 5 projects; notes say where Astro 5 differs. The bundled script needs Node.js 24 (node scripts/check-astro-project.ts) and reads files only."
 allowed-tools:
@@ -18,6 +18,8 @@ metadata:
 
 
 # Astro
+
+Load this skill for any task on an Astro project: content collections, hydration directives, config and the project check.
 
 Astro renders pages as HTML on the server and ships JavaScript only for the
 components you mark as islands. Every rule below follows from that bias: start from

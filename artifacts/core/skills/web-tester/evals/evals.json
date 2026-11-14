@@ -38,7 +38,7 @@
     },
     {
       "id": 2,
-      "prompt": "axe-results-minor.json is the axe-core output of our home page. Tell me, in verdict.md, whether the page passes an accessibility gate that fails on serious or worse, and whether it still passes if the gate is tightened to fail on moderate or worse. Name the violation that decides each case. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "prompt": "axe-results-minor.json is the axe-core results JSON of our home page. Tell me, in verdict.md, whether the page passes a pass/fail gate on violations by impact that fails on serious or worse, and whether it still passes if the gate is tightened to fail on moderate or worse. Name the violation that decides each case. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
       "expected_output": "verdict.md says the page passes the serious gate (only a moderate violation, region) and fails the moderate gate because of region.",
       "files": [
         "evals/files/axe-results-minor.json"
@@ -124,31 +124,36 @@
     },
     {
       "id": 5,
-      "prompt": "Audit signup.html for accessibility problems by reading the markup and write the findings to audit.md. Say which of the problems an automated axe scan would catch, and which kinds of check an automated scan cannot do and would still need a manual pass. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
-      "expected_output": "audit.md lists the missing alt on the image, the input without a label and the missing lang on the html element, and says keyboard operability and ARIA semantics need a manual pass.",
+      "prompt": "CI runs our accessibility gate with a threshold of moderate or worse and it went red on axe-results.json, the axe-core results of the signup page. Write triage.md: which violations block the build, which are non-blocking, the command line you used to check it and its exit code. Do not run gh, glab, tea or git push and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "triage.md lists image-alt, color-contrast and region as blocking and landmark-unique as non-blocking, with the axe-scan --from-json command with --fail-on moderate and exit code 1.",
       "files": [
-        "evals/files/signup.html"
+        "evals/files/axe-results.json"
       ],
       "expectations": [
-        "The audit reports that the img has no alt attribute.",
-        "The audit reports that the email input has no associated label (a placeholder is not a label).",
-        "The audit reports that the html element has no lang attribute.",
-        "The audit says that keyboard operability or ARIA semantics need a manual check beyond an automated axe scan."
+        "triage.md lists image-alt (critical), color-contrast (serious) and region (moderate) as blocking at the moderate threshold.",
+        "triage.md lists landmark-unique (minor) as non-blocking.",
+        "triage.md gives the command used, node scripts/axe-scan.ts --from-json with --fail-on moderate, and its exit code 1.",
+        "triage.md does not claim the page is fully accessible or WCAG conformant."
       ],
       "checks": [
         {
           "type": "file_exists",
-          "path": "audit.md"
+          "path": "triage.md"
         },
         {
           "type": "file_contains",
-          "path": "audit.md",
-          "pattern": "\\b[Aa]lt\\b"
+          "path": "triage.md",
+          "pattern": "region"
         },
         {
           "type": "file_contains",
-          "path": "audit.md",
-          "pattern": "[Ll]abel"
+          "path": "triage.md",
+          "pattern": "landmark-unique"
+        },
+        {
+          "type": "file_contains",
+          "path": "triage.md",
+          "pattern": "--fail-on moderate"
         }
       ]
     }
@@ -209,6 +214,10 @@
     {
       "query": "Write a Playwright test that checks the cookie banner can be dismissed and stays dismissed after a reload.",
       "should_trigger": true
+    },
+    {
+      "query": "Review the markup of this static signup page by reading it and list the accessibility problems: missing alt text, unlabelled inputs and a missing lang attribute.",
+      "should_trigger": false
     }
   ]
 }
