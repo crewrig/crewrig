@@ -292,7 +292,7 @@ describe("a profile-bearing agent against the committed trees (R13, R19)", () =>
 // shipped agent. The build under test accepts the whole vocabulary; the ban on `execute` and `edit`
 // for shipped agents lives in the key check, not here.
 describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)", () => {
-  const CLASSES = "read, search, edit, execute, web, agent";
+  const CLASSES = "read, search, edit, execute, web, agent, skill, message";
   const meta = (list: string): string[] => ["metadata:", `  tools: ${list}`];
   const fmFile = (lines: string[], claude = false): string =>
     `---\nname: ag\ndescription: "An agent."\n${lines.join("\n")}${lines.length > 0 ? "\n" : ""}${claude ? OMIT : ""}---\n\nAgent body.\n${BLOCK}`;
@@ -310,39 +310,58 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
     ["tools-drop", "ag", target, "metadata.tools", declared, reason].join("\t");
 
   // class, claude, copilot, gemini
-  const TABLE: ReadonlyArray<readonly [string, string, string, string | null]> = [
+  const TABLE: ReadonlyArray<readonly [string, string, string | null, string | null]> = [
     ["read", "Read", "[read]", "[read_file, read_many_files, list_directory]"],
     ["search", "Grep, Glob", "[search]", "[grep_search, glob]"],
     ["edit", "Edit, Write", "[edit]", "[write_file, replace]"],
     ["execute", "Bash", "[execute]", "[run_shell_command]"],
     ["web", "WebFetch, WebSearch", "[web]", "[web_fetch, google_web_search]"],
     ["agent", "Agent", "[agent]", null],
+    ["skill", "Skill", null, "[activate_skill]"],
+    ["message", "SendMessage", null, null],
   ];
 
   for (const [cls, claude, copilot, gemini] of TABLE) {
     test(`the class ${cls} alone`, () => {
-      const targets = gemini === null ? ["claude", "copilot", "antigravity"] : ["all"];
+      // A CLI with no name for the class fails the build (R13, R29); the others write the bytes.
+      const targets = ["claude", "antigravity"];
+      if (copilot !== null) targets.push("copilot");
+      if (gemini !== null) targets.push("gemini");
       for (const target of targets) {
         const { tree, res } = built(`[${cls}]`, "--target", target);
         assert.equal(res.status, 0, res.stderr);
-        if (target === "all" || target === "claude")
+        if (target === "claude")
           assert.equal(tree.read(".claude/agents/ag.md"), fmFile([`tools: ${claude}`], true));
-        if (target === "all" || target === "copilot")
+        if (target === "copilot")
           assert.equal(tree.read(".github/agents/ag.md"), fmFile([`tools: ${copilot}`]));
-        if (target === "all")
+        if (target === "gemini")
           assert.equal(tree.read(".gemini/agents/ag.md"), fmFile([`tools: ${gemini}`]));
-        if (target === "all" || target === "antigravity")
-          assert.equal(tree.read(".agents/agents/ag.md"), fmFile([]));
+        if (target === "antigravity") assert.equal(tree.read(".agents/agents/ag.md"), fmFile([]));
+      }
+      for (const [target, name, dir] of [
+        ["copilot", "Copilot CLI", ".github"],
+        ["gemini", "Gemini CLI", ".gemini"],
+      ] as const) {
+        if ((target === "copilot" ? copilot : gemini) !== null) continue;
+        const { tree, res } = built(`[${cls}]`, "--target", target);
+        assert.equal(res.status, 1, res.stderr);
+        assert.ok(res.stderr.includes(`metadata.tools has no ${name} name for ${cls}`), res.stderr);
+        assert.equal(tree.exists(`${dir}/agents/ag.md`), false);
       }
     });
   }
 
-  test("all six classes: the ten Gemini names pinned literally, one tools-drop for agent, one for Antigravity", () => {
+  test("all eight classes: the eleven Gemini names pinned literally, the drops of each CLI, one for Antigravity", () => {
     const { tree, res } = built(`[${CLASSES}]`);
     assert.equal(res.status, 0, res.stderr);
     assert.equal(
       tree.read(".claude/agents/ag.md"),
-      fmFile(["tools: Read, Grep, Glob, Edit, Write, Bash, WebFetch, WebSearch, Agent"], true),
+      fmFile(
+        [
+          "tools: Read, Grep, Glob, Edit, Write, Bash, WebFetch, WebSearch, Agent, Skill, SendMessage",
+        ],
+        true,
+      ),
     );
     assert.equal(
       tree.read(".github/agents/ag.md"),
@@ -351,19 +370,20 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
     assert.equal(
       tree.read(".gemini/agents/ag.md"),
       fmFile([
-        "tools: [read_file, read_many_files, list_directory, grep_search, glob, write_file, replace, run_shell_command, web_fetch, google_web_search]",
+        "tools: [read_file, read_many_files, list_directory, grep_search, glob, write_file, replace, run_shell_command, web_fetch, google_web_search, activate_skill]",
       ]),
     );
     assert.equal(tree.read(".agents/agents/ag.md"), fmFile([]));
     assert.deepEqual(stream(res.stderr).sort(), [
-      drop("antigravity", "read,search,edit,execute,web,agent", "unsupported-on-cli"),
-      drop("gemini", "agent", "no-equivalent-on-cli"),
+      drop("antigravity", "read,search,edit,execute,web,agent,skill,message", "unsupported-on-cli"),
+      drop("copilot", "skill,message", "no-equivalent-on-cli"),
+      drop("gemini", "agent,message", "no-equivalent-on-cli"),
     ]);
   });
 
   test("the order of the source does not matter: every file is byte-identical to the vocabulary order", () => {
     const forward = built(`[${CLASSES}]`);
-    const reversed = built("[agent, web, execute, edit, search, read]");
+    const reversed = built("[message, skill, agent, web, execute, edit, search, read]");
     assert.equal(reversed.res.status, 0, reversed.res.stderr);
     for (const rel of [".claude", ".github", ".gemini", ".agents"].map((d) => `${d}/agents/ag.md`))
       assert.equal(reversed.tree.read(rel), forward.tree.read(rel), rel);
@@ -449,6 +469,68 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
     assert.deepEqual(stream(res.stderr), [drop("gemini", "agent", "no-equivalent-on-cli")]);
   });
 
+  test("skill and message together, in vocabulary order whatever the source order (delta 01 R28, R29)", () => {
+    for (const list of ["[skill, message]", "[message, skill]"]) {
+      const { tree, res } = built(list);
+      assert.equal(res.status, 1, res.stderr); // Copilot has neither name: R29 fails the build
+      const claude = built(list, "--target", "claude");
+      assert.equal(
+        claude.tree.read(".claude/agents/ag.md"),
+        fmFile(["tools: Skill, SendMessage"], true),
+      );
+      const gemini = built(list, "--target", "gemini");
+      assert.equal(gemini.res.status, 0, gemini.res.stderr);
+      assert.equal(gemini.tree.read(".gemini/agents/ag.md"), fmFile(["tools: [activate_skill]"]));
+      assert.deepEqual(stream(gemini.res.stderr), [
+        drop("gemini", "message", "no-equivalent-on-cli"),
+      ]);
+      const agy = built(list, "--target", "antigravity");
+      assert.equal(agy.tree.read(".agents/agents/ag.md"), fmFile([]));
+      assert.deepEqual(stream(agy.res.stderr), [
+        drop("antigravity", "skill,message", "unsupported-on-cli"),
+      ]);
+      assert.equal(tree.exists(".github/agents/ag.md"), false);
+    }
+  });
+
+  test("the scenario [message, skill, edit]: Claude, Gemini, Copilot and Antigravity (delta 01)", () => {
+    const { tree, res } = built("[message, skill, edit]");
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(
+      tree.read(".claude/agents/ag.md"),
+      fmFile(["tools: Edit, Write, Skill, SendMessage"], true),
+    );
+    assert.equal(
+      tree.read(".gemini/agents/ag.md"),
+      fmFile(["tools: [write_file, replace, activate_skill]"]),
+    );
+    assert.equal(tree.read(".github/agents/ag.md"), fmFile(["tools: [edit]"]));
+    assert.equal(tree.read(".agents/agents/ag.md"), fmFile([]));
+    assert.deepEqual(stream(res.stderr).sort(), [
+      drop("antigravity", "edit,skill,message", "unsupported-on-cli"),
+      drop("copilot", "skill,message", "no-equivalent-on-cli"),
+      drop("gemini", "message", "no-equivalent-on-cli"),
+    ]);
+  });
+
+  test("Copilot: [skill, message] fails the build, naming the CLI and the reason, no empty list (R29)", () => {
+    const { tree, res } = built("[skill, message]", "--target", "copilot");
+    assert.equal(res.status, 1, res.stderr);
+    assert.match(
+      res.stderr,
+      /^Error: .*AGENT\.md: metadata\.tools has no Copilot CLI name for skill, message \(no name on that CLI/m,
+    );
+    assert.equal(tree.exists(".github/agents/ag.md"), false);
+    assert.doesNotMatch(res.stderr, /tools: \[\]/);
+  });
+
+  test("Copilot: [read, skill] lists read only and records the omission (R29)", () => {
+    const { tree, res } = built("[read, skill]", "--target", "copilot");
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(tree.read(".github/agents/ag.md"), fmFile(["tools: [read]"]));
+    assert.deepEqual(stream(res.stderr), [drop("copilot", "skill", "no-equivalent-on-cli")]);
+  });
+
   test("Gemini: [agent] alone fails the build, no file and no empty list (R13)", () => {
     const { tree, res } = built("[agent]", "--target", "gemini");
     assert.equal(res.status, 1, res.stderr);
@@ -486,7 +568,7 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
   ];
   for (const [label, value, shown] of INVALID) {
     for (const target of ["all", "antigravity", "claude"]) {
-      test(`${label} stops the build (--target ${target}), naming the file, the key, the value and the six classes (R10)`, () => {
+      test(`${label} stops the build (--target ${target}), naming the file, the key, the value and the eight classes (R10)`, () => {
         const { tree, res } = built(value, "--target", target);
         assert.equal(res.status, 1, res.stderr);
         assert.match(res.stderr, /artifacts\/core\/agents\/ag\/+AGENT\.md: metadata\.tools /);

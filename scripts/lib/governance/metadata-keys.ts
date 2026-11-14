@@ -28,8 +28,11 @@ import { toYamlLib } from "../yaml-text.ts";
 const ADMITTED = new Set(["provenance", "model"]);
 /** Spec 0291 R9: `tools` is admitted on an agent source only (the allowlist of an agent). */
 const AGENT_ONLY = new Set(["tools"]);
-/** Spec 0291 R17: an allowlist is declared only for an agent whose classes exclude these. */
-const BANNED_CLASSES = ["execute", "edit"];
+/**
+ * Spec 0291 R17 as amended by delta 01: an allowlist that contains one of these classes must
+ * also name `skill`, which an allowlist would otherwise withhold.
+ */
+const SKILL_REQUIRING_CLASSES = ["edit", "execute"];
 const GOVERNED_PREFIXES = ["artifacts/core/", "artifacts/library/"];
 
 export interface MetadataKeysInput {
@@ -112,12 +115,14 @@ export function isGoverned(file: string): boolean {
 /** An agent source: `AGENT.md` (a skill or a command source is not). */
 const isAgentSource = (file: string): boolean => file.split("/").pop() === "AGENT.md";
 
-/** The classes of `metadata.tools` that R17 bans, in the order they are written. */
-function bannedClasses(fm: ReturnType<typeof createFrontmatter>, text: string): string[] {
+/** Whether `metadata.tools` names `edit` or `execute` and not `skill` (R17 as amended). */
+function missingSkill(fm: ReturnType<typeof createFrontmatter>, text: string): boolean {
   const doc = fm.yaml.parse(text);
-  if (doc === null) return [];
+  if (doc === null) return false;
   const declared = fm.yaml.seq(doc, ["metadata", "tools"]);
-  return BANNED_CLASSES.filter((cls) => declared.includes(cls));
+  return (
+    SKILL_REQUIRING_CLASSES.some((cls) => declared.includes(cls)) && !declared.includes("skill")
+  );
 }
 
 /** `null` aborts the script silently; otherwise the keys `yq keys | .[]` printed. */
@@ -181,10 +186,9 @@ export function checkMetadataKeys(input: MetadataKeysInput): Outcome {
     for (const k of keys) {
       if (k === "") continue;
       if (agent && AGENT_ONLY.has(k)) {
-        const banned = bannedClasses(fm, text);
-        for (const cls of banned) {
+        if (missingSkill(fm, text)) {
           rejections += 1;
-          stderr += `${file}: K2 metadata.tools declares the class ${cls}; an allowlist is declared only for an agent whose classes exclude execute and edit (spec 0291 R17)\n`;
+          stderr += `${file}: K2 metadata.tools names edit or execute without the class skill; an allowlist withholds every tool it does not name, so an editing agent's allowlist names skill (spec 0291 R17 as amended by delta 01)\n`;
         }
         continue;
       }

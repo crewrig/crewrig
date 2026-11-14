@@ -1,7 +1,7 @@
 // agent-tools.ts — the `metadata.tools` declaration of an agent source and its per-CLI
 // spelling (spec 0291 R8, R10, R11, R13, R14).
 //
-// A source MAY declare `metadata.tools`, a non-empty list drawn from the six classes below.
+// A source MAY declare `metadata.tools`, a non-empty list drawn from the eight classes below.
 // The declaration is CLI-agnostic, like `metadata.model` (spec 0195); each emitter translates
 // the classes to its CLI's own names, in the vocabulary's order whatever the order in the
 // source. A tool allowlist withholds every tool it does not name (artifacts/FORMAT.md), so a
@@ -13,13 +13,22 @@ import { BuildFailure } from "./types.ts";
 import type { CliId, SourceDoc } from "./types.ts";
 
 /** The closed vocabulary, in the order the emitters write it (R8, R11). */
-export const TOOL_CLASSES = ["read", "search", "edit", "execute", "web", "agent"] as const;
+export const TOOL_CLASSES = [
+  "read",
+  "search",
+  "edit",
+  "execute",
+  "web",
+  "agent",
+  "skill",
+  "message",
+] as const;
 export type ToolClass = (typeof TOOL_CLASSES)[number];
 
 const KEY = "metadata.tools";
 const PATH = ["metadata", "tools"] as const;
 
-/** The six classes, as an error message names them. */
+/** The eight classes, as an error message names them. */
 const ADMITTED = TOOL_CLASSES.join(", ");
 
 /** Class to Claude Code names (https://code.claude.com/docs/en/sub-agents, read 2026-11-11). */
@@ -30,6 +39,8 @@ const CLAUDE: Readonly<Record<ToolClass, readonly string[]>> = {
   execute: ["Bash"],
   web: ["WebFetch", "WebSearch"],
   agent: ["Agent"],
+  skill: ["Skill"],
+  message: ["SendMessage"],
 };
 
 /**
@@ -44,6 +55,23 @@ const GEMINI: Readonly<Record<ToolClass, readonly string[]>> = {
   execute: ["run_shell_command"],
   web: ["web_fetch", "google_web_search"],
   agent: [],
+  skill: ["activate_skill"],
+  message: [],
+};
+
+/**
+ * Class to Copilot CLI names (https://docs.github.com/en/copilot/reference/custom-agents-configuration,
+ * read 2026-11-14): `skill` and `message` have no name there (spec 0291 delta 01 R28, R29).
+ */
+const COPILOT: Readonly<Record<ToolClass, readonly string[]>> = {
+  read: ["read"],
+  search: ["search"],
+  edit: ["edit"],
+  execute: ["execute"],
+  web: ["web"],
+  agent: ["agent"],
+  skill: [],
+  message: [],
 };
 
 const isToolClass = (value: string): value is ToolClass =>
@@ -60,7 +88,7 @@ function refuse(source: SourceDoc, what: string, value: string): BuildFailure {
  * The classes `source` declares, in the vocabulary's order; `null` when it declares none
  * (the key is absent), which is the opt-in case of R12.
  *
- * @throws BuildFailure (status 1) naming the file, the key, the value and the six classes,
+ * @throws BuildFailure (status 1) naming the file, the key, the value and the eight classes,
  *   when the value is not a list, is empty, holds a string outside the vocabulary or holds a
  *   duplicate (R10).
  */
@@ -93,10 +121,10 @@ export function toolsLine(
 ): { readonly line: string; readonly omitted: readonly ToolClass[] } {
   const names = (table: Readonly<Record<ToolClass, readonly string[]>>): string[] =>
     classes.flatMap((cls) => table[cls]);
-  const omitted = cli === "gemini" ? classes.filter((cls) => GEMINI[cls].length === 0) : [];
-  if (cli === "claude") return { line: `tools: ${names(CLAUDE).join(", ")}`, omitted };
-  const list = cli === "gemini" ? names(GEMINI) : [...classes];
-  return { line: `tools: [${list.join(", ")}]`, omitted };
+  if (cli === "claude") return { line: `tools: ${names(CLAUDE).join(", ")}`, omitted: [] };
+  const table = cli === "gemini" ? GEMINI : COPILOT;
+  const omitted = classes.filter((cls) => table[cls].length === 0);
+  return { line: `tools: [${names(table).join(", ")}]`, omitted };
 }
 
 /** A `tools-drop` record: the six tab-separated fields of `model-drop`, with path `metadata.tools` (R7). */
@@ -109,11 +137,19 @@ export function toolsDrop(
   return ["tools-drop", agent, target, KEY, declared.join(","), reason].join("\t");
 }
 
-/** The failure of R13: omitting `agent` left a Gemini agent no tool, and no empty list is ever written. */
-export function noGeminiTool(source: SourceDoc, declared: readonly ToolClass[]): BuildFailure {
+/**
+ * The failure of R13 and R29: omitting the classes with no name on `cli` left an agent no tool,
+ * and no empty list is ever written.
+ */
+export function noToolName(
+  source: SourceDoc,
+  cli: "gemini" | "copilot",
+  declared: readonly ToolClass[],
+): BuildFailure {
+  const label = cli === "gemini" ? "Gemini CLI" : "Copilot CLI";
   return refuse(
     source,
-    `has no Gemini CLI name for ${declared.join(", ")} (subagents cannot call other subagents, ` +
+    `has no ${label} name for ${declared.join(", ")} (no name on that CLI, ` +
       "so an empty tools list would be written)",
     declared.join(","),
   );

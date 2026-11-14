@@ -21,6 +21,18 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   `view_file`, `replace_file_content`, `grep_search` and `run_command` and warns that a misspelled name may hang the
   subagent, so the class-to-name mapping is unverified and is not guessed. Lifted when each class's exact Antigravity
   name is established by a probe on a named ticket.
+- [GAP-confirmation] Copilot CLI agent `tools` names for `skill` and `message` (row 4c) — no Copilot name exists in
+  <https://docs.github.com/en/copilot/reference/custom-agents-configuration> (primary aliases `execute`, `read`,
+  `edit`, `search`, `agent`, `web`, `todo`) nor in <https://docs.github.com/en/copilot/concepts/agents/about-agent-skills>
+  (read 2026-11-14), which lists skill discovery paths and no allowlist name; no user-level, hook-level or
+  alternative-path mechanism was found. The build omits both with one `tools-drop … no-equivalent-on-cli` per agent and
+  fails when nothing else remains (spec 0291 delta 01 R29). Lifted by a documented name or a probe on a named ticket;
+  a name is not guessed.
+- [GAP-confirmation] Gemini CLI agent `tools` name for `message` (row 4c) — <https://geminicli.com/docs/reference/tools/>
+  lists no tool that sends a message to a parent agent (`complete_task` returns the result and ends the mission, so it is
+  not mapped) and <https://geminicli.com/docs/core/subagents/> (read 2026-11-14) states only that a subagent reports back
+  on completion. Omitted with one `tools-drop … no-equivalent-on-cli` per agent (spec 0291 delta 01 R29). Lifted by a
+  documented name or a probe on a named ticket.
 - [GAP] Antigravity CLI per-agent model frontmatter surface (row 33) — no per-agent `model:` field exists on this
   target; `model-mappings/antigravity.yml` states its declination on the guidance surface instead. Empirical
   reproduction: `agy --help`, `agy models`, `~/.gemini/antigravity-cli/settings.json`, and ten on-disk documentation

@@ -218,52 +218,73 @@ metadata:
 | `execute` | `Bash` | `execute` | `run_shell_command` |
 | `web` | `WebFetch`, `WebSearch` | `web` | `web_fetch`, `google_web_search` |
 | `agent` | `Agent` | `agent` | *(none)* |
+| `skill` | `Skill` | *(none)* | `activate_skill` |
+| `message` | `SendMessage` | *(none)* | *(none)* |
 
 - Claude Code receives a comma-separated string, `tools: Read, Grep, Glob`.
   Copilot CLI and Gemini CLI receive a one-line flow sequence, such as
   `tools: [read, search]`. The line follows the directed `model:` line and
   precedes the provenance block.
 - Gemini CLI documents that subagents cannot call other subagents, so the
-  `agent` class has no Gemini name: it is omitted with one `tools-drop`
-  record (reason `no-equivalent-on-cli`), and a declaration that leaves no
-  Gemini tool stops the build rather than write an empty list.
+  `agent` class has no Gemini name, and it documents no tool that sends a
+  message to a parent agent, so `message` has none either. Copilot CLI names
+  no skill tool and no tool for messaging a caller, so `skill` and `message`
+  have no Copilot name. Each emitter omits such a class with one
+  `tools-drop` record per agent (reason `no-equivalent-on-cli`), and a
+  declaration that leaves no tool on that CLI stops the build, naming the
+  CLI and the reason, rather than write an empty list. The empty cells are
+  `[GAP-confirmation]` in `docs/cli-matrix/parity-gaps.md`: a name is never
+  guessed (spec 0291 delta 01 R28, R29).
 - Antigravity CLI receives no `tools` key. Its tool names are unverified
   and a misspelled name may hang the subagent, so none is guessed; the
   build emits one `tools-drop` record (reason `unsupported-on-cli`) for each
   declaring agent, and the gap is recorded in
   [`docs/cli-matrix.md`](../docs/cli-matrix.md) (row 4c).
 - The build stops, naming the source file, the key, the offending value and
-  the six classes, when `metadata.tools` is not a list, is empty, holds a
+  the eight classes, when `metadata.tools` is not a list, is empty, holds a
   string outside the vocabulary or holds a duplicate, whichever CLI targets
   are selected.
 
 **What an allowlist withholds.** A tool allowlist withholds every tool it
 does not name. On Claude Code this includes the MCP tools, unless listed,
-and `SendMessage`, `Skill`, `ToolSearch` and `TodoWrite`, none of which the
-six classes can express (<https://code.claude.com/docs/en/sub-agents>, read
-2026-11-11; that page states that an allowlist excludes the MCP tools it
-does not list; that it also withholds `SendMessage`, `ToolSearch` and
-`TodoWrite` is an inference from it, not a statement). An agent whose body
-requires one of those SHALL NOT declare `metadata.tools` until the
-vocabulary covers it. An agent that declares an allowlist and carries a
+and `SendMessage`, `Skill`, `ToolSearch` and `TodoWrite`, of which
+`SendMessage` and `Skill` are now expressed by the classes `message` and
+`skill`; MCP tools, `ToolSearch` and `TodoWrite` remain outside the eight
+classes (<https://code.claude.com/docs/en/sub-agents>, read 2026-11-11; that
+page states that an allowlist excludes the MCP tools it does not list; that
+it also withholds `SendMessage`, `ToolSearch` and `TodoWrite` is an
+inference from it, not a statement). An agent whose body requires one of
+the latter three SHALL NOT declare `metadata.tools` until the vocabulary
+covers it, and an agent whose body requires `Skill` or `SendMessage` names
+`skill` or `message` in its allowlist. An agent that declares an allowlist and carries a
 `harness-report` paragraph says, in its body, that it reports a friction in
 its final reply when its tool set withholds the MCP tool that records it.
 
-**The rule:** an allowlist is declared only for an agent whose classes exclude execute and edit.
-With `execute` the restriction protects nothing, since a shell can write files
-and mutate remote state, while the allowlist withholds every tool it does
-not name, MCP tools included. `scripts/check-component-metadata-keys.ts`
-enforces it on `artifacts/core/` and `artifacts/library/`, rejecting a
-`metadata.tools` that contains `execute` or `edit`; the adopter tiers
-(`artifacts/community/`, `artifacts/org/`) and the build itself are not
-bound by it and accept the whole vocabulary.
+**The rule:** an allowlist withholds every tool it does not name, so an editing agent's allowlist names skill.
+An allowlist MAY be declared for any agent, whatever its classes. It withholds
+`Skill` and `SendMessage` like every tool it does not name, so an agent that
+has `edit` or `execute` and omits `skill` loses the skill listing and the
+`Skill` tool its body tells the model to use, and an agent that reports to
+its caller through `SendMessage` and omits `message` loses that channel. The
+`skill` class is therefore named by every allowlist that contains `edit` or
+`execute`, and the `message` class by every allowlist of an agent whose body
+talks to its caller through `SendMessage` (ADR-0025, *Path to the targets*).
+`scripts/check-component-metadata-keys.ts` enforces the part it can decide on
+`artifacts/core/` and `artifacts/library/`, rejecting a `metadata.tools` that
+contains `edit` or `execute` and not `skill`; it does not judge `message`,
+which depends on the body and is left to review. The adopter tiers
+(`artifacts/community/`, `artifacts/org/`) and the build itself are not bound
+by it and accept the whole vocabulary. With `execute` the restriction still
+protects nothing, since a shell can write files and mutate remote state: for
+such an agent the allowlist is a context-size tool, not a protection.
 
 **The shared `.claude/agents/` surface.** Copilot CLI also reads
 `.claude/agents/`. It treats `Bash`, `Read`, `Edit`, `Write`, `Grep`,
 `Glob`, `WebFetch`, `WebSearch` and `Task` as aliases of its own names, but
-`Agent` is not an alias and is ignored there. A declared `agent` class
-therefore reaches Claude Code but not a Copilot reader of that directory,
-which fails toward fewer tools.
+`Agent` is not an alias and is ignored there, nor are `Skill` and
+`SendMessage`. A declared `agent`, `skill` or `message` class therefore
+reaches Claude Code but not a Copilot reader of that directory, which fails
+toward fewer tools.
 
 ## Build Outputs
 
