@@ -66,12 +66,8 @@ const script =
     };
   };
 
-/**
- * The caps are passed explicitly (the declared ones are provisional, #1882), and so is the tolerance:
- * a test that depends on a default recalibrated in settings.ts is a test of the calibration.
- */
+/** The caps are passed explicitly: the declared ones are provisional (#1882). The tolerance is one case. */
 const EXPLICIT = {
-  tolerance: 0.05,
   maxExecutorRuns: 100,
   judgeMaxCalls: 100,
   maxInvocationUsd: 1000,
@@ -79,7 +75,7 @@ const EXPLICIT = {
 
 /**
  * 10 evals committed at the merge-base with `baseResults` as their evals/results.json (absent when
- * undefined); the head only edits references/ref.md, so the base's recorded rate is what the head is
+ * undefined); the head only edits SKILL.md, so the base's recorded rate is what the head is
  * compared with (R19: nothing is replayed).
  */
 const regressionRig = (
@@ -98,7 +94,7 @@ const regressionRig = (
       repo.git("add", "-A");
       repo.git("commit", "-q", "-m", "evals and base results");
       repo.git("update-ref", "refs/remotes/origin/main", "HEAD");
-      fs.writeFileSync(path.join(repo.root, skillRel("demo"), "references", "ref.md"), "HEAD\n");
+      fs.appendFileSync(path.join(repo.root, skillRel("demo"), "SKILL.md"), "\nHEAD\n");
     },
     mock: false,
     env: { ANTHROPIC_API_KEY: "sk-test" },
@@ -108,37 +104,31 @@ const regressionRig = (
     settings: { ...EXPLICIT, ...extra.settings },
   });
 
-test("tolerance boundary: a drop equal to the tolerance is not a regression, one byte beyond is", () => {
-  assert.equal(isRegression(0.86, 0.9, 0.05), false);
-  assert.equal(
-    isRegression(0.85, 0.9, 0.05),
-    false,
-    "exactly the tolerance is not MORE than the tolerance",
-  );
-  assert.equal(isRegression(0.849, 0.9, 0.05), true);
-  assert.equal(isRegression(0.8, 0.9, 0.05), true);
-  assert.equal(isRegression(0.95, 0.9, 0.05), false);
+test("tolerance boundary: a drop of exactly one case is not a regression, one more is", () => {
+  assert.equal(isRegression(0.8, 0.9, 0.1), false, "9/10 to 8/10 is one case");
+  assert.equal(isRegression(0.7, 0.9, 0.1), true, "9/10 to 7/10 is two cases");
+  assert.equal(isRegression(0.95, 0.9, 0.1), false);
 });
 
-test("regression versus the committed base is reported with both rates and does not block by default", async () => {
-  const rig = regressionRig([9, 10], baseRecord(0.9));
+test("a regression versus the committed base is reported with both rates and blocks", async () => {
+  const rig = regressionRig([8, 9, 10], baseRecord(0.9));
   try {
     const j = judgeFetch();
     const r = await rig.run({ fetchImpl: j.fetch });
     const s = r.results[0];
     assert.equal(s?.status, "regression", r.text + r.stderr);
     assert.equal(s?.baseEvalPassRate?.toFixed(2), "0.90");
-    assert.equal(s?.evalPassRate?.toFixed(2), "0.80");
-    assert.equal(r.exitCode, 0);
+    assert.equal(s?.evalPassRate?.toFixed(2), "0.70");
+    assert.equal(r.exitCode, 1);
     assert.match(
       r.text,
-      /regression: demo base eval pass rate 0\.90, head 0\.80, diff -0\.10, tolerance 0\.05/,
+      /regression: demo base eval pass rate 0\.90, head 0\.70, diff -0\.20, tolerance 0\.10/,
     );
-    assert.match(r.text, /base=0\.90 diff=-0\.10/);
+    assert.match(r.text, /base=0\.90 diff=-0\.20/);
     const rec = JSON.parse(fs.readFileSync(resultsFile(rig.repo.root), "utf8"));
     assert.equal(rec.status, "regression");
     assert.equal(rec.base_eval_pass_rate, 0.9);
-    assert.equal(rec.tolerance, 0.05, "the tolerance in force is recorded");
+    assert.equal(rec.tolerance, 0.1, "the tolerance in force is one case, recorded");
     assert.equal(rec.executor_runs, 10, "one run per eval: no paired run, no replay");
     assert.equal(rec.cost_usd.toFixed(1), "1.0");
     assert.equal(
@@ -152,46 +142,38 @@ test("regression versus the committed base is reported with both rates and does 
   }
 });
 
-test("the regression-blocking knob flips the same condition", async () => {
-  const rig = regressionRig([9, 10], baseRecord(0.9), { settings: { regressionBlocking: true } });
+test("the regression-blocking knob gates the same condition", async () => {
+  const rig = regressionRig([8, 9, 10], baseRecord(0.9), {
+    settings: { regressionBlocking: false },
+  });
   try {
     const r = await rig.run({ fetchImpl: judgeFetch().fetch });
     assert.equal(r.results[0]?.status, "regression");
-    assert.equal(r.exitCode, 1);
-  } finally {
-    rig.cleanup();
-  }
-});
-
-test("a drop within the tolerance passed explicitly is a pass", async () => {
-  const rig = regressionRig([9, 10], baseRecord(0.9), { settings: { tolerance: 0.15 } });
-  try {
-    const r = await rig.run({ fetchImpl: judgeFetch().fetch });
-    assert.equal(r.results[0]?.status, "pass");
     assert.equal(r.exitCode, 0);
   } finally {
     rig.cleanup();
   }
 });
 
-test("the status is `fail` when both fail and regress, with the regression line printed; each blocks only under its own knob", async () => {
-  // head 6/10 = 0.6 < threshold 0.8, base 0.9: both conditions hold
-  const run = async (settings: Record<string, boolean>) => {
-    const rig = regressionRig([5, 6, 7, 8], baseRecord(0.9), { settings });
-    try {
-      const r = await rig.run({ fetchImpl: judgeFetch().fetch });
-      return { r, rec: JSON.parse(fs.readFileSync(resultsFile(rig.repo.root), "utf8")) };
-    } finally {
-      rig.cleanup();
-    }
-  };
-  const open = await run({});
-  assert.equal(open.r.results[0]?.status, "fail");
-  assert.match(open.r.text, /regression: demo base eval pass rate 0\.90, head 0\.60/);
-  assert.equal(open.r.exitCode, 0);
-  assert.equal(open.rec.status, "fail");
-  assert.equal((await run({ regressionBlocking: true })).r.exitCode, 1);
-  assert.equal((await run({ failBlocking: true })).r.exitCode, 1);
+test("a drop of exactly one case against the base is a pass, and a low absolute score stays advisory", async () => {
+  const rig = regressionRig([9, 10], baseRecord(0.9));
+  try {
+    const r = await rig.run({ fetchImpl: judgeFetch().fetch });
+    assert.equal(r.results[0]?.status, "pass", r.text);
+    assert.equal(r.exitCode, 0);
+    assert.doesNotMatch(r.text, /advisory:/, "0.80 meets the advisory bar");
+  } finally {
+    rig.cleanup();
+  }
+  const low = regressionRig([5, 6, 7, 8, 9, 10], baseRecord(0.4));
+  try {
+    const r = await low.run({ fetchImpl: judgeFetch().fetch });
+    assert.equal(r.results[0]?.status, "pass", "4/10 against a base of 4/10 is no regression");
+    assert.equal(r.exitCode, 0);
+    assert.match(r.text, /advisory: eval pass rate 0\.40 is below 0\.80; not a failure/);
+  } finally {
+    low.cleanup();
+  }
 });
 
 test("a real pass writes every R36 key in order, with the hash of the tree it ran on, the measured cost and the base rate", async () => {
@@ -230,6 +212,7 @@ test("a real pass writes every R36 key in order, with the hash of the tree it ra
       "executor_runs",
       "judge_calls",
       "cost_usd",
+      "skill_loaded",
     ]);
     assert.equal(rec.date, "2026-02-03T04:05:06.000Z");
     assert.equal(rec.skill_name, "demo");
@@ -253,7 +236,7 @@ test("a real pass writes every R36 key in order, with the hash of the tree it ra
   }
 });
 
-test("no base file, or one of the former shape: `base=n/a` with its line, and the status comes from the threshold only", async () => {
+test("no base file, or one of the former shape: `base=n/a` with its line, and a pass whatever the score", async () => {
   const former = JSON.stringify({
     ...JSON.parse(baseRecord(0.9)),
     benchmark: { with_skill_mean: 0.9 },
@@ -276,19 +259,19 @@ test("no base file, or one of the former shape: `base=n/a` with its line, and th
     } finally {
       ok.cleanup();
     }
-    // 7/10 = 0.7 below the threshold: fail, decided from the threshold alone
+    // 7/10 = 0.7 is below the advisory bar: with nothing to compare it is still a pass
     const low = regressionRig([8, 9, 10], base);
     try {
       const r = await low.run({ fetchImpl: judgeFetch().fetch });
-      assert.equal(r.results[0]?.status, "fail", r.text);
-      assert.equal(r.exitCode, 0, "fail does not block by default");
+      assert.equal(r.results[0]?.status, "pass", r.text);
+      assert.equal(r.exitCode, 0);
     } finally {
       low.cleanup();
     }
   }
 });
 
-test("a skill new on the base branch is compared with nothing: pass from the threshold, `base=n/a`, and a pass is attested", async () => {
+test("a skill new on the base branch is compared with nothing: pass, `base=n/a`, and a pass is attested", async () => {
   const rig = makeRig({
     newSkill: true,
     mock: false,

@@ -46,8 +46,8 @@ export function buildJudgeMessage(
     "You are grading one run of an AI agent against a numbered list of EXPECTATIONS.\n" +
     "Respond with exactly one line per expectation and nothing else:\n\n" +
     "  <n> VERDICT=<PASS|FAIL> EVIDENCE=<a JSON string>\n\n" +
-    "where <n> is the expectation's number. For PASS, EVIDENCE MUST be a verbatim excerpt of at least " +
-    "12 non-whitespace characters, copied exactly from the TRANSCRIPT or from a PRODUCED FILE, or a " +
+    "where <n> is the expectation's number. For PASS, EVIDENCE MUST be a verbatim excerpt " +
+    "(as short as the line that proves the point), copied exactly from the TRANSCRIPT or from a PRODUCED FILE, or a " +
     "reference `path:line` naming a produced file and an existing line of it. For FAIL, EVIDENCE is " +
     "a short reason.\n\n" +
     `EXPECTATIONS:\n${expectations.map((e, i) => `${i + 1}. ${e}`).join("\n")}\n\n` +

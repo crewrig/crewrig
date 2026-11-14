@@ -72,16 +72,18 @@ For each eval the runner performs one run in a fresh context, with the skill ins
 
 Each eval directory holds `transcript.md`, `judge.txt` (the raw judge answer, written before it is parsed, so it survives a judge failure), `grading.json`, `metrics.json` (measured cost, token usage, turns, seconds, the limit reached or `null`, and `skill_loaded`) and `outputs/` (every file the run produced). Each probe directory holds `transcript.md`, `metrics.json` and `probe.json` (`query`, `should_trigger`, `observed`, `passed`).
 
+An absence ("the workflow has no `pull_request_target`") is not an expectation for the judge: no quote can prove it. Write it as a `file_not_contains` check, which passes when the produced file exists and its content does not match the pattern, and fails when the file was not produced.
+
 Grading order: every `checks` entry first (deterministic), then one judge call for all of the eval's `expectations`. In `grading.json` the checks therefore come first, then the expectations, each list in file order. A failed check does not prevent the judge call. The judge is not called for an eval with no expectation, or whose output directory cannot be read (its expectations are then recorded failed).
 
-`skill_loaded` is informational: it records whether the agent called the `Skill` tool for this skill during the run, is not scored and affects no status. With no run without the skill, it is the only indication that an eval passed because of the skill rather than from the model's own knowledge. The report counts the eval runs that loaded the skill.
+`skill_loaded` is informational: it records whether the agent called the `Skill` tool for this skill during the run, is not scored, but a skill that did not load in every eval is `fail` (#1963). With no run without the skill, it is the only indication that an eval passed because of the skill rather than from the model's own knowledge. The report counts the eval runs that loaded the skill.
 
 ### Judge call
 
-The judge returns one line per expectation: `<n> VERDICT=<PASS|FAIL> EVIDENCE=<JSON string>`. A `PASS` counts only when the evidence is valid: at least 12 non-whitespace characters and either a `path:line` reference naming a produced file and an existing line, or a match of the run's `transcript.md` or of a produced file under one of three rules, tried in this order (spec 0290 delta-05, R49):
+The judge returns one line per expectation: `<n> VERDICT=<PASS|FAIL> EVIDENCE=<JSON string>`. A `PASS` counts only when the evidence is valid: non-empty and either a `path:line` reference naming a produced file and an existing line, or a match of the run's `transcript.md` or of a produced file under one of three rules, tried in this order (spec 0290 delta-05, R49):
 
 1. *Exact*: an exact substring, line endings normalised.
-2. *Normalised*: after Unicode NFKC normalisation, only letters and digits count, so markdown markers, bullets, backticks, reflowed whitespace and joined lines no longer matter. The evidence is split on `...`, `…`, `[...]` and `[…]`; every piece has at least 12 letters and digits and occurs whole-word in the material, in order.
+2. *Normalised*: after Unicode NFKC normalisation, only letters and digits count, so markdown markers, bullets, backticks, reflowed whitespace and joined lines no longer matter. The evidence is split on `...`, `…`, `[...]` and `[…]`; every piece occurs whole-word in the material, in order.
 3. *Contiguous window with a coverage floor*: the longest run of consecutive words of the evidence that occurs verbatim in the material holds at least `EVIDENCE_WINDOW_CHARS` (40) letters and digits and at least `EVIDENCE_WINDOW_SHARE` (0.30) of the letters and digits of the whole evidence. This accepts a judge that wraps a real excerpt in commentary of its own, and refuses one that wraps a real 40-character run in a claim that is mostly invented.
 
 Every expectation accepted from a judge `PASS` records the rule in `grading.json` (spec 0290 delta-06, R50): `evidence_match` is `exact`, `normalised`, `window` or `path_line`, and `window_share` (two decimals) is added for `window`. Checks and failed expectations carry neither. The report prints `evidence_window: <n> of <m>` for each skill, the expectations accepted by rule 3 among those accepted from a judge `PASS`, even when `n` is 0. A one-word swap can invert a meaning, so a run with a non-zero `n` deserves a look at those entries. Neither the keys nor the line changes a status, a rate or the exit code.
@@ -102,10 +104,11 @@ Every setting is one declared constant in `scripts/lib/skill-evals/settings.ts`,
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `PASS_THRESHOLD` | `0.8` | The eval pass rate, and the probe pass rate when the skill has probes, must each reach this for the skill to be `pass`. |
-| `FAIL_BLOCKING` | `false` | When `true`, a `fail` makes the run and the attestation check exit non-zero. |
-| `TOLERANCE` | `0.05` | A skill regresses when its head eval pass rate is lower than the base's recorded one by **more than** this. Provisional: calibrate on the pilot before regression is made blocking. |
-| `REGRESSION_BLOCKING` | `false` | When `true`, a regression (measured, or recorded in a results file) makes the run and the attestation check exit non-zero. |
+| `PASS_THRESHOLD` | `0.8` | Advisory only: the report prints a line when the eval or probe pass rate is below it, and the attestation reason repeats it. It never changes a status or an exit code. |
+| `FAIL_BLOCKING` | `true` | When `true`, a `fail` (the skill did not load in every eval) makes the run and the attestation check exit non-zero. |
+| `REGRESSION_BLOCKING` | `true` | When `true`, a regression (measured, or recorded in a results file) makes the run and the attestation check exit non-zero. |
+
+There is no tolerance setting: the tolerance is one case, `1 / evals_total`, recorded in `evals/results.json` as `tolerance`.
 | `MISSING_EVALS_BLOCKING` | `false` | When `true`, a changed skill without `evals/` makes the run and the attestation check exit non-zero. Stays `false` until the migration waves (issues #1852 to #1855) have landed. |
 | `EFFORT` | `medium` | The `--effort` level of the executor, the probe runs and the judge call. Not applied under `--use-api-key`: the `anthropic` judge driver has no effort level. |
 | `MAX_EXECUTOR_RUNS` | `20` | Executor runs (evals + probes) per selected skill. Provisional. |
@@ -130,9 +133,18 @@ The turn limit is counted by the runner from the executor's stream: one turn is 
 
 The eval pass rate is the evals that passed divided by the evals; an eval passes when all its checks and expectations pass. The probe pass rate is the probes that passed divided by the probes, absent when the skill has none. The two are graded separately so that cheap probes cannot mask failing evals. `grading.json`'s `summary.pass_rate` is the per-eval fraction of checks and expectations passed and is informational.
 
-- `pass`: the eval pass rate, and the probe pass rate when there are probes, are each at least `PASS_THRESHOLD`.
-- `fail`: otherwise. Reported; exit 0 unless `FAIL_BLOCKING`.
-- `regression`: the head eval pass rate is lower than the base's by more than `TOLERANCE` (exit 0 unless `REGRESSION_BLOCKING`). When both `fail` and `regression` hold, the status is `fail` and the regression line is printed too; each blocks only under its own setting.
+The pass rule is a **non-regression** check (#1963), not an absolute bar. One run of five or six evals cannot support an absolute threshold: a single flipped case moves the score by 0.17, and the same skill content measured 1.00, 0.83, 0.83 and 0.67 in the pilot.
+
+- `pass`: the skill loaded in every eval (`skill_loaded` equals `evals_total`) and the eval score is not below the score recorded at the merge-base by more than one case. A skill with no recorded base is compared with nothing and passes.
+- `fail`: the skill did not load in every eval. Exit 0 unless `FAIL_BLOCKING`.
+- `regression`: the head eval pass rate is lower than the base's by more than one case, `1 / evals_total` (exit 0 unless `REGRESSION_BLOCKING`). When both `fail` and `regression` hold, the status is `fail` and the regression line is printed too.
+
+`PASS_THRESHOLD` (0.80) stays an advisory figure: a score or a probe rate below it adds an `advisory:` line to the report and never fails a skill.
+
+**Budget by construction.** A modified skill needs at most two paid runs: a baseline on `main` when no valid `evals/results.json` is recorded there, and the final run on the branch. A review fix that changes neither `SKILL.md` (apart from its `metadata.provenance.version` line) nor `evals/evals.json` leaves the hash unchanged and costs no run.
+
+The other statuses:
+
 - `invalid`: the `evals.json` is invalid, a symlink or a non-ignored untracked file sits under a hashed path (a cited shared reference included), a cited shared reference has no tracked source, or the skill source holds a top-level `references/shared-*.md` file (that prefix is reserved for the shared references the build adds). Always blocks.
 - `no-evals`: warning; exit 0 unless `MISSING_EVALS_BLOCKING`.
 - `mock`, and `error` (executor or judge failure with credentials present, a refused plan, a runtime cap).
@@ -154,7 +166,7 @@ Nothing is run on the base revision. The base figure is the `eval_pass_rate` of 
 
 ## Content hash
 
-The content hash identifies exactly what was evaluated. It is a SHA-256 over `SKILL.md`, every file under `scripts/`, `references/` and `assets/`, and `evals/evals.json`, plus the shared references the skill cites (`references/shared-<topic>.md`, the bytes of `artifacts/core/shared/references/<topic>.md`, so the hash covers the skill as it ships), read **once** at run start from the working tree (a dirty tree is allowed: the hash is over content, not commits) and also used for the install, so the installed bytes equal the hashed bytes. Files are sorted by their `/`-separated relative path in UTF-8 byte order; each contributes `path NUL mode-flag NUL size NUL bytes NUL`, where the mode flag is `1` when the git **index** mode is `100755` and `0` otherwise. Bytes are never normalised (the `SKILL.md` text is put in LF form only to find the cited topics, as the build does; the hashed and installed bytes stay raw). The mode is read through git (`git ls-files -s`, and `git ls-tree` at the merge-base), never from the filesystem, so the hash is identical on Windows, on Linux and with `core.fileMode=false`. The result is `sha256:` followed by 64 lowercase hexadecimal digits.
+The content hash identifies exactly what was evaluated. It is a SHA-256 over `SKILL.md` without its `metadata.provenance.version` line, and `evals/evals.json` (#1963: the judge runs when what it measures changes, and a version bump or a script, reference or asset edit is not that; scripts are covered by their unit tests, not by paid runs). The whole skill, scripts, references, assets and the cited shared references (`references/shared-<topic>.md`) included, is still read **once** at run start from the working tree (a dirty tree is allowed: the hash is over content, not commits) and also used for the install, so the installed bytes are the bytes that were read. Files are sorted by their `/`-separated relative path in UTF-8 byte order; each contributes `path NUL mode-flag NUL size NUL bytes NUL`, where the mode flag is `1` when the git **index** mode is `100755` and `0` otherwise. Bytes are never normalised (the `SKILL.md` text is put in LF form only to find the cited topics, as the build does; the hashed and installed bytes stay raw). The mode is read through git (`git ls-files -s`, and `git ls-tree` at the merge-base), never from the filesystem, so the hash is identical on Windows, on Linux and with `core.fileMode=false`. The result is `sha256:` followed by 64 lowercase hexadecimal digits.
 
 Only tracked files are hashed (a staged, uncommitted file counts). A git-ignored untracked file under a hashed path (`__pycache__/`, `.DS_Store`) is excluded from the hash and from the install; an untracked, non-ignored file or any symbolic link makes the skill `invalid`, naming the path, with no hash and no model call. `evals/results.json` is never hashed.
 
@@ -162,7 +174,7 @@ Only tracked files are hashed (a staged, uncommitted file counts). A git-ignored
 
 A non-mock run with status `pass`, `fail` or `regression` writes `evals/results.json` in the skill directory, with these keys in this order: `skill_name`, `content_hash`, `runner_version`, `executor_model`, `judge_model`, `effort`, `date`, `status`, `eval_pass_rate`, `probe_pass_rate` (`null` without probes), `base_eval_pass_rate` (`null` when not compared), `threshold`, `tolerance`, `evals_passed`, `evals_total`, `probes_passed`, `probes_total`, `executor_runs`, `judge_calls` and `cost_usd` (`null` when a run's cost is unknown). You commit it with your change. It is never shipped, and as a file under `evals/` it needs no `metadata.provenance.version` bump.
 
-The pull-request pipeline runs `task ci:skill-evals-attestation`, which makes no model call and needs no credential. For every skill whose content hash differs from the base, or that is new, it decides one status: `no-evals`; `invalid`; `stale` (the results file is absent, unparseable, incomplete, a mock, for another skill, of the former shape with a `benchmark` key or the status `new`, records a status other than `pass`, `fail` or `regression`, or records a different content hash); else the recorded status. `fail` and `regression` are decided from the recorded figures with the same function as the runner, and block only under `FAIL_BLOCKING` and `REGRESSION_BLOCKING`. `invalid` and `stale` always block. A pull request that changes only `evals/evals.json` needs a fresh results file, because the hash includes that file. `task ci:pre-push` includes the same check. A pull request that edits a shared reference under `artifacts/core/shared/references/` now selects every skill citing that topic, because the shipped skill changed.
+The pull-request pipeline runs `task ci:skill-evals-attestation`, which makes no model call and needs no credential. For every skill whose content hash differs from the base, or that is new, it decides one status: `no-evals`; `invalid`; `stale` (the results file is absent, unparseable, incomplete, a mock, for another skill, of the former shape with a `benchmark` key or the status `new`, records a status other than `pass`, `fail` or `regression`, or records a different content hash); else the recorded status. `fail` and `regression` are decided from the recorded figures with the same function as the runner, and block only under `FAIL_BLOCKING` and `REGRESSION_BLOCKING`. `invalid` and `stale` always block. A pull request that changes only `evals/evals.json` needs a fresh results file, because the hash includes that file. `task ci:pre-push` includes the same check. A pull request that edits only a script, a reference, an asset, a shared reference or the version line selects no skill.
 
 **Trust model.** The attestation is self-declared by a same-repository contributor: nothing proves the recorded results came from a run of the runner, so the file is forgeable by design, and a forged or hand-edited file is visible in code review. The check verifies freshness (the recorded hash matches the current content), not truth. Nothing here is a guarantee that a recorded result is genuine.
 
@@ -172,7 +184,7 @@ The content hash covers `evals/evals.json` but not the fixture files its `files`
 
 ## File contract
 
-`evals/evals.json` is a normative contract owned by [spec 0290](../specs/0290-skill-eval-runner.md) (R1 to R6); other documents refer to it and never redefine it. The names `skill_name`, `evals`, `id`, `prompt`, `expected_output`, `files` and `expectations` are taken verbatim from Anthropic's skill-creator evals format; `checks` (`exit_code`, `file_exists`, `file_contains`) and `trigger_probes` are the only additions and are ignored by skill-creator. The validator reports every violation with the file, the JSON path and the rule, and fails before any model call.
+`evals/evals.json` is a normative contract owned by [spec 0290](../specs/0290-skill-eval-runner.md) (R1 to R6); other documents refer to it and never redefine it. The names `skill_name`, `evals`, `id`, `prompt`, `expected_output`, `files` and `expectations` are taken verbatim from Anthropic's skill-creator evals format; `checks` (`exit_code`, `file_exists`, `file_contains`, `file_not_contains`) and `trigger_probes` are the only additions and are ignored by skill-creator. The validator reports every violation with the file, the JSON path and the rule, and fails before any model call.
 
 `evals/` stays in the repository and is never copied to any CLI target, built output, staging directory, user-scope install or packaged archive: the build propagates only `scripts/`, `references/` and `assets/` (`scripts/lib/build-components/resources.ts`), and a test fails if a built skill directory ever contains an `evals/` path.
 

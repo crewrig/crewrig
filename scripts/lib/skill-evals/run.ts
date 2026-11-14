@@ -55,7 +55,6 @@ import * as S from "./settings.ts";
 import { declareUsage, resolveAsset } from "./usage.ts";
 
 export interface RunSettings {
-  tolerance: number;
   regressionBlocking: boolean;
   missingEvalsBlocking: boolean;
   maxExecutorRuns: number;
@@ -72,7 +71,6 @@ export interface RunSettings {
 }
 
 export const DEFAULT_SETTINGS: RunSettings = {
-  tolerance: S.TOLERANCE,
   regressionBlocking: S.REGRESSION_BLOCKING,
   missingEvalsBlocking: S.MISSING_EVALS_BLOCKING,
   maxExecutorRuns: S.MAX_EXECUTOR_RUNS,
@@ -552,6 +550,7 @@ export async function runEvals(
     const probesPassed = s.probeRuns.filter(Boolean).length;
     const probesTotal = s.probeRuns.length;
     const evalPassRate = evalsPassed / evalsTotal;
+    const skillLoaded = s.evalRuns.filter((r) => r.skillLoaded).length;
     const probePassRate = probesTotal === 0 ? null : probesPassed / probesTotal;
     // R19: the base is the eval pass rate committed at the merge-base; nothing is run on the base.
     const baseFile = verifyResults(s.sel.baseResultsText, name);
@@ -561,7 +560,9 @@ export async function runEvals(
       probePassRate,
       baseEvalPassRate,
       threshold: cfg.passThreshold,
-      tolerance: cfg.tolerance,
+      tolerance: 1 / evalsTotal,
+      evalsTotal,
+      skillLoaded,
     };
     const d = decide(figures);
     const status: RunStatus = opts.mock ? "mock" : d.status;
@@ -580,9 +581,9 @@ export async function runEvals(
       probesTotal,
       threshold: cfg.passThreshold,
       baseEvalPassRate,
-      tolerance: cfg.tolerance,
+      tolerance: figures.tolerance,
       regression: d.regression,
-      skillLoaded: s.evalRuns.filter((r) => r.skillLoaded).length,
+      skillLoaded,
       evidenceAccepted: s.evalRuns.reduce((n, r) => n + r.accepted, 0),
       evidenceWindow: s.evalRuns.reduce((n, r) => n + r.acceptedByWindow, 0),
       messages,
@@ -601,7 +602,7 @@ export async function runEvals(
         probe_pass_rate: probePassRate,
         base_eval_pass_rate: baseEvalPassRate,
         threshold: cfg.passThreshold,
-        tolerance: cfg.tolerance,
+        tolerance: figures.tolerance,
         evals_passed: evalsPassed,
         evals_total: evalsTotal,
         probes_passed: probesPassed,
@@ -609,6 +610,7 @@ export async function runEvals(
         executor_runs: s.budget.used,
         judge_calls: judgeCalls,
         cost_usd: unknown > 0 ? null : known,
+        skill_loaded: skillLoaded,
       });
   }
   return finish();

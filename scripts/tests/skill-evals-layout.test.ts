@@ -47,7 +47,7 @@ test("a mock run writes the R10 layout: eval-<id>/ and probe-<n>/, all marked mo
       const metrics = read(dir, "metrics.json");
       assert.equal(metrics.limit, null);
       assert.equal(metrics.cost_usd, 0.01);
-      assert.equal(metrics.skill_loaded, false);
+      assert.equal(metrics.skill_loaded, true);
       assert.equal(metrics.mock, true);
     }
     // the probe (R45): no grading, no outputs, probe.json marked mock

@@ -1,6 +1,6 @@
 # CrewRig — Agent Working Rules
 
-The rules and conventions all agents (human or AI) must follow when contributing to this project.
+Rules for all agents (human or AI) contributing here.
 
 ## What is CrewRig?
 
@@ -40,9 +40,9 @@ worktrees but removes nothing.
 Every non-trivial ticket flows SPECS → PLAN → DEV → REVIEW, per
 [ADR-0010](docs/adr/0010-spec-plan-review-lifecycle.md) and
 [`docs/spec-format.md`](docs/spec-format.md); diagram in
-[`docs/lifecycle-diagram.md`](docs/lifecycle-diagram.md).
-**Critical rule:** the lifecycle terminates only when a full REVIEW pass
-produces zero findings.
+[`docs/lifecycle-diagram.md`](docs/lifecycle-diagram.md). SPECS runs only
+for product-behaviour or shared-contract changes (ADR-0024).
+**Critical rule:** the lifecycle terminates when a REVIEW pass has no blocking finding.
 
 ## Language
 
@@ -104,13 +104,12 @@ any branch, spec id, or worktree for a ticket, run
 
 ## Spec-PR workflow
 
-This section operationalises the SPECS stage of the lifecycle defined in
-[ADR-0010](docs/adr/0010-spec-plan-review-lifecycle.md) — specifically
-the *Stage definitions → SPECS* contract — and the two-PR convention
-mandated by [`specs/0003-spec-pr-workflow.md`](specs/0003-spec-pr-workflow.md).
-The SPECS-stage artifact (a single Markdown file under `/specs/`) MUST
-ship as its own pull request — the **spec-PR** — and be merged to `main`
-**before** any implementation branch for the same ticket is opened.
+This section operationalises the SPECS stage of
+[ADR-0010](docs/adr/0010-spec-plan-review-lifecycle.md) and the two-PR
+convention of [`specs/0003-spec-pr-workflow.md`](specs/0003-spec-pr-workflow.md).
+When a spec is required (ADR-0024), it MUST ship as its own **spec-PR**
+(one file under `/specs/`), merged to `main` **before** any implementation
+branch for the ticket is opened. Else the issue is the contract.
 
 See [`docs/spec-pr-workflow.md`](docs/spec-pr-workflow.md) for the
 rationale and the full rule set: the one-file rule, the ordering rule,
@@ -200,7 +199,7 @@ See [`docs/agent-team-protocol.md`](docs/agent-team-protocol.md) for the full pr
 - **Anti-permission-laundering.** Never re-execute a subagent's denied action in the parent session. Subagent permission denials are treated as user-authored rejections and MUST be surfaced to the user for decision.
 - **Whole-tree git ops.** `git reset --hard`, `git stash`, `git clean` require an exclusive claim + empty `git status`. See [`worktree-isolation.md`](docs/agent-team-protocol/worktree-isolation.md).
 - **Built components.** Any commit touching `artifacts/` MUST also run the build and stage the regenerated outputs in the same commit: `node scripts/lib/node-floor-guard.js`, then `node scripts/build-components.ts` as a separate step (Node.js 24 floor; `js-yaml` comes from the setup dependency step; see [`built-components.md`](docs/agent-team-protocol/built-components.md)).
-- **Complexity tier.** Read the spec frontmatter `complexity` field at ticket pickup: `trivial` = inline, `small` = developer + pr-logbook + pr-reviewer, `standard` = full Template 1/2/3, `large` = architect-led sub-spec decomposition.
+- **Complexity tier.** Read `complexity` (spec frontmatter, else the issue) at ticket pickup; review caps 2 passes at `trivial`/`small`, 3 at `standard`: `trivial` = inline, `small` = developer + pr-logbook + pr-reviewer, `standard` = full Template 1/2/3, `large` = architect-led sub-spec decomposition.
 - **Idle notification non-completion.** `idle_notification` events indicate thread status at event emission time and are NOT request completion signals; never abandon subagents on an idle event while a request is pending.
 
 ```sh

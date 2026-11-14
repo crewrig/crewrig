@@ -4,6 +4,14 @@
 
 <!-- crewrig-doc: published=false -->
 
+> **Scope (ADR-0024).** This workflow applies only to changes that alter
+> user- or adopter-observable behaviour or a contract shared across components
+> or CLIs. Skill, agent and command content, model or tools within the existing
+> vocabulary, bundled scripts implementing an existing contract, `evals/evals.json`
+> cases and bug fixes restoring documented behaviour have no spec-PR: the issue
+> checklist is the contract and the plan goes in the PR body. No check requires
+> a spec for such an issue-only ticket.
+
 This keeps the WHAT auditable as a standalone diff and decouples the
 qualification timeline from the realization timeline.
 

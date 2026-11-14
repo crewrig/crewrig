@@ -91,8 +91,9 @@ test("fabricated quotes stay rejected", () => {
     ),
     false,
   );
-  // a short piece next to an ellipsis (fewer than 12 letters and digits)
-  assert.equal(ok("### Failure path: service failure ... exits", m4), false);
+  // #1963: a short real piece next to an ellipsis is fine, a short invented one is not
+  assert.equal(ok("### Failure path: service failure ... exits", m4), true);
+  assert.equal(ok("### Failure path: service failure ... teleports", m4), false);
 });
 
 /** Consecutive words of `text` whose letters and digits total exactly `n`, as the text spells them. */

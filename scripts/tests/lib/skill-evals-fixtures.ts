@@ -197,7 +197,7 @@ export function writeStubClaude(
 
 /** How the session stub behaves beyond its defaults (all optional). */
 export interface SessionStubOptions {
-  /** Executor and probe runs emit a `Skill` tool_use naming this skill (default: no tool call, text only). */
+  /** Executor and probe runs emit a `Skill` tool_use naming this skill (default: probes make no tool call; eval runs load the installed skill). */
   readonly loadSkill?: string;
   /** Probe runs end with an `error_max_turns` result after their first message (the one-turn bound). */
   readonly probeMaxTurns?: boolean;
@@ -232,6 +232,8 @@ process.stdin.on("end", () => {
   if (__exec) {
     if (!__probe) __fs.writeFileSync("answer.md", "x");
     const __content = [{ type: "text", text: "the quick brown fox" }];
+    // an eval run loads the installed skill by default (the gate fails a skill that never loads); a probe stays text-only
+    if (!__probe && !__opts.loadSkill && __fs.existsSync(".claude/skills")) for (const __n of __fs.readdirSync(".claude/skills")) __content.push({ type: "tool_use", id: "t0", name: "Skill", input: { skill: __n } });
     if (__opts.loadSkill) __content.push({ type: "tool_use", id: "t1", name: "Skill", input: { skill: __opts.loadSkill } });
     process.stdout.write(JSON.stringify({ type: "assistant", message: { id: "m1", content: __content } }) + "\\n");
     const __maxTurns = __probe && __opts.probeMaxTurns;

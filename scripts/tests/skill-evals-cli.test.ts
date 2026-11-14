@@ -109,7 +109,7 @@ test(
     assert.equal(code, 0, s.out + s.err);
     assert.match(
       s.out,
-      /^demo: status=mock eval_pass_rate=1\.00 \(1\/1\) probe_pass_rate=0\.00 \(0\/1\) threshold=0\.80 base=n\/a diff=n\/a skill_loaded=0\/1 executor_runs=2 judge_calls=1 cost_usd=0\.02$/m,
+      /^demo: status=mock eval_pass_rate=1\.00 \(1\/1\) probe_pass_rate=0\.00 \(0\/1\) threshold=0\.80 base=n\/a diff=n\/a skill_loaded=1\/1 executor_runs=2 judge_calls=1 cost_usd=0\.02$/m,
     );
     assert.match(s.out, /^  not compared: no valid evals\/results\.json at the merge-base$/m);
     assert.match(s.out, /^invocation: skills=1 executor_runs=2 judge_calls=1 cost_usd=0\.02$/m);

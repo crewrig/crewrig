@@ -6,7 +6,7 @@
 
 ## Modes and Rules
 
-The lifecycle runs in one of four modes. Mode controls *user gating*, not stage execution — every mode runs all four stages.
+The lifecycle runs in one of four modes. Mode controls *user gating*, not stage execution — every mode runs all four stages, except that SPECS is skipped for issue-only tickets of the no-spec kind (ADR-0024; see `docs/spec-pr-workflow.md`).
 
 | Mode | SPECS | PLAN | REVIEW loop |
 |---|---|---|---|
@@ -18,6 +18,7 @@ The lifecycle runs in one of four modes. Mode controls *user gating*, not stage 
 Rules:
 
 - Default mode is **INTERMEDIATE**.
+- The REVIEW loop ends on a pass with no blocking finding, capped at 2 passes (`trivial`/`small`) or 3 (`standard`); non-blocking findings go to the ledger and are not a gate (ADR-0024).
 - In FULL mode, the orchestrator MUST post a notification on the logbook issue at the start and end of every REVIEW iteration. "Notify" is non-blocking; it does not gate the next iteration.
 
 The mode-driven engine — argument parsing, gate enforcement, user notification surface — lands in #173.

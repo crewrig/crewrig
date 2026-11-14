@@ -465,6 +465,11 @@ removes no item from the reviewer's checklist for the surfaces that are in
 scope: a surface inside the bound is reviewed to the same standard as on a
 first pass.
 
+A fix pass is cheap by construction: it reads only the change since the last
+examined revision. Passes are capped at 2 (`trivial`/`small`) or 3
+(`standard`), and non-blocking findings never trigger one
+([`docs/retroactive-loop.md`](retroactive-loop.md) → *Termination*, ADR-0024).
+
 The bound attaches to an **artifact**, never to a seat. On the seat's
 first pass, and on any pass of a fresh generation, nothing is bounded.
 
@@ -557,7 +562,7 @@ that touched one of them would be a defect rather than an improvement:
 - Every user gate, and the interaction-mode gating contract
   ([`docs/interaction-modes.md`](interaction-modes.md)).
 - The iteration-counter primitive, the routing precedence, the
-  termination conditions, and the max-iteration guardrail
+  termination conditions (blocking-only per ADR-0024), the review pass cap, and the max-iteration guardrail
   ([`docs/retroactive-loop.md`](retroactive-loop.md)).
 - The per-tier PLAN-loop cap
   ([`docs/plan-review-protocol.md`](plan-review-protocol.md)).

@@ -351,6 +351,11 @@
           "title": "ADR 0023 — Skill eval executor, judge routing and attestation",
           "path": "docs/adr/0023-skill-eval-executor.md",
           "nav_order": 230
+        },
+        {
+          "title": "ADR 0024 — Scope specs to product behaviour and end review on blocking findings",
+          "path": "docs/adr/0024-scope-specs-to-product-behaviour-and-end-review-on.md",
+          "nav_order": 240
         }
       ]
     }

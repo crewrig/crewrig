@@ -56,6 +56,14 @@ function toolsLines(ctx: Ctx, job: AgentJob, cli: "gemini" | "claude" | "copilot
   return [line];
 }
 
+/**
+ * Fold a block-scalar description onto one line: the emitted value sits inside double quotes and
+ * Claude Code cannot load an agent whose quoted description spans several lines (issue #1956).
+ */
+export function foldDescription(text: string): string {
+  return text.replace(/\s*\n\s*/g, " ").trim();
+}
+
 /** The `name`, `description` and directed lines every CLI's agent file starts from. */
 function head(job: AgentJob, resolved: ResolveResult): string[] {
   const description =
@@ -121,7 +129,7 @@ export function buildAgents(
     const tools = readAgentTools(source);
     const job: AgentJob = {
       name,
-      description: source.field("description"),
+      description: foldDescription(source.field("description")),
       source,
       outRoot,
       tools,

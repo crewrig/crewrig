@@ -1,5 +1,6 @@
-// skill-evals-pass-criterion.test.ts — the R46 pass criterion and the `fail-blocking` knob
-// (spec 0290 R46, R20 as modified by delta-04, R25). Runs go through the real runner with a scripted
+// skill-evals-pass-criterion.test.ts — the pass rule (#1963, which narrows spec 0290 R46): the
+// skill loads in every eval and the score does not regress; the 0.80 bar and the probe rate are
+// advisory. Runs go through the real runner with a scripted
 // mock executor: an eval passes by its one deterministic check (no judge call), a probe passes when
 // the script reports the skill as loaded. No model call, no network.
 
@@ -17,7 +18,6 @@ import { judgeFetch, makeRig } from "./lib/skill-evals-run-rig.ts";
 
 /** The caps and thresholds are passed explicitly: the declared caps are provisional (#1882). */
 const EXPLICIT = {
-  tolerance: 0.05,
   passThreshold: 0.8,
   maxExecutorRuns: 100,
   judgeMaxCalls: 100,
@@ -32,6 +32,8 @@ async function runTable(
   evalPass: boolean[],
   probePass: boolean[],
   settings: Record<string, unknown> = {},
+  /** Eval ids (1-based) whose run does not load the skill. */
+  notLoaded: number[] = [],
 ) {
   const evals = evalPass.map((_, i) => ({
     id: i + 1,
@@ -58,7 +60,7 @@ async function runTable(
     if (probe !== null) return { skillsLoaded: probePass[Number(probe[1]) - 1] ? ["demo"] : [] };
     const id = Number(/eval-(\d+)$/.exec(req.label)?.[1]);
     const files: Record<string, string> = evalPass[id - 1] ? { "answer.md": "x" } : {};
-    return { files };
+    return { files, ...(notLoaded.includes(id) ? { skillsLoaded: [] } : {}) };
   };
   const rig = makeRig({
     evalsCount: 1,
@@ -82,95 +84,60 @@ async function runTable(
 const flags = (passing: number, total: number): boolean[] =>
   Array.from({ length: total }, (_, i) => i < passing);
 
-test("R46: 5 evals with 4 passing and 5 probes with 4 passing (both 0.8, the boundary) give pass", async () => {
-  const { s, rec } = await runTable(flags(4, 5), flags(4, 5));
-  assert.equal(s.status, "pass");
-  assert.equal(rec.status, "pass");
-  assert.equal(rec.eval_pass_rate, 0.8);
-  assert.equal(rec.probe_pass_rate, 0.8);
-  assert.equal(rec.threshold, 0.8);
-  assert.deepEqual(
-    [rec.evals_passed, rec.evals_total, rec.probes_passed, rec.probes_total],
-    [4, 5, 4, 5],
-  );
+test("a score under the 0.80 bar passes with an advisory line and never blocks", async () => {
+  const low = await runTable(flags(3, 5), flags(1, 5));
+  assert.equal(low.s.status, "pass");
+  assert.equal(low.rec.status, "pass");
+  assert.equal(low.r.exitCode, 0);
+  assert.equal(low.s.blocking, false);
+  assert.match(low.r.text, /advisory: eval pass rate 0\.60 is below 0\.80; not a failure/);
+  assert.equal(low.rec.eval_pass_rate, 0.6);
+  assert.equal(low.rec.probe_pass_rate, 0.2);
+  assert.equal(low.rec.tolerance, 0.2, "the tolerance is one case");
+  assert.equal(low.rec.skill_loaded, 5);
+  const none = await runTable(flags(4, 5), []);
+  assert.equal(none.rec.probe_pass_rate, null);
+  assert.match(none.r.text, /probe_pass_rate=n\/a/);
 });
 
-test("R46: probes do not mask failing evals: 2 evals both failing with 10 probes passing, and 6 of 8 evals with 8 of 8 probes, give fail with separate rates", async () => {
-  const none = await runTable(flags(0, 2), flags(10, 10));
-  assert.equal(none.s.status, "fail");
-  assert.match(none.r.text, /eval_pass_rate=0\.00 \(0\/2\) probe_pass_rate=1\.00 \(10\/10\)/);
-  assert.equal(none.rec.status, "fail");
-  assert.equal(none.rec.eval_pass_rate, 0);
-  assert.equal(none.rec.probe_pass_rate, 1);
-  const six = await runTable(flags(6, 8), flags(8, 8));
-  assert.equal(six.s.status, "fail", "0.75 of the evals is below 0.8 whatever the probes do");
-  assert.match(six.r.text, /eval_pass_rate=0\.75 \(6\/8\) probe_pass_rate=1\.00 \(8\/8\)/);
-  assert.equal(six.rec.eval_pass_rate, 0.75);
-  assert.equal(six.rec.probe_pass_rate, 1);
+test("a skill that does not load in every eval is a blocking fail whatever its score", async () => {
+  const miss = await runTable(flags(5, 5), [], {}, [2]);
+  assert.equal(miss.s.status, "fail");
+  assert.equal(miss.rec.status, "fail");
+  assert.equal(miss.rec.skill_loaded, 4);
+  assert.equal(miss.r.exitCode, 1);
+  assert.equal(miss.s.blocking, true);
+  assert.match(miss.r.text, /^demo: status=fail .*skill_loaded=4\/5/m);
+  const open = await runTable(flags(5, 5), [], { failBlocking: false }, [2]);
+  assert.equal(open.r.exitCode, 0, "the knob still gates the condition");
 });
 
-test("R46: a probe pass rate of 0.6 with every eval passing gives fail", async () => {
-  const { s, rec } = await runTable(flags(5, 5), flags(3, 5));
-  assert.equal(s.status, "fail");
-  assert.equal(rec.eval_pass_rate, 1);
-  assert.equal(rec.probe_pass_rate, 0.6);
-});
-
-test("R46: a skill with no probe is graded on its evals alone, and the probe rate is absent", async () => {
-  const ok = await runTable(flags(4, 5), []);
-  assert.equal(ok.s.status, "pass");
-  assert.equal(ok.rec.probe_pass_rate, null);
-  assert.deepEqual([ok.rec.probes_passed, ok.rec.probes_total], [0, 0]);
-  assert.match(ok.r.text, /probe_pass_rate=n\/a/);
-  const low = await runTable(flags(3, 5), []);
-  assert.equal(low.s.status, "fail");
-});
-
-test("R46: 4 evals with 3 passing (0.75) is fail with exit 0, and with fail-blocking true exits non-zero naming the skill", async () => {
-  const open = await runTable(flags(3, 4), flags(2, 2));
-  assert.equal(open.s.status, "fail");
-  assert.equal(open.r.exitCode, 0, "fail-blocking defaults to false");
-  assert.equal(open.s.blocking, false);
-  const closed = await runTable(flags(3, 4), flags(2, 2), { failBlocking: true });
-  assert.equal(closed.r.exitCode, 1);
-  assert.match(closed.r.text, /^demo: status=fail /m);
-  assert.equal(closed.s.blocking, true);
-  // the knob gates the same condition only: a pass never blocks, and regression-blocking does not gate a fail
-  assert.equal((await runTable(flags(4, 4), flags(2, 2), { failBlocking: true })).r.exitCode, 0);
-  assert.equal((await runTable(flags(3, 4), [], { regressionBlocking: true })).r.exitCode, 0);
-});
-
-test("R46: the threshold is one setting and applies to both rates", async () => {
-  // 3 of 4 evals (0.75) and 3 of 4 probes (0.75): fail at 0.8, pass at 0.7
-  assert.equal((await runTable(flags(3, 4), flags(3, 4))).s.status, "fail");
-  const lowered = await runTable(flags(3, 4), flags(3, 4), { passThreshold: 0.7 });
-  assert.equal(lowered.s.status, "pass");
-  assert.equal(lowered.rec.threshold, 0.7);
-});
-
-test("decide() is the one function: fail wins over regression, the boundary is inclusive, and each condition blocks under its own knob", () => {
+test("decide(): non-regression is base minus one case; loading is the only fail; the threshold is advisory", () => {
   const f = {
-    evalPassRate: 0.8,
-    probePassRate: null,
+    evalPassRate: 0.6,
+    probePassRate: 0.2,
     baseEvalPassRate: null,
     threshold: 0.8,
-    tolerance: 0.05,
+    tolerance: 0.2,
+    evalsTotal: 5,
+    skillLoaded: 5,
   };
-  assert.equal(decide(f).status, "pass", "at the threshold");
-  assert.equal(decide({ ...f, evalPassRate: 0.79 }).status, "fail");
-  assert.equal(decide({ ...f, probePassRate: 0.6 }).status, "fail");
-  assert.equal(decide({ ...f, probePassRate: 0.8 }).status, "pass");
-  const reg = { ...f, evalPassRate: 0.85, baseEvalPassRate: 0.95 };
-  assert.deepEqual(decide(reg), { fail: false, regression: true, status: "regression" });
-  const both = { ...f, evalPassRate: 0.6, baseEvalPassRate: 0.95 };
-  assert.deepEqual(decide(both), { fail: true, regression: true, status: "fail" });
+  const low = decide(f);
+  assert.deepEqual(low, { fail: false, regression: false, belowThreshold: true, status: "pass" });
+  // 5 evals, base 4/5: 3/5 is one case below, within the tolerance; 2/5 is a regression
+  assert.equal(decide({ ...f, baseEvalPassRate: 0.8 }).status, "pass");
+  assert.equal(decide({ ...f, evalPassRate: 0.4, baseEvalPassRate: 0.8 }).status, "regression");
+  // an unknown count of loads (a file of an older runner) is not a fail
+  assert.equal(decide({ ...f, skillLoaded: null }).fail, false);
+  const miss = decide({ ...f, evalPassRate: 0.4, baseEvalPassRate: 0.8, skillLoaded: 4 });
+  assert.deepEqual(miss, { fail: true, regression: true, belowThreshold: true, status: "fail" });
   const knobs = (failBlocking: boolean, regressionBlocking: boolean) => ({
     failBlocking,
     regressionBlocking,
   });
-  assert.equal(blocks(decide(both), knobs(false, false)), false);
-  assert.equal(blocks(decide(both), knobs(true, false)), true);
-  assert.equal(blocks(decide(both), knobs(false, true)), true);
-  assert.equal(blocks(decide(reg), knobs(true, false)), false, "a regression is not a fail");
-  assert.equal(blocks(decide(reg), knobs(false, true)), true);
+  const reg = decide({ ...f, evalPassRate: 0.4, baseEvalPassRate: 0.8 });
+  assert.equal(blocks(low, knobs(true, true)), false, "a low score never blocks");
+  assert.equal(blocks(reg, knobs(false, true)), true);
+  assert.equal(blocks(reg, knobs(true, false)), false, "a regression is not a fail");
+  assert.equal(blocks(miss, knobs(true, false)), true);
 });

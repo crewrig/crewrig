@@ -113,7 +113,6 @@ test("declared defaults: each field of DEFAULT_SETTINGS is its settings.ts const
   // every field comes from its declared constant, so recalibrating a provisional value is a
   // one-line change in settings.ts that no test needs to follow
   assert.deepEqual(DEFAULT_SETTINGS, {
-    tolerance: S.TOLERANCE,
     regressionBlocking: S.REGRESSION_BLOCKING,
     missingEvalsBlocking: S.MISSING_EVALS_BLOCKING,
     maxExecutorRuns: S.MAX_EXECUTOR_RUNS,
@@ -129,9 +128,10 @@ test("declared defaults: each field of DEFAULT_SETTINGS is its settings.ts const
     failBlocking: S.FAIL_BLOCKING,
   });
   // the literals that are not provisional: the knobs, the threshold, the effort and the model (R20, R31, R46, R47)
-  assert.equal(DEFAULT_SETTINGS.regressionBlocking, false);
+  // #1963: a regression and a skill that never loads block; the 0.80 bar is advisory
+  assert.equal(DEFAULT_SETTINGS.regressionBlocking, true);
   assert.equal(DEFAULT_SETTINGS.missingEvalsBlocking, false);
-  assert.equal(DEFAULT_SETTINGS.failBlocking, false);
+  assert.equal(DEFAULT_SETTINGS.failBlocking, true);
   assert.equal(DEFAULT_SETTINGS.passThreshold, 0.8);
   assert.equal(DEFAULT_SETTINGS.effort, "medium");
   assert.match(DEFAULT_SETTINGS.executorModel, /sonnet/i);
