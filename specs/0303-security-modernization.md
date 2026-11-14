@@ -1,7 +1,7 @@
 ---
 id: "0303"
 slug: security-modernization
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1941
