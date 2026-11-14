@@ -391,8 +391,8 @@ ${stream(assistant("the quick brown fox"), result())}`,
       .map((l) => JSON.parse(l));
     assert.equal(
       calls.length,
-      1,
-      "only evals.json changed: one run per eval, no paired run, no replay",
+      2,
+      "only evals.json changed: the stage-1 plan of 2 runs per eval, no paired run, no replay",
     );
     const withSkill = calls.filter((c) => c.skills !== null);
     assert.equal(withSkill.length, calls.length, "no run has a workspace without the skill (R9)");
@@ -455,7 +455,7 @@ test("R40, R42 end to end in session mode: the executor child of a real run hold
     });
     assert.equal(r.results[0]?.status, "pass", r.text + r.stderr);
     const calls = readCalls(bin, "executor");
-    assert.equal(calls.length, 1);
+    assert.equal(calls.length, 2, "two stage-1 runs of the one eval");
     for (const c of calls) {
       assert.equal(c.env["HOME"], iso.home);
       assert.equal(c.env["USER"], "contributor");

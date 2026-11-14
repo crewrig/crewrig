@@ -224,7 +224,8 @@ test("a numbered answer is graded per expectation: PASS with bad evidence is uns
     assert.match(g.expectations[0]?.evidence ?? "", /unsupported/);
     assert.match(g.expectations[2]?.evidence ?? "", /no verdict/);
     assert.match(g.expectations[3]?.evidence ?? "", /UNCERTAIN/);
-    assert.equal(judge.callsUsed(), 1, "one call for all four expectations");
+    // 0304 R17: the unsupported PASS of the first expectation is re-asked once, alone
+    assert.equal(judge.callsUsed(), 2, "one call for all four expectations, then one re-ask");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

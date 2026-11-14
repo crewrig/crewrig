@@ -113,26 +113,43 @@ test("declared defaults: each field of DEFAULT_SETTINGS is its settings.ts const
   // every field comes from its declared constant, so recalibrating a provisional value is a
   // one-line change in settings.ts that no test needs to follow
   assert.deepEqual(DEFAULT_SETTINGS, {
-    tolerance: S.TOLERANCE,
     regressionBlocking: S.REGRESSION_BLOCKING,
     missingEvalsBlocking: S.MISSING_EVALS_BLOCKING,
     maxExecutorRuns: S.MAX_EXECUTOR_RUNS,
     judgeMaxCalls: S.JUDGE_MAX_CALLS,
     maxInvocationUsd: S.MAX_INVOCATION_USD,
+    maxMeasurementUsd: S.MAX_MEASUREMENT_USD,
+    maxSkillUsd: S.MAX_SKILL_USD,
+    maxTicketUsd: S.MAX_TICKET_USD,
     executorConcurrency: S.EXECUTOR_CONCURRENCY,
     perRunTurns: S.PER_RUN_TURNS,
     perRunSeconds: S.PER_RUN_SECONDS,
     perRunUsd: S.PER_RUN_USD,
     executorModel: S.EXECUTOR_MODEL,
     effort: S.EFFORT,
-    passThreshold: S.PASS_THRESHOLD,
     failBlocking: S.FAIL_BLOCKING,
   });
   // the literals that are not provisional: the knobs, the threshold, the effort and the model (R20, R31, R46, R47)
   assert.equal(DEFAULT_SETTINGS.regressionBlocking, false);
   assert.equal(DEFAULT_SETTINGS.missingEvalsBlocking, false);
   assert.equal(DEFAULT_SETTINGS.failBlocking, false);
-  assert.equal(DEFAULT_SETTINGS.passThreshold, 0.8);
+  // 0304 R1, R21: the declared plan and caps; the removed knobs are gone
+  assert.equal(S.SAMPLING_PLAN.id, "two-stage-1");
+  assert.equal(S.MAX_EXECUTOR_RUNS, 60);
+  assert.equal(S.JUDGE_MAX_CALLS, 60);
+  assert.equal(S.MAX_MEASUREMENT_USD, 5);
+  assert.equal(S.MAX_SKILL_USD, 10);
+  assert.equal(S.MAX_TICKET_USD, 25);
+  assert.equal(S.MAX_INVOCATION_USD, 100);
+  assert.equal(S.JUDGE_ASSUMED_USD, 0.03);
+  assert.equal(S.RUN_ASSUMED_USD, 0.1);
+  assert.equal(S.EVIDENCE_SHORT_MIN_CHARS, 6);
+  assert.equal(S.EVIDENCE_MIN_CHARS, 12);
+  assert.equal(S.RUNNER_VERSION, "3.0.0");
+  assert.equal("TOLERANCE" in S, false);
+  assert.equal("PASS_THRESHOLD" in S, false);
+  assert.equal("tolerance" in DEFAULT_SETTINGS, false);
+  assert.equal("passThreshold" in DEFAULT_SETTINGS, false);
   assert.equal(DEFAULT_SETTINGS.effort, "medium");
   assert.match(DEFAULT_SETTINGS.executorModel, /sonnet/i);
   assert.equal(DEFAULT_SETTINGS.executorModel, "claude-sonnet-5-5", "delta-03 model pin");
@@ -155,12 +172,12 @@ test("the executor model and the per-run limits come from the settings: every ru
   try {
     const r = await rig.run({ fetchImpl: judgeFetch().fetch });
     assert.equal(r.results[0]?.status, "pass", r.text + r.stderr);
-    assert.equal(rig.executor.calls.length, 1, "one run per eval, no paired run");
+    assert.equal(rig.executor.calls.length, 2, "two runs of the one eval (stage 1), no probe");
     for (const c of rig.executor.calls) {
       assert.equal(c.model, "claude-sonnet-test-9");
       assert.deepEqual(c.limits, { turns: 7, seconds: 11, usd: 0.5 });
     }
-    const dir = path.join(rig.out, "demo", "eval-1");
+    const dir = path.join(rig.out, "demo", "eval-1", "run-1");
     assert.equal(
       JSON.parse(fs.readFileSync(path.join(dir, "metrics.json"), "utf8")).model,
       "claude-sonnet-test-9",
@@ -207,7 +224,7 @@ test("R3, R9 and R32: each run gets only the eval's files at the workspace root,
   try {
     const r = await rig.run();
     assert.equal(r.exitCode, 0, r.text);
-    assert.equal(seen.length, 3, "one run per eval (2) and one per probe (1)");
+    assert.equal(seen.length, 5, "two runs of each of 2 evals (stage 1) and one run of the probe");
     for (const s of seen) {
       const probe = s.label.includes("probe");
       assert.equal(s.hasHomeDir, false, "no throwaway home any more");
@@ -233,16 +250,24 @@ test("R3, R9 and R32: each run gets only the eval's files at the workspace root,
         "the workspace is outside the repository",
       );
     }
-    assert.equal(new Set(seen.map((s) => s.workspace)).size, 3, "no workspace is shared");
+    assert.equal(new Set(seen.map((s) => s.workspace)).size, 5, "no workspace is shared");
     // the input file is not reported as a produced output; what the run produced is; .claude/ is never an output
-    for (const id of [1, 2]) {
-      const outDir = path.join(rig.out, "demo", `eval-${id}`, "outputs");
+    for (const [id, run] of [
+      [1, 1],
+      [1, 2],
+      [2, 1],
+      [2, 2],
+    ] as const) {
+      const outDir = path.join(rig.out, "demo", `eval-${id}`, `run-${run}`, "outputs");
       assert.deepEqual(fs.readdirSync(outDir, { recursive: true }).map(String).sort(), [
         "answer.md",
         "leftover.tmp",
       ]);
     }
-    assert.equal(fs.existsSync(path.join(rig.out, "demo", "eval-1", "outputs", ".claude")), false);
+    assert.equal(
+      fs.existsSync(path.join(rig.out, "demo", "eval-1", "run-1", "outputs", ".claude")),
+      false,
+    );
   } finally {
     rig.cleanup();
   }

@@ -1,9 +1,11 @@
-// skill-evals-regression.test.ts — regression against the committed base results, knobs, results file
-// (spec 0290 R19-R21, R30, R36, R25 as modified by delta-04).
+// skill-evals-regression.test.ts — the regression test against the committed base (spec 0304 R12,
+// R13, R14, R24; 0290 R19-R21 as superseded). The runner measures a 6-eval skill against a base file
+// committed at the merge-base: a schema-2 base (common evals by case_hash), a legacy schema-1 base
+// (one run per figure), or no usable base. The Fisher figures themselves are in skill-evals-plan.
 //
 // Real (non-mock) runs with an injected mock executor and a recording judge endpoint: under
 // `--use-api-key` the `anthropic` driver authenticates with ANTHROPIC_API_KEY against a stub `fetch`;
-// nothing leaves the process and `claude` is never started (the key source makes no login probe).
+// nothing leaves the process and `claude` is never started.
 
 /* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-call, typescript/no-unsafe-argument, typescript/no-unsafe-return -- the runner output files are read back as untyped JSON */
 
@@ -12,318 +14,227 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
-import { isRegression } from "../lib/skill-evals/results.ts";
+import { attestSelection } from "../lib/skill-evals/attest.ts";
 import type { MockScript } from "../lib/skill-evals/executor/mock.ts";
-import { contentHash, readWorkingTree } from "../lib/skill-evals/hash.ts";
-import type { Snapshot } from "../lib/skill-evals/hash.ts";
 import { cleanEnv, selectionOf, skillRel } from "./lib/skill-evals-fixtures.ts";
-import { DEFAULT_SETTINGS, runEvals } from "../lib/skill-evals/run.ts";
+import type { Repo } from "./lib/skill-evals-fixtures.ts";
+import {
+  allPass,
+  buildRecord,
+  stagedRuns,
+  writeRaw,
+  writeRecord,
+} from "./lib/skill-evals-record.ts";
+import { runEvals } from "../lib/skill-evals/run.ts";
 import { judgeFetch, makeRig, plainEvals } from "./lib/skill-evals-run-rig.ts";
 
 const resultsFile = (repo: string) => path.join(repo, skillRel("demo"), "evals", "results.json");
+const dirOf = (repo: Repo) => path.join(repo.root, skillRel("demo"));
 
-/** A valid `evals/results.json` as the merge-base would carry it (the runner reads only its base rate). */
-const baseRecord = (evalPassRate: number, over: Record<string, unknown> = {}): string =>
-  `${JSON.stringify(
-    {
-      skill_name: "demo",
-      content_hash: "0".repeat(64),
-      runner_version: "2.0.0",
-      executor_model: "claude-sonnet-5-5",
-      judge_model: "claude-sonnet-5-5",
-      effort: "medium",
-      date: "2026-01-01T00:00:00.000Z",
-      status: "pass",
-      eval_pass_rate: evalPassRate,
-      probe_pass_rate: null,
-      base_eval_pass_rate: null,
-      threshold: 0.8,
-      tolerance: 0.05,
-      evals_passed: Math.round(evalPassRate * 10),
-      evals_total: 10,
-      probes_passed: 0,
-      probes_total: 0,
-      executor_runs: 10,
-      judge_calls: 10,
-      cost_usd: 1,
-      ...over,
-    },
-    null,
-    2,
-  )}\n`;
+/** The caps are passed explicitly: no test follows the declared defaults. */
+const EXPLICIT = { maxExecutorRuns: 100, judgeMaxCalls: 100, maxInvocationUsd: 1000 } as const;
 
-/** 10 evals; the head skill fails the evals whose id is listed (its transcript lacks the quoted phrase). */
+/** Run r of eval i passes when `flags[i-1][r-1]`; a failing run's transcript lacks the quoted phrase. */
 const script =
-  (headFails: number[]): MockScript =>
+  (flags: boolean[][]): MockScript =>
   (req) => {
-    const id = Number(/Task (\d+)/.exec(req.prompt)?.[1]);
+    const m = /eval-(\d+)\/run-(\d+)$/.exec(req.label);
+    const ok = flags[Number(m?.[1]) - 1]?.[Number(m?.[2]) - 1] === true;
     return {
       files: { "answer.md": "x" },
-      transcript: headFails.includes(id)
-        ? "Assistant: BROKEN answer"
-        : "Assistant: the quick brown fox answer",
+      transcript: ok ? "Assistant: the quick brown fox answer" : "Assistant: BROKEN answer",
       costUsd: 0.1,
     };
   };
 
-/**
- * The caps are passed explicitly (the declared ones are provisional, #1882), and so is the tolerance:
- * a test that depends on a default recalibrated in settings.ts is a test of the calibration.
- */
-const EXPLICIT = {
-  tolerance: 0.05,
-  maxExecutorRuns: 100,
-  judgeMaxCalls: 100,
-  maxInvocationUsd: 1000,
-} as const;
+type BaseSetup = (repo: Repo) => void;
+const schema2Base: BaseSetup = (repo) =>
+  writeRecord(dirOf(repo), buildRecord(selectionOf(repo, "demo"), { evalRuns: allPass(6, 4) }));
+const legacyBase =
+  (passed: number, total: number): BaseSetup =>
+  (repo) =>
+    writeRaw(dirOf(repo), {
+      skill_name: "demo",
+      content_hash: "0".repeat(64),
+      status: "pass",
+      evals_passed: passed,
+      evals_total: total,
+    });
 
-/**
- * 10 evals committed at the merge-base with `baseResults` as their evals/results.json (absent when
- * undefined); the head only edits references/ref.md, so the base's recorded rate is what the head is
- * compared with (R19: nothing is replayed).
- */
-const regressionRig = (
-  headFails: number[],
-  baseResults: string | undefined,
-  extra: Partial<Parameters<typeof makeRig>[0]> = {},
-) =>
-  makeRig({
-    evalsCount: 10,
+/** 6 evals; `base` is committed as the merge-base results file; the head only edits references/ref.md. */
+async function measure(
+  flags: boolean[][],
+  base: BaseSetup | undefined,
+  over: Record<string, unknown> = {},
+) {
+  const rig = makeRig({
+    evalsCount: 6,
+    mock: false,
+    env: { ANTHROPIC_API_KEY: "sk-test" },
+    useApiKey: true,
+    script: script(flags),
+    settings: { ...EXPLICIT, ...over },
     change: (repo) => {
-      fs.writeFileSync(
-        path.join(repo.root, skillRel("demo"), "evals", "evals.json"),
-        plainEvals("demo", 10),
-      );
-      if (baseResults !== undefined) fs.writeFileSync(resultsFile(repo.root), baseResults);
+      fs.writeFileSync(path.join(dirOf(repo), "evals", "evals.json"), plainEvals("demo", 6));
+      base?.(repo);
       repo.git("add", "-A");
       repo.git("commit", "-q", "-m", "evals and base results");
       repo.git("update-ref", "refs/remotes/origin/main", "HEAD");
-      fs.writeFileSync(path.join(repo.root, skillRel("demo"), "references", "ref.md"), "HEAD\n");
+      fs.writeFileSync(path.join(dirOf(repo), "references", "ref.md"), "HEAD\n");
     },
-    mock: false,
-    env: { ANTHROPIC_API_KEY: "sk-test" },
-    useApiKey: true,
-    script: script(headFails),
-    ...extra,
-    settings: { ...EXPLICIT, ...extra.settings },
   });
-
-test("tolerance boundary: a drop equal to the tolerance is not a regression, one byte beyond is", () => {
-  assert.equal(isRegression(0.86, 0.9, 0.05), false);
-  assert.equal(
-    isRegression(0.85, 0.9, 0.05),
-    false,
-    "exactly the tolerance is not MORE than the tolerance",
-  );
-  assert.equal(isRegression(0.849, 0.9, 0.05), true);
-  assert.equal(isRegression(0.8, 0.9, 0.05), true);
-  assert.equal(isRegression(0.95, 0.9, 0.05), false);
-});
-
-test("regression versus the committed base is reported with both rates and does not block by default", async () => {
-  const rig = regressionRig([9, 10], baseRecord(0.9));
   try {
-    const j = judgeFetch();
-    const r = await rig.run({ fetchImpl: j.fetch });
-    const s = r.results[0];
-    assert.equal(s?.status, "regression", r.text + r.stderr);
-    assert.equal(s?.baseEvalPassRate?.toFixed(2), "0.90");
-    assert.equal(s?.evalPassRate?.toFixed(2), "0.80");
-    assert.equal(r.exitCode, 0);
-    assert.match(
-      r.text,
-      /regression: demo base eval pass rate 0\.90, head 0\.80, diff -0\.10, tolerance 0\.05/,
-    );
-    assert.match(r.text, /base=0\.90 diff=-0\.10/);
+    const r = await rig.run({ fetchImpl: judgeFetch().fetch });
     const rec = JSON.parse(fs.readFileSync(resultsFile(rig.repo.root), "utf8"));
-    assert.equal(rec.status, "regression");
-    assert.equal(rec.base_eval_pass_rate, 0.9);
-    assert.equal(rec.tolerance, 0.05, "the tolerance in force is recorded");
-    assert.equal(rec.executor_runs, 10, "one run per eval: no paired run, no replay");
-    assert.equal(rec.cost_usd.toFixed(1), "1.0");
-    assert.equal(
-      fs.existsSync(path.join(rig.out, "demo", "base")),
-      false,
-      "nothing ran on the base",
-    );
-    assert.ok(j.requests.length > 0);
+    const attested = attestSelection(selectionOf(rig.repo, "demo"), undefined, rig.repo.root);
+    let baseAfter = "";
+    try {
+      baseAfter = rig.repo.git("show", `origin/main:${skillRel("demo")}/evals/results.json`);
+    } catch {
+      // no base file at the merge-base in this scenario
+    }
+    return { r, s: r.results[0]!, rec, attested, baseAfter, calls: rig.executor.calls.length };
   } finally {
     rig.cleanup();
   }
+}
+
+test("against a schema-2 base of 24 of 24, a head of 20 of 24 is a regression: drop 0.167, p 0.055", async () => {
+  const t = await measure(stagedRuns(6, [2, 2], [8, 12]), schema2Base);
+  assert.equal(t.s.status, "regression", t.r.text);
+  assert.deepEqual(t.rec.base, {
+    ...t.rec.base,
+    schema_version: 2,
+    passes: 24,
+    runs: 24,
+    common_evals: 6,
+  });
+  assert.deepEqual(t.rec.regression, { drop: 0.166667, p_value: 0.05461 });
+  assert.match(t.r.text, /base=24\/24 drop=0\.167 p_value=0\.055/);
+  assert.match(t.r.text, /regression: demo base 24\/24, head 20\/24, drop 0\.167, p 0\.055/);
+  assert.equal(t.r.exitCode, 0, "regression-blocking defaults to false");
+  assert.equal(t.attested.status, "regression", "the attestation recomputes the same status");
 });
 
 test("the regression-blocking knob flips the same condition", async () => {
-  const rig = regressionRig([9, 10], baseRecord(0.9), { settings: { regressionBlocking: true } });
-  try {
-    const r = await rig.run({ fetchImpl: judgeFetch().fetch });
-    assert.equal(r.results[0]?.status, "regression");
-    assert.equal(r.exitCode, 1);
-  } finally {
-    rig.cleanup();
+  const t = await measure(stagedRuns(6, [2, 2], [8, 12]), schema2Base, {
+    regressionBlocking: true,
+  });
+  assert.equal(t.r.exitCode, 1);
+  assert.equal(t.s.blocking, true);
+  const fail = await measure(stagedRuns(6, [2], [6]), schema2Base, { regressionBlocking: true });
+  assert.equal(fail.s.status, "fail");
+  assert.equal(fail.r.exitCode, 0, "a fail is not a regression: its own knob gates it");
+});
+
+test("a drop under 0.10 is a pass whatever p is: 22 of 24 against 24 of 24", async () => {
+  const t = await measure(stagedRuns(6, [2, 2], [10, 12]), schema2Base);
+  assert.equal(t.s.status, "pass", t.r.text);
+  assert.equal(t.rec.regression.drop < 0.1, true);
+  assert.equal(t.attested.status, "pass");
+});
+
+test("a rejected pool is fail and the test is not evaluated: 15 of 24 against 24 of 24", async () => {
+  const t = await measure(stagedRuns(6, [2, 2], [8, 7]), schema2Base);
+  assert.equal(t.s.status, "fail");
+  assert.equal(t.rec.regression, null);
+  assert.equal(t.attested.status, "fail");
+});
+
+test("a legacy base of 6 of 6 reads as a smaller base: 20 of 24 is a pass (p 0.388) and the base file is untouched", async () => {
+  const t = await measure(stagedRuns(6, [2, 2], [8, 12]), legacyBase(6, 6));
+  assert.equal(t.s.status, "pass", t.r.text);
+  assert.deepEqual(t.rec.base, {
+    ...t.rec.base,
+    schema_version: 1,
+    passes: 6,
+    runs: 6,
+    common_evals: 6,
+  });
+  assert.equal(Math.round(t.rec.regression.p_value * 1000) / 1000, 0.388);
+  assert.match(t.r.text, /base=6\/6 legacy drop=0\.167 p_value=0\.388/);
+  assert.equal(
+    JSON.parse(t.baseAfter).evals_total,
+    6,
+    "the schema-1 file at the merge-base is never rewritten",
+  );
+  assert.equal("schema_version" in JSON.parse(t.baseAfter), false);
+  assert.equal(t.attested.status, "pass");
+});
+
+test("a legacy base never rescues a rejected pool: against 6 of 6, 17 of 24 is fail", async () => {
+  const t = await measure(stagedRuns(6, [2, 2], [8, 9]), legacyBase(6, 6));
+  assert.equal(t.s.status, "fail");
+  assert.equal(t.rec.regression, null);
+});
+
+test("no base, an unparseable base and an in-progress base are not compared: base null, the pools decide", async () => {
+  const cases: [string, BaseSetup | undefined][] = [
+    ["absent", undefined],
+    ["unparseable", (repo) => writeRaw(dirOf(repo), "{not json")],
+    [
+      "in-progress",
+      (repo) =>
+        writeRecord(dirOf(repo), {
+          ...buildRecord(selectionOf(repo, "demo")),
+          status: "in-progress",
+        }),
+    ],
+  ];
+  for (const [title, base] of cases) {
+    const t = await measure(stagedRuns(6, [2, 2], [8, 12]), base);
+    assert.equal(t.s.status, "pass", title);
+    assert.equal(t.rec.base, null, title);
+    assert.match(t.r.text, /base=n\/a/, title);
+    assert.match(t.r.text, /not compared/, title);
   }
 });
 
-test("a drop within the tolerance passed explicitly is a pass", async () => {
-  const rig = regressionRig([9, 10], baseRecord(0.9), { settings: { tolerance: 0.15 } });
-  try {
-    const r = await rig.run({ fetchImpl: judgeFetch().fetch });
-    assert.equal(r.results[0]?.status, "pass");
-    assert.equal(r.exitCode, 0);
-  } finally {
-    rig.cleanup();
-  }
-});
-
-test("the status is `fail` when both fail and regress, with the regression line printed; each blocks only under its own knob", async () => {
-  // head 6/10 = 0.6 < threshold 0.8, base 0.9: both conditions hold
-  const run = async (settings: Record<string, boolean>) => {
-    const rig = regressionRig([5, 6, 7, 8], baseRecord(0.9), { settings });
-    try {
-      const r = await rig.run({ fetchImpl: judgeFetch().fetch });
-      return { r, rec: JSON.parse(fs.readFileSync(resultsFile(rig.repo.root), "utf8")) };
-    } finally {
-      rig.cleanup();
-    }
+test("only the evals unchanged on both sides are compared: a changed prompt and a changed fixture drop out (R14)", async () => {
+  const base: BaseSetup = (repo) => {
+    const file = path.join(dirOf(repo), "evals", "evals.json");
+    const doc = JSON.parse(fs.readFileSync(file, "utf8"));
+    doc.evals[2].prompt = "Task 3 as the base worded it";
+    doc.evals[4].files = ["evals/files/other.txt"];
+    fs.writeFileSync(path.join(dirOf(repo), "evals", "files", "other.txt"), "other\n");
+    fs.writeFileSync(file, JSON.stringify(doc));
+    writeRecord(dirOf(repo), buildRecord(selectionOf(repo, "demo"), { evalRuns: allPass(6, 4) }));
+    fs.writeFileSync(file, plainEvals("demo", 6));
   };
-  const open = await run({});
-  assert.equal(open.r.results[0]?.status, "fail");
-  assert.match(open.r.text, /regression: demo base eval pass rate 0\.90, head 0\.60/);
-  assert.equal(open.r.exitCode, 0);
-  assert.equal(open.rec.status, "fail");
-  assert.equal((await run({ regressionBlocking: true })).r.exitCode, 1);
-  assert.equal((await run({ failBlocking: true })).r.exitCode, 1);
+  const t = await measure(stagedRuns(6, [2, 2], [8, 12]), base);
+  assert.equal(t.rec.base.common_evals, 4);
+  assert.equal(t.rec.base.runs, 16, "only the four common evals count on the base side");
+  assert.equal(t.rec.base.passes, 16);
 });
 
-test("a real pass writes every R36 key in order, with the hash of the tree it ran on, the measured cost and the base rate", async () => {
-  const rig = regressionRig([10], baseRecord(0.9));
-  try {
-    const j = judgeFetch();
-    const r = await rig.run({
-      fetchImpl: j.fetch,
-      now: () => new Date("2026-02-03T04:05:06.000Z"),
-    });
-    assert.equal(r.results[0]?.status, "pass", r.text);
-    const rec = JSON.parse(fs.readFileSync(resultsFile(rig.repo.root), "utf8"));
-    const snap = readWorkingTree(rig.repo.root, skillRel("demo")) as Extract<
-      Snapshot,
-      { kind: "ok" }
-    >;
-    assert.equal(rec.content_hash, contentHash(snap.files));
-    assert.deepEqual(Object.keys(rec), [
-      "skill_name",
-      "content_hash",
-      "runner_version",
-      "executor_model",
-      "judge_model",
-      "effort",
-      "date",
-      "status",
-      "eval_pass_rate",
-      "probe_pass_rate",
-      "base_eval_pass_rate",
-      "threshold",
-      "tolerance",
-      "evals_passed",
-      "evals_total",
-      "probes_passed",
-      "probes_total",
-      "executor_runs",
-      "judge_calls",
-      "cost_usd",
-    ]);
-    assert.equal(rec.date, "2026-02-03T04:05:06.000Z");
-    assert.equal(rec.skill_name, "demo");
-    assert.equal(rec.status, "pass");
-    assert.equal(rec.eval_pass_rate, 0.9);
-    assert.equal(rec.probe_pass_rate, null, "this skill has no probe");
-    assert.equal(rec.base_eval_pass_rate, 0.9);
-    assert.equal(rec.threshold, DEFAULT_SETTINGS.passThreshold);
-    assert.deepEqual(
-      [rec.evals_passed, rec.evals_total, rec.probes_passed, rec.probes_total],
-      [9, 10, 0, 0],
-    );
-    assert.equal(rec.executor_model, "claude-sonnet-5-5");
-    assert.equal(rec.effort, DEFAULT_SETTINGS.effort);
-    assert.equal(rec.judge_calls, 10, "one judge call per eval");
-    assert.equal(rec.cost_usd.toFixed(1), "1.0");
-    // the judge authenticated with the API key against the recording endpoint
-    assert.ok(j.requests.every((q) => q.headers["x-api-key"] === "sk-test"));
-  } finally {
-    rig.cleanup();
-  }
+test("no eval in common is not compared: base null", async () => {
+  const base: BaseSetup = (repo) => {
+    const file = path.join(dirOf(repo), "evals", "evals.json");
+    const doc = JSON.parse(fs.readFileSync(file, "utf8"));
+    doc.evals = doc.evals.map((e: { prompt: string }) => ({ ...e, prompt: `${e.prompt} (base)` }));
+    fs.writeFileSync(file, JSON.stringify(doc));
+    writeRecord(dirOf(repo), buildRecord(selectionOf(repo, "demo"), { evalRuns: allPass(6, 4) }));
+    fs.writeFileSync(file, plainEvals("demo", 6));
+  };
+  const t = await measure(stagedRuns(6, [2, 2], [8, 12]), base);
+  assert.equal(t.rec.base, null);
+  assert.equal(t.s.status, "pass");
 });
 
-test("no base file, or one of the former shape: `base=n/a` with its line, and the status comes from the threshold only", async () => {
-  const former = JSON.stringify({
-    ...JSON.parse(baseRecord(0.9)),
-    benchmark: { with_skill_mean: 0.9 },
-    status: "new",
-  });
-  for (const base of [undefined, former, "{ not json"]) {
-    // 10/10 passing: pass, never a regression
-    const ok = regressionRig([], base);
-    try {
-      const r = await ok.run({ fetchImpl: judgeFetch().fetch });
-      assert.equal(r.results[0]?.status, "pass", r.text);
-      assert.equal(r.results[0]?.baseEvalPassRate, null);
-      assert.match(r.text, /base=n\/a diff=n\/a/);
-      assert.match(r.text, /^ {2}not compared: no valid evals\/results\.json at the merge-base$/m);
-      assert.doesNotMatch(r.text, /regression:/);
-      assert.equal(
-        JSON.parse(fs.readFileSync(resultsFile(ok.repo.root), "utf8")).base_eval_pass_rate,
-        null,
-      );
-    } finally {
-      ok.cleanup();
-    }
-    // 7/10 = 0.7 below the threshold: fail, decided from the threshold alone
-    const low = regressionRig([8, 9, 10], base);
-    try {
-      const r = await low.run({ fetchImpl: judgeFetch().fetch });
-      assert.equal(r.results[0]?.status, "fail", r.text);
-      assert.equal(r.exitCode, 0, "fail does not block by default");
-    } finally {
-      low.cleanup();
-    }
-  }
+test("the report lists as a diagnostic the evals whose pass fraction fell by 0.5 or more against a schema-2 base", async () => {
+  const flags = stagedRuns(6, [2, 2], [8, 12]).map((r, i) =>
+    i === 5 ? [false, false, false, false] : r,
+  );
+  const t = await measure(flags, schema2Base);
+  assert.match(
+    t.r.text,
+    /diagnostic: pass fraction fell by 0\.5 or more against the base on eval \d/,
+  );
 });
 
-test("a skill new on the base branch is compared with nothing: pass from the threshold, `base=n/a`, and a pass is attested", async () => {
+test("a mock run leaves results.json byte-identical and produces no regression or blocking outcome", async () => {
   const rig = makeRig({
-    newSkill: true,
-    mock: false,
-    env: { ANTHROPIC_API_KEY: "sk-test" },
-    useApiKey: true,
-    settings: EXPLICIT,
-    script: () => ({
-      files: { "answer.md": "x" },
-      transcript: "Assistant: the quick brown fox",
-      skillsLoaded: ["demo-new"], // the one probe expects a trigger
-    }),
-  });
-  try {
-    const r = await rig.run({ fetchImpl: judgeFetch().fetch }, ["demo-new"]);
-    assert.equal(r.results[0]?.status, "pass", r.text);
-    assert.equal(r.results[0]?.executorRuns, 2, "1 eval + 1 probe, one run each");
-    assert.match(r.text, /base=n\/a/);
-    assert.equal(
-      JSON.parse(
-        fs.readFileSync(
-          path.join(rig.repo.root, skillRel("demo-new"), "evals", "results.json"),
-          "utf8",
-        ),
-      ).status,
-      "pass",
-    );
-  } finally {
-    rig.cleanup();
-  }
-});
-
-test("a mock run leaves results.json absent and byte-identical, and produces no regression or blocking outcome", async () => {
-  const rig = regressionRig([9, 10], baseRecord(0.9), {
-    mock: true,
-    env: {},
+    evalsCount: 2,
     settings: { regressionBlocking: true, failBlocking: true },
   });
   try {
@@ -374,11 +285,11 @@ test("an eval run installs the head scripts, with the exec bit, and its exit_cod
   });
   try {
     const r = await rig.run({ fetchImpl: judgeFetch().fetch });
-    assert.equal(r.results[0]?.executorRuns, 1, "one run: no base replay");
-    assert.equal(seen.length, 1);
+    assert.equal(r.results[0]?.executorRuns, 2, "the two stage-1 runs: no base replay");
+    assert.equal(seen.length, 2);
     assert.match(seen[0]?.script ?? "", /echo head/);
     const g = JSON.parse(
-      fs.readFileSync(path.join(rig.out, "demo", "eval-1", "grading.json"), "utf8"),
+      fs.readFileSync(path.join(rig.out, "demo", "eval-1", "run-1", "grading.json"), "utf8"),
     );
     assert.equal(g.expectations[0].passed, true);
     assert.match(g.expectations[0].evidence, /exit code 5 \(expected 5\)/);

@@ -170,7 +170,7 @@ test("buildJudgeArgs: the no-tools request plus ISOLATION_FLAGS, once, and no --
   assert.deepEqual(a, [
     "-p",
     "--output-format",
-    "text",
+    "json", // 0304 R23: the result record carries total_cost_usd (supersedes the text pin of 0290 R30)
     "--model",
     "claude-sonnet-5-5",
     "--tools",

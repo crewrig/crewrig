@@ -41,8 +41,8 @@ test("R33, R40, R41, R42, R43, F2, F4: a logged-in contributor needs no variable
     const calls = readCalls(t.bin);
     const by = (k: StubCall["kind"]) => calls.filter((c) => c.kind === k);
     assert.equal(by("auth").length, 1, "F4: one probe per invocation");
-    assert.equal(by("executor").length, 3, "one run per eval");
-    assert.equal(by("judge").length, 3, "one judge call per eval, still one probe");
+    assert.equal(by("executor").length, 6, "two stage-1 runs per eval (0304 R2)");
+    assert.equal(by("judge").length, 6, "one judge call per eval run, still one probe");
     assert.equal(by("model").length, 0);
     for (const c of calls) {
       assert.deepEqual(credentialVars(c), [], `${c.kind}: no credential variable, no key`);
@@ -107,8 +107,8 @@ test("R33, R42: with a token the executor and judge hold only that token, the ke
       0,
       "a token is a presence check: no login probe",
     );
-    assert.equal(calls.filter((c) => c.kind === "executor").length, 1);
-    assert.equal(calls.filter((c) => c.kind === "judge").length, 1);
+    assert.equal(calls.filter((c) => c.kind === "executor").length, 2);
+    assert.equal(calls.filter((c) => c.kind === "judge").length, 2);
     for (const c of calls) {
       assert.deepEqual(credentialVars(c), ["CLAUDE_CODE_OAUTH_TOKEN"], c.kind);
       assert.equal(c.env["CLAUDE_CODE_OAUTH_TOKEN"], "tok-secret");
@@ -116,7 +116,7 @@ test("R33, R42: with a token the executor and judge hold only that token, the ke
       assert.equal(c.env["HOME"], t.iso.home);
     }
     assert.doesNotMatch(
-      fs.readFileSync(path.join(t.rig.out, "demo", "eval-1", "grading.json"), "utf8"),
+      fs.readFileSync(path.join(t.rig.out, "demo", "eval-1", "run-1", "grading.json"), "utf8"),
       /tok-secret/,
     );
   } finally {
@@ -169,7 +169,7 @@ test("s3-F1: --use-api-key with the token and the key both set: the executor chi
     assert.equal(r.results[0]?.status, "pass", r.text + r.stderr);
     assert.equal(r.credentialSource, "api-key");
     const exec = readCalls(t.bin, "executor");
-    assert.equal(exec.length, 1);
+    assert.equal(exec.length, 2);
     for (const c of exec) {
       assert.equal(c.env["ANTHROPIC_API_KEY"], "sk-key");
       assert.equal(c.env["CLAUDE_CODE_OAUTH_TOKEN"], undefined, "exactly one credential variable");

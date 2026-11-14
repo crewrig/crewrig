@@ -58,6 +58,7 @@ test("parseArgs: one skill or --changed, --out, --mock, --ticket, --base, --use-
     mock: true,
     base: "origin/main",
     useApiKey: false,
+    dryRun: false,
   });
   assert.deepEqual(parseArgs(["--", "--changed", "--ticket", "12"]), {
     changed: true,
@@ -66,6 +67,7 @@ test("parseArgs: one skill or --changed, --out, --mock, --ticket, --base, --use-
     ticket: "12",
     base: "origin/main",
     useApiKey: false,
+    dryRun: false,
   });
   // delta-03 R33: the explicit opt-in is a boolean flag that takes no value
   assert.deepEqual(parseArgs(["demo", "--use-api-key"]), {
@@ -75,6 +77,7 @@ test("parseArgs: one skill or --changed, --out, --mock, --ticket, --base, --use-
     mock: false,
     base: "origin/main",
     useApiKey: true,
+    dryRun: false,
   });
   assert.equal(
     (parseArgs(["--use-api-key", "--changed"]) as { useApiKey: boolean }).useApiKey,
@@ -107,23 +110,29 @@ test(
       executor: new MockExecutor(),
     });
     assert.equal(code, 0, s.out + s.err);
+    // 0304 R24: the plan figures replace threshold, base and diff
     assert.match(
       s.out,
-      /^demo: status=mock eval_pass_rate=1\.00 \(1\/1\) probe_pass_rate=0\.00 \(0\/1\) threshold=0\.80 base=n\/a diff=n\/a skill_loaded=0\/1 executor_runs=2 judge_calls=1 cost_usd=0\.02$/m,
+      /^demo: status=mock eval_pass_rate=1\.00 \(2\/2, stage 1\) probe_pass_rate=0\.00 \(0\/1, stage 1\) base=n\/a drop=n\/a p_value=n\/a skill_loaded=0\/2 executor_runs=3 judge_calls=2 cost_usd=0\.03 judge_cost_usd=assumed/m,
     );
-    assert.match(s.out, /^  not compared: no valid evals\/results\.json at the merge-base$/m);
-    assert.match(s.out, /^invocation: skills=1 executor_runs=2 judge_calls=1 cost_usd=0\.02$/m);
+    assert.match(s.out, /^  measurements on this branch: 1$/m);
+    assert.match(s.out, /^  evidence_reask: 0 of 2$/m);
+    assert.match(s.out, /^  eval runs: 1=2\/2$/m);
+    assert.match(s.out, /^  not compared: no usable evals\/results\.json at the merge-base$/m);
+    assert.match(s.out, /^invocation: skills=1 executor_runs=3 judge_calls=2 cost_usd=0\.03$/m);
     for (const f of [
-      "eval-1/grading.json",
-      "eval-1/metrics.json",
-      "eval-1/transcript.md",
-      "probe-1/probe.json",
+      "eval-1/run-1/grading.json",
+      "eval-1/run-2/grading.json",
+      "eval-1/run-1/metrics.json",
+      "eval-1/run-1/transcript.md",
+      "probe-1/run-1/probe.json",
     ])
       assert.ok(fs.existsSync(path.join(out, "demo", f)), f);
     for (const gone of ["benchmark.json", "base", "eval-1/with_skill", "eval-1/without_skill"])
       assert.equal(fs.existsSync(path.join(out, "demo", gone)), false, `${gone} no longer exists`);
     assert.equal(
-      JSON.parse(fs.readFileSync(path.join(out, "demo", "eval-1", "grading.json"), "utf8")).mock,
+      JSON.parse(fs.readFileSync(path.join(out, "demo", "eval-1", "run-1", "grading.json"), "utf8"))
+        .mock,
       true,
     );
   }),
@@ -362,11 +371,15 @@ test(
       assert.equal(code, 0, s.out + s.err);
       assert.equal(fs.existsSync(marker), false, "mock mode never spawns claude");
       assert.equal(
-        JSON.parse(fs.readFileSync(path.join(out, "demo", "eval-1", "grading.json"), "utf8")).mock,
+        JSON.parse(
+          fs.readFileSync(path.join(out, "demo", "eval-1", "run-1", "grading.json"), "utf8"),
+        ).mock,
         true,
       );
       assert.equal(
-        JSON.parse(fs.readFileSync(path.join(out, "demo", "probe-1", "probe.json"), "utf8")).mock,
+        JSON.parse(
+          fs.readFileSync(path.join(out, "demo", "probe-1", "run-1", "probe.json"), "utf8"),
+        ).mock,
         true,
       );
     } finally {

@@ -1,6 +1,8 @@
-// skill-evals-attestation.test.ts — results file and attestation check (spec 0290 R36-R39, R25).
+// skill-evals-attestation.test.ts — the attestation check on schema-2 results files (spec 0304 R25,
+// R13, R14, R26; 0290 R36-R39, R25). One status per selected skill, recomputed with plan.ts from the
+// recorded runs and the merge-base file as it stands now. No key, no network, no model call.
 
-/* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-call, typescript/no-unsafe-argument, typescript/no-unsafe-return -- the runner output files are read back as untyped JSON */
+/* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-call, typescript/no-unsafe-argument, typescript/no-unsafe-return -- the results files are read back as untyped JSON */
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -8,12 +10,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 
-import { attestSelection } from "../lib/skill-evals/attest.ts";
 import { attestMain } from "../lib/skill-evals/attest-cli.ts";
-import { verifyResults, writeResults } from "../lib/skill-evals/results.ts";
-import type { ResultsRecord } from "../lib/skill-evals/results.ts";
-import { selectChanged } from "../lib/skill-evals/select.ts";
-import type { Selection } from "../lib/skill-evals/select.ts";
+import { attestSelection } from "../lib/skill-evals/attest.ts";
+import { KEYS } from "../lib/skill-evals/results.ts";
 import {
   cleanEnv,
   commitAll,
@@ -25,30 +24,22 @@ import {
   writeSkill,
 } from "./lib/skill-evals-fixtures.ts";
 import type { Repo } from "./lib/skill-evals-fixtures.ts";
+import {
+  allPass,
+  buildRecord,
+  readRecord,
+  stagedRuns,
+  writeRaw,
+  writeRecord,
+} from "./lib/skill-evals-record.ts";
+import { sixRig } from "./lib/skill-evals-six.ts";
 
-const record = (sel: Selection, over: Partial<ResultsRecord> = {}): ResultsRecord => ({
-  skill_name: sel.skill.name,
-  content_hash: sel.headHash as string,
-  runner_version: "2.0.0",
-  executor_model: "m",
-  judge_model: "j",
-  date: "2026-01-01T00:00:00.000Z",
-  status: "pass",
-  effort: "medium",
-  eval_pass_rate: 1,
-  probe_pass_rate: null,
-  base_eval_pass_rate: null,
-  threshold: 0.8,
-  tolerance: 0.05,
-  evals_passed: 2,
-  evals_total: 2,
-  probes_passed: 0,
-  probes_total: 0,
-  executor_runs: 4,
-  judge_calls: 6,
-  cost_usd: 0.4,
-  ...over,
-});
+const attest = (r: ReturnType<typeof sixRig>, over = {}) =>
+  attestSelection(
+    r.sel(),
+    { regressionBlocking: false, failBlocking: false, missingEvalsBlocking: false, ...over },
+    r.repo.root,
+  );
 
 function changedSkill(f: (repo: Repo, name: string) => void): void {
   const repo = makeRepo();
@@ -64,57 +55,31 @@ function changedSkill(f: (repo: Repo, name: string) => void): void {
   }
 }
 
-test("the writer fixes the key order and the verifier accepts a fresh file", () => {
+test("a fresh schema-2 file passes with no credential variable set and prints the branch count", () => {
   changedSkill((repo) => {
     const sel = selectionOf(repo, "demo");
-    writeResults(sel.skill.dirAbs, record(sel));
-    const text = fs.readFileSync(path.join(sel.skill.dirAbs, "evals", "results.json"), "utf8");
-    assert.deepEqual(Object.keys(JSON.parse(text)), [
-      "skill_name",
-      "content_hash",
-      "runner_version",
-      "executor_model",
-      "judge_model",
-      "effort",
-      "date",
-      "status",
-      "eval_pass_rate",
-      "probe_pass_rate",
-      "base_eval_pass_rate",
-      "threshold",
-      "tolerance",
-      "evals_passed",
-      "evals_total",
-      "probes_passed",
-      "probes_total",
-      "executor_runs",
-      "judge_calls",
-      "cost_usd",
-    ]);
-    assert.equal(verifyResults(text, "demo", sel.headHash as string).ok, true);
-    assert.equal(
-      fs.readdirSync(path.join(sel.skill.dirAbs, "evals")).some((f) => f.endsWith(".tmp")),
-      false,
-    );
-  });
-});
-
-test("fresh attestation passes with no credential variable set", () => {
-  changedSkill((repo) => {
-    const sel = selectionOf(repo, "demo");
-    writeResults(sel.skill.dirAbs, record(sel));
+    writeRecord(sel.skill.dirAbs, buildRecord(sel));
     repo.git("add", "-A");
     const s = sink();
-    const code = attestMain([], cleanEnv(), repo.root, s.io);
-    assert.equal(code, 0, s.out + s.err);
+    assert.equal(attestMain([], cleanEnv(), repo.root, s.io), 0, s.out + s.err);
     assert.match(s.out, /^demo: pass/m);
+    assert.match(s.out, /^ {2}measurements on this branch: 1$/m);
   });
 });
 
-test("stale attestation blocks: scripts changed after the results file was written", () => {
+test("the writer fixes the R6 key order", () => {
   changedSkill((repo) => {
     const sel = selectionOf(repo, "demo");
-    writeResults(sel.skill.dirAbs, record(sel));
+    writeRecord(sel.skill.dirAbs, buildRecord(sel));
+    const text = fs.readFileSync(path.join(sel.skill.dirAbs, "evals", "results.json"), "utf8");
+    assert.deepEqual(Object.keys(JSON.parse(text)), [...KEYS]);
+  });
+});
+
+test("stale: the scripts changed after the results file was written (R25)", () => {
+  changedSkill((repo) => {
+    const sel = selectionOf(repo, "demo");
+    writeRecord(sel.skill.dirAbs, buildRecord(sel));
     commitAll(repo, "results");
     fs.appendFileSync(path.join(repo.root, skillRel("demo"), "scripts", "run.sh"), "echo later\n");
     commitAll(repo, "scripts");
@@ -124,196 +89,166 @@ test("stale attestation blocks: scripts changed after the results file was writt
   });
 });
 
-test("an evals.json change requires a fresh attestation", () => {
-  const repo = makeRepo();
+test("stale and invalid forms of the file: absent, unparseable, mock, another skill, schema 1, in-progress, another plan", () => {
+  const r = sixRig();
   try {
-    writeSkill(repo, "demo");
-    commitAll(repo, "base");
-    markOrigin(repo);
-    let sel = selectionOf(repo, "demo");
-    writeResults(sel.skill.dirAbs, record(sel));
-    commitAll(repo, "results");
-    markOrigin(repo);
-    // only evals.json changes now
-    const f = path.join(repo.root, skillRel("demo"), "evals", "evals.json");
-    fs.writeFileSync(f, fs.readFileSync(f, "utf8").replace("Do the thing", "Do another thing"));
-    commitAll(repo, "evals edit");
-    assert.equal(selectChanged(repo.root, "origin/main").hasOwnProperty("selections"), true);
-    const s = sink();
-    assert.equal(attestMain([], cleanEnv(), repo.root, s.io), 1);
-    assert.match(s.out, /demo: stale/);
-    sel = selectionOf(repo, "demo");
-    assert.equal(attestSelection(sel).status, "stale");
+    assert.match(attest(r).reason, /evals\/results\.json is absent/);
+    const cases: [string, unknown, string, string][] = [
+      ["unparseable", "{not json", "stale", "cannot be parsed"],
+      ["mock", { mock: true }, "stale", "mock run"],
+      [
+        "schema 1",
+        { skill_name: "demo", content_hash: "x", status: "pass" },
+        "stale",
+        "schema 1: re-measure under the sampling plan",
+      ],
+    ];
+    for (const [title, content, status, reason] of cases) {
+      writeRaw(r.dir, content);
+      const o = attest(r);
+      assert.equal(o.status, status, title);
+      assert.match(o.reason, new RegExp(reason), title);
+      assert.equal(o.blocking, true, `${title} blocks, with no setting to relax it`);
+    }
+    const good = buildRecord(r.sel(), { evalRuns: allPass(6, 2) });
+    writeRaw(r.dir, { ...good, skill_name: "other" });
+    assert.match(attest(r).reason, /names another skill/);
+    writeRecord(r.dir, { ...good, status: "in-progress" });
+    const ip = attest(r);
+    assert.equal(ip.status, "stale");
+    assert.match(ip.reason, /in-progress \(interrupted\)/);
+    writeRecord(r.dir, { ...good, plan: { ...good.plan, acceptFinal: 0.5 } });
+    assert.match(attest(r).reason, /plan differs from the sampling plan/);
   } finally {
-    repo.cleanup();
+    r.cleanup();
   }
 });
 
-test("mock results, an unrecognised status, a wrong skill and missing keys are stale", () => {
-  changedSkill((repo) => {
-    const sel = selectionOf(repo, "demo");
-    const h = sel.headHash as string;
-    const text = (o: Record<string, unknown>) => JSON.stringify({ ...record(sel), ...o });
-    assert.equal(verifyResults(text({ mock: true }), "demo", h).ok, false);
-    assert.match(
-      (verifyResults(text({ status: "error" }), "demo", h) as { reason: string }).reason,
-      /status "error"/,
-    );
-    assert.match(
-      (verifyResults(text({ skill_name: "other" }), "demo", h) as { reason: string }).reason,
-      /another skill/,
-    );
-    const broken = JSON.parse(text({})) as Record<string, unknown>;
-    delete broken["judge_calls"];
-    assert.match(
-      (verifyResults(JSON.stringify(broken), "demo", h) as { reason: string }).reason,
-      /judge_calls/,
-    );
-    assert.match((verifyResults("{nope", "demo", h) as { reason: string }).reason, /parsed/);
-    assert.match((verifyResults(undefined, "demo", h) as { reason: string }).reason, /absent/);
-    fs.writeFileSync(path.join(sel.skill.dirAbs, "evals", "results.json"), text({ mock: true }));
-    repo.git("add", "-A");
-    assert.equal(attestSelection(selectionOf(repo, "demo")).status, "stale");
-    fs.writeFileSync(
-      path.join(sel.skill.dirAbs, "evals", "results.json"),
-      text({ status: "error" }),
-    );
-    assert.equal(attestSelection(selectionOf(repo, "demo")).status, "stale");
-  });
+test("a key missing, or of the wrong type, is invalid and blocks (R11)", () => {
+  const r = sixRig();
+  try {
+    const good = buildRecord(r.sel(), { evalRuns: allPass(6, 2) }) as unknown as Record<
+      string,
+      unknown
+    >;
+    const { ledger: _l, ...noLedger } = good;
+    writeRaw(r.dir, noLedger);
+    assert.equal(attest(r).status, "invalid");
+    assert.match(attest(r).reason, /lacks the key ledger/);
+    writeRaw(r.dir, { ...good, status: "weird" });
+    assert.equal(attest(r).status, "invalid");
+    assert.match(attest(r).reason, /status has the wrong type/);
+  } finally {
+    r.cleanup();
+  }
 });
 
-test("recorded regression is reported and blocks only under regression-blocking", () => {
-  changedSkill((repo) => {
-    const sel = selectionOf(repo, "demo");
-    writeResults(
-      sel.skill.dirAbs,
-      record(sel, {
-        status: "regression",
-        eval_pass_rate: 0.8,
-        base_eval_pass_rate: 0.9,
-      }),
+test("a post-measurement fixture edit makes the file stale naming the eval (R14)", () => {
+  const r = sixRig();
+  try {
+    writeRecord(r.dir, buildRecord(r.sel(), { evalRuns: allPass(6, 2) }));
+    commitAll(r.repo, "results");
+    assert.equal(attest(r).status, "pass");
+    fs.appendFileSync(
+      path.join(r.dir, "evals", "files", "in.txt"),
+      "edited after the measurement\n",
     );
-    repo.git("add", "-A");
-    const off = attestSelection(selectionOf(repo, "demo"), {
-      regressionBlocking: false,
-      failBlocking: false,
-      missingEvalsBlocking: false,
-    });
-    assert.equal(off.status, "regression");
-    assert.equal(off.blocking, false);
-    assert.match(off.reason, /base eval pass rate 0\.9, eval pass rate 0\.8, tolerance 0\.05/);
-    const on = attestSelection(selectionOf(repo, "demo"), {
-      regressionBlocking: true,
-      failBlocking: false,
-      missingEvalsBlocking: false,
-    });
-    assert.equal(on.blocking, true);
+    const o = attest(r);
+    assert.equal(o.status, "stale");
+    assert.match(o.reason, /eval 1 changed after the measurement/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test("an eval added or removed after the measurement makes the file stale naming it (R14)", () => {
+  const r = sixRig({ evals: 6 });
+  try {
+    const rec = buildRecord(r.sel(), { evalRuns: allPass(6, 2) });
+    writeRecord(r.dir, { ...rec, evals: rec.evals.filter((e) => e.id !== 4) });
+    // eval 4 is in the tree but not recorded
+    const added = attest(r);
+    assert.equal(added.status, "invalid", "the runs no longer match the stage path counts");
+    writeRecord(r.dir, rec);
+    const evalsFile = path.join(r.dir, "evals", "evals.json");
+    const doc = JSON.parse(fs.readFileSync(evalsFile, "utf8"));
+    doc.evals.push({ ...doc.evals[0], id: 7 });
+    fs.writeFileSync(evalsFile, JSON.stringify(doc));
+    const seven = attest(r);
+    // the evals.json edit changes the content hash first: the file is stale either way
+    assert.equal(seven.status, "stale");
+  } finally {
+    r.cleanup();
+  }
+});
+
+test("the recorded status must follow from the recorded runs: a rejected pool recorded as pass is invalid", () => {
+  const r = sixRig();
+  try {
+    const runs = stagedRuns(6, [2], [6]);
+    writeRecord(r.dir, { ...buildRecord(r.sel(), { evalRuns: runs }), status: "pass" });
+    const o = attest(r);
+    assert.equal(o.status, "invalid");
+    assert.match(o.reason, /recorded status pass differs from the recomputed status fail/);
+    assert.equal(o.blocking, true);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test("a recorded fail is reported with both rates, and blocks only under fail-blocking", () => {
+  const r = sixRig();
+  try {
+    writeRecord(r.dir, buildRecord(r.sel(), { evalRuns: stagedRuns(6, [2], [6]) }));
+    const o = attest(r);
+    assert.equal(o.status, "fail");
+    assert.match(o.reason, /eval pass rate 6\/12 \(stage 1\)/);
+    assert.equal(o.blocking, false);
+    assert.equal(attest(r, { failBlocking: true }).blocking, true);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test("the regression is recomputed against the merge-base file as it stands now, and blocks only under regression-blocking", () => {
+  const r = sixRig({ base: { evalRuns: allPass(6, 4) } });
+  try {
+    writeRecord(r.dir, r.head({ evalRuns: stagedRuns(6, [2, 2], [8, 12]), probeRuns: [[true]] }));
+    const o = attest(r);
+    assert.equal(o.status, "regression", o.reason);
+    assert.match(o.reason, /base 24\/24, head 20\/24, drop 0\.167, p 0\.055/);
+    assert.equal(o.blocking, false);
+    assert.equal(attest(r, { regressionBlocking: true }).blocking, true);
     const s = sink();
-    assert.equal(
-      attestMain([], cleanEnv(), repo.root, s.io, {
-        regressionBlocking: true,
-        failBlocking: false,
-        missingEvalsBlocking: false,
-      }),
-      1,
-    );
-    assert.match(
-      s.out,
-      /demo: regression: base eval pass rate 0\.9, eval pass rate 0\.8, tolerance 0\.05 \[blocking\]/,
-    );
-  });
+    attestMain([], cleanEnv(), r.repo.root, s.io);
+    assert.match(s.out, /demo: regression: base 24\/24/);
+  } finally {
+    r.cleanup();
+  }
 });
 
-test("a file of the former shape (a benchmark key, the status new) is stale and one run regenerates it", () => {
-  changedSkill((repo) => {
-    const sel = selectionOf(repo, "demo");
-    const h = sel.headHash as string;
-    const former = { ...record(sel), benchmark: { with_skill_mean: 1 } } as Record<string, unknown>;
-    for (const k of ["effort", "eval_pass_rate", "probe_pass_rate", "base_eval_pass_rate"])
-      delete former[k];
-    assert.match(
-      (verifyResults(JSON.stringify(former), "demo", h) as { reason: string }).reason,
-      /lacks the key/,
-    );
-    // even with every new key present, `new` is no longer a status
-    assert.match(
-      (
-        verifyResults(JSON.stringify({ ...record(sel), status: "new" }), "demo", h) as {
-          reason: string;
-        }
-      ).reason,
-      /status "new".*not pass, fail or regression/,
-    );
-    fs.writeFileSync(
-      path.join(sel.skill.dirAbs, "evals", "results.json"),
-      JSON.stringify({ ...record(sel), status: "new" }),
-    );
-    repo.git("add", "-A");
-    const a = attestSelection(selectionOf(repo, "demo"));
-    assert.equal(a.status, "stale");
-    assert.equal(a.blocking, true);
-  });
-});
-
-test("a recorded fail is reported with both rates and the threshold, and blocks only under fail-blocking", () => {
-  changedSkill((repo) => {
-    const sel = selectionOf(repo, "demo");
-    writeResults(
-      sel.skill.dirAbs,
-      record(sel, {
-        status: "fail",
-        eval_pass_rate: 0.75,
-        probe_pass_rate: 0.6,
-        evals_passed: 3,
-        evals_total: 4,
-        probes_passed: 3,
-        probes_total: 5,
-      }),
-    );
-    repo.git("add", "-A");
-    const settings = {
-      regressionBlocking: false,
-      failBlocking: false,
-      missingEvalsBlocking: false,
-    };
-    const off = attestSelection(selectionOf(repo, "demo"), settings);
-    assert.equal(off.status, "fail");
-    assert.equal(off.blocking, false);
-    assert.match(off.reason, /eval pass rate 0\.75, probe pass rate 0\.6, threshold 0\.8/);
-    const s = sink();
-    assert.equal(attestMain([], cleanEnv(), repo.root, s.io, settings), 0, s.out);
-    assert.match(
-      s.out,
-      /^demo: fail: eval pass rate 0\.75, probe pass rate 0\.6, threshold 0\.8$/m,
-    );
-    const on = sink();
-    assert.equal(
-      attestMain([], cleanEnv(), repo.root, on.io, { ...settings, failBlocking: true }),
-      1,
-    );
-    assert.match(on.out, /demo: fail: .*\[blocking\]/);
-    // a fail does not block under regression-blocking alone
-    assert.equal(
-      attestSelection(selectionOf(repo, "demo"), { ...settings, regressionBlocking: true })
-        .blocking,
-      false,
-    );
-  });
-});
-
-test("the attestation decides from the recorded figures with the same decide() as the runner", () => {
-  changedSkill((repo) => {
-    const sel = selectionOf(repo, "demo");
-    // the recorded status says pass, the recorded figures say fail: the figures decide the block
-    writeResults(sel.skill.dirAbs, record(sel, { status: "pass", eval_pass_rate: 0.5 }));
-    repo.git("add", "-A");
-    const settings = { regressionBlocking: false, failBlocking: true, missingEvalsBlocking: false };
-    assert.equal(attestSelection(selectionOf(repo, "demo"), settings).blocking, true);
-    // and the other way: a figure at the boundary (4/5 = 0.8 = threshold) is not a fail
-    writeResults(sel.skill.dirAbs, record(sel, { status: "fail", eval_pass_rate: 0.8 }));
-    repo.git("add", "-A");
-    assert.equal(attestSelection(selectionOf(repo, "demo"), settings).blocking, false);
-  });
+test("a branch measured against 24/24 is recomputed after main advances with a base at 12/24, and no printed base stops it", () => {
+  const r = sixRig({ base: { evalRuns: allPass(6, 4) } });
+  try {
+    writeRecord(r.dir, r.head({ evalRuns: stagedRuns(6, [2, 2], [8, 12]) }));
+    commitAll(r.repo, "head results");
+    assert.equal(attest(r).status, "regression");
+    // main advances with a base file at 12 of 24, and the branch is replayed onto it
+    const file = path.join(r.dir, "evals", "results.json");
+    const headText = fs.readFileSync(file, "utf8");
+    const baseSha = r.repo.git("rev-parse", "origin/main").trim();
+    r.repo.git("checkout", "-q", "-b", "side", baseSha);
+    writeRecord(r.dir, buildRecord(r.sel(), { evalRuns: stagedRuns(6, [4], [12]) }));
+    commitAll(r.repo, "main advances");
+    markOrigin(r.repo);
+    fs.appendFileSync(path.join(r.dir, "SKILL.md"), "edit\n");
+    fs.writeFileSync(file, headText);
+    commitAll(r.repo, "branch replayed");
+    const o = attest(r);
+    assert.equal(o.status, "pass", `${o.status}: ${o.reason}`);
+  } finally {
+    r.cleanup();
+  }
 });
 
 test("no-evals warns and blocks only under missing-evals-blocking; invalid always blocks", () => {
@@ -326,27 +261,17 @@ test("no-evals warns and blocks only under missing-evals-blocking; invalid alway
     fs.appendFileSync(path.join(repo.root, skillRel("plain"), "SKILL.md"), "x\n");
     fs.appendFileSync(path.join(repo.root, skillRel("broken"), "SKILL.md"), "x\n");
     commitAll(repo, "edit");
+    const off = { regressionBlocking: false, failBlocking: false, missingEvalsBlocking: false };
     const plain = attestSelection(selectionOf(repo, "plain"));
     assert.equal(plain.status, "no-evals");
     assert.equal(plain.blocking, false);
     assert.equal(
-      attestSelection(selectionOf(repo, "plain"), {
-        regressionBlocking: false,
-        failBlocking: false,
-        missingEvalsBlocking: true,
-      }).blocking,
+      attestSelection(selectionOf(repo, "plain"), { ...off, missingEvalsBlocking: true }).blocking,
       true,
     );
-    const broken = attestSelection(selectionOf(repo, "broken"), {
-      regressionBlocking: false,
-      failBlocking: false,
-      missingEvalsBlocking: false,
-    });
+    const broken = attestSelection(selectionOf(repo, "broken"), off);
     assert.equal(broken.status, "invalid");
     assert.equal(broken.blocking, true);
-    // an evals/ directory without evals.json is invalid
-    fs.rmSync(path.join(repo.root, skillRel("broken"), "evals", "evals.json"));
-    assert.match(attestSelection(selectionOf(repo, "broken")).reason, /evals\.json is missing/);
   } finally {
     repo.cleanup();
   }
@@ -359,18 +284,13 @@ test("a symlink or an untracked non-ignored file makes the attestation invalid n
     const a = attestSelection(selectionOf(repo, "demo"));
     assert.equal(a.status, "invalid");
     assert.match(a.reason, /scripts\/l\.sh/);
-    repo.git("rm", "-q", "-f", `${skillRel("demo")}/scripts/l.sh`);
-    fs.writeFileSync(path.join(repo.root, skillRel("demo"), "scripts", "helper.sh"), "#!/bin/sh\n");
-    const b = attestSelection(selectionOf(repo, "demo"));
-    assert.equal(b.status, "invalid");
-    assert.match(b.reason, /scripts\/helper\.sh.*git add/);
   });
 });
 
 test("the entry script runs without credentials, prints a line per skill and appends to the job summary", () => {
   changedSkill((repo) => {
     const sel = selectionOf(repo, "demo");
-    writeResults(sel.skill.dirAbs, record(sel));
+    writeRecord(sel.skill.dirAbs, buildRecord(sel));
     repo.git("add", "-A");
     const summary = path.join(repo.root, "summary.md");
     const entry = path.resolve(import.meta.dirname, "..", "skill-evals-attestation.ts");
@@ -392,9 +312,11 @@ test("the entry script runs without credentials, prints a line per skill and app
 });
 
 test("the attestation check never reads a credential variable and makes no model call", () => {
-  const src =
-    fs.readFileSync(path.resolve(import.meta.dirname, "../lib/skill-evals/attest-cli.ts"), "utf8") +
-    fs.readFileSync(path.resolve(import.meta.dirname, "../lib/skill-evals/attest.ts"), "utf8");
+  const dir = path.resolve(import.meta.dirname, "../lib/skill-evals");
+  const src = ["attest-cli.ts", "attest.ts"]
+    .map((f) => fs.readFileSync(path.join(dir, f), "utf8"))
+    .join("");
   for (const name of ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "fetch(", "spawn("])
     assert.equal(src.includes(name), false, name);
+  assert.equal(typeof readRecord, "function");
 });

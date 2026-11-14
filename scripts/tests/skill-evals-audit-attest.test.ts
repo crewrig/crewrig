@@ -1,6 +1,6 @@
 // skill-evals-audit-attest.test.ts — traceability gap-fillers, second half (spec 0290 + delta-01).
 //
-// The exec-bit stale scenario (R35, R37), the --changed / attestation selection equality (R34) and the
+// The exec-bit stale scenario (R35, R37; the record is schema 2, 0304 R25, R26), the --changed / attestation selection equality (R34) and the
 // documentation contract (R19, R26, R38). No key, no network, no model call.
 
 /* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-call, typescript/no-unsafe-argument, typescript/no-unsafe-return -- the runner output files are read back as untyped JSON */
@@ -12,8 +12,6 @@ import { test } from "node:test";
 
 import { attestMain } from "../lib/skill-evals/attest-cli.ts";
 import { attestSelection } from "../lib/skill-evals/attest.ts";
-import { writeResults } from "../lib/skill-evals/results.ts";
-import type { ResultsRecord } from "../lib/skill-evals/results.ts";
 import { selectChanged } from "../lib/skill-evals/select.ts";
 import {
   cleanEnv,
@@ -25,33 +23,11 @@ import {
   skillRel,
   writeSkill,
 } from "./lib/skill-evals-fixtures.ts";
+import { buildRecord, writeRecord } from "./lib/skill-evals-record.ts";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
 
 // ------------------------------------------------------------------- R35, R37 (exec bit), R34
-
-const record = (sel: ReturnType<typeof selectionOf>): ResultsRecord => ({
-  skill_name: sel.skill.name,
-  content_hash: sel.headHash as string,
-  runner_version: "1.0.0",
-  executor_model: "m",
-  judge_model: "j",
-  date: "2026-01-01T00:00:00.000Z",
-  status: "pass",
-  effort: "medium",
-  eval_pass_rate: 1,
-  probe_pass_rate: null,
-  base_eval_pass_rate: null,
-  threshold: 0.8,
-  tolerance: 0.05,
-  evals_passed: 2,
-  evals_total: 2,
-  probes_passed: 0,
-  probes_total: 0,
-  executor_runs: 4,
-  judge_calls: 6,
-  cost_usd: 0.4,
-});
 
 test("the executable bit makes a results file stale: index mode toggled, bytes untouched (scenario: exec bit through the index)", () => {
   const repo = makeRepo();
@@ -62,7 +38,7 @@ test("the executable bit makes a results file stale: index mode toggled, bytes u
     fs.appendFileSync(path.join(repo.root, skillRel("demo"), "SKILL.md"), "edit\n");
     commitAll(repo, "edit");
     const before = selectionOf(repo, "demo");
-    writeResults(before.skill.dirAbs, record(before));
+    writeRecord(before.skill.dirAbs, buildRecord(before));
     repo.git("add", "-A");
     assert.equal(attestSelection(selectionOf(repo, "demo")).status, "pass");
     repo.git("update-index", "--chmod=-x", `${skillRel("demo")}/scripts/run.sh`);

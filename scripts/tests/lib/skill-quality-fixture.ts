@@ -81,4 +81,10 @@ export interface Out {
   findings: { rule: string; message: string; severity: string; skill?: string }[];
 }
 export const parsed = (stdout: string): Out => JSON.parse(stdout) as Out;
-export const protectedFiles = { "evals/evals.json": evalsJson() };
+/** A compliant protected skill: valid evals and a hand-written sample for each of its 3 evals (0304 R19(b)). */
+export const protectedFiles = {
+  "evals/evals.json": evalsJson(),
+  "evals/samples/1/answer.md": "sample\n",
+  "evals/samples/2/answer.md": "sample\n",
+  "evals/samples/3/answer.md": "sample\n",
+};

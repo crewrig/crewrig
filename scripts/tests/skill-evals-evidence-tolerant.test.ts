@@ -231,11 +231,11 @@ test("a mock run records the rule on judged entries only, and the report prints 
     const r = await rig.run();
     assert.equal(r.exitCode, 0, r.text + r.stderr);
     const g = JSON.parse(
-      fs.readFileSync(path.join(rig.out, "demo", "eval-1", "grading.json"), "utf8"),
+      fs.readFileSync(path.join(rig.out, "demo", "eval-1", "run-1", "grading.json"), "utf8"),
     ) as { expectations: Array<Record<string, unknown>> };
     assert.equal("evidence_match" in (g.expectations[0] ?? {}), false, "a check carries no rule");
     assert.equal(g.expectations[1]?.["evidence_match"], "exact");
-    assert.match(r.text, /evidence_window: 0 of 2/);
+    assert.match(r.text, /evidence_window: 0 of 4/);
   } finally {
     rig.cleanup();
   }

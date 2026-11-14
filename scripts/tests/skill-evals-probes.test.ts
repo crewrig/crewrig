@@ -1,5 +1,6 @@
 // skill-evals-probes.test.ts — trigger probes, the effort flag and `skill_loaded`
-// (spec 0290 R45, R47, R48 as added by delta-04, R25). The real executor and judge driver run against
+// (spec 0290 R45, R47, R48 as added by delta-04, R25; 0304 R2, R27: one probe run in stage 1, the
+// run-<r>/ layout). The real executor and judge driver run against
 // a recording stub `claude` (see `stubRig`): it emits a `Skill` tool_use naming the skill, or plain
 // text. No model call, no network.
 
@@ -47,17 +48,21 @@ test("R45: a stub that emits a Skill call naming the skill: the true probe passe
   try {
     const r = await t.run();
     const s = r.results[0];
-    assert.equal(s?.probesPassed, 1, r.text + r.stderr);
-    assert.equal(s?.probesTotal, 2);
-    assert.equal(s?.status, "fail", "1/2 probes is below the threshold");
-    const p1 = read(t.rig.out, "demo", "probe-1", "probe.json");
+    assert.equal(s?.probePasses, 1, r.text + r.stderr);
+    assert.equal(s?.probeRuns, 2);
+    assert.equal(
+      s?.status,
+      "fail",
+      "1/2 probes (0.50) is below the stage-1 reject bar of 0.60: the pool is rejected, no stage 2",
+    );
+    const p1 = read(t.rig.out, "demo", "probe-1", "run-1", "probe.json");
     assert.deepEqual(p1, {
       query: "do the thing",
       should_trigger: true,
       observed: true,
       passed: true,
     });
-    const p2 = read(t.rig.out, "demo", "probe-2", "probe.json");
+    const p2 = read(t.rig.out, "demo", "probe-2", "run-1", "probe.json");
     assert.deepEqual(p2, {
       query: "something unrelated",
       should_trigger: false,
@@ -66,7 +71,10 @@ test("R45: a stub that emits a Skill call naming the skill: the true probe passe
     });
     for (const n of [1, 2])
       for (const f of ["transcript.md", "metrics.json"])
-        assert.ok(fs.existsSync(path.join(t.rig.out, "demo", `probe-${n}`, f)), `probe-${n}/${f}`);
+        assert.ok(
+          fs.existsSync(path.join(t.rig.out, "demo", `probe-${n}`, "run-1", f)),
+          `probe-${n}/run-1/${f}`,
+        );
     assert.equal(
       readCalls(t.bin, "judge").length,
       0,
@@ -83,12 +91,12 @@ test("R45: a stub that emits plain text: the reverse, and the recorded argv of a
   try {
     const r = await t.run();
     const s = r.results[0];
-    assert.equal(s?.probesPassed, 1, r.text + r.stderr);
-    assert.equal(read(t.rig.out, "demo", "probe-1", "probe.json").passed, false);
-    assert.equal(read(t.rig.out, "demo", "probe-1", "probe.json").observed, false);
-    assert.equal(read(t.rig.out, "demo", "probe-2", "probe.json").passed, true);
+    assert.equal(s?.probePasses, 1, r.text + r.stderr);
+    assert.equal(read(t.rig.out, "demo", "probe-1", "run-1", "probe.json").passed, false);
+    assert.equal(read(t.rig.out, "demo", "probe-1", "run-1", "probe.json").observed, false);
+    assert.equal(read(t.rig.out, "demo", "probe-2", "run-1", "probe.json").passed, true);
     const runs = readCalls(t.bin, "executor");
-    assert.equal(runs.length, 3, "1 eval + 2 probes, one run each");
+    assert.equal(runs.length, 4, "1 eval twice (stage 1) + 2 probes once each");
     const probeRuns = runs.filter((c) => opt(c.argv, "--tools") === "Skill");
     assert.equal(probeRuns.length, 2);
     for (const c of probeRuns) {
@@ -121,10 +129,10 @@ test("R45: a probe whose result is error_max_turns after the Skill call is a pas
     const s = r.results[0];
     assert.equal(s?.status, "pass", r.text + r.stderr);
     assert.equal(r.exitCode, 0);
-    assert.equal(s?.probesPassed, 1);
-    const m = read(t.rig.out, "demo", "probe-1", "metrics.json");
+    assert.equal(s?.probePasses, 1);
+    const m = read(t.rig.out, "demo", "probe-1", "run-1", "metrics.json");
     assert.equal(m.limit, null, "the one-turn bound is the early stop, not a limit (R27)");
-    assert.equal(read(t.rig.out, "demo", "probe-1", "probe.json").passed, true);
+    assert.equal(read(t.rig.out, "demo", "probe-1", "run-1", "probe.json").passed, true);
     assert.doesNotMatch(r.text, /executor failure/);
     // the same stream on an eval run IS a turn limit: only a probe clears it
   } finally {
@@ -148,8 +156,8 @@ test("R47: executor, probe and judge argv each carry --model claude-sonnet-5-5 a
       assert.equal(r.results[0]?.status, "pass", r.text + r.stderr);
       const runs = readCalls(t.bin, "executor");
       const judge = readCalls(t.bin, "judge");
-      assert.equal(runs.length, 2);
-      assert.equal(judge.length, 1);
+      assert.equal(runs.length, 3, "1 eval twice and 1 probe once");
+      assert.equal(judge.length, 2, "one judge call per eval run");
       const rec = read(t.rig.repo.root, "artifacts/core/skills/demo/evals/results.json");
       return { argvs: [...runs, ...judge].map((c) => c.argv), rec };
     } finally {
@@ -178,10 +186,10 @@ test("R48: skill_loaded is recorded per eval run and shown in the report, and it
       return {
         r,
         loaded: [1, 2].map(
-          (n) => read(t.rig.out, "demo", `eval-${n}`, "metrics.json").skill_loaded,
+          (n) => read(t.rig.out, "demo", `eval-${n}`, "run-1", "metrics.json").skill_loaded,
         ),
         passed: [1, 2].map(
-          (n) => read(t.rig.out, "demo", `eval-${n}`, "grading.json").summary.failed === 0,
+          (n) => read(t.rig.out, "demo", `eval-${n}`, "run-1", "grading.json").summary.failed === 0,
         ),
       };
     } finally {
@@ -194,10 +202,11 @@ test("R48: skill_loaded is recorded per eval run and shown in the report, and it
   assert.deepEqual(yes.loaded, [true, true]);
   assert.deepEqual(no.loaded, [false, false]);
   assert.deepEqual(other.loaded, [false, false], "another skill's load is not this skill's");
-  assert.match(yes.r.text, /skill_loaded=2\/2/);
-  assert.match(no.r.text, /skill_loaded=0\/2/);
+  assert.match(yes.r.text, /skill_loaded=4\/4/);
+  assert.match(no.r.text, /skill_loaded=0\/4/);
   // not scored: the same eval outcomes and the same status whether or not the skill was loaded
   assert.deepEqual(yes.passed, no.passed);
   assert.equal(yes.r.results[0]?.status, no.r.results[0]?.status);
-  assert.equal(yes.r.results[0]?.evalPassRate, no.r.results[0]?.evalPassRate);
+  assert.equal(yes.r.results[0]?.evalPasses, no.r.results[0]?.evalPasses);
+  assert.equal(yes.r.results[0]?.evalRuns, no.r.results[0]?.evalRuns);
 });

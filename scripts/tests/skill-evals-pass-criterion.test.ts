@@ -1,5 +1,5 @@
-// skill-evals-pass-criterion.test.ts — the R46 pass criterion and the `fail-blocking` knob
-// (spec 0290 R46, R20 as modified by delta-04, R25). Runs go through the real runner with a scripted
+// skill-evals-pass-criterion.test.ts — the pass criterion of the sampling plan and the `fail-blocking`
+// knob (spec 0304 R2, R3, R4; 0290 R46, R20 as superseded). Runs go through the real runner with a scripted
 // mock executor: an eval passes by its one deterministic check (no judge call), a probe passes when
 // the script reports the skill as loaded. No model call, no network.
 
@@ -11,29 +11,29 @@ import path from "node:path";
 import { test } from "node:test";
 
 import type { MockScript } from "../lib/skill-evals/executor/mock.ts";
-import { blocks, decide } from "../lib/skill-evals/results.ts";
-import { skillRel } from "./lib/skill-evals-fixtures.ts";
+import { attestSelection } from "../lib/skill-evals/attest.ts";
+import { blocks } from "../lib/skill-evals/results.ts";
+import { selectionOf, skillRel } from "./lib/skill-evals-fixtures.ts";
+import { stagedRuns } from "./lib/skill-evals-record.ts";
 import { judgeFetch, makeRig } from "./lib/skill-evals-run-rig.ts";
 
-/** The caps and thresholds are passed explicitly: the declared caps are provisional (#1882). */
-const EXPLICIT = {
-  tolerance: 0.05,
-  passThreshold: 0.8,
-  maxExecutorRuns: 100,
-  judgeMaxCalls: 100,
-  maxInvocationUsd: 1000,
-} as const;
+/**
+ * The settings that hold every plan: the declared caps are not under test here and a test with
+ * many evals must not trip the judge cap (these evals carry no expectation, so no judge call).
+ */
+const EXPLICIT = { maxExecutorRuns: 100, judgeMaxCalls: 100, maxInvocationUsd: 1000 } as const;
 
 /**
- * `evalPass[i]` says whether eval i+1 passes; `probePass[j]` whether probe j+1 passes (every probe
- * has should_trigger true, so it passes exactly when the skill is observed loaded).
+ * `evalRuns[i][r]` says whether run r+1 of eval i+1 passes; `probeRuns[j][r]` whether run r+1 of probe
+ * j+1 passes (every probe has should_trigger true, so it passes exactly when the skill is loaded).
+ * A run beyond the table fails, so a stage that should not run shows up as a recorded failure.
  */
 async function runTable(
-  evalPass: boolean[],
-  probePass: boolean[],
+  evalRuns: boolean[][],
+  probeRuns: boolean[][],
   settings: Record<string, unknown> = {},
 ) {
-  const evals = evalPass.map((_, i) => ({
+  const evals = evalRuns.map((_, i) => ({
     id: i + 1,
     prompt: `Task ${i + 1}`,
     expected_output: "An answer file.",
@@ -44,9 +44,9 @@ async function runTable(
   const text = JSON.stringify({
     skill_name: "demo",
     evals,
-    ...(probePass.length > 0
+    ...(probeRuns.length > 0
       ? {
-          trigger_probes: probePass.map((_, j) => ({
+          trigger_probes: probeRuns.map((_, j) => ({
             query: `probe ${j + 1}`,
             should_trigger: true,
           })),
@@ -54,11 +54,14 @@ async function runTable(
       : {}),
   });
   const script: MockScript = (req) => {
-    const probe = /probe-(\d+)$/.exec(req.label);
-    if (probe !== null) return { skillsLoaded: probePass[Number(probe[1]) - 1] ? ["demo"] : [] };
-    const id = Number(/eval-(\d+)$/.exec(req.label)?.[1]);
-    const files: Record<string, string> = evalPass[id - 1] ? { "answer.md": "x" } : {};
-    return { files };
+    const probe = /probe-(\d+)\/run-(\d+)$/.exec(req.label);
+    if (probe !== null)
+      return {
+        skillsLoaded: probeRuns[Number(probe[1]) - 1]?.[Number(probe[2]) - 1] ? ["demo"] : [],
+      };
+    const m = /eval-(\d+)\/run-(\d+)$/.exec(req.label);
+    const ok = evalRuns[Number(m?.[1]) - 1]?.[Number(m?.[2]) - 1] === true;
+    return { files: ok ? { "answer.md": "x" } : {} };
   };
   const rig = makeRig({
     evalsCount: 1,
@@ -73,104 +76,113 @@ async function runTable(
   try {
     const r = await rig.run({ fetchImpl: judgeFetch().fetch });
     const file = path.join(rig.repo.root, skillRel("demo"), "evals", "results.json");
-    return { r, s: r.results[0]!, rec: JSON.parse(fs.readFileSync(file, "utf8")) };
+    const attested = attestSelection(selectionOf(rig.repo, "demo"));
+    return {
+      r,
+      s: r.results[0]!,
+      rec: JSON.parse(fs.readFileSync(file, "utf8")),
+      calls: rig.executor.calls.length,
+      attested,
+    };
   } finally {
     rig.cleanup();
   }
 }
 
-const flags = (passing: number, total: number): boolean[] =>
-  Array.from({ length: total }, (_, i) => i < passing);
+/** `passes` of the `perItem x items` runs of one pool pass, per stage (see stagedRuns). */
+const pool = (items: number, passes: number[]): boolean[][] => stagedRuns(items, [2, 2], passes);
+/** Probe runs: one per stage. */
+const probePool = (items: number, passes: number[]): boolean[][] =>
+  stagedRuns(items, [1, 1], passes);
 
-test("R46: 5 evals with 4 passing and 5 probes with 4 passing (both 0.8, the boundary) give pass", async () => {
-  const { s, rec } = await runTable(flags(4, 5), flags(4, 5));
+test("R2: 5 evals with 9 of 10 passing meet 0.90 exactly: accepted at stage 1, no stage 2, status pass", async () => {
+  const { s, rec, calls, attested } = await runTable(pool(5, [9]), []);
   assert.equal(s.status, "pass");
   assert.equal(rec.status, "pass");
-  assert.equal(rec.eval_pass_rate, 0.8);
-  assert.equal(rec.probe_pass_rate, 0.8);
-  assert.equal(rec.threshold, 0.8);
-  assert.deepEqual(
-    [rec.evals_passed, rec.evals_total, rec.probes_passed, rec.probes_total],
-    [4, 5, 4, 5],
+  assert.equal(calls, 10, "two runs of each of 5 evals and nothing more");
+  assert.deepEqual(rec.stage_reached, { evals: 1, probes: null });
+  assert.deepEqual([rec.eval_passes, rec.eval_runs], [9, 10]);
+  assert.equal(rec.eval_pass_rate, 0.9);
+  assert.equal(attested.status, "pass", "the attestation recomputes the same decision (R4)");
+});
+
+test("R2: 8 of 10 continues to stage 2; 15 of 20 cumulative is accepted and 14 of 20 rejected", async () => {
+  const ok = await runTable(pool(5, [8, 7]), []);
+  assert.equal(ok.calls, 20);
+  assert.deepEqual(ok.rec.stage_reached, { evals: 2, probes: null });
+  assert.equal(ok.s.status, "pass");
+  assert.equal(ok.attested.status, "pass");
+  const low = await runTable(pool(5, [8, 6]), []);
+  assert.equal(low.s.status, "fail");
+  assert.equal(low.rec.status, "fail");
+  assert.equal(low.attested.status, "fail");
+  assert.match(low.r.text, /eval_pass_rate=0\.70 \(14\/20, stage 2\)/);
+});
+
+test("R2: 5 of 10 is rejected at stage 1 with no stage 2: fail after 10 runs", async () => {
+  const none = await runTable(pool(5, [5]), []);
+  assert.equal(none.s.status, "fail");
+  assert.equal(none.calls, 10);
+  assert.deepEqual(none.rec.stage_reached, { evals: 1, probes: null });
+});
+
+test("R2: the probe pool is decided apart: 8 of 8 probes accepted at stage 1 while the evals take stage 2", async () => {
+  const t = await runTable(pool(5, [8, 10]), probePool(8, [8]));
+  assert.equal(t.s.status, "pass");
+  assert.deepEqual(t.rec.stage_reached, { evals: 2, probes: 1 });
+  assert.equal(t.calls, 20 + 8);
+  assert.match(t.r.text, /probe_pass_rate=1\.00 \(8\/8, stage 1\)/);
+});
+
+test("R2: 7 of 8 probes continue, and 16 probe runs are decided at 0.75", async () => {
+  const ok = await runTable(pool(5, [10]), probePool(8, [7, 6]));
+  assert.deepEqual(ok.rec.stage_reached, { evals: 1, probes: 2 });
+  assert.equal(ok.calls, 10 + 16);
+  assert.equal(ok.s.status, "pass", "13 of 16 is 0.8125");
+  const low = await runTable(pool(5, [10]), probePool(8, [7, 4]));
+  assert.equal(low.s.status, "fail", "11 of 16 is below 0.75");
+});
+
+test("R3: probes do not mask failing evals, and the rates are separate", async () => {
+  const t = await runTable(pool(5, [5]), probePool(8, [8]));
+  assert.equal(t.s.status, "fail");
+  assert.match(
+    t.r.text,
+    /eval_pass_rate=0\.50 \(5\/10, stage 1\) probe_pass_rate=1\.00 \(8\/8, stage 1\)/,
   );
 });
 
-test("R46: probes do not mask failing evals: 2 evals both failing with 10 probes passing, and 6 of 8 evals with 8 of 8 probes, give fail with separate rates", async () => {
-  const none = await runTable(flags(0, 2), flags(10, 10));
-  assert.equal(none.s.status, "fail");
-  assert.match(none.r.text, /eval_pass_rate=0\.00 \(0\/2\) probe_pass_rate=1\.00 \(10\/10\)/);
-  assert.equal(none.rec.status, "fail");
-  assert.equal(none.rec.eval_pass_rate, 0);
-  assert.equal(none.rec.probe_pass_rate, 1);
-  const six = await runTable(flags(6, 8), flags(8, 8));
-  assert.equal(six.s.status, "fail", "0.75 of the evals is below 0.8 whatever the probes do");
-  assert.match(six.r.text, /eval_pass_rate=0\.75 \(6\/8\) probe_pass_rate=1\.00 \(8\/8\)/);
-  assert.equal(six.rec.eval_pass_rate, 0.75);
-  assert.equal(six.rec.probe_pass_rate, 1);
-});
-
-test("R46: a probe pass rate of 0.6 with every eval passing gives fail", async () => {
-  const { s, rec } = await runTable(flags(5, 5), flags(3, 5));
-  assert.equal(s.status, "fail");
-  assert.equal(rec.eval_pass_rate, 1);
-  assert.equal(rec.probe_pass_rate, 0.6);
-});
-
-test("R46: a skill with no probe is graded on its evals alone, and the probe rate is absent", async () => {
-  const ok = await runTable(flags(4, 5), []);
+test("R3: a skill with no probe is graded on its evals alone and the probe figures are null", async () => {
+  const ok = await runTable(pool(5, [10]), []);
   assert.equal(ok.s.status, "pass");
   assert.equal(ok.rec.probe_pass_rate, null);
-  assert.deepEqual([ok.rec.probes_passed, ok.rec.probes_total], [0, 0]);
+  assert.equal(ok.rec.stage_reached.probes, null);
+  assert.deepEqual([ok.rec.probe_passes, ok.rec.probe_runs], [0, 0]);
   assert.match(ok.r.text, /probe_pass_rate=n\/a/);
-  const low = await runTable(flags(3, 5), []);
-  assert.equal(low.s.status, "fail");
 });
 
-test("R46: 4 evals with 3 passing (0.75) is fail with exit 0, and with fail-blocking true exits non-zero naming the skill", async () => {
-  const open = await runTable(flags(3, 4), flags(2, 2));
+test("fail exits 0 and blocks only under fail-blocking, naming the skill; a pass never blocks", async () => {
+  const open = await runTable(pool(5, [5]), []);
   assert.equal(open.s.status, "fail");
   assert.equal(open.r.exitCode, 0, "fail-blocking defaults to false");
   assert.equal(open.s.blocking, false);
-  const closed = await runTable(flags(3, 4), flags(2, 2), { failBlocking: true });
+  const closed = await runTable(pool(5, [5]), [], { failBlocking: true });
   assert.equal(closed.r.exitCode, 1);
   assert.match(closed.r.text, /^demo: status=fail /m);
   assert.equal(closed.s.blocking, true);
-  // the knob gates the same condition only: a pass never blocks, and regression-blocking does not gate a fail
-  assert.equal((await runTable(flags(4, 4), flags(2, 2), { failBlocking: true })).r.exitCode, 0);
-  assert.equal((await runTable(flags(3, 4), [], { regressionBlocking: true })).r.exitCode, 0);
+  assert.equal((await runTable(pool(5, [10]), [], { failBlocking: true })).r.exitCode, 0);
+  assert.equal((await runTable(pool(5, [5]), [], { regressionBlocking: true })).r.exitCode, 0);
 });
 
-test("R46: the threshold is one setting and applies to both rates", async () => {
-  // 3 of 4 evals (0.75) and 3 of 4 probes (0.75): fail at 0.8, pass at 0.7
-  assert.equal((await runTable(flags(3, 4), flags(3, 4))).s.status, "fail");
-  const lowered = await runTable(flags(3, 4), flags(3, 4), { passThreshold: 0.7 });
-  assert.equal(lowered.s.status, "pass");
-  assert.equal(lowered.rec.threshold, 0.7);
-});
-
-test("decide() is the one function: fail wins over regression, the boundary is inclusive, and each condition blocks under its own knob", () => {
-  const f = {
-    evalPassRate: 0.8,
-    probePassRate: null,
-    baseEvalPassRate: null,
-    threshold: 0.8,
-    tolerance: 0.05,
-  };
-  assert.equal(decide(f).status, "pass", "at the threshold");
-  assert.equal(decide({ ...f, evalPassRate: 0.79 }).status, "fail");
-  assert.equal(decide({ ...f, probePassRate: 0.6 }).status, "fail");
-  assert.equal(decide({ ...f, probePassRate: 0.8 }).status, "pass");
-  const reg = { ...f, evalPassRate: 0.85, baseEvalPassRate: 0.95 };
-  assert.deepEqual(decide(reg), { fail: false, regression: true, status: "regression" });
-  const both = { ...f, evalPassRate: 0.6, baseEvalPassRate: 0.95 };
-  assert.deepEqual(decide(both), { fail: true, regression: true, status: "fail" });
+test("blocks(): each non-passing status blocks under its own knob only", () => {
   const knobs = (failBlocking: boolean, regressionBlocking: boolean) => ({
     failBlocking,
     regressionBlocking,
   });
-  assert.equal(blocks(decide(both), knobs(false, false)), false);
-  assert.equal(blocks(decide(both), knobs(true, false)), true);
-  assert.equal(blocks(decide(both), knobs(false, true)), true);
-  assert.equal(blocks(decide(reg), knobs(true, false)), false, "a regression is not a fail");
-  assert.equal(blocks(decide(reg), knobs(false, true)), true);
+  assert.equal(blocks("fail", knobs(false, false)), false);
+  assert.equal(blocks("fail", knobs(true, false)), true);
+  assert.equal(blocks("fail", knobs(false, true)), false);
+  assert.equal(blocks("regression", knobs(true, false)), false, "a regression is not a fail");
+  assert.equal(blocks("regression", knobs(false, true)), true);
+  assert.equal(blocks("pass", knobs(true, true)), false);
 });

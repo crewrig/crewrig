@@ -1,4 +1,4 @@
-// skill-evals-layout.test.ts — output layout and formats of a run (spec 0290 R10, R11, R12, R24, R25, R45 as modified by delta-04).
+// skill-evals-layout.test.ts — output layout and formats of a run (spec 0290 R10, R11, R12, R24, R25, R45 as modified by delta-04; 0304 R27: the run-<r>/ level).
 
 /* oxlint-disable typescript/no-unsafe-assignment, typescript/no-unsafe-member-access, typescript/no-unsafe-call, typescript/no-unsafe-argument, typescript/no-unsafe-return -- the runner output files are read back as untyped JSON */
 
@@ -13,15 +13,21 @@ import { evalsWith, makeRig } from "./lib/skill-evals-run-rig.ts";
 
 const read = (...p: string[]) => JSON.parse(fs.readFileSync(path.join(...p), "utf8"));
 
-test("a mock run writes the R10 layout: eval-<id>/ and probe-<n>/, all marked mock, no base, no benchmark", async () => {
+test("a mock run writes the R27 layout: eval-<id>/run-<r>/ and probe-<n>/run-<r>/, all marked mock, no base, no benchmark", async () => {
   const rig = makeRig({ evalsCount: 2 });
   try {
     const r = await rig.run();
     assert.equal(r.exitCode, 0, r.text + r.stderr);
     assert.equal(r.results[0]?.status, "mock");
     const skillOut = path.join(rig.out, "demo");
-    for (const id of [1, 2]) {
-      const dir = path.join(skillOut, `eval-${id}`);
+    // stage 1 of the plan: two runs of every eval, one run of every probe
+    for (const [id, run] of [
+      [1, 1],
+      [1, 2],
+      [2, 1],
+      [2, 2],
+    ] as const) {
+      const dir = path.join(skillOut, `eval-${id}`, `run-${run}`);
       assert.ok(fs.existsSync(path.join(dir, "transcript.md")), dir);
       assert.ok(
         fs.existsSync(path.join(dir, "outputs", "answer.md")),
@@ -51,7 +57,7 @@ test("a mock run writes the R10 layout: eval-<id>/ and probe-<n>/, all marked mo
       assert.equal(metrics.mock, true);
     }
     // the probe (R45): no grading, no outputs, probe.json marked mock
-    const probe = path.join(skillOut, "probe-1");
+    const probe = path.join(skillOut, "probe-1", "run-1");
     assert.ok(fs.existsSync(path.join(probe, "transcript.md")));
     assert.ok(fs.existsSync(path.join(probe, "metrics.json")));
     assert.equal(fs.existsSync(path.join(probe, "grading.json")), false);
@@ -70,6 +76,8 @@ test("a mock run writes the R10 layout: eval-<id>/ and probe-<n>/, all marked mo
         .sort(),
       ["eval-1", "eval-2", "probe-1"],
     );
+    assert.deepEqual(fs.readdirSync(path.join(skillOut, "eval-1")).sort(), ["run-1", "run-2"]);
+    assert.deepEqual(fs.readdirSync(path.join(skillOut, "probe-1")), ["run-1"]);
     assert.equal(
       fs.existsSync(path.join(rig.repo.root, skillRel("demo"), "evals", "results.json")),
       false,
@@ -94,11 +102,15 @@ test("a failed check is recorded with its observed value and the judge is called
       mockAnswer: () => (judged++, '1 VERDICT=PASS EVIDENCE="there is no answer file here"'),
     });
     assert.equal(r.exitCode, 0, r.text);
-    const g = read(rig.out, "demo", "eval-1", "grading.json");
+    const g = read(rig.out, "demo", "eval-1", "run-1", "grading.json");
     assert.equal(g.expectations[0].passed, false);
     assert.match(g.expectations[0].evidence, /observed: file "answer\.md" was not produced/);
     assert.equal(g.expectations.length, 2);
-    assert.equal(judged, 1, "one judge call for the eval, none for the probe");
+    assert.equal(
+      judged,
+      2,
+      "one judge call per eval run (two runs at stage 1), none for the probe",
+    );
   } finally {
     rig.cleanup();
   }
