@@ -113,16 +113,30 @@ describe("never runs in CI", () => {
     assert.equal(warn.status, 0);
     assert.match(warn.stderr, /WARN: worker main/);
   });
-  test("no workflow, CI capability or pre-push tier references the probe", () => {
+  test("no workflow, CI capability, pre-push tier or CI taskfile runs the paid probe", () => {
     const files = [
       "ci/ci-capabilities.yml",
       "ci/pre-push-tier.json",
+      ".gitlab-ci.yml",
       ...fs.readdirSync(path.join(repo, ".github/workflows")).map((f) => `.github/workflows/${f}`),
       ...fs.readdirSync(path.join(repo, "taskfiles/ci")).map((f) => `taskfiles/ci/${f}`),
       "taskfiles/ci.yml",
     ];
+    // Only the unit suite (fixed-context-probe.test.ts, id fixed-context-probe-tests) and
+    // quoted `paths:` entries may name the probe; comments are prose.
+    const forbidden =
+      /task\s+(?:ci:)?fixed-context-probe\b|fixed-context-probe\.ts(?!["'])|ci:fixed-context-probe\b/;
     for (const f of files) {
-      assert.doesNotMatch(fs.readFileSync(path.join(repo, f), "utf8"), /fixed-context-probe/, f);
+      const code = fs
+        .readFileSync(path.join(repo, f), "utf8")
+        .split("\n")
+        .filter((l) => !/^\s*#/.test(l));
+      assert.doesNotMatch(code.join("\n"), forbidden, f);
     }
+  });
+  test("the unit suite is wired in CI as its own capability, without the paid script", () => {
+    const cap = fs.readFileSync(path.join(repo, "ci/ci-capabilities.yml"), "utf8");
+    assert.match(cap, /id: fixed-context-probe-tests/);
+    assert.match(cap, /--test scripts\/tests\/fixed-context-probe\.test\.ts\n/);
   });
 });

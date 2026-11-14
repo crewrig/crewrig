@@ -2270,6 +2270,21 @@ ticket-pickup:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *ticket-pickup-changes-1
 
+fixed-context-probe-tests:
+  image: node:24
+  script:
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/fixed-context-probe.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes: &fixed-context-probe-tests-changes-1
+        - "scripts/fixed-context-probe.ts"
+        - "scripts/fixed-context-threshold.json"
+        - "scripts/lib/fixed-context-probe.ts"
+        - "scripts/tests/fixed-context-probe.test.ts"
+        - "scripts/tests/fixtures/fixed-context-probe/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+      changes: *fixed-context-probe-tests-changes-1
+
 playwright-mcp:
   image: node:24
   before_script:

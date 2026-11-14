@@ -2843,6 +2843,27 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts
 
+  # Issue #2002 (follow-up of #1994): the fixed-context probe's unit suite on fixture transcripts. The paid probe
+  # itself (`task fixed-context-probe`) is wired nowhere: it makes model calls and refuses when CI is set.
+  - id: fixed-context-probe-tests
+    name: "Fixed-context probe unit tests (issue #1994, no model call)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/fixed-context-probe.ts"
+      - "scripts/fixed-context-threshold.json"
+      - "scripts/lib/fixed-context-probe.ts"
+      - "scripts/tests/fixed-context-probe.test.ts"
+      - "scripts/tests/fixtures/fixed-context-probe/**"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/fixed-context-probe.test.ts
+
   # Spec 0245 (issue #1416): the opt-in Playwright MCP registration: the pure entry model, the JSONC scanner (byte parity
   # with gs_strip_jsonc, so jq is required) and the hook-config.ts reader it extends.
   - id: playwright-mcp
