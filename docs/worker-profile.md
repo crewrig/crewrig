@@ -50,7 +50,7 @@ Read-only investigation of Orca 1.4.258, nothing changed in Orca:
 
 ## Measured effect
 
-Method: ADR-0025 appendix (`claude -p --output-format json`, first-call input read from the transcript), Claude Code 2.1.x, `claude-sonnet-5-5`, from a CrewRig worktree on the owner's home.
+Method: ADR-0025 appendix (`claude -p --output-format json`, first-call input read from the transcript), Claude Code 2.1.323, `claude-sonnet-5-5`, from a CrewRig worktree on one user's home (the author's, which carries personal skills, a plugin and claude.ai-synced skills). Single runs.
 
 | Run | First-call input |
 |---|---|
@@ -58,7 +58,7 @@ Method: ADR-0025 appendix (`claude -p --output-format json`, first-call input re
 | Committed worker profile + strict-MCP flags, nothing local | 41,548 |
 | Same, plus the adopter-local allowlist of [the allowlist page](claude-allowlist.md) | 37,433 |
 
-The committed file alone leaves the owner's own skills, a plugin and the claude.ai-synced skills in the listing; the target (at most 40,000) is met once those are hidden locally.
+The committed file alone leaves that home's own skills, a plugin and the claude.ai-synced skills in the listing, and **misses the 40,000 target by 1.5k on this home**. The target holds only when those are hidden locally, as in the third row (37,433). A run on a home carrying only CrewRig's own files was **not made**, so the committed profile alone is not claimed to meet the target elsewhere.
 
 ## CLI parity
 

@@ -23,6 +23,7 @@ export type StepId =
   | "copilot-workspace-files"
   | "rules-existing"
   | "rules-shared"
+  | "home-dirs"
   | "rules-selection"
   | "mcp-prepare"
   | "tls-offer"

@@ -24,6 +24,7 @@ export const claudeDescriptor: SetupDescriptor = {
     "identity-check",
     "rules-existing",
     "rules-shared",
+    "home-dirs",
     "tls-offer",
     "deps-install",
     "mcp",

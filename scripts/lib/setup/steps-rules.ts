@@ -137,12 +137,20 @@ const rulesShared: StepFn = async (env) => {
     storePlaced = storePlaced || isStore;
   }
   if (!storePlaced) placeShared(env, rules.store, true);
-  for (const dir of rules.homeDirs ?? []) placeShared(env, dir, true);
   await configureValidationBackend({ ctx, session });
   ctx.io.out("");
 };
 
+/** `home-dirs` (spec 0305): independent of `skipRules`, so a kept rule set still gets the profiles. */
+const homeDirs: StepFn = (env) => {
+  const { ctx, descriptor } = env;
+  const dirs = descriptor.rules.homeDirs ?? [];
+  for (const dir of dirs) placeShared(env, dir, true);
+  if (dirs.length > 0) ctx.io.out("");
+};
+
 export const rulesSteps: StepRegistry = {
+  "home-dirs": homeDirs,
   "rules-existing": rulesExisting,
   "rules-shared": rulesShared,
   "rules-selection": rulesSelection,
