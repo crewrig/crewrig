@@ -34,6 +34,8 @@ export interface Selection {
   readonly baseHash?: string;
   /** `evals/results.json` as committed at the merge-base, for the regression comparison (R19). */
   readonly baseResultsText?: string;
+  /** The merge-base commit the base figures and the ledger history are read at (0304 R10, R13). */
+  readonly mergeBase?: string;
 }
 
 export function listSkills(repoRoot: string): SkillRef[] {
@@ -97,7 +99,8 @@ export function describeSkill(
   const baseSnap: Snapshot =
     base === undefined ? { kind: "absent" } : readRevision(repoRoot, base, skill.dirRel);
   const isNew = baseSnap.kind !== "ok";
-  if (head.kind !== "ok") return { skill, head, isNew };
+  const mb = base === undefined ? {} : { mergeBase: base };
+  if (head.kind !== "ok") return { skill, head, isNew, ...mb };
   const baseHash = baseSnap.kind === "ok" ? contentHash(baseSnap.files) : undefined;
   const baseResultsText =
     base === undefined || isNew ? undefined : readBaseResults(repoRoot, base, skill.dirRel);
@@ -105,6 +108,7 @@ export function describeSkill(
     skill,
     head,
     isNew,
+    ...mb,
     headHash: contentHash(head.files),
     ...(baseHash !== undefined ? { baseHash } : {}),
     ...(baseResultsText !== undefined ? { baseResultsText } : {}),

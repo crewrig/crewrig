@@ -9,7 +9,8 @@
 // Usage: node scripts/skill-evals-attestation.ts [<base-ref>]   (BASE_REF is read when no argument)
 // Exit: 0 clean, 1 a blocking outcome (invalid, stale, and no-evals / fail / regression under their
 // settings), 2 base ref unresolvable.
-// Finding line: `<skill>: <status>[: <reason>]`.
+// Finding line: `<skill>: <status>[: <reason>]`, then `  measurements on this branch: <n>` for a skill
+// whose schema-2 results file was read (spec 0304 R10, R25).
 
 import fs from "node:fs";
 
@@ -54,11 +55,13 @@ export function attestMain(
   const lines: string[] = [];
   let blocking = false;
   for (const s of sel.selections) {
-    const o = attestSelection(s, settings);
+    const o = attestSelection(s, settings, repoRoot);
     blocking ||= o.blocking;
     lines.push(
       `${o.skill}: ${o.status}${o.status === "pass" ? "" : `: ${o.reason}`}${o.blocking ? " [blocking]" : ""}`,
     );
+    if (o.branchMeasurements !== undefined)
+      lines.push(`  measurements on this branch: ${o.branchMeasurements}`);
   }
   const text = `${lines.join("\n")}\n`;
   io.stdout(text);
