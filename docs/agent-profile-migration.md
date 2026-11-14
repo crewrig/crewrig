@@ -2,6 +2,8 @@
 
 <!-- crewrig-doc: section=reference nav_order=110 published=true title="Agent capability-profile migration" -->
 
+Since spec 0307, eleven of the 22 baseline sources below live under `artifacts/library/agents/`; the 22-row baseline is unchanged and still checked.
+
 The core agent sources declare CLI-agnostic capability profiles
 (`metadata.model:`) instead of a Claude Code model alias
 (`metadata.claude.model`), per [spec 0200](../specs/0200-core-agent-profile-migration.md)

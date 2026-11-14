@@ -93,6 +93,11 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `dist/<tier>/.github/skills/<name>/SKILL.md`
 - **Antigravity CLI:** ✅ `scripts/build-components.ts --target antigravity` (spec 0053 / PR #441); `core`:
   `.agents/skills/<name>/SKILL.md` · non-`core`: `dist/<tier>/.agents/skills/<name>/SKILL.md`
+- **Web skills (spec 0307):** `astro`, `copywriting`, `frontend` and `web-tester` are `library` sources, no longer `core`.
+  They are built to `dist/library/` only and delivered by the automatic library step of setup at home scope, one
+  statement per CLI: Claude Code `~/.claude/skills/<name>/`, Gemini CLI `~/.gemini/skills/<name>/`, Antigravity CLI
+  `~/.gemini/config/skills/<name>/`, GitHub Copilot CLI `~/.copilot/skills/<name>/` (all four CLIs receive the skills;
+  no parity gap). None is committed to `.claude/`, `.gemini/`, `.github/` or `.agents/` any more.
 
 ### 4 — Agent definitions directory
 
@@ -128,6 +133,15 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `.claude/agents/` and meets the key there (not probed). Antigravity CLI: no per-agent frontmatter surface found
   (row 33), behaviour not verified. Not-found is evidence-of-search: no gap recorded. Extension-packaged agents and
   plugin trees carry neither (R14).
+- **Web and SEO agents (spec 0307):** the eleven agents `accessibility-auditor`, `accessibility-tester`,
+  `astro-developer`, `copywriter`, `designer`, `frontend-developer`, `regression-sentinel`, `scenario-author`,
+  `seo-specialist`, `visual-regression-tester` and `web-conformity-checker` are `library` sources, no longer `core`: they
+  build to `dist/library/` and are delivered at home scope by the automatic library step of setup, one statement per
+  CLI. Claude Code `~/.claude/agents/<name>.md`, Gemini CLI `~/.gemini/agents/<name>.md` and Antigravity CLI
+  `~/.gemini/config/agents/<name>.md` receive them. **GitHub Copilot CLI does not: its library agent install is
+  declined by design [GAP-confirmation]** (the same gap as `harness-curator`), so a Copilot user does not get these
+  eleven agents from setup; this is a named parity gap, not an asymmetry left implicit. Not committed to any project
+  tree any more.
 
 ### 4b — Agent provenance carrier
 
@@ -1028,6 +1042,11 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   are asserted structurally by `scripts/tests/setup-transcript-antigravity-manifest.test.ts`; spec 0054 / PR #443, spec
   0061 delta-01 / issue #478; `dist/library/.agents` is auto-built via
   `node scripts/build-components.ts --target antigravity` if missing, before the install step — spec 0107, issue #618)
+- **Library web components (spec 0307):** the automatic library step of each `setup-<cli>-interactive.ts` installs the
+  eleven web and SEO agents and the four web skills at home scope: Claude Code and Gemini CLI and Antigravity CLI skills
+  and agents, Copilot CLI skills only (agents named gap, row 4). Setup builds `dist/library/` first when absent. It
+  never removes stale project-tree copies; `scripts/sync-from-upstream.ts` does in a fork (spec 0064 orphan cleanup).
+  Restore command: `node scripts/setup-<cli>-interactive.ts`, or the component-management command for one component.
 
 ### 10b — Interactive setup entries in TypeScript
 

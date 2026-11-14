@@ -43,13 +43,29 @@ const readText = (name: string, text: string): Profile => {
 
 describe("profileRead on the real core agent sources", () => {
   const agentsDir = path.join(REPO, "artifacts", "core", "agents");
-  const agents = fs.readdirSync(agentsDir).sort();
+  // Spec 0307: eleven of the 22 profiled agents moved to artifacts/library/agents.
+  const libraryDir = path.join(REPO, "artifacts", "library", "agents");
+  const moved = [
+    "accessibility-auditor",
+    "accessibility-tester",
+    "astro-developer",
+    "copywriter",
+    "designer",
+    "frontend-developer",
+    "regression-sentinel",
+    "scenario-author",
+    "seo-specialist",
+    "visual-regression-tester",
+    "web-conformity-checker",
+  ];
+  const agents = [...fs.readdirSync(agentsDir), ...moved].sort();
+  const dirOf = (a: string): string => (moved.includes(a) ? libraryDir : agentsDir);
 
   test("there are core agents to read", () => assert.ok(agents.length >= 20));
 
   for (const agent of agents) {
     test(`${agent}: a profile is present with an intelligence rung from the ladder`, () => {
-      const source = path.join(agentsDir, agent, "AGENT.md");
+      const source = path.join(dirOf(agent), agent, "AGENT.md");
       const profile = profileRead(y, extractFrontmatter, source);
       // an independent read of the same frontmatter through the CORE schema
       const loaded: unknown = yamlLib.load(extractFrontmatter(source), {

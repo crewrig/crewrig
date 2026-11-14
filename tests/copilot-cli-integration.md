@@ -80,12 +80,12 @@ Duration 7s — Tokens ↑ 25.5k • ↓ 193
 
 Here are the available skills and agents in this project:
 
-## Skills (14)
-architect, astro, copywriting, developer, doc-writer, frontend, github-actions,
-harness-curator, harness-report, pr-logbook, pr-reviewer, security, tester, web-tester
+## Skills (10)
+architect, developer, doc-writer, github-actions,
+harness-curator, harness-report, pr-logbook, pr-reviewer, security, tester
 
-## Agents (21)
-accessibility-auditor, accessibility-tester, architect, astro-developer, ...
+## Agents (11)
+architect, ci-configurator, ci-debugger, ...
 
 Duration 25s — Tokens ↑ 51.6k • ↓ 799
 ```
@@ -137,9 +137,9 @@ bash scripts/build-components.sh --target copilot
 ```text
 ● Search (glob) "community-config/skills/*/SKILL.md" → 14 files found
 
-There are 14 skills in this repository, located under community-config/skills/:
-architect, astro, copywriting, developer, doc-writer, frontend, github-actions,
-harness-curator, harness-report, pr-logbook, pr-reviewer, security, tester, web-tester
+There are 10 skills in this repository, located under community-config/skills/:
+architect, developer, doc-writer, github-actions,
+harness-curator, harness-report, pr-logbook, pr-reviewer, security, tester
 
 Duration 25s — Tokens ↑ 78.5k • ↓ 985
 ```
