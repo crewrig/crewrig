@@ -1,0 +1,136 @@
+{
+  "skill_name": "astro",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "astro.config.mjs and index.astro come from an Astro 5 marketing site (index.astro lives in src/pages). Review them and write the review to review.md: one entry per problem, each with the file, what is wrong and the fix. Do not modify the two inputs. Do not run gh, glab, tea or git push and do not touch any forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "review.md lists the missing site option (the sitemap integration needs it), the image without alt text, the client:only directive without a framework name, and the page without a layout.",
+      "files": ["evals/files/astro.config.mjs", "evals/files/index.astro"],
+      "expectations": [
+        "review.md says that astro.config.mjs sets no site option while the sitemap integration is used, and proposes adding a site URL.",
+        "review.md says that the img in index.astro has no alt attribute and proposes descriptive alt text (or an empty alt if decorative).",
+        "review.md says that client:only on the Globe component needs the framework name, for example client:only=\"react\".",
+        "review.md says that the page has no layout (no layout import, no html or head), and proposes wrapping it in a layout.",
+        "review.md questions client:load on the Newsletter component or proposes a lazier directive such as client:visible or client:idle."
+      ],
+      "checks": [
+        { "type": "file_exists", "path": "review.md" },
+        { "type": "file_contains", "path": "review.md", "pattern": "site" },
+        { "type": "file_contains", "path": "review.md", "pattern": "[Aa]lt" },
+        { "type": "file_contains", "path": "review.md", "pattern": "client:only" }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Astro 5 project. hello-world.md and unwritten-post.md are two sample posts of a blog (they will live in src/content/blog). Write src/content.config.ts defining a blog collection whose schema matches the frontmatter of the two samples, and src/pages/blog/[slug].astro that statically renders every published post (drafts excluded) inside the layout ../../layouts/Base.astro. Do not run gh, glab, tea or git push and do not touch any forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "A content.config.ts with a glob-loader blog collection and a Zod schema (coerced date, draft default false, tags array), and a dynamic page with getStaticPaths over the non-draft entries that renders the body with the Astro 5 render function.",
+      "files": ["evals/files/hello-world.md", "evals/files/unwritten-post.md"],
+      "expectations": [
+        "src/content.config.ts defines the blog collection with a glob loader pointed at src/content/blog and a Zod schema covering title, description, pubDate, draft and tags.",
+        "The schema converts pubDate with a coercing date type (z.coerce.date) and gives draft a false default.",
+        "src/pages/blog/[slug].astro exports getStaticPaths built from getCollection with a filter that excludes drafts.",
+        "The page renders the entry body with render(post) imported from astro:content (the Astro 5 API), not post.render().",
+        "The page content is wrapped in the Base layout."
+      ],
+      "checks": [
+        { "type": "file_exists", "path": "src/content.config.ts" },
+        { "type": "file_contains", "path": "src/content.config.ts", "pattern": "glob\\(" },
+        { "type": "file_contains", "path": "src/content.config.ts", "pattern": "z\\.coerce\\.date" },
+        { "type": "file_exists", "path": "src/pages/blog/[slug].astro" },
+        { "type": "file_contains", "path": "src/pages/blog/[slug].astro", "pattern": "getStaticPaths" }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "islands-page.astro is a page whose React components are all rendered without any client directive, so none of them is interactive. Write islands-page.out.astro, a copy with the right hydration directive on each component, leaving the original untouched. Facts: SiteSearch is the header search the visitor uses at once; ReviewsCarousel sits far below the fold; CookieBanner is not urgent and can wait for the browser to be idle; RouteMap3D uses WebGL and window and cannot be rendered on the server. After the file, add a comment block at its top (HTML comment in the template) explaining each choice in one line. Do not run gh, glab, tea or git push and do not touch any forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "islands-page.out.astro with client:load on SiteSearch, client:visible on ReviewsCarousel, client:idle on CookieBanner and client:only=\"react\" on RouteMap3D.",
+      "files": ["evals/files/islands-page.astro"],
+      "expectations": [
+        "SiteSearch has client:load.",
+        "ReviewsCarousel has client:visible.",
+        "CookieBanner has client:idle.",
+        "RouteMap3D has client:only=\"react\", with the framework name.",
+        "The explanatory comment gives a reason for each of the four choices."
+      ],
+      "checks": [
+        { "type": "file_exists", "path": "islands-page.out.astro" },
+        { "type": "file_contains", "path": "islands-page.out.astro", "pattern": "SiteSearch client:load" },
+        { "type": "file_contains", "path": "islands-page.out.astro", "pattern": "ReviewsCarousel client:visible" },
+        { "type": "file_contains", "path": "islands-page.out.astro", "pattern": "CookieBanner client:idle" },
+        { "type": "file_contains", "path": "islands-page.out.astro", "pattern": "RouteMap3D client:only=[\"']react[\"']" }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "hero-raw.astro uses plain img tags. Write hero.out.astro, a version that uses the Image component from astro:assets, importing the images from src/assets (hero.jpg, route-1.jpg, route-2.jpg, divider.svg). The hero image is the largest contentful paint element. Keep the markup otherwise as it is and leave the original untouched. Do not run gh, glab, tea or git push and do not touch any forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "hero.out.astro importing Image from astro:assets, the hero image eager with fetchpriority high and a descriptive alt, the route images lazy with their alt text, and the divider with an empty alt.",
+      "files": ["evals/files/hero-raw.astro"],
+      "expectations": [
+        "The file imports Image from astro:assets and imports the four images from src/assets.",
+        "The hero image has loading=\"eager\" and fetchpriority=\"high\".",
+        "The hero image has a non-empty descriptive alt, which the original lacked.",
+        "The two route images are lazy (loading=\"lazy\" or the component default) and keep their alt text.",
+        "The divider image has an empty alt (alt=\"\") because it is decorative."
+      ],
+      "checks": [
+        { "type": "file_exists", "path": "hero.out.astro" },
+        { "type": "file_contains", "path": "hero.out.astro", "pattern": "from [\"']astro:assets[\"']" },
+        { "type": "file_contains", "path": "hero.out.astro", "pattern": "fetchpriority=[\"']high[\"']" },
+        { "type": "file_contains", "path": "hero.out.astro", "pattern": "alt=\"\"" }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "A static Astro site lives in the GitHub repository alice/trail-notes and must be published as a GitHub Pages project page. Write astro.config.mjs, .github/workflows/deploy.yml and DEPLOY.md (one short paragraph naming the repository setting that must be changed). Do not run gh, glab, tea or git push and do not touch any forge artifact or trigger a workflow: only write the files asked for, in the current directory.",
+      "expected_output": "An astro.config.mjs with site https://alice.github.io and base /trail-notes, a deploy workflow that builds with npm ci and npm run build and publishes dist through the Pages actions with scoped permissions, and a DEPLOY.md naming the Pages source setting.",
+      "files": [],
+      "expectations": [
+        "astro.config.mjs sets site to https://alice.github.io and base to /trail-notes.",
+        "The workflow runs on push to main and builds with npm ci and npm run build.",
+        "The workflow publishes the dist output through the GitHub Pages actions (upload-pages-artifact and deploy-pages, or withastro/action).",
+        "The workflow declares permissions with pages: write and id-token: write and does not grant write-all.",
+        "DEPLOY.md says the repository's Pages source must be set to GitHub Actions."
+      ],
+      "checks": [
+        { "type": "file_exists", "path": "astro.config.mjs" },
+        { "type": "file_contains", "path": "astro.config.mjs", "pattern": "alice\\.github\\.io" },
+        { "type": "file_contains", "path": "astro.config.mjs", "pattern": "base:\\s*[\"']/trail-notes" },
+        { "type": "file_exists", "path": ".github/workflows/deploy.yml" },
+        { "type": "file_contains", "path": ".github/workflows/deploy.yml", "pattern": "pages:\\s*write" },
+        { "type": "file_contains", "path": "DEPLOY.md", "pattern": "GitHub Actions" }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "An Astro 5 site with server output and the Node adapter needs two settings: PUBLIC_ANALYTICS_ID, a public string read by browser code, and WEATHER_API_TOKEN, a secret string used only on the server. Write astro.config.mjs declaring them with the Astro environment schema, and src/pages/api/weather.ts, a GET endpoint that fetches https://api.example.com/forecast with the token as a bearer header and returns the JSON to the caller. Do not run gh, glab, tea or git push and do not touch any forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "astro.config.mjs with output server, the node adapter and an env schema using envField (client/public for the analytics id, server/secret for the token), and an endpoint importing the token from astro:env/server that never returns it.",
+      "files": [],
+      "expectations": [
+        "astro.config.mjs sets output to server with the Node adapter.",
+        "The env schema declares PUBLIC_ANALYTICS_ID with context client and access public.",
+        "The env schema declares WEATHER_API_TOKEN with context server and access secret.",
+        "The endpoint imports WEATHER_API_TOKEN from astro:env/server, not from import.meta.env.",
+        "The endpoint does not put the token in the response body or headers it returns."
+      ],
+      "checks": [
+        { "type": "file_exists", "path": "astro.config.mjs" },
+        { "type": "file_contains", "path": "astro.config.mjs", "pattern": "envField" },
+        { "type": "file_contains", "path": "astro.config.mjs", "pattern": "context:\\s*[\"']server[\"']" },
+        { "type": "file_exists", "path": "src/pages/api/weather.ts" },
+        { "type": "file_contains", "path": "src/pages/api/weather.ts", "pattern": "astro:env/server" }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    { "query": "In my Astro site the blog [slug].astro page throws \"getStaticPaths() function is required for dynamic routes\" at build. How do I fix it?", "should_trigger": true },
+    { "query": "Add a content collection with a Zod schema for my team pages in the Astro project and query it from src/pages/team.astro.", "should_trigger": true },
+    { "query": "Should this React cart component use client:load or client:visible in my .astro page?", "should_trigger": true },
+    { "query": "Switch my Astro project from static output to server output with the Netlify adapter and keep two pages prerendered.", "should_trigger": true },
+    { "query": "Review the astro.config.mjs of this repository: the sitemap integration generates relative URLs.", "should_trigger": true },
+    { "query": "Rewrite the hero headline and call to action of our landing page so the value proposition is clearer.", "should_trigger": false },
+    { "query": "Audit this HTML page for WCAG 2.1 AA contrast and keyboard navigation problems.", "should_trigger": false },
+    { "query": "Write a Playwright test that checks the homepage of our staging site renders the navigation and the footer.", "should_trigger": false },
+    { "query": "Our GitHub Actions workflow that deploys the site to GitHub Pages fails with a permissions error on the deploy job; fix the workflow.", "should_trigger": false },
+    { "query": "Configure Tailwind design tokens and a responsive grid in plain HTML and CSS for a static page without any framework.", "should_trigger": false }
+  ]
+}
