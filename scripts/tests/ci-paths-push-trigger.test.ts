@@ -53,7 +53,14 @@ test("a build.yml job filtered on pull_request is filtered identically on push",
     }
     const pr = cap.triggers.find((t) => t.kind === "pull-request");
     if (pr === undefined || pr.paths.length === 0) continue;
-    if (UNFILTERED_ON_PUSH.has(id)) continue;
+    if (UNFILTERED_ON_PUSH.has(id)) {
+      const unfiltered = cap.triggers.find((t) => t.kind === "push");
+      if (unfiltered === undefined || unfiltered.paths.length !== 0)
+        problems.push(
+          `${job} (${id}): excepted as unfiltered on push, but its push trigger is missing or filtered`,
+        );
+      continue;
+    }
     filtered++;
     const push = cap.triggers.find((t) => t.kind === "push");
     if (push === undefined || push.paths.length === 0)

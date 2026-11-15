@@ -3,6 +3,7 @@
 // functions over strings, no file system.
 
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { describe, it } from "node:test";
 
 import { place, type Parts } from "../ci-split.ts";
@@ -116,5 +117,43 @@ describe("ci-split proof", () => {
     );
     assert.equal(r.ok, false);
     assert.ok(r.report.some((l) => l.includes("block order")));
+  });
+});
+
+/** One problem per capability that sits in a file other than the one `place` assigns it. */
+function misplaced(files: Map<string, string>, parts: Parts): string[] {
+  const problems: string[] = [];
+  for (const [name, text] of files)
+    for (const b of splitBlocks(text)) {
+      const [want] = [...place([b], parts).keys()];
+      if (want !== name)
+        problems.push(`${b.id}: in ${name}, ci/capability-parts.json assigns ${want}`);
+    }
+  return problems;
+}
+
+describe("capability placement follows the parts file", () => {
+  it("fails a capability sitting in a file the parts file does not assign it", () => {
+    const f = files();
+    f.set(
+      "gate.yml",
+      (f.get("gate.yml") as string) +
+        (f.get("modules.yml") as string).replace(/^[^]*?capabilities:\n/, ""),
+    );
+    assert.deepEqual(misplaced(f, PARTS), [
+      "m1: in gate.yml, ci/capability-parts.json assigns modules.yml",
+    ]);
+  });
+
+  it("holds on the real ci/capabilities/ (first matching part, groups, standalone)", () => {
+    const parts = JSON.parse(fs.readFileSync("ci/capability-parts.json", "utf8")) as Parts;
+    const real = new Map(
+      fs
+        .readdirSync("ci/capabilities")
+        .filter((n) => n.endsWith(".yml"))
+        .map((n) => [n, fs.readFileSync(`ci/capabilities/${n}`, "utf8")] as const),
+    );
+    assert.ok(real.size > 10);
+    assert.deepEqual(misplaced(real, parts), []);
   });
 });

@@ -174,7 +174,7 @@ Measurements behind the value, on the tree of this change:
 | `ci/capabilities/governance-ci.yml` | 389 |
 | `ci/capabilities/governance-other.yml` | 380 |
 | `ci/capabilities/modules-setup.yml` | 372 |
-| every other hand-authored file | 78 to 369 |
+| every other hand-authored file | 34 to 369 |
 
 The rule of spec 0309 R5 is the largest file times 1.10, rounded up to the next
 multiple of 50, bounded to 400 to 500: 424 x 1.10 = 466.4, which rounds up to

@@ -57,7 +57,7 @@ function readCapabilities(): unknown {
     ref = readReference(repoRoot());
   } catch (err) {
     if (err instanceof ReferenceNotFoundError) throw new WiringError(`${REFERENCE} not found`);
-    if (err instanceof ReferenceReadError) throw new WiringError(err.message);
+    if (err instanceof ReferenceReadError) throw new WiringError(err.format());
     throw err;
   }
   const source = sourceOf(ref);

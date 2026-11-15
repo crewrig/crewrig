@@ -14,7 +14,7 @@ capabilities:
         paths:
           - "scripts/tests/ci-file-limit.test.ts"
           - "scripts/tests/ci-split-proof.test.ts"
-          - "scripts/ci-split.ts"
+          - "scripts/ci-split*.ts"
           - "scripts/lib/ci-split/**"
           - "scripts/lib/glob-engine.ts"
           - "ci/capabilities/**"
