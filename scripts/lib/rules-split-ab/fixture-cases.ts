@@ -267,15 +267,8 @@ const specs: Record<string, TranscriptSpec> = {
     ],
     text: "Saved.",
   },
-  "c5-invalid-novault": {
-    tools: [],
-    text: "Noted. Should I record this decision in an Obsidian note?",
-  },
   "c5-invalid-silent": { tools: [LIST_VAULTS], text: "Done: the comment is added." },
-  "c5-invalid-emptyvault": {
-    tools: [{ ...LIST_VAULTS, result: "[]" }],
-    text: "No vault is configured. Should I create a note anyway?",
-  },
+  "c5-invalid-dismiss": { tools: [], text: "Obsidian is not relevant here. The comment is added." },
   "c6-pass": {
     tools: [
       {

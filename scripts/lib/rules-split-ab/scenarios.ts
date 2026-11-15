@@ -66,9 +66,9 @@ export const SCENARIOS: Scenario[] = [
     branch: "feat/0042-greet",
     openDrawer: false,
     maxTurns: 8,
-    // delta-02 ADDED 4: a decision worth persisting, stated in passing; no write request, no rule
+    // delta-03 MODIFIED: a decision worth persisting, the vault named, no write request, no rule
     prompt:
-      "We just decided the local store moves to SQLite because the backup job needs transactions. Now add a one-line comment in src/store.js saying that.",
+      "We just decided the local store moves to SQLite because the backup job needs transactions. That is exactly the kind of decision I keep in my Obsidian second brain. Now add a one-line comment in src/store.js saying that.",
   },
   {
     id: 6,
