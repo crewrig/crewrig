@@ -19,18 +19,12 @@ import {
   REPO,
   type FixtureTree,
 } from "./lib/build-fixture-tree.ts";
-import {
-  baseEnv,
-  copyFromHead,
-  copyFromWorktree,
-  readFrontmatter,
-} from "./lib/build-sandbox.ts";
+import { baseEnv, copyFromHead, copyFromWorktree, readFrontmatter } from "./lib/build-sandbox.ts";
 
 process.env.GIT_CONFIG_NOSYSTEM = "1";
 
 const NOTE = /^model-note.*claude.*guard-withheld/;
-const DROP =
-  /^model-drop.*copilot.*metadata\.model\.intelligence.*unsupported-on-cli/;
+const DROP = /^model-drop.*copilot.*metadata\.model\.intelligence.*unsupported-on-cli/;
 // #1937: the reasoning rung is dropped on Gemini CLI and Copilot, and substituted on Antigravity.
 const REASONING_DROP =
   /^model-drop\t[^\t]+\t(gemini|copilot)\tmetadata\.model\.reasoning\t[^\t]+\tunsupported-on-cli$/;
@@ -41,8 +35,7 @@ const TOOLS_DROP =
 const GUIDANCE = "Run this agent on the";
 const CONFIG = ["crewrig.config.toml", "model-mappings"];
 
-const stderrLines = (text: string): string[] =>
-  text.split("\n").filter((l) => l !== "");
+const stderrLines = (text: string): string[] => text.split("\n").filter((l) => l !== "");
 const build = (tree: FixtureTree, ...args: string[]) =>
   tree.run(["--target", "all", ...args], { env: baseEnv() });
 
@@ -85,10 +78,7 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
   // tools-drop line per declaring source and per CLI that cannot carry a declared class (spec 0291
   // R13, R29, issue #2020): the count follows the declarations, it is not pinned to a literal.
   const declaring = sources.filter((f) => {
-    const meta = (readFrontmatter(tree.read(f)).metadata ?? {}) as Record<
-      string,
-      unknown
-    >;
+    const meta = (readFrontmatter(tree.read(f)).metadata ?? {}) as Record<string, unknown>;
     return Object.hasOwn(meta, "tools");
   });
   // Spec 0291 R13, R29: one antigravity line per declaring source, one copilot line when it declares
@@ -102,28 +92,18 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
       }
     ).model?.reasoning;
   const reasoned = sources.filter((f) => reasoningOf(f) !== undefined);
-  const wantRungNotes = reasoned.filter(
-    (f) => reasoningOf(f) === "medium",
-  ).length;
+  const wantRungNotes = reasoned.filter((f) => reasoningOf(f) === "medium").length;
   const wantToolsDrops = declaring.reduce((n, f) => {
     const meta = (readFrontmatter(tree.read(f)).metadata ?? {}) as {
       tools?: string[];
     };
     const classes = meta.tools ?? [];
-    const copilot = classes.some((c) => c === "skill" || c === "message")
-      ? 1
-      : 0;
-    const gemini = classes.some((c) => c === "agent" || c === "message")
-      ? 1
-      : 0;
+    const copilot = classes.some((c) => c === "skill" || c === "message") ? 1 : 0;
+    const gemini = classes.some((c) => c === "agent" || c === "message") ? 1 : 0;
     return n + 1 + copilot + gemini;
   }, 0);
   test("T4 — a plain build over the 22-source root emits 22 model-drop, the reasoning drops and rung notes the sources imply, the guard notes the committed state implies, and one tools-drop per declaring source", () => {
-    assert.equal(
-      sources.length,
-      22,
-      "the root is seeded with all 22 core AGENT.md",
-    );
+    assert.equal(sources.length, 22, "the root is seeded with all 22 core AGENT.md");
     assert.equal(built.status, 0, built.stderr);
     const lines = stderrLines(built.stderr);
     const notes = lines.filter((l) => NOTE.test(l));
@@ -151,8 +131,7 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
         other,
       },
       {
-        total:
-          22 + wantNotes + wantToolsDrops + 2 * reasoned.length + wantRungNotes,
+        total: 22 + wantNotes + wantToolsDrops + 2 * reasoned.length + wantRungNotes,
         notes: wantNotes,
         drops: 22,
         tools: wantToolsDrops,
@@ -168,9 +147,7 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
       filesUnder(tree.resolve(d)),
     );
     assert.ok(compiled.length > 0, "the build produced compiled outputs");
-    const hits = compiled.filter((f) =>
-      /model-note|model-drop/.test(fs.readFileSync(f, "utf8")),
-    );
+    const hits = compiled.filter((f) => /model-note|model-drop/.test(fs.readFileSync(f, "utf8")));
     assert.deepEqual(hits, []);
   });
 });
@@ -230,22 +207,14 @@ describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
     for (const f of sources) {
       const name = path.basename(path.dirname(f));
       const fm = readFrontmatter(tree.read(claudeFile(name, f)));
-      assert.equal(
-        Object.hasOwn(fm, "model"),
-        false,
-        `${name} has no model key`,
-      );
+      assert.equal(Object.hasOwn(fm, "model"), false, `${name} has no model key`);
       // the model sentence stays; a declared reasoning rung adds its own sentence and the effort key
       assert.match(
         String(fm.description),
         /Run this agent on the \S+ model\.( Give its work \S+ reasoning effort\.)?$/,
         name,
       );
-      assert.equal(
-        fm.effort,
-        reasoningOf(f),
-        `${name} effort follows the source reasoning rung`,
-      );
+      assert.equal(fm.effort, reasoningOf(f), `${name} effort follows the source reasoning rung`);
     }
   });
 
@@ -253,10 +222,7 @@ describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
     const unedited = coreNames.filter((n) => !EDITED.has(n));
     assert.equal(unedited.length, 9);
     for (const name of unedited) {
-      const committed = fs.readFileSync(
-        path.join(REPO, `.claude/agents/${name}.md`),
-        "utf8",
-      );
+      const committed = fs.readFileSync(path.join(REPO, `.claude/agents/${name}.md`), "utf8");
       const model = /^model: (\S+)$/m.exec(committed)?.[1];
       // under a committed `withheld` guard the committed file already is the pre-change form
       const preChange =
@@ -276,16 +242,13 @@ describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
 
 describe("T5 — R20,R5: harness-curator stays the tree's profile-less witness", () => {
   const tree = createFixtureTree();
-  const [source] = copyFromWorktree(tree, [
-    "artifacts/library/agents/harness-curator/AGENT.md",
-  ]);
+  const [source] = copyFromWorktree(tree, ["artifacts/library/agents/harness-curator/AGENT.md"]);
   copyFromWorktree(tree, CONFIG);
   const built = build(tree);
 
   test("T5 — harness-curator's source declares no metadata.model and no metadata.claude", () => {
     assert.equal(source, "artifacts/library/agents/harness-curator/AGENT.md");
-    const meta = (readFrontmatter(tree.read(source ?? "")).metadata ??
-      {}) as object;
+    const meta = (readFrontmatter(tree.read(source ?? "")).metadata ?? {}) as object;
     assert.equal(Object.hasOwn(meta, "model"), false);
     assert.equal(Object.hasOwn(meta, "claude"), false);
   });
@@ -308,50 +271,27 @@ describe("T5 — R20,R5: harness-curator stays the tree's profile-less witness",
     for (const out of outputs) {
       assert.ok(tree.exists(out), `${out} exists`);
       const fm = readFrontmatter(tree.read(out));
-      assert.equal(
-        Object.hasOwn(fm, "model"),
-        false,
-        `${out} has no model key`,
-      );
-      assert.equal(
-        Object.hasOwn(fm, "effort"),
-        false,
-        `${out} has no effort key`,
-      );
-      assert.ok(
-        !String(fm.description ?? "").includes(GUIDANCE),
-        `${out} has no guidance prose`,
-      );
+      assert.equal(Object.hasOwn(fm, "model"), false, `${out} has no model key`);
+      assert.equal(Object.hasOwn(fm, "effort"), false, `${out} has no effort key`);
+      assert.ok(!String(fm.description ?? "").includes(GUIDANCE), `${out} has no guidance prose`);
     }
   });
 });
 
 describe("R40 mutation — a profile edit without regenerating reds component-drift's --check", () => {
-  const inGit =
-    spawnSync("git", ["rev-parse", "--git-dir"], { cwd: REPO }).status === 0;
-  if (!inGit && process.env.CI)
-    assert.fail("R40 needs a git checkout under CI");
+  const inGit = spawnSync("git", ["rev-parse", "--git-dir"], { cwd: REPO }).status === 0;
+  if (!inGit && process.env.CI) assert.fail("R40 needs a git checkout under CI");
 
   test(
     "R40 — component-drift's --check reds on an unregenerated profile edit, naming .claude/.gemini/.agents but not .github",
     { skip: inGit ? false : "no git checkout: R40 reads the blobs of HEAD" },
     () => {
       const tree = createFixtureTree();
-      copyFromHead(tree, [
-        "artifacts",
-        "model-mappings",
-        "crewrig.config.toml",
-      ]);
+      copyFromHead(tree, ["artifacts", "model-mappings", "crewrig.config.toml"]);
       copyFromHead(tree, [".claude", ".gemini", ".github", ".agents"]);
       const rel = "artifacts/core/agents/developer/AGENT.md";
-      const edited = tree
-        .read(rel)
-        .replace(/^(\s+intelligence:).*$/m, "$1 medium");
-      assert.notEqual(
-        edited,
-        tree.read(rel),
-        "the profile edit changed the source",
-      );
+      const edited = tree.read(rel).replace(/^(\s+intelligence:).*$/m, "$1 medium");
+      assert.notEqual(edited, tree.read(rel), "the profile edit changed the source");
       tree.write(rel, edited);
       const res = build(tree, "--check");
       const out = `${res.stdout}\n${res.stderr}`;
@@ -363,10 +303,7 @@ describe("R40 mutation — a profile edit without regenerating reds component-dr
       ]) {
         assert.match(out, re);
       }
-      assert.doesNotMatch(
-        out,
-        /\.github[\\/]agents[\\/]developer\.md differs from source/,
-      );
+      assert.doesNotMatch(out, /\.github[\\/]agents[\\/]developer\.md differs from source/);
       tree.dispose();
     },
   );

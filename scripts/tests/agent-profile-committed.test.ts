@@ -41,12 +41,9 @@ web-conformity-checker medium`
   .split("\n")
   .map((line) => line.split(" ") as [string, string]);
 
-const read = (rel: string): string =>
-  fs.readFileSync(path.join(REPO, rel), "utf8");
-const frontOf = (rel: string): Record<string, unknown> =>
-  readFrontmatter(read(rel));
-const has = (fm: Record<string, unknown>, key: string): boolean =>
-  Object.hasOwn(fm, key);
+const read = (rel: string): string => fs.readFileSync(path.join(REPO, rel), "utf8");
+const frontOf = (rel: string): Record<string, unknown> => readFrontmatter(read(rel));
+const has = (fm: Record<string, unknown>, key: string): boolean => Object.hasOwn(fm, key);
 const GUIDANCE = "Run this agent on the";
 
 // The core agents' profile grid is read from the AGENT.md sources (spec 0200 + #1937), never frozen
@@ -91,10 +88,7 @@ const coreProfile = (name: string): Profile => {
       model?: Partial<Profile>;
     }
   ).model;
-  assert.ok(
-    model?.intelligence && model.reasoning,
-    `${name} declares intelligence and reasoning`,
-  );
+  assert.ok(model?.intelligence && model.reasoning, `${name} declares intelligence and reasoning`);
   return { intelligence: model.intelligence, reasoning: model.reasoning };
 };
 
@@ -106,10 +100,7 @@ describe("T1 — R36: component-drift's --check command is still wired", () => {
     const cap = doc.capabilities.find((c) => c.id === "component-drift");
     assert.ok(cap !== undefined, "capability component-drift exists");
     const capCommands = (cap.command ?? []) as string[];
-    assert.ok(
-      Array.isArray(capCommands) && capCommands.length > 0,
-      "command list is non-empty",
-    );
+    assert.ok(Array.isArray(capCommands) && capCommands.length > 0, "command list is non-empty");
     // The capability delegates to its Taskfile task (spec 0283); the task body carries the command.
     const commands = capCommands.includes("task ci:component-drift")
       ? ciTaskCommands("component-drift")
@@ -136,15 +127,8 @@ describe("T2 — R14,R16,R17,R18: every core source resolved on all four targets
       const directed = claudeGuardState() === "directed";
       const desc = String(fm.description);
       assert.notEqual(claude, "?", `${intelligence} has a Claude model`);
-      assert.equal(
-        desc.includes(`${GUIDANCE} ${claude} model.`),
-        !directed,
-        desc,
-      );
-      assert.ok(
-        desc.includes(`Give its work ${reasoning} reasoning effort.`),
-        desc,
-      );
+      assert.equal(desc.includes(`${GUIDANCE} ${claude} model.`), !directed, desc);
+      assert.ok(desc.includes(`Give its work ${reasoning} reasoning effort.`), desc);
       assert.equal(fm.model, directed ? claude : undefined);
       assert.equal(fm.effort, reasoning);
     });
@@ -152,14 +136,8 @@ describe("T2 — R14,R16,R17,R18: every core source resolved on all four targets
       const fm = frontOf(`.gemini/agents/${name}.md`);
       assert.equal(fm.model, GEMINI_MODEL[intelligence]);
       assert.equal(has(fm, "effort"), false);
-      assert.ok(
-        !String(fm.description).includes(GUIDANCE),
-        String(fm.description),
-      );
-      assert.ok(
-        !/reasoning effort/.test(String(fm.description)),
-        String(fm.description),
-      );
+      assert.ok(!String(fm.description).includes(GUIDANCE), String(fm.description));
+      assert.ok(!/reasoning effort/.test(String(fm.description)), String(fm.description));
     });
     test(`T2 committed::${name} antigravity: ${antigravity} guidance, no model`, () => {
       const fm = frontOf(`.agents/agents/${name}.md`);
@@ -174,14 +152,8 @@ describe("T2 — R14,R16,R17,R18: every core source resolved on all four targets
       const fm = frontOf(`.github/agents/${name}.md`);
       assert.equal(has(fm, "model"), false);
       assert.equal(has(fm, "effort"), false);
-      assert.ok(
-        !String(fm.description).includes(GUIDANCE),
-        String(fm.description),
-      );
-      assert.ok(
-        !/reasoning effort/.test(String(fm.description)),
-        String(fm.description),
-      );
+      assert.ok(!String(fm.description).includes(GUIDANCE), String(fm.description));
+      assert.ok(!/reasoning effort/.test(String(fm.description)), String(fm.description));
     });
   }
 });
@@ -190,28 +162,20 @@ describe("T3 — R15: effort: only on Claude Code, equal to the source's reasoni
   const walk = (dir: string): string[] =>
     fs
       .readdirSync(dir, { withFileTypes: true })
-      .flatMap((e) =>
-        e.isDirectory()
-          ? walk(path.join(dir, e.name))
-          : [path.join(dir, e.name)],
-      );
+      .flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
   const efforts = (tree: string): Map<string, string | undefined> => {
     const files = walk(path.join(REPO, tree));
     assert.ok(files.length > 0, `${tree} holds at least one agent`);
     return new Map(
       files.map((f) => [
         path.basename(f, ".md"),
-        readFrontmatter(fs.readFileSync(f, "utf8")).effort as
-          string | undefined,
+        readFrontmatter(fs.readFileSync(f, "utf8")).effort as string | undefined,
       ]),
     );
   };
   test("T3 committed::no effort frontmatter in the Gemini, Copilot and Antigravity trees", () => {
-    const hits = [".gemini/agents", ".github/agents", ".agents/agents"].flatMap(
-      (tree) =>
-        [...efforts(tree)]
-          .filter(([, v]) => v !== undefined)
-          .map(([n]) => `${tree}/${n}`),
+    const hits = [".gemini/agents", ".github/agents", ".agents/agents"].flatMap((tree) =>
+      [...efforts(tree)].filter(([, v]) => v !== undefined).map(([n]) => `${tree}/${n}`),
     );
     assert.deepEqual(hits, []);
   });
@@ -219,10 +183,7 @@ describe("T3 — R15: effort: only on Claude Code, equal to the source's reasoni
     const got = efforts(".claude/agents");
     const bad = coreNames()
       .filter((n) => got.get(n) !== coreProfile(n).reasoning)
-      .map(
-        (n) =>
-          `${n}: expected ${coreProfile(n).reasoning}, got ${String(got.get(n))}`,
-      );
+      .map((n) => `${n}: expected ${coreProfile(n).reasoning}, got ${String(got.get(n))}`);
     assert.deepEqual(bad, []);
   });
 });
@@ -245,10 +206,8 @@ describe("T7 — R1,R2,R4: the 22-row baseline, checked four ways over the sourc
   const core = (name: string): string =>
     `artifacts/${LIBRARY_WEB.has(name) ? "library" : "core"}/agents/${name}/AGENT.md`;
   const rungOf = (name: string): unknown =>
-    (
-      frontOf(core(name)).metadata as
-        { model?: { intelligence?: unknown } } | undefined
-    )?.model?.intelligence;
+    (frontOf(core(name)).metadata as { model?: { intelligence?: unknown } } | undefined)?.model
+      ?.intelligence;
 
   test("T7(a) baseline::name set equals the core listing (11) plus the eleven moved library agents (22)", () => {
     const actual = [
@@ -258,9 +217,7 @@ describe("T7 — R1,R2,R4: the 22-row baseline, checked four ways over the sourc
         })
         .filter((e) => e.isDirectory())
         .map((e) => e.name),
-      ...[...LIBRARY_WEB].filter((n) =>
-        fs.existsSync(path.join(REPO, core(n))),
-      ),
+      ...[...LIBRARY_WEB].filter((n) => fs.existsSync(path.join(REPO, core(n)))),
     ].sort();
     assert.equal(actual.length, 22);
     assert.deepEqual(BASELINE.map(([n]) => n).sort(), actual);
@@ -285,13 +242,8 @@ describe("T7 — R1,R2,R4: the 22-row baseline, checked four ways over the sourc
     const bad = coreRows
       .map(([n]) => n)
       .filter((n) => {
-        const m = (
-          frontOf(core(n)).metadata as { model?: Record<string, unknown> }
-        ).model;
-        return (
-          !RUNGS.includes(String(m?.intelligence)) ||
-          !RUNGS.includes(String(m?.reasoning))
-        );
+        const m = (frontOf(core(n)).metadata as { model?: Record<string, unknown> }).model;
+        return !RUNGS.includes(String(m?.intelligence)) || !RUNGS.includes(String(m?.reasoning));
       });
     assert.deepEqual(bad, []);
   });
@@ -310,9 +262,7 @@ describe("T7 — R1,R2,R4: the 22-row baseline, checked four ways over the sourc
       const meta = (frontOf(f).metadata ?? {}) as Record<string, unknown>;
       if (!has(meta, "model")) continue;
       const keys = Object.keys(meta.model as object).join(",");
-      const want = f.startsWith("artifacts/core/")
-        ? "intelligence,reasoning"
-        : "intelligence";
+      const want = f.startsWith("artifacts/core/") ? "intelligence,reasoning" : "intelligence";
       if (keys !== want) bad.push(`${f}: keys ${keys}, expected ${want}`);
     }
     assert.deepEqual(bad, []);
@@ -353,25 +303,16 @@ describe("T8 — spec 0306 R9, R20: omitClaudeMd on the committed agent trees", 
     const bad = core.filter((name) => {
       const text = read(`.claude/agents/${name}.md`);
       const fmBlock = text.split("---\n")[1] ?? "";
-      return (
-        fmBlock.split("\n").filter((l) => l === "omitClaudeMd: true").length !==
-        1
-      );
+      return fmBlock.split("\n").filter((l) => l === "omitClaudeMd: true").length !== 1;
     });
     assert.deepEqual(bad, []);
     for (const name of core)
-      assert.strictEqual(
-        frontOf(`.claude/agents/${name}.md`).omitClaudeMd,
-        true,
-        name,
-      );
+      assert.strictEqual(frontOf(`.claude/agents/${name}.md`).omitClaudeMd, true, name);
   });
 
   test("T8 committed::no Gemini, Copilot or Antigravity agent file has an omitClaudeMd key", () => {
     const bad = ["gemini", "github", "agents"].flatMap((d) =>
-      core
-        .map((name) => `.${d}/agents/${name}.md`)
-        .filter((rel) => /omitClaudeMd/.test(read(rel))),
+      core.map((name) => `.${d}/agents/${name}.md`).filter((rel) => /omitClaudeMd/.test(read(rel))),
     );
     assert.deepEqual(bad, []);
   });
