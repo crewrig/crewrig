@@ -158,6 +158,11 @@ tasks:
     preconditions: *needs-js-yaml
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-split-proof.test.ts {{.REPO_DIR}}/scripts/tests/ci-file-limit.test.ts
+  ci-push-unfiltered:
+    desc: Check that every verifying capability runs unfiltered on a push to main (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-push-unfiltered.test.ts
   check-plan-review:
     desc: Check the plan review gate against its fixtures (pre-push mirror of the CI job)
     cmds:

@@ -142,7 +142,7 @@ function assertGithub(text: string): void {
 }
 
 function gitlabChanges(job: string): string[] {
-  const m = /changes: &\S+\n((?: {8}- .+\n)+)/.exec(job);
+  const m = /changes:(?: &\S+)?\n((?: {8}- .+\n)+)/.exec(job);
   assert.ok(m, "the GitLab job has a changes list");
   return (m[1] ?? "")
     .split("\n")

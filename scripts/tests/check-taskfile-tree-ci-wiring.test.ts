@@ -145,7 +145,8 @@ function assertCapabilities(text: string): void {
   assert.ok((cap.requires?.tools ?? []).includes("task"), "requires the task tool");
   assert.equal(cap["changeset-gated"], true);
   assert.deepEqual(cap.trigger?.map((t) => t.on).sort(), ["pull-request", "push"]);
-  for (const t of cap.trigger ?? [])
+  // Spec 0309 delta-02 R6: only the pull-request trigger is filtered; push runs unfiltered.
+  for (const t of (cap.trigger ?? []).filter((x) => x.on === "pull-request"))
     for (const p of TREE_PATHS) assert.ok((t.paths ?? []).includes(p), `${t.on} paths has ${p}`);
   // Spec 0283 R1: the capability is the single `task ci:<id>` entry; the commands live in the task.
   assert.deepEqual(cap.command, [`task ci:${ID}`], "runs the migrated task");
@@ -163,7 +164,11 @@ function assertCapabilities(text: string): void {
       c.id !== `${ID}-selftest` &&
       (c.trigger ?? []).some((t) => (t.paths ?? []).includes(ROOT)),
   );
-  assert.deepEqual(listing.map((c) => c.id).sort(), [...LISTING_JOBS, "spec-view"].sort());
+  // ci-push-unfiltered reads the Taskfile closure of every capability command (spec 0309 R6, R7).
+  assert.deepEqual(
+    listing.map((c) => c.id).sort(),
+    [...LISTING_JOBS, "spec-view", "ci-push-unfiltered"].sort(),
+  );
   assert.ok(listing.length >= 3, "the jobs that list the root Taskfile are found");
   for (const c of listing.filter((l) => l.id !== "spec-view"))
     for (const t of c.trigger ?? [])
@@ -172,7 +177,7 @@ function assertCapabilities(text: string): void {
           assert.ok((t.paths ?? []).includes(p), `${c.id} ${t.on} paths has ${p}`);
   // spec-view reads the whole tree through the loader: it reruns on the tree and the loader only.
   const sv = listing.find((c) => c.id === "spec-view");
-  for (const t of sv?.trigger ?? [])
+  for (const t of (sv?.trigger ?? []).filter((x) => x.on === "pull-request"))
     for (const p of [
       ROOT,
       "taskfiles/**",

@@ -84,7 +84,7 @@ component-drift:
     - "task ci:component-drift"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &component-drift-changes-1
+      changes:
         - "scripts/build-components.ts"
         - "scripts/build-components.ts"
         - "package.json"
@@ -110,7 +110,6 @@ component-drift:
         - ".github/agents/**"
         - "crewrig.config.toml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *component-drift-changes-1
 
 component-drift-selftest:
   stage: extensions
@@ -138,7 +137,7 @@ component-drift-selftest:
     - "task ci:component-drift-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &component-drift-selftest-changes-1
+      changes:
         - "scripts/build-components.ts"
         - "scripts/lib/**"
         - "package.json"
@@ -154,7 +153,6 @@ component-drift-selftest:
         - ".github/workflows/_ci-extensions.yml"
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *component-drift-selftest-changes-1
 
 setup-differential:
   stage: extensions
@@ -170,7 +168,7 @@ setup-differential:
     - "task ci:setup-differential"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &setup-differential-changes-1
+      changes:
         - "scripts/**"
         - "config/**"
         - "hooks/**"
@@ -190,7 +188,6 @@ setup-differential:
         - "scripts/tests/lib/real-home-guard.ts"
         - "scripts/tests/fixtures/setup-golden/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *setup-differential-changes-1
 
 core-paths:
   stage: extensions
@@ -205,7 +202,7 @@ core-paths:
     - "task ci:core-paths"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &core-paths-changes-1
+      changes:
         - "scripts/sync-from-upstream.ts"
         - "scripts/lib/sync-from-upstream/**"
         - "scripts/tests/sync-from-upstream-policies.test.ts"
@@ -224,7 +221,6 @@ core-paths:
         - "scripts/check-core-paths.ts"
         - "scripts/lib/governance/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *core-paths-changes-1
 
 setup:
   stage: extensions
@@ -244,7 +240,7 @@ setup:
     - "task ci:setup"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &setup-changes-1
+      changes:
         - "scripts/tests/setup-common-*.test.ts"
         - "scripts/tests/setup-identity-flow.test.ts"
         - "scripts/tests/setup-legacy-gemini-md-declaration.test.ts"
@@ -277,7 +273,6 @@ setup:
         - "scripts/tests/fixtures/setup-declarations/**"
         - "scripts/tests/setup-flow-fixtures.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *setup-changes-1
 
 extension-render:
   stage: extensions
@@ -297,7 +292,7 @@ extension-render:
     - "task ci:extension-render"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &extension-render-changes-1
+      changes:
         - "scripts/build-extension.ts"
         - "scripts/lib/extension/**"
         - "scripts/lib/org-mcp.ts"
@@ -351,7 +346,6 @@ extension-render:
         - "scripts/check-extension-hook-map.ts"
         - "scripts/check-extension-hook-tokens.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *extension-render-changes-1
 
 extension-provenance:
   stage: extensions
@@ -363,7 +357,7 @@ extension-provenance:
     - "task ci:extension-provenance"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &extension-provenance-changes-1
+      changes:
         - "scripts/tests/governance-suite-extension-provenance.test.ts"
         - "scripts/tests/governance-suite-extension-provenance-r4.test.ts"
         - "scripts/tests/lib/governance-*.ts"
@@ -372,7 +366,6 @@ extension-provenance:
         - "scripts/check-extension-provenance.ts"
         - "scripts/lib/governance/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *extension-provenance-changes-1
 
 extension-manifest:
   stage: extensions
@@ -383,7 +376,7 @@ extension-manifest:
     - "task ci:extension-manifest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &extension-manifest-changes-1
+      changes:
         - "scripts/tests/governance-suite-extension-version-bump.test.ts"
         - "scripts/tests/governance-suite-extension-version-bump-base.test.ts"
         - "scripts/tests/lib/governance-*.ts"
@@ -394,7 +387,6 @@ extension-manifest:
         - "scripts/check-extension-manifest-version.ts"
         - "scripts/lib/extension/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *extension-manifest-changes-1
 
 extension-install:
   stage: extensions
@@ -414,7 +406,7 @@ extension-install:
     - "task ci:extension-install"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &extension-install-changes-1
+      changes:
         - "scripts/tests/install-claude-plugin-marketplace.test.ts"
         - "scripts/tests/install-extension-all-real.test.ts"
         - "scripts/tests/lib/yaml-lib.ts"
@@ -457,7 +449,6 @@ extension-install:
         - "extensions/**"
         - "artifacts/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *extension-install-changes-1
 
 docs-index:
   stage: extensions
@@ -483,7 +474,7 @@ docs-index:
     - "task ci:docs-index"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &docs-index-changes-1
+      changes:
         - "scripts/build-docs-index.ts"
         - "scripts/lib/docs-index/**"
         - "scripts/lib/paths.ts"
@@ -493,7 +484,6 @@ docs-index:
         - "scripts/tests/lib/docs-index-entry-tree.ts"
         - "docs/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *docs-index-changes-1
 
 docs-index-selftest:
   stage: extensions
@@ -519,7 +509,7 @@ docs-index-selftest:
     - "task ci:docs-index-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &docs-index-selftest-changes-1
+      changes:
         - "scripts/build-docs-index.ts"
         - "scripts/lib/docs-index/**"
         - "scripts/lib/paths.ts"
@@ -533,7 +523,6 @@ docs-index-selftest:
         - ".github/workflows/_ci-extensions.yml"
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *docs-index-selftest-changes-1
 
 cli-matrix-fresh:
   stage: extensions
@@ -544,7 +533,7 @@ cli-matrix-fresh:
     - "task ci:cli-matrix-fresh"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &cli-matrix-fresh-changes-1
+      changes:
         - "docs/cli-matrix.md"
         - "docs/cli-matrix/**"
         - "scripts/build-cli-matrix.ts"
@@ -552,7 +541,6 @@ cli-matrix-fresh:
         - "scripts/tests/build-cli-matrix.test.ts"
         - "scripts/lib/node-floor-guard.js"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *cli-matrix-fresh-changes-1
 
 cli-matrix-fresh-selftest:
   stage: extensions
@@ -563,7 +551,7 @@ cli-matrix-fresh-selftest:
     - "task ci:cli-matrix-fresh-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &cli-matrix-fresh-selftest-changes-1
+      changes:
         - "scripts/build-cli-matrix.ts"
         - "scripts/lib/build-cli-matrix/**"
         - "scripts/tests/build-cli-matrix.test.ts"
@@ -573,7 +561,6 @@ cli-matrix-fresh-selftest:
         - ".github/workflows/_ci-extensions.yml"
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *cli-matrix-fresh-selftest-changes-1
 
 repository-scan:
   stage: gate
@@ -604,7 +591,7 @@ frontmatter:
     - "task ci:frontmatter"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &frontmatter-changes-1
+      changes:
         - "scripts/tests/build-components-frontmatter-fence.test.ts"
         - "scripts/tests/governance-suite-skill-versions.test.ts"
         - "scripts/tests/governance-suite-skill-versions-base.test.ts"
@@ -637,7 +624,6 @@ frontmatter:
         - "scripts/check-skill-versions.ts"
         - "scripts/lib/governance/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *frontmatter-changes-1
 
 markdown-links:
   stage: gate
@@ -648,7 +634,7 @@ markdown-links:
     - "task ci:markdown-links"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &markdown-links-changes-1
+      changes:
         - "scripts/tests/check-markdown-links-shared-references.test.ts"
         - "scripts/tests/governance-suite-markdown-links.test.ts"
         - "scripts/tests/lib/governance-*.ts"
@@ -659,7 +645,6 @@ markdown-links:
         - "scripts/check-markdown-links.ts"
         - "scripts/lib/governance/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *markdown-links-changes-1
 
 lint-markdown:
   stage: gate
@@ -699,7 +684,7 @@ lint-specs-selftest:
     - "task ci:lint-specs-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &lint-specs-selftest-changes-1
+      changes:
         - "scripts/lib/spec-linter.js"
         - "scripts/tests/spec-linter-*.test.ts"
         - "scripts/tests/lib/spec-linter-fixtures.ts"
@@ -715,7 +700,6 @@ lint-specs-selftest:
         - ".github/workflows/_ci-gate.yml"
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *lint-specs-selftest-changes-1
 
 check-agents-size:
   stage: gate
@@ -760,7 +744,7 @@ check-taskfile-commands:
     - "task ci:check-taskfile-commands"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &check-taskfile-commands-changes-1
+      changes:
         - "Taskfile.yml"
         - "taskfiles/**"
         - "scripts/lib/taskfile-tree.ts"
@@ -774,7 +758,6 @@ check-taskfile-commands:
         - "scripts/lib/tool-binaries.ts"
         - "scripts/tests/check-tool-binaries.test.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *check-taskfile-commands-changes-1
 
 check-taskfile-commands-selftest:
   stage: gate
@@ -786,7 +769,7 @@ check-taskfile-commands-selftest:
     - "task ci:check-taskfile-commands-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &check-taskfile-commands-selftest-changes-1
+      changes:
         - "scripts/check-taskfile-commands.ts"
         - "scripts/lib/taskfile-command*.ts"
         - "scripts/lib/taskfile-command-exemptions.json"
@@ -803,7 +786,6 @@ check-taskfile-commands-selftest:
         - ".github/workflows/_ci-gate.yml"
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *check-taskfile-commands-selftest-changes-1
 
 check-taskfile-tree:
   stage: gate
@@ -815,7 +797,7 @@ check-taskfile-tree:
     - "task ci:check-taskfile-tree"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &check-taskfile-tree-changes-1
+      changes:
         - "Taskfile.yml"
         - "taskfiles/**"
         - "scripts/**"
@@ -823,7 +805,6 @@ check-taskfile-tree:
         - "ci/pre-push-tier.json"
         - ".githooks/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *check-taskfile-tree-changes-1
 
 check-taskfile-tree-selftest:
   stage: gate
@@ -835,7 +816,7 @@ check-taskfile-tree-selftest:
     - "task ci:check-taskfile-tree-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &check-taskfile-tree-selftest-changes-1
+      changes:
         - "Taskfile.yml"
         - "taskfiles/**"
         - "ci/capabilities/**"
@@ -864,7 +845,6 @@ check-taskfile-tree-selftest:
         - ".github/workflows/_ci-gate.yml"
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *check-taskfile-tree-selftest-changes-1
 
 check-task-provisioning:
   stage: gate
@@ -876,7 +856,7 @@ check-task-provisioning:
     - "task ci:check-task-provisioning"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &check-task-provisioning-changes-1
+      changes:
         - ".github/actions/setup-task/**"
         - "ci/task-pin.json"
         - ".github/workflows/**"
@@ -892,7 +872,6 @@ check-task-provisioning:
         - "scripts/tests/check-task-provisioning.test.ts"
         - "scripts/tests/task-pin-provisioning.test.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *check-task-provisioning-changes-1
 
 check-task-provisioning-selftest:
   stage: gate
@@ -904,7 +883,7 @@ check-task-provisioning-selftest:
     - "task ci:check-task-provisioning-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &check-task-provisioning-selftest-changes-1
+      changes:
         - ".github/actions/setup-task/**"
         - "ci/task-pin.json"
         - "scripts/check-task-provisioning.ts"
@@ -918,7 +897,6 @@ check-task-provisioning-selftest:
         - ".github/workflows/build.yml"
         - ".github/workflows/_ci-gate.yml"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *check-task-provisioning-selftest-changes-1
 
 ratchet:
   stage: gate
@@ -943,7 +921,7 @@ ratchet-selftest:
     - "task ci:ratchet-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &ratchet-selftest-changes-1
+      changes:
         - "scripts/check-ratchet.ts"
         - "scripts/lib/ratchet-lists.ts"
         - "scripts/tests/check-ratchet.test.ts"
@@ -952,7 +930,6 @@ ratchet-selftest:
         - ".github/workflows/_ci-gate.yml"
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *ratchet-selftest-changes-1
 
 lint-typescript:
   stage: gate
@@ -976,7 +953,7 @@ lint-typescript-selftest:
     - "task ci:lint-typescript-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &lint-typescript-selftest-changes-1
+      changes:
         - "scripts/check-typescript.ts"
         - "scripts/lib/erasable-syntax.ts"
         - "scripts/lib/erasable-probe.ts"
@@ -998,7 +975,6 @@ lint-typescript-selftest:
         - ".github/workflows/_ci-gate.yml"
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *lint-typescript-selftest-changes-1
 
 ci-file-limit:
   stage: governance
@@ -1022,6 +998,37 @@ ci-file-limit:
         - ".github/workflows/build.yml"
         - ".github/workflows/_ci-*.yml"
         - "taskfiles/ci/governance.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
+ci-push-unfiltered:
+  stage: governance
+  image: node:24
+  before_script:
+    - !reference [.task-install, script]
+    - npm ci --omit=dev --workspaces=false
+  script:
+    - "task ci:ci-push-unfiltered"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/ci-push-unfiltered.test.ts"
+        - "scripts/lib/ci-push/**"
+        - "ci/push-main-exemptions.txt"
+        - "ci/capabilities/**"
+        - ".gitlab-ci.yml"
+        - ".github/workflows/**"
+        - ".github/actions/ci-job/**"
+        - "Taskfile.yml"
+        - "taskfiles/**"
+        - "scripts/lib/ci-paths-gate/**"
+        - "scripts/lib/ci-parity/**"
+        - "scripts/lib/build-ci/**"
+        - "scripts/lib/taskfile-tree.ts"
+        - "scripts/lib/taskfile-tree-parse.ts"
+        - "scripts/lib/governance/taskfile-tree-guard.ts"
+        - "scripts/lib/yq-accessors/**"
+        - "scripts/lib/glob-engine.ts"
+        - "scripts/tests/skill-size-budgets.test.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 ci-parity:
@@ -1079,7 +1086,6 @@ ci-parity:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes: *ci-parity-files-1
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *ci-parity-files-1
 
 test-wiring:
   stage: governance
@@ -1090,7 +1096,7 @@ test-wiring:
     - "task ci:test-wiring"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &test-wiring-changes-1
+      changes:
         - "scripts/tests/governance-check-test-wiring-cases.test.ts"
         - "scripts/tests/governance-check-test-strays-cases.test.ts"
         - "scripts/check-test-strays.ts"
@@ -1107,7 +1113,6 @@ test-wiring:
         - ".github/workflows/*.yaml"
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *test-wiring-changes-1
 
 test-wiring-selftest:
   stage: governance
@@ -1119,7 +1124,7 @@ test-wiring-selftest:
     - "task ci:test-wiring-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &test-wiring-selftest-changes-1
+      changes:
         - "scripts/check-test-wiring.ts"
         - "scripts/check-test-strays.ts"
         - "scripts/lib/governance/**"
@@ -1132,7 +1137,6 @@ test-wiring-selftest:
         - "artifacts/*/skills/**/*.md"
         - "scripts/tests/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *test-wiring-selftest-changes-1
 
 ci-pre-push-replay:
   stage: governance
@@ -1144,7 +1148,7 @@ ci-pre-push-replay:
     - "task ci:ci-pre-push-replay"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &ci-pre-push-replay-changes-1
+      changes:
         - "scripts/**"
         - "taskfiles/**"
         - "ci/**"
@@ -1159,7 +1163,6 @@ ci-pre-push-replay:
         - "specs/**"
         - "artifacts/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *ci-pre-push-replay-changes-1
 
 changeset-coverage-test:
   stage: governance
@@ -1200,7 +1203,7 @@ path-ownership-selftest:
     - "task ci:path-ownership-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &path-ownership-selftest-changes-1
+      changes:
         - "scripts/check-path-ownership.ts"
         - "scripts/check-stray-scan-wiring.ts"
         - "scripts/lib/path-ownership.ts"
@@ -1219,7 +1222,6 @@ path-ownership-selftest:
         - ".github/workflows/_ci-governance.yml"
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *path-ownership-selftest-changes-1
 
 host-safety:
   stage: governance
@@ -1246,7 +1248,7 @@ host-safety-selftest:
     - "task ci:host-safety-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &host-safety-selftest-changes-1
+      changes:
         - "scripts/check-host-safety.ts"
         - "scripts/lib/host-safety/**"
         - "scripts/tests/check-host-safety.test.ts"
@@ -1258,7 +1260,6 @@ host-safety-selftest:
         - ".github/workflows/_ci-governance.yml"
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *host-safety-selftest-changes-1
 
 node-floor-guard:
   stage: governance
@@ -1315,7 +1316,7 @@ alert-scheduled-failure-selftest:
     - "task ci:alert-scheduled-failure-selftest"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &alert-scheduled-failure-selftest-changes-1
+      changes:
         - "scripts/ci-alert-scheduled-failure.ts"
         - "scripts/check-alert-scheduled-failure.ts"
         - "scripts/tests/ci-alert-scheduled-failure.test.ts"
@@ -1325,7 +1326,6 @@ alert-scheduled-failure-selftest:
         - ".github/workflows/_ci-governance.yml"
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *alert-scheduled-failure-selftest-changes-1
 
 alert-scheduled-failure-check:
   stage: governance
@@ -1337,7 +1337,7 @@ alert-scheduled-failure-check:
     - "task ci:alert-scheduled-failure-check"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &alert-scheduled-failure-check-changes-1
+      changes:
         - "scripts/ci-alert-scheduled-failure.ts"
         - "scripts/check-alert-scheduled-failure.ts"
         - "scripts/tests/ci-alert-scheduled-failure.test.ts"
@@ -1347,7 +1347,6 @@ alert-scheduled-failure-check:
         - ".github/workflows/_ci-governance.yml"
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *alert-scheduled-failure-check-changes-1
 
 agent-profile-migration:
   stage: governance
@@ -1380,7 +1379,7 @@ agent-profile-migration:
     - "task ci:agent-profile-migration"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &agent-profile-migration-changes-1
+      changes:
         - "scripts/build-components.ts"
         - "scripts/build-components.ts"
         - "scripts/tests/build-components-canonical-repo.test.ts"
@@ -1394,7 +1393,6 @@ agent-profile-migration:
         - "docs/agent-profile-migration.md"
         - "model-mappings/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *agent-profile-migration-changes-1
 
 misc:
   stage: governance
@@ -1406,7 +1404,7 @@ misc:
     - "task ci:misc"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &misc-changes-1
+      changes:
         - "scripts/tests/governance-suite-no-machine-paths.test.ts"
         - "scripts/tests/lib/governance-*.ts"
         - "scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts"
@@ -1436,7 +1434,6 @@ misc:
         - "scripts/lib/governance/**"
         - "scripts/check-no-machine-paths.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *misc-changes-1
 
 check-model-mappings:
   stage: governance
@@ -1452,7 +1449,7 @@ check-model-mappings:
     - "task ci:check-model-mappings"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &check-model-mappings-changes-1
+      changes:
         - "model-mappings/**"
         - "docs/model-mapping-format.md"
         - "scripts/check-model-mappings.ts"
@@ -1462,7 +1459,6 @@ check-model-mappings:
         - "scripts/tests/check-model-mappings-committed.test.ts"
         - "scripts/tests/lib/model-mapping-fixtures.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *check-model-mappings-changes-1
 
 check-agent-profiles:
   stage: governance
@@ -1478,14 +1474,13 @@ check-agent-profiles:
     - "task ci:check-agent-profiles"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &check-agent-profiles-changes-1
+      changes:
         - "artifacts/**"
         - "scripts/check-agent-profiles.ts"
         - "scripts/tests/check-agent-profiles-rejections.test.ts"
         - "scripts/tests/check-agent-profiles-green.test.ts"
         - "scripts/tests/lib/agent-profile-fixtures.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *check-agent-profiles-changes-1
 
 check-metadata-keys:
   stage: governance
@@ -1497,7 +1492,7 @@ check-metadata-keys:
     - "task ci:check-metadata-keys"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &check-metadata-keys-changes-1
+      changes:
         - "artifacts/**"
         - "scripts/check-component-metadata-keys.ts"
         - "scripts/lib/governance/**"
@@ -1506,7 +1501,6 @@ check-metadata-keys:
         - "scripts/lib/yaml-text.ts"
         - "scripts/lib/require-dependency.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *check-metadata-keys-changes-1
 
 check-claude-agent-layout:
   stage: governance
@@ -1517,7 +1511,7 @@ check-claude-agent-layout:
     - "task ci:check-claude-agent-layout"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &check-claude-agent-layout-changes-1
+      changes:
         - ".claude/agents/**"
         - ".agents/agents/**"
         - "scripts/build-components.ts"
@@ -1527,7 +1521,6 @@ check-claude-agent-layout:
         - "scripts/lib/governance/**"
         - "scripts/tests/governance-*agent-layout*.test.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *check-claude-agent-layout-changes-1
 
 test-harness-curate:
   stage: governance
@@ -1561,7 +1554,7 @@ check-description-length:
     - "task ci:check-description-length"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &check-description-length-changes-1
+      changes:
         - "artifacts/**"
         - ".claude/skills/**"
         - ".claude/agents/**"
@@ -1588,7 +1581,6 @@ check-description-length:
         - "scripts/tests/check-skill-quality*.test.ts"
         - "scripts/tests/lib/skill-quality-fixture.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *check-description-length-changes-1
 
 check-extension-version-bump:
   stage: governance
@@ -1624,14 +1616,13 @@ check-seat-brief:
     - "task ci:check-seat-brief"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &check-seat-brief-changes-1
+      changes:
         - "scripts/check-seat-brief.ts"
         - "scripts/lib/governance/seat-brief.ts"
         - "scripts/lib/governance/report.ts"
         - "scripts/tests/check-seat-brief*"
         - "scripts/tests/fixtures/seat-brief/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *check-seat-brief-changes-1
 
 check-plan-review:
   stage: governance
@@ -1643,7 +1634,7 @@ check-plan-review:
     - "task ci:check-plan-review"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &check-plan-review-changes-1
+      changes:
         - "scripts/check-plan-review.ts"
         - "scripts/lib/governance/plan-review-gate.ts"
         - ".crewrig/plan-components.txt"
@@ -1651,7 +1642,6 @@ check-plan-review:
         - "scripts/tests/check-plan-review*"
         - "scripts/tests/fixtures/plan-review/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *check-plan-review-changes-1
 
 check-feedback-routing:
   stage: governance
@@ -1678,7 +1668,7 @@ setup-oracle:
     - "task ci:setup-oracle"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &setup-oracle-changes-1
+      changes:
         - "scripts/**"
         - "config/**"
         - "hooks/**"
@@ -1704,7 +1694,6 @@ setup-oracle:
         - "scripts/tests/lib/real-home-guard.ts"
         - "scripts/tests/fixtures/setup-golden/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *setup-oracle-changes-1
 
 figure-labels:
   stage: integration
@@ -1716,7 +1705,7 @@ figure-labels:
     - "task ci:figure-labels"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &figure-labels-changes-1
+      changes:
         - "scripts/tests/windows-governance-figure-labels.test.ts"
         - "scripts/tests/governance-suite-figure-labels.test.ts"
         - "docs/assets/**/*.png"
@@ -1725,7 +1714,6 @@ figure-labels:
         - "scripts/lib/governance/**"
         - "scripts/lib/sequence-matcher.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *figure-labels-changes-1
 
 mempalace:
   stage: integration
@@ -1794,7 +1782,7 @@ mempalace:
     - "task ci:mempalace"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &mempalace-changes-1
+      changes:
         - "scripts/tests/mempalace-doctor-*.test.ts"
         - "scripts/tests/mempalace-runtime-guard-*.test.ts"
         - "scripts/tests/mempalace-pin-*.test.ts"
@@ -1838,7 +1826,6 @@ mempalace:
         - "scripts/tests/fixtures/setup-golden/**"
         - "scripts/tests/fixtures/setup-declarations/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *mempalace-changes-1
 
 chroma-mcp:
   stage: integration
@@ -1878,7 +1865,7 @@ chroma-mcp:
     - "task ci:chroma-mcp"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &chroma-mcp-changes-1
+      changes:
         - "scripts/tests/chroma-wrapper-source.test.ts"
         - "scripts/tests/chroma-wrapper-live.test.ts"
         - "scripts/tests/chroma-fd-limits.test.ts"
@@ -1896,7 +1883,6 @@ chroma-mcp:
         - "config/systemd/**"
         - "config/windows/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *chroma-mcp-changes-1
 
 e2e:
   stage: integration
@@ -1918,7 +1904,7 @@ e2e:
     - "task ci:e2e"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &e2e-changes-1
+      changes:
         - "scripts/tests/e2e-*.test.ts"
         - "scripts/tests/lib/e2e-*.ts"
         - "scripts/tests/fixtures/e2e-oracle/**"
@@ -1931,7 +1917,6 @@ e2e:
         - "docker/e2e/.versions.lock"
         - ".gitignore"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *e2e-changes-1
     - when: manual
 
 runtime-foundations:
@@ -1969,7 +1954,7 @@ worktree-guard:
     - "task ci:worktree-guard"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &worktree-guard-changes-1
+      changes:
         - "hooks/worktree-git-guard.ts"
         - "scripts/worktree-claim.ts"
         - "scripts/lib/worktree-claim/**"
@@ -1983,7 +1968,6 @@ worktree-guard:
         - "scripts/tests/fixtures/worktree-claim/**"
         - "scripts/tests/fixtures/worktree-guard/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *worktree-guard-changes-1
 
 skill-evals-attestation:
   stage: integration
@@ -2009,14 +1993,13 @@ skill-evals-tests:
     - "task ci:skill-evals-tests"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &skill-evals-tests-changes-1
+      changes:
         - "scripts/lib/skill-evals/**"
         - "scripts/skill-evals*.ts"
         - "scripts/tests/skill-evals-*.test.ts"
         - "scripts/tests/lib/skill-evals-*.ts"
         - "tests/e2e/lib/llm_judge*"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *skill-evals-tests-changes-1
 
 mempalace-transcript:
   stage: integration
@@ -2027,7 +2010,7 @@ mempalace-transcript:
     - "task ci:mempalace-transcript"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &mempalace-transcript-changes-1
+      changes:
         - "hooks/mempalace-transcript.*"
         - "scripts/lib/mempalace-transcript/**"
         - "scripts/lib/tls-env.ts"
@@ -2047,7 +2030,6 @@ mempalace-transcript:
         - "scripts/tests/lib/windows-invocation.ts"
         - "scripts/tests/fixtures/mempalace-transcript/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *mempalace-transcript-changes-1
 
 build-components-ts:
   stage: modules
@@ -2063,7 +2045,7 @@ build-components-ts:
     - "task ci:build-components-ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &build-components-ts-changes-1
+      changes:
         - "scripts/build-components.*"
         - "scripts/lib/build-components/**"
         - "artifacts/core/fragments/**"
@@ -2110,7 +2092,6 @@ build-components-ts:
         - ".github/agents/**"
         - ".github/skills/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *build-components-ts-changes-1
 
 build-components-ts-node-24-0:
   stage: modules
@@ -2140,7 +2121,7 @@ extension-builders-ts:
     - "task ci:extension-builders-ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &extension-builders-ts-changes-1
+      changes:
         - "scripts/lib/extension/**"
         - "scripts/lib/org-mcp.ts"
         - "scripts/build-extension.*"
@@ -2175,7 +2156,6 @@ extension-builders-ts:
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *extension-builders-ts-changes-1
 
 extension-builders-ts-node-24-0:
   stage: modules
@@ -2205,7 +2185,7 @@ skill-scripts-ts:
     - "task ci:skill-scripts-ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &skill-scripts-ts-changes-1
+      changes:
         - "artifacts/**/skills/*/scripts/**"
         - "scripts/tests/skill-scripts-*"
         - "scripts/tests/lib/skill-scripts-*"
@@ -2222,7 +2202,6 @@ skill-scripts-ts:
         - "scripts/lib/taskfile-tree-parse.ts"
         - "scripts/lib/governance/taskfile-tree-guard.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *skill-scripts-ts-changes-1
 
 governance-checks-ts:
   stage: modules
@@ -2234,7 +2213,7 @@ governance-checks-ts:
     - "task ci:governance-checks-ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &governance-checks-ts-changes-1
+      changes:
         - "scripts/check-*.ts"
         - "scripts/lib/governance/**"
         - "scripts/lib/sequence-matcher.ts"
@@ -2260,7 +2239,6 @@ governance-checks-ts:
         - "AGENTS.md"
         - "scripts/tests/fixtures/agent-team-protocol/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *governance-checks-ts-changes-1
 
 model-ci-tooling-ts:
   stage: modules
@@ -2280,7 +2258,7 @@ model-ci-tooling-ts:
     - "task ci:model-ci-tooling-ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &model-ci-tooling-ts-changes-1
+      changes:
         - "scripts/tests/model-ci-tooling-*"
         - "scripts/tests/lib/bash-suite-differential.ts"
         - "scripts/tests/lib/differential-*.ts"
@@ -2288,7 +2266,6 @@ model-ci-tooling-ts:
         - "scripts/merge-spec-pr.*"
         - "scripts/lib/governance/merge-spec-pr.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *model-ci-tooling-ts-changes-1
 
 usage-capture-node-24-0:
   stage: modules
@@ -2331,7 +2308,7 @@ install-ts:
     - "task ci:install-ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &install-ts-changes-1
+      changes:
         - "scripts/lib/link-or-copy*.ts"
         - "scripts/lib/component-roots.ts"
         - "scripts/lib/component-overlay.ts"
@@ -2414,7 +2391,6 @@ install-ts:
         - "scripts/tests/lib/install-golden-*.ts"
         - "scripts/tests/fixtures/install-golden/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *install-ts-changes-1
 
 install-ts-node-24-0:
   stage: modules
@@ -2436,7 +2412,7 @@ setup-modules-ts:
     - "task ci:setup-modules-ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &setup-modules-ts-changes-1
+      changes:
         - "scripts/lib/setup/**"
         - "scripts/lib/tls-env.ts"
         - "scripts/lib/tls-env-quote.ts"
@@ -2555,7 +2531,6 @@ setup-modules-ts:
         - "scripts/tests/fixtures/setup-tls/**"
         - "scripts/tests/fixtures/setup-golden/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *setup-modules-ts-changes-1
 
 release-driver-modules-ts:
   stage: modules
@@ -2567,7 +2542,7 @@ release-driver-modules-ts:
     - "task ci:release-driver-modules-ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &release-driver-modules-ts-changes-1
+      changes:
         - "scripts/lib/monorepo-release/**"
         - "scripts/lib/release-notes/**"
         - "scripts/lib/sync-from-upstream/git.ts"
@@ -2602,7 +2577,6 @@ release-driver-modules-ts:
         - "scripts/tests/fixtures/release/**"
         - "scripts/monorepo-release.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *release-driver-modules-ts-changes-1
 
 packaging-modules-ts:
   stage: modules
@@ -2614,7 +2588,7 @@ packaging-modules-ts:
     - "task ci:packaging-modules-ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &packaging-modules-ts-changes-1
+      changes:
         - "scripts/lib/packaging/**"
         - "scripts/lib/docs-index/**"
         - "scripts/lib/paths.ts"
@@ -2660,7 +2634,6 @@ packaging-modules-ts:
         - "scripts/tests/lib/golden-normalize.ts"
         - "scripts/tests/lib/release-driver-sandbox.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *packaging-modules-ts-changes-1
 
 changeset-coverage:
   image: python:3.12
@@ -2693,12 +2666,11 @@ windows-hook-probe:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/probe-windows-hook-parsing.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &windows-hook-probe-changes-1
+      changes:
         - "scripts/probe-windows-hook-parsing.ts"
         - "scripts/tests/probe-windows-hook-parsing.test.ts"
         - "hooks/*-transcript-hooks.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *windows-hook-probe-changes-1
 
 ticket-pickup:
   image: node:24
@@ -2706,7 +2678,7 @@ ticket-pickup:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &ticket-pickup-changes-1
+      changes:
         - "scripts/ticket-pickup.ts"
         - "scripts/lib/ticket-*.ts"
         - "scripts/lib/forge-*.ts"
@@ -2714,7 +2686,6 @@ ticket-pickup:
         - "scripts/tests/ticket-*.test.ts"
         - "scripts/tests/fixtures/ticket-pickup/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *ticket-pickup-changes-1
 
 playwright-mcp:
   image: node:24
@@ -2727,7 +2698,7 @@ playwright-mcp:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/playwright-mcp.test.ts scripts/tests/jsonc.test.ts scripts/tests/hook-config.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &playwright-mcp-changes-1
+      changes:
         - "scripts/setup-playwright-mcp.ts"
         - "scripts/lib/playwright-mcp*.ts"
         - "scripts/lib/jsonc.ts"
@@ -2738,7 +2709,6 @@ playwright-mcp:
         - "scripts/tests/jsonc.test.ts"
         - "scripts/tests/hook-config.test.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *playwright-mcp-changes-1
 
 mempalace-session-check:
   image: node:24
@@ -2751,7 +2721,7 @@ mempalace-session-check:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-registration-agreement.test.ts scripts/tests/mempalace-registration.test.ts scripts/tests/mempalace-session-check.test.ts scripts/tests/session-check-throttle.test.ts scripts/tests/session-check-hooks.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &mempalace-session-check-changes-1
+      changes:
         - "scripts/mempalace-session-check.ts"
         - "scripts/session-check-hooks.ts"
         - "scripts/lib/mempalace-registration.ts"
@@ -2770,7 +2740,6 @@ mempalace-session-check:
         - "hooks/*-transcript-hooks.json"
         - "hooks/*-usage-capture-hooks.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *mempalace-session-check-changes-1
 
 derive-spec-status:
   image: node:24
@@ -2778,13 +2747,12 @@ derive-spec-status:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/derive-spec-status.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &derive-spec-status-changes-1
+      changes:
         - "scripts/derive-spec-status.ts"
         - "scripts/lib/spec-status-derivation.ts"
         - "scripts/lib/ts-scope.ts"
         - "scripts/tests/derive-spec-status.test.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *derive-spec-status-changes-1
 
 spec-view:
   image: node:24
@@ -2793,7 +2761,7 @@ spec-view:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-view.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &spec-view-changes-1
+      changes:
         - "scripts/spec-view.ts"
         - "scripts/lib/spec-view.ts"
         - "scripts/lib/ts-scope.ts"
@@ -2803,7 +2771,6 @@ spec-view:
         - "scripts/lib/taskfile-tree.ts"
         - "scripts/lib/taskfile-tree-parse.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *spec-view-changes-1
 
 grep-anti-patterns:
   image: debian:stable-slim
@@ -2859,7 +2826,7 @@ release-notes:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-notes-real-engine.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &release-notes-changes-1
+      changes:
         - "scripts/monorepo-release.ts"
         - "scripts/release-sync-manifests.ts"
         - "scripts/release-package-extension.ts"
@@ -2876,7 +2843,6 @@ release-notes:
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *release-notes-changes-1
 
 release:
   image: node:24
@@ -2946,7 +2912,7 @@ release-tests:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-blackbox-flows2.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &release-tests-changes-1
+      changes:
         - "scripts/monorepo-release.ts"
         - "scripts/release-sync-manifests.ts"
         - "scripts/release-package-extension.ts"
@@ -2977,7 +2943,6 @@ release-tests:
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *release-tests-changes-1
 
 usage-record-schema:
   image: node:24
@@ -2986,7 +2951,7 @@ usage-record-schema:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-record-schema.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &usage-record-schema-changes-1
+      changes:
         - "schemas/**"
         - "scripts/lib/usage-record-validator.js"
         - "scripts/tests/usage-record-schema.test.ts"
@@ -2994,7 +2959,6 @@ usage-record-schema:
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *usage-record-schema-changes-1
 
 usage-capture:
   image: node:24
@@ -3009,7 +2973,7 @@ usage-capture:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-statusline-shim.test.ts scripts/tests/hook-*.test.ts scripts/tests/usage-capture-*.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &usage-capture-changes-1
+      changes:
         - "hooks/claude-transcript-hooks.json"
         - "hooks/gemini-transcript-hooks.json"
         - "hooks/copilot-transcript-hooks.json"
@@ -3059,7 +3023,6 @@ usage-capture:
         - "scripts/tests/fixtures/setup-declarations/**"
         - "scripts/lib/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *usage-capture-changes-1
 
 usage-storage:
   image: node:24
@@ -3072,7 +3035,7 @@ usage-storage:
     - "node scripts/build-usage-validator.js --check"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &usage-storage-changes-1
+      changes:
         - "scripts/lib/usage-store/**"
         - "scripts/usage-query.ts"
         - "scripts/usage-prune.ts"
@@ -3115,7 +3078,6 @@ usage-storage:
         - "docs/usage-storage.md"
         - "docs/usage-organization.md"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *usage-storage-changes-1
 
 usage-attribution:
   image: node:24
@@ -3124,7 +3086,7 @@ usage-attribution:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-attribution-channels.test.ts scripts/tests/usage-attribution-ledger-rollup.test.ts scripts/tests/usage-attribution-period-rollup.test.ts scripts/tests/usage-attribution-prune.test.ts scripts/tests/usage-attribution-mutations.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &usage-attribution-changes-1
+      changes:
         - "scripts/lib/usage-store/**"
         - "scripts/lib/usage-capture/**"
         - "scripts/usage-task.ts"
@@ -3146,7 +3108,6 @@ usage-attribution:
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *usage-attribution-changes-1
 
 usage-pricing:
   image: node:24
@@ -3155,7 +3116,7 @@ usage-pricing:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-pricing-compute.test.ts scripts/tests/usage-pricing-fx.test.ts scripts/tests/usage-pricing-rollup.test.ts scripts/tests/usage-pricing-rollup-period.test.ts scripts/tests/usage-pricing-prune.test.ts scripts/tests/usage-pricing-static.test.ts scripts/tests/usage-pricing-conversion.test.ts scripts/tests/usage-pricing-conversion-b.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &usage-pricing-changes-1
+      changes:
         - "scripts/lib/usage-price/**"
         - "scripts/usage-price.ts"
         - "scripts/tests/usage-pricing-compute.test.ts"
@@ -3181,7 +3142,6 @@ usage-pricing:
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *usage-pricing-changes-1
 
 usage-dashboard:
   image: node:24
@@ -3190,7 +3150,7 @@ usage-dashboard:
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-dashboard-agreement.test.ts scripts/tests/usage-dashboard-crosscheck.test.ts scripts/tests/usage-dashboard-buckets.test.ts scripts/tests/usage-dashboard-render.test.ts scripts/tests/usage-dashboard-empty.test.ts scripts/tests/usage-dashboard-page.test.ts scripts/tests/usage-dashboard-static.test.ts scripts/tests/usage-dashboard-home-marker.test.ts scripts/tests/usage-dashboard-server.test.ts scripts/tests/usage-dashboard-readonly.test.ts scripts/tests/usage-dashboard-mutations.test.ts"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes: &usage-dashboard-changes-1
+      changes:
         - "scripts/lib/usage-dashboard/**"
         - "scripts/usage-dashboard.ts"
         - "scripts/tests/usage-dashboard-agreement.test.ts"
@@ -3226,4 +3186,3 @@ usage-dashboard:
         - "package.json"
         - "package-lock.json"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-      changes: *usage-dashboard-changes-1

@@ -32,3 +32,41 @@ capabilities:
       install: omit-dev
     command:
       - task ci:ci-file-limit
+
+  # Spec 0309 delta-02 R6, R7 and R12(a): the wiring test of the unfiltered push on main and release/**,
+  # with the #2009 regression. Its pull-request filter covers every file the test reads; the push
+  # trigger carries none, from the first commit.
+  - id: ci-push-unfiltered
+    group: governance
+    name: "Check that every verifying capability runs unfiltered on a push to a protected branch"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/ci-push-unfiltered.test.ts"
+          - "scripts/lib/ci-push/**"
+          - "ci/push-main-exemptions.txt"
+          - "ci/capabilities/**"
+          - ".gitlab-ci.yml"
+          - ".github/workflows/**"
+          - ".github/actions/ci-job/**"
+          - "Taskfile.yml"
+          - "taskfiles/**"
+          - "scripts/lib/ci-paths-gate/**"
+          - "scripts/lib/ci-parity/**"
+          - "scripts/lib/build-ci/**"
+          - "scripts/lib/taskfile-tree.ts"
+          - "scripts/lib/taskfile-tree-parse.ts"
+          - "scripts/lib/governance/taskfile-tree-guard.ts"
+          - "scripts/lib/yq-accessors/**"
+          - "scripts/lib/glob-engine.ts"
+          - "scripts/tests/skill-size-budgets.test.ts"
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:ci-push-unfiltered

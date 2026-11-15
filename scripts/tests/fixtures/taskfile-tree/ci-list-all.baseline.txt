@@ -119,6 +119,7 @@ task: Available tasks for this project:
 * ci:ci-file-limit:                          Check the per-file limit of the CI files and the reference split proof (pre-push mirror of the CI job)
 * ci:ci-parity:                              Test the CI generator and parity harness (cached by the ci-cache-guard capability key)
 * ci:ci-pre-push-replay:                     Run the ci-pre-push-replay CI capability (pre-push mirror of the CI job)
+* ci:ci-push-unfiltered:                     Check that every verifying capability runs unfiltered on a push to main (pre-push mirror of the CI job)
 * ci:cli-matrix-fresh:                       Check docs/cli-matrix.md is fresh (pre-push mirror of the CI job)
 * ci:cli-matrix-fresh-selftest:              Run the CLI matrix builder test (pre-push mirror of the CI job)
 * ci:component-drift:                        Check built components match their sources (cached by the ci-cache-guard capability key)
