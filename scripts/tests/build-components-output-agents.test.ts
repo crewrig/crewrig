@@ -56,7 +56,10 @@ describe("the four CLI shapes (R13)", () => {
     );
     assert.equal(
       tree.read(".agents/agents/ag.md"),
-      '---\nname: ag\ndescription: "An agent."\n---\n\nAgent body.\n' + BLOCK,
+      '---\nname: ag\ndescription: "An agent."\n' +
+        "tools: [read_file, edit_file, write_file, run_command, manage_task, search_web]\n" +
+        "---\n\nAgent body.\n" +
+        BLOCK,
     );
   });
 
@@ -77,17 +80,22 @@ describe("the flat Antigravity agent (spec 0053 delta-01 R11-R13, #1847)", () =>
   const bash = ["claude:", "  allowed-tools:", "    - Read", "    - Bash"];
   const flat = (extra: string[]): string => build(extra).read(".agents/agents/ag.md");
 
-  test("flat <name>.md, keys name, description, metadata in that order", () => {
+  test("flat <name>.md, keys name, description, tools, metadata in that order", () => {
     const text = flat(["license: MIT", 'compatibility: "c"', ...prov]);
     const fm = (text.split("---\n")[1] ?? "").split("\n").filter((l) => /^\S.*:/.test(l));
     assert.deepEqual(
       fm.map((l) => l.split(":")[0]),
-      ["name", "description", "metadata"],
+      ["name", "description", "tools", "metadata"],
     );
   });
 
-  test("pr-reviewer: no enable_*, no tools (a Bash source emits neither)", () => {
-    assert.doesNotMatch(flat(bash), /enable_|tools|license|compatibility/);
+  test("pr-reviewer: no enable_*, and the tools line is the vendor default, not derived from Bash (R13, delta 03 R40)", () => {
+    const text = flat(bash);
+    assert.doesNotMatch(text, /enable_|license|compatibility/);
+    assert.match(
+      text,
+      /\ntools: \[read_file, edit_file, write_file, run_command, manage_task, search_web\]\n/,
+    );
   });
 
   test("source declaring antigravity.enable_write_tools builds silently", () => {
@@ -309,22 +317,30 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
   const drop = (target: string, declared: string, reason: string): string =>
     ["tools-drop", "ag", target, "metadata.tools", declared, reason].join("\t");
 
-  // class, claude, copilot, gemini
-  const TABLE: ReadonlyArray<readonly [string, string, string | null, string | null]> = [
-    ["read", "Read", "[read]", "[read_file, read_many_files, list_directory]"],
-    ["search", "Grep, Glob", "[search]", "[grep_search, glob]"],
-    ["edit", "Edit, Write", "[edit]", "[write_file, replace]"],
-    ["execute", "Bash", "[execute]", "[run_shell_command]"],
-    ["web", "WebFetch, WebSearch", "[web]", "[web_fetch, google_web_search]"],
-    ["agent", "Agent", "[agent]", null],
-    ["skill", "Skill", null, "[activate_skill]"],
-    ["message", "SendMessage", null, null],
+  // The four names that `agy` 1.5.9 accepts and silently ignores (delta 03 R37): never emitted.
+  const SILENT = ["grep_search", "find_by_name", "list_dir", "read_url_content"];
+  const ANTI_ALL =
+    "[read_file, edit_file, write_file, run_command, manage_task, search_web, invoke_subagent, send_message]";
+
+  // class, claude, copilot, gemini, antigravity
+  const TABLE: ReadonlyArray<
+    readonly [string, string, string | null, string | null, string | null]
+  > = [
+    ["read", "Read", "[read]", "[read_file, read_many_files, list_directory]", "[read_file]"],
+    ["search", "Grep, Glob", "[search]", "[grep_search, glob]", "[read_file]"],
+    ["edit", "Edit, Write", "[edit]", "[write_file, replace]", "[edit_file, write_file]"],
+    ["execute", "Bash", "[execute]", "[run_shell_command]", "[run_command, manage_task]"],
+    ["web", "WebFetch, WebSearch", "[web]", "[web_fetch, google_web_search]", "[search_web]"],
+    ["agent", "Agent", "[agent]", null, "[invoke_subagent]"],
+    ["skill", "Skill", null, "[activate_skill]", null],
+    ["message", "SendMessage", null, null, "[send_message]"],
   ];
 
-  for (const [cls, claude, copilot, gemini] of TABLE) {
+  for (const [cls, claude, copilot, gemini, antigravity] of TABLE) {
     test(`the class ${cls} alone`, () => {
-      // A CLI with no name for the class fails the build (R13, R29); the others write the bytes.
-      const targets = ["claude", "antigravity"];
+      // A CLI with no name for the class fails the build (R13, R29, delta 03 R39); the others write the bytes.
+      const targets = ["claude"];
+      if (antigravity !== null) targets.push("antigravity");
       if (copilot !== null) targets.push("copilot");
       if (gemini !== null) targets.push("gemini");
       for (const target of targets) {
@@ -336,13 +352,16 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
           assert.equal(tree.read(".github/agents/ag.md"), fmFile([`tools: ${copilot}`]));
         if (target === "gemini")
           assert.equal(tree.read(".gemini/agents/ag.md"), fmFile([`tools: ${gemini}`]));
-        if (target === "antigravity") assert.equal(tree.read(".agents/agents/ag.md"), fmFile([]));
+        if (target === "antigravity")
+          assert.equal(tree.read(".agents/agents/ag.md"), fmFile([`tools: ${antigravity}`]));
       }
       for (const [target, name, dir] of [
         ["copilot", "Copilot CLI", ".github"],
         ["gemini", "Gemini CLI", ".gemini"],
+        ["antigravity", "Antigravity CLI", ".agents"],
       ] as const) {
-        if ((target === "copilot" ? copilot : gemini) !== null) continue;
+        if ((target === "copilot" ? copilot : target === "gemini" ? gemini : antigravity) !== null)
+          continue;
         const { tree, res } = built(`[${cls}]`, "--target", target);
         assert.equal(res.status, 1, res.stderr);
         assert.ok(res.stderr.includes(`metadata.tools has no ${name} name for ${cls}`), res.stderr);
@@ -351,7 +370,7 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
     });
   }
 
-  test("all eight classes: the eleven Gemini names pinned literally, the drops of each CLI, one for Antigravity", () => {
+  test("all eight classes: the Gemini and Antigravity names pinned literally, the drops of each CLI", () => {
     const { tree, res } = built(`[${CLASSES}]`);
     assert.equal(res.status, 0, res.stderr);
     assert.equal(
@@ -373,9 +392,11 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
         "tools: [read_file, read_many_files, list_directory, grep_search, glob, write_file, replace, run_shell_command, web_fetch, google_web_search, activate_skill]",
       ]),
     );
-    assert.equal(tree.read(".agents/agents/ag.md"), fmFile([]));
+    assert.equal(tree.read(".agents/agents/ag.md"), fmFile([`tools: ${ANTI_ALL}`]));
+    for (const name of SILENT)
+      assert.doesNotMatch(tree.read(".agents/agents/ag.md"), new RegExp(name));
     assert.deepEqual(stream(res.stderr).sort(), [
-      drop("antigravity", "read,search,edit,execute,web,agent,skill,message", "unsupported-on-cli"),
+      drop("antigravity", "skill", "no-equivalent-on-cli"),
       drop("copilot", "skill,message", "no-equivalent-on-cli"),
       drop("gemini", "agent,message", "no-equivalent-on-cli"),
     ]);
@@ -401,19 +422,21 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
     assert.equal(tree.read(".github/agents/ag.md"), fmFile(["tools: [read, search]"]));
   });
 
-  test("opt-in: a source without metadata.tools gets no tools key on any CLI (R12)", () => {
+  test("opt-in: a source without metadata.tools gets no tools key on Claude, Copilot and Gemini, the vendor all-tools line on Antigravity (R12, delta 03 R40)", () => {
     const tree = createFixtureTree();
     tree.config(CONFIG);
     tree.artifact("core/agents/ag/AGENT.md", agent("ag", BODY, ["metadata:", "  other: x"]));
     const res = tree.run([]);
     assert.equal(res.status, 0, res.stderr);
     assert.equal(stream(res.stderr).length, 0);
-    for (const rel of [".claude", ".github", ".gemini", ".agents"].map(
-      (d) => `${d}/agents/ag.md`,
-    )) {
+    for (const rel of [".claude", ".github", ".gemini"].map((d) => `${d}/agents/ag.md`)) {
       assert.equal(tree.read(rel), fmFile([], rel.startsWith(".claude")), rel);
       assert.doesNotMatch(tree.read(rel), /tools/);
     }
+    assert.equal(
+      tree.read(".agents/agents/ag.md"),
+      fmFile(["tools: [read_file, edit_file, write_file, run_command, manage_task, search_web]"]),
+    );
   });
 
   test("the tools line follows the directed model line and precedes the provenance block (R11)", () => {
@@ -446,17 +469,52 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
     assert.match(tree.read(".github/agents/ag.md"), /\ntools: \[read, search\]\nmetadata:\n/);
   });
 
-  test("Antigravity: no tools key, one tools-drop on standard error and in the --diagnostics file (R14)", () => {
+  test("Antigravity: [web, read, search, skill] writes the mapped line and one tools-drop for skill, on standard error and in the --diagnostics file (R37-R39)", () => {
     const tree = createFixtureTree();
     tree.config(CONFIG);
-    tree.artifact("core/agents/ag/AGENT.md", agent("ag", BODY, meta("[web, read, search]")));
+    tree.artifact("core/agents/ag/AGENT.md", agent("ag", BODY, meta("[web, read, search, skill]")));
     const log = tree.resolve("diag.log");
     const res = tree.run(["--target", "antigravity", "--diagnostics", log]);
     assert.equal(res.status, 0, res.stderr);
-    assert.equal(tree.read(".agents/agents/ag.md"), fmFile([]));
-    const want = drop("antigravity", "read,search,web", "unsupported-on-cli");
+    assert.equal(tree.read(".agents/agents/ag.md"), fmFile(["tools: [read_file, search_web]"]));
+    const want = drop("antigravity", "skill", "no-equivalent-on-cli");
     assert.deepEqual(stream(res.stderr), [want]);
     assert.deepEqual(lines(fs.readFileSync(log, "utf8")), [want]);
+  });
+
+  test("Antigravity: [read, search] de-duplicates to [read_file] and drops nothing (R37, R39)", () => {
+    const { tree, res } = built("[read, search]", "--target", "antigravity");
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(tree.read(".agents/agents/ag.md"), fmFile(["tools: [read_file]"]));
+    assert.deepEqual(stream(res.stderr), []);
+  });
+
+  test("Antigravity: [read, skill] writes [read_file] and one drop with declared skill (R39)", () => {
+    const { tree, res } = built("[read, skill]", "--target", "antigravity");
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(tree.read(".agents/agents/ag.md"), fmFile(["tools: [read_file]"]));
+    assert.deepEqual(stream(res.stderr), [drop("antigravity", "skill", "no-equivalent-on-cli")]);
+  });
+
+  test("Antigravity: [skill] alone fails the build, naming the CLI and the reason, no file, no empty list (R39)", () => {
+    const { tree, res } = built("[skill]", "--target", "antigravity");
+    assert.equal(res.status, 1, res.stderr);
+    assert.match(
+      res.stderr,
+      /^Error: .*AGENT\.md: metadata\.tools has no Antigravity CLI name for skill \(no name on that CLI/m,
+    );
+    assert.equal(tree.exists(".agents/agents/ag.md"), false);
+    assert.doesNotMatch(res.stderr, /tools: \[\]/);
+  });
+
+  test("Antigravity: --target antigravity alone writes the same line as --target all (R41)", () => {
+    const alone = built("[execute, edit]", "--target", "antigravity");
+    const all = built("[execute, edit]");
+    assert.equal(
+      alone.tree.read(".agents/agents/ag.md"),
+      fmFile(["tools: [edit_file, write_file, run_command, manage_task]"]),
+    );
+    assert.equal(alone.tree.read(".agents/agents/ag.md"), all.tree.read(".agents/agents/ag.md"));
   });
 
   test("Gemini: [read, agent] lists the read names only and records the omission (R13)", () => {
@@ -485,9 +543,9 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
         drop("gemini", "message", "no-equivalent-on-cli"),
       ]);
       const agy = built(list, "--target", "antigravity");
-      assert.equal(agy.tree.read(".agents/agents/ag.md"), fmFile([]));
+      assert.equal(agy.tree.read(".agents/agents/ag.md"), fmFile(["tools: [send_message]"]));
       assert.deepEqual(stream(agy.res.stderr), [
-        drop("antigravity", "skill,message", "unsupported-on-cli"),
+        drop("antigravity", "skill", "no-equivalent-on-cli"),
       ]);
       assert.equal(tree.exists(".github/agents/ag.md"), false);
     }
@@ -505,9 +563,12 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
       fmFile(["tools: [write_file, replace, activate_skill]"]),
     );
     assert.equal(tree.read(".github/agents/ag.md"), fmFile(["tools: [edit]"]));
-    assert.equal(tree.read(".agents/agents/ag.md"), fmFile([]));
+    assert.equal(
+      tree.read(".agents/agents/ag.md"),
+      fmFile(["tools: [edit_file, write_file, send_message]"]),
+    );
     assert.deepEqual(stream(res.stderr).sort(), [
-      drop("antigravity", "edit,skill,message", "unsupported-on-cli"),
+      drop("antigravity", "skill", "no-equivalent-on-cli"),
       drop("copilot", "skill,message", "no-equivalent-on-cli"),
       drop("gemini", "message", "no-equivalent-on-cli"),
     ]);
@@ -553,7 +614,10 @@ describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)",
       fmFile(["tools: Read, Edit, Write, Bash"], true),
     );
     assert.equal(tree.read(".github/agents/ag.md"), fmFile(["tools: [read, edit, execute]"]));
-    assert.equal(tree.exists(".agents/agents/ag.md"), true);
+    assert.equal(
+      tree.read(".agents/agents/ag.md"),
+      fmFile(["tools: [read_file, edit_file, write_file, run_command, manage_task]"]),
+    );
   });
 
   const INVALID: ReadonlyArray<readonly [string, string, string]> = [

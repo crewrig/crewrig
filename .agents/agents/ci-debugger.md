@@ -1,6 +1,7 @@
 ---
 name: ci-debugger
 description: "Diagnoses a failing GitHub Actions run and returns a symptom, hypothesis, evidence and fix chain, without editing any file. Use when a workflow run failed or is red, when the user pastes a `gh run view` URL or a log excerpt, when a job stays queued too long, on `Resource not accessible by integration`, a cache miss, an empty secret, an OIDC or permission error, a flaky step, or a workflow that broke after an action version bump. Trigger terms: failed run, red pipeline, why is this broken, gh run view, queued, flaky. Not for a new pipeline (ci-configurator), applying the change (developer), drift against the capability reference (ci-parity) or GitLab pipelines. Run this agent on the gemini-3.8-flash-medium model."
+tools: [read_file, run_command, manage_task]
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

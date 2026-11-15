@@ -198,9 +198,10 @@ An **agent** source MAY declare which classes of tool the agent needs under
 non-empty YAML list of strings drawn from a closed vocabulary, without
 duplicates, and CLI-agnostic like the capability profile: each emitter
 translates the classes to its own CLI's tool names, in the vocabulary's
-order whatever the order in the source. The key is opt-in: an agent that
-declares nothing gets no `tools` key on any CLI and compiles exactly as it
-did before. A top-level `tools:` key is never used, because the root
+order whatever the order in the source. The key is opt-in on Claude Code,
+Copilot CLI and Gemini CLI: an agent that declares nothing gets no `tools`
+key there and compiles exactly as it did before. On Antigravity CLI an agent
+that declares nothing gets the vendor's all-tools line (see below). A top-level `tools:` key is never used, because the root
 frontmatter keeps to the agentskills.io fields.
 
 ```yaml
@@ -235,11 +236,26 @@ metadata:
   CLI and the reason, rather than write an empty list. The empty cells are
   `[GAP-confirmation]` in `docs/cli-matrix/parity-gaps.md`: a name is never
   guessed (spec 0291 delta 01 R28, R29).
-- Antigravity CLI receives no `tools` key. Its tool names are unverified
-  and a misspelled name may hang the subagent, so none is guessed; the
-  build emits one `tools-drop` record (reason `unsupported-on-cli`) for each
-  declaring agent, and the gap is recorded in
-  [`docs/cli-matrix.md`](../docs/cli-matrix.md) (row 4c).
+- Antigravity CLI always receives a `tools` line, written after `description`
+  and before `metadata` (spec 0291 delta 03 R37 to R41; names pinned to `agy`
+  1.5.9, probed 2026-11-15). `read` and `search` map to
+  `read_file`; `edit`: `edit_file`, `write_file`; `execute`: `run_command`,
+  `manage_task`; `web`: `search_web`; `agent`: `invoke_subagent`; `message`:
+  `send_message`; each name is written once. `skill` has no Antigravity name:
+  it is omitted with one `tools-drop` record (reason `no-equivalent-on-cli`),
+  and a declaration of `skill` alone stops the build. `search` has no
+  dedicated name, so it narrows to `read_file`. `grep_search`,
+  `find_by_name`, `list_dir` and `read_url_content` pass the `agy` registry
+  check but reach the model as nothing, so they are never emitted. An agent
+  with no `metadata.tools` gets `tools: [read_file, edit_file, write_file,
+  run_command, manage_task, search_web]`, the vendor's rendering of "all
+  tools": an omitted key gives a read-only default on `agy`. That line
+  broadens such an agent (`run_command`, `edit_file`, `write_file`) and
+  narrows it (`schedule`, `generate_image`, and `send_message` as main
+  agent are no longer received). A renamed tool fails loudly at agent start;
+  a name that turns into a silent no-op does not, so re-probe the table on
+  each Antigravity CLI bump
+  ([`docs/cli-matrix.md`](../docs/cli-matrix.md), row 4c).
 - The build stops, naming the source file, the key, the offending value and
   the eight classes, when `metadata.tools` is not a list, is empty, holds a
   string outside the vocabulary or holds a duplicate, whichever CLI targets

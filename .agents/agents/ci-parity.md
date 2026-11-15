@@ -1,6 +1,7 @@
 ---
 name: ci-parity
 description: "Operates the CI drift-check harness and reconciles reported divergences: runs it, classifies each divergence with the classifier script, applies only the deterministic regenerate-and-re-verify of a stale derived pipeline and proposes every other change. Use when the drift check is red, `check-ci-parity` failed, the capability reference and a pipeline diverge, the generated `.gitlab-ci.yml` is stale, a job is untraceable or a `ci-capability` annotation is missing or wrong. Trigger terms: drift check, check-ci-parity, ci-capabilities.yml, stale .gitlab-ci.yml, untraceable job, ci-capability annotation. Not for a new pipeline (ci-configurator) or a failing application run such as a red test or a broken deploy (ci-debugger). Run this agent on the gemini-3.8-flash-medium model."
+tools: [read_file, edit_file, write_file, run_command, manage_task]
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

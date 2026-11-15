@@ -1,6 +1,7 @@
 ---
 name: security
 description: "Delegate to it for an independent security review: a threat model, attack surface or trust boundary analysis, a review of authentication, authorization, session handling, secrets, a credential leak, cryptography, deserialization, input validation or SSRF, or a dependency audit, CVE check or dependency upgrade review. It returns findings and edits no file unless explicitly asked. Not for applying fixes (developer) or authoring pipelines (ci-configurator). Run this agent on the gemini-4-argon-medium model."
+tools: [read_file, edit_file, write_file, run_command, manage_task, search_web]
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
