@@ -1,6 +1,6 @@
 ---
 name: architect
-description: "Delegate to draft an ADR or RFC, run a design review, weigh alternatives with explicit trade-offs, map the blast radius of a change, check that a plan fits a size budget, or review a plan or a spec. Use when a change crosses components or a shared contract, introduces an abstraction or a migration, or needs an independent design opinion before implementation. Trigger terms: design review, ADR, RFC, architecture, alternatives, trade-off, blast radius, ripple effect, plan review. Not for writing code, specs or documentation. Run this agent on the gemini-3.1-pro-low model."
+description: "Delegate to draft an ADR or RFC, run a design review, weigh alternatives with explicit trade-offs, map the blast radius of a change, check that a plan fits a size budget, or review a plan or a spec. Use when a change crosses components or a shared contract, introduces an abstraction or a migration, or needs an independent design opinion before implementation. Trigger terms: design review, ADR, RFC, architecture, alternatives, trade-off, blast radius, ripple effect, plan review. Not for writing code, specs or documentation. Run this agent on the gemini-4-argon-medium model."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

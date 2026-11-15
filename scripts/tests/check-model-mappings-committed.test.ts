@@ -1,6 +1,6 @@
 // check-model-mappings-committed.test.ts — Replaces scripts/tests/test-check-model-mappings.sh
 // section 3 (spec 0265, row J2, P8): the four real committed mapping files run green against the
-// checkout itself (CREWRIG_REPO_DIR = the checkout, read-only), plus the 27 content assertions
+// checkout itself (CREWRIG_REPO_DIR = the checkout, read-only), plus the 31 content assertions
 // that pin what the generic checker cannot know, as data-driven rows over js-yaml loads
 // (formerly `assert_yq` with `yq -r`).
 
@@ -110,8 +110,8 @@ const rows: readonly (readonly [string, string, string])[] = [
   ),
   ["copilot has zero offerings", len(at(docs.copilot, "offerings")), "0"],
   ["copilot declares a zero-offerings block", has(docs.copilot, "zero-offerings"), "true"],
-  ["antigravity has exactly five offerings", len(at(a, "offerings")), "5"],
-  ...(["medium", "low", "high", "high", "low"] as const).map(
+  ["antigravity has exactly nine offerings", len(at(a, "offerings")), "9"],
+  ...(["medium", "low", "high", "medium", "low", "high", "medium", "low", "high"] as const).map(
     (rung, i) =>
       [
         `antigravity offering ${i + 1} encodes and provides matching reasoning (${rung})`,
@@ -125,9 +125,9 @@ const rows: readonly (readonly [string, string, string])[] = [
     "true",
   ],
   [
-    "antigravity records nine observed-not-declared identifiers",
+    "antigravity records eleven observed-not-declared identifiers",
     len(at(a, "observed-not-declared")),
-    "9",
+    "11",
   ],
 ];
 
@@ -139,8 +139,8 @@ describe("check-model-mappings committed content (section 3)", () => {
     }
   });
 
-  test("the content table has its 27 rows", () => {
-    assert.equal(rows.length, 27);
+  test("the content table has its 31 rows", () => {
+    assert.equal(rows.length, 31);
   });
 
   for (const [name, got, expected] of rows) {

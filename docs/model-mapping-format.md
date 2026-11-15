@@ -415,14 +415,14 @@ broken:
    can run; (ii) the token is a `-`-delimited segment of `native-value`; (iii)
    where that token is itself a member of the characteristic's closed spec
    0195 domain, it SHALL equal `provides.<characteristic>`. Clause (iii) has
-   real teeth on a `reasoning` token — `gemini-3.8-flash-low` encoding
+   real teeth on a `reasoning` token — the Antigravity mapping's `gemini-3.8-flash-low` encoding
    `reasoning: low` must also *provide* `low`, and does — but it is
    **deliberately vacuous** on a family token that is not itself a domain
    member: `intelligence: flash` and `intelligence: haiku` name a vendor
    family or alias, not a rung, so clause (iii) never fires on them. A family
-   token MAY be shared by two offerings at two different rungs — the Gemini
-   mapping's `gemini-3.1-flash-lite` (`low`) and `gemini-3.5-flash`
-   (`medium`) both encode `intelligence: flash` — and this is the intended
+   token MAY be shared by offerings at different rungs — a vendor's `flash`
+   family offered at two rungs would encode `intelligence: flash` on both —
+   and this is the intended
    reading, not a gap clause (iii) failed to catch: the rung distinction
    lives entirely in `provides.intelligence`, and the encoded family token
    exists to satisfy clause (i)/(ii) alone. A reader auditing A10's coverage

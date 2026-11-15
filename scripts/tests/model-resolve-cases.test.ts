@@ -40,7 +40,7 @@ const noChecker: string | undefined = undefined; // the TypeScript checker needs
 describe("degradation cases", () => {
   test("C7 a malformed mapping cell degrades: no field, one unreadable-cell note", () => {
     const root = mutatedRoot("gemini", (doc) => {
-      first(doc, 1)["native-value"] = "not-a-domain-member";
+      first(doc, 0)["native-value"] = "not-a-domain-member";
     });
     const r = go(root, "gemini", "intelligence: medium");
     assert.deepEqual(r.fmLines, []);
@@ -50,14 +50,14 @@ describe("degradation cases", () => {
         "probe",
         "gemini",
         "unreadable-cell",
-        "offering=gemini-3.5-flash native-value=not-a-domain-member outside the frontmatter model key's declared domain",
+        "offering=gemini-4-hydrogen native-value=not-a-domain-member outside the frontmatter model key's declared domain",
       ),
     ]);
   });
 
   test("C7 the mapping checker rejects the same cell (rule A9)", { skip: noChecker }, () => {
     const root = mutatedRoot("gemini", (doc) => {
-      first(doc, 1)["native-value"] = "not-a-domain-member";
+      first(doc, 0)["native-value"] = "not-a-domain-member";
     });
     const run = spawnSync(
       process.execPath,
@@ -216,7 +216,7 @@ describe("rules (d), (e) and (g) on the real mappings", () => {
 
   test("rule (d) a specialization no gemini offering serves falls back, one drop", () => {
     const r = real("gemini", "intelligence: high", "specialization: image-generation");
-    assert.equal(r.offeringId, "gemini-3.1-pro-preview");
+    assert.equal(r.offeringId, "gemini-3.8-flash");
     assert.ok(
       r.diagLines.includes(
         drop("gemini", "metadata.model.specialization", "image-generation", "unserved-value"),
@@ -225,15 +225,15 @@ describe("rules (d), (e) and (g) on the real mappings", () => {
   });
 
   test("rule (e) an inexact encoded rung selects the nearest below and notes it, no drop", () => {
-    const r = real("antigravity", "intelligence: high", "reasoning: medium");
-    assert.equal(r.offeringId, "gemini-3.1-pro-low");
+    const r = real("antigravity", "intelligence: high", "reasoning: xhigh");
+    assert.equal(r.offeringId, "gemini-3.8-flash-high");
     assert.deepEqual(r.diagLines, [
       tab(
         "model-note",
         "probe",
         "antigravity",
         "reasoning-rung-substituted",
-        "declared=medium encoded=low",
+        "declared=xhigh encoded=high",
       ),
     ]);
   });

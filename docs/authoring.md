@@ -95,18 +95,18 @@ metadata:
 | Target | Emission |
 |---|---|
 | Claude Code | frontmatter `model: sonnet` and `effort: medium`; the description carries no model or reasoning sentence |
-| Gemini CLI | frontmatter `model: gemini-3.1-pro-preview` (`reasoning` dropped, `unsupported-on-cli`) |
+| Gemini CLI | frontmatter `model: gemini-3.8-flash` (`reasoning` dropped, `unsupported-on-cli`) |
 | GitHub Copilot CLI | *(nothing — both keys `unsupported-on-cli`)* |
-| Antigravity CLI | guidance `Run this agent on the gemini-3.1-pro-low model.` (the `reasoning` rung substituted) |
+| Antigravity CLI | guidance `Run this agent on the gemini-3.8-flash-medium model.` (the `reasoning` rung encoded in the model name) |
 
 `artifacts/core/agents/architect/AGENT.md` declares `intelligence: xhigh` and `reasoning: medium`:
 
 | Target | Emission |
 |---|---|
 | Claude Code | frontmatter `model: opus` and `effort: medium`; the description carries no model or reasoning sentence |
-| Gemini CLI | frontmatter `model: gemini-3.1-pro-preview` |
+| Gemini CLI | frontmatter `model: gemini-4-argon` |
 | GitHub Copilot CLI | *(nothing — `unsupported-on-cli`)* |
-| Antigravity CLI | guidance `Run this agent on the gemini-3.1-pro-low model.` |
+| Antigravity CLI | guidance `Run this agent on the gemini-4-argon-medium model.` |
 
 ### Profiles of the core agents
 
@@ -114,17 +114,17 @@ Every core agent declares both axes. Each cell below comes from `node scripts/bu
 
 | Agent | intelligence / reasoning | Claude Code | Gemini CLI | Antigravity CLI |
 |---|---|---|---|---|
-| `architect` | xhigh / medium | `opus` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
-| `security` | xhigh / medium | `opus` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
-| `pr-reviewer` | high / high | `sonnet` + effort `high` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-high` |
-| `developer` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
-| `tester` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
-| `spec-author` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
-| `doc-writer` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
-| `ci-configurator` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
-| `ci-debugger` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
-| `ci-parity` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
-| `pr-logbook` | medium / high | `haiku` + effort `high` | `gemini-3.5-flash` | `gemini-3.8-flash-high` |
+| `architect` | xhigh / medium | `opus` + effort `medium` | `gemini-4-argon` | `gemini-4-argon-medium` |
+| `security` | xhigh / medium | `opus` + effort `medium` | `gemini-4-argon` | `gemini-4-argon-medium` |
+| `pr-reviewer` | high / high | `sonnet` + effort `high` | `gemini-3.8-flash` | `gemini-3.8-flash-high` |
+| `developer` | high / medium | `sonnet` + effort `medium` | `gemini-3.8-flash` | `gemini-3.8-flash-medium` |
+| `tester` | high / medium | `sonnet` + effort `medium` | `gemini-3.8-flash` | `gemini-3.8-flash-medium` |
+| `spec-author` | high / medium | `sonnet` + effort `medium` | `gemini-3.8-flash` | `gemini-3.8-flash-medium` |
+| `doc-writer` | high / medium | `sonnet` + effort `medium` | `gemini-3.8-flash` | `gemini-3.8-flash-medium` |
+| `ci-configurator` | high / medium | `sonnet` + effort `medium` | `gemini-3.8-flash` | `gemini-3.8-flash-medium` |
+| `ci-debugger` | high / medium | `sonnet` + effort `medium` | `gemini-3.8-flash` | `gemini-3.8-flash-medium` |
+| `ci-parity` | high / medium | `sonnet` + effort `medium` | `gemini-3.8-flash` | `gemini-3.8-flash-medium` |
+| `pr-logbook` | medium / high | `haiku` + effort `high` | `gemini-4-hydrogen` | `gemini-4-hydrogen-high` |
 
 Why these values (evidence for requirement 4 of [spec 0200](../specs/0200-core-agent-profile-migration.md), which lets a later change declare `reasoning` on a source if it carries evidence for the value). Spec 0200 was a migration: its requirement 2 (no tier revised) bound that change set only. The profiles come from the owner's decision on #1937 (2026-11-15), taken from the measurements of the epic #1930 run (21 `pr-reviewer` launches, an `architect` run on Opus, and the other agents' observed work):
 
@@ -139,9 +139,7 @@ Gaps, by design of the mappings:
 
 - GitHub Copilot CLI emits nothing for any agent: both `intelligence` and `reasoning` are `unsupported-on-cli`, so the column is omitted.
 - Gemini CLI drops `reasoning` (`model-drop ... unsupported-on-cli`) and resolves from `intelligence` alone.
-- Antigravity CLI substitutes the `reasoning` rung into the model name (`reasoning-rung-substituted`).
-
-Issue #2040 refreshes the Gemini and Antigravity lineup; it regenerates this table.
+- Antigravity CLI encodes the `reasoning` rung in the model name: every rung has `-low`, `-medium` and `-high` variants. A declared rung with no exact variant (`xhigh`, `max`) selects the nearest lower one, with a `reasoning-rung-substituted` note. A source that declares no `reasoning` gets `-medium`, the lowest-ranked variant of each rung (spec 0197 requirement 23).
 
 `artifacts/library/agents/harness-curator/AGENT.md` carries no
 `metadata.model:` block — the **profile-less** case: all four targets emit
