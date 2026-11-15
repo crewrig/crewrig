@@ -16,7 +16,7 @@ import path from "node:path";
 import { UnsupportedGlobError } from "./lib/glob-engine.ts";
 import { decide } from "./lib/ci-paths-gate/gate.ts";
 import { readEffective } from "./lib/ci-paths-gate/reference.ts";
-import { readReference } from "./lib/ci-parity/reference-read.ts";
+import { ReferenceReadError, readReference } from "./lib/ci-parity/reference-read.ts";
 
 function usage(msg: string): number {
   process.stderr.write(`ci-paths-gate: ${msg}\n`);
@@ -42,6 +42,7 @@ async function main(argv: string[]): Promise<number> {
     const eff = readEffective(readReference(repo).text, id);
     d = await decide(id, event, before, eff.paths);
   } catch (e) {
+    if (e instanceof ReferenceReadError) return usage(e.format());
     if (e instanceof UnsupportedGlobError) return usage(e.message);
     return usage((e as Error).message);
   }

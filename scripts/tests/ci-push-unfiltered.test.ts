@@ -5,8 +5,8 @@
 // committed files only. The #2009 regression (R7) detects after the merge, as a red run of main,
 // not before it: a filter gap on a pull request is left to merge by design.
 //
-// The real-tree assertion of case (b), the workflow files, is added with the removal of the
-// standalone push filters (R12(f)); until then only that case is asserted on fixtures.
+// Case (b) is asserted on the real workflow files too: R12(f) removed the push filter of every
+// standalone workflow, so a filter that comes back fails here, naming the file.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -537,6 +537,9 @@ describe("R6 real tree", () => {
     const lines = formatExemptions(parseExemptions(real.exemptions).entries);
     console.log(`push-main exemptions (${lines.length}):\n${lines.join("\n")}`);
     assert.equal(lines.length, 12);
+  });
+  it("(b) no workflow file keeps a push path filter unless an exemption names it", () => {
+    assert.deepEqual(checkWorkflowFilters(real).map(show), []);
   });
   it("(a) the reference, (d) and (e) GitLab, (f) the exemption list, (h) cache invariance", () => {
     assert.deepEqual(checkReference(real).map(show), []);

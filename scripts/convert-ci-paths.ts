@@ -16,7 +16,11 @@
 
 import fs from "node:fs";
 
-import { readCapabilities, readReference } from "./lib/ci-parity/reference-read.ts";
+import {
+  ReferenceReadError,
+  readCapabilities,
+  readReference,
+} from "./lib/ci-parity/reference-read.ts";
 import { parse } from "./lib/yq-accessors/index.ts";
 
 const indentOf = (l: string): number => l.length - l.trimStart().length;
@@ -111,7 +115,14 @@ export function convert(text: string): Outcome {
 
 if (import.meta.main) {
   // No argument: every file of the reference (the legacy file, else each file of ci/capabilities/).
-  const files = process.argv[2] ? [process.argv[2]] : readReference(".").files;
+  let files: string[];
+  try {
+    files = process.argv[2] ? [process.argv[2]] : readReference(".").files;
+  } catch (err) {
+    if (!(err instanceof ReferenceReadError)) throw err;
+    process.stderr.write(err.format());
+    process.exit(2);
+  }
   for (const file of files) {
     const r = convert(fs.readFileSync(file, "utf8"));
     fs.writeFileSync(file, r.text);

@@ -29,8 +29,8 @@ export const ROW_DRIFT: Readonly<Record<string, number>> = {
   FX6: 1,
   FX8: 1,
   FX9: 1,
-  FX13: 2,
-  FX14: 2,
+  FX13: 1,
+  FX14: 1,
   FX15: 1,
   FX16: 1,
   UX8: 1,
@@ -52,14 +52,16 @@ const newStep = (id: string, filters: string): YMap => ({
   with: { filters },
 });
 
-/** Spec 0283 R3: the mutations below edit per-trigger lists, so expand the inherited capability list first. */
+/**
+ * Spec 0283 R3: the mutations below edit per-trigger lists, so expand the inherited capability list
+ * first. A push trigger inherits nothing (spec 0309 delta-02 R6), so only pull-request triggers gain it.
+ */
 function expandInherited(doc: YMap): void {
   for (const c of list(doc["capabilities"]).map((x) => map(x))) {
     const inherited = c["paths"];
     if (inherited === undefined) continue;
     for (const t of triggers(c))
-      if ((t["on"] === "pull-request" || t["on"] === "push") && t["paths"] === undefined)
-        t["paths"] = [...list(inherited)];
+      if (t["on"] === "pull-request" && t["paths"] === undefined) t["paths"] = [...list(inherited)];
     const cache = c["cache"];
     if (typeof cache === "object" && cache !== null && !Array.isArray(cache)) {
       const m = cache as YMap;

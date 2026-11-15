@@ -12,7 +12,13 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { globToRegExp, UnsupportedGlobError } from "../glob-engine.ts";
-import { docOf, readCapabilities, readReference, sourceOf } from "../ci-parity/reference-read.ts";
+import {
+  ReferenceReadError,
+  docOf,
+  readCapabilities,
+  readReference,
+  sourceOf,
+} from "../ci-parity/reference-read.ts";
 import type { CapRecord } from "../ci-parity/state.ts";
 
 export const DEFAULT_TARGET = "origin/main";
@@ -61,6 +67,7 @@ export function loadCapabilities(repoDir: string): CapRecord[] {
     file = path.join(repoDir, sourceOf(ref));
     return readCapabilities(docOf(ref));
   } catch (err) {
+    if (err instanceof ReferenceReadError) throw new PrePushError(err.format());
     throw new PrePushError(
       `cannot read ${file}: ${err instanceof Error ? err.message : String(err)}`,
     );

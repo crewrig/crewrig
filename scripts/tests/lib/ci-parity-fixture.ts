@@ -143,8 +143,10 @@ export function refPaths(id: string, kind: string): string[] {
     (t) => map(t)["on"] === kind,
   );
   if (trigger === undefined) throw new Error(`capability '${id}' has no '${kind}' trigger`);
-  // Spec 0283 R3: a trigger without its own paths inherits the capability-level list.
+  // Spec 0283 R3: a pull-request trigger without its own paths inherits the capability-level
+  // list; a push trigger inherits nothing (spec 0309 delta-02 R6).
   const own = map(trigger)["paths"];
+  if (own === undefined && kind === "push") return [];
   return list(own ?? capOf(doc, id)["paths"], `paths of ${id}/${kind}`).map(String);
 }
 

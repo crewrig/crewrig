@@ -75,8 +75,18 @@ export async function runGuard(argv: readonly string[], entry: string): Promise<
     try {
       // Lazy: the plain guard stays a self-contained copy (stray-scan fixtures copy only this lib).
       const { readEffective } = await import("../ci-paths-gate/reference.ts");
-      const { readReference } = await import("../ci-parity/reference-read.ts");
-      const eff = readEffective(readReference(process.cwd()).text, capability);
+      const { ReferenceReadError, readReference } = await import("../ci-parity/reference-read.ts");
+      let text: string;
+      try {
+        text = readReference(process.cwd()).text;
+      } catch (e) {
+        if (e instanceof ReferenceReadError) {
+          fatal(e.format());
+          return 2;
+        }
+        throw e;
+      }
+      const eff = readEffective(text, capability);
       keyFiles = eff.cacheFiles.join(",");
       keyEnv = eff.cacheEnv.join(",");
     } catch (e) {

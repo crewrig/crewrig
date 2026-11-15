@@ -1057,6 +1057,7 @@ ci-parity:
         - "scripts/tests/ci-parity-path-filters-undet.test.ts"
         - "scripts/tests/ci-effective-paths.test.ts"
         - "scripts/tests/ci-paths-push-trigger.test.ts"
+        - "scripts/tests/ci-reference-validity-block.test.ts"
         - "scripts/ci-paths-gate.ts"
         - "scripts/lib/ci-paths-gate/**"
         - ".github/actions/ci-job/action.yml"

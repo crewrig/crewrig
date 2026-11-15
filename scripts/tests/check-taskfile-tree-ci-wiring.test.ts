@@ -261,9 +261,9 @@ describe("check-taskfile-tree CI wiring", () => {
   test("spec-view workflow installs dependencies and carries the tree filters", () => {
     const wf = read(".github", "workflows", "spec-view.yml");
     assert.ok(INSTALL.test(wf), "installs dependencies");
-    assert.equal(wf.split(`- "${ROOT}"`).length - 1, 2);
+    assert.equal(wf.split(`- "${ROOT}"`).length - 1, 1);
     for (const p of COMPANIONS.slice(0, 3))
-      assert.equal(wf.split(`- "${p}"`).length - 1, 2, `both filters have ${p}`);
+      assert.equal(wf.split(`- "${p}"`).length - 1, 1, `the pull-request filter has ${p}`);
   });
 
   test("mutation: a job that does not run the guard is rejected", () => {

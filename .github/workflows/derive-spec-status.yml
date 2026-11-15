@@ -12,11 +12,6 @@ on:
       - "scripts/tests/derive-spec-status.test.ts"
   push:
     branches: [main, "release/**"]
-    paths:
-      - "scripts/derive-spec-status.ts"
-      - "scripts/lib/spec-status-derivation.ts"
-      - "scripts/lib/ts-scope.ts"
-      - "scripts/tests/derive-spec-status.test.ts"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
