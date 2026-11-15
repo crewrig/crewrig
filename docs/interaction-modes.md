@@ -89,6 +89,23 @@ every merge the carve-out does not cover — implementation-PRs, any
 delta-spec PR whose content changed after its own content-approval, and
 every non-spec-PR merge.
 
+**Standing-authorisation carve-out.** A merge MAY proceed with no
+just-before ask when the owner gave, in advance, an explicit **standing
+merge authorisation** naming the tickets or batch it covers, for the current
+run only. It is never implied, never carries to another run, and never covers
+a ticket the owner did not name. Three conditions always apply, whether or
+not the owner restates them: the latest review pass has no blocking finding,
+every required check is green, and the branch is up to date with `main`. The
+owner MAY add conditions, never remove one. The merge proceeds only when
+every condition holds at merge time; if any is unmet, the just-before ask
+applies to that merge. The coordinator relays the authorisation verbatim in
+the worker brief, without widening or adding to it; the owner authored the
+scope, so the relay is not permission laundering. A denied merge is retried
+once, then escalated to the owner, never delegated. Without such an
+authorisation the just-before rule applies unchanged in every mode, `AUTO`
+included: `AUTO` never implies one. The rationale is recorded in
+[ADR-0026](adr/0026-allow-a-standing-merge-authorisation-given-in-advance.md).
+
 **Feedback-conforming revision carve-out.** This carve-out is scoped
 explicitly to an **artifact-validation gate** (kind 1 above). When
 such a gate returned feedback and the artifact is revised, and every
@@ -100,9 +117,9 @@ the full artifact — the conservative default (R6 of spec 0138). This
 carve-out does **not** reach the pre-merge merge-authorization gate
 (kind 2 above) — defined above as "a distinct action-authorization,
 NOT an artifact-validation gate" — so the *Notes on the matrix* claim
-that the one-file spec-PR discharge is "the sole exception" stays
-true, and *Branching Strategy* in `AGENTS.md` is neither weakened nor
-touched.
+that the gate is waived only by the two carve-outs (the one-file
+spec-PR discharge and the standing authorisation) stays true, and
+*Branching Strategy* in `AGENTS.md` is neither weakened nor touched.
 
 These clauses bound the plan's size and the loop's length; they remove no item from the reviewer's checklist at any tier.
 
@@ -124,17 +141,18 @@ post hoc).
 Notes on the matrix:
 
 - The merge-authorization gate is **mandatory and un-waived for every
-  merge the one-file spec-PR discharge does not cover**: in every mode,
-  including AUTO, the agent MUST ask the user before any `gh pr merge` of
-  an implementation-PR, a delta-spec PR whose content changed after its
-  own content-approval, or any other non-spec-PR — *Branching Strategy*
-  is not waivable for those merges. The sole exception is the narrow
-  discharge defined under *User-gate definition*: a one-file spec-PR's
-  merge-authorization request is discharged by a prior SPECS-stage
-  content-approval of the identical, unchanged spec content, so it is not
-  fired a second time. That discharge is not a general waiver of the gate,
-  and it does not apply in AUTO, where no content-approval runs to
-  discharge it.
+  merge the two carve-outs do not cover**: in every mode, including AUTO,
+  the agent MUST ask the user before any `gh pr merge` of an
+  implementation-PR, a delta-spec PR whose content changed after its own
+  content-approval, or any other non-spec-PR — *Branching Strategy* is not
+  waivable for those merges. Only two carve-outs, both defined under
+  *User-gate definition*, admit a merge with no just-before ask: (a) a
+  one-file spec-PR's discharge by a prior SPECS-stage content-approval of
+  the identical, unchanged spec content, which does not apply in AUTO,
+  where no content-approval runs to discharge it; and (b) the owner's
+  explicit standing merge authorisation under its three always-applying
+  conditions, which `AUTO` never implies. Neither carve-out, nor both
+  together, is a general waiver of the gate.
 - FULL-mode REVIEW notifications are non-blocking — posting them does
   not pause the loop. The one FULL-mode REVIEW gate is the bounded
   non-blocking-finding triage realised through the `user-validate` skill
