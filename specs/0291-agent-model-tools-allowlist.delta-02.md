@@ -1,7 +1,7 @@
 ---
 id: "0291"
 slug: agent-model-tools-allowlist
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 1937
