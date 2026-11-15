@@ -211,7 +211,12 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `view_file`, `replace_file_content`, `grep_search` and `run_command` and warns that a misspelled name may hang the
   subagent, so the class-to-name mapping is unverified and is not guessed; the build emits one `tools-drop …
   unsupported-on-cli` record for each declaring agent instead. `[GAP-confirmation]` (`docs/cli-matrix/parity-gaps.md`),
-  lifted when each class's exact Antigravity name is established by a probe on a named ticket (spec 0291 R14)
+  lifted when each class's exact Antigravity name is established by a probe on a named ticket (spec 0291 R14). **Not
+  lifted by the fixed-context probe** (`agy` 1.5.9, issue #1995, row 7b): an agent declaring `tools: [read_file,
+  edit_file, write_file, run_command, manage_task, search_web]` loaded all six names in its prompt, while the same agent
+  without `tools` got a smaller default set (9 tool definitions, no `run_command` or `edit_file`, against 16 in a normal
+  session); that shows the names are accepted in a `--agent` session, not the class-to-name mapping, and no class was
+  probed one by one
 
 ### 4d — Skill bundled scripts
 
@@ -419,10 +424,36 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   13.0k and `tool_instructions` to 6.5k in the CrewRig worktree, probably because the `task` tool lists the repository's
   agents
 - **Gemini and Antigravity workers:** per-file exclusion of `60_MEMORY.md` not verified (no evidence recorded, spec 0308 R7).
+  Antigravity has an agent-level switch instead, not a per-file one: `inheritCustomizations: false` (see the Antigravity
+  evidence below). Gemini CLI could not be probed (see its entry)
 - **Antigravity CLI:** ✅ `~/.gemini/antigravity-cli/` — priority `[0-6][0-9]_*.md` files deployed by
   `setup-antigravity-interactive.ts` (`60_MEMORY.md` next to `60_TOOLS.md`); concatenated into `~/.gemini/config/AGENTS.md` (the single system context file
   Antigravity CLI reads) at the end of each setup run; any superseded `~/.gemini/GEMINI.md` context file is removed to
-  prevent duplicate/stale rule loading (spec 0054 / PR #443; spec 0061 delta-01 / issue #478; spec 0061 delta-02 / issue #1082)
+  prevent duplicate/stale rule loading (spec 0054 / PR #443; spec 0061 delta-01 / issue #478; spec 0061 delta-02 / issue #1082).
+  **Fixed-context evidence** (`agy` 1.5.9, probes of 2026-11-15, issue #1995; method of ADR-0025's appendix, tokens read
+  from the `gen_metadata` rows of each conversation file in `~/.gemini/antigravity-cli/conversations/`, prompt "Reply with
+  the single word OK"): (1) CrewRig worktree: **18,864** first-call input tokens; the context holds `AGENTS.md` as the only
+  rule (16,916 characters; `CLAUDE.md` is not loaded and the `@AGENTS.org.md` import inside `AGENTS.md` is not resolved), a
+  skills listing of 14,281 characters and a subagent listing of 8,200. (2) Empty scratch directory: **10,340**, with no
+  rule at all. **On the probed machine the setup output is absent**: `~/.gemini/config/AGENTS.md` and
+  `~/.gemini/antigravity-cli/[0-6][0-9]_*.md` do not exist, so the cost of the deployed user-level rules is not measured
+  (estimate only: the 26.4 KB of core rules would add about 7.5k tokens at the 3.5 characters per token observed). (3) A
+  subagent inherits `AGENTS.md` and the skills listing by default: the committed `developer` agent starts at **11,897**.
+  `inheritCustomizations: false` in a markdown agent's frontmatter (`agy` 1.1.14 per `agy changelog`: the agent no longer
+  adopts "your skills, rules, plugins, subagents and MCP servers") takes a probe subagent from **8,743** to **4,092** and
+  removes the rules, skills and subagent listing from its prompt. (4) `agy --agent <name>` with a `mainAgent: true` agent
+  that sets the switch takes a main session from 15,074 to **3,900**, or **4,306** with `tools: [read_file, edit_file,
+  write_file, run_command, manage_task, search_web]` declared: a per-launch worker profile in the workspace's
+  `.agents/agents/`, wholesale (rules, skills, plugins, subagents, MCP servers), the project `AGENTS.md` included; its
+  effect on global `~/.gemini/config` rules is not probed. (5) Rule triggers in `.agents/rules/*.md`: only
+  `trigger: always_on` enters the prompt in full; `model_decision` adds its path and description, `glob` (matching
+  nothing) and `manual` add nothing. User-scope rules are not probed. `agy --settings` takes "a JSON object of
+  settings.json keys"; none that excludes a rule was found (help text, embedded documentation), not probed
+- **Gemini CLI authentication:** the baseline cannot be measured on an individual free-tier account. Gemini CLI 0.28.2,
+  `gemini -p "Reply with the single word OK" -o json` from an empty directory, 2026-11-15 (issue #1995): exit 1,
+  `IneligibleTierError`, `reasonCode: 'UNSUPPORTED_CLIENT'`, `tierId: 'free-tier'`: "This client is no longer supported for
+  Gemini Code Assist for individuals. To continue using Gemini, please migrate to the Antigravity suite of products". A
+  paid, Workspace or API-key account is not tested, so this does not say that Gemini CLI is unsupported for those
 
 ### 7c — MCP server configuration file
 
@@ -552,7 +583,10 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   only way the org rules reach a Copilot session; `AGENTS.md` and `CLAUDE.md` load, `CLAUDE.md` without its `@` imports
 - **Antigravity CLI:** ✅ Fallback: `setup-antigravity-interactive.ts` deploys `AGENTS.org.md` →
   `~/.gemini/antigravity-cli/66_ORG_RULES.md` (priority 66); included in the `~/.gemini/config/AGENTS.md` concatenation
-  (spec 0061 delta-01). Same pattern as Gemini CLI (spec 0054)
+  (spec 0061 delta-01). Same pattern as Gemini CLI (spec 0054). **Verified** (`agy` 1.5.9, prompt dump of a session in the
+  CrewRig worktree, issue #1995): the only rule in the prompt is the repository's `AGENTS.md`; its `@AGENTS.org.md`
+  import is not resolved (no text of `AGENTS.org.md` in the prompt) and `CLAUDE.md` is not loaded, so, as on Copilot, the
+  deployed priority-66 copy is the only way the org rules reach an Antigravity session
 
 ### 7f — User-space system-context store
 
@@ -1773,7 +1807,10 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   account serves was applied per subagent in this probe (the fallback for an unserved model is the one recorded above,
   not re-tested here)
 - **Antigravity CLI:** ⚠️ guidance surface only — no per-agent frontmatter surface exists on this target (spec
-  0197 Premise 1)
+  0197 Premise 1). Re-read on `agy` 1.5.9 (issue #1995): the frontmatter of a markdown agent does carry fields
+  (`mainAgent`, `subagent`, `hidden`, `inheritMcp`, `commandExecutionPolicy`, `inheritCustomizations`, `tools`; row 7b
+  has the context-inheritance one), but none names a model, and the CLI's own migration guide says to drop `model`; the
+  statement holds for the model only
 
 ### 34 — Build-time resolution of a declared profile against the mapping in force
 
@@ -2244,12 +2281,16 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   --strict-mcp-config --mcp-config <json>`; nothing is written under `~/.claude/`. First-call input 73,071 → 41,548
   (committed profile alone) and 37,433 with the adopter-local allowlist, on the owner's home
 - **Gemini CLI:** ⚠️ no equivalent shipped. `GEMINI_CLI_SYSTEM_SETTINGS_PATH` is read in `settings.js` (source reading
-  of 0.28.2), **not probed**; the probe was refused with `IneligibleTierError`. Rules are enrolled per file in
-  `context.fileName` (row 7b). Follow-up F8 of ADR-0025
+  of 0.28.2), **not probed**; the probe was refused with `IneligibleTierError` (`UNSUPPORTED_CLIENT`, `free-tier`),
+  re-confirmed on 2026-11-15 for an individual free-tier account only (issue #1995; a paid, Workspace or API-key account
+  is untested). Rules are enrolled per file in `context.fileName` (row 7b). Follow-up F8 of ADR-0025
 - **Copilot CLI:** ⚠️ no equivalent shipped. `--no-custom-instructions` is all-or-nothing, AGENTS.md included
   (49.0k → 22.6k, ADR-0025 probe C2); no per-file exclusion found. Follow-up F8
-- **Antigravity CLI:** ⚠️ no equivalent shipped. `agy --settings` appears in `--help`, **not verified**: `agy -p`
-  demands an interactive Google login (ADR-0025 probe A1). Follow-up F8
+- **Antigravity CLI:** ⚠️ no equivalent shipped, but a carrier exists. `agy -p` is authenticated now and `agy --settings`
+  takes settings.json keys, none of which excludes a rule (not found, not probed). `agy --agent <name>` with a
+  `mainAgent: true` agent that sets `inheritCustomizations: false` took a probe session from 15,074 to 3,900 first-call
+  input tokens (4,306 with worker tools), wholesale and workspace-scoped (issue #1995, row 7b; ADR-0025 appendix, probes
+  A4 and A4b). The worker agent itself is not shipped; follow-up proposed in the ADR appendix
 
 > **Cross-reference — CI-engine × capability axis (spec 0047, ADR-0012).** The
 > CI-engine × CI-capability axis is a *different* axis from the CLI × feature
