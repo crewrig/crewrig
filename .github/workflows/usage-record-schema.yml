@@ -12,13 +12,6 @@ on:
       - "package-lock.json"
   push:
     branches: [main, "release/**"]
-    paths:
-      - "schemas/**"
-      - "scripts/lib/usage-record-validator.js"
-      - "scripts/tests/usage-record-schema.test.ts"
-      - "scripts/tests/fixtures/usage-records/**"
-      - "package.json"
-      - "package-lock.json"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

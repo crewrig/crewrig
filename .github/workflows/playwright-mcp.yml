@@ -17,16 +17,6 @@ on:
       - "scripts/tests/hook-config.test.ts"
   push:
     branches: [main, "release/**"]
-    paths:
-      - "scripts/setup-playwright-mcp.ts"
-      - "scripts/lib/playwright-mcp*.ts"
-      - "scripts/lib/jsonc.ts"
-      - "scripts/lib/hook-config.ts"
-      - "scripts/lib/tmp-file.ts"
-      - "scripts/lib/paths.ts"
-      - "scripts/tests/playwright-mcp.test.ts"
-      - "scripts/tests/jsonc.test.ts"
-      - "scripts/tests/hook-config.test.ts"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

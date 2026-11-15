@@ -65,12 +65,15 @@ export function plist(node: YqNode): { tag: string; list: string[]; bad: boolean
   return { tag: t, list, bad };
 }
 
-/** The trigger kinds that inherit the capability-level `paths` (spec 0283 R3). */
-const INHERITING_KINDS = ["pull-request", "push"];
+/**
+ * The trigger kinds that inherit the capability-level `paths` (spec 0283 R3). A `push` trigger
+ * inherits nothing: it runs unfiltered on the protected branches (spec 0309 delta-02 R6, R1(d)).
+ */
+const INHERITING_KINDS = ["pull-request"];
 
 /**
  * The effective path set of a trigger (spec 0049 delta-02 R25): its own `paths` when it declares
- * the key, else the capability-level `paths` for a pull-request or push trigger, else none.
+ * the key, else the capability-level `paths` for a pull-request trigger, else none (push inherits nothing).
  */
 function readTriggers(c: YqNode, cap: ReturnType<typeof plist>, capHas: boolean): TriggerRecord[] {
   const t = at(c, ["trigger"]);

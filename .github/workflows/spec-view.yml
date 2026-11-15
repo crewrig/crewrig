@@ -16,15 +16,6 @@ on:
       - "scripts/lib/taskfile-tree-parse.ts"
   push:
     branches: [main, "release/**"]
-    paths:
-      - "scripts/spec-view.ts"
-      - "scripts/lib/spec-view.ts"
-      - "scripts/lib/ts-scope.ts"
-      - "scripts/tests/spec-view.test.ts"
-      - "Taskfile.yml"
-      - "taskfiles/**"
-      - "scripts/lib/taskfile-tree.ts"
-      - "scripts/lib/taskfile-tree-parse.ts"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

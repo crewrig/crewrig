@@ -21,22 +21,6 @@ on:
       - "package-lock.json"
   push:
     branches: [main, "release/**"]
-    paths:
-      - "scripts/monorepo-release.ts"
-      - "scripts/release-sync-manifests.ts"
-      - "scripts/release-package-extension.ts"
-      - "scripts/lib/monorepo-release/**"
-      - "scripts/lib/packaging/**"
-      - "scripts/lib/release-notes/**"
-      - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
-      - "scripts/tests/lib/release-*.ts"
-      - "scripts/tests/lib/build-fixture-tree.ts"
-      - "scripts/lib/release-rehearse.mjs"
-      - "scripts/lib/release-pr.ts"
-      - "scripts/release-pr.ts"
-      - "scripts/tests/fixtures/release/forge-stub.mjs"
-      - "package.json"
-      - "package-lock.json"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

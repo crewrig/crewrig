@@ -35,6 +35,7 @@ import {
 import {
   docOf,
   readCapabilities,
+  ReferenceReadError,
   readReference,
   sourceOf,
 } from "./lib/ci-parity/reference-read.ts";
@@ -84,7 +85,8 @@ function readCaps(root: string): Map<string, CapRecord> | undefined {
     capabilitiesSource = sourceOf(ref);
     return new Map(readCapabilities(docOf(ref)).map((c) => [c.id, c]));
   } catch (err) {
-    fault(`cannot read ${capabilitiesSource}: ${errorText(err)}`);
+    if (err instanceof ReferenceReadError) faults.push(err.format().trimEnd());
+    else fault(`cannot read ${capabilitiesSource}: ${errorText(err)}`);
     return undefined;
   }
 }

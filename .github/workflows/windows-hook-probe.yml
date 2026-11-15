@@ -11,10 +11,6 @@ on:
       - "hooks/*-transcript-hooks.json"
   push:
     branches: [main, "release/**"]
-    paths:
-      - "scripts/probe-windows-hook-parsing.ts"
-      - "scripts/tests/probe-windows-hook-parsing.test.ts"
-      - "hooks/*-transcript-hooks.json"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

@@ -327,12 +327,13 @@ guard outside and the scan inside (see *Stray scan of registered test suites*).
 A capability entry MAY declare a capability-level `paths:` list, next to
 `trigger:`. It is the one authority for the path set of the capability:
 
-- **Inheritance.** A `pull-request` or `push` trigger that declares no `paths:`
-  of its own takes the capability-level list. A trigger-level `paths:` stays
-  accepted and wins. Other trigger kinds never inherit.
+- **Inheritance.** A `pull-request` trigger that declares no `paths:` of its own
+  takes the capability-level list. A trigger-level `paths:` stays accepted and
+  wins. Other trigger kinds never inherit, and a `push` trigger inherits nothing
+  (see *Push form*).
 - **Effective path set.** The effective path set of a trigger is its own
-  `paths:`, else the capability-level `paths:` for a `pull-request` or `push`
-  trigger, else none, and a trigger with none is an unfiltered event. Every
+  `paths:`, else the capability-level `paths:` for a `pull-request` trigger,
+  else none, and a trigger with none is an unfiltered event. Every
   reader of the reference uses this one rule (the parity harness, the pre-push
   selection, the path-ownership check and the GitLab generator).
 - **`cache.files` default.** When `cache:` is declared without `files:`, the
@@ -347,8 +348,35 @@ A capability entry MAY declare a capability-level `paths:` list, next to
   lists were identical carries one capability-level `paths:`; a capability whose two
   lists differ keeps trigger-level lists; `cache.files` was dropped only where equal
   to the paths. The conversion was proven equivalent against a frozen snapshot, since deleted
-  with the `dorny/paths-filter` removal. `scripts/tests/ci-paths-push-trigger.test.ts` keeps the
-  `pull-request` and `push` path sets of every `ci-job` job of `build.yml` identical.
+  with the `dorny/paths-filter` removal. `scripts/tests/ci-paths-push-trigger.test.ts` holds
+  the reverse invariant of the push form: the `push` path set of every `ci-job` job of
+  `build.yml` is empty (spec 0309 delta-02 R1(d), R6).
+- **Push form (spec 0309 delta-02 R6).** On a push to `main` or `release/**` every
+  capability with a `push` trigger runs with no path filter, on both engines, whatever
+  the push changed. A `push` trigger therefore inherits no capability-level `paths:`: the
+  capability-level list is the pull-request filter only, beside an unfiltered `push`
+  trigger of the same capability. A `push` trigger that declares `paths:` of its own is a
+  filter and needs a `side-effect` entry in the exemption file. The parity reader, the
+  runtime gate and the generator read this one meaning; the generated GitLab push rule has
+  no `changes:`. Standalone workflows under `.github/workflows/` carry no `paths:` or
+  `paths-ignore:` on `on.push` either, unless the file is exempted. At the time of this
+  change, 124 of the 135 capabilities have a `push` trigger: one push to `main` starts 123
+  GitHub jobs (`pages-deploy` keeps its own push filter and is not counted) and 99 GitLab jobs.
+- **Exemption file `ci/push-main-exemptions.txt`.** One `kind<TAB>id<TAB>reason` line per
+  entry, reasons non-empty, printed in full by the wiring test. `no-push` names a
+  capability with no `push` trigger on those branches (pull-request-only, scheduled, tag- or
+  release-only, engine-specific). `side-effect` names a deploy or publish capability that
+  must not run again on every push and keeps its push filter (today `pages-deploy`); it is
+  rejected for a capability whose task closure reaches a test under `scripts/tests/` or a
+  `check-*` script. A stale entry fails.
+- **Wiring test.** `scripts/tests/ci-push-unfiltered.test.ts`, run by the `ci-push-unfiltered`
+  capability over `scripts/lib/ci-push/`, asserts offline cases (a) to (h) of delta-02 R6 on
+  the reference, the workflow files, `.gitlab-ci.yml` and the exemption file, and the
+  regression for `skill-size-budgets.test.ts` (R7).
+- **Cache invariance (h).** `cache.files` defaults to the capability-level `paths:` and never
+  falls back to a trigger, so moving the list off a push trigger leaves the effective
+  `cache.files` and `cache.env` of every capability, and the GitLab `cache:key:files` output,
+  unchanged; the wiring test asserts it on a fixture.
 
 The GitLab generator emits a list that appears twice in one job (the two rules'
 `changes:` lists, or the cache key `files:` equal to them) once under a YAML
@@ -604,7 +632,8 @@ The check reads ownership from the reference, but the GitHub trigger of each
 job is hand-written. `scripts/check-ci-parity.ts` therefore compares, for every
 portable capability that has an attributed GitHub job, the reference `paths` of
 its `pull-request` and `push` triggers with the path filter GitHub applies to
-that job (spec 0049 delta-01, R12 to R24). A glob added to the reference and
+that job (spec 0049 delta-01, R12 to R24; the `push` half is superseded by the unfiltered push form
+above, so a push trigger is compared as unfiltered). A glob added to the reference and
 forgotten in the workflow, or the reverse, is a failure of the harness, not a
 silent gap.
 

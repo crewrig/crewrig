@@ -83,17 +83,8 @@ test("FX13: filtered reference vs deleted filter step", () => {
     refPaths("check-description-length", "pull-request"),
   );
   expectSide(pr, "gh", "FX13: pull_request block GitHub-only list is empty", []);
-  const push = block(
-    "check-description-length",
-    "event 'push'",
-    "FX13: filtered reference vs unfiltered job (push)",
-  );
-  expectSide(
-    push,
-    "ref",
-    "FX13: push block lists the reference paths",
-    refPaths("check-description-length", "push"),
-  );
+  // A push is unfiltered on both sides (spec 0309 delta-02 R6), so it has no block.
+  nb("check-description-length", 1, "FX13: one block, for the pull_request event only");
 });
 
 test("FX14: unfiltered reference vs filtered workflow", () => {
@@ -109,12 +100,11 @@ test("FX14: unfiltered reference vs filtered workflow", () => {
     refPaths("windows-hook-probe", "pull-request"),
   );
   expectSide(pr, "ref", "FX14: pull_request block reference-only list is empty", []);
-  block(
+  nb(
     "windows-hook-probe",
-    "event 'push'",
-    "FX14: unfiltered reference vs filtered workflow (push)",
+    1,
+    "FX14: one block, the unfiltered push agrees (spec 0309 delta-02 R6)",
   );
-  nb("windows-hook-probe", 2, "FX14: one block per event");
 });
 
 test("FX15: workflow filters push, the reference has no push trigger", () => {

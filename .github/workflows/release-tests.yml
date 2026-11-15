@@ -35,36 +35,6 @@ on:
       - "package-lock.json"
   push:
     branches: [main, "release/**"]
-    paths:
-      - "scripts/monorepo-release.ts"
-      - "scripts/release-sync-manifests.ts"
-      - "scripts/release-package-extension.ts"
-      - "scripts/lib/monorepo-release/**"
-      - "scripts/lib/packaging/**"
-      - "scripts/lib/release-rehearse.mjs"
-      - "scripts/lib/release-pr.ts"
-      - "scripts/release-pr.ts"
-      - "scripts/tests/release-pr.test.ts"
-      - ".github/workflows/release-monorepo.yml"
-      - "scripts/lib/release-notes/**"
-      - "scripts/tests/monorepo-release-engine-*.test.ts"
-      - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
-      - "scripts/tests/release-docs-and-workflows.test.ts"
-      - "scripts/tests/release-golden-generator.test.ts"
-      - "scripts/tests/release-changelog.test.ts"
-      - "scripts/tests/release-driver-sandbox.test.ts"
-      - "scripts/tests/monorepo-release-blackbox-*.test.ts"
-      - "scripts/tests/lib/release-*.ts"
-      - "scripts/tests/lib/build-fixture-tree.ts"
-      - "scripts/tests/fixtures/release-blackbox/**"
-      - ".markdownlintrc"
-      - "scripts/tests/fixtures/release/**"
-      - "scripts/build-extension.ts"
-      - "scripts/lib/extension/**"
-      - "scripts/lib/org-mcp.ts"
-      - "scripts/lib/node-floor-guard.js"
-      - "package.json"
-      - "package-lock.json"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

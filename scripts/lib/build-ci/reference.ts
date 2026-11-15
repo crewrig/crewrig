@@ -135,7 +135,8 @@ export class Capability {
   }
   /**
    * The effective path set of trigger `i` (spec 0049 delta-02 R25): its own `paths` when the key
-   * is declared, else the capability-level `paths` for a pull-request or push trigger.
+   * is declared, else the capability-level `paths` for a pull-request trigger (a push trigger inherits nothing, spec 0309
+   * delta-02 R6).
    */
   triggerPaths(i: number): string {
     const t = this.at(["trigger", String(i)]);
@@ -145,7 +146,7 @@ export class Capability {
       );
     const hasOwn = t instanceof YqMap && t.entries.some(([k]) => k === "paths");
     const kind = this.triggerKind(i);
-    if (!hasOwn && (kind === "pull-request" || kind === "push")) return this.capPaths;
+    if (!hasOwn && kind === "pull-request") return this.capPaths;
     return listText(this.at(["trigger", String(i), "paths"]));
   }
 }

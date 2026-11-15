@@ -219,9 +219,7 @@ naming `ci/capabilities/`.
   measurement by spec 0309 delta-02: it flagged 862 of 873 tests, needed about
   1,000 declarations, a shrink-only baseline and drain pull requests. Delta-02
   replaces it with an unfiltered run of every capability on a push to a
-  protected branch, which is **planned** for a later pull request of the same
-  issue and is not in force with this change; until then the push triggers
-  keep the path filters they have.
+  protected branch, now implemented (second amendment below).
 
 ### Superseded items
 
@@ -233,3 +231,25 @@ floor and hard cap, as amended by its delta-01). The wiring of the new
 `ci-file-limit` capability follows spec 0309 delta-02 R12(a): its
 pull-request trigger carries the path filter and its push trigger carries
 none, from its first commit.
+
+## Second amendment: the unfiltered run on a push to a protected branch (spec 0309 delta-02 R6)
+
+Every capability with a `push` trigger on `main` or `release/**` now runs with no path
+filter on both engines, whatever the push changed. The push trigger inherits no
+capability-level `paths:` (the list is the pull-request filter only), the 14 standalone
+workflows lost `on.push.paths`, the generated GitLab push rules lost their `changes:`
+lists, and the exemption file `ci/push-main-exemptions.txt` lists the 11 push-less
+capabilities as `no-push` and `pages-deploy` as `side-effect`. The wiring test
+`scripts/tests/ci-push-unfiltered.test.ts` asserts it offline, and its R7 case asserts that
+the job reaching `skill-size-budgets.test.ts` runs on every push to `main` on both engines.
+The header of the rewritten `scripts/tests/ci-paths-push-trigger.test.ts` cites delta-02
+R1(d), and the pull-request filters are unchanged.
+
+**Trade-off.** A filter gap of the #2009 class is now detected minutes after the merge, as
+a red run of `main`, instead of before it; detecting it before the merge is out of scope.
+The static check that would have prevented it is rejected (862 of 873 tests flagged).
+
+**Cost.** Measured offline from the reference at the time of this change (135 capabilities,
+124 with a push trigger), one push to `main` starts 123 GitHub jobs and 99 GitLab jobs, with
+`cancel-in-progress` false for pushes.
+Runner minutes are not recorded here: PR-4 records them after the first green push to `main`.
