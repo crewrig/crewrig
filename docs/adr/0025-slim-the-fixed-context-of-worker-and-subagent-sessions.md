@@ -70,7 +70,7 @@ A settings file passed at launch (`claude --settings <file>`, plus `--strict-mcp
 
 Combined (W1+W2+W3+W5, W4 flags), P9: **worker 36,260** (−36.8k), `developer` subagent with memory kept 32,314 (−27.0k).
 
-- **Cost.** `claudeMdExcludes` and `deny` live in a settings file the launcher must pass: a project `.claude/settings.json` would apply them to the owner's interactive sessions too (dropping the SOUL and the level profile there, and the `Artifact` tool). Hence a *worker* settings file shipped by CrewRig and a documented launch recipe. How Orca launches a worker (flags, env, settings) is outside CrewRig and is the open question of this ADR.
+- **Cost.** `claudeMdExcludes` and `deny` live in a settings file the launcher must pass: a project `.claude/settings.json` would apply them to the owner's interactive sessions too (dropping the SOUL and the level profile there, and the `Artifact` tool). Hence a *worker* settings file shipped by CrewRig and a documented launch recipe. How a launcher launches a worker (flags, env, settings) is outside CrewRig and is the open question of this ADR.
 - **Risk.** A coordinator that spawns workers with `Workflow` or publishes with `Artifact` needs a second profile that keeps them. The deny list is a denylist of tools CrewRig does not use, so a new harness tool defaults to *present*; the check in follow-up F7 catches growth.
 - **Scope.** Committable as a file; applying it is user-only (launcher).
 
@@ -129,7 +129,7 @@ No target is out of reach, so none is revised. Three reservations:
 
 Adopt, in this order, as follow-up issues (*Follow-up work*):
 
-1. **A CrewRig worker settings profile for Claude Code (O2: W1, W2, W3, W5 and a strict MCP flag set), shipped as a committed file with a documented launch recipe.** The measured 36.8k worker saving (P9) includes adopter-local parts (user skills, plugins, synced skills, connectors) that CrewRig cannot commit; the committed generic profile is *estimated* at about 38k and must be re-measured by F1 before the target is claimed. The −27.0k subagent saving (P9) depends on the same profile. It touches no file a user owns. Applying it is the launcher's job; the open question is how Orca passes it.
+1. **A CrewRig worker settings profile for Claude Code (O2: W1, W2, W3, W5 and a strict MCP flag set), shipped as a committed file with a documented launch recipe.** The measured 36.8k worker saving (P9) includes adopter-local parts (user skills, plugins, synced skills, connectors) that CrewRig cannot commit; the committed generic profile is *estimated* at about 38k and must be re-measured by F1 before the target is claimed. The −27.0k subagent saving (P9) depends on the same profile. It touches no file a user owns. Applying it is the launcher's job; the open question is how a launcher passes it.
 2. **`omitClaudeMd: true` on every CrewRig agent, with the six-rule conventions block inlined at build time into each body from one source file, `artifacts/core/fragments/subagent-conventions.md` (O1).** It carries the subagent from 32.3k to 15.3k inside a worker and removes the dependency on `AGENTS.md` for subagents, matching Gemini's behaviour.
 3. **Split `60-tools.md` by audience (O4b), after the paired measurement of O4.** Worker about 31.5k afterwards. O4a alone (−1.25k) is not worth a spec.
 
