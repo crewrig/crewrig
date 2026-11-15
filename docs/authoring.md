@@ -126,6 +126,15 @@ Every core agent declares both axes. Each cell below comes from `node scripts/bu
 | `ci-parity` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
 | `pr-logbook` | medium / high | `haiku` + effort `high` | `gemini-3.5-flash` | `gemini-3.8-flash-high` |
 
+Why these values (evidence for requirement 4 of [spec 0200](../specs/0200-core-agent-profile-migration.md), which lets a later change declare `reasoning` on a source if it carries evidence for the value). Spec 0200 was a migration: its requirement 2 (no tier revised) bound that change set only. The profiles come from the owner's decision on #1937 (2026-11-15), taken from the measurements of the epic #1930 run (21 `pr-reviewer` launches, an `architect` run on Opus, and the other agents' observed work):
+
+- `architect`, `security` (xhigh / medium): judgment-heavy design and threat analysis that justifies the top intelligence rung; the work is bounded by a brief, so medium effort is enough and a higher effort only adds cost.
+- `pr-reviewer` (high / high): launched most often (21 times in the run) and the one agent whose misses are costly, so it keeps a high effort on a mid-tier model rather than a top model.
+- `developer`, `tester`, `spec-author`, `doc-writer`, `ci-configurator`, `ci-debugger`, `ci-parity` (high / medium): bounded implementation, authoring and diagnosis inside existing contracts; a mid-tier model at medium effort.
+- `pr-logbook` (medium / high): templated composition against a format; a small model suffices and a high effort keeps the format rules followed.
+
+The tiers of `security` (raised) and `doc-writer` (raised) are not measured individually yet; the next epic run measures them.
+
 Gaps, by design of the mappings:
 
 - GitHub Copilot CLI emits nothing for any agent: both `intelligence` and `reasoning` are `unsupported-on-cli`, so the column is omitted.
