@@ -1,7 +1,7 @@
 ---
 id: "0197"
 slug: model-mapping
-status: draft
+status: approved
 complexity: small
 interaction-mode: AUTO
 related-issue: 2040
