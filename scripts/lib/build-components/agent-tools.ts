@@ -6,7 +6,8 @@
 // the classes to its CLI's own names, in the vocabulary's order whatever the order in the
 // source. A tool allowlist withholds every tool it does not name (artifacts/FORMAT.md), so a
 // name that is guessed is never written: a value outside the vocabulary stops the build.
-// An agent that declares nothing gets no `tools` key on any CLI (R12).
+// An agent that declares nothing gets no `tools` key on Claude Code, Copilot CLI and Gemini CLI
+// (R12); on Antigravity CLI it gets the vendor's all-tools line (delta 03 R40).
 
 import { escapeControl } from "./diagnostics.ts";
 import { BuildFailure } from "./types.ts";
@@ -74,6 +75,33 @@ const COPILOT: Readonly<Record<ToolClass, readonly string[]>> = {
   message: [],
 };
 
+/**
+ * Class to Antigravity CLI names (spec 0291 delta 03 R37; vendor migration guide embedded in
+ * `agy` 1.5.9 and the probe of #2049, 2026-11-15). `search` has no dedicated name, and
+ * `grep_search`, `find_by_name`, `list_dir` and `read_url_content` are accepted by the registry
+ * but silent no-ops, so they are never written. `skill` has no name.
+ */
+const ANTIGRAVITY: Readonly<Record<ToolClass, readonly string[]>> = {
+  read: ["read_file"],
+  search: ["read_file"],
+  edit: ["edit_file", "write_file"],
+  execute: ["run_command", "manage_task"],
+  web: ["search_web"],
+  agent: ["invoke_subagent"],
+  skill: [],
+  message: ["send_message"],
+};
+
+/** The vendor's rendering of "no `tools` (all tools)", written for an agent that declares none (R40). */
+export const ANTIGRAVITY_DEFAULT_TOOLS = `tools: [${[
+  "read_file",
+  "edit_file",
+  "write_file",
+  "run_command",
+  "manage_task",
+  "search_web",
+].join(", ")}]`;
+
 const isToolClass = (value: string): value is ToolClass =>
   (TOOL_CLASSES as readonly string[]).includes(value);
 
@@ -112,17 +140,18 @@ export function readAgentTools(source: SourceDoc): readonly ToolClass[] | null {
 /**
  * The `tools:` frontmatter line of `cli` for `classes`, and the classes it had to omit.
  * Claude Code takes a comma-separated string (the form probed on the shared `.claude/agents/`
- * surface, R11); Copilot CLI and Gemini CLI a one-line flow sequence. Antigravity CLI is not
- * written (R14): the caller emits `toolsDrop` instead.
+ * surface, R11); Copilot CLI, Gemini CLI and Antigravity CLI a one-line flow sequence, each
+ * name written once at its first occurrence (R37, R38).
  */
 export function toolsLine(
-  cli: Exclude<CliId, "antigravity">,
+  cli: CliId,
   classes: readonly ToolClass[],
 ): { readonly line: string; readonly omitted: readonly ToolClass[] } {
-  const names = (table: Readonly<Record<ToolClass, readonly string[]>>): string[] =>
-    classes.flatMap((cls) => table[cls]);
+  const names = (table: Readonly<Record<ToolClass, readonly string[]>>): string[] => [
+    ...new Set(classes.flatMap((cls) => table[cls])),
+  ];
   if (cli === "claude") return { line: `tools: ${names(CLAUDE).join(", ")}`, omitted: [] };
-  const table = cli === "gemini" ? GEMINI : COPILOT;
+  const table = cli === "gemini" ? GEMINI : cli === "copilot" ? COPILOT : ANTIGRAVITY;
   const omitted = classes.filter((cls) => table[cls].length === 0);
   return { line: `tools: [${names(table).join(", ")}]`, omitted };
 }
@@ -138,15 +167,16 @@ export function toolsDrop(
 }
 
 /**
- * The failure of R13 and R29: omitting the classes with no name on `cli` left an agent no tool,
+ * The failure of R13, R29 and R39: omitting the classes with no name on `cli` left an agent no tool,
  * and no empty list is ever written.
  */
 export function noToolName(
   source: SourceDoc,
-  cli: "gemini" | "copilot",
+  cli: "gemini" | "copilot" | "antigravity",
   declared: readonly ToolClass[],
 ): BuildFailure {
-  const label = cli === "gemini" ? "Gemini CLI" : "Copilot CLI";
+  const label =
+    cli === "gemini" ? "Gemini CLI" : cli === "copilot" ? "Copilot CLI" : "Antigravity CLI";
   return refuse(
     source,
     `has no ${label} name for ${declared.join(", ")} (no name on that CLI, ` +

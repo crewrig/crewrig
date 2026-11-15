@@ -1,21 +1,24 @@
-// emit-agent-antigravity.ts — the Antigravity CLI agent file (spec 0053 delta-01 R11-R13).
+// emit-agent-antigravity.ts — the Antigravity CLI agent file (spec 0053 delta-01 R11-R13,
+// superseded for `tools` by spec 0291 delta-03 R37-R41).
 //
 // Supersedes the directory layout of spec 0250 R13 and R15 (`.agents/agents/<name>/AGENT.md`
 // with `license`, `compatibility` and the `enable_*` keys): the compiled agent is the flat
-// regular file `.agents/agents/<name>.md`, whose frontmatter is `name`, `description` and the
-// `metadata` provenance block, in that order, and nothing else. The capability profile is
-// still resolved for `antigravity` first (the mapping declares no frontmatter surface, so the
+// regular file `.agents/agents/<name>.md`, whose frontmatter is `name`, `description`, `tools`
+// and the `metadata` provenance block, in that order, and nothing else. The capability profile
+// is still resolved for `antigravity` first (the mapping declares no frontmatter surface, so the
 // directed lines are always empty and the model item reaches the description alone).
 //
 // The build never reads `antigravity.enable_*` (a source that still declares one builds
-// silently) and derives nothing from `claude.allowed-tools`, `Bash` included (R13). A source that
-// declares `metadata.tools` gets no key either, and one `tools-drop` record (spec 0291 R14). After the
-// write, the retired `.agents/agents/<name>/` directory is reconciled (retire-agent.ts).
+// silently) and derives nothing from `claude.allowed-tools`, `Bash` included (R13). The `tools`
+// line comes from `metadata.tools` (R37-R39) or, when absent, is the vendor's all-tools line
+// (R40): an omitted key gives a read-only default on `agy`. A declared class with no Antigravity
+// name (`skill`) is dropped with a `tools-drop` record. After the write, the retired
+// `.agents/agents/<name>/` directory is reconciled (retire-agent.ts).
 
 import { resolveAgent } from "../model-resolve.ts";
 import type { ResolveContext } from "../model-resolve.ts";
 import { joinRoot } from "./args.ts";
-import { toolsDrop } from "./agent-tools.ts";
+import { ANTIGRAVITY_DEFAULT_TOOLS, noToolName, toolsDrop, toolsLine } from "./agent-tools.ts";
 import type { ToolClass } from "./agent-tools.ts";
 import { emitDiagLine } from "./diagnostics.ts";
 import { reconcileRetiredAgentDir } from "./retire-agent.ts";
@@ -50,10 +53,15 @@ export function emitAntigravityAgent(ctx: Ctx, model: ResolveContext, job: Agent
     );
   }
   const frontmatter = [`name: ${name}`, `description: "${withProse}"`];
-  // Spec 0291 R14: no `tools` key (the class-to-name mapping is unverified and never guessed),
-  // and the gap is said, not silent.
-  if (job.tools !== null)
-    emitDiagLine(ctx, toolsDrop(name, "antigravity", job.tools, "unsupported-on-cli"));
+  if (job.tools === null) {
+    frontmatter.push(ANTIGRAVITY_DEFAULT_TOOLS);
+  } else {
+    const { line, omitted } = toolsLine("antigravity", job.tools);
+    if (omitted.length === job.tools.length) throw noToolName(source, "antigravity", job.tools);
+    if (omitted.length > 0)
+      emitDiagLine(ctx, toolsDrop(name, "antigravity", omitted, "no-equivalent-on-cli"));
+    frontmatter.push(line);
+  }
 
   const target = joinRoot(ctx.platform, job.outRoot, `.agents/agents/${name}.md`);
   checkOrWrite(ctx, target, markdownFile(frontmatter, job.body), source, job.outRoot);

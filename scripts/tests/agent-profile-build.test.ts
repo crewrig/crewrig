@@ -32,7 +32,7 @@ const REASONING_DROP =
 const RUNG_NOTE =
   /^model-note\t[^\t]+\tantigravity\treasoning-rung-substituted\tdeclared=\S+ encoded=\S+$/;
 const TOOLS_DROP =
-  /^tools-drop\t[^\t]+\t(antigravity|copilot|gemini)\tmetadata\.tools\t[^\t]+\t(unsupported|no-equivalent)-on-cli$/;
+  /^tools-drop\t[^\t]+\t(antigravity|copilot|gemini)\tmetadata\.tools\t[^\t]+\tno-equivalent-on-cli$/;
 const GUIDANCE = "Run this agent on the";
 const CONFIG = ["crewrig.config.toml", "model-mappings"];
 
@@ -82,7 +82,7 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
     const meta = (readFrontmatter(tree.read(f)).metadata ?? {}) as Record<string, unknown>;
     return Object.hasOwn(meta, "tools");
   });
-  // Spec 0291 R13, R29: one antigravity line per declaring source, one copilot line when it declares
+  // Spec 0291 R13, R29, delta 03 R42: one antigravity line per source declaring `skill`, one copilot line when it declares
   // `skill` or `message`, one gemini line when it declares `agent` or `message`.
   // #1937: each source declaring a reasoning rung gets one gemini and one copilot reasoning drop,
   // and an antigravity substitution note when the rung is one Antigravity does not encode (#2040:
@@ -105,7 +105,8 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
     const classes = meta.tools ?? [];
     const copilot = classes.some((c) => c === "skill" || c === "message") ? 1 : 0;
     const gemini = classes.some((c) => c === "agent" || c === "message") ? 1 : 0;
-    return n + 1 + copilot + gemini;
+    const antigravity = classes.includes("skill") ? 1 : 0;
+    return n + antigravity + copilot + gemini;
   }, 0);
   test("T4 — a plain build over the 22-source root emits 22 model-drop, the reasoning drops and rung notes the sources imply, the guard notes the committed state implies, and one tools-drop per declaring source", () => {
     assert.equal(sources.length, 22, "the root is seeded with all 22 core AGENT.md");
@@ -145,6 +146,14 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
         other: [],
       },
     );
+  });
+
+  test("T4 — the Antigravity tools-drop count is the 10 agents declaring skill (delta 03 R42, measured 2026-11-15)", () => {
+    const agy = stderrLines(built.stderr).filter(
+      (l) => TOOLS_DROP.test(l) && /\tantigravity\t/.test(l),
+    );
+    assert.equal(agy.length, 10);
+    assert.ok(agy.every((l) => l.endsWith("\tskill\tno-equivalent-on-cli")));
   });
 
   test("T4 — no compiled output contains a note or a drop record", () => {

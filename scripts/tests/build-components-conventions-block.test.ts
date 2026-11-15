@@ -107,10 +107,15 @@ describe("nothing before the block changes (R7)", () => {
         '<!-- crewrig-provenance: version="1.0" canonical="https://example.test/o/r" feedback="" -->\nAgent body.\n' +
         `\n${F}`,
     );
+    // Antigravity gains the vendor all-tools line (spec 0291 delta 03 R40); nothing else moves.
+    const AGY_TOOLS =
+      "tools: [read_file, edit_file, write_file, run_command, manage_task, search_web]\n";
     for (const f of [".github/agents/ag.md", ".agents/agents/ag.md"])
       assert.equal(
         t.read(f),
-        '---\nname: ag\ndescription: "An agent."\nmetadata:\n  provenance:\n    canonical: "https://example.test/o/r"\n    version: "1.0"\n---\n\nAgent body.\n' +
+        '---\nname: ag\ndescription: "An agent."\n' +
+          (f.startsWith(".agents") ? AGY_TOOLS : "") +
+          'metadata:\n  provenance:\n    canonical: "https://example.test/o/r"\n    version: "1.0"\n---\n\nAgent body.\n' +
           `\n${F}`,
         f,
       );
