@@ -252,4 +252,17 @@ The static check that would have prevented it is rejected (862 of 873 tests flag
 **Cost.** Measured offline from the reference at the time of this change (135 capabilities,
 124 with a push trigger), one push to `main` starts 123 GitHub jobs and 99 GitLab jobs, with
 `cancel-in-progress` false for pushes.
-Runner minutes are not recorded here: PR-4 records them after the first green push to `main`.
+
+**Measured runner minutes.** The first push to `main` after the change (commit `b3227bdd`,
+PR #2034) ran green. `Build & Validate` (run 43715184605) created 112 jobs: 108 ran and
+succeeded and 4 were skipped. The 108 jobs that ran took 65.4 job-minutes (start to completion, summed
+per job; 24 Windows jobs account for 25.0 of them; the longest job took 4.3 minutes). The 15
+standalone push workflows of the same commit all succeeded: 15 jobs, 10.2 job-minutes. The
+total is about 76 job-minutes for one push to `main`. Like for like, a push before the change
+ran about 44 to 52 job-minutes on `Build & Validate` alone (plan v3 measurement, taken with the
+path filters active; the standalone workflows were filtered too), so `Build & Validate` costs
+about 13 to 21 more job-minutes per push, plus the roughly 10 job-minutes of the standalone
+workflows. Sources: `gh run view <id> --json jobs` start and completion
+timestamps; billed minutes round each job up and are higher. Not measured: the GitLab
+default-branch pipeline, which was not run in this repository for this commit; its 99 jobs
+are a count from the generated file, not a measurement.
