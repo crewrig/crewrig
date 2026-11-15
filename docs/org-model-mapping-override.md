@@ -132,7 +132,8 @@ all for this target; only `internal-model-a` is a candidate.
 
 The core Claude Code mapping records its `copilot-shared-read` guard
 `directed`: every compiled `.claude/agents/<name>.md` carries a `model:` key
-and no `Run this agent on the <model> model.` sentence (spec 0291). The
+and no `Run this agent on the <model> model.` or `Give its work <rung>
+reasoning effort.` sentence (spec 0291 and its delta-02). The
 evidence behind that is a probe on a standard GitHub-hosted account; it does
 not cover a bring-your-own-key provider, where github/copilot-cli#4437 was
 reported. An adopter whose Copilot readers run on such a provider re-withholds
@@ -163,7 +164,7 @@ A replaced term is a whole node, so it carries every key a term requires
 (`statement`, `holds`, `evidence`, `grounds`), not `holds` alone. The checker
 requires the state and the terms to agree (rule A23): `withheld` while a term
 holds. The mapping in force then passes the checker, and the build, for every
-Claude Code agent, writes no `model:` key, keeps the sentence in the
+Claude Code agent, writes no `model:` key, keeps both sentences in the
 description and emits one `model-note ... guard-withheld` line (spec 0197 R31
 withheld clause and R32). Apart from the lines the guard drives, the compiled
 Claude files are unchanged.

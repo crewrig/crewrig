@@ -121,14 +121,15 @@ describe("T2 — R14,R16,R17,R18: every core source resolved on all four targets
     const claude = CLAUDE_MODEL[intelligence] ?? "?";
     const antigravity = `${ANTIGRAVITY_FAMILY[intelligence]}-${ANTIGRAVITY_RUNG[reasoning]}`;
     // Spec 0291 R2: one carrier of the model at a time, decided by the committed guard state;
-    // the reasoning rung is carried as effort on Claude Code either way (#1937).
-    test(`T2 committed::${name} claude: ${claude} on the one carrier the guard directs, effort ${reasoning}`, () => {
+    // the reasoning rung is carried as effort on Claude Code, and by the description sentence only
+    // when the guard is not directed (spec 0291 delta-02 R34).
+    test(`T2 committed::${name} claude: ${claude} on the one carrier the guard directs, effort ${reasoning}, sentence iff not directed`, () => {
       const fm = frontOf(`.claude/agents/${name}.md`);
       const directed = claudeGuardState() === "directed";
       const desc = String(fm.description);
       assert.notEqual(claude, "?", `${intelligence} has a Claude model`);
       assert.equal(desc.includes(`${GUIDANCE} ${claude} model.`), !directed, desc);
-      assert.ok(desc.includes(`Give its work ${reasoning} reasoning effort.`), desc);
+      assert.equal(desc.includes(`Give its work ${reasoning} reasoning effort.`), !directed, desc);
       assert.equal(fm.model, directed ? claude : undefined);
       assert.equal(fm.effort, reasoning);
     });

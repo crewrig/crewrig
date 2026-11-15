@@ -1,6 +1,6 @@
 ---
 name: pr-reviewer
-description: "Delegate to review a pull request or a spec pull request cold, with no authoring context, and get a posted verdict (Approve, Request Changes or Comment) with a seat line and class-tagged findings. Use when a PR needs an independent review, a REVIEW pass, a second opinion before merge or a re-review of a change after fixes; spawn it with a references-only brief (seat, artifact, examined revision, prior verdicts, disposition). Trigger terms - review PR, cold review, audit pull request, verdict, REVIEW pass. Not for fixing the change, writing a PR body or composing a commit message. Give its work high reasoning effort."
+description: "Delegate to review a pull request or a spec pull request cold, with no authoring context, and get a posted verdict (Approve, Request Changes or Comment) with a seat line and class-tagged findings. Use when a PR needs an independent review, a REVIEW pass, a second opinion before merge or a re-review of a change after fixes; spawn it with a references-only brief (seat, artifact, examined revision, prior verdicts, disposition). Trigger terms - review PR, cold review, audit pull request, verdict, REVIEW pass. Not for fixing the change, writing a PR body or composing a commit message."
 model: sonnet
 effort: high
 tools: Read, Grep, Glob, Edit, Write, Bash, Skill, SendMessage

@@ -1,6 +1,6 @@
 ---
 name: developer
-description: "Implementation agent that makes a code change with the smallest correct diff and verifies it locally before reporting done. Delegate to it to implement, fix, modify, refactor or rename code inside existing contracts, in one or a few files. Not for a new abstraction or a contract change (architect), security-sensitive code (security), or tests (tester). Give its work medium reasoning effort."
+description: "Implementation agent that makes a code change with the smallest correct diff and verifies it locally before reporting done. Delegate to it to implement, fix, modify, refactor or rename code inside existing contracts, in one or a few files. Not for a new abstraction or a contract change (architect), security-sensitive code (security), or tests (tester)."
 model: sonnet
 effort: medium
 tools: Read, Grep, Glob, Edit, Write, Bash, Skill

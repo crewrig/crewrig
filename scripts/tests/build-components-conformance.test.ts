@@ -26,6 +26,7 @@ import {
   checkCase,
   diffOutcomes,
   limited,
+  oneCarrierBoth,
   oneCarrierOnly,
   replayGate,
   REPO,
@@ -64,8 +65,18 @@ const DOCUMENTED: readonly Documented[] = [
       "spec 0291 R2 (supersedes the word 'additionally' of spec 0197 R31): under a directed " +
       "guard the twin carries the model on the frontmatter alone, the frozen shell also writes " +
       "'Run this agent on the <model> model.' into the guidance prose",
-    keys: ["M3_mut#0", "M7_directed#0"],
+    keys: ["M3_mut#0"],
     verify: oneCarrierOnly,
+  },
+  {
+    id: "r2-reasoning-one-carrier",
+    clause:
+      "spec 0291 delta-02 R34, reasoning item (supersedes the word 'additionally' of spec 0197 " +
+      "R31 for reasoning): under a directed guard the twin carries the reasoning on the " +
+      "frontmatter `effort:` alone, the frozen shell also writes 'Give its work <rung> " +
+      "reasoning effort.' into the guidance prose",
+    keys: ["M7_directed#0"],
+    verify: oneCarrierBoth,
   },
 ];
 

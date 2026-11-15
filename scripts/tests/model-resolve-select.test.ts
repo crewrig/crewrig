@@ -77,8 +77,7 @@ describe("C1, C3, C4, C13(i): selection on the real mappings", () => {
       [
         "haiku",
         WITHHELD ? ["effort: medium"] : ["model: haiku", "effort: medium"],
-        (WITHHELD ? "Run this agent on the haiku model. " : "") +
-          "Give its work medium reasoning effort.",
+        WITHHELD ? "Run this agent on the haiku model. Give its work medium reasoning effort." : "",
         GUARD_NOTES,
       ],
     );

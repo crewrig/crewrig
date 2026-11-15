@@ -224,16 +224,19 @@ describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
     for (const name of unedited) {
       const committed = fs.readFileSync(path.join(REPO, `.claude/agents/${name}.md`), "utf8");
       const model = /^model: (\S+)$/m.exec(committed)?.[1];
-      // under a committed `withheld` guard the committed file already is the pre-change form
+      // under a committed `withheld` guard the committed file already is the pre-change form;
+      // under `directed` the reasoning sentence is gone, so rebuild it from the `effort:` key
+      const effort = /^effort: (\S+)$/m.exec(committed)?.[1];
       const preChange =
         model === undefined
           ? committed
           : committed
               .replace(/^model: \S+\n/m, "")
               .replace(
-                /^(description: "(?:[^"\\]|\\.)*?)( Give its work \S+ reasoning effort\.)?"/m,
-                (_m, head: string, effort?: string) =>
-                  `${head} Run this agent on the ${model} model.${effort ?? ""}"`,
+                /^(description: "(?:[^"\\]|\\.)*?)"/m,
+                (_m, head: string) =>
+                  `${head} Run this agent on the ${model} model.` +
+                  `${effort === undefined ? "" : ` Give its work ${effort} reasoning effort.`}"`,
               );
       assert.equal(tree.read(`.claude/agents/${name}.md`), preChange, name);
     }
