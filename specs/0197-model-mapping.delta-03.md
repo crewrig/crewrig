@@ -51,10 +51,10 @@ assert.
   core default mapping's offering set changes, the change SHALL be made in
   `model-mappings/<cli>.yml` alone, each added or retained offering carrying
   its own citation or assumption under requirement 5, and SHALL NOT require a
-  delta-spec. An offering set that leaves every `intelligence` rung a core
-  agent declares neither served by an offering nor documented as a model-drop
-  (requirement 17's highest-declared-rung fallback, or an `unserved-value`
-  drop) SHALL be rejected by the check of requirement 49.
+  delta-spec. Every `intelligence` rung a core agent declares SHALL resolve to
+  an offering, directly or through requirement 17's highest-declared-rung
+  fallback, which records no drop on that axis; the check of requirement 49
+  stays the gate.
 
 ### Added Scenarios
 
@@ -102,13 +102,14 @@ Then  the mapping is rejected, whatever the identifier the offering names
   > **R39.** The Gemini CLI mapping SHALL declare its offerings, each with a
   > distinct rank and an `intelligence` rung, in `model-mappings/gemini.yml`,
   > each justified by its own citation or assumption (requirement 5). No
-  > offering SHALL encode a reasoning rung, and the mapping SHALL declare
-  > `supports-reasoning-surface: false` on every offering, so that a declared
-  > reasoning rung is dropped with the reason `unsupported-on-cli` under
-  > requirement 40. Every `intelligence` rung a core agent declares SHALL
-  > resolve to an offering, or to the highest declared rung under requirement
-  > 17, or SHALL yield a documented drop under requirement 19; requirement 49
-  > stays the gate. Every rung assignment that rests on no vendor measurement
+  > offering SHALL encode a reasoning rung, and every offering SHALL declare
+  > `supports-reasoning-surface: false`, since the mapping declares no
+  > frontmatter reasoning item (requirement 25). A declared reasoning rung is
+  > dropped with the reason `unsupported-on-cli`, because no surface of this
+  > mapping expresses reasoning (requirement 40). Every `intelligence` rung a
+  > core agent declares SHALL resolve to an offering, directly or through the
+  > highest-declared-rung fallback of requirement 17, which records no drop on
+  > that axis; requirement 49 stays the gate. Every rung assignment that rests on no vendor measurement
   > SHALL be carried as an assumption bearing the date it was made. The empty
   > offering set remains permitted, as requirement 41 does for another target.
 
@@ -152,13 +153,14 @@ Then  the mapping is rejected, whatever the identifier the offering names
   > record every observed identifier it declares no offering for as evidence,
   > with the ground for leaving it undeclared. An offering whose native
   > identifier encodes a reasoning rung SHALL be composite and SHALL provide the
-  > rung it encodes (requirement 48). An offering whose identifier encodes no
-  > reasoning rung SHALL declare `supports-reasoning-surface: false`, so that a
-  > declared reasoning rung selecting it is dropped with the reason
-  > `unsupported-on-model` under requirement 25. Every `intelligence` rung a core
-  > agent declares SHALL resolve to an offering, or to the highest declared rung
-  > under requirement 17, or SHALL yield a documented drop; requirement 49
-  > stays the gate. Under requirement 23 the lowest-ranked candidate is
+  > rung it encodes (requirement 48). Every offering SHALL declare
+  > `supports-reasoning-surface: false`, since the mapping declares no
+  > frontmatter surface (requirements 25 and 43); a declared reasoning rung
+  > that the selected offering does not encode is therefore not directed onto
+  > any surface and is dropped with the reason `unsupported-on-cli`. Every
+  > `intelligence` rung a core agent declares SHALL resolve to an offering,
+  > directly or through the highest-declared-rung fallback of requirement 17,
+  > which records no drop on that axis; requirement 49 stays the gate. Under requirement 23 the lowest-ranked candidate is
   > selected, so the ranks SHALL be authored such that a profile declaring no
   > reasoning axis selects the offering the maintainer intends as the default
   > for its rung, and that choice SHALL be carried in the mapping. Every rung
@@ -213,7 +215,8 @@ characteristics it provides and encodes.
   And   the Gemini CLI core default mapping, which declares no guidance surface
   When  that profile is resolved against the mapping
   Then  the selection names the offering the mapping ranks lowest among those
-        at or above <rung>
+        at or above <rung>, or, where no offering reaches <rung>, among those at
+        the highest rung the mapping declares
   And   the reasoning rung is dropped with the reason unsupported-on-cli
   And   no value is directed onto the out-of-band surface the mapping names
   ```
