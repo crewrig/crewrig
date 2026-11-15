@@ -972,6 +972,22 @@ mapping of the existing neutral vocabulary (spec 0047 R7, R9):
 It **never** edits a capability definition. The capability set and the neutral
 vocabulary are the stable contract; each engine is one mapping over them.
 
+## Capabilities that keep their own command (spec 0283 R2)
+
+A recorded exception to `command: [task ci:<id>]` is a `portability: specific` capability with
+evidence (spec 0283 R2). These capabilities keep their own command, or none; a test
+(`scripts/tests/ci-parity-ci-job.test.ts`) pins this list equal to the `specific` capabilities
+whose `command:` is absent or is not `task ci:<id>`:
+
+- `claude`: the `@claude` mention workflow, with no command.
+- `copilot`: the `@copilot-cli` mention workflow, with no command.
+- `pages-deploy`: the GitHub Pages deployment chain, with no command.
+- `pr-scope`: the spec-only classifier of `build.yml` (spec 0287 delta-02 R22), whose own `run:` step
+  must not go through `ci-job` because a failure there runs `cancel-on-failure`.
+
+Other capabilities whose command is not `task ci:<id>` are `portable` and not yet migrated: they are
+not exceptions.
+
 ## The `ci-job` thin job (spec 0283 R5, R6)
 
 A migrated GitHub job is a checkout plus `uses: ./.github/actions/ci-job`. The job key is the
