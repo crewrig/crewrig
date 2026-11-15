@@ -24,8 +24,11 @@ export async function waitForNewInstance(
       if (await probe(s.port)) return s;
     }
     if (Date.now() > end) {
-      const seen = fresh === null ? "no new instance" : `instance on port ${fresh.port} not healthy`;
-      throw new Error(`timed out after ${timeoutMs} ms waiting for daemon restarted by start (${seen})`);
+      const seen =
+        fresh === null ? "no new instance" : `instance on port ${fresh.port} not healthy`;
+      throw new Error(
+        `timed out after ${timeoutMs} ms waiting for daemon restarted by start (${seen})`,
+      );
     }
     await new Promise((r) => setTimeout(r, stepMs));
   }
