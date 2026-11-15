@@ -216,7 +216,14 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   edit_file, write_file, run_command, manage_task, search_web]` loaded all six names in its prompt, while the same agent
   without `tools` got a smaller default set (9 tool definitions, no `run_command` or `edit_file`, against 16 in a normal
   session); that shows the names are accepted in a `--agent` session, not the class-to-name mapping, and no class was
-  probed one by one
+  probed one by one. **Defaults probed** (`agy` 1.5.9, signed in, issue #1867): an agent without `tools` gets 9 tools
+  (`send_message`, `read_file`, `search_web`, `schedule`, `generate_image`, `call_mcp_tool`, `list_resources`,
+  `read_resource`, `manage_task`), as main agent and as subagent, and the committed `developer` agent gets the same set,
+  so every compiled Antigravity agent is read-only; an explicit `tools: []` keeps only `call_mcp_tool`,
+  `list_resources`, `read_resource` and `manage_task` (plus `send_message` as subagent), so it does not mean the
+  documented default; `tools: [view_file]` loads `read_file`, so the documented name resolves; a misspelled name
+  (`view_fiel`) does not hang: the agent fails to start in seconds with `unknown component: tool "view_fiel" not found
+  in registry`, as main agent and as subagent. The class-to-name mapping itself is still not probed class by class
 
 ### 4d — Skill bundled scripts
 
@@ -1811,7 +1818,9 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   0197 Premise 1). Re-read on `agy` 1.5.9 (issue #1995): the frontmatter of a markdown agent does carry fields
   (`mainAgent`, `subagent`, `hidden`, `inheritMcp`, `commandExecutionPolicy`, `inheritCustomizations`, `tools`; row 7b
   has the context-inheritance one), but none names a model, and the CLI's own migration guide says to drop `model`; the
-  statement holds for the model only
+  statement holds for the model only. Live semantics of `subagent` and `mainAgent` (issue #1867): both default to `true` when omitted;
+  `subagent: false` drops the agent from the parent's subagent listing and `invoke_subagent` refuses it, and
+  `mainAgent: false` makes `agy --agent <name>` exit with `unknown agent`
 
 ### 34 — Build-time resolution of a declared profile against the mapping in force
 
@@ -2445,7 +2454,10 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   and records one `tools-drop … unsupported-on-cli` per declaring agent (spec 0291 R14). Antigravity documents
   `view_file`, `replace_file_content`, `grep_search` and `run_command` and warns that a misspelled name may hang the
   subagent, so the class-to-name mapping is unverified and is not guessed. Lifted when each class's exact Antigravity
-  name is established by a probe on a named ticket.
+  name is established by a probe on a named ticket. The cost of the gap is now measured (issue #1867): without a
+  `tools` key an Antigravity agent gets a read-only default set, so no compiled agent can run a command or write a
+  file; and a misspelled name fails fast with an explicit error on `agy` 1.5.9 instead of hanging. The fix is tracked
+  by issue #2049.
 - [GAP-confirmation] Copilot CLI agent `tools` names for `skill` and `message` (row 4c) — no Copilot name exists in
   <https://docs.github.com/en/copilot/reference/custom-agents-configuration> (primary aliases `execute`, `read`,
   `edit`, `search`, `agent`, `web`, `todo`) nor in <https://docs.github.com/en/copilot/concepts/agents/about-agent-skills>
@@ -2879,8 +2891,14 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   because no signed-in session was available. Unverified, each tracked by a follow-up issue opened separately from this
   change: (1) the runtime effect of the removed `enable_write_tools`, `enable_mcp_tools` and `enable_subagent_tools`
   keys (if `agy` honours `enable_write_tools`, `pr-reviewer`, whose Claude Code tool list includes `Bash`, loses write
-  ability; spec 0053 delta-01 R27 accepts that risk); (2) the vendor defaults of `tools`, `subagent` and `mainAgent`;
-  (3) the Antigravity plugin layout for agents.
+  ability; spec 0053 delta-01 R27 accepts that risk); (2) the vendor defaults of `tools`, `subagent` and `mainAgent`
+  (now verified, see below); (3) the Antigravity plugin layout for agents. **Defaults verified live** (`agy` 1.5.9,
+  signed in, issue #1867, row 4c): an omitted `subagent` or `mainAgent` leaves the agent usable as a subagent and
+  through `agy --agent`, and `false` removes it from that route. An omitted `tools` is **not** the documented `[]`: it
+  gives a 9-tool read-only default set with no `run_command` and no file edit or write tool, while an explicit
+  `tools: []` keeps only four always-present tools (MCP access and `manage_task`). Every compiled Antigravity agent is
+  therefore read-only, the committed `developer` agent included; this is wider than the R27 risk, which named
+  `pr-reviewer` only. Lifted with the `tools` gap of row 4c.
 
 ## Adding a new CLI
 
