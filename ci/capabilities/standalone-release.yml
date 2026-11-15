@@ -1,0 +1,173 @@
+# CI capabilities: standalone, part release (format: docs/ci-reference-format.md, spec 0309).
+capabilities:
+
+  # release-notes renders an extension release note through the real scripts/monorepo-release.ts configuration against a
+  # hermetic fixture repository (issue #1225). NOT changeset-gated, as usage-record-schema above. Runs on node@24: the
+  # shim's floor guard (spec 0257) refuses an older Node.js.
+  - id: release-notes
+    name: "Render extension release notes through the monorepo release config"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/monorepo-release.ts"
+      - "scripts/release-sync-manifests.ts"
+      - "scripts/release-package-extension.ts"
+      - "scripts/lib/monorepo-release/**"
+      - "scripts/lib/packaging/**"
+      - "scripts/lib/release-notes/**"
+      - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
+      - "scripts/tests/lib/release-*.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/lib/release-rehearse.mjs"
+      - "scripts/lib/release-pr.ts"
+      - "scripts/release-pr.ts"
+      - "scripts/tests/fixtures/release/forge-stub.mjs"
+      - "package.json"
+      - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - npm ci
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-notes-real-engine.test.ts
+
+  # --- Engine-specific: GitHub-native delivery surfaces --------------------
+
+  # pages.yml deploys the `communication/` site to GitHub Pages on push to main and via workflow_dispatch
+  # (.github/workflows/pages.yml lines 3-8). GitLab Pages is a distinct surface, so the capability is engine-specific and
+  # hand-authored.
+  - id: pages-deploy
+    name: "Deploy the communication site to GitHub Pages"
+    trigger:
+      - on: push
+        branches: [main]
+        paths:
+          - "communication/**"
+      - on: manual
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Uses the GitHub-Pages-specific action chain
+        `actions/configure-pages` → `actions/upload-pages-artifact` →
+        `actions/deploy-pages` against the `github-pages` deployment
+        environment (.github/workflows/pages.yml lines 26-38). GitHub Pages is
+        a GitHub-hosted product with no faithful equivalent on GitLab CI
+        (GitLab Pages is a distinct surface with its own job contract), so the
+        deploy capability is hand-authored per engine, not generated.
+
+  # release-extension.yml (.github/workflows/release-extension.yml) is REMOVED (spec 0183 R23, issue #1008): it packaged
+  # the committed source tree via `npm pack`, a non-conforming release artifact under R17. The primary driver
+  # (scripts/monorepo-release.ts, the `release` capability below) already creates the release and uploads its own
+  # conforming asset on the SAME tag it pushes, so a second path would race it and put a second asset on the release,
+  # which the vendor's measured one-asset gate (specs/0183-extension-model-migration.delta-01.md Notes) forbids. There is
+  # no replacement capability: the tag-triggered release path is retired, not relocated.
+
+  # release runs the monorepo release driver (scripts/monorepo-release.ts) on push to main. Portable since spec 0213: the
+  # SAME driver and engine (semantic-release) publish on both legs: GitHub Actions
+  # (.github/workflows/release-monorepo.yml, @semantic-release/github) and GitLab CI (the generated `release` job,
+  # @semantic-release/gitlab to the generic package registry plus a GitLab release). The driver detects the forge and sets
+  # the GitHub commit identity itself, so the business steps are identical. The credential crosses the engines under the
+  # one env key RELEASE_TOKEN (spec 0131 compares env KEYS): GitLab value the masked CI/CD variable $GITLAB_TOKEN (a
+  # project access token with api + write_repository, allowed to push to the protected release branch and create tags),
+  # GitHub value secrets.GITHUB_TOKEN. yq is required by the packager's render step (scripts/build-extension.ts). Full
+  # history: the engine reads every tag. The steps diverge on one point, inside the driver (issue #1379,
+  # docs/github-release-pr.md): on GitHub the release commit goes through a release PR (branch release-pr/main, checks
+  # dispatched through build.yml's workflow_dispatch) because GitHub offers no ruleset bypass for the Actions token;
+  # GitLab pushes to the protected branch.
+  - id: release
+    name: "Run the monorepo semantic-release pipeline"
+    trigger:
+      - on: push
+        branches: [main]
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq, yq]
+      history-depth: full
+    env:
+      RELEASE_TOKEN: "$GITLAB_TOKEN"
+    command:
+      - npm install --include=dev
+      - node scripts/lib/node-floor-guard.js
+      - node scripts/monorepo-release.ts
+
+  # release-rehearsal runs the same driver in rehearsal mode on demand (spec 0213 R12): it computes each extension's next
+  # version, tag and release note and builds the archive, with NO credential: the engine's dry run happens in a throwaway
+  # clone whose git remote operations go to a throwaway local mirror, and the config carries no publish plugin. On GitLab
+  # run it from a branch pipeline (the driver refuses a merge-request or tag pipeline).
+  - id: release-rehearsal
+    name: "Rehearse the monorepo release without publishing"
+    trigger:
+      - on: manual
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq, yq]
+      history-depth: full
+    env:
+      RELEASE_DRY_RUN: "true"
+    command:
+      - npm install --include=dev
+      - node scripts/lib/node-floor-guard.js
+      - node scripts/monorepo-release.ts
+
+  # release-tests exercises the release driver (spec 0213 R17): the hermetic driver test, the real-engine test against a
+  # local forge stub, the lint-safe changelog facade test (issue #1364) and the GitHub release-PR sync test (issue #1379).
+  # NOT changeset-gated, as usage-storage above.
+  - id: release-tests
+    name: "Test the forge-aware monorepo release driver"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/monorepo-release.ts"
+      - "scripts/release-sync-manifests.ts"
+      - "scripts/release-package-extension.ts"
+      - "scripts/lib/monorepo-release/**"
+      - "scripts/lib/packaging/**"
+      - "scripts/lib/release-rehearse.mjs"
+      - "scripts/lib/release-pr.ts"
+      - "scripts/release-pr.ts"
+      - "scripts/tests/release-pr.test.ts"
+      - ".github/workflows/release-monorepo.yml"
+      - "scripts/lib/release-notes/**"
+      - "scripts/tests/monorepo-release-engine-*.test.ts"
+      - "scripts/tests/monorepo-release-notes-real-engine.test.ts"
+      - "scripts/tests/release-docs-and-workflows.test.ts"
+      - "scripts/tests/release-golden-generator.test.ts"
+      - "scripts/tests/release-changelog.test.ts"
+      - "scripts/tests/release-driver-sandbox.test.ts"
+      - "scripts/tests/monorepo-release-blackbox-*.test.ts"
+      - "scripts/tests/lib/release-*.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/tests/fixtures/release-blackbox/**"
+      - ".markdownlintrc"
+      - "scripts/tests/fixtures/release/**"
+      - "scripts/build-extension.ts"
+      - "scripts/lib/extension/**"
+      - "scripts/lib/org-mcp.ts"
+      - "scripts/lib/node-floor-guard.js"
+      - "package.json"
+      - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq, yq]
+      history-depth: full
+    command:
+      - npm install --include=dev
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-docs-and-workflows.test.ts scripts/tests/release-golden-generator.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-engine-rehearsal.test.ts scripts/tests/monorepo-release-engine-gitlab-publish.test.ts scripts/tests/monorepo-release-engine-github-pr.test.ts scripts/tests/monorepo-release-engine-templates.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-changelog.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-pr.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/release-driver-sandbox.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-blackbox-preflight.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-blackbox-config.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-blackbox-flows.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/monorepo-release-blackbox-flows2.test.ts

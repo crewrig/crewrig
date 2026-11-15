@@ -1,0 +1,265 @@
+# CI capabilities: group extensions, part build (format: docs/ci-reference-format.md, spec 0309).
+capabilities:
+  # --- Portable: build.yml jobs -------------------------------------------
+
+  - id: build
+    group: extensions
+    name: "Build all extensions"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@22
+    command:
+      - npm install
+      - npm run build --workspaces --if-present
+
+  # --- Portable: check-components decomposition (spec 0147) ----------------
+  # The former monolithic `check-components` job is decomposed into focused, parallel, changeset-gated capabilities (spec
+  # 0147 R1-R4) so the critical path stays under 2 minutes. Each adds a `paths:` filter and `changeset-gated: true`, so
+  # `changeset-coverage` (spec 0147 delta-01 R21) reads the gated commands from here. Every tracked file is owned by a
+  # focused `paths:` set or carries a reasoned exemption (`ci/path-ownership-exemptions.txt`), checked statically by
+  # `path-ownership`. `cache:` declares the key-derivation need (files + env vars); the engine cache syntax is never
+  # written here (R6/R7).
+
+  - id: component-drift
+    group: extensions
+    name: "Check community component drift and run build-component tests"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/build-components.ts"
+      - "scripts/build-components.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/tests/build-components-canonical-repo.test.ts"
+      - "scripts/tests/agent-profile-*.test.ts"
+      - "scripts/tests/lib/build-sandbox.ts"
+      - "scripts/lib/**"
+      - "artifacts/**"
+      - "extensions/**"
+      - ".crewrig/core-paths.txt"
+      - "docs/layers.md"
+      - "docs/agent-profile-migration.md"
+      - "model-mappings/**"
+      - ".agents/skills/**"
+      - ".claude/skills/**"
+      - ".gemini/skills/**"
+      - ".github/skills/**"
+      - ".gemini/commands/**"
+      - ".agents/agents/**"
+      - ".claude/agents/**"
+      - ".gemini/agents/**"
+      - ".github/agents/**"
+      - "crewrig.config.toml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    cache:
+      files:
+        - "scripts/build-components.ts"
+        - "scripts/build-components.ts"
+        - "package.json"
+        - "package-lock.json"
+        - "scripts/tests/build-components-canonical-repo.test.ts"
+        - "scripts/tests/agent-profile-*.test.ts"
+        - "scripts/tests/lib/build-sandbox.ts"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+        - "docs/agent-profile-migration.md"
+        - "model-mappings/**"
+        - ".agents/skills/**"
+        - ".claude/skills/**"
+        - ".gemini/skills/**"
+        - ".github/skills/**"
+        - ".gemini/commands/**"
+        - ".agents/agents/**"
+        - ".claude/agents/**"
+        - ".gemini/agents/**"
+        - ".github/agents/**"
+        - "crewrig.config.toml"
+      env: []
+    command:
+      - task ci:component-drift
+
+  - id: component-drift-selftest
+    group: extensions
+    name: "Self-test the component assembly routing and canonical-repo build"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/build-components.ts"
+      - "scripts/lib/**"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/tests/build-assembly-routing.test.ts"
+      - "scripts/tests/build-components-canonical-repo.test.ts"
+      - "scripts/tests/lib/build-sandbox.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/tests/fixtures/build-components/**"
+      - "scripts/lib/node-floor-guard.js"
+      - "taskfiles/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-extensions.yml"
+      - "ci/capabilities/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    cache:
+      files:
+        - "scripts/build-components.ts"
+        - "scripts/lib/**"
+        - "package.json"
+        - "package-lock.json"
+        - "scripts/tests/build-assembly-routing.test.ts"
+        - "scripts/tests/build-components-canonical-repo.test.ts"
+        - "scripts/tests/lib/build-sandbox.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/fixtures/build-components/**"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/ci-cache-guard.ts"
+      env: []
+    command:
+      - task ci:component-drift-selftest
+
+  # Spec 0256 R40 (ticket #1335), PR B1: the portable unit suites of the TypeScript setup modules (scripts/lib/setup/**).
+  # Dark modules until the entries switch over (rows B2 to B5), so no Node.js 24.0.0 twin yet. POSIX-shell suites skip on
+  # win32; the Windows exercise of the same list is `windows-setup-units`.
+  # Spec 0256 requirement 10 (ticket #1335), PR C: the parity proof: every golden cell that runs on both legs is run on
+  # the shell setup and the TypeScript entry and compared through the tagged deviations, and each TypeScript twin of a
+  # shell library function against its original. Linux only; retired with the shell setups.
+  - id: setup-differential
+    group: extensions
+    name: "Run the shell-against-TypeScript parity proof of the four setups and the twin differential suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/**"
+      - "config/**"
+      - "hooks/**"
+      - "artifacts/core/rules/**"
+      - "artifacts/core/system-context/**"
+      - "mcp-servers.org.json"
+      - "AGENTS.org.md"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/tests/setup-differential.test.ts"
+      - "scripts/tests/setup-differential-claude.test.ts"
+      - "scripts/tests/setup-differential-gemini.test.ts"
+      - "scripts/tests/setup-differential-copilot.test.ts"
+      - "scripts/tests/setup-differential-antigravity.test.ts"
+      - "scripts/tests/setup-twins-differential-usage.test.ts"
+      - "scripts/tests/lib/setup-*.ts"
+      - "scripts/tests/lib/real-home-guard.ts"
+      - "scripts/tests/fixtures/setup-golden/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq, task]
+      install: omit-dev
+    command:
+      - task ci:setup-differential
+
+  - id: core-paths
+    group: extensions
+    name: "Check core-paths resolve and sync-from-upstream"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/sync-from-upstream.ts"
+      - "scripts/lib/sync-from-upstream/**"
+      - "scripts/tests/sync-from-upstream-policies.test.ts"
+      - "scripts/tests/sync-from-upstream-reconcile.test.ts"
+      - "scripts/tests/sync-from-upstream-orphans.test.ts"
+      - "scripts/tests/sync-from-upstream-dirty-report.test.ts"
+      - "scripts/tests/sync-from-upstream-preserve.test.ts"
+      - "scripts/tests/sync-from-upstream-signing.test.ts"
+      - "scripts/tests/lib/sync-fixture.ts"
+      - "scripts/tests/sync-from-upstream-self-update.test.ts"
+      - "scripts/tests/lib/hermetic-env.ts"
+      - "scripts/tests/fixtures/sync-from-upstream/**"
+      - ".crewrig/core-paths.txt"
+      - "docs/layers.md"
+      - "model-mappings/**"
+      - "scripts/check-core-paths.ts"
+      - "scripts/lib/governance/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [yq, task]
+    command:
+      - task ci:core-paths
+
+  - id: setup
+    group: extensions
+    name: "Test setup helpers and validation backend"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/tests/setup-common-*.test.ts"
+      - "scripts/tests/setup-identity-flow.test.ts"
+      - "scripts/tests/setup-legacy-gemini-md-declaration.test.ts"
+      - "scripts/tests/setup-mcp-merge-policy.test.ts"
+      - "scripts/tests/setup-org-mcp-wiring.test.ts"
+      - "scripts/tests/setup-secrets-fold.test.ts"
+      - "scripts/tests/setup-tier-staging-declared.test.ts"
+      - "scripts/tests/tls-delegation-contract.test.ts"
+      - "scripts/tests/lib/tls-entry-run.ts"
+      - "scripts/tests/lib/yaml-lib.ts"
+      - "scripts/tests/setup-gemini-settings-failure.test.ts"
+      - "scripts/tests/setup-gemini-settings-jsonc.test.ts"
+      - "scripts/tests/setup-gemini-settings-runs.test.ts"
+      - "scripts/tests/setup-gemini-settings-seeds.test.ts"
+      - "scripts/tests/lib/gemini-settings-rig.ts"
+      - "scripts/tests/lib/worktree-fixtures.ts"
+      - "scripts/setup-*-interactive.ts"
+      - "scripts/tls-delegation.ts"
+      - "scripts/usage-capture-optin.ts"
+      - "scripts/lib/**"
+      - "mcp-servers.org.json"
+      - "scripts/setup-*-interactive.ts"
+      - "scripts/tests/setup-retarget-*.test.ts"
+      - "scripts/tests/lib/setup-*.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/tests/lib/hermetic-env.ts"
+      - "scripts/tests/lib/real-home-guard.ts"
+      - "scripts/tests/lib/print-setup-declarations.ts"
+      - "scripts/tests/fixtures/setup-golden/**"
+      - "scripts/tests/fixtures/setup-declarations/**"
+      - "scripts/tests/setup-flow-fixtures.ts"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [jq, yq, task]
+      install: omit-dev
+    command:
+      # The retargeted suites run the TypeScript setup in a sandbox that copies js-yaml and argparse from here.
+      - task ci:setup

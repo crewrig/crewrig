@@ -1,0 +1,300 @@
+# CI capabilities: group gate, part tooling (format: docs/ci-reference-format.md, spec 0309).
+capabilities:
+
+  - id: check-taskfile-commands
+    group: gate
+    name: "Check the Taskfile tree names no POSIX-only command and run the tool-binary check suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "Taskfile.yml"
+      - "taskfiles/**"
+      - "scripts/lib/taskfile-tree.ts"
+      - "scripts/lib/taskfile-tree-parse.ts"
+      - "scripts/lib/governance/taskfile-tree-guard.ts"
+      - "scripts/check-taskfile-commands.ts"
+      - "scripts/lib/taskfile-command*.ts"
+      - "scripts/lib/taskfile-command-exemptions.json"
+      - "scripts/tests/check-taskfile-commands.test.ts"
+      - "scripts/check-tool-binaries.ts"
+      - "scripts/lib/tool-binaries.ts"
+      - "scripts/tests/check-tool-binaries.test.ts"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:check-taskfile-commands
+
+  - id: check-taskfile-commands-selftest
+    group: gate
+    name: "Self-test the Taskfile command check and the tool-binary check"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/check-taskfile-commands.ts"
+      - "scripts/lib/taskfile-command*.ts"
+      - "scripts/lib/taskfile-command-exemptions.json"
+      - "scripts/lib/taskfile-tree.ts"
+      - "scripts/lib/taskfile-tree-parse.ts"
+      - "scripts/check-tool-binaries.ts"
+      - "scripts/lib/tool-binaries.ts"
+      - "scripts/tests/check-taskfile-commands.test.ts"
+      - "scripts/tests/check-tool-binaries.test.ts"
+      - "scripts/ci-cache-guard.ts"
+      - "scripts/lib/ci-cache-guard/**"
+      - "taskfiles/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-gate.yml"
+      - "ci/capabilities/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:check-taskfile-commands-selftest
+
+  # The tree guard's check (b) scans every scripts/**/*.{ts,js} source for a raw read of the root Taskfile, so this job
+  # triggers on the whole scripts/** surface plus the Taskfile tree itself (spec 0278 R16, plan delta D6).
+  - id: check-taskfile-tree
+    group: gate
+    name: "Check the Taskfile tree guard and run its loader, reference and CI-wiring suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "Taskfile.yml"
+      - "taskfiles/**"
+      - "scripts/**"
+      - "ci/capabilities/**"
+      - "ci/pre-push-tier.json"
+      - ".githooks/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:check-taskfile-tree
+
+  - id: check-taskfile-tree-selftest
+    group: gate
+    name: "Self-test the Taskfile tree guard, loader, reference and CI-wiring suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "Taskfile.yml"
+      - "taskfiles/**"
+      - "ci/capabilities/**"
+      - "ci/pre-push-tier.json"
+      - ".githooks/**"
+      - "scripts/check-taskfile-tree.ts"
+      - "scripts/check-ci-pre-push-parity.ts"
+      - "scripts/ci-pre-push.ts"
+      - "scripts/ci-cache-guard.ts"
+      - "scripts/lib/ci-cache-guard/**"
+      - "scripts/lib/taskfile-tree*.ts"
+      - "scripts/lib/ci-pre-push/**"
+      - "scripts/lib/ci-parity/**"
+      - "scripts/lib/glob-engine.ts"
+      - "scripts/lib/governance/**"
+      - "scripts/tests/taskfile-tree*.test.ts"
+      - "scripts/tests/check-taskfile-tree-*.test.ts"
+      - "scripts/tests/ci-pre-push-*.test.ts"
+      - "scripts/tests/ci-selftest-split.test.ts"
+      - "scripts/tests/ci-task-group-location.test.ts"
+      - "scripts/tests/git-env-helpers.test.ts"
+      - "scripts/lib/git-env.ts"
+      - "scripts/tests/lib/**"
+      - "taskfiles/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-gate.yml"
+      - "ci/capabilities/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:check-taskfile-tree-selftest
+
+  - id: check-task-provisioning
+    group: gate
+    name: "Check that Task is provisioned from the pinned, verified release on both engines"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - ".github/actions/setup-task/**"
+      - "ci/task-pin.json"
+      - ".github/workflows/**"
+      - ".gitlab-ci.yml"
+      - "ci/**"
+      - "taskfiles/**"
+      - "scripts/check-task-provisioning.ts"
+      - "scripts/lib/task-provisioning/**"
+      - "scripts/lib/build-ci/**"
+      - "scripts/lib/ci-parity/**"
+      - "scripts/lib/taskfile-tree*.ts"
+      - "scripts/lib/glob-engine.ts"
+      - "scripts/tests/check-task-provisioning.test.ts"
+      - "scripts/tests/task-pin-provisioning.test.ts"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:check-task-provisioning
+
+  - id: check-task-provisioning-selftest
+    group: gate
+    name: "Self-test the Task provisioning guard and the pinned action"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - ".github/actions/setup-task/**"
+      - "ci/task-pin.json"
+      - "scripts/check-task-provisioning.ts"
+      - "scripts/lib/task-provisioning/**"
+      - "scripts/lib/build-ci/**"
+      - "scripts/lib/ci-parity/**"
+      - "scripts/tests/check-task-provisioning.test.ts"
+      - "scripts/tests/task-pin-provisioning.test.ts"
+      - "taskfiles/**"
+      - "ci/capabilities/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-gate.yml"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:check-task-provisioning-selftest
+
+  # Spec 0238 R1-R3, R13: the shell / JavaScript / Python footprint ratchet. No `paths:` filter and not changeset-gated: any
+  # change may add a shell file. Its list-growth and Python arms diff against the merge-base with BASE_REF, hence
+  # `history-depth: full`. Standard library only, so no `npm ci`.
+  - id: ratchet
+    group: gate
+    name: "Shell, JavaScript and Python footprint ratchet"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      history-depth: full
+      tools: [task]
+    env:
+      BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    command:
+      - task ci:ratchet
+
+  - id: ratchet-selftest
+    group: gate
+    name: "Self-test the footprint ratchet"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/check-ratchet.ts"
+      - "scripts/lib/ratchet-lists.ts"
+      - "scripts/tests/check-ratchet.test.ts"
+      - "taskfiles/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-gate.yml"
+      - "ci/capabilities/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:ratchet-selftest
+
+  # Spec 0238 R4-R8, R12, R13: type-check, erasable syntax, Oxlint type-aware strict typing and Oxfmt check on every
+  # tracked *.ts outside the built-copy trees (and the JavaScript in ci/js-exceptions.txt, spec 0266 R16). No `paths:`
+  # filter: a lockfile, tsconfig.json or lint-config change must re-run it.
+  - id: lint-typescript
+    group: gate
+    name: "TypeScript type-check, erasable syntax, lint and format"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: ci
+    command:
+      - task ci:lint-typescript
+
+  - id: lint-typescript-selftest
+    group: gate
+    name: "Self-test the TypeScript checks"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/check-typescript.ts"
+      - "scripts/lib/erasable-syntax.ts"
+      - "scripts/lib/erasable-probe.ts"
+      - "scripts/lib/ts-scope.ts"
+      - "scripts/build-components.ts"
+      - "scripts/tests/check-erasable-syntax.test.ts"
+      - "scripts/tests/lint-typescript.test.ts"
+      - "scripts/tests/check-typescript.test.ts"
+      - "scripts/tests/build-components-built-trees.test.ts"
+      - "scripts/tests/fixtures/build-components/**"
+      - "artifacts/core/skills/pr-reviewer/scripts/lint-typescript.ts"
+      - ".oxfmtrc.json"
+      - ".oxlintrc.json"
+      - "tsconfig.json"
+      - "package.json"
+      - "package-lock.json"
+      - "taskfiles/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-gate.yml"
+      - "ci/capabilities/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: ci
+    command:
+      - task ci:lint-typescript-selftest

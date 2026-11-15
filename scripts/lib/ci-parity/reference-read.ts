@@ -166,12 +166,12 @@ export function readCapabilities(doc: YqNode): CapRecord[] {
 // ---------------------------------------------------------------------------------------------
 // The shared reader of the capability reference (spec 0309 R3, R13(0)).
 //
-// One logical reference: the directory `ci/capabilities/` when present, else the legacy single
-// file `ci/ci-capabilities.yml`. Order: files in byte order of their names, entries in file order.
+// One logical reference: the directory `ci/capabilities/`. Order: files in byte order of their names, entries in file order.
 // Every consumer looks capabilities up by id, so the order decides nothing for them; the
 // generator alone emits jobs in it.
 
 export const REFERENCE_DIR = "ci/capabilities";
+/** The retired single file; a copy left beside the directory is a violation. */
 export const LEGACY_REFERENCE = "ci/ci-capabilities.yml";
 
 const GROUPS = ["gate", "modules", "governance", "extensions", "integration", "windows"];
@@ -183,15 +183,15 @@ const NAME_RE = new RegExp(
 export interface Reference {
   /** One YAML document holding every capability, in reader order. */
   text: string;
-  /** `text` parsed; null only for a legacy file that does not parse (callers report that error). */
-  doc: YqNode | null;
+  /** `text` parsed. */
+  doc: YqNode;
   /** Repo-relative paths of the files read, in reader order. */
   files: string[];
   /** Capability id to the repo-relative file that holds it. */
   fileOf: Map<string, string>;
 }
 
-/** Neither the directory nor the legacy file exists. */
+/** The directory does not exist. */
 export class ReferenceNotFoundError extends Error {
   readonly path: string;
   constructor(p: string) {
@@ -205,7 +205,7 @@ export interface ReferenceViolation {
   message: string;
 }
 
-/** The directory (or the legacy file beside it) breaks one of the R3 rules. */
+/** The directory (or a legacy file beside it) breaks one of the R3 rules. */
 export class ReferenceReadError extends Error {
   readonly violations: ReferenceViolation[];
   readonly repo: string;
@@ -224,14 +224,11 @@ export class ReferenceReadError extends Error {
   }
 }
 
-/** The parsed reference; a legacy file that does not parse rethrows its own parse error here. */
-export const docOf = (ref: Reference): YqNode => ref.doc ?? parse(ref.text);
+/** The parsed reference. */
+export const docOf = (ref: Reference): YqNode => ref.doc;
 
-/** What messages call the source read: the legacy file, else the directory. */
-export const sourceOf = (ref: Reference): string =>
-  ref.files.length === 1 && ref.files[0] === LEGACY_REFERENCE
-    ? LEGACY_REFERENCE
-    : `${REFERENCE_DIR}/`;
+/** What messages call the source read. */
+export const sourceOf = (_ref: Reference): string => `${REFERENCE_DIR}/`;
 
 const byteOrder = (a: string, b: string): number => Buffer.compare(Buffer.from(a), Buffer.from(b));
 
@@ -271,30 +268,22 @@ function readDirFile(
 const firstLineOf = (s: string): string => s.split("\n")[0] ?? s;
 
 /**
- * Reads the reference of `repo`: the directory when it exists, else the legacy file. Throws
- * `ReferenceNotFoundError` when neither exists and `ReferenceReadError` for the R3 failures:
+ * Reads the reference of `repo` from its directory. Throws `ReferenceNotFoundError` when the
+ * directory does not exist and `ReferenceReadError` for the R3 failures:
  * invalid file content, an id in two files, a capability whose group is not its file's, a file
  * name outside the six groups and `standalone`, an empty directory, or the legacy file left
- * beside the directory. A legacy file is returned as read, parse errors left to the caller.
+ * beside the directory. `list` is the directory listing (a test injects one in any order; the
+ * reader sorts it).
  */
-export function readReference(repo: string): Reference {
+export function readReference(
+  repo: string,
+  list: (dir: string) => string[] = (d) => fs.readdirSync(d),
+): Reference {
   const dir = path.join(repo, REFERENCE_DIR);
   const legacy = path.join(repo, LEGACY_REFERENCE);
   const hasDir = fs.existsSync(dir) && fs.statSync(dir).isDirectory();
   const hasLegacy = fs.existsSync(legacy) && fs.statSync(legacy).isFile();
-  if (!hasDir) {
-    if (!hasLegacy) throw new ReferenceNotFoundError(legacy);
-    const text = fs.readFileSync(legacy, "utf8");
-    let doc: YqNode | null = null;
-    const fileOf = new Map<string, string>();
-    try {
-      doc = parse(text);
-      for (const c of readCapabilities(doc)) fileOf.set(c.id, LEGACY_REFERENCE);
-    } catch (e) {
-      if (!(e instanceof YqParseError || e instanceof ParityGap)) throw e;
-    }
-    return { text, doc, files: [LEGACY_REFERENCE], fileOf };
-  }
+  if (!hasDir) throw new ReferenceNotFoundError(dir);
 
   const bad: ReferenceViolation[] = [];
   if (hasLegacy)
@@ -302,7 +291,7 @@ export function readReference(repo: string): Reference {
       file: LEGACY_REFERENCE,
       message: `still exists beside ${REFERENCE_DIR}/; delete it (the directory is the reference)`,
     });
-  const names = fs.readdirSync(dir).sort(byteOrder);
+  const names = list(dir).sort(byteOrder);
   if (names.length === 0) bad.push({ file: `${REFERENCE_DIR}/`, message: "holds no file" });
   const fileOf = new Map<string, string>();
   const bodies: string[] = [];

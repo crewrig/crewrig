@@ -20,3 +20,4 @@
 # the fact that the underlying bug is resolved.
 
 # --- Environment-dependent (cannot run in the hermetic check-components job) ---
+ci-split-proof.test.ts  run by the ci-file-limit job (spec 0309 R12(a)), which lands with the limit; remove this line there

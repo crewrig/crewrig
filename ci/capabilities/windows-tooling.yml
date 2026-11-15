@@ -1,0 +1,369 @@
+# CI capabilities: group windows, part tooling (format: docs/ci-reference-format.md, spec 0309).
+capabilities:
+
+  # Spec 0254 R23: the extension builders' copy of the Windows template (windows-build-components):
+  # scripts/tests/lib/windows-extension-proof.ts builds every golden subject with the TypeScript entries from pwsh and
+  # compares each file with the committed golden tree. No timing budget and no `paths:` filter: the proof must not skip
+  # silently on a change it does not list.
+  - id: windows-extension-builders
+    group: windows
+    name: "Windows extension and plugin builders: production install, floor guard, golden proof and unit suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-extension-builders
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-extension-builders`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0254 R23).
+
+
+  # Spec 0255 R28 (parent R17): the install, manage and link entries from a non-POSIX interpreter
+  # (scripts/tests/lib/windows-install-proof.ts): thirteen entries against a sandbox HOME/USERPROFILE from pwsh (and
+  # cmd.exe for unlink and link) with stub CLIs. No timing budget.
+  - id: windows-install-entries
+    group: windows
+    name: "Windows install, manage and link entries: production install, floor guard and the cross-system proof"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-install-entries
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-install-entries`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0255 R28).
+
+  # Spec 0257 R27 (ticket #1336): the packaging and release entries from a non-POSIX interpreter: six entries through pwsh
+  # or cmd.exe against a sandbox with stub tools and no bash. No timing budget.
+  - id: windows-packaging-entries
+    group: windows
+    name: "Windows packaging and release entries: production install, floor guard and the cross-system proof"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-packaging-entries
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-packaging-entries`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0257 R27).
+
+  # Spec 0258 R16, R18, R20, R27 (ticket #1337): the example hooks of `hello-world` and of the skeleton from PowerShell
+  # and cmd.exe with no `bash` on the child PATH, the four package layouts, the no-deprecation channel, and one latency
+  # budget per hook (2000 ms initially, then max(5 x the largest observed run, 750 ms) rounded up to 50 ms after the first
+  # green run).
+  - id: windows-extension-hooks
+    group: windows
+    name: "Windows extension hooks: production install, floor guard, PowerShell and cmd.exe proof, no-deprecation channel and latency budgets"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-extension-hooks
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-extension-hooks`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0258 R27).
+
+  # Spec 0258 R15, R27, R34 (ticket #1337): the Windows proof of the three harness-curator entries through pwsh and
+  # cmd.exe against a stub `gh.cmd` and no bash. Timings are never asserted.
+  - id: windows-harness-curator
+    group: windows
+    name: "Windows harness-curator entries: production install, floor guard and the cross-system proof"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-harness-curator
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-harness-curator`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0258 R27).
+
+  # Spec 0258 R23-R27 (ticket #1337): the extension scaffolder entry from a non-POSIX interpreter, against a hermetic
+  # sandbox repository with no POSIX shell and no fzf on PATH. The dev toolchain is absent, so no `check-typescript` here.
+  - id: windows-create-extension
+    group: windows
+    name: "Windows extension scaffolder entry: production install, floor guard and the cross-system proof"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-create-extension
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-create-extension`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0258 R27).
+
+  # Spec 0258 R27 (ticket #1337): the eleven skill entries (github-actions, gitlab-ci, pr-reviewer) from a non-POSIX
+  # interpreter against stub wrapped tools and no bash; a direct leg runs the same assertions on any host.
+  - id: windows-skill-scripts
+    group: windows
+    name: "Windows skill script entries: production install, floor guard and the cross-system proof"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-skill-scripts
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-skill-scripts`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0258 R27).
+
+  # Spec 0261 R17, R20, R21 (ticket #1342): the end-to-end harness entries (no vendor CLI) through pwsh and cmd.exe; a
+  # direct leg runs the same assertions on any host.
+  - id: windows-e2e-harness
+    group: windows
+    name: "Windows end-to-end harness entries: production install, floor guard and the cross-system proof"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-e2e-harness
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-e2e-harness`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0261 R17, R21).
+
+  # Spec 0259 R26-R28 (ticket #1338), PR P0: the governance checks from PowerShell. Glob discovery of
+  # scripts/tests/windows-governance-*.test.ts, so later PRs never edit this capability. No timing budget.
+  - id: windows-governance-checks
+    group: windows
+    name: "Windows governance checks: production install, floor guard and the PowerShell proof"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-governance-checks
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-governance-checks`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0259 R26-R28).
+
+  # Spec 0262 R21-R23 (ticket #1339): merge-spec-pr.ts from PowerShell. Glob discovery of
+  # scripts/tests/windows-model-ci-tooling-*.test.ts (later PRs never edit this capability). No timing budget.
+  - id: windows-model-ci-tooling
+    group: windows
+    name: "Windows model-CI-tooling checks: production install, floor guard and the PowerShell proof"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-model-ci-tooling
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-model-ci-tooling`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0262 R21-R23).
+
+  # Spec 0256 R40 (ticket #1335), PR B1, plan finding v1-F3: the Windows exercise of layer 1: the same unit suites as
+  # `setup-modules-ts` under pwsh; the POSIX-only ones skip on win32. No timing budget, no `paths:` filter, as above.
+  - id: windows-setup-units
+    group: windows
+    name: "Windows setup module unit suites: production install, floor guard and the layer-1 suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-setup-units
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-setup-units`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0256 R40).
+
+  # Spec 0256 requirements 34-35 (ticket #1335), PR C: the Windows proof of the four entries under pwsh against a sandbox
+  # HOME/USERPROFILE with no POSIX shell on PATH, including the end-to-end "install CrewRig from PowerShell" run of the
+  # Claude entry. Timings are never asserted.
+  - id: windows-setup-entries
+    group: windows
+    name: "Windows setup entries: production install, floor guard and the install-from-PowerShell proof"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-setup-entries
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-setup-entries`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0256 R34).
