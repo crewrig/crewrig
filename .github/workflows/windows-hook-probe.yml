@@ -1,7 +1,7 @@
 name: Windows Hook Probe Check
 
 # Spec 0237 (issue #1322): mirrors the `windows-hook-probe` capability of
-# ci/ci-capabilities.yml.
+# ci/capabilities/.
 on:
   pull_request:
     branches: [main, "release/**"]

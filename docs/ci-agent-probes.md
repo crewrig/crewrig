@@ -168,7 +168,7 @@ printf '\n# hand-edited drift\n' >> .gitlab-ci.yml
 
 # M-ref: an unknown trigger kind in the reference (validity rule 2)
 perl -0pi -e 's/(  - id: build\n(?:.*\n)*?      - on: )pull-request/${1}bogus/' \
-  ci/ci-capabilities.yml
+  ci/capabilities/extensions-build.yml
 
 # M-hand: a business step that no longer matches the declared command
 perl -pi -e 's/run: npm run build --workspaces --if-present/run: npm run bogus/' \
@@ -176,7 +176,7 @@ perl -pi -e 's/run: npm run build --workspaces --if-present/run: npm run bogus/'
 
 # M-evidence: an engine-specific capability with no exception block
 perl -0pi -e 's/(  - id: build\n(?:.*\n)*?    portability: )portable/${1}specific/' \
-  ci/ci-capabilities.yml
+  ci/capabilities/extensions-build.yml
 
 # M-untraceable: a job that is no capability and has no annotation
 printf '  mystery:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n' \

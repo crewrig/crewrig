@@ -319,7 +319,7 @@ tasks:
     fs.rmSync(path.join(dir, "ci", "capabilities"), { recursive: true, force: true });
     const r = parity(dir);
     assert.equal(r.status, 2);
-    assert.match(r.stderr, /NOTICE cannot read ci\/ci-capabilities\.yml/);
+    assert.match(r.stderr, /NOTICE cannot read ci\/capabilities\//);
   });
 });
 

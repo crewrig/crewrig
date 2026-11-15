@@ -1,7 +1,7 @@
 name: MemPalace Session Check
 
 # Spec 0246 (issue #1410): mirrors the `mempalace-session-check` capability of
-# ci/ci-capabilities.yml.
+# ci/capabilities/.
 on:
   pull_request:
     branches: [main, "release/**"]

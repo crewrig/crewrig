@@ -265,7 +265,7 @@ created by the ready transition, never a re-run of a draft-era run.
 
 **GitLab.** `CI_MERGE_REQUEST_DRAFT` (introduced in GitLab 17.10, the minimum
 for this feature; an older instance leaves the variable undefined, which means
-not draft) maps onto `CREWRIG_PR_DRAFT` in `ci/ci-capabilities.yml`. The
+not draft) maps onto `CREWRIG_PR_DRAFT` in `ci/capabilities/`. The
 variable is fixed at pipeline creation, and marking an MR ready is not
 documented to create a pipeline, so the head pipeline may be a stale
 draft-era one (R12). Step (d) requires a fresh merge-request pipeline: create

@@ -1,0 +1,389 @@
+# CI capabilities: group governance, part ci (format: docs/ci-reference-format.md, spec 0309).
+capabilities:
+
+  - id: ci-parity
+    group: governance
+    name: "Test the CI generator and parity harness"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/check-ci-parity.ts"
+      - "scripts/lib/ci-parity/**"
+      - "scripts/**/classify-ci-drift*"
+      - "scripts/build-ci.ts"
+      - "scripts/ci-cache-guard.ts"
+      - "scripts/ci-changeset-coverage.ts"
+      - "scripts/tests/ci-parity-positive.test.ts"
+      - "scripts/tests/ci-parity-fail-closed.test.ts"
+      - "scripts/tests/ci-parity-stray-scan.test.ts"
+      - "scripts/tests/ci-parity-path-filters.test.ts"
+      - "scripts/tests/ci-parity-path-filters-undet.test.ts"
+      - "scripts/tests/ci-effective-paths.test.ts"
+      - "scripts/tests/ci-paths-push-trigger.test.ts"
+      - "scripts/ci-paths-gate.ts"
+      - "scripts/lib/ci-paths-gate/**"
+      - ".github/actions/ci-job/action.yml"
+      - "scripts/tests/ci-paths-gate.test.ts"
+      - "scripts/tests/ci-parity-ci-job.test.ts"
+      - "scripts/tests/ci-job-yq.test.ts"
+      - "scripts/tests/lib/ci-parity-fixture.ts"
+      - "scripts/tests/lib/ci-parity-blocks.ts"
+      - "scripts/tests/lib/ci-parity-matrix.ts"
+      - "scripts/tests/lib/yaml-lib.ts"
+      - "scripts/tests/build-ci-real-tree.test.ts"
+      - "scripts/tests/build-ci-synthetic.test.ts"
+      - "scripts/tests/build-ci-synthetic-write.test.ts"
+      - "scripts/tests/lib/ci-reference-fixtures.ts"
+      - "ci/capabilities/**"
+      - "ci/task-pin.json"
+      - "ci/yq-pin.json"
+      - ".gitlab-ci.yml"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-governance.yml"
+      - "docs/ci-reference-format.md"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [yq, task]
+      install: omit-dev
+    cache:
+      env: []
+    command:
+      - task ci:ci-parity
+
+  - id: test-wiring
+    group: governance
+    name: "Enforce test-wiring registration and suite syntax"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/tests/governance-check-test-wiring-cases.test.ts"
+      - "scripts/tests/governance-check-test-strays-cases.test.ts"
+      - "scripts/check-test-strays.ts"
+      - "scripts/lib/governance/**"
+      - "scripts/check-test-wiring.ts"
+      - "scripts/tests/**"
+      - "hooks/worktree-git-guard.ts"
+      - "hooks/mempalace-transcript.ts"
+      - "scripts/worktree-claim.ts"
+      - "scripts/lib/worktree-claim/**"
+      - "scripts/lib/hook-*.ts"
+      - "ci/test-wiring-exemptions.txt"
+      - ".github/workflows/*.yml"
+      - ".github/workflows/*.yaml"
+      - "ci/capabilities/**"
+    portability: portable
+    changeset-gated: true
+    # node@24: the guard oracle below runs through the shim, which execs the TypeScript guard; on a Node.js below 24 the
+    # shim exits 0 without enforcing, which fails oracle Cases 3 and 4 (spec 0248 R36, R13).
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:test-wiring
+
+  - id: test-wiring-selftest
+    group: governance
+    name: "Self-test the test-wiring and test-strays guards"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/check-test-wiring.ts"
+      - "scripts/check-test-strays.ts"
+      - "scripts/lib/governance/**"
+      - "scripts/ci-cache-guard.ts"
+      - "scripts/lib/ci-cache-guard/**"
+      - "taskfiles/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-governance.yml"
+      - "ci/capabilities/**"
+      - "artifacts/*/skills/**/*.md"
+      - "scripts/tests/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:test-wiring-selftest
+
+  # Replay of the pre-push wrapper end to end (spec 0279 R16, plan v2-F1/F5). CI-only: no `ci:` task, not fast-tier, not
+  # changeset-gated (the nightly exhaustive run installs no `task` binary). Its paths filter covers what the replayed
+  # tools read (spec 0251 R14).
+  - id: ci-pre-push-replay
+    group: governance
+    name: "Replay the pre-push wrapper against a fixture repository"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/**"
+      - "taskfiles/**"
+      - "ci/**"
+      - ".githooks/**"
+      - ".markdownlintrc"
+      - ".oxfmtrc.json"
+      - ".oxlintrc.json"
+      - "tsconfig.json"
+      - "package.json"
+      - "package-lock.json"
+      - "docs/**"
+      - "specs/**"
+      - "artifacts/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: ci
+    command:
+      - task ci:ci-pre-push-replay
+
+  # changeset-coverage-test keeps the exhaustive script's regression test on the pull-request path (spec 0147 delta-01
+  # R23). It has never been path-filtered and is not changeset-gated.
+  - id: changeset-coverage-test
+    group: governance
+    name: "Test the exhaustive-run script"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [yq]
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-changeset-coverage.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ci-changeset-coverage-tools.test.ts
+
+  # path-ownership is the static ownership check (spec 0147 delta-01 R11-R18): every tracked file is owned by the `paths:`
+  # of a pull-request capability or exempted with a reason in ci/path-ownership-exemptions.txt (plus the optional adopter
+  # overlay ci/org/path-ownership-exemptions.txt). It reads only the working tree and this reference, so it has no
+  # `paths:` filter and cannot be skipped. `npm ci` provides `js-yaml`.
+  - id: path-ownership
+    group: governance
+    name: "Check path ownership and stray-scan wiring"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: ci
+    command:
+      - task ci:path-ownership
+
+  - id: path-ownership-selftest
+    group: governance
+    name: "Self-test the path-ownership and stray-scan wiring checks"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/check-path-ownership.ts"
+      - "scripts/check-stray-scan-wiring.ts"
+      - "scripts/lib/path-ownership.ts"
+      - "scripts/lib/glob-engine.ts"
+      - "scripts/ci-cache-guard.ts"
+      - "scripts/lib/ci-cache-guard/**"
+      - "scripts/lib/node-floor-guard.js"
+      - "scripts/tests/check-path-ownership.test.ts"
+      - "scripts/tests/ci-cache-guard-scan.test.ts"
+      - "scripts/tests/check-stray-scan-wiring.test.ts"
+      - "scripts/tests/ci-node-test-arguments.test.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "taskfiles/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-governance.yml"
+      - "ci/capabilities/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: ci
+    command:
+      - task ci:path-ownership-selftest
+
+  # Spec 0267 R12, R13, R16-R19: the test-harness host-safety check. No `paths:` filter: any scripts/** change can add a
+  # destructive call. Its growth arm diffs ci/host-safety-allowlist.txt against the merge-base with BASE_REF, hence
+  # `history-depth: full`. Unlike `ratchet` it imports `typescript` (the TS 7 programmatic API), so it needs `npm ci`.
+  - id: host-safety
+    group: governance
+    name: "Test-harness host-safety check"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      history-depth: full
+      tools: [task]
+      install: ci
+    env:
+      BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    command:
+      - task ci:host-safety
+
+  - id: host-safety-selftest
+    group: governance
+    name: "Self-test the host-safety check"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/check-host-safety.ts"
+      - "scripts/lib/host-safety/**"
+      - "scripts/tests/check-host-safety.test.ts"
+      - "scripts/tests/lib/host-safety-fixtures.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "taskfiles/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-governance.yml"
+      - "ci/capabilities/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: ci
+    command:
+      - task ci:host-safety-selftest
+
+  # Spec 0240 R3: the floor guard's failure path, proven on a Node.js release that cannot strip types. Plain POSIX
+  # commands, so the job needs no TypeScript; the grep tokens are the guard's stable diagnostic contract
+  # (node-floor-guard.js header).
+  - id: node-floor-guard
+    group: governance
+    name: "Node.js floor guard rejects a pre-24 release"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@20
+    command:
+      - 'if node scripts/lib/node-floor-guard.js >guard.out 2>&1; then echo "guard accepted Node $(node -v)"; exit 1; fi'
+      - 'grep -F "$(node -v) detected" guard.out'
+      - 'grep -F "requires Node.js >= 24" guard.out'
+      - 'grep -F "https://nodejs.org/en/download" guard.out'
+      - 'if grep -E "SyntaxError|ERR_|Cannot find module" guard.out; then exit 1; fi'
+
+  # gitlab-ci-check is the generator's own drift gate (spec 0048 R6/R7), registered as a portable capability so the
+  # verification surface is contract-described; it diffs the committed .gitlab-ci.yml against a fresh derivation and needs
+  # yq (delta-02 R12).
+  - id: gitlab-ci-check
+    group: governance
+    name: "Verify the generated GitLab pipeline matches the contract"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [yq, task]
+      install: omit-dev
+    command:
+      - task ci:gitlab-ci-check
+
+  # check-ci-parity is the 3-way CI drift harness (spec 0049): it checks the reference against both engine pipelines on
+  # the portable set; registered as a portable capability (spec 0049 R11), symmetric with gitlab-ci-check above. It shells
+  # `yq` and composes `build-ci.ts --check` (also needs yq) for the reference↔GitLab arm; hence `tools: [yq]` (delta-02
+  # R12).
+  - id: check-ci-parity
+    group: governance
+    name: "Verify the reference, GitHub Actions, and GitLab pipelines agree"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [yq, task]
+      install: omit-dev
+    command:
+      - task ci:check-ci-parity
+
+  - id: alert-scheduled-failure-selftest
+    group: governance
+    name: "Self-test the scheduled-failure alert and its wiring check"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/ci-alert-scheduled-failure.ts"
+      - "scripts/check-alert-scheduled-failure.ts"
+      - "scripts/tests/ci-alert-scheduled-failure.test.ts"
+      - ".github/workflows/changeset-coverage.yml"
+      - "taskfiles/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-governance.yml"
+      - "ci/capabilities/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:alert-scheduled-failure-selftest
+
+  - id: alert-scheduled-failure-check
+    group: governance
+    name: "Check the scheduled-failure alert wiring"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/ci-alert-scheduled-failure.ts"
+      - "scripts/check-alert-scheduled-failure.ts"
+      - "scripts/tests/ci-alert-scheduled-failure.test.ts"
+      - ".github/workflows/changeset-coverage.yml"
+      - "taskfiles/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-governance.yml"
+      - "ci/capabilities/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:alert-scheduled-failure-check

@@ -1,0 +1,218 @@
+# CI capabilities: group gate, part other (format: docs/ci-reference-format.md, spec 0309).
+capabilities:
+
+  # repository-scan runs the checks whose verdict depends on files anywhere in the repository (spec 0251 R1-R4):
+  # check-no-machine-paths.ts, check-markdown-links.ts and check-core-paths.ts. No filter can enumerate those inputs, so
+  # NO `paths:` filter, and deliberately NOT a catch-all `**` glob (R4): that would make every tracked file count as owned
+  # and turn `path-ownership` vacuous. Not changeset-gated, no test suite (R3). check-core-paths needs no yq because
+  # `build-components.ts --list-output-dirs` exits in its list_output_dirs guard (scripts/build-components.ts:64-117)
+  # before the yq prerequisite check (scripts/build-components.ts:120).
+  - id: repository-scan
+    group: gate
+    name: "Run repository-wide scans on every change"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      # check-core-paths.ts runs build-components.ts through `--list-output-dirs`, i.e. the TypeScript build, which fails
+      # closed below Node.js 24 (spec 0215 R31 follow-up noted in #1550).
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:repository-scan
+
+  - id: frontmatter
+    group: gate
+    name: "Test frontmatter, skill-version, and assembly contracts"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/tests/build-components-frontmatter-fence.test.ts"
+      - "scripts/tests/governance-suite-skill-versions.test.ts"
+      - "scripts/tests/governance-suite-skill-versions-base.test.ts"
+      - "scripts/tests/lib/governance-*.ts"
+      - "scripts/tests/governance-suite-feedback-routing.test.ts"
+      - "scripts/tests/build-assembly-routing.test.ts"
+      - "scripts/tests/build-install-scope-*.test.ts"
+      - "scripts/tests/tier-resolution-*.test.ts"
+      - "scripts/tests/lib/tier-fixtures.ts"
+      - "scripts/tests/lib/tier-landing.ts"
+      - "scripts/tests/lib/tier-taskfile.ts"
+      - "scripts/tests/pr-logbook-label-scope.test.ts"
+      - "scripts/lib/**"
+      - "scripts/tests/lib/print-manage-declarations.ts"
+      - "artifacts/**"
+      - "scripts/install-workspace.ts"
+      - "scripts/manage-claude-component.ts"
+      - "scripts/manage-copilot-component.ts"
+      - "scripts/manage-antigravity-component.ts"
+      - "scripts/manage-workspace-component.ts"
+      - "scripts/setup-*-interactive.ts"
+      - "scripts/tests/setup-retarget-*.test.ts"
+      - "scripts/tests/lib/setup-*.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/tests/lib/hermetic-env.ts"
+      - "scripts/tests/lib/real-home-guard.ts"
+      - "scripts/tests/lib/print-setup-declarations.ts"
+      - "scripts/tests/fixtures/setup-golden/**"
+      - "scripts/tests/fixtures/setup-declarations/**"
+      - "scripts/check-skill-versions.ts"
+      - "scripts/lib/governance/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [yq, jq, task]
+      install: omit-dev
+    command:
+      - task ci:frontmatter
+
+  - id: markdown-links
+    group: gate
+    name: "Check relative Markdown link integrity"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/tests/check-markdown-links-shared-references.test.ts"
+      - "scripts/tests/governance-suite-markdown-links.test.ts"
+      - "scripts/tests/lib/governance-*.ts"
+      - "docs/**"
+      - "README.md"
+      - "AGENTS.md"
+      - "**/*.md"
+      - "scripts/check-markdown-links.ts"
+      - "scripts/lib/governance/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:markdown-links
+
+  - id: lint-markdown
+    group: gate
+    name: "Lint Markdown files"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@22
+      tools: [task]
+      install: ci
+    command:
+      - task ci:lint-markdown
+
+  # The spec linter's base-branch `status: draft` check (spec 0109 R2) resolves the change's base ref, so the job needs
+  # full source history: `history-depth: full`, same as the two version-bump guards below.
+  - id: lint-specs
+    group: gate
+    name: "Lint specification files"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [task]
+      history-depth: full
+      install: install
+    env:
+      BASE_REF: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+      # Spec 0168 delta-01 R10: GitLab 17.10+ sets this to "true" when the merge request is a draft (docs.gitlab.com,
+      # predefined variables; the page documents only the "true" value). Any other value, including unset or empty, leaves
+      # R1 enforced: the linter skips only on the exact "true".
+      CREWRIG_PR_DRAFT: "$CI_MERGE_REQUEST_DRAFT"
+    command:
+      - task ci:lint-specs
+
+  - id: lint-specs-selftest
+    group: gate
+    name: "Self-test the spec linter"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/spec-linter.js"
+      - "scripts/tests/spec-linter-*.test.ts"
+      - "scripts/tests/lib/spec-linter-fixtures.ts"
+      - "scripts/tests/lib/spec-linter-lifecycle.ts"
+      - "scripts/tests/lib/yaml-lib.ts"
+      - "docs/spec-format.md"
+      - ".crewrig/core-paths.txt"
+      - ".markdownlintrc"
+      - "scripts/ci-cache-guard.ts"
+      - "scripts/lib/ci-cache-guard/**"
+      - "taskfiles/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-gate.yml"
+      - "ci/capabilities/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: install
+    command:
+      - task ci:lint-specs-selftest
+
+  - id: check-agents-size
+    group: gate
+    name: "Check AGENTS.md file size"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:check-agents-size
+
+  - id: check-comment-size
+    group: gate
+    name: "Check the plan and verdict comment size tool against its fixtures"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:check-comment-size
+
+  - id: check-rules-size
+    group: gate
+    name: "Check always-loaded core rules size"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:check-rules-size

@@ -1,5 +1,5 @@
 // Spec 0287 / 0278 R23: every `ci:<id>` task lives in the group file(s) named by the `group` of
-// capability `<id>` in ci/ci-capabilities.yml. Control tasks of taskfiles/ci.yml are excepted, and
+// capability `<id>` in ci/capabilities/. Control tasks of taskfiles/ci.yml are excepted, and
 // the `windows` group spans taskfiles/ci/windows.yml and taskfiles/ci/windows-b.yml.
 
 import assert from "node:assert/strict";

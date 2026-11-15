@@ -8,7 +8,7 @@
 // unconditionally, with no diff and no base ref. These tests pin that contract.
 //
 // Every fixture is a throwaway directory holding a minimal
-// ci/ci-capabilities.yml. Each command appends its tag to a log file in the
+// ci/capabilities/. Each command appends its tag to a log file in the
 // fixture, so the log is the observable verdict: which gated commands ran, and
 // in which order. The script is run from a foreign working directory, so a tag
 // landing in the fixture also proves the commands run inside REPO_DIR.

@@ -86,7 +86,7 @@ export function checkDrift(
   fresh: string,
   committed: string | null,
   output: string,
-  source = "ci/ci-capabilities.yml",
+  source = "ci/capabilities/",
 ): Outcome {
   if (committed === null) {
     return {

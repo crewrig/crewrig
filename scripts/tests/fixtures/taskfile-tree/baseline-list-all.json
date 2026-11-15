@@ -824,6 +824,10 @@
     "desc": "Run the agent-profile migration regression suite (cached by the ci-cache-guard capability key)"
   },
   {
+    "name": "ci:ci-file-limit",
+    "desc": "Check the per-file limit of the CI files and the reference split proof (pre-push mirror of the CI job)"
+  },
+  {
     "name": "ci:ci-parity",
     "desc": "Test the CI generator and parity harness (cached by the ci-cache-guard capability key)"
   },

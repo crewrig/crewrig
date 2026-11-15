@@ -1,0 +1,281 @@
+# CI capabilities: standalone, part other (format: docs/ci-reference-format.md, spec 0309).
+capabilities:
+
+  # changeset-coverage is the exhaustive run (spec 0147 delta-01 R21): no pull-request or push trigger, only `scheduled`
+  # (daily, default branch) and `manual`. It executes EVERY command of every `changeset-gated: true` capability
+  # unconditionally, read from this reference (via yq); no diff, no base ref. The pull-request guarantee that used to be
+  # its fail-safe is now the static `path-ownership` capability below. It provisions python@3.12, yq and node@24, so a
+  # `node@22` capability must never be changeset-gated. Its install is the full `npm ci`, because gated capabilities
+  # declare `requires.install` `ci` or `install` (spec 0147 delta-03 R33).
+  - id: changeset-coverage
+    name: "Exhaustive run of every changeset-gated check"
+    trigger:
+      - on: scheduled
+      - on: manual
+    portability: portable
+    requires:
+      runtime: [python@3.12, node@24]
+      tools: [yq, jq, task, tesseract]
+      history-depth: full
+    command:
+      - npm ci
+      - node scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-changeset-coverage.ts
+
+  # Spec 0237 (issue #1322): the Windows hook command-line parsing probe's install / restore contract, root resolution and
+  # wmic parser; the probe itself only runs on a real Windows host (docs/runbooks/windows-hook-parsing-probe.md). The test
+  # reads the four committed transcript manifests, hence their place in the paths filter. Deliberately NOT changeset-gated
+  # (node@22 rule, see `changeset-coverage`).
+  - id: windows-hook-probe
+    name: "Windows hook command-line parsing probe (spec 0237)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/probe-windows-hook-parsing.ts"
+      - "scripts/tests/probe-windows-hook-parsing.test.ts"
+      - "hooks/*-transcript-hooks.json"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/probe-windows-hook-parsing.test.ts
+
+  # Spec 0244 (issue #1387): the cross-contributor ticket-pickup check: the pure ownership model and the end-to-end tool
+  # against the in-process fake forge (GitHub, GitLab, Gitea wire shapes).
+  - id: ticket-pickup
+    name: "Ticket-pickup ownership check (spec 0244)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/ticket-pickup.ts"
+      - "scripts/lib/ticket-*.ts"
+      - "scripts/lib/forge-*.ts"
+      - "scripts/lib/ts-scope.ts"
+      - "scripts/tests/ticket-*.test.ts"
+      - "scripts/tests/fixtures/ticket-pickup/**"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/ticket-ownership.test.ts scripts/tests/ticket-pickup.test.ts
+
+  # Spec 0245 (issue #1416): the opt-in Playwright MCP registration: the pure entry model, the JSONC scanner (byte parity
+  # with gs_strip_jsonc, so jq is required) and the hook-config.ts reader it extends.
+  - id: playwright-mcp
+    name: "Playwright MCP registration through tls-exec (spec 0245)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/setup-playwright-mcp.ts"
+      - "scripts/lib/playwright-mcp*.ts"
+      - "scripts/lib/jsonc.ts"
+      - "scripts/lib/hook-config.ts"
+      - "scripts/lib/tmp-file.ts"
+      - "scripts/lib/paths.ts"
+      - "scripts/tests/playwright-mcp.test.ts"
+      - "scripts/tests/jsonc.test.ts"
+      - "scripts/tests/hook-config.test.ts"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq]
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/playwright-mcp.test.ts scripts/tests/jsonc.test.ts scripts/tests/hook-config.test.ts
+
+  # Spec 0246 (issue #1410): the MemPalace session-start check, its hook writer, and the status side's wrong-endpoint
+  # line. Hermetic tests: scratch HOME and CLAUDE_CONFIG_DIR, stub assistant CLIs, a fake endpoint on 127.0.0.1:0. jq is
+  # the shell reader's own parser.
+  - id: mempalace-session-check
+    name: "MemPalace session-start check (spec 0246)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/mempalace-session-check.ts"
+      - "scripts/session-check-hooks.ts"
+      - "scripts/lib/mempalace-registration.ts"
+      - "scripts/lib/session-check-throttle.ts"
+      - "scripts/lib/session-check-config.ts"
+      - "scripts/lib/tmp-file.ts"
+      - "scripts/usage-capture-optin.ts"
+      - "scripts/status-mcp-server.ts"
+      - "scripts/lib/service/**"
+      - "scripts/setup-*-interactive.ts"
+      - "scripts/tests/mempalace-registration*.test.ts"
+      - "scripts/tests/mempalace-session-check.test.ts"
+      - "scripts/tests/session-check-*.test.ts"
+      - "scripts/tests/lib/session-check-harness.ts"
+      - "scripts/tests/fixtures/session-check/**"
+      - "hooks/*-transcript-hooks.json"
+      - "hooks/*-usage-capture-hooks.json"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq]
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-registration-agreement.test.ts scripts/tests/mempalace-registration.test.ts scripts/tests/mempalace-session-check.test.ts scripts/tests/session-check-throttle.test.ts scripts/tests/session-check-hooks.test.ts
+
+  # Spec 0109 delta-04 R23 (issue #1441): the merged-spec status derivation, end to end against a throwaway git repository
+  # (a main and a release line) and an in-process fake gh.
+  - id: derive-spec-status
+    name: "Merged-spec status derivation (spec 0109 delta-04 R23)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/derive-spec-status.ts"
+      - "scripts/lib/spec-status-derivation.ts"
+      - "scripts/lib/ts-scope.ts"
+      - "scripts/tests/derive-spec-status.test.ts"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/derive-spec-status.test.ts
+
+  # Spec 0273: the read-only effective view of a spec and its deltas.
+  - id: spec-view
+    name: "Spec effective view (spec 0273)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/spec-view.ts"
+      - "scripts/lib/spec-view.ts"
+      - "scripts/lib/ts-scope.ts"
+      - "scripts/tests/spec-view.test.ts"
+      - "Taskfile.yml"
+      - "taskfiles/**"
+      - "scripts/lib/taskfile-tree.ts"
+      - "scripts/lib/taskfile-tree-parse.ts"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/spec-view.test.ts
+
+  # --- Portable: standalone workflows -------------------------------------
+
+  # scripting-conventions.yml gates on pull_request to [main, release/**] with a path filter
+  # (.github/workflows/scripting-conventions.yml lines 3-9). Its two inline grep blocks need POSIX shell only, so
+  # `requires:` is omitted.
+  - id: grep-anti-patterns
+    name: "Flag scripting anti-patterns in scripts and hooks"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/**"
+          - "hooks/**"
+          - ".github/workflows/scripting-conventions.yml"
+    portability: portable
+    command:
+      - |
+        set -uo pipefail
+        hits=$(grep -rnE '\[\[?[^]]*\]\]?[[:space:]]+&&[[:space:]]+.*&&[[:space:]]+exit[[:space:]]+[0-9]+' \
+                scripts/ hooks/ \
+              | grep -v 'acknowledged-exception:' || true)
+        if [ -n "$hits" ]; then
+          echo "::error::Rule 3 violation — chained-test exit pattern (see docs/scripting-conventions.md)"
+          echo "$hits"
+          exit 1
+        fi
+        echo "Rule 3 clean."
+      - |
+        set -uo pipefail
+        hits=$(grep -rnE 'except[[:space:]]*:|except[[:space:]]+(Exception|BaseException)[[:space:]]*(as[[:space:]]+\w+)?[[:space:]]*:' \
+                scripts/ hooks/ \
+              | grep -v 'acknowledged-exception:' || true)
+        if [ -n "$hits" ]; then
+          echo "::error::Rule 1 violation — bare/broad except (see docs/scripting-conventions.md)"
+          echo "$hits"
+          exit 1
+        fi
+        echo "Rule 1 clean."
+
+  # security-mcp.yml gates on pull_request to [main] with a path filter on the
+  # MCP/dependency manifests (.github/workflows/security-mcp.yml lines 3-11).
+  - id: audit
+    name: "Run dependency security audit"
+    trigger:
+      - on: pull-request
+        branches: [main]
+        paths:
+          - "**/package.json"
+          - "**/settings.json"
+          - "**/mcp.json"
+          - "**/mcp.json.template"
+          - "**/extension.json"
+          - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@22
+    command:
+      - npm install
+      - npm audit --audit-level=critical
+
+  # --- Engine-specific: bot-mention assistants ----------------------------
+  # A bot-mention trigger (an issue or review comment) is engine-specific, never portable (spec 0047 R5).
+
+  - id: claude
+    name: "Claude Code mention-triggered assistant"
+    trigger:
+      - on: manual
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Triggered by GitHub `issue_comment` / `pull_request_review_comment`
+        events gated on a literal `@claude` mention
+        (.github/workflows/claude.yml lines 3-13). GitLab CI exposes no
+        comment-event pipeline trigger, so there is no faithful equivalent on
+        the other supported engines. A bot-mention trigger is treated as
+        engine-specific, never portable (spec 0047 R5); the analogous non-GHA
+        surfaces are marked [GAP] in docs/cli-matrix.md.
+
+  - id: copilot
+    name: "GitHub Copilot CLI mention-triggered assistant"
+    trigger:
+      - on: manual
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Triggered by GitHub `issue_comment` / `pull_request_review_comment`
+        events gated on a literal `@copilot-cli` mention
+        (.github/workflows/copilot.yml lines 13-23); native `@copilot`
+        dispatch is configured at the repository/organization level, not
+        portable to GitLab CI. A bot-mention trigger is treated as
+        engine-specific, never portable (spec 0047 R5).
+
+  # Spec 0284: the alert job of the exhaustive-run workflow (slice 4 of 0280).
+  - id: alert-scheduled-failure
+    name: "Open or comment on an issue when a scheduled run fails"
+    trigger:
+      - on: scheduled
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        The neutral format has no failure-conditional or on-failure `needs` construct,
+        and the generated GitLab pipeline is not executed on a live GitLab. A GitLab
+        adopter gets the same effect from GitLab's own pipeline-failure notification
+        to the schedule owner.
+    command:
+      - task ci:alert-scheduled-failure

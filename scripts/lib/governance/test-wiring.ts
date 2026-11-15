@@ -3,7 +3,7 @@
 // Usage: evaluateWiring(repoDir) -> { code, stdout, stderr }
 // A `scripts/tests/test-*.sh` script is WIRED iff the token `scripts/tests/<name>`
 // appears on a line of a CI surface (`.github/workflows/*.yml|*.yaml`,
-// `ci/ci-capabilities.yml` or `ci/capabilities/`) with no `#` before its FIRST occurrence on that line and
+// `ci/capabilities/`) with no `#` before its FIRST occurrence on that line and
 // no name character `[A-Za-z0-9._-]` right after it. Only the first occurrence of a
 // line is judged, as the shell twin does. Otherwise the test must be named in
 // `ci/test-wiring-exemptions.txt` (`name<WS>reason`).
@@ -18,7 +18,11 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 
 import { globToRegExp } from "../glob-engine.ts";
-import { ReferenceNotFoundError, readReference } from "../ci-parity/reference-read.ts";
+import {
+  ReferenceNotFoundError,
+  ReferenceReadError,
+  readReference,
+} from "../ci-parity/reference-read.ts";
 
 export interface Outcome {
   code: number;
@@ -185,7 +189,14 @@ export function evaluateWiring(repo: string): Outcome {
   if (!isDir(testsDir))
     return { code: 2, stdout: "", stderr: `Error: tests directory not found: ${testsDir}\n` };
 
-  const surfaces = readSurfaces(repo);
+  let surfaces: string[];
+  try {
+    surfaces = readSurfaces(repo);
+  } catch (e) {
+    // A malformed reference directory is a FAILED block, like the other readers print.
+    if (e instanceof ReferenceReadError) return { code: 1, stdout: "", stderr: e.format() };
+    throw e;
+  }
   const ex = parseExemptions(repo, testsDir);
   const orphans: string[] = [];
   let wired = 0;

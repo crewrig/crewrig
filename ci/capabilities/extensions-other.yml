@@ -1,0 +1,311 @@
+# CI capabilities: group extensions, part other (format: docs/ci-reference-format.md, spec 0309).
+capabilities:
+
+  - id: extension-render
+    group: extensions
+    name: "Enforce no committed generated extension output, a fresh render, and the declared file set"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/build-extension.ts"
+      - "scripts/lib/extension/**"
+      - "scripts/lib/org-mcp.ts"
+      - "scripts/lib/node-floor-guard.js"
+      - "scripts/lib/extension-percli-keys.json"
+      - "scripts/lib/extension-generated-class.json"
+      - "scripts/tests/build-extension-suite-render.test.ts"
+      - "scripts/tests/build-extension-suite-check.test.ts"
+      - "scripts/tests/build-extension-suite-hooks.test.ts"
+      - "scripts/tests/build-extension-suite-context.test.ts"
+      - "scripts/tests/build-extension-suite-scaffold.test.ts"
+      - "scripts/tests/migrate-extension-entry.test.ts"
+      - "scripts/tests/create-extension-combinations.test.ts"
+      - "scripts/tests/create-extension-gap-derivation.test.ts"
+      - "scripts/tests/extension-render-conformance.test.ts"
+      - "scripts/tests/extension-render-conformance-checks.test.ts"
+      - "scripts/tests/extension-sandbox.test.ts"
+      - "scripts/tests/lib/extension-sandbox.ts"
+      - "scripts/tests/lib/extension-render-conformance.ts"
+      - "Taskfile.yml"
+      - "taskfiles/**"
+      - "scripts/lib/taskfile-tree.ts"
+      - "scripts/lib/taskfile-tree-parse.ts"
+      - "scripts/lib/governance/taskfile-tree-guard.ts"
+      - "extensions/**"
+      - "artifacts/**"
+      - "scripts/lib/extension-targets.json"
+      - "docs/extension-hook-events.md"
+      - "extension-skeleton/**"
+      - "scripts/build-claude-plugin.ts"
+      - "scripts/lib/extension/**"
+      - "scripts/lib/org-mcp.ts"
+      - "scripts/lib/node-floor-guard.js"
+      - "scripts/build-copilot-plugin.ts"
+      - "scripts/build-antigravity-extension.ts"
+      - "scripts/install-extension.ts"
+      - "scripts/install-antigravity-extension.ts"
+      - "scripts/lib/link-or-copy*.ts"
+      - "scripts/lib/manage/**"
+      - "scripts/lib/install/**"
+      - "scripts/lib/component-roots.ts"
+      - "scripts/lib/component-overlay.ts"
+      - "scripts/lib/component-install.ts"
+      - "scripts/lib/antigravity-migrate.ts"
+      - "scripts/lib/extension-legacy-shape.json"
+      - "scripts/migrate-extension.ts"
+      - "scripts/release-package-extension.ts"
+      - "scripts/lib/packaging/**"
+      - "scripts/check-extension-pivot.ts"
+      - "scripts/lib/governance/**"
+      - "scripts/check-extension-hook-map.ts"
+      - "scripts/check-extension-hook-tokens.ts"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [jq, yq, task]
+      install: omit-dev
+    command:
+      - task ci:extension-render
+
+
+  - id: extension-provenance
+    group: extensions
+    name: "Enforce extension provenance"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/tests/governance-suite-extension-provenance.test.ts"
+      - "scripts/tests/governance-suite-extension-provenance-r4.test.ts"
+      - "scripts/tests/lib/governance-*.ts"
+      - "extensions/**"
+      - "artifacts/**"
+      - "scripts/check-extension-provenance.ts"
+      - "scripts/lib/governance/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:extension-provenance
+
+  - id: extension-manifest
+    group: extensions
+    name: "Enforce extension manifest single-version and version-bump"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/tests/governance-suite-extension-version-bump.test.ts"
+      - "scripts/tests/governance-suite-extension-version-bump-base.test.ts"
+      - "scripts/tests/lib/governance-*.ts"
+      - "extensions/**"
+      - "artifacts/**"
+      - "scripts/check-extension-version-bump.ts"
+      - "scripts/lib/governance/**"
+      - "scripts/check-extension-manifest-version.ts"
+      - "scripts/lib/extension/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:extension-manifest
+
+  - id: extension-install
+    group: extensions
+    name: "Test extension install and agent frontmatter contracts"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/tests/install-claude-plugin-marketplace.test.ts"
+      - "scripts/tests/install-extension-all-real.test.ts"
+      - "scripts/tests/lib/yaml-lib.ts"
+      - "scripts/build-claude-plugin.ts"
+      - "scripts/lib/extension/**"
+      - "scripts/lib/org-mcp.ts"
+      - "scripts/lib/node-floor-guard.js"
+      - "scripts/tests/install-sandbox.test.ts"
+      - "scripts/tests/install-workspace.test.ts"
+      - "scripts/tests/unlink-component.test.ts"
+      - "scripts/tests/unlink-extensions.test.ts"
+      - "scripts/tests/install-extension.test.ts"
+      - "scripts/tests/link-extensions.test.ts"
+      - "scripts/tests/install-copilot-plugin.test.ts"
+      - "scripts/tests/install-antigravity-extension.test.ts"
+      - "scripts/tests/lib/install-sandbox.ts"
+      - "scripts/tests/lib/hermetic-env.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/tests/lib/worktree-fixtures.ts"
+      - "scripts/install-extension-all.ts"
+      - "scripts/install-extension.ts"
+      - "scripts/install-claude-plugin.ts"
+      - "scripts/install-copilot-plugin.ts"
+      - "scripts/install-antigravity-extension.ts"
+      - "scripts/install-workspace.ts"
+      - "scripts/manage-claude-component.ts"
+      - "scripts/manage-copilot-component.ts"
+      - "scripts/manage-antigravity-component.ts"
+      - "scripts/manage-workspace-component.ts"
+      - "scripts/link-extensions.ts"
+      - "scripts/unlink-extensions.ts"
+      - "scripts/unlink-component.ts"
+      - "scripts/lib/link-or-copy*.ts"
+      - "scripts/lib/manage/**"
+      - "scripts/lib/install/**"
+      - "scripts/lib/component-roots.ts"
+      - "scripts/lib/component-overlay.ts"
+      - "scripts/lib/component-install.ts"
+      - "scripts/lib/antigravity-migrate.ts"
+      - "extensions/**"
+      - "artifacts/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [jq, yq, task]
+      install: omit-dev
+    command:
+      - task ci:extension-install
+
+  - id: docs-index
+    group: extensions
+    name: "Check docs index drift"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/build-docs-index.ts"
+      - "scripts/lib/docs-index/**"
+      - "scripts/lib/paths.ts"
+      - "scripts/lib/line-endings.ts"
+      - "scripts/lib/node-floor-guard.js"
+      - "scripts/tests/build-docs-index-entry.test.ts"
+      - "scripts/tests/lib/docs-index-entry-tree.ts"
+      - "docs/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    cache:
+      files:
+        - "scripts/build-docs-index.ts"
+        - "scripts/lib/docs-index/**"
+        - "scripts/lib/paths.ts"
+        - "scripts/lib/line-endings.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/tests/build-docs-index-entry.test.ts"
+        - "scripts/tests/lib/docs-index-entry-tree.ts"
+        - "docs/**"
+        - "scripts/ci-cache-guard.ts"
+      env: []
+    command:
+      - task ci:docs-index
+
+  - id: docs-index-selftest
+    group: extensions
+    name: "Self-test the docs index builder"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/build-docs-index.ts"
+      - "scripts/lib/docs-index/**"
+      - "scripts/lib/paths.ts"
+      - "scripts/lib/line-endings.ts"
+      - "scripts/lib/node-floor-guard.js"
+      - "scripts/tests/build-docs-index-entry.test.ts"
+      - "scripts/tests/lib/docs-index-entry-tree.ts"
+      - "scripts/tests/lib/worktree-fixtures.ts"
+      - "taskfiles/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-extensions.yml"
+      - "ci/capabilities/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    cache:
+      files:
+        - "scripts/build-docs-index.ts"
+        - "scripts/lib/docs-index/**"
+        - "scripts/lib/paths.ts"
+        - "scripts/lib/line-endings.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - "scripts/tests/build-docs-index-entry.test.ts"
+        - "scripts/tests/lib/docs-index-entry-tree.ts"
+        - "scripts/tests/lib/worktree-fixtures.ts"
+        - "scripts/ci-cache-guard.ts"
+      env: []
+    command:
+      - task ci:docs-index-selftest
+
+  - id: cli-matrix-fresh
+    group: extensions
+    name: "Check the CLI matrix is regenerated"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "docs/cli-matrix.md"
+      - "docs/cli-matrix/**"
+      - "scripts/build-cli-matrix.ts"
+      - "scripts/lib/build-cli-matrix/**"
+      - "scripts/tests/build-cli-matrix.test.ts"
+      - "scripts/lib/node-floor-guard.js"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:cli-matrix-fresh
+
+  - id: cli-matrix-fresh-selftest
+    group: extensions
+    name: "Self-test the CLI matrix generator"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/build-cli-matrix.ts"
+      - "scripts/lib/build-cli-matrix/**"
+      - "scripts/tests/build-cli-matrix.test.ts"
+      - "scripts/lib/node-floor-guard.js"
+      - "taskfiles/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/_ci-extensions.yml"
+      - "ci/capabilities/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:cli-matrix-fresh-selftest

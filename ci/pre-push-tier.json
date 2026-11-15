@@ -29,6 +29,7 @@
   "test-wiring": 1,
   "test-wiring-selftest": 3,
   "check-ci-parity": 2,
+  "ci-file-limit": 1,
   "gitlab-ci-check": 1,
   "component-drift": 1,
   "component-drift-selftest": 1,

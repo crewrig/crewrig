@@ -465,7 +465,7 @@ workflow:
 This section applies to the CrewRig repository only.
 The generated `.gitlab-ci.yml` at the repo root is **derived**, not
 hand-authored: the generator, which keeps the GitLab pipeline in step
-with the other CI engines, reads the neutral capability reference `ci/ci-capabilities.yml` and maps its
+with the other CI engines, reads the neutral capability reference `ci/capabilities/` and maps its
 engine-neutral trigger vocabulary — `push` / `pull-request` / `tag` /
 `scheduled` / `manual`, qualified by `branches` / `paths` /
 `tag-pattern` filters — onto the GitLab `rules:` constructs documented

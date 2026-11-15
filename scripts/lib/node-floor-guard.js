@@ -15,7 +15,7 @@
 //
 // Stable token: the diagnostic always contains `requires Node.js >= 24`. Two
 // assertions depend on it — the `node-floor-guard` CI capability
-// (ci/ci-capabilities.yml) and scripts/tests/node-floor-guard.test.ts. Change
+// (ci/capabilities/) and scripts/tests/node-floor-guard.test.ts. Change
 // the wording only together with both.
 //
 // Admitted to the JavaScript ratchet through ci/js-exceptions.txt, category

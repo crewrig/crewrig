@@ -400,3 +400,10 @@ jobs:
         with:
           id: alert-scheduled-failure-check
 
+  ci-file-limit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: ci-file-limit

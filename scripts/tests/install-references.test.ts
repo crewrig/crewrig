@@ -37,7 +37,10 @@ const ALLOWLIST = "scripts/tests/fixtures/install/old-invocation-allowlist.txt";
 const NEEDLES = NAMES.map((n) => ["scripts", `${n}.sh`].join("/"));
 const BASH_RUN = new RegExp(`\\bbash\\s+\\S*scripts/(${NAMES.join("|")})\\.sh\\b`);
 const CI_CONFIGS = [
-  "ci/ci-capabilities.yml",
+  ...fs
+    .readdirSync(path.join(repoRoot(), "ci", "capabilities"))
+    .sort()
+    .map((n) => `ci/capabilities/${n}`),
   ".gitlab-ci.yml",
   ...taskfilePaths(repoRoot()),
   ".github/workflows/build.yml",

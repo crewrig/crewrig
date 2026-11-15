@@ -3,7 +3,7 @@
 // Usage: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-path-ownership.ts
 //
 // Every tracked file must be owned (matched by a `paths:` glob of a capability's
-// `pull-request` trigger in ci/ci-capabilities.yml) or exempt (matched by an entry
+// `pull-request` trigger in ci/capabilities/) or exempt (matched by an entry
 // of ci/path-ownership-exemptions.txt or the optional adopter overlay
 // ci/org/path-ownership-exemptions.txt). The exemption lists must be clean: no entry
 // with an empty reason, none matching no tracked file; a redundant entry (every match
@@ -37,7 +37,7 @@ import {
 import type { Exemption } from "./lib/path-ownership.ts";
 import { WiringError, repoRoot, trackedFiles } from "./lib/ts-scope.ts";
 
-const REFERENCE = "ci/ci-capabilities.yml";
+const REFERENCE = "ci/capabilities/";
 const CORE_LIST = "ci/path-ownership-exemptions.txt";
 const OVERLAY_LIST = "ci/org/path-ownership-exemptions.txt";
 
@@ -57,7 +57,7 @@ function readCapabilities(): unknown {
     ref = readReference(repoRoot());
   } catch (err) {
     if (err instanceof ReferenceNotFoundError) throw new WiringError(`${REFERENCE} not found`);
-    if (err instanceof ReferenceReadError) throw new WiringError(err.message);
+    if (err instanceof ReferenceReadError) throw new WiringError(err.format());
     throw err;
   }
   const source = sourceOf(ref);

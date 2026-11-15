@@ -6,7 +6,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.5.0"
+    version: "1.5.1"
 ---
 
 
@@ -59,7 +59,7 @@ satisfies. The workflow goes under `.github/workflows/`. It is not derived from 
 platform-neutral capability reference.
 
 **GitLab CI/CD: derived.** Do not hand-author `.gitlab-ci.yml`, and do not edit
-`ci/ci-capabilities.yml`: the pipeline is generated from that reference so it stays
+`ci/capabilities/`: the pipeline is generated from that reference so it stays
 consistent with the drift check. In the CrewRig repository, compose the generator:
 
 <!-- crewrig-repo-only:start -->

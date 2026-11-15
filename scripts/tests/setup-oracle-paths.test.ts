@@ -1,7 +1,7 @@
 // setup-oracle-paths.test.ts — the `setup-oracle` CI path filter covers everything the sandbox
 // copies from the real repository (spec 0256 R40, seat review/1335 finding i2-F1). Layer 1: node:fs
 // only, no yaml dependency, runs on every OS. Reads the copy sources from `setup-sandbox.ts` and
-// `build-fixture-tree.ts` and the capability `paths:` from `ci/ci-capabilities.yml`.
+// `build-fixture-tree.ts` and the capability `paths:` from `ci/capabilities/`.
 // API: sandboxSources(), capabilityPaths(), uncovered(sources, patterns) -> sources no pattern covers.
 
 import assert from "node:assert/strict";

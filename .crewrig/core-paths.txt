@@ -178,7 +178,7 @@ ci/path-ownership-exemptions.txt	strict
 # directory's spec-0064 orphan-cleanup pass (issue #1213).
 ci/org	excluded
 
-# Generated GitLab CI pipeline (spec 0048). Derived from ci/ci-capabilities.yml
+# Generated GitLab CI pipeline (spec 0048). Derived from ci/capabilities/
 # by scripts/build-ci.ts; drift-guarded by `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts --check`.
 .gitlab-ci.yml	strict
 

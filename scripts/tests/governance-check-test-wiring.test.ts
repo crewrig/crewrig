@@ -98,6 +98,23 @@ describe("check-test-wiring edge cases", () => {
     assert.match(r.stderr, /scripts\/tests\/test-a\.sh/);
   });
 
+  it("prints the reader's FAILED block, not a stack trace, for a malformed reference directory", () => {
+    // Not an oracle case: the shell twin never read the reference directory (spec 0309 R3).
+    const repo = path.join(tmp, "bad-reference");
+    mkdirSync(path.join(repo, "scripts/tests"), { recursive: true });
+    mkdirSync(path.join(repo, "ci/capabilities"), { recursive: true });
+    writeFileSync(path.join(repo, "ci/capabilities/bogus.yml"), "capabilities: []\n");
+    const r = run(repo);
+    assert.equal(r.status, 1);
+    assert.equal(r.stdout, "");
+    assert.match(
+      r.stderr,
+      /^FAILED: 1 reference-validity violation\(s\) in <REPO>\/ci\/capabilities\/:\n/,
+    );
+    assert.match(r.stderr, /\n {2}- ci\/capabilities\/bogus\.yml: name is not /);
+    assert.doesNotMatch(r.stderr, /\n\s+at /);
+  });
+
   it("exits 2 when the tests directory is missing", () => {
     const repo = path.join(tmp, "empty");
     mkdirSync(repo);

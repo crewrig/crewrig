@@ -6,7 +6,7 @@
 //
 //   R17a  Every registered suite command engages the stray scan. A command whose program
 //         is `bash scripts/tests/test-*.sh` is a finding, in the capability reference
-//         (`command:` entries of ci/ci-capabilities.yml) and in the hand-authored GitHub
+//         (`command:` entries of ci/capabilities/) and in the hand-authored GitHub
 //         Actions jobs (`run:` of every step under .github/workflows). The accepted form is
 //         `node scripts/ci-cache-guard.ts --stray-scan -- bash scripts/tests/<suite>`. Before
 //         the program is read, a command is split on newlines, its whitespace normalised, and
@@ -55,7 +55,7 @@ import {
 import { readTextLf } from "./lib/line-endings.ts";
 import { WiringError, repoRoot, trackedFiles } from "./lib/ts-scope.ts";
 
-const REFERENCE = "ci/ci-capabilities.yml";
+const REFERENCE = "ci/capabilities/";
 const WORKFLOWS_DIR = ".github/workflows";
 const PREFIX = "stray-scan-wiring";
 
@@ -162,7 +162,7 @@ function readReferenceYaml(): { doc: unknown; source: string } {
   } catch (err) {
     if (err instanceof ReferenceNotFoundError)
       throw new WiringError(`cannot read ${REFERENCE}: ${err.message}`);
-    if (err instanceof ReferenceReadError) throw new WiringError(err.message);
+    if (err instanceof ReferenceReadError) throw new WiringError(err.format());
     throw err;
   }
   const source = sourceOf(ref);

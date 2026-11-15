@@ -2,7 +2,7 @@
 //
 // Usage: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-paths-gate.ts
 //          --capability <id> [--event <name>] [--before <sha>]
-//   Defaults: --event $GITHUB_EVENT_NAME, --before $GATE_BEFORE. Reads ci/ci-capabilities.yml
+//   Defaults: --event $GITHUB_EVENT_NAME, --before $GATE_BEFORE. Reads ci/capabilities/
 //   (REPO_DIR overrides the root). The diff is `git diff --name-only HEAD^1 HEAD` for
 //   pull_request and `<before> HEAD` for push; any failure fails open.
 // Output: `changed=true|false` appended to $GITHUB_OUTPUT (stdout when unset).

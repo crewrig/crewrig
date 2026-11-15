@@ -108,7 +108,7 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // Arm 1 of the parity harness: the command list of a capability in ci/ci-capabilities.yml no
+    // Arm 1 of the parity harness: the command list of a capability in ci/capabilities/ no
     // longer matches the business steps of its build.yml job (the job runs `task ci:<id>`, spec 0283).
     name: "CI parity drift between build.yml and the capability file",
     id: "check-ci-parity",

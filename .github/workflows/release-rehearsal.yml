@@ -3,7 +3,7 @@ name: Rehearse Release (Monorepo)
 # Manual, credential-free rehearsal of the monorepo release (spec 0213 R12):
 # computes each extension's next version, tag and release note and builds its
 # archive, publishing nothing. Mirrors the `release-rehearsal` capability in
-# ci/ci-capabilities.yml.
+# ci/capabilities/.
 on:
   workflow_dispatch:
 

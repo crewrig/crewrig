@@ -323,7 +323,7 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   Antigravity CLI still reads its acknowledgement. A command wired directly to the `.ts` is not a shim: with Node.js
   downgraded after setup it fails with Node.js's own non-zero status and no `{}`, until setup is re-run on Node.js 24 or
   later (spec 0243 R30). Setup checks the floor only when it runs, and below it writes no direct form. Evidence: the
-  capability `mempalace-transcript-node-24-0` in `ci/ci-capabilities.yml`. Recovery: install Node.js 24 or later and
+  capability `mempalace-transcript-node-24-0` in `ci/capabilities/`. Recovery: install Node.js 24 or later and
   re-run setup.
 
 <!-- Validation backend gaps (spec 0080) -->

@@ -68,7 +68,6 @@ describe("check-ci-parity twin", () => {
   test("a missing reference exits 2", () =>
     expectExit(
       fixture((r) => {
-        fs.rmSync(path.join(r, "ci", "ci-capabilities.yml"), { force: true });
         fs.rmSync(path.join(r, "ci", "capabilities"), { recursive: true, force: true });
       }),
       2,
@@ -163,8 +162,16 @@ describe("check-ci-parity twin: inputs outside the byte comparison (delta-05 ite
     gap(write(".gitlab-ci.yml", "a: [1\nb: }\n"), ".gitlab-ci.yml"));
   test("an unparseable workflow", () =>
     gap(write(".github/workflows/zz.yml", "jobs: [1\nx: }\n"), ".github/workflows/zz.yml"));
-  test("an unparseable reference", () =>
-    gap(writeRef("capabilities: [1\nb: }\n"), "ci/ci-capabilities.yml"));
+  test("an unparseable reference is the reader's FAILED block (spec 0309 R3)", () => {
+    const r = exec("ts", fixture(writeRef("capabilities: [1\nb: }\n")));
+    assert.equal(r.code, 1);
+    assert.equal(r.out, "");
+    assert.match(
+      r.err,
+      /^FAILED: 1 reference-validity violation\(s\) in <ROOT>\/ci\/capabilities\/:\n/,
+    );
+    assert.match(r.err, /\n {2}- ci\/capabilities\/gate\.yml: not valid reference content: /);
+  });
   test("an explicit key among the job keys of a workflow", () =>
     gap(write(".github/workflows/zz.yml", "jobs:\n  ? a\n  : x: 1\n"), ".github/workflows/zz.yml"));
   test("a scalar jobs value", () =>

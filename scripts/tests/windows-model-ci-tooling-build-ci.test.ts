@@ -108,7 +108,7 @@ describe("windows model-ci-tooling: build-ci", () => {
       const err = r.err.replaceAll("\r\n", "\n");
       assert.ok(
         err.startsWith(
-          `DRIFT: ${path.join(work, ".gitlab-ci.yml")} differs from a fresh derivation of ci/ci-capabilities.yml\n`,
+          `DRIFT: ${path.join(work, ".gitlab-ci.yml")} differs from a fresh derivation of ci/capabilities/\n`,
         ),
         why(r, "DRIFT first line"),
       );
