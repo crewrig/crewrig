@@ -77,8 +77,11 @@ function callerJobs(jobs: YqNode): Set<string> {
   return out;
 }
 
-/** Spec 0287 delta-01 R21: the two required contexts are hosted by build.yml, not by the gate callee. */
-export const TOP_LEVEL_JOBS = ["ratchet", "lint-typescript"];
+/**
+ * Spec 0287 delta-01 R21 and delta-02 R22: the two required contexts and `pr-scope` are hosted by
+ * build.yml, not by the gate callee.
+ */
+export const TOP_LEVEL_JOBS = ["pr-scope", "ratchet", "lint-typescript"];
 
 export const GROUPS = ["gate", "modules", "governance", "extensions", "integration", "windows"];
 
@@ -103,7 +106,7 @@ export function groupChecks(state: ParityState): void {
       if (base !== "build.yml") {
         fail(
           state,
-          `job '${j.jobKey}' is in ${base} but the required context belongs in build.yml (R21)`,
+          `job '${j.jobKey}' is in ${base} but the required context belongs in build.yml (R21, R22)`,
         );
       }
     } else if (layered && base !== `_ci-${cap.group}.yml`) {

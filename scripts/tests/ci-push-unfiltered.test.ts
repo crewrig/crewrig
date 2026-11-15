@@ -206,6 +206,76 @@ describe("the closed evaluators", () => {
   });
 });
 
+// Plan v2 D5 (issue #1933): `cancelled()` and `needs.*` in three-valued logic, one evaluator.
+describe("the closed evaluator, D5 extension", () => {
+  const main = pushContext("main");
+  const rel = pushContext("release/1.0");
+  const buildJson = (): Record<string, unknown> =>
+    parseYaml(fs.readFileSync(path.join(repo, ".github/workflows/build.yml"), "utf8")) as Record<
+      string,
+      unknown
+    >;
+  const windowsIf = (): string => {
+    const jobs = buildJson()["jobs"] as Record<string, Record<string, unknown>>;
+    return String(jobs["windows"]?.["if"]);
+  };
+  it("(a) the windows condition of build.yml is true on a push to main and to a release branch", () => {
+    assert.match(windowsIf(), /needs\.pr-scope\.result/);
+    assert.equal(evalJobIf(windowsIf(), main), true);
+    assert.equal(evalJobIf(windowsIf(), rel), true);
+  });
+  it("(b) needs.x.outputs.y == 'true' alone stays unknown and throws", () => {
+    assert.throws(
+      () => evalJobIf("needs.x.outputs.y == 'true'", main),
+      /outside|unknown|unsupported/,
+    );
+  });
+  it("(c) a push-true disjunct decides whatever the needs values", () => {
+    assert.equal(
+      evalJobIf("github.event_name == 'push' || needs.x.result == 'success'", main),
+      true,
+    );
+  });
+  it("(d) fail-closed forms: needs read and not true, a bare lookup, status functions", () => {
+    for (const e of [
+      "github.event_name == 'push' && needs.x.result == 'success'",
+      "github.event_name == 'pull_request' && needs.x.result == 'success'",
+      "github.event_name == 'push' || needs.x.outputs.y",
+      "failure()",
+      "needs.x",
+      "steps.a.outputs.b == 'x'",
+      "github.actor == 'x'",
+      "contains(github.ref, 'main')",
+      "vars.X == '1'",
+      "github.ref",
+    ])
+      assert.throws(
+        () => evalJobIf(e, main),
+        /outside|string|non-string|unexpected|unsupported/,
+        e,
+      );
+  });
+  it("v2-F2: the implicit success() wraps the parsed result, not the source text", () => {
+    const e = "github.event_name == 'x' || github.event_name == 'push'";
+    assert.equal(evalJobIf(e, { ...main, success: false }), false);
+    assert.equal(evalJobIf(e, main), true);
+    assert.equal(evalJobIf("!cancelled()", { ...main, success: false }), true);
+    assert.equal(evalJobIf("!cancelled()", { ...main, cancelled: true }), false);
+  });
+  it("hyphenated needs names tokenize, and known needs values decide", () => {
+    const e = "needs.pr-scope.outputs.spec-only == 'true' && needs.pr-scope.result == 'success'";
+    const needs = (r: string, o?: string) => ({
+      "pr-scope": { result: r, outputs: o === undefined ? {} : { "spec-only": o } } as {
+        result: string;
+        outputs: Record<string, string>;
+      },
+    });
+    assert.equal(evalJobIf(e, { ...main, needs: needs("success", "true") }), true);
+    assert.equal(evalJobIf(e, { ...main, needs: needs("success", "false") }), false);
+    assert.equal(evalJobIf(e, { ...main, needs: needs("success") }), false);
+  });
+});
+
 // ---------------------------------------------------------------------------- the R6 fixtures
 
 describe("R6 fixtures: the passing base", () => {

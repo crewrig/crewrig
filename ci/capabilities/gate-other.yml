@@ -216,3 +216,29 @@ capabilities:
       tools: [task]
     command:
       - task ci:check-rules-size
+
+  # Spec 0287 delta-02 R22-R26: classifies a pull request as spec-only so build.yml can skip the Windows group. It is a
+  # top-level job of build.yml with its own `run:` step and NO ci-job: ci-job's failure path runs cancel-on-failure
+  # (.github/actions/ci-job/action.yml, .github/actions/cancel-on-failure/action.yml), which would cancel the whole run,
+  # Windows included. Accepted gap (R26): GitLab keeps no Windows group on a merge-request pipeline, so there is nothing to
+  # skip there, and a spec-only push to main still runs every group.
+  - id: pr-scope
+    group: gate
+    name: "Classify a pull request as spec-only to skip the Windows group"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        A failure of this job must not cancel the run, so it cannot go through the ci-job thin job, whose failure path
+        runs cancel-on-failure (.github/actions/ci-job/action.yml, .github/actions/cancel-on-failure/action.yml). Its
+        only consumer is a job-level `if:` on the `windows` caller job of build.yml, a GitHub Actions construct; a GitLab
+        merge-request pipeline has no Windows group to skip (spec 0287 delta-02 R26).
+    requires:
+      runtime: node@24
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-pr-scope.ts
