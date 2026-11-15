@@ -4,7 +4,7 @@
 // `--root` points at a repository tree (default: the parent of scripts/); tests pass a mkdtemp fixture.
 //
 // Checks, for every `ci:<id>` task other than the closed CONTROL_TASKS set:
-//   (a) a capability `<id>` exists in ci/ci-capabilities.yml;
+//   (a) a capability `<id>` exists in the CI capability reference;
 //   (b) the normalised, expanded command lists of the task and the capability are equal (R3);
 //   (c) every id of ci/pre-push-tier.json has a `ci:<id>` task;
 //   plus: every `- task:` call written in taskfiles/ci.yml or under taskfiles/ci/ is colon-anchored (R2), and no
@@ -32,18 +32,22 @@ import {
   resolveTaskCommands,
   taskCallRefs,
 } from "./lib/ci-pre-push/normalize.ts";
-import { readCapabilities } from "./lib/ci-parity/reference-read.ts";
+import {
+  docOf,
+  readCapabilities,
+  readReference,
+  sourceOf,
+} from "./lib/ci-parity/reference-read.ts";
 import type { CapRecord } from "./lib/ci-parity/state.ts";
 import { TaskfileTreeError } from "./lib/taskfile-tree.ts";
 import type { TaskfileTree } from "./lib/taskfile-tree.ts";
-import { parse } from "./lib/yq-accessors/index.ts";
 
 const CI_FILE = "taskfiles/ci.yml";
 const CI_DIR = "taskfiles/ci/";
 
 /** True for a file of the `ci` sub-tree: the control file and every file under `taskfiles/ci/` (spec 0278 R26). */
 const inCiSubTree = (file: string): boolean => file === CI_FILE || file.startsWith(CI_DIR);
-const CAPABILITIES_FILE = "ci/ci-capabilities.yml";
+let capabilitiesSource = "ci/ci-capabilities.yml";
 const TIER_FILE = "ci/pre-push-tier.json";
 
 const findings: string[] = [];
@@ -76,10 +80,11 @@ function errorText(err: unknown): string {
 
 function readCaps(root: string): Map<string, CapRecord> | undefined {
   try {
-    const doc = parse(readFileSync(path.join(root, CAPABILITIES_FILE), "utf8"));
-    return new Map(readCapabilities(doc).map((c) => [c.id, c]));
+    const ref = readReference(root);
+    capabilitiesSource = sourceOf(ref);
+    return new Map(readCapabilities(docOf(ref)).map((c) => [c.id, c]));
   } catch (err) {
-    fault(`cannot read ${CAPABILITIES_FILE}: ${errorText(err)}`);
+    fault(`cannot read ${capabilitiesSource}: ${errorText(err)}`);
     return undefined;
   }
 }
@@ -139,7 +144,7 @@ function checkTask(tree: TaskfileTree, caps: Map<string, CapRecord>, name: strin
   const id = name.slice("ci:".length);
   const cap = caps.get(id);
   if (cap === undefined) {
-    finding("no-capability", name, `no capability '${id}' exists in ${CAPABILITIES_FILE}`);
+    finding("no-capability", name, `no capability '${id}' exists in ${capabilitiesSource}`);
     return;
   }
   try {

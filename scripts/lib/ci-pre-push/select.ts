@@ -12,9 +12,8 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { globToRegExp, UnsupportedGlobError } from "../glob-engine.ts";
-import { readCapabilities } from "../ci-parity/reference-read.ts";
+import { docOf, readCapabilities, readReference, sourceOf } from "../ci-parity/reference-read.ts";
 import type { CapRecord } from "../ci-parity/state.ts";
-import { parse } from "../yq-accessors/index.ts";
 
 export const DEFAULT_TARGET = "origin/main";
 export const CAPABILITIES_FILE = "ci/ci-capabilities.yml";
@@ -56,9 +55,11 @@ export function refResolves(repoDir: string, ref: string): boolean {
 
 /** Capability records of `<repoDir>/ci/ci-capabilities.yml`. */
 export function loadCapabilities(repoDir: string): CapRecord[] {
-  const file = path.join(repoDir, CAPABILITIES_FILE);
+  let file = path.join(repoDir, CAPABILITIES_FILE);
   try {
-    return readCapabilities(parse(readFileSync(file, "utf8")));
+    const ref = readReference(repoDir);
+    file = path.join(repoDir, sourceOf(ref));
+    return readCapabilities(docOf(ref));
   } catch (err) {
     throw new PrePushError(
       `cannot read ${file}: ${err instanceof Error ? err.message : String(err)}`,
@@ -122,7 +123,7 @@ export function selectFromChangeset(
     const cap = byId.get(id);
     if (cap === undefined)
       throw new PrePushError(
-        `${TIER_FILE} names '${id}', which has no capability in ${CAPABILITIES_FILE}; remove it from the tier`,
+        `${TIER_FILE} names '${id}', which has no capability in the CI capability reference; remove it from the tier`,
       );
     if (files === null) {
       ids.push(id);
@@ -149,7 +150,7 @@ export function selectFromChangeset(
       matched = files.some((f) => res.some((re) => re.test(f)));
     } catch (err) {
       if (err instanceof UnsupportedGlobError)
-        throw new PrePushError(`${CAPABILITIES_FILE}, capability '${id}': ${err.message}`);
+        throw new PrePushError(`the CI capability reference, capability '${id}': ${err.message}`);
       throw err;
     }
     if (matched) ids.push(id);

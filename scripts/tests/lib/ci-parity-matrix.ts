@@ -9,6 +9,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { editReference } from "./ci-reference-fixtures.ts";
 import {
   capOf,
   editYaml,
@@ -154,7 +155,7 @@ export function matrixRun(): CheckResult {
   const fx = makeFixture();
   fs.rmSync(path.join(fx, ".gitlab-ci.yml"), { force: true });
   const wf = path.join(fx, ".github", "workflows");
-  editYaml(path.join(fx, "ci", "ci-capabilities.yml"), reference);
+  editReference(fx, reference as (doc: Record<string, unknown>) => void);
   editYaml(path.join(wf, "build.yml"), buildYml);
   dedicated(wf);
   memo = runCheck(fx);

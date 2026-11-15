@@ -8,7 +8,7 @@
 //
 // Contract:
 //   - R17a: a command whose program is `bash scripts/tests/test-*.sh`, in a
-//     capability `command` of ci/ci-capabilities.yml or in a `run:` line of a
+//     capability `command` of the capability reference or in a `run:` line of a
 //     hand-authored workflow, is a finding unless it is the scanned form
 //     `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- bash scripts/tests/<suite>`.
 //     One generated cache-guard layer (`--cache-dir ... --`) is removed first, so
@@ -27,10 +27,10 @@ import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { writeReferenceDir } from "./lib/ci-reference-fixtures.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CHECK = path.join(REPO, "scripts", "check-stray-scan-wiring.ts");
-const REFERENCE_PATH = "ci/ci-capabilities.yml";
 const WORKFLOW_PATH = ".github/workflows/build.yml";
 
 // --- Fixture repositories ----------------------------------------------------------
@@ -159,7 +159,7 @@ function repo(opts: FixtureOptions = {}): string {
   git(dir, "init", "-q", "-b", "main");
   const tree: Tree = { [suitePath(SUITE_A)]: "#!/usr/bin/env bash\n", ...opts.tree };
   if (opts.noReference !== true)
-    tree[REFERENCE_PATH] = opts.rawReference ?? reference(opts.caps ?? [ALPHA]);
+    writeReferenceDir(dir, opts.rawReference ?? reference(opts.caps ?? [ALPHA]));
   if (opts.workflowText !== null)
     tree[WORKFLOW_PATH] = opts.workflowText ?? workflow({ alpha: [scanned(SUITE_A)] });
   write(dir, tree);

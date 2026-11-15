@@ -15,6 +15,7 @@ import {
   parseThreshold,
   refuseInCi,
 } from "../lib/fixed-context-probe.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "..", "..");
@@ -115,7 +116,6 @@ describe("never runs in CI", () => {
   });
   test("no workflow, CI capability, pre-push tier or CI taskfile runs the paid probe", () => {
     const files = [
-      "ci/ci-capabilities.yml",
       "ci/pre-push-tier.json",
       ".gitlab-ci.yml",
       ...fs.readdirSync(path.join(repo, ".github/workflows")).map((f) => `.github/workflows/${f}`),
@@ -128,11 +128,12 @@ describe("never runs in CI", () => {
     const forbidden =
       /task\s+(?:ci:)?fixed-context-probe\b|fixed-context-probe\.ts|ci:fixed-context-probe\b/;
     const bareItem = /^\s*-\s*"scripts\/[^"\s]*"\s*$/;
-    for (const f of files) {
-      const code = fs
-        .readFileSync(path.join(repo, f), "utf8")
-        .split("\n")
-        .filter((l) => !/^\s*#/.test(l) && !bareItem.test(l));
+    const sources = [
+      ...files.map((f): [string, string] => [f, fs.readFileSync(path.join(repo, f), "utf8")]),
+      ["capability reference", readReferenceText(repo)] as [string, string],
+    ];
+    for (const [f, text] of sources) {
+      const code = text.split("\n").filter((l) => !/^\s*#/.test(l) && !bareItem.test(l));
       assert.doesNotMatch(code.join("\n"), forbidden, f);
     }
   });
@@ -144,7 +145,7 @@ describe("never runs in CI", () => {
     assert.match('    - "node scripts/fixed-context-probe.ts"', forbidden);
   });
   test("the unit suite runs inside the runtime-foundations capability, without the paid script", () => {
-    const cap = fs.readFileSync(path.join(repo, "ci/ci-capabilities.yml"), "utf8");
+    const cap = readReferenceText(repo);
     const block = cap.slice(cap.indexOf("  - id: runtime-foundations"));
     const line = block
       .split("\n")

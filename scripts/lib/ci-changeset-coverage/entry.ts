@@ -12,6 +12,12 @@ import path from "node:path";
 
 import { atLine, bashPath, NO_BASH, shellName } from "../ci-cache-guard/shell.ts";
 import { fatal, ok } from "../governance/report.ts";
+import {
+  ReferenceNotFoundError,
+  ReferenceReadError,
+  readReference,
+  sourceOf,
+} from "../ci-parity/reference-read.ts";
 import { gatedPlan, runList } from "./reference.ts";
 
 /** Line of the retired ci-changeset-coverage.sh where the shell evaluates each command. */
@@ -43,15 +49,21 @@ export function runCoverage(entry: string, env: NodeJS.ProcessEnv): number {
   }
   const self = shellName(entry);
   const repoDir = env["REPO_DIR"] || path.resolve(path.dirname(entry), "..");
-  const reference = path.join(repoDir, "ci", "ci-capabilities.yml");
-  if (fs.statSync(reference, { throwIfNoEntry: false })?.isFile() !== true) {
-    fatal(`Error: CI reference not found: ${reference}`);
-    return 2;
-  }
+  let reference = path.join(repoDir, "ci", "ci-capabilities.yml");
   let list: { id: string; command: string }[];
   try {
-    list = runList(gatedPlan(fs.readFileSync(reference, "utf8")));
+    const ref = readReference(repoDir);
+    reference = path.join(repoDir, sourceOf(ref));
+    list = runList(gatedPlan(ref.text));
   } catch (e) {
+    if (e instanceof ReferenceNotFoundError) {
+      fatal(`Error: CI reference not found: ${e.path}`);
+      return 2;
+    }
+    if (e instanceof ReferenceReadError) {
+      fatal(e.format().trimEnd());
+      return 1;
+    }
     // Spec 0262 delta-02 (g): the shell exits 0 with accidental output on an unreadable reference.
     const msg = e instanceof Error ? e.message : String(e);
     fatal(`Error: ${reference}: ${msg.split("\n")[0]}`);

@@ -1,5 +1,5 @@
 // capability-path-scan.ts — the effective `paths:` of each trigger of one capability, from a plain
-// text scan of ci/ci-capabilities.yml (no yaml dependency, so Layer 1 tests keep running on every OS).
+// text scan of the capability reference (no yaml dependency, so Layer 1 tests keep running on every OS).
 // Spec 0283 R3: a trigger's own `paths:` (8 spaces) wins, else the capability-level `paths:` (4 spaces).
 
 import fs from "node:fs";
@@ -37,9 +37,15 @@ export function capabilityTriggerPaths(referenceText: string, id: string): strin
 
 /** The effective `pull-request` paths of capability `id`: what the runtime path gate matches (spec 0283 R6). */
 export function gatePaths(id: string): string[] {
-  const ref = fs.readFileSync(
-    path.resolve(import.meta.dirname, "../../../ci/ci-capabilities.yml"),
-    "utf8",
-  );
+  const root = path.resolve(import.meta.dirname, "../../..");
+  const dir = path.join(root, "ci", "capabilities");
+  // No yaml dependency here: the directory's files in name order, else the legacy file.
+  const ref = fs.existsSync(dir)
+    ? fs
+        .readdirSync(dir)
+        .sort()
+        .map((n) => fs.readFileSync(path.join(dir, n), "utf8"))
+        .join("\n")
+    : fs.readFileSync(path.join(root, "ci", "ci-capabilities.yml"), "utf8");
   return capabilityTriggerPaths(ref, id)[0] ?? [];
 }

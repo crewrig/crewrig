@@ -1,0 +1,5 @@
+FAILED: 1 reference-validity violation(s) in /repo/ci/capabilities/:
+  - ci/capabilities/modules.yml: not valid reference content: unexpected end of the stream within a flow collection (2:1)
+
+The reference is the source of truth; refusing to check the engines against
+a malformed reference (spec 0309 R3).

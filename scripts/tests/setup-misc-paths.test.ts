@@ -14,6 +14,7 @@ import { test } from "node:test";
 import { REPO } from "./lib/build-fixture-tree.ts";
 import { capabilityTriggerPaths } from "./lib/capability-path-scan.ts";
 import { importClosure } from "./lib/setup-source-scan.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const PRINTER = "scripts/tests/lib/print-setup-declarations.ts";
 
@@ -21,7 +22,7 @@ const read = (rel: string): string => fs.readFileSync(path.join(REPO, rel), "utf
 
 /** The `paths:` entries of each trigger of the `misc` capability, from a plain text scan. */
 export function miscTriggerPaths(): string[][] {
-  return capabilityTriggerPaths(read("ci/ci-capabilities.yml"), "misc");
+  return capabilityTriggerPaths(readReferenceText(REPO), "misc");
 }
 
 /** `**` crosses directories, `*` does not; every other character is literal. */

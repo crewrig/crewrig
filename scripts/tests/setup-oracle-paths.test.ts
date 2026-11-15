@@ -11,6 +11,7 @@ import { test } from "node:test";
 
 import { REPO } from "./lib/build-fixture-tree.ts";
 import { capabilityTriggerPaths } from "./lib/capability-path-scan.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const read = (rel: string): string => fs.readFileSync(path.join(REPO, rel), "utf8");
 
@@ -35,7 +36,7 @@ export function sandboxSources(): string[] {
 
 /** The `paths:` entries of each trigger of the `setup-oracle` capability, from a plain text scan. */
 export function capabilityPaths(): string[][] {
-  return capabilityTriggerPaths(read("ci/ci-capabilities.yml"), "setup-oracle");
+  return capabilityTriggerPaths(readReferenceText(REPO), "setup-oracle");
 }
 
 /** A pattern covers a source when it names it, or names `dir/**` / `dir/*` for an ancestor `dir`. */

@@ -16,6 +16,7 @@ import {
   taskItems,
 } from "../lib/ci-pre-push/normalize.ts";
 import { makeSandbox, REPO, runEntry } from "./lib/governance-sandbox.ts";
+import { writeReferenceDir } from "./lib/ci-reference-fixtures.ts";
 
 const ENTRY = path.join(REPO, "scripts", "check-ci-pre-push-parity.ts");
 const ROOT_NAME = ["Task", "file.yml"].join("");
@@ -74,7 +75,7 @@ function stage(t: Tree = {}): string {
         "node scripts/b.ts {{.CLI_ARGS}}",
       ]),
   );
-  fs.writeFileSync(path.join(dir, "ci", "ci-capabilities.yml"), t.caps ?? CAPS(BASE_CMDS));
+  writeReferenceDir(dir, t.caps ?? CAPS(BASE_CMDS));
   if (t.tier !== null)
     fs.writeFileSync(path.join(dir, "ci", "pre-push-tier.json"), t.tier ?? '{"alpha": 1}');
   return dir;
@@ -315,7 +316,7 @@ tasks:
 
   it("exits 2 with a NOTICE when the capability file is unreadable", () => {
     const dir = stage();
-    fs.rmSync(path.join(dir, "ci", "ci-capabilities.yml"));
+    fs.rmSync(path.join(dir, "ci", "capabilities"), { recursive: true, force: true });
     const r = parity(dir);
     assert.equal(r.status, 2);
     assert.match(r.stderr, /NOTICE cannot read ci\/ci-capabilities\.yml/);

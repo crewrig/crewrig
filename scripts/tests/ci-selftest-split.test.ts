@@ -13,6 +13,8 @@ import { loadTaskfileTree } from "../lib/taskfile-tree.ts";
 import { ciTaskCommands } from "./lib/ci-task-commands.ts";
 import { makeSandbox, REPO, runEntry } from "./lib/governance-sandbox.ts";
 import { readWorkflowUnion } from "./lib/workflow-union.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
+import { writeReferenceDir } from "./lib/ci-reference-fixtures.ts";
 
 interface Cap {
   env?: Record<string, string>;
@@ -27,7 +29,7 @@ interface Cap {
 }
 
 const read = (rel: string): string => fs.readFileSync(path.join(REPO, rel), "utf8");
-const caps = (load(read("ci/ci-capabilities.yml")) as { capabilities: Cap[] }).capabilities;
+const caps = (load(readReferenceText(REPO)) as { capabilities: Cap[] }).capabilities;
 const byId = new Map(caps.map((c) => [c.id, c]));
 const SELFTESTS = caps.filter((c) => c.id.endsWith("-selftest"));
 const PAIRS: Record<string, { source: string; test: string }> = {
@@ -176,8 +178,8 @@ describe("self-test split: workflow and parity (d, e)", () => {
     );
     const cap = (id: string, cmd: string): string =>
       `  - id: ${id}\n    name: "${id}"\n    trigger:\n      - on: pull-request\n        branches: [main]\n    portability: portable\n    command:\n      - ${cmd}\n`;
-    fs.writeFileSync(
-      path.join(dir, "ci", "ci-capabilities.yml"),
+    writeReferenceDir(
+      dir,
       `capabilities:\n${cap("alpha", "node scripts/a.ts")}${cap("alpha-selftest", "node --test scripts/tests/a.test.ts")}`,
     );
     fs.writeFileSync(
