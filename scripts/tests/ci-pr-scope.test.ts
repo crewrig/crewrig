@@ -67,7 +67,10 @@ function mergeRepo(base: Record<string, string>, change: (dir: string) => void):
   return dir;
 }
 
-function runCli(cwd: string, event: string): { status: number | null; out: string; stderr: string } {
+function runCli(
+  cwd: string,
+  event: string,
+): { status: number | null; out: string; stderr: string } {
   const outFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "pr-scope-out-")), "output");
   const r = spawnSync(
     process.execPath,

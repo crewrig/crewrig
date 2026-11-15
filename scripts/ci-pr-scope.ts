@@ -39,7 +39,10 @@ function main(): void {
     } catch (e) {
       throw new Error(`git diff failed: ${(e as Error).message}`);
     }
-    value = classify(event, raw.split("\0").filter((p) => p !== ""));
+    value = classify(
+      event,
+      raw.split("\0").filter((p) => p !== ""),
+    );
   }
   fs.appendFileSync(out, `spec-only=${value}\n`);
 }
