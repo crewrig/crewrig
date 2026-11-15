@@ -1,6 +1,6 @@
 ---
 name: tester
-description: "Test-authoring agent that writes high-signal regression tests, enumerates the priority edge cases of a behaviour, and verifies a fix by running its test failing before and passing after. Delegate to it to write tests, add a regression test for a bug fix, plan a test strategy, check coverage, or decide whether a test may be skipped for a missing tool. Not for web end-to-end tests (web-conformity-checker, scenario-author), for implementing the fix (developer) or for reviewing a pull request (pr-reviewer). Run this agent on the gemini-3.1-pro-low model."
+description: "Test-authoring agent that writes high-signal regression tests, enumerates the priority edge cases of a behaviour, and verifies a fix by running its test failing before and passing after. Delegate to it to write tests, add a regression test for a bug fix, plan a test strategy, check coverage, or decide whether a test may be skipped for a missing tool. Not for web end-to-end tests (web-conformity-checker, scenario-author), for implementing the fix (developer) or for reviewing a pull request (pr-reviewer). Run this agent on the gemini-3.8-flash-medium model."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

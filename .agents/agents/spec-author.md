@@ -1,6 +1,6 @@
 ---
 name: spec-author
-description: "Specification authoring agent. Delegate to it when a non-trivial ticket needs a spec before planning, when the user asks to write, draft or specify a feature, its requirements or Given/When/Then scenarios, or when a spec-class review finding needs a delta-spec. It turns the raw intent into one draft spec file under specs/ in the interaction mode of the parent ticket. Not for implementation plans, ADRs, PR descriptions or code. Run this agent on the gemini-3.1-pro-low model."
+description: "Specification authoring agent. Delegate to it when a non-trivial ticket needs a spec before planning, when the user asks to write, draft or specify a feature, its requirements or Given/When/Then scenarios, or when a spec-class review finding needs a delta-spec. It turns the raw intent into one draft spec file under specs/ in the interaction mode of the parent ticket. Not for implementation plans, ADRs, PR descriptions or code. Run this agent on the gemini-3.8-flash-medium model."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

@@ -1,6 +1,6 @@
 ---
 name: pr-logbook
-description: "Delegate to compose or update a PR title and body, a logbook entry, a squash-merge message, or to mark a spec implemented. Use when opening or editing a PR, logging a stage transition, or marking a spec implemented. Not for local commit messages. Run this agent on the gemini-3.8-flash-high model."
+description: "Delegate to compose or update a PR title and body, a logbook entry, a squash-merge message, or to mark a spec implemented. Use when opening or editing a PR, logging a stage transition, or marking a spec implemented. Not for local commit messages. Run this agent on the gemini-4-hydrogen-high model."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"

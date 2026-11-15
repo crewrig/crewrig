@@ -56,19 +56,19 @@ const CLAUDE_MODEL: Record<string, string> = {
   xhigh: "opus",
 };
 const GEMINI_MODEL: Record<string, string> = {
-  medium: "gemini-3.5-flash",
-  high: "gemini-3.1-pro-preview",
-  xhigh: "gemini-3.1-pro-preview",
+  medium: "gemini-4-hydrogen",
+  high: "gemini-3.8-flash",
+  xhigh: "gemini-4-argon",
 };
 const ANTIGRAVITY_FAMILY: Record<string, string> = {
-  medium: "gemini-3.8-flash",
-  high: "gemini-3.1-pro",
-  xhigh: "gemini-3.1-pro",
+  medium: "gemini-4-hydrogen",
+  high: "gemini-3.8-flash",
+  xhigh: "gemini-4-argon",
 };
-// Antigravity encodes only low and high; a medium reasoning rung is encoded low.
+// Antigravity encodes low, medium and high; an xhigh reasoning rung falls to the nearest lower, high.
 const ANTIGRAVITY_RUNG: Record<string, string> = {
   low: "low",
-  medium: "low",
+  medium: "medium",
   high: "high",
   xhigh: "high",
 };

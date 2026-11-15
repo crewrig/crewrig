@@ -1,7 +1,7 @@
 ---
 name: ci-configurator
 description: "CI pipeline configuration agent. Delegate to it to set up CI, create a new CI pipeline, write a GitHub Actions workflow or a GitLab pipeline for a project, migrate a project from another CI platform, or replace tag-pinned actions or long-lived cloud keys with pinned actions and OIDC. It resolves the target engine, produces one commit-ready pipeline and validates it with the skill scripts. Not for a failing run (ci-debugger) or drift against the CI capability reference (ci-parity)."
-model: gemini-3.1-pro-preview
+model: gemini-3.8-flash
 tools: [read_file, read_many_files, list_directory, grep_search, glob, write_file, replace, run_shell_command, activate_skill]
 ---
 <!-- crewrig-provenance: version="1.6.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
