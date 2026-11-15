@@ -168,6 +168,17 @@ export const FM_ENTRY = [
  */
 export const FM_NO_MODEL = FM_ENTRY.replace("      - {item: model, key: model}\n", "");
 
+/**
+ * `FM_NO_MODEL` whose `effort` domain leaves out `medium`: the frontmatter cannot carry that
+ * rung (the projection still reads it), so the guidance carries it. The renderer suites keep
+ * exercising both placeholders (spec 0291 delta-02 R34: guidance carries reasoning only where
+ * the frontmatter does not). Dropping the item instead would leave the rung with no projection.
+ */
+export const FM_NO_CARRIERS = FM_NO_MODEL.replace(
+  "domain: {values: [low, medium, high]}",
+  "domain: {values: [low, high]}",
+);
+
 /** A guidance surface carrying model and reasoning, template lines as given. */
 export function gdEntry(...template: string[]): string {
   const lines = template.map((l) => `      ${l}`);

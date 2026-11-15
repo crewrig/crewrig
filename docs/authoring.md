@@ -81,40 +81,67 @@ What a declared profile resolves to on each target, and how the build performs t
 
 ### Worked examples
 
-Every emission below comes from `node scripts/build-components.ts --resolve <agent-source> <target>`, not composed by hand; run it after `node scripts/lib/node-floor-guard.js`, as a separate step, to re-derive one. The Claude Code rows follow the guard lift of spec 0291; the other rows are unchanged from `main` at `18b026d`.
+Every emission below comes from `node scripts/build-components.ts --resolve <agent-source> <target>`, not composed by hand; run it after `node scripts/lib/node-floor-guard.js`, as a separate step, to re-derive one. The Claude Code rows follow the guard lift of spec 0291.
 
-`artifacts/core/agents/doc-writer/AGENT.md` declares:
+`artifacts/core/agents/developer/AGENT.md` declares:
 
 ```yaml
 metadata:
   model:
-    intelligence: medium
+    intelligence: high
+    reasoning: medium
 ```
 
 | Target | Emission |
 |---|---|
-| Claude Code | frontmatter `model: haiku`; the description carries no model sentence |
-| Gemini CLI | frontmatter `model: gemini-3.5-flash` |
-| GitHub Copilot CLI | *(nothing — `unsupported-on-cli`)* |
-| Antigravity CLI | guidance `Run this agent on the gemini-3.8-flash-low model.` |
+| Claude Code | frontmatter `model: sonnet` and `effort: medium`; the description carries no model or reasoning sentence |
+| Gemini CLI | frontmatter `model: gemini-3.1-pro-preview` (`reasoning` dropped, `unsupported-on-cli`) |
+| GitHub Copilot CLI | *(nothing — both keys `unsupported-on-cli`)* |
+| Antigravity CLI | guidance `Run this agent on the gemini-3.1-pro-low model.` (the `reasoning` rung substituted) |
 
-`artifacts/core/agents/developer/AGENT.md` declares `intelligence: high`:
+`artifacts/core/agents/architect/AGENT.md` declares `intelligence: xhigh` and `reasoning: medium`:
 
 | Target | Emission |
 |---|---|
-| Claude Code | frontmatter `model: sonnet`; the description carries no model sentence |
+| Claude Code | frontmatter `model: opus` and `effort: medium`; the description carries no model or reasoning sentence |
 | Gemini CLI | frontmatter `model: gemini-3.1-pro-preview` |
 | GitHub Copilot CLI | *(nothing — `unsupported-on-cli`)* |
 | Antigravity CLI | guidance `Run this agent on the gemini-3.1-pro-low model.` |
 
-`artifacts/core/agents/architect/AGENT.md` declares `intelligence: xhigh`:
+### Profiles of the core agents
 
-| Target | Emission |
-|---|---|
-| Claude Code | frontmatter `model: opus`; the description carries no model sentence |
-| Gemini CLI | frontmatter `model: gemini-3.1-pro-preview` |
-| GitHub Copilot CLI | *(nothing — `unsupported-on-cli`)* |
-| Antigravity CLI | guidance `Run this agent on the gemini-3.1-pro-low model.` |
+Every core agent declares both axes. Each cell below comes from `node scripts/build-components.ts --resolve <agent-source> <target>`, not composed by hand.
+
+| Agent | intelligence / reasoning | Claude Code | Gemini CLI | Antigravity CLI |
+|---|---|---|---|---|
+| `architect` | xhigh / medium | `opus` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
+| `security` | xhigh / medium | `opus` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
+| `pr-reviewer` | high / high | `sonnet` + effort `high` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-high` |
+| `developer` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
+| `tester` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
+| `spec-author` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
+| `doc-writer` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
+| `ci-configurator` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
+| `ci-debugger` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
+| `ci-parity` | high / medium | `sonnet` + effort `medium` | `gemini-3.1-pro-preview` | `gemini-3.1-pro-low` |
+| `pr-logbook` | medium / high | `haiku` + effort `high` | `gemini-3.5-flash` | `gemini-3.8-flash-high` |
+
+Why these values (evidence for requirement 4 of [spec 0200](../specs/0200-core-agent-profile-migration.md), which lets a later change declare `reasoning` on a source if it carries evidence for the value). Spec 0200 was a migration: its requirement 2 (no tier revised) bound that change set only. The profiles come from the owner's decision on #1937 (2026-11-15), taken from the measurements of the epic #1930 run (21 `pr-reviewer` launches, an `architect` run on Opus, and the other agents' observed work):
+
+- `architect`, `security` (xhigh / medium): judgment-heavy design and threat analysis that justifies the top intelligence rung; the work is bounded by a brief, so medium effort is enough and a higher effort only adds cost.
+- `pr-reviewer` (high / high): launched most often (21 times in the run) and the one agent whose misses are costly, so it keeps a high effort on a mid-tier model rather than a top model.
+- `developer`, `tester`, `spec-author`, `doc-writer`, `ci-configurator`, `ci-debugger`, `ci-parity` (high / medium): bounded implementation, authoring and diagnosis inside existing contracts; a mid-tier model at medium effort.
+- `pr-logbook` (medium / high): templated composition against a format; a small model suffices and a high effort keeps the format rules followed.
+
+The tiers of `security` (raised) and `doc-writer` (raised) are not measured individually yet; the next epic run measures them.
+
+Gaps, by design of the mappings:
+
+- GitHub Copilot CLI emits nothing for any agent: both `intelligence` and `reasoning` are `unsupported-on-cli`, so the column is omitted.
+- Gemini CLI drops `reasoning` (`model-drop ... unsupported-on-cli`) and resolves from `intelligence` alone.
+- Antigravity CLI substitutes the `reasoning` rung into the model name (`reasoning-rung-substituted`).
+
+Issue #2040 refreshes the Gemini and Antigravity lineup; it regenerates this table.
 
 `artifacts/library/agents/harness-curator/AGENT.md` carries no
 `metadata.model:` block — the **profile-less** case: all four targets emit

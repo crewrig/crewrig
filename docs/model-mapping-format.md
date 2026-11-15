@@ -246,8 +246,13 @@ surface: under a `withheld` guard, or when the resolved value is outside the
 frontmatter key's declared domain. Under a `directed` guard with a readable
 value the `model:` key alone carries it and the guidance sentence
 `Run this agent on the <model> model.` is not written. The `reasoning` item
-is unchanged. This supersedes, as a resolver rule, the word "additionally"
-of spec 0197 R31.
+follows the same rule (spec 0291 delta-02 R34): the guidance sentence carries
+it unless the guard is not `withheld`, the frontmatter surface carries it and
+its value is inside the key's `effort` domain. Under a `directed` guard the
+`effort:` key alone carries a reasoning rung, and the description no longer
+ends with `Give its work <rung> reasoning effort.`. Under a `withheld` guard
+the `effort:` line and the sentence are both written. This supersedes, as a
+resolver rule, the word "additionally" of spec 0197 R31.
 
 **Superseded text.** Spec 0291 supersedes, without editing those specs:
 spec 0143 delta-01 R8 (its bring-your-own-key clause, narrowed to a standard
@@ -256,7 +261,7 @@ account); spec 0197 R30 (the second term); the word "additionally" in spec
 shared-read guard is directed"; spec 0197 delta-02 ("stays withheld"); and
 the statements in spec 0200 that the guard stays `withheld`. Spec 0197 R31's
 withheld clause, R32 and R35 stay in force: a `withheld` guard still writes
-no `model:` key, keeps the sentence, and emits one `guard-withheld` note per
+no `model:` key, keeps both sentences, and emits one `guard-withheld` note per
 agent.
 
 ### `zero-offerings` and `observed-not-declared`

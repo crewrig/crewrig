@@ -441,7 +441,10 @@ The model has one carrier at a time (spec 0291 R2): on Claude Code the
 `model:` key carries it, and the description no longer ends with
 `Run this agent on the <model> model.`; that sentence stays on the
 Antigravity description, whose target has no frontmatter model surface, and
-returns to Claude Code when the mapping's guard is `withheld`.
+returns to Claude Code when the mapping's guard is `withheld`. Likewise the
+reasoning rung is carried by `effort:` alone on Claude Code, without the
+sentence `Give its work <rung> reasoning effort.`, which returns under
+`withheld` (spec 0291 delta-02 R34).
 
 ## Provenance & Forks
 

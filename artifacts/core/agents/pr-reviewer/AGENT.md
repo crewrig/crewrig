@@ -5,11 +5,12 @@ type: agent
 metadata:
   model:
     intelligence: high
+    reasoning: high
   tools: [read, search, edit, execute, skill, message]
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "2.1.0"
+    version: "2.2.0"
 ---
 
 # PR Reviewer Agent

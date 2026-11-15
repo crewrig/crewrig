@@ -5,11 +5,12 @@ type: agent
 metadata:
   model:
     intelligence: high
+    reasoning: medium
   tools: [read, search, edit, execute, skill]
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.6.0"
+    version: "1.7.0"
 ---
 
 # Spec Author Agent

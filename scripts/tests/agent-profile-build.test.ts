@@ -25,6 +25,11 @@ process.env.GIT_CONFIG_NOSYSTEM = "1";
 
 const NOTE = /^model-note.*claude.*guard-withheld/;
 const DROP = /^model-drop.*copilot.*metadata\.model\.intelligence.*unsupported-on-cli/;
+// #1937: the reasoning rung is dropped on Gemini CLI and Copilot, and substituted on Antigravity.
+const REASONING_DROP =
+  /^model-drop\t[^\t]+\t(gemini|copilot)\tmetadata\.model\.reasoning\t[^\t]+\tunsupported-on-cli$/;
+const RUNG_NOTE =
+  /^model-note\t[^\t]+\tantigravity\treasoning-rung-substituted\tdeclared=\S+ encoded=\S+$/;
 const TOOLS_DROP =
   /^tools-drop\t[^\t]+\t(antigravity|copilot|gemini)\tmetadata\.tools\t[^\t]+\t(unsupported|no-equivalent)-on-cli$/;
 const GUIDANCE = "Run this agent on the";
@@ -78,21 +83,42 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
   });
   // Spec 0291 R13, R29: one antigravity line per declaring source, one copilot line when it declares
   // `skill` or `message`, one gemini line when it declares `agent` or `message`.
+  // #1937: each source declaring a reasoning rung gets one gemini and one copilot reasoning drop,
+  // and an antigravity substitution note when the rung is one Antigravity does not encode (medium).
+  const reasoningOf = (f: string): string | undefined =>
+    (
+      (readFrontmatter(tree.read(f)).metadata ?? {}) as {
+        model?: { reasoning?: string };
+      }
+    ).model?.reasoning;
+  const reasoned = sources.filter((f) => reasoningOf(f) !== undefined);
+  const wantRungNotes = reasoned.filter((f) => reasoningOf(f) === "medium").length;
   const wantToolsDrops = declaring.reduce((n, f) => {
-    const meta = (readFrontmatter(tree.read(f)).metadata ?? {}) as { tools?: string[] };
+    const meta = (readFrontmatter(tree.read(f)).metadata ?? {}) as {
+      tools?: string[];
+    };
     const classes = meta.tools ?? [];
     const copilot = classes.some((c) => c === "skill" || c === "message") ? 1 : 0;
     const gemini = classes.some((c) => c === "agent" || c === "message") ? 1 : 0;
     return n + 1 + copilot + gemini;
   }, 0);
-  test("T4 — a plain build over the 22-source root emits 22 model-drop, the guard notes the committed state implies, and one tools-drop per declaring source", () => {
+  test("T4 — a plain build over the 22-source root emits 22 model-drop, the reasoning drops and rung notes the sources imply, the guard notes the committed state implies, and one tools-drop per declaring source", () => {
     assert.equal(sources.length, 22, "the root is seeded with all 22 core AGENT.md");
     assert.equal(built.status, 0, built.stderr);
     const lines = stderrLines(built.stderr);
     const notes = lines.filter((l) => NOTE.test(l));
     const drops = lines.filter((l) => DROP.test(l));
     const toolsDrops = lines.filter((l) => TOOLS_DROP.test(l));
-    const other = lines.filter((l) => !NOTE.test(l) && !DROP.test(l) && !TOOLS_DROP.test(l));
+    const reasoningDrops = lines.filter((l) => REASONING_DROP.test(l));
+    const rungNotes = lines.filter((l) => RUNG_NOTE.test(l));
+    const other = lines.filter(
+      (l) =>
+        !NOTE.test(l) &&
+        !DROP.test(l) &&
+        !TOOLS_DROP.test(l) &&
+        !REASONING_DROP.test(l) &&
+        !RUNG_NOTE.test(l),
+    );
     const wantNotes = claudeGuardState() === "withheld" ? 22 : 0;
     assert.deepEqual(
       {
@@ -100,13 +126,17 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
         notes: notes.length,
         drops: drops.length,
         tools: toolsDrops.length,
+        reasoningDrops: reasoningDrops.length,
+        rungNotes: rungNotes.length,
         other,
       },
       {
-        total: 22 + wantNotes + wantToolsDrops,
+        total: 22 + wantNotes + wantToolsDrops + 2 * reasoned.length + wantRungNotes,
         notes: wantNotes,
         drops: 22,
         tools: wantToolsDrops,
+        reasoningDrops: 2 * reasoned.length,
+        rungNotes: wantRungNotes,
         other: [],
       },
     );
@@ -160,7 +190,14 @@ describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
     .filter((f) => f.startsWith("artifacts/core/"))
     .map((f) => path.basename(path.dirname(f)));
 
-  test("R5 — every Claude file has no model: key, keeps the sentence, and 22 guard-withheld notes are emitted", () => {
+  const reasoningOf = (f: string): string | undefined =>
+    (
+      (readFrontmatter(tree.read(f)).metadata ?? {}) as {
+        model?: { reasoning?: string };
+      }
+    ).model?.reasoning;
+
+  test("R5 — every Claude file has no model: key, keeps the sentence, carries its source's effort, and 22 guard-withheld notes are emitted", () => {
     assert.equal(built.status, 0, built.stderr);
     assert.equal(
       stderrLines(built.stderr).filter((l) => NOTE.test(l)).length,
@@ -171,7 +208,13 @@ describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
       const name = path.basename(path.dirname(f));
       const fm = readFrontmatter(tree.read(claudeFile(name, f)));
       assert.equal(Object.hasOwn(fm, "model"), false, `${name} has no model key`);
-      assert.match(String(fm.description), /Run this agent on the \S+ model\.$/, name);
+      // the model sentence stays; a declared reasoning rung adds its own sentence and the effort key
+      assert.match(
+        String(fm.description),
+        /Run this agent on the \S+ model\.( Give its work \S+ reasoning effort\.)?$/,
+        name,
+      );
+      assert.equal(fm.effort, reasoningOf(f), `${name} effort follows the source reasoning rung`);
     }
   });
 
@@ -181,15 +224,19 @@ describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
     for (const name of unedited) {
       const committed = fs.readFileSync(path.join(REPO, `.claude/agents/${name}.md`), "utf8");
       const model = /^model: (\S+)$/m.exec(committed)?.[1];
-      // under a committed `withheld` guard the committed file already is the pre-change form
+      // under a committed `withheld` guard the committed file already is the pre-change form;
+      // under `directed` the reasoning sentence is gone, so rebuild it from the `effort:` key
+      const effort = /^effort: (\S+)$/m.exec(committed)?.[1];
       const preChange =
         model === undefined
           ? committed
           : committed
               .replace(/^model: \S+\n/m, "")
               .replace(
-                /^(description: "(?:[^"\\]|\\.)*)"/m,
-                `$1 Run this agent on the ${model} model."`,
+                /^(description: "(?:[^"\\]|\\.)*?)"/m,
+                (_m, head: string) =>
+                  `${head} Run this agent on the ${model} model.` +
+                  `${effort === undefined ? "" : ` Give its work ${effort} reasoning effort.`}"`,
               );
       assert.equal(tree.read(`.claude/agents/${name}.md`), preChange, name);
     }

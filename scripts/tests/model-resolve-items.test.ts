@@ -155,10 +155,15 @@ describe("resolveItem: the withheld guard and unreadable cells", () => {
       const r = go(miniRoot([O("true")], extra, [FM_ENTRY, GD]), "reasoning: medium");
       assert.deepEqual(
         [r.fmLines, r.prose, r.diagLines],
-        [["model: n-a", "effort: medium"], "Effort medium.", []],
+        [["model: n-a", "effort: medium"], "", []],
         extra === "" ? "no guard" : "guard directed",
       );
     }
+  });
+
+  test("R34: a withheld guard with an in-domain rung keeps the effort line and the sentence", () => {
+    const r = go(withheld([FM_ENTRY, GD]), "reasoning: medium");
+    assert.deepEqual([r.fmLines, r.prose], [["effort: medium"], "Run on n-a. Effort medium."]);
   });
 
   const DOMAIN =

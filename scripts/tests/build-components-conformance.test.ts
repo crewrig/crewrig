@@ -26,6 +26,7 @@ import {
   checkCase,
   diffOutcomes,
   limited,
+  oneCarrierBoth,
   oneCarrierOnly,
   replayGate,
   REPO,
@@ -64,8 +65,18 @@ const DOCUMENTED: readonly Documented[] = [
       "spec 0291 R2 (supersedes the word 'additionally' of spec 0197 R31): under a directed " +
       "guard the twin carries the model on the frontmatter alone, the frozen shell also writes " +
       "'Run this agent on the <model> model.' into the guidance prose",
-    keys: ["M3_mut#0", "M7_directed#0"],
+    keys: ["M3_mut#0"],
     verify: oneCarrierOnly,
+  },
+  {
+    id: "r2-reasoning-one-carrier",
+    clause:
+      "spec 0291 delta-02 R34, reasoning item (supersedes the word 'additionally' of spec 0197 " +
+      "R31 for reasoning): under a directed guard the twin carries the reasoning on the " +
+      "frontmatter `effort:` alone, the frozen shell also writes 'Give its work <rung> " +
+      "reasoning effort.' into the guidance prose",
+    keys: ["M7_directed#0"],
+    verify: oneCarrierBoth,
   },
 ];
 
@@ -115,7 +126,21 @@ const movedAgents = [
 const agents = fs.existsSync(agentsDir)
   ? [...fs.readdirSync(agentsDir), ...movedAgents].sort()
   : [];
-const agentDirOf = (a: string): string => (movedAgents.includes(a) ? libraryAgentsDir : agentsDir);
+// Issue #1937: the live core profiles now declare `reasoning`, which the frozen shell never knew, so
+// the eleven core agents are read from a frozen copy (`oracle-agents/`) of their sources as on main
+// before that change, the way `oracle-mappings/` freezes the Claude mapping. The goldens stay keyed
+// and valued as recorded; the live state is checked by agent-profile-committed.test.ts.
+const frozenAgentsDir = path.join(
+  REPO,
+  "scripts",
+  "tests",
+  "fixtures",
+  "build-components",
+  "oracle-agents",
+);
+const frozenAgents = new Set(fs.existsSync(frozenAgentsDir) ? fs.readdirSync(frozenAgentsDir) : []);
+const agentDirOf = (a: string): string =>
+  movedAgents.includes(a) ? libraryAgentsDir : frozenAgents.has(a) ? frozenAgentsDir : agentsDir;
 const TARGETS = ["claude", "gemini", "copilot", "antigravity"];
 const profileDir = path.join(REPO, "scripts", "tests", "fixtures", "agent-profiles");
 const fixtures = fs.existsSync(profileDir) ? fs.readdirSync(profileDir).sort() : [];

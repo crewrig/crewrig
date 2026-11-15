@@ -2,13 +2,14 @@
 name: pr-logbook
 description: "Delegate to compose or update a PR title and body, a logbook entry, a squash-merge message, or to mark a spec implemented. Use when opening or editing a PR, logging a stage transition, or marking a spec implemented. Not for local commit messages."
 model: haiku
+effort: high
 tools: Read, Grep, Glob, Edit, Write, Bash, Skill
 omitClaudeMd: true
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.4.0"
+    version: "1.5.0"
 ---
 
 

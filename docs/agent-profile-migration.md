@@ -15,6 +15,8 @@ parent spec's requirements, and the observable diagnostic-stream change.
 The authoring-facing account of what a capability profile is and how a
 source declares one lives in [`docs/authoring.md`](authoring.md).
 
+> **Historical baseline.** The tables below record the migration at `723ad8f`; they are not the current profiles. Issue #1937 (the "later change" that requirement 4 of spec 0200 allows) declared `reasoning` and revised the tiers of the core agents afterwards. The current profiles and what they resolve to per CLI are in the table of [`docs/authoring.md`](authoring.md#profiles-of-the-core-agents).
+
 ## The 23-row translation table
 
 <!-- crewrig-table: agent-profile-baseline -->
