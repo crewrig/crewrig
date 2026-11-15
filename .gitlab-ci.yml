@@ -1012,6 +1012,8 @@ ci-push-unfiltered:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/tests/ci-push-unfiltered.test.ts"
+        - "scripts/tests/ci-windows-condition.test.ts"
+        - "scripts/tests/fixtures/ci-windows-condition.json"
         - "scripts/lib/ci-push/**"
         - "ci/push-main-exemptions.txt"
         - "ci/capabilities/**"
@@ -1050,6 +1052,8 @@ ci-parity:
         - "scripts/build-ci.ts"
         - "scripts/ci-cache-guard.ts"
         - "scripts/ci-changeset-coverage.ts"
+        - "scripts/ci-pr-scope.ts"
+        - "scripts/tests/ci-pr-scope.test.ts"
         - "scripts/tests/ci-parity-positive.test.ts"
         - "scripts/tests/ci-parity-fail-closed.test.ts"
         - "scripts/tests/ci-parity-stray-scan.test.ts"

@@ -32,7 +32,7 @@
   DRIFT: capability 'figure-labels' (github-actions): job 'figure-labels' carries 1 dorny/paths-filter step(s); the runtime path gate replaced them (spec 0283 R6, spec 0285 R4)
   DRIFT: capability 'lint-specs' runs on the GitHub engine but has no 'group' (R11)
   DRIFT: capability 'lint-specs' has group 'bogus', not one of gate, modules, governance, extensions, integration, windows (R11)
-  DRIFT: job 'build' is in _ci-gate.yml but the required context belongs in build.yml (R21)
+  DRIFT: job 'build' is in _ci-gate.yml but the required context belongs in build.yml (R21, R22)
   DRIFT: job 'lint-specs' is in _ci-modules.yml but its group 'governance' belongs in _ci-governance.yml (R11)
   DRIFT: untraceable job 'mystery' in _ci-extensions.yml (github-actions) — not a capability id and no valid '# ci-capability:' annotation (R7)
   DRIFT: untraceable job 'mystery' in .gitlab-ci.yml (gitlab) — annotation 'nope' is not a capability id (R7)

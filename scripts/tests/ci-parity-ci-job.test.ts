@@ -277,7 +277,7 @@ test("R18: a windows-latest job without a limit, or under the floor, is named", 
 const GROUP_NAMES = ["gate", "modules", "governance", "extensions", "integration", "windows"];
 // The R3 counts; the membership lives in `ci/capabilities/` (`group`), compared below.
 const R3_COUNTS: Record<string, number> = {
-  gate: 19,
+  gate: 20,
   modules: 15,
   governance: 30,
   extensions: 14,
@@ -285,8 +285,15 @@ const R3_COUNTS: Record<string, number> = {
   windows: 24,
 };
 const LINUX_MIDDLE = ["modules", "governance", "extensions"];
-const TOP_LEVEL = ["ratchet", "lint-typescript"];
-const LINUX_NEEDS = ["gate", ...TOP_LEVEL];
+// Delta-02 R22 adds `pr-scope`, a third top-level job of build.yml; only the two REQUIRED contexts
+// gate the Linux groups.
+const REQUIRED = ["ratchet", "lint-typescript"];
+const TOP_LEVEL = ["pr-scope", ...REQUIRED];
+const LINUX_NEEDS = ["gate", ...REQUIRED];
+// Delta-02 R23 and D4: the one `if:` of build.yml, on `windows`; the result clause makes it fail open.
+const WINDOWS_IF =
+  "${{ !cancelled() && (github.event_name != 'pull_request' || needs.pr-scope.result != 'success' || needs.pr-scope.outputs.spec-only != 'true') }}";
+const norm = (v: unknown): string => String(v).replace(/\s+/g, " ").trim();
 
 type Doc = Record<string, unknown>;
 const asMap = (v: unknown): Doc => (typeof v === "object" && v !== null ? (v as Doc) : {});
@@ -310,7 +317,7 @@ function assertStagedLayout(root: string): void {
     .sort();
   assert.deepEqual(callees, GROUP_NAMES.map((g) => `_ci-${g}.yml`).sort(), "callee files");
 
-  // Caller: permissions, one `uses` job per group, no steps, no `if:`, the needs graph (R4).
+  // Caller: permissions, one `uses` job per group, no steps, the single `if:`, the needs graph (R4, R23).
   assert.deepEqual(callerDoc["permissions"], { contents: "read", actions: "write" });
   const callerJobs = asMap(callerDoc["jobs"]);
   assert.deepEqual(
@@ -318,6 +325,15 @@ function assertStagedLayout(root: string): void {
     [...GROUP_NAMES, ...TOP_LEVEL].sort(),
     "caller jobs",
   );
+  assert.equal(Object.keys(callerJobs).length, 9, "build.yml has 9 jobs");
+  assert.deepEqual(
+    Object.entries(callerJobs)
+      .filter(([, v]) => "if" in asMap(v))
+      .map(([k]) => k),
+    ["windows"],
+    "only windows has an if",
+  );
+  assert.equal(norm(asMap(callerJobs["windows"])["if"]), WINDOWS_IF, "windows if");
   for (const [k, v] of Object.entries(callerJobs)) {
     const j = asMap(v);
     if (TOP_LEVEL.includes(k)) {
@@ -325,11 +341,11 @@ function assertStagedLayout(root: string): void {
       assert.ok(Array.isArray(j["steps"]), `${k}: a top-level job has steps`);
       assert.ok(!("uses" in j), `${k}: a top-level job has no uses`);
       assert.equal(j["needs"], undefined, `${k}: no needs`);
+      assert.ok(!("if" in j), `${k}: a top-level job has no if`);
       continue;
     }
     assert.equal(j["uses"], `./.github/workflows/_ci-${k}.yml`, `${k}: uses`);
     assert.ok(!("steps" in j), `${k}: a caller job has no steps`);
-    assert.ok(!("if" in j), `${k}: a caller job has no if`);
   }
   const needs = (k: string) => asMap(callerJobs[k])["needs"];
   assert.equal(needs("gate"), undefined, "gate has no needs");
@@ -340,7 +356,7 @@ function assertStagedLayout(root: string): void {
     ),
     "integration needs",
   );
-  assert.equal(needs("windows"), undefined, "windows has no needs");
+  assert.deepEqual(needs("windows"), ["pr-scope"], "windows needs pr-scope only");
 
   // Callees: workflow_call only, no concurrency, no secrets; job keys unique; group of each job.
   const seen = new Map<string, string>();
@@ -419,7 +435,7 @@ test("mutation proofs: each broken layout fails the assertion function", () => {
     const winNeeds = mutate("build.yml", (d) => {
       asMap(asMap(d["jobs"])["windows"])["needs"] = ["gate"];
     });
-    assert.throws(() => assertStagedLayout(winNeeds), /windows has no needs/);
+    assert.throws(() => assertStagedLayout(winNeeds), /windows needs pr-scope only/);
 
     const noGate = mutate("build.yml", (d) => {
       delete asMap(asMap(d["jobs"])["modules"])["needs"];
@@ -437,14 +453,68 @@ test("mutation proofs: each broken layout fails the assertion function", () => {
       fs.writeFileSync(gateFile, yaml.dump(gd, { lineWidth: -1 }));
       assert.throws(() => assertStagedLayout(root), /caller jobs|must be a top-level/);
 
+      if (!REQUIRED.includes(k)) continue;
       const dropped = mutate("build.yml", (d) => {
         const m = asMap(asMap(d["jobs"])["modules"]);
         m["needs"] = (m["needs"] as string[]).filter((n) => n !== k);
       });
       assert.throws(() => assertStagedLayout(dropped), /modules: needs/);
     }
+
+    // Delta-02 R22-R24: pr-scope in a Linux group's needs, and every edit of the windows `if:`.
+    const prNeeds = mutate("build.yml", (d) => {
+      const m = asMap(asMap(d["jobs"])["modules"]);
+      m["needs"] = [...(m["needs"] as string[]), "pr-scope"];
+    });
+    assert.throws(() => assertStagedLayout(prNeeds), /modules: needs/);
+    const winIf = (edit: (c: string) => string | undefined) =>
+      mutate("build.yml", (d) => {
+        const w = asMap(asMap(d["jobs"])["windows"]);
+        const next = edit(String(w["if"]));
+        if (next === undefined) delete w["if"];
+        else w["if"] = next;
+      });
+    const edits: [string, (c: string) => string | undefined][] = [
+      ["edited condition", (c) => c.replace("'pull_request'", "'push'")],
+      ["no !cancelled()", (c) => c.replace("!cancelled() && ", "")],
+      ["no result clause", (c) => c.replace("needs.pr-scope.result != 'success' || ", "")],
+      ["no if", () => undefined],
+    ];
+    for (const [name, edit] of edits)
+      assert.throws(() => assertStagedLayout(winIf(edit)), /windows if|only windows/, name);
+    const onIntegration = mutate("build.yml", (d) => {
+      asMap(asMap(d["jobs"])["integration"])["if"] = "${{ always() }}";
+    });
+    assert.throws(() => assertStagedLayout(onIntegration), /only windows has an if/);
   } finally {
     // Only directories created by mkdtemp above.
     for (const r of roots) fs.rmSync(r, { recursive: true, force: true });
   }
+});
+
+// ---- Spec 0283 R2 and delta-02 R22: the capabilities that keep their own command (D2) ----
+
+/** `specific` capabilities whose `command:` is absent or is not `task ci:<id>`, read from the reference. */
+function ownCommandCapabilities(): string[] {
+  const ref = asMap(yaml.load(readReferenceText(REPO)));
+  const out: string[] = [];
+  for (const c of ref["capabilities"] as Doc[]) {
+    const cap = asMap(c);
+    if (cap["portability"] !== "specific") continue;
+    const cmd = cap["command"];
+    const lines = Array.isArray(cmd) ? cmd.map(String) : cmd === undefined ? [] : [String(cmd)];
+    if (lines.length !== 1 || lines[0] !== `task ci:${String(cap["id"])}`)
+      out.push(String(cap["id"]));
+  }
+  return out.sort();
+}
+
+test("docs/ci-reference-format.md lists exactly the own-command capabilities (D2)", () => {
+  const doc = fs.readFileSync(path.join(REPO, "docs", "ci-reference-format.md"), "utf8");
+  const m =
+    /^## Capabilities that keep their own command[^\n]*\n([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(doc);
+  assert.ok(m, "the section exists");
+  const listed = [...(m[1] ?? "").matchAll(/^- `([a-z0-9-]+)`/gm)].map((x) => x[1] ?? "").sort();
+  assert.deepEqual(listed, ["claude", "copilot", "pages-deploy", "pr-scope"]);
+  assert.deepEqual(ownCommandCapabilities(), listed);
 });

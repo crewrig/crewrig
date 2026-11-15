@@ -16,6 +16,8 @@ capabilities:
       - "scripts/build-ci.ts"
       - "scripts/ci-cache-guard.ts"
       - "scripts/ci-changeset-coverage.ts"
+      - "scripts/ci-pr-scope.ts"
+      - "scripts/tests/ci-pr-scope.test.ts"
       - "scripts/tests/ci-parity-positive.test.ts"
       - "scripts/tests/ci-parity-fail-closed.test.ts"
       - "scripts/tests/ci-parity-stray-scan.test.ts"
