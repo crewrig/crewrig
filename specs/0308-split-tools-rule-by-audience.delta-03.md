@@ -1,7 +1,7 @@
 ---
 id: "0308"
 slug: split-tools-rule-by-audience
-status: draft
+status: approved
 complexity: standard
 interaction-mode: AUTO
 related-issue: 1990
