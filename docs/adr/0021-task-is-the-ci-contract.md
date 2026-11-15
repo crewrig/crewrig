@@ -6,7 +6,10 @@
 [ADR-0012](0012-ci-reference-contract.md) in part. Decomposed by
 [spec 0280](../../specs/0280-task-ci-contract.md). Amended 2026-10-25 by
 [spec 0287](../../specs/0287-staged-reusable-workflows.md) (issue #1828): see
-*Amendment: shared stage taxonomy*.
+*Amendment: shared stage taxonomy*. Amended again by
+[spec 0287 delta-02](../../specs/0287-staged-reusable-workflows.delta-02.md)
+(issue #1933): see *Third amendment: the Windows group on spec-only pull
+requests*.
 
 ## Context
 
@@ -266,3 +269,141 @@ workflows. Sources: `gh run view <id> --json jobs` start and completion
 timestamps; billed minutes round each job up and are higher. Not measured: the GitLab
 default-branch pipeline, which was not run in this repository for this commit; its 99 jobs
 are a count from the generated file, not a measurement.
+
+## Third amendment: the Windows group on spec-only pull requests
+
+Spec [0287 delta-02](../../specs/0287-staged-reusable-workflows.delta-02.md)
+(issue #1933, plan v2 approved in review) R22 to R27 and the modified R1 to R4,
+R9, R11, R13, R14 and R21. The earlier amendments keep their text; this one
+follows their shape.
+
+### Decision
+
+A pull request that changes one or more files, all under `specs/`, does not run
+the `windows` group. Three pieces implement it, all in `.github/workflows/build.yml`:
+
+- **`pr-scope`** is a third top-level job, beside `ratchet` and
+  `lint-typescript` (R21, R22). It runs `scripts/ci-pr-scope.ts` over
+  `git diff --no-renames --name-only HEAD^1 HEAD` and exposes one output,
+  `spec-only`, `true` only for a `pull_request` whose list is non-empty and
+  entirely under `specs/`. A renamed file counts both paths, so a file moved
+  out of `specs/` is not spec-only. Every other case writes `false`. At 3,000
+  entries, or when the list cannot be computed, the job fails and never writes
+  `false`. It has no `needs`, no `if:`, no `ci-job` and no `cancel-on-failure`
+  step, because `cancel-on-failure` would cancel the run and Windows with it.
+- **The `pr-scope` capability** in `ci/capabilities/gate-other.yml` is group
+  `gate`, `portability: specific`, with an `exception` for engine
+  `github-actions` that records this reason and states that a GitLab
+  merge-request pipeline has no Windows group to skip. Its `command:` stays its
+  own, not `task ci:pr-scope` (D2 below).
+- **The `windows` caller job** carries `needs: [pr-scope]` and the only `if:`
+  of the file, the condition below. No other caller job and no other top-level
+  job carries an `if:` (R4, R9).
+
+```yaml
+windows:
+  needs: [pr-scope]
+  if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.pr-scope.result != 'success' || needs.pr-scope.outputs.spec-only != 'true') }}
+```
+
+The condition fails open (R24). A `pr-scope` that fails, or whose output is not
+exactly `true`, runs Windows. `cancelled` is true only when the whole run is
+cancelled, and then no job starts, Windows included; that is the intended
+outcome, not a silent skip. A `pr-scope` failure stays visible as a failed
+check and is not masked with `continue-on-error`.
+
+Why a condition on the run and not a path filter: a path filter decides, per
+job, from the paths of the change. This rule decides, per run, from the kind of
+the whole change (every path under `specs/`). R26 records it as a GitHub-side
+run condition, not a path filter: the 24 `windows-*` capabilities keep no
+`paths:`, gain no exclusion form, and no workflow gains `paths:` or
+`paths-ignore:`.
+
+### Accepted gap: the reference and the GitHub run disagree
+
+The unfiltered reference still lists the 24 `windows-*` capabilities with their
+normal triggers. On a spec-only pull request, GitHub does not run them. This
+gap is accepted and not silent: the `windows` caller job is reported as skipped
+in the run, `pr-scope` is visible as a check, and the `description` of the
+`pr-scope` capability states the gap. A pull request that changes only `specs/`
+does not run Windows before merge. The next push to `main` runs them unfiltered
+(second amendment above).
+
+Required contexts are not affected (R25). `ratchet` and `lint-typescript` carry
+no `if:` and no dependency on `pr-scope`, so they run on every pull request. A
+skipped `windows` caller creates no `windows / <job>` context, and no ruleset
+requires one. Rulesets are unchanged (R5).
+
+### Decided deviations (owner decisions on #1933)
+
+- **D1, counts of R2 and R3.** The delta text (109 ids; governance 28,
+  integration 8) copied delta-01 and was already stale: `R3_COUNTS` in
+  `scripts/tests/ci-parity-ci-job.test.ts` pins governance 30 and integration 10,
+  set by #1872, #2033 and #2034 without a delta. The pinned counts after adding
+  `pr-scope` are 113 ids (110 callee keys plus 3 top-level keys): gate 20 (17 in
+  `_ci-gate.yml`, 3 in `build.yml`), modules 15, governance 30, extensions 14,
+  integration 10, windows 24. The pull request body states the recount at its
+  head.
+- **D2, the list of own-command capabilities (R22, spec 0283 R2).**
+  `docs/ci-reference-format.md` gains the section *Capabilities that keep their
+  own command (spec 0283 R2)*, listing only `claude`, `copilot`, `pages-deploy`
+  and `pr-scope`: the `portability: specific` capabilities whose `command:` is
+  absent or is not `task ci:<id>`. The other 33 such capabilities are `portable`
+  and not yet migrated; they are not exceptions, and listing them would claim
+  exceptions that 0283 does not grant. A test pins the list to that set.
+- **D3, the line cap of R13.** The 9,100-line cap and its pin were retired by
+  spec 0309 R1(c), with their test. The per-file limit of spec 0309 R5 (500 lines
+  per hand-authored CI file, see the amendment of 2026-11) applies instead. The
+  pull request body reports line counts before and after for `build.yml`,
+  `ci/capabilities/gate-other.yml`, the new script and the new tests.
+- **D4, fail-open over the literal text of R23.** R23 as written does not read
+  `needs.pr-scope.result`. On a `pull_request` whose `pr-scope` failed after
+  setting `spec-only` to `true`, its condition evaluates to skip. R24 says that
+  case SHALL run Windows, and its single skipping row is `pull_request`,
+  `success`, `true`. The owner chose R24, so the condition adds
+  `needs.pr-scope.result != 'success'`. The wiring test pins the exact text.
+- **D5, the closed `if:` evaluator of spec 0309 R6(c).** The `windows` condition
+  uses `cancelled()` and `needs.*`, which R6(c) rejected. The owner chose a
+  strict extension of `scripts/lib/ci-push/gha-if.ts`, with no spec pull request
+  and no change to the spec text. The evaluator now accepts `cancelled()`,
+  `needs.<job>.result` and `needs.<job>.outputs.<name>` only in three-valued
+  logic: on a push `cancelled()` is false and every `needs.*` value is unknown. An
+  `if:` is accepted only when its result is decided whatever the `needs.*`
+  values; any other condition that depends on a `needs.*` value still fails
+  closed with `UnsupportedIfError`. The pinned tests are: the D4 condition is
+  true on a push; `needs.x.outputs.y == 'true'` alone fails closed; a push-true
+  `||` term accepts; an unlisted form still fails closed. Every other form keeps
+  its R6(c) result. On a push, `windows` stays unfiltered, as R23 requires.
+
+### Rejected alternatives (this amendment)
+
+The four alternatives that spec 0287 delta-02 R14 names for this record, as the
+plan (step 10) requires:
+
+- **A `kind` field in the capability format.** Rejected: it changes specs 0047
+  and 0049 for one consumer, and the classification lives in `pr-scope` alone.
+- **`paths-ignore: specs/**` on the Windows capabilities.** Rejected: forbidden
+  by `docs/ci-reference-format.md` and by spec 0283 R3.
+- **A `paths:` filter on the callee jobs.** Rejected: the `windows` capabilities
+  have no `paths:` by design.
+- **An `if:` on every group.** Rejected: a skipped dependency could then skip a
+  required check, which R4 forbids.
+
+### GitLab is unaffected
+
+`.gitlab-ci.yml` gains no `pr-scope` job, no `rules:changes` and no change to a
+Windows stage. The 24 `windows-*` capabilities are GitHub-only
+(`exception.engine: github-actions`), so the generated GitLab file contains none
+of their jobs, and a GitLab merge-request pipeline has no Windows group to skip.
+`node scripts/build-ci.ts` must leave the generated file byte-identical.
+
+### Time goal and evidence
+
+The goal set by the owner is a spec-only pull request that completes in under
+180 seconds, against a baseline of 296 seconds (110 jobs, 2,662 runner-seconds).
+This amendment removes the Windows jobs from such runs. It does not by itself
+guarantee the goal: the baseline's last non-Windows job ended at 180 seconds.
+The evidence (R24(c), R25 and R27) is recorded in the pull request body: two
+probe runs before the merge, and the first real spec-only pull request to `main`
+after it, whose merge box is checked by the coordinator. Until that evidence
+exists, the time goal is not measured.
