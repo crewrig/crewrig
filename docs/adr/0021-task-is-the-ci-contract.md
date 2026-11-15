@@ -324,8 +324,9 @@ run condition, not a path filter: the 24 `windows-*` capabilities keep no
 The unfiltered reference still lists the 24 `windows-*` capabilities with their
 normal triggers. On a spec-only pull request, GitHub does not run them. This
 gap is accepted and not silent: the `windows` caller job is reported as skipped
-in the run, `pr-scope` is visible as a check, and the `description` of the
-`pr-scope` capability states the gap. A pull request that changes only `specs/`
+in the run, `pr-scope` is visible as a check, and the `pr-scope` capability's
+`exception.evidence` and this section state the gap (the capability format has
+no `description` field). A pull request that changes only `specs/`
 does not run Windows before merge. The next push to `main` runs them unfiltered
 (second amendment above).
 
@@ -395,7 +396,10 @@ plan (step 10) requires:
 Windows stage. The 24 `windows-*` capabilities are GitHub-only
 (`exception.engine: github-actions`), so the generated GitLab file contains none
 of their jobs, and a GitLab merge-request pipeline has no Windows group to skip.
-`node scripts/build-ci.ts` must leave the generated file byte-identical.
+The generated file is not byte-identical to its pre-change form: it gains four
+cache-key path lines for the new script, test and fixture files that the
+`ci-parity` and `ci-push-unfiltered` capabilities now list. It gains nothing else,
+and `node scripts/build-ci.ts` leaves it unchanged once those lines are generated.
 
 ### Time goal and evidence
 
