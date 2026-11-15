@@ -53,6 +53,21 @@ describe("claude profiles (spec 0305)", () => {
     assert.ok(!excludes.some((g) => /AGENTS|CLAUDE/.test(g)), "project memory stays loaded");
   });
 
+  it("the worker excludes 60-memory.md and keeps 60-tools.md; the coordinator excludes nothing (spec 0308 R7)", () => {
+    const excludes = worker.claudeMdExcludes ?? [];
+    const rule = (name: string) => `home/u/claude/rules/${name}`;
+    assert.ok(excludes.includes("**/rules/60-memory.md"), "worker excludes 60-memory.md");
+    assert.ok(
+      excludes.some((g) => path.posix.matchesGlob(rule("60-memory.md"), g)),
+      "a worker pattern matches 60-memory.md",
+    );
+    assert.ok(
+      !excludes.some((g) => path.posix.matchesGlob(rule("60-tools.md"), g)),
+      "no worker pattern matches 60-tools.md",
+    );
+    assert.equal(coordinator.claudeMdExcludes, undefined);
+  });
+
   it("bundled skills are disabled for the worker only", () => {
     assert.equal(worker.disableBundledSkills, true);
     assert.equal(coordinator.disableBundledSkills, undefined);

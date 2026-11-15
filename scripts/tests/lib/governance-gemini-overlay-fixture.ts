@@ -22,6 +22,7 @@ export const MAIN_DEPLOYED: readonly string[] = [
   "30_USER_PROFILE.md",
   "40_USER_EXPERTISE.md",
   "50_USER_TEAM.md",
+  "60_MEMORY.md",
   "60_TOOLS.md",
   "65_TOOLS.md",
   "66_ORG_RULES.md",

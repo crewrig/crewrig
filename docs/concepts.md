@@ -20,7 +20,8 @@ them with a numeric prefix from `00` to `65`:
 | 30 | `config/PROFILE.md` | Personal information |
 | 40 | `config/expertise/<ROLE>.md` | Technical specialization |
 | 50 | `config/teams/<TEAM>.md` | Team practices and norms |
-| 60 | `artifacts/core/rules/60-tools.md` | Memory architecture and core tool rules |
+| 60 | `artifacts/core/rules/60-memory.md` | Memory architecture and orchestrator memory protocol (excluded from Claude Code workers) |
+| 60 | `artifacts/core/rules/60-tools.md` | Core tool rules and the memory obligations that bind every agent |
 | 65 | `config/TOOLS.md` | Organization-specific tool guidelines |
 
 The four supported tools consume the same source files but load them

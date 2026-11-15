@@ -13,7 +13,7 @@ GitHub Copilot CLI, and Antigravity CLI. Its five pillars are described in
 
 **Before any work begins**, the orchestrator SHALL run the complete deterministic
 session-start sweep defined in
-`artifacts/core/rules/60-tools.md` → *Memory Activation Protocol → Session Start*
+`artifacts/core/rules/60-memory.md` → *Memory Activation Protocol → Session Start*
 (all five steps, in order). The project-specific parameter for step 2 is
 `wing="crewrig"`, `room="task-handoff"`.
 

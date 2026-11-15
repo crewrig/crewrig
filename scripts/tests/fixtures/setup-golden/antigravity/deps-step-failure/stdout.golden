@@ -5,6 +5,7 @@
 Installing shared configuration...
   Copied: ORGANIZATION.md -> 20_ORGANIZATION.md
   Copied: artifacts/core/rules/60-tools.md -> 60_TOOLS.md
+  Copied: artifacts/core/rules/60-memory.md -> 60_MEMORY.md
   Copied: TOOLS.md -> 65_TOOLS.md
   Copied dir: artifacts/core/system-context -> ~/.crewrig/system-context
   Copied: SOUL.md -> 00_SOUL.md

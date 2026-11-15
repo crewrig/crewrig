@@ -81,6 +81,11 @@ export const copilotDescriptor: SetupDescriptor = {
         "artifacts/core/rules/60-tools.md",
         "60-tools.instructions.md",
       ),
+      file(
+        "artifacts/core/rules/60-memory.md",
+        "artifacts/core/rules/60-memory.md",
+        "60-memory.instructions.md",
+      ),
       file("config/TOOLS.md", "TOOLS.md", "65-org-tools.instructions.md"),
       store,
       {

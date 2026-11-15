@@ -17,7 +17,7 @@ const WRITER_SOURCE = `
 import os, sys
 # mempalace.mcp_server swaps sys.stdout at import time to protect its
 # JSON-RPC channel; dup fd 1 BEFORE importing so we can still write
-# RESULT: to the real stdout (see ~/.claude/rules/60-tools.md → "Stdout hazard").
+# RESULT: to the real stdout (see ~/.claude/rules/60-memory.md → "Stdout hazard").
 _REAL_STDOUT = os.fdopen(os.dup(1), "w", encoding="utf-8", closefd=False)
 os.environ["MEMPALACE_PALACE_DIR"] = "/home/agent/.mempalace/palace"
 from mempalace.mcp_server import tool_add_drawer

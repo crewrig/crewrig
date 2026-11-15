@@ -384,19 +384,22 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Feature:** User-level layered context (00–65 priority files) — deployed by the TypeScript setup entries
   `scripts/setup-<cli>-interactive.ts` (spec 0256, row 10b)
 - **Source of truth:** `config/SOUL.md`, `config/level/`, `config/ORGANIZATION.md`, `config/PROFILE.md`,
-  `config/expertise/`, `config/teams/`, `artifacts/core/rules/60-tools.md` (priority 60, core; total core-rules size
+  `config/expertise/`, `config/teams/`, `artifacts/core/rules/60-tools.md` and `artifacts/core/rules/60-memory.md` (priority 60, core; the orchestrator memory
+  protocol moved to the second file by spec 0308; total core-rules size
   capped by `scripts/check-rules-size.ts`, spec 0270, relocated blocks in `docs/mempalace-*.md` and
   `docs/friction-failure-mode.md`), `config/TOOLS.md` (priority 65, overlay)
-- **Claude Code:** ✅ `~/.claude/rules/60-tools.md` (core) + `~/.claude/rules/65-org-tools.md` (overlay), plus other
-  `*.md` files — deployed by `setup-claude-interactive.ts`
-- **Gemini CLI:** ✅ `~/.gemini/60_TOOLS.md` (core) + `~/.gemini/65_TOOLS.md` (overlay), plus other `[0-6][0-9]_*.md`
+- **Claude Code:** ✅ `~/.claude/rules/60-tools.md` and `~/.claude/rules/60-memory.md` (core) +
+  `~/.claude/rules/65-org-tools.md` (overlay), plus other `*.md` files — deployed by `setup-claude-interactive.ts`. The
+  worker settings profile excludes `**/rules/60-memory.md` (spec 0308 R7); the coordinator profile excludes nothing
+- **Gemini CLI:** ✅ `~/.gemini/60_TOOLS.md` and `~/.gemini/60_MEMORY.md` (core) + `~/.gemini/65_TOOLS.md` (overlay), plus other `[0-6][0-9]_*.md`
   files — deployed by `setup-gemini-interactive.ts`. Gemini loads **only** files enrolled in `context.fileName`
   (`~/.gemini/settings.json` ← `config/gemini/settings.json`), unlike Claude/Copilot which read an entire directory,
-  so every deployed overlay MUST also be enrolled there (e.g. `65_TOOLS.md`; the priority-66 org-rules overlay is
+  so every deployed overlay MUST also be enrolled there (e.g. `60_MEMORY.md`, `65_TOOLS.md`; the priority-66 org-rules overlay is
   enrolled likewise, see row 7e) (#576)
-- **Copilot CLI:** ✅ `~/.copilot/instructions/60-tools.instructions.md` (core) +
-  `~/.copilot/instructions/65-org-tools.instructions.md` (overlay), plus other `*.instructions.md` files — deployed by
-  `setup-copilot-interactive.ts`. **Fixed-context evidence** (Copilot CLI 1.0.112, probes of 2026-11-14, issue #1995;
+- **Copilot CLI:** ✅ `~/.copilot/instructions/60-tools.instructions.md` and
+  `~/.copilot/instructions/60-memory.instructions.md` (core) + `~/.copilot/instructions/65-org-tools.instructions.md`
+  (overlay), plus other `*.instructions.md` files — deployed by `setup-copilot-interactive.ts`. Copilot workers load
+  `60-memory.instructions.md`: the CLI has no per-file exclusion (`--no-custom-instructions` is all-or-nothing, ADR-0025 C2). **Fixed-context evidence** (Copilot CLI 1.0.112, probes of 2026-11-14, issue #1995;
   method of ADR-0025's appendix, tokens read from the per-call `session.usage_record` and `system_segments` events of
   `~/.copilot/session-state/<id>/events.jsonl`; main model pinned to `gemini-3.8-flash`, prompt "Reply with the single
   word OK."): (1) CrewRig worktree, real home: **49,273** first-call input tokens, of which `custom_instructions`
@@ -415,8 +418,9 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   built-in prompt (system segments 6.0k) and the tool definitions (10.1k). Not isolated: the tool definitions grew to
   13.0k and `tool_instructions` to 6.5k in the CrewRig worktree, probably because the `task` tool lists the repository's
   agents
+- **Gemini and Antigravity workers:** per-file exclusion of `60_MEMORY.md` not verified (no evidence recorded, spec 0308 R7).
 - **Antigravity CLI:** ✅ `~/.gemini/antigravity-cli/` — priority `[0-6][0-9]_*.md` files deployed by
-  `setup-antigravity-interactive.ts`; concatenated into `~/.gemini/config/AGENTS.md` (the single system context file
+  `setup-antigravity-interactive.ts` (`60_MEMORY.md` next to `60_TOOLS.md`); concatenated into `~/.gemini/config/AGENTS.md` (the single system context file
   Antigravity CLI reads) at the end of each setup run; any superseded `~/.gemini/GEMINI.md` context file is removed to
   prevent duplicate/stale rule loading (spec 0054 / PR #443; spec 0061 delta-01 / issue #478; spec 0061 delta-02 / issue #1082)
 
@@ -554,7 +558,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 
 - **Feature:** User-space system-context store — on-demand direct read (spec 0068)
 - **Source of truth:** `artifacts/core/system-context/`, `scripts/lib/setup/files.ts` (`install_dir` of the retired
-  `common.sh`), `scripts/setup-*-interactive.ts`, `artifacts/core/rules/60-tools.md` (retrieval protocol + stubs)
+  `common.sh`), `scripts/setup-*-interactive.ts`, `artifacts/core/rules/60-tools.md` (retrieval protocol, friction stub) and
+  `artifacts/core/rules/60-memory.md` (the four other stubs, moved by spec 0308)
 - **Claude Code:** ✅ `~/.crewrig/system-context/` installed by `setup-claude-interactive.ts` (`install_dir`, link/copy
   duality). **Direct read PASS-default** — the Step 1 probe read the store from an untrusted scratch dir with bare
   `claude -p`, no flags/config (the `Read` tool has unrestricted absolute-path access). Evidence:
@@ -1660,7 +1665,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   scope* rules one out by name. Spec 0271 (superseding spec 0226 R1-R6) replaced the seated-pass step-3/step-6 exemption
   by the rule that every subagent skips the session-start sweep entirely, which does not change this row's "uniform, not
   per-CLI" parity story: no new CLI-specific path, command, hook, or build output — the edited files (`AGENTS.md`,
-  `artifacts/core/rules/60-tools.md`, `docs/reviewer-seat.md`) are either already covered by row 7b's byte-identical
+  `artifacts/core/rules/60-memory.md`, `docs/reviewer-seat.md`) are either already covered by row 7b's byte-identical
   cross-CLI deployment or read directly from the repo, never CLI-specific.
 - **Source of truth:** `docs/reviewer-seat.md` (normative contract); sources
   `artifacts/core/agents/pr-reviewer/AGENT.md`, `artifacts/core/skills/{pr-reviewer,architect,spec-author}/SKILL.md`
@@ -2501,7 +2506,7 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   library and the `mempalace` CLI (`wake-up`) but is **absent from the agent-facing MCP tool surface** on the installed **3.6.0**
   (pinned `>=3.6.0,<3.7`; re-verified 2026-07-20 against the live 36-tool surface, issue #566). Unlike the gaps above,
   this is **not** a cross-CLI asymmetry: all four CLIs share the one MCP surface (row 7d), so the gap is uniform across
-  them. The **MCP-only access** guard in `artifacts/core/rules/60-tools.md` forbids reaching it ad-hoc, and the
+  them. The **MCP-only access** guard in `artifacts/core/rules/60-memory.md` forbids reaching it ad-hoc, and the
   deterministic session-start sweep (that file's *Wake-up budget* stub; full figures in
   `docs/mempalace-wakeup-budget.md`) is its bounded substitute. Candidate follow-up: an upstream request to expose the
   wake-up through MCP (consent-gated, out of scope for spec 0069).

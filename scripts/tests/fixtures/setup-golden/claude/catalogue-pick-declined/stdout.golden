@@ -5,6 +5,7 @@
 Installing shared configuration...
   Copied: ORGANIZATION.md -> rules/20-organization.md
   Copied: artifacts/core/rules/60-tools.md -> rules/60-tools.md
+  Copied: artifacts/core/rules/60-memory.md -> rules/60-memory.md
   Copied: TOOLS.md -> rules/65-org-tools.md
   Copied dir: artifacts/core/system-context -> ~/.crewrig/system-context
   Copied: SOUL.md -> rules/00-soul.md
@@ -97,6 +98,7 @@ Active rule files:
 <HOME>/.claude/rules/20-organization.md
 <HOME>/.claude/rules/30-profile.md
 <HOME>/.claude/rules/50-team.md
+<HOME>/.claude/rules/60-memory.md
 <HOME>/.claude/rules/60-tools.md
 <HOME>/.claude/rules/65-org-tools.md
 

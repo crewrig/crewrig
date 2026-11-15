@@ -47,7 +47,7 @@ describe("check-gemini-overlay-enrollment cases", () => {
     assert.equal(r.status, 0, r.stderr);
     assert.equal(
       r.stdout,
-      "OK: all 9 deployed Gemini overlays are enrolled in context.fileName.\n",
+      "OK: all 10 deployed Gemini overlays are enrolled in context.fileName.\n",
     );
     assert.ok(r.stdout.includes("OK: all"));
     assert.ok(!r.stderr.includes("AGENTS.md"), r.stderr);
@@ -136,7 +136,7 @@ describe("check-gemini-overlay-enrollment cases", () => {
   it("case-k: present-but-empty fileName is a forward failure (exit 1, not 2)", () => {
     const r = check(fixture(MAIN_DEPLOYED, []));
     assert.equal(r.status, 1, r.stderr);
-    assert.equal(r.stderr, failedBlock(9, [...MAIN_DEPLOYED]));
+    assert.equal(r.stderr, failedBlock(10, [...MAIN_DEPLOYED]));
   });
 
   it("case-l: the real repository and the real printer pass (exit 0)", () => {
