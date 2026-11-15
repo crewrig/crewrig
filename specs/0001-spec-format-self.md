@@ -111,4 +111,4 @@ Then  the reviewer rejects the line as a HOW statement and asks the
 ## Open questions
 
 - None. Downstream uncertainty is parked in the issues listed under
-  *Out of scope* and will be resolved there (probe A).
+  *Out of scope* and will be resolved there (probe B).
