@@ -772,7 +772,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   staying at its path; re-running setup from a durable checkout repairs it, and setup warns when that checkout is a
   linked worktree (`warn_if_linked_worktree`, `docs/usage-capture.md` → *Checkout-location dependency*). CI:
   `mempalace-transcript`, `mempalace-transcript-node-24-0` and `windows-mempalace-transcript`
-  (`ci/ci-capabilities.yml`).
+  (`ci/capabilities/`).
 - **Source of truth:** `hooks/mempalace-transcript.ts`, `scripts/lib/mempalace-transcript/`, `scripts/lib/tls-env.ts`,
   `scripts/lib/transcript-recognition.ts`, `scripts/lib/hook-transcript-cli.ts`,
   `scripts/lib/hook-transcript-manifest.ts`, `scripts/lib/transcript-hook-rewrite.ts`,
@@ -1600,13 +1600,13 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   (through the skill's bundled `scripts/scaffold-spec.ts`, which runs this tool, not through the agent prompt)
   is the exit code only: `0` secured, `3` allocated-but-unsecured (stdout carries `unsecured-id: true` verbatim), `1`
   genuine failure. **Enforcement is CI-side, not CLI-side:** the `check-spec-id-reserved` capability in
-  `ci/ci-capabilities.yml` (portable, `history-depth: full`, no `tools:` key — git is installed conditionally as
+  `ci/capabilities/` (portable, `history-depth: full`, no `tools:` key — git is installed conditionally as
   `command[0]` so the GitLab `debian:stable-slim` job needs no generator change) becomes the GHA job of the same name
   plus the generated `.gitlab-ci.yml` job. **Delta-02** (`specs/0112-spec-id-reservation.delta-02.md`, requirements
   17-21) adds that the `--issue`-only path now reuses an existing per-issue reservation instead of always computing a
   new one.
 - **Source of truth:** `scripts/reserve-spec-id.ts`, `scripts/check-spec-id-reserved.ts`, `.crewrig/spec-id-carrier`,
-  `ci/ci-capabilities.yml`, `docs/spec-pr-workflow.md` → *Reserving the spec id*,
+  `ci/capabilities/`, `docs/spec-pr-workflow.md` → *Reserving the spec id*,
   `specs/0112-spec-id-reservation.delta-02.md`
 - **Claude Code:** ✅ consumed by `.claude/skills/spec-author/SKILL.md` + `.claude/agents/spec-author.md` (built from
   `artifacts/core/`, row 3 core path)
@@ -2263,7 +2263,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 >
 > **GitLab pipeline generator (spec 0048).** The GitLab pipeline is **derived**
 > from that reference, not hand-authored: `scripts/build-ci.ts` reads
-> `ci/ci-capabilities.yml` and emits one GitLab job per *portable* capability
+> `ci/capabilities/` and emits one GitLab job per *portable* capability
 > into [`.gitlab-ci.yml`](../.gitlab-ci.yml) at the repo root (job key ==
 > capability id; `requires:` → `image`/`before_script`/`GIT_DEPTH`; `env:` → `variables:`; `command:`
 > → `script:`). Engine-specific capabilities are skipped with no placeholder
@@ -2296,7 +2296,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 >
 > **CI execution speed (spec 0147).** The former monolithic `check-components`
 > capability (one job, ~85 sequential steps) is decomposed into focused,
-> parallel, changeset-gated capabilities in `ci/ci-capabilities.yml`, each with
+> parallel, changeset-gated capabilities in `ci/capabilities/`, each with
 > its own `paths:` trigger filter and a `changeset-gated: true` marker. On both
 > engines a job runs only when a changed file matches its `paths:` set (GitLab
 > `changes:`; GitHub Actions the `ci-job` runtime path gate, spec 0283 R6). Heavy
@@ -2309,7 +2309,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > `path-ownership` capability with no `paths:` filter runs
 > `scripts/check-path-ownership.ts` on every change on both engines (spec 0147
 > delta-01 R11-R20): it evaluates every tracked file, reads ownership from the
-> `pull-request` `paths:` sets of `ci/ci-capabilities.yml` at check time, and
+> `pull-request` `paths:` sets of `ci/capabilities/` at check time, and
 > fails closed when a file is neither owned nor listed in
 > `ci/path-ownership-exemptions.txt` (or the optional organization overlay
 > `ci/org/path-ownership-exemptions.txt`). It needs no base ref, so it replaces
@@ -2340,7 +2340,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > executed none. The runtime stray check moved into the job that already runs
 > each suite: every suite command is declared as
 > `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- bash scripts/tests/<suite>` (the form of that period, retired with the shell suites)
-> in `ci/ci-capabilities.yml`, in the hand-authored GitHub Actions steps and,
+> in `ci/capabilities/`, in the hand-authored GitHub Actions steps and,
 > through `scripts/build-ci.ts`, in `.gitlab-ci.yml`, so both engines run it
 > identically. `scripts/check-ci-parity.ts` unwraps only the generated
 > `--cache-dir` layer, so a missing scan on either engine is a parity failure,
@@ -2360,7 +2360,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > the rows, their verdicts, and their evidence are unchanged.
 >
 > **Multi-runtime `requires.runtime` (spec 0242).** `requires.runtime` in
-> `ci/ci-capabilities.yml` now optionally accepts a list, not only a bare
+> `ci/capabilities/` now optionally accepts a list, not only a bare
 > scalar: a portable capability whose command genuinely needs more than one
 > language runtime declares each entry. The `mempalace` capability is the
 > first to do so (`requires.runtime: [python@3.12, node@24]`) because it
@@ -2706,7 +2706,7 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   Antigravity CLI still reads its acknowledgement. A command wired directly to the `.ts` is not a shim: with Node.js
   downgraded after setup it fails with Node.js's own non-zero status and no `{}`, until setup is re-run on Node.js 24 or
   later (spec 0243 R30). Setup checks the floor only when it runs, and below it writes no direct form. Evidence: the
-  capability `mempalace-transcript-node-24-0` in `ci/ci-capabilities.yml`. Recovery: install Node.js 24 or later and
+  capability `mempalace-transcript-node-24-0` in `ci/capabilities/`. Recovery: install Node.js 24 or later and
   re-run setup.
 
 <!-- Validation backend gaps (spec 0080) -->

@@ -1,7 +1,7 @@
 name: Exhaustive Run
 
 # Spec 0147 delta-01 R21, R22: mirrors the `changeset-coverage` capability of
-# ci/ci-capabilities.yml. It runs every command of every changeset-gated
+# ci/capabilities/. It runs every command of every changeset-gated
 # capability, with no diff and no base ref. It is deliberately a workflow of its
 # own: a `schedule:` trigger on build.yml would start every job of that file on
 # the cron. A scheduled run uses the default branch; `workflow_dispatch` runs it

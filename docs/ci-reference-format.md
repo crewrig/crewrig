@@ -3,7 +3,7 @@
 <!-- crewrig-doc: section=reference nav_order=60 published=true title="CI capability reference format" -->
 
 This document is the **normative description** of the shape of
-`ci/ci-capabilities.yml` — the platform-neutral CI capability reference
+`ci/capabilities/` — the platform-neutral CI capability reference
 mandated by [spec 0047](../specs/0047-ci-capability-reference.md) and decided
 in [ADR-0012](adr/0012-ci-reference-contract.md). It is contract **C1**: a
 candidate reference is judged valid or invalid against the rules below, and a
@@ -32,12 +32,67 @@ engine.
 
 ## File location and ownership
 
-- **Path:** `ci/ci-capabilities.yml` — one reference per repository.
+- **Path:** `ci/capabilities/` — one reference per repository, a directory of YAML
+  files (see *Layout of `ci/capabilities/`* below).
 - **Layer:** core, sync policy `strict` (upstream-owned; a local modification
   halts the upstream sync). Registered in
   [`docs/layers.md`](layers.md) and `.crewrig/core-paths.txt`.
 - **Format:** YAML, chosen because `yq` (mikefarah) is already a CI dependency
   (`.github/workflows/build.yml`); no new validation toolchain is introduced.
+
+## Layout of `ci/capabilities/`
+
+The reference is a directory, not one file (spec 0309 R2, ADR-0021 amendment
+2026-11). The old single file `ci/ci-capabilities.yml` no longer exists; a copy
+left beside the directory fails the checks.
+
+- **Group files.** A capability whose `group` field names a group lives in
+  `<group>.yml` or, when the per-file limit requires it, in
+  `<group>-<part>.yml`. The groups are `gate`, `modules`, `governance`,
+  `extensions`, `integration` and `windows`.
+- **Capabilities without a `group`** (the jobs of the standalone workflows)
+  live in `standalone-<part>.yml`. They are never forced into a group file.
+- **One file per capability id, content unchanged.** A capability's group is its
+  `group` field, never its file name alone. Every file starts with one comment
+  line (`# CI capabilities: group <group>[, part <part>] (format: ...)`) and
+  `capabilities:`.
+- **Reading order.** The shared reader returns files in the byte order of their
+  names, and entries in file order within each file. Hand-authored files stay
+  within the per-file limit of `scripts/tests/ci-file-limit.test.ts` (500 lines).
+
+### The parts rule
+
+`ci/capability-parts.json` fixes the placement. Per group (and `standalone` for
+the capabilities without one) it lists ordered parts, each with `ids`, a list of
+id globs; the first part whose glob matches takes the capability, and the last
+part of a group is `*`, so a new id goes to its first matching part, else to the
+catch-all. A group with a single part and no `part` name keeps the file name
+`<group>.yml`. A part that holds nothing writes no file. `scripts/ci-split.ts`
+applies the rule; a new capability is added by hand to the file the rule names.
+
+### Generated GitLab output: no include split
+
+`.gitlab-ci.yml` stays one generated file. No `include:` split per group is
+applied (spec 0309 R4): generated files are excluded from the per-file limit by
+their generated-file marker, so a split would add generated files for no
+measured benefit. Both engines are checked alike; no gap is accepted for this
+choice.
+
+### The shared header (moved)
+
+The comment that headed the single file is kept here once, not copied into each
+file:
+
+> Platform-neutral CI capability reference (spec 0047). One entry per
+> continuous-integration job, identified by a stable `id` that IS the pipeline
+> job's YAML key on every engine (contract C2). The shape is described normatively
+> in this document (contract C1); the decision is recorded in
+> `docs/adr/0012-ci-reference-contract.md`. Portable capabilities are generated
+> into every engine's pipeline. Engine-specific capabilities carry an
+> `exception` with evidence that the mechanism has no faithful equivalent on the
+> other supported engines (spec 0047 R5); they are hand-authored, never
+> generated. The reference DESCRIBES existing jobs; it generates nothing, runs no
+> drift check and executes no pipeline.
 
 ## Capability entry schema
 
@@ -260,7 +315,7 @@ reference):
 ```
 
 Which capabilities currently use the opt-out is read from the reference
-itself (`grep -n 'cache-guard:' ci/ci-capabilities.yml`); this document does
+itself (`grep -rn 'cache-guard:' ci/capabilities/`); this document does
 not list them, so the list cannot go stale here.
 
 A command that matches the wrapped-command pattern of `scripts/lib/build-ci/render-job.ts` is wrapped whatever it is,
@@ -345,7 +400,7 @@ that mechanism.
 
 - **Ownership.** A tracked file is *owned* when it matches a glob in the
   `paths:` of any `pull-request` trigger of any capability in
-  `ci/ci-capabilities.yml`. A `push`-only `paths:` confers no ownership, and a
+  `ci/capabilities/`. A `push`-only `paths:` confers no ownership, and a
   capability with no `paths:` filter confers none either (it runs on every
   change, so it owns nothing in particular).
 - **Evaluation.** `scripts/check-path-ownership.ts` evaluates **every** tracked

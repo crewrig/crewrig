@@ -86,7 +86,7 @@ Six names, in pipeline order. Their meaning follows the owner decisions recorded
 
 ### The `group` field is the single source
 
-The optional `group` scalar of `ci/ci-capabilities.yml` (defined in `docs/ci-reference-format.md`) is the only place a job's stage is written. Both engines and the Taskfile split derive from it: the GitHub callee file `_ci-<group>.yml`, the `stage:` of the generated GitLab job, and the `taskfiles/ci/<group>.yml` split of #1827. A job's group changes only by a delta-spec.
+The optional `group` scalar of a capability in `ci/capabilities/` (defined in `docs/ci-reference-format.md`) is the only place a job's stage is written. Both engines and the Taskfile split derive from it: the GitHub callee file `_ci-<group>.yml`, the `stage:` of the generated GitLab job, and the `taskfiles/ci/<group>.yml` split of #1827, where the capability's task lives. The reference files of `ci/capabilities/` follow the same group but are a separate split, described in the amendment of 2026-11 below: a task is placed in `taskfiles/ci/<group>.yml` by its capability's `group`, and a capability is placed in a file of `ci/capabilities/` by its `group` and then by the parts rule. A job's group changes only by a delta-spec.
 
 ### GitHub model
 
@@ -108,3 +108,128 @@ The generator emits `stages:` in the taxonomy order, `stage: <group>` on every j
 A called workflow's jobs report as `<caller job id> / <job>`. Hosting `ratchet` and `lint-typescript` in `_ci-gate.yml` would rename the required contexts of the `main-protected` and `release-protected` rulesets to `gate / ratchet` and `gate / lint-typescript`. Required status check names are a branch-protection contract that a workflow restructuring must not rename, so those two jobs are the one exception (spec 0287 delta-01 R21): they are top-level jobs with steps in `build.yml`, keep `group: gate` in the reference, and precede every Linux group through `needs: [gate, ratchet, lint-typescript]`. The contexts stay `ratchet` and `lint-typescript`; no ruleset changes (R5).
 
 Rejected alternative: host both jobs in `_ci-gate.yml` and update the rulesets to the `gate / ...` names. It is impossible without admin rights (the executing account holds the maintain role), the owner must not be needed, and it couples a merge to an out-of-band ruleset change.
+
+## Amendment (2026-11): capability reference split by group, per-file limit
+
+This amendment records the implementation of
+[`specs/0309-split-ci-capabilities-filter-coverage.md`](../../specs/0309-split-ci-capabilities-filter-coverage.md)
+as amended by its
+[delta-01](../../specs/0309-split-ci-capabilities-filter-coverage.delta-01.md) and
+[delta-02](../../specs/0309-split-ci-capabilities-filter-coverage.delta-02.md)
+(issue #2012). The earlier paragraphs of this ADR keep their text; where they
+name `ci/ci-capabilities.yml` or measure the CI surfaces by a line total, this
+amendment is the current reading.
+
+### Layout and group-to-file rule
+
+The single file `ci/ci-capabilities.yml` (4,450 lines before the split) no
+longer exists. The capability reference is the directory `ci/capabilities/`,
+one or more files per group, each holding capabilities whose `group` field
+names that group, with their content unchanged:
+
+- A group file is named `<group>.yml` when it fits, and `<group>-<part>.yml`
+  when the per-file limit requires a split. The six groups are `gate`,
+  `modules`, `governance`, `extensions`, `integration` and `windows`.
+- Capabilities that carry no `group` (the jobs of the standalone workflows)
+  live in `standalone-<part>.yml`; they are never forced into a group file.
+- The placement is the parts rule, `ci/capability-parts.json`: per group, an
+  ordered list of parts, each a list of id globs. A capability goes to the
+  first part whose glob matches its id; the last part of a group is `*`, so a
+  new id lands in its first matching part, else the catch-all part. A part
+  that holds nothing writes no file. `scripts/ci-split.ts` applies the rule.
+- A capability appears in exactly one file. The group of a capability is its
+  `group` field, never its file name alone.
+
+This fixes the earlier statement of the `group` paragraph above: the group
+still selects `taskfiles/ci/<group>.yml` for the task, and it now also selects
+the file family of `ci/capabilities/` for the capability. The reader of the
+reference (`scripts/lib/ci-parity/reference-read.ts`) walks the directory in
+the byte order of the file names; a stale `ci/ci-capabilities.yml` left beside
+the directory fails the checks. The layout, the moved shared header and the
+parts rule are described in `docs/ci-reference-format.md`.
+
+### Per-file limit replaces the global line cap
+
+The global line cap of spec 0285 R1 and spec 0287 R13 (the floor of 8,880, the
+pin and the hard cap of 9,100, the ratchet test and the committed report) is
+retired, with the comment-line count of spec 0285 R2, as specs/0309 R1
+supersedes exactly those items. `scripts/tests/ci-shrink-report.test.ts` and
+`docs/ci-shrink-report.md` are removed. The success criterion that the
+paragraph on consequences above phrases as line counts reported per slice is
+replaced by the limit below.
+
+In their place, `scripts/tests/ci-file-limit.test.ts` fails when a
+hand-authored CI file has more than **500 lines**. The hand-authored files are
+`.github/workflows/build.yml`, every `_ci-*.yml` and every file of
+`ci/capabilities/`. Generated files are excluded by their generated-file
+marker, not by a name list; `.gitlab-ci.yml` is generated, so it fails when
+the marker is absent.
+
+Measurements behind the value, on the tree of this change:
+
+| File | Lines |
+|---|---|
+| `ci/capabilities/integration.yml` (largest) | 424 |
+| `.github/workflows/_ci-governance.yml` | 409 |
+| `ci/capabilities/governance-ci.yml` | 389 |
+| `ci/capabilities/governance-other.yml` | 380 |
+| `ci/capabilities/modules-setup.yml` | 372 |
+| every other hand-authored file | 78 to 369 |
+
+The rule of spec 0309 R5 is the largest file times 1.10, rounded up to the next
+multiple of 50, bounded to 400 to 500: 424 x 1.10 = 466.4, which rounds up to
+500. The limit would reach 550 only from a largest file of 455 lines. The
+largest workflow file is `_ci-governance.yml`; each new capability job adds
+a few lines to its callee, so the limit is a constant to raise deliberately,
+with the reason in the pull request body, never to drift past.
+
+The four reasons for dropping the total:
+
+1. Lines are a poor proxy for the cost of a pull request, which is paid in
+   triggered jobs and runner minutes, not in lines of configuration.
+2. A generated file was counted twice: once as the reference it came from and
+   once as its own output.
+3. The cap forced unrelated checks into one job and widened path filters to
+   stay under it.
+4. The real risk, a test that no job runs after a change, was not measured by
+   a line total at all.
+
+### No include split of the generated GitLab file
+
+Spec 0309 R4 allowed one generated `include:` file per group. It is not
+applied: generated files are excluded from the limit by their marker, so a
+split would add files and a second generated layout to keep equal, for no
+benefit the limit measures. `.gitlab-ci.yml` stays one generated file, equal
+to the generator output under the existing equality check, with its header
+naming `ci/capabilities/`.
+
+### Rejected alternatives (this amendment)
+
+- **Keep one reference file and raise the cap.** Rejected by spec 0309: a
+  raised total still bounds nothing a reviewer pays for, and the 4,450-line
+  file stays one review surface for every capability change.
+- **One file per capability.** Rejected: About 130 files multiply the review surface
+  past the benefit of the split, and a group is the unit the callees and the
+  taskfiles already share.
+- **A limit on the generated output.** Rejected: the generated file is derived
+  and cannot be reviewed or shrunk by hand; the marker excludes it.
+- **Counting lines only for the reference.** Rejected: the callee workflows
+  are hand-authored, and `_ci-governance.yml` is the largest workflow file.
+- **A static filter-coverage check over what each test reads.** Rejected after
+  measurement by spec 0309 delta-02: it flagged 862 of 873 tests, needed about
+  1,000 declarations, a shrink-only baseline and drain pull requests. Delta-02
+  replaces it with an unfiltered run of every capability on a push to a
+  protected branch, which is **planned** for a later pull request of the same
+  issue and is not in force with this change; until then the push triggers
+  keep the path filters they have.
+
+### Superseded items
+
+This amendment and the header of `scripts/tests/ci-file-limit.test.ts` are the
+places outside the spec set that narrate the supersession of spec 0285 R1
+(the 8,880-line total, its ratchet and its report), spec 0285 R2 (the
+comment-line count of the reference) and spec 0287 R13 (the line ratchet,
+floor and hard cap, as amended by its delta-01). The wiring of the new
+`ci-file-limit` capability follows spec 0309 delta-02 R12(a): its
+pull-request trigger carries the path filter and its push trigger carries
+none, from its first commit.

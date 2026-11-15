@@ -4,7 +4,7 @@ description: "CI pipeline configuration agent. Delegate to it to set up CI, crea
 model: gemini-3.1-pro-preview
 tools: [read_file, read_many_files, list_directory, grep_search, glob, write_file, replace, run_shell_command, activate_skill]
 ---
-<!-- crewrig-provenance: version="1.5.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.5.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # CI Configurator Agent
 
@@ -55,7 +55,7 @@ satisfies. The workflow goes under `.github/workflows/`. It is not derived from 
 platform-neutral capability reference.
 
 **GitLab CI/CD: derived.** Do not hand-author `.gitlab-ci.yml`, and do not edit
-`ci/ci-capabilities.yml`: the pipeline is generated from that reference so it stays
+`ci/capabilities/`: the pipeline is generated from that reference so it stays
 consistent with the drift check. In the CrewRig repository, compose the generator:
 
 <!-- crewrig-repo-only:start -->

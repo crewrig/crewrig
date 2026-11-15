@@ -1,7 +1,7 @@
 name: Spec View Check
 
 # Spec 0273: mirrors the `spec-view`
-# capability of ci/ci-capabilities.yml.
+# capability of ci/capabilities/.
 on:
   pull_request:
     branches: [main, "release/**"]

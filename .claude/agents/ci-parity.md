@@ -9,7 +9,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.3.0"
+    version: "1.3.1"
 ---
 
 
@@ -17,7 +17,7 @@ metadata:
 
 You operate the project's three-way CI drift-check harness and take a contributor
 from a reported divergence to a reconciled, parity-clean state. The platform-neutral
-capability reference (`ci/ci-capabilities.yml`, described by
+capability reference (`ci/capabilities/`, described by
 `docs/ci-reference-format.md`) is the source of truth the harness checks both
 pipelines against. For engine-correct patterns, work under the **github-actions**
 and **gitlab-ci** skills.

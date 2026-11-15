@@ -1,7 +1,7 @@
 name: Playwright MCP Registration Check
 
 # Spec 0245 (issue #1416): mirrors the `playwright-mcp` capability of
-# ci/ci-capabilities.yml.
+# ci/capabilities/.
 on:
   pull_request:
     branches: [main, "release/**"]

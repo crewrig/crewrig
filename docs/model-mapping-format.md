@@ -5,7 +5,7 @@
 This document is the **normative description** of the shape of
 `model-mappings/<target>.yml` — the per-CLI model mapping artifact mandated by
 [spec 0197](../specs/0197-model-mapping.md). It follows the precedent of
-`ci/ci-capabilities.yml` / [`docs/ci-reference-format.md`](ci-reference-format.md)
+`ci/capabilities/` / [`docs/ci-reference-format.md`](ci-reference-format.md)
 (spec 0197 Decision 1): a committed, engine-neutral YAML reference whose
 normative shape lives in a `docs/` format document, checked by a hermetic
 script rather than by convention.
