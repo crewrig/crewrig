@@ -169,3 +169,25 @@ describe("stub MCP server", () => {
     assert.equal(drive("obsidian", 5, [init]).r.status, 0);
   });
 });
+
+describe("stub MCP server, scenario 5 vault (delta-02)", () => {
+  test("obsidian_list_vaults returns the scratch vault in scenario 5", () => {
+    const { responses } = drive("obsidian", 5, [init, call(2, "obsidian_list_vaults", {})]);
+    assert.deepEqual(JSON.parse(responses[1].result.content[0].text), [
+      { id: "scratch", name: "scratch-vault" },
+    ]);
+  });
+  test("create and edit are recorded with their arguments and succeed", () => {
+    const { responses, text } = drive("obsidian", 5, [
+      init,
+      call(2, "obsidian_create_note", { vault: "scratch", path: "d.md", content: "x" }),
+      call(3, "obsidian_edit_note", { vault: "scratch", path: "d.md" }),
+    ]);
+    assert.match(responses[1].result.content[0].text, /success/);
+    const log = parseCallLog(text);
+    assert.deepEqual(
+      log?.map((e) => e.tool),
+      ["obsidian_create_note", "obsidian_edit_note"],
+    );
+  });
+});

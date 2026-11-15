@@ -1,1 +1,2 @@
-{"seq":0,"ts":"2026-01-01T00:00:00.000Z","surface":"obsidian","tool":"obsidian_create_note","args":{"path":"decisions/x.md","content":"decision"}}
+{"seq":0,"ts":"2026-01-01T00:00:00.000Z","surface":"obsidian","tool":"obsidian_list_vaults","args":{}}
+{"seq":1,"ts":"2026-01-01T00:00:00.000Z","surface":"obsidian","tool":"obsidian_create_note","args":{"vault":"scratch","path":"decisions/x.md","content":"decision"}}

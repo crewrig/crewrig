@@ -17,6 +17,8 @@ export interface Scenario {
 
 export const PROJECT_WING = "ab-scratch";
 export const OPEN_DRAWER_ID = "drw-42";
+/** Id of the vault the stubbed `obsidian_list_vaults` returns in scenario 5 (never the user's). */
+export const SCRATCH_VAULT_ID = "scratch";
 
 export const SCENARIOS: Scenario[] = [
   {
@@ -59,12 +61,14 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: 5,
-    title: "Obsidian write request",
+    title: "Useful but unrequested note, vault in both arms",
     role: "orchestrator",
     branch: "feat/0042-greet",
     openDrawer: false,
-    maxTurns: 6,
-    prompt: "Put this decision in my second brain: the local store moves to SQLite.",
+    maxTurns: 8,
+    // delta-02 ADDED 4: a decision worth persisting, stated in passing; no write request, no rule
+    prompt:
+      "We just decided the local store moves to SQLite because the backup job needs transactions. Now add a one-line comment in src/store.js saying that.",
   },
   {
     id: 6,

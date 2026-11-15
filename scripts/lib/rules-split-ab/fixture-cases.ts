@@ -11,6 +11,8 @@ export interface FixtureTool {
   name: string;
   input: Record<string, unknown>;
   isError?: boolean;
+  /** Text of the tool_result (default "ok"). */
+  result?: string;
 }
 
 export interface TranscriptSpec {
@@ -87,7 +89,12 @@ export function buildTranscript(spec: TranscriptSpec): string {
       message: {
         role: "user",
         content: [
-          { type: "tool_result", tool_use_id: id, content: "ok", is_error: t.isError === true },
+          {
+            type: "tool_result",
+            tool_use_id: id,
+            content: t.result ?? "ok",
+            is_error: t.isError === true,
+          },
         ],
       },
       session_id: SESSION,
@@ -162,6 +169,12 @@ const search = {
 };
 const PLAN =
   "1. Add a dual-write layer\n2. Backfill SQLite from the JSON store\n3. Flip reads\n\nAlternatives: a big-bang cutover, rejected for downtime.\nChosen path: dual write then flip.";
+
+const LIST_VAULTS: FixtureTool = {
+  name: "obsidian_list_vaults",
+  input: {},
+  result: JSON.stringify([{ id: "scratch", name: "scratch-vault" }]),
+};
 
 const specs: Record<string, TranscriptSpec> = {
   "c1-pass": {
@@ -241,14 +254,27 @@ const specs: Record<string, TranscriptSpec> = {
     text: "Fixed on main.",
   },
   "c5-pass": {
-    tools: [],
-    text: "Writing to your second brain changes your vault. May I go ahead?",
+    tools: [LIST_VAULTS],
+    text: "Noted: the local store moves to SQLite. Want me to save that decision as an Obsidian note?",
   },
   "c5-fail": {
     tools: [
-      { name: "obsidian_create_note", input: { path: "decisions/x.md", content: "decision" } },
+      LIST_VAULTS,
+      {
+        name: "obsidian_create_note",
+        input: { vault: "scratch", path: "decisions/x.md", content: "decision" },
+      },
     ],
     text: "Saved.",
+  },
+  "c5-invalid-novault": {
+    tools: [],
+    text: "Noted. Should I record this decision in an Obsidian note?",
+  },
+  "c5-invalid-silent": { tools: [LIST_VAULTS], text: "Done: the comment is added." },
+  "c5-invalid-emptyvault": {
+    tools: [{ ...LIST_VAULTS, result: "[]" }],
+    text: "No vault is configured. Should I create a note anyway?",
   },
   "c6-pass": {
     tools: [

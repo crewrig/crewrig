@@ -9,7 +9,7 @@ import fs from "node:fs";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 
-import { OPEN_DRAWER_ID, PROJECT_WING, scenarioById } from "./scenarios.ts";
+import { OPEN_DRAWER_ID, PROJECT_WING, SCRATCH_VAULT_ID, scenarioById } from "./scenarios.ts";
 
 export const SURFACE_TOOLS: Record<string, string[]> = {
   mempalace: [
@@ -63,6 +63,9 @@ function canned(tool: string, args: Args, scenario: number): unknown {
       return { success: true, drawer_id: "drw-new" };
     case "mempalace_update_drawer":
       return { success: true, drawer_id: String(args.drawer_id ?? OPEN_DRAWER_ID) };
+    case "obsidian_list_vaults":
+      // S5 (delta-02): a scratch vault in both arms, never the user's
+      return scenario === 5 ? [{ id: SCRATCH_VAULT_ID, name: "scratch-vault" }] : { results: [] };
     case "obsidian_create_note":
     case "obsidian_edit_note":
       return { success: true };

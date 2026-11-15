@@ -12,6 +12,8 @@ export interface ToolEvent {
   input: Record<string, unknown>;
   /** `is_error` of the matching tool_result, null when none was seen. */
   isError: boolean | null;
+  /** Text of the matching tool_result, null when none was seen. */
+  resultText: string | null;
 }
 
 export interface ResultLine {
@@ -33,6 +35,12 @@ export interface ParsedTranscript {
 
 type Json = Record<string, unknown>;
 const isObj = (v: unknown): v is Json => typeof v === "object" && v !== null && !Array.isArray(v);
+
+function resultTextOf(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content.map((c) => (isObj(c) && typeof c.text === "string" ? c.text : "")).join("\n");
+}
 
 export function parseTranscript(jsonl: string): ParsedTranscript {
   const events: ToolEvent[] = [];
@@ -75,6 +83,7 @@ export function parseTranscript(jsonl: string): ParsedTranscript {
               server: m ? (m[1] as string) : null,
               input: isObj(block.input) ? block.input : {},
               isError: null,
+              resultText: null,
             };
             events.push(ev);
             byId.set(ev.id, ev);
@@ -85,7 +94,10 @@ export function parseTranscript(jsonl: string): ParsedTranscript {
       for (const block of o.message.content) {
         if (isObj(block) && block.type === "tool_result") {
           const ev = byId.get(String(block.tool_use_id ?? ""));
-          if (ev) ev.isError = block.is_error === true;
+          if (ev) {
+            ev.isError = block.is_error === true;
+            ev.resultText = resultTextOf(block.content);
+          }
         }
       }
     } else if (o.type === "result") {
