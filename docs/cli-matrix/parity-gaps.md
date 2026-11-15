@@ -22,7 +22,8 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   subagent, so the class-to-name mapping is unverified and is not guessed. Lifted when each class's exact Antigravity
   name is established by a probe on a named ticket. The cost of the gap is now measured (issue #1867): without a
   `tools` key an Antigravity agent gets a read-only default set, so no compiled agent can run a command or write a
-  file; and a misspelled name fails fast with an explicit error on `agy` 1.5.9 instead of hanging.
+  file; and a misspelled name fails fast with an explicit error on `agy` 1.5.9 instead of hanging. The fix is tracked
+  by issue #2049.
 - [GAP-confirmation] Copilot CLI agent `tools` names for `skill` and `message` (row 4c) — no Copilot name exists in
   <https://docs.github.com/en/copilot/reference/custom-agents-configuration> (primary aliases `execute`, `read`,
   `edit`, `search`, `agent`, `web`, `todo`) nor in <https://docs.github.com/en/copilot/concepts/agents/about-agent-skills>
