@@ -32,7 +32,7 @@ Implement <issue URL>. The issue body is the contract.
 
 ## Hygiene rules
 
-The sections _Waiting rules in a worker brief_ (three rules, including reading
+The sections _Waiting rules in a worker brief_ (four rules, including reading
 the annotations of a `cancelled` job before any rerun) and _Output hygiene and
 stage-scoped sessions in a worker brief_ of
 `docs/agent-team-protocol/orchestrator.md` apply in full. The coordinator
