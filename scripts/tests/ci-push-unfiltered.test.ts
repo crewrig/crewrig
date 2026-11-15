@@ -138,8 +138,8 @@ beta:
 
 function tempTree(tasks: string): ReturnType<typeof loadTaskfileTree> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ci-push-"));
-  fs.writeFileSync(path.join(dir, "Taskfile.yml"), `version: '3'\ntasks:\n${tasks}`);
-  return loadTaskfileTree(dir);
+  fs.writeFileSync(path.join(dir, "fixture-root.yml"), `version: '3'\ntasks:\n${tasks}`);
+  return loadTaskfileTree(dir, "fixture-root.yml");
 }
 const TASKS = `  ci:alpha:\n    cmds:\n      - echo alpha\n  ci:beta:\n    cmds:\n      - echo beta\n  ci:budget:\n    cmds:\n      - node --test {{.REPO_DIR}}/${SKILL_TEST}\n`;
 
