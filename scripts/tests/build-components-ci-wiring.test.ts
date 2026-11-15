@@ -1,4 +1,4 @@
-// build-components-ci-wiring.test.ts — the CI reference (ci/ci-capabilities.yml) wires the
+// build-components-ci-wiring.test.ts — the CI reference (ci/capabilities/) wires the
 // TypeScript component build correctly (spec 0250 R27, delta-01: the build entry is now
 // `node scripts/build-components.ts`; the `.sh` shim is deleted).
 //

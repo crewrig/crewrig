@@ -71,7 +71,7 @@ function agree(
 }
 
 describe("ci-changeset-coverage twin: TS-only (spec 0262 delta-02 (g))", () => {
-  test("an unparseable reference prints one Error line and exits 1", () => {
+  test("an unparseable reference prints the reader's FAILED block and exits 1", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "model-ci-tooling-cov-"));
     try {
       writeReferenceDir(root, "capabilities: [unclosed\n  - x: : :\n");
@@ -87,7 +87,11 @@ describe("ci-changeset-coverage twin: TS-only (spec 0262 delta-02 (g))", () => {
         },
       );
       assert.equal(r.status, 1);
-      assert.match(r.stderr, /^Error: .*ci-capabilities\.yml: [^\n]+\n$/);
+      assert.match(
+        r.stderr,
+        /^FAILED: 1 reference-validity violation\(s\) in .*ci\/capabilities\/:\n/,
+      );
+      assert.match(r.stderr, /\n {2}- ci\/capabilities\/gate\.yml: not valid reference content: /);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

@@ -1,4 +1,4 @@
-// reference.ts — reads ci/ci-capabilities.yml through the shared yq-accessor reader
+// reference.ts — reads ci/capabilities/ through the shared yq-accessor reader
 // (document order kept). Each accessor returns what the shell's `$(yq -r EXPR)` at that
 // point captured: text with trailing line feeds stripped, lists joined by LF.
 

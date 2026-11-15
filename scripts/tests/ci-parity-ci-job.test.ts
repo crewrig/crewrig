@@ -275,7 +275,7 @@ test("R18: a windows-latest job without a limit, or under the floor, is named", 
 // ---- Spec 0287 R9: the staged layout of Build & Validate, asserted on the committed files ----
 
 const GROUP_NAMES = ["gate", "modules", "governance", "extensions", "integration", "windows"];
-// The R3 counts; the membership lives in `ci/ci-capabilities.yml` (`group`), compared below.
+// The R3 counts; the membership lives in `ci/capabilities/` (`group`), compared below.
 const R3_COUNTS: Record<string, number> = {
   gate: 19,
   modules: 15,

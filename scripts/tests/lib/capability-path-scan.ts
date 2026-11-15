@@ -39,13 +39,11 @@ export function capabilityTriggerPaths(referenceText: string, id: string): strin
 export function gatePaths(id: string): string[] {
   const root = path.resolve(import.meta.dirname, "../../..");
   const dir = path.join(root, "ci", "capabilities");
-  // No yaml dependency here: the directory's files in name order, else the legacy file.
-  const ref = fs.existsSync(dir)
-    ? fs
-        .readdirSync(dir)
-        .sort()
-        .map((n) => fs.readFileSync(path.join(dir, n), "utf8"))
-        .join("\n")
-    : fs.readFileSync(path.join(root, "ci", "ci-capabilities.yml"), "utf8");
+  // No yaml dependency here: the directory's files in name order.
+  const ref = fs
+    .readdirSync(dir)
+    .sort()
+    .map((n) => fs.readFileSync(path.join(dir, n), "utf8"))
+    .join("\n");
   return capabilityTriggerPaths(ref, id)[0] ?? [];
 }

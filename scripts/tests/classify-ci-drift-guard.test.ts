@@ -312,11 +312,7 @@ test("guard: no sample is unclassified, and the samples cover every rule", () =>
   const bullets = samples.filter((x) => x.family === "bullet");
   const d = classifySamples(drift.flatMap((x) => x.lines).join("\n") + "\n");
   const b = classifySamples(
-    [
-      "FAILED: " +
-        bullets.length +
-        " reference-validity violation(s) in /repo/ci/ci-capabilities.yml:",
-    ]
+    ["FAILED: " + bullets.length + " reference-validity violation(s) in /repo/ci/capabilities/:"]
       .concat(bullets.flatMap((x) => x.lines))
       .join("\n") + "\n",
   );

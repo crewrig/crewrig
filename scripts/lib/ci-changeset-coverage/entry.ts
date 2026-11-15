@@ -49,7 +49,7 @@ export function runCoverage(entry: string, env: NodeJS.ProcessEnv): number {
   }
   const self = shellName(entry);
   const repoDir = env["REPO_DIR"] || path.resolve(path.dirname(entry), "..");
-  let reference = path.join(repoDir, "ci", "ci-capabilities.yml");
+  let reference = path.join(repoDir, "ci", "capabilities");
   let list: { id: string; command: string }[];
   try {
     const ref = readReference(repoDir);

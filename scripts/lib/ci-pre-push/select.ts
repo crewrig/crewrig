@@ -16,7 +16,7 @@ import { docOf, readCapabilities, readReference, sourceOf } from "../ci-parity/r
 import type { CapRecord } from "../ci-parity/state.ts";
 
 export const DEFAULT_TARGET = "origin/main";
-export const CAPABILITIES_FILE = "ci/ci-capabilities.yml";
+export const CAPABILITIES_FILE = "ci/capabilities";
 export const TIER_FILE = "ci/pre-push-tier.json";
 
 /** An error whose message names the cause and the fix; the entry prints it and exits 1. */
@@ -53,7 +53,7 @@ export function refResolves(repoDir: string, ref: string): boolean {
   return git(repoDir, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]) !== null;
 }
 
-/** Capability records of `<repoDir>/ci/ci-capabilities.yml`. */
+/** Capability records of `<repoDir>/ci/capabilities/`. */
 export function loadCapabilities(repoDir: string): CapRecord[] {
   let file = path.join(repoDir, CAPABILITIES_FILE);
   try {

@@ -2254,7 +2254,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > **Cross-reference — CI-engine × capability axis (spec 0047, ADR-0012).** The
 > CI-engine × CI-capability axis is a *different* axis from the CLI × feature
 > matrix above and is self-documented by its own source of truth:
-> [`ci/ci-capabilities.yml`](../ci/ci-capabilities.yml), normatively described
+> [`ci/capabilities/`](../ci/capabilities/), normatively described
 > by [`docs/ci-reference-format.md`](ci-reference-format.md). This row is a
 > **voluntary cross-reference for discoverability**, not a triggered CLI-matrix
 > obligation — `ci/` does not appear on the *CLI Matrix Maintenance* literal

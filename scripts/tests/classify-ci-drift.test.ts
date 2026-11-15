@@ -20,7 +20,7 @@ const OK_LINE =
 const QUESTION = (id: string) =>
   `Is the reference or the pipeline job the intended truth for capability '${id}'?`;
 const FOOTER = (n: number) => `\nFAILED: ${n} CI parity violation(s) detected (spec 0049).\n`;
-const VALIDITY_HEAD = "FAILED: 1 reference-validity violation(s) in /repo/ci/ci-capabilities.yml:";
+const VALIDITY_HEAD = "FAILED: 1 reference-validity violation(s) in /repo/ci/capabilities/:";
 
 interface Run {
   status: number;

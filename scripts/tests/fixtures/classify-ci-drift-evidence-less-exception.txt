@@ -1,4 +1,4 @@
-FAILED: 1 reference-validity violation(s) in /repo/ci/ci-capabilities.yml:
+FAILED: 1 reference-validity violation(s) in /repo/ci/capabilities/:
   - capability 'pages-deploy': engine-specific capability with empty exception.evidence (validity rule 3)
 
 The reference is the source of truth; refusing to check the engines against

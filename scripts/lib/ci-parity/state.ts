@@ -77,7 +77,7 @@ export function newState(repoDir: string): ParityState {
   const r = (p: string): string => `${repoDir}/${p}`;
   return {
     repoDir,
-    reference: r("ci/ci-capabilities.yml"),
+    reference: r("ci/capabilities"),
     gitlabCi: r(".gitlab-ci.yml"),
     workflowsDir: r(".github/workflows"),
     stdout: "",

@@ -1,6 +1,6 @@
   DRIFT: capability 'lint-specs' runs on the GitHub engine but has no 'group' (R11)
   DRIFT: reference↔GitLab divergence (gitlab) — composed 'build-ci.ts --check' failed (R5):
-    DRIFT: /repo/.gitlab-ci.yml differs from a fresh derivation of ci/ci-capabilities.yml
+    DRIFT: /repo/.gitlab-ci.yml differs from a fresh derivation of ci/capabilities/
     
     2493d2492
     <   stage: gate

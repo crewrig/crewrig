@@ -1,6 +1,6 @@
 // ci-reference-fixtures.ts — reference texts and the build-ci runner shared by the
 // build-ci replacement suites (spec 0265, row J2, P8). Group S roots hold two files:
-// `ci/ci-capabilities.yml` and the generated `.gitlab-ci.yml`; the entry runs from the checkout
+// the files of `ci/capabilities/` and the generated `.gitlab-ci.yml`; the entry runs from the checkout
 // with REPO_DIR pinned, so no tracked file is copied.
 
 import fs from "node:fs";
@@ -51,13 +51,12 @@ export const MANUAL_REFERENCE =
   `      - on: manual\n        branches: [main]\n    portability: portable\n    command:\n` +
   `      - echo "manual branch"\n`;
 
-const GROUP_FILES = ["gate", "modules", "governance", "extensions", "integration", "windows"];
-
 /**
  * Splits a reference text into the files of `ci/capabilities/` (spec 0309 R2): one `<group>.yml`
  * per group and `standalone.yml` for the ungrouped capabilities, each entry kept verbatim and in
  * text order. Returns null when the text is not a plain block list under one `capabilities:`
- * line, or names a group outside the six: such a text stays a legacy file.
+ * line. An entry naming a group outside the six goes to `<group>.yml`, a file name the reader
+ * refuses by name, so a typo in a fixture fails loudly instead of being read some other way.
  */
 export function splitReference(text: string): Map<string, string> | null {
   const lines = text.split("\n");
@@ -80,7 +79,6 @@ export function splitReference(text: string): Map<string, string> | null {
       )
       .find((x) => x !== undefined);
     const key = g ?? "standalone";
-    if (g !== undefined && !GROUP_FILES.includes(g)) return null;
     out.set(key, [...(out.get(key) ?? []), ...block]);
   }
   return new Map([...out].map(([k, v]) => [`${k}.yml`, `capabilities:\n${v.join("\n")}\n`]));
@@ -88,57 +86,54 @@ export function splitReference(text: string): Map<string, string> | null {
 
 /**
  * Writes `text` as the reference of `root`: the files of `ci/capabilities/` (any prior reference
- * is removed first). A text `splitReference` declines (a malformed reference, a group outside the
- * six) is written as the single legacy file, which the reader still accepts in this change.
+ * is removed first). A text `splitReference` declines is written verbatim as the one file
+ * `ci/capabilities/gate.yml`, for the reader to refuse.
  */
 export function writeReferenceDir(root: string, text: string): void {
   fs.rmSync(path.join(root, REFERENCE_DIR), { recursive: true, force: true });
   fs.rmSync(path.join(root, LEGACY_REFERENCE), { force: true });
   fs.mkdirSync(path.join(root, "ci"), { recursive: true });
   const files = splitReference(text);
+  fs.mkdirSync(path.join(root, REFERENCE_DIR), { recursive: true });
   if (files === null) {
-    fs.writeFileSync(path.join(root, LEGACY_REFERENCE), text);
+    fs.writeFileSync(path.join(root, REFERENCE_DIR, "gate.yml"), text);
     return;
   }
-  fs.mkdirSync(path.join(root, REFERENCE_DIR), { recursive: true });
   for (const [name, content] of files)
     fs.writeFileSync(path.join(root, REFERENCE_DIR, name), content);
 }
 
-/** The reference text of `root` through the shared reader (directory, else legacy file). */
+/** The reference text of `root` through the shared reader (its directory). */
 export const readReferenceText = (root: string): string => readReference(root).text;
 
-/** Copies the reference of `from` (directory or legacy file) into `to`, replacing any there. */
+/** Copies the reference directory of `from` into `to`, replacing any there. */
 export function copyReference(from: string, to: string): void {
   fs.rmSync(path.join(to, REFERENCE_DIR), { recursive: true, force: true });
   fs.rmSync(path.join(to, LEGACY_REFERENCE), { force: true });
   fs.mkdirSync(path.join(to, "ci"), { recursive: true });
-  const dir = path.join(from, REFERENCE_DIR);
-  if (fs.existsSync(dir)) fs.cpSync(dir, path.join(to, REFERENCE_DIR), { recursive: true });
-  else fs.copyFileSync(path.join(from, LEGACY_REFERENCE), path.join(to, LEGACY_REFERENCE));
+  fs.cpSync(path.join(from, REFERENCE_DIR), path.join(to, REFERENCE_DIR), { recursive: true });
 }
 
 const dumpDoc = (doc: unknown): string => yamlLib.dump(doc, { lineWidth: -1, noRefs: true });
 
 /**
  * Loads the reference of `root`, lets `edit` mutate it, and writes it back (comments are dropped).
- * A legacy file is rewritten in place; a directory keeps every capability in the file that held
- * it (a capability the edit adds goes to its group file, else `standalone.yml`), so the reader
- * order of the untouched capabilities does not move.
+ * A capability stays in the file that held it while its `group` still names that file's group;
+ * one the edit adds or regroups goes to `<group>.yml` (`standalone.yml` without a group), so the
+ * reader order of the untouched capabilities does not move.
  */
 export function editReference(root: string, edit: (doc: Record<string, unknown>) => void): void {
   const ref = readReference(root);
   const doc = yamlLib.load(ref.text) as Record<string, unknown>;
   edit(doc);
-  if (ref.files.length === 1 && ref.files[0] === LEGACY_REFERENCE) {
-    fs.writeFileSync(path.join(root, LEGACY_REFERENCE), dumpDoc(doc));
-    return;
-  }
   const byFile = new Map<string, unknown[]>(ref.files.map((f) => [f, []]));
   for (const cap of doc["capabilities"] as Record<string, unknown>[]) {
     const id = String(cap["id"] ?? "");
     const group = cap["group"] === undefined ? "standalone" : String(cap["group"]);
-    const file = ref.fileOf.get(id) ?? `${REFERENCE_DIR}/${group}.yml`;
+    const held = ref.fileOf.get(id);
+    const heldGroup =
+      held === undefined ? undefined : path.basename(held).replace(/(-.*)?\.yml$/, "");
+    const file = held !== undefined && heldGroup === group ? held : `${REFERENCE_DIR}/${group}.yml`;
     byFile.set(file, [...(byFile.get(file) ?? []), cap]);
   }
   for (const [file, caps] of byFile) {

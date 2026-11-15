@@ -1,5 +1,5 @@
 // Tests for the checker self-test split (spec 0281 R2, R3, R4, R5; plan v3 step 7): each
-// `<id>-selftest` capability pairs with its check `<id>` in ci/ci-capabilities.yml,
+// `<id>-selftest` capability pairs with its check `<id>` in ci/capabilities/,
 // taskfiles/ci.yml + taskfiles/ci/*.yml, .github/workflows/build.yml and ci/pre-push-tier.json. Read-only over the
 // real tree except the parity fixture, which lives in a mkdtemp sandbox.
 

@@ -1,5 +1,5 @@
   DRIFT: reference↔GitLab divergence (gitlab) — composed 'build-ci.ts --check' failed (R5):
-    DRIFT: /repo/.gitlab-ci.yml differs from a fresh derivation of ci/ci-capabilities.yml
+    DRIFT: /repo/.gitlab-ci.yml differs from a fresh derivation of ci/capabilities/
     
     3198,3199d3197
     < 

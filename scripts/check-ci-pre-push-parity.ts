@@ -47,7 +47,7 @@ const CI_DIR = "taskfiles/ci/";
 
 /** True for a file of the `ci` sub-tree: the control file and every file under `taskfiles/ci/` (spec 0278 R26). */
 const inCiSubTree = (file: string): boolean => file === CI_FILE || file.startsWith(CI_DIR);
-let capabilitiesSource = "ci/ci-capabilities.yml";
+let capabilitiesSource = "ci/capabilities/";
 const TIER_FILE = "ci/pre-push-tier.json";
 
 const findings: string[] = [];

@@ -15,7 +15,7 @@
 # capability with no `paths:` filter exercises on every change (name that
 # capability in the reason). Never use it to silence a file that a
 # `paths:`-filtered capability exercises: add the glob to that capability's
-# `paths:` in ci/ci-capabilities.yml instead.
+# `paths:` in ci/capabilities/ instead.
 #
 # Organization overlay (R24): an adopting organization lists its own files in
 # ci/org/path-ownership-exemptions.txt (same format, same rules, read in

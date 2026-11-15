@@ -24,7 +24,7 @@ import {
   readCapabilities,
   readReference,
 } from "../lib/ci-parity/reference-read.ts";
-import { editReference } from "./lib/ci-reference-fixtures.ts";
+import { editReference, writeReferenceDir } from "./lib/ci-reference-fixtures.ts";
 
 const buildYml = (fx: string) => path.join(fx, ".github", "workflows", "build.yml");
 
@@ -99,7 +99,8 @@ test("S10b: duplicate id (validity rule 4)", () => {
   const fx = refEdit((doc) => {
     capOf(doc, "lint-specs")["id"] = "build";
   });
-  fails(fx, "S10b", ["duplicate", "validity rule 4"]);
+  // Two files holding one id is the reader's R3 failure; rule 4 itself needs the id twice in one file.
+  fails(fx, "S10b", ["capability 'build'", "is also defined in"]);
 });
 
 test("S10c: portable capability without command (validity rule 5)", () => {
@@ -211,7 +212,8 @@ test("S16 (spec 0287 R11): a group outside the six names fails", () => {
   const fx = refEdit((doc) => {
     capOf(doc, "lint-specs")["group"] = "bogus";
   });
-  fails(fx, "S16", ["capability 'lint-specs'", "group 'bogus'", "R11"]);
+  // The reader refuses the file name `bogus.yml` before the R11 check of the parity guard can run.
+  fails(fx, "S16", ["ci/capabilities/bogus.yml", "name is not <group>"]);
 });
 
 test("S17 (spec 0287 R11): a callee file that does not match the group fails", () => {
@@ -348,34 +350,52 @@ test("R3: a directory holding only ungrouped files is valid while no capability 
   );
 });
 
-test("R3: with no directory the legacy file is read, and its absence keeps the not-found error", () => {
+test("R3: with no directory the reference is not found, a legacy file does not stand in", () => {
   const legacy = sandbox({}, refFile(cap("a", "gate"), cap("b")));
-  const ref = readReference(legacy);
-  assert.deepEqual(ref.files, ["ci/ci-capabilities.yml"]);
-  assert.equal(ref.text, refFile(cap("a", "gate"), cap("b")));
-  assert.equal(runCheck(legacy).status, 0);
+  assert.throws(() => readReference(legacy), ReferenceNotFoundError);
+  assert.equal(runCheck(legacy).status, 2);
   const none = sandbox({});
   assert.throws(() => readReference(none), ReferenceNotFoundError);
   const r = runCheck(none);
   assert.equal(r.status, 2);
-  assert.ok(r.stderr.includes(`Error: CI reference not found: ${none}/ci/ci-capabilities.yml`));
+  assert.ok(r.stderr.includes(`Error: CI reference not found: ${none}/ci/capabilities`));
+});
+
+test("a fixture naming a group outside the six fails loudly, by file name", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ref-typo-"));
+  process.on("exit", () => fs.rmSync(root, { recursive: true, force: true }));
+  writeReferenceDir(root, refFile(cap("a", "gtae")));
+  const v = readerFailure(root);
+  assert.equal(v[0]?.file, "ci/capabilities/gtae.yml");
+  assert.match(v[0]?.message ?? "", /name is not <group>/);
 });
 
 test("R13(0): files in byte order of name, entries in file order within each file", () => {
+  // `gate-a.yml` before `gate.yml`: `-` (0x2d) sorts before `.` (0x2e) in byte order.
   const root = sandbox({
     "windows.yml": refFile(cap("w2", "windows"), cap("w1", "windows")),
     "gate-b.yml": refFile(cap("g3", "gate")),
+    "gate.yml": refFile(cap("g4", "gate")),
     "gate-a.yml": refFile(cap("g2", "gate"), cap("g1", "gate")),
     "standalone.yml": refFile(cap("s")),
   });
-  const ref = readReference(root);
-  assert.deepEqual(
-    ref.files.map((f) => path.basename(f)),
-    ["gate-a.yml", "gate-b.yml", "standalone.yml", "windows.yml"],
-  );
-  assert.deepEqual([...ref.fileOf.keys()], ["g2", "g1", "g3", "s", "w2", "w1"]);
-  assert.deepEqual(
-    readCapabilities(docOf(ref)).map((c) => c.id),
-    ["g2", "g1", "g3", "s", "w2", "w1"],
-  );
+  const want = ["gate-a.yml", "gate-b.yml", "gate.yml", "standalone.yml", "windows.yml"];
+  const ids = ["g2", "g1", "g3", "g4", "s", "w2", "w1"];
+  // The listing is injected, so the result does not depend on the order the file system returns.
+  for (const listing of [
+    want,
+    [...want].reverse(),
+    ["gate.yml", "windows.yml", "gate-a.yml", "standalone.yml", "gate-b.yml"],
+  ]) {
+    const ref = readReference(root, () => listing);
+    assert.deepEqual(
+      ref.files.map((f) => path.basename(f)),
+      want,
+    );
+    assert.deepEqual([...ref.fileOf.keys()], ids);
+    assert.deepEqual(
+      readCapabilities(docOf(ref)).map((c) => c.id),
+      ids,
+    );
+  }
 });
