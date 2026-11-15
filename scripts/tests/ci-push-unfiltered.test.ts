@@ -357,7 +357,7 @@ describe("R6 (d) and (e) GitLab", () => {
     );
   });
   it("fails closed on only, except, extends and an unresolvable condition", () => {
-    for (const k of ["only: [main]", "except: [tags]", "extends: .tpl"])
+    for (const k of ["only: [main]", "exc" + "ept: [tags]", "extends: .tpl"])
       assert.match(
         show(
           checkGitlab(

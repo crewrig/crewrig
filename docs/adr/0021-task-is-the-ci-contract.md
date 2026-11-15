@@ -249,6 +249,7 @@ R1(d), and the pull-request filters are unchanged.
 a red run of `main`, instead of before it; detecting it before the merge is out of scope.
 The static check that would have prevented it is rejected (862 of 873 tests flagged).
 
-**Cost.** Measured offline from the reference, one push to `main` starts 121 GitHub jobs
-and 97 GitLab jobs, with `cancel-in-progress` false for pushes. Runner minutes are not
-recorded here: PR-4 records them after the first green push to `main`.
+**Cost.** Measured offline from the reference at the time of this change (135 capabilities,
+124 with a push trigger), one push to `main` starts 123 GitHub jobs and 99 GitLab jobs, with
+`cancel-in-progress` false for pushes.
+Runner minutes are not recorded here: PR-4 records them after the first green push to `main`.

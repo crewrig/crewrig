@@ -359,7 +359,9 @@ A capability entry MAY declare a capability-level `paths:` list, next to
   filter and needs a `side-effect` entry in the exemption file. The parity reader, the
   runtime gate and the generator read this one meaning; the generated GitLab push rule has
   no `changes:`. Standalone workflows under `.github/workflows/` carry no `paths:` or
-  `paths-ignore:` on `on.push` either, unless the file is exempted.
+  `paths-ignore:` on `on.push` either, unless the file is exempted. At the time of this
+  change, 124 of the 135 capabilities have a `push` trigger: one push to `main` starts 123
+  GitHub jobs (`pages-deploy` keeps its own push filter and is not counted) and 99 GitLab jobs.
 - **Exemption file `ci/push-main-exemptions.txt`.** One `kind<TAB>id<TAB>reason` line per
   entry, reasons non-empty, printed in full by the wiring test. `no-push` names a
   capability with no `push` trigger on those branches (pull-request-only, scheduled, tag- or
