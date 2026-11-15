@@ -1,15 +1,16 @@
 ---
 name: ci-configurator
-description: "CI pipeline configuration agent. Delegate to it to set up CI, create a new CI pipeline, write a GitHub Actions workflow or a GitLab pipeline for a project, migrate a project from another CI platform, or replace tag-pinned actions or long-lived cloud keys with pinned actions and OIDC. It resolves the target engine, produces one commit-ready pipeline and validates it with the skill scripts. Not for a failing run (ci-debugger) or drift against the CI capability reference (ci-parity)."
+description: "CI pipeline configuration agent. Delegate to it to set up CI, create a new CI pipeline, write a GitHub Actions workflow or a GitLab pipeline for a project, migrate a project from another CI platform, or replace tag-pinned actions or long-lived cloud keys with pinned actions and OIDC. It resolves the target engine, produces one commit-ready pipeline and validates it with the skill scripts. Not for a failing run (ci-debugger) or drift against the CI capability reference (ci-parity). Give its work medium reasoning effort."
 license: Apache-2.0
 model: sonnet
+effort: medium
 tools: Read, Grep, Glob, Edit, Write, Bash, Skill
 omitClaudeMd: true
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.5.1"
+    version: "1.6.0"
 ---
 
 

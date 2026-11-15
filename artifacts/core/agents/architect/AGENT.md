@@ -5,11 +5,12 @@ type: agent
 metadata:
   model:
     intelligence: xhigh
+    reasoning: medium
   tools: [read, search, edit, execute, skill]
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "2.1.0"
+    version: "2.2.0"
 ---
 
 # Architect Agent

@@ -4,7 +4,7 @@ description: "Diagnoses a failing GitHub Actions run and returns a symptom, hypo
 model: gemini-3.1-pro-preview
 tools: [read_file, read_many_files, list_directory, grep_search, glob, run_shell_command, activate_skill]
 ---
-<!-- crewrig-provenance: version="1.4.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: version="1.5.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # CI Debugger Agent
 

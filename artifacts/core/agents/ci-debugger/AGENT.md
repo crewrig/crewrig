@@ -6,11 +6,12 @@ license: Apache-2.0
 metadata:
   model:
     intelligence: high
+    reasoning: medium
   tools: [read, search, execute, skill]
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.4.0"
+    version: "1.5.0"
 ---
 
 # CI Debugger Agent

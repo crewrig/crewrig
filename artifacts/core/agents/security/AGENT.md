@@ -4,11 +4,12 @@ description: 'Delegate to it for an independent security review: a threat model,
 type: agent
 metadata:
   model:
-    intelligence: high
+    intelligence: xhigh
+    reasoning: medium
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.4.0"
+    version: "1.5.0"
 ---
 
 # Security Agent
