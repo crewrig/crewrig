@@ -193,14 +193,14 @@ requirement 22 obliges, and differ in no other byte.
 
 ## The diagnostic stream
 
-Re-measured at spec 0291 (the guard lift and `metadata.tools`) with all four targets built (run `node scripts/lib/node-floor-guard.js` first, as a separate step; the build needs Node.js 24 or newer, and `js-yaml` comes from the setup dependency step):
+Re-measured at spec 0291 delta 03 (2026-11-15; the guard lift and `metadata.tools` before it) with all four targets built (run `node scripts/lib/node-floor-guard.js` first, as a separate step; the build needs Node.js 24 or newer, and `js-yaml` comes from the setup dependency step):
 
 | Invocation | Lines | Shapes |
 |---|---|---|
-| `node scripts/build-components.ts --target all` | **23** | 22 `model-drop … copilot metadata.model.intelligence <rung> unsupported-on-cli` (one per migrated agent, requirement 21) + 1 `tools-drop … antigravity metadata.tools <classes> unsupported-on-cli` (one per agent that declares `metadata.tools`: `seo-specialist`, spec 0291 R14). No `guard-withheld` line: the guard is `directed` (spec 0291 R1, R5). The plain run builds the library tier as well; `harness-curator` declares no rung and adds none |
-| `node scripts/build-components.ts --target all --check` | **23** | the same stream: `--check` does not run the assembly suite (spec 0250 R33, (c)) |
-| the 22-core-source root of `agent-profile-build.test.ts` | **23** | the same 22 + 1, counted from the sources (22 `model-drop`, plus one `tools-drop` per declaring source, plus 22 `guard-withheld` only while the committed guard is `withheld`) |
-| the assembly suite's synthetic root, added | **+4** | `model-note developer <target> no-mapping …` — one per target, for the single agent of `scripts/tests/build-assembly-routing.test.ts`'s root, which holds no `model-mappings/`: **27** lines when counted together with the stream above (spec 0291 R7) |
+| `node scripts/build-components.ts --target all` | **65** | 33 `model-drop … copilot` + 11 `model-drop … gemini` + 10 `tools-drop … copilot` + 1 `tools-drop … gemini` + 10 `tools-drop … antigravity metadata.tools skill no-equivalent-on-cli` (one per agent that declares `skill`, spec 0291 delta 03 R42; it was 12 `unsupported-on-cli`, one per declaring agent, before). Measured on 2026-11-15 from a real build (67 lines before delta 03). No `guard-withheld` line: the guard is `directed` (spec 0291 R1, R5). The plain run builds the library tier as well |
+| `node scripts/build-components.ts --target all --check` | **65** | the same 44 `model-drop` and 21 `tools-drop` lines (10 of them Antigravity); `--check` also prints its own progress lines, and does not run the assembly suite (spec 0250 R33, (c)) |
+| the 22-core-source root of `agent-profile-build.test.ts` | derived | 22 `model-drop`, plus one `tools-drop` per source for each target that has no name for a declared class, plus 22 `guard-withheld` only while the committed guard is `withheld`; the Antigravity `tools-drop` count is 10, pinned by the test |
+| the assembly suite's synthetic root, added | **+4** | `model-note developer <target> no-mapping …` — one per target, for the single agent of `scripts/tests/build-assembly-routing.test.ts`'s root, which holds no `model-mappings/`: **69** lines when counted together with the stream above (spec 0291 R7) |
 
 Before spec 0291 the first two rows read **44** and **48**: 22 `model-note … claude guard-withheld …` lines were part of the stream, because the guard was `withheld` and every Claude Code agent kept the sentence in its description. An organization that re-withholds the guard (`docs/org-model-mapping-override.md`) gets those 22 `guard-withheld` notes back, one per Claude Code agent (spec 0197 R32).
 
@@ -249,7 +249,7 @@ reports rather than aborts on any member a fork had locally diverged.
 
 **Follow-up (spec 0053 delta-01, issue #1847).** The compiled Antigravity
 agent is now the flat `.agents/agents/<name>.md`, like the other three CLIs,
-carrying only `name`, `description` and the `metadata` provenance block
+carrying `name`, `description`, `tools` (spec 0291 delta 03; first omitted) and the `metadata` provenance block
 (the `enable_*`, `license` and `compatibility` keys are no longer emitted).
 An adopter who installed the retired `~/.gemini/config/agents/<name>/AGENT.md`
 has that directory removed at their next Antigravity setup (`Migrated away:

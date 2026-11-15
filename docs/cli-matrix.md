@@ -117,8 +117,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Copilot CLI:** ✅ `.github/agents/<name>.md` (flat file) **[GAP-confirmation]** — repo-level layout not in the
   public reference
 - **Antigravity CLI:** ✅ `.agents/agents/<name>.md` (flat file; spec 0053 delta-01, issue #1847). Frontmatter is
-  `name`, `description` and the `metadata` provenance block only; no `enable_*`, `license`, `compatibility` or `tools`
-  key is emitted. The compiled agent was the directory `.agents/agents/<name>/AGENT.md` (spec 0053) before delta-01; the
+  `name`, `description`, `tools` and the `metadata` provenance block, in that order (spec 0291 delta 03 R38); no
+  `enable_*`, `license` or `compatibility` key is emitted. The compiled agent was the directory `.agents/agents/<name>/AGENT.md` (spec 0053) before delta-01; the
   build removes that retired directory when it holds only a provenance-carrying `AGENT.md`, and `--check` reports it as
   drift. The flat file replaces the documented lowercase `<name>/agent.md` form because a case-only rename aliases on
   case-insensitive volumes. History: spec 0119 corrected this cell away from `.antigravity/agents/<name>.md`, and the
@@ -168,7 +168,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 
 - **Feature:** Agent tool mapping / capabilities — maps the tool classes an agent source declares under
   `metadata.tools` (`read`, `search`, `edit`, `execute`, `web`, `agent`, `skill`, `message`; spec 0291 and its delta 01) to each CLI's own tool allowlist in
-  the output agent definition. Opt-in: a source that declares nothing gets no `tools` key on any CLI. An allowlist
+  the output agent definition. Opt-in on Claude Code, Copilot CLI and Gemini CLI: a source that declares nothing gets no `tools` key there. On Antigravity CLI every agent gets a `tools` line, the vendor's all-tools line when it declares nothing (spec 0291 delta 03 R40). An allowlist
   withholds every tool it does not name (MCP tools, `SendMessage`, `Skill`, `ToolSearch` and `TodoWrite` on Claude Code), so
   an allowlist may be declared for any agent, and one that contains `edit` or `execute` must name `skill`, enforced by
   `scripts/check-component-metadata-keys.ts` on `artifacts/core/` and `artifacts/library/`; `message` is left to review
@@ -207,23 +207,29 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   model only. A first attempt with the real home failed: the user-level
   `preToolUse` hook of `~/.copilot/hooks/` errored in the Copilot session sandbox (`EPERM` on its script) and Copilot
   denied the `task` call (`Denied by preToolUse hook ... (hook errored)`), observed once, on this hook and this sandbox: a failing `preToolUse` hook can block delegation
-- **Antigravity CLI:** ❌ Not emitted: no `tools` key is written (spec 0053 delta-01 R12, R13). Antigravity documents
-  `view_file`, `replace_file_content`, `grep_search` and `run_command` and warns that a misspelled name may hang the
-  subagent, so the class-to-name mapping is unverified and is not guessed; the build emits one `tools-drop …
-  unsupported-on-cli` record for each declaring agent instead. `[GAP-confirmation]` (`docs/cli-matrix/parity-gaps.md`),
-  lifted when each class's exact Antigravity name is established by a probe on a named ticket (spec 0291 R14). **Not
-  lifted by the fixed-context probe** (`agy` 1.5.9, issue #1995, row 7b): an agent declaring `tools: [read_file,
-  edit_file, write_file, run_command, manage_task, search_web]` loaded all six names in its prompt, while the same agent
-  without `tools` got a smaller default set (9 tool definitions, no `run_command` or `edit_file`, against 16 in a normal
-  session); that shows the names are accepted in a `--agent` session, not the class-to-name mapping, and no class was
-  probed one by one. **Defaults probed** (`agy` 1.5.9, signed in, issue #1867): an agent without `tools` gets 9 tools
-  (`send_message`, `read_file`, `search_web`, `schedule`, `generate_image`, `call_mcp_tool`, `list_resources`,
-  `read_resource`, `manage_task`), as main agent and as subagent, and the committed `developer` agent gets the same set,
-  so every compiled Antigravity agent is read-only; an explicit `tools: []` keeps only `call_mcp_tool`,
-  `list_resources`, `read_resource` and `manage_task` (plus `send_message` as subagent), so it does not mean the
-  documented default; `tools: [view_file]` loads `read_file`, so the documented name resolves; a misspelled name
-  (`view_fiel`) does not hang: the agent fails to start in seconds with `unknown component: tool "view_fiel" not found
-  in registry`, as main agent and as subagent. The class-to-name mapping itself is still not probed class by class
+- **Antigravity CLI:** ✅ Emitted (spec 0291 delta 03 R37 to R41, issue #2049), pinned to `agy` 1.5.9, probed signed in
+  on 2026-11-15; the `[GAP-confirmation]` of spec 0291 R14 is lifted, with a residual risk (below). The compiled agent
+  always carries a `tools` line, after `description` and before `metadata`. Mapping, from the vendor migration guide
+  embedded in `agy` and from the probe: `read` and `search` → `read_file`; `edit` → `edit_file`, `write_file`; `execute` →
+  `run_command`, `manage_task`; `web` → `search_web`; `agent` → `invoke_subagent`; `message` → `send_message`; `skill` →
+  none. Each name is written once, in the vocabulary's order. A subagent given the vendor's all-tools list created a file
+  with `write_file`, changed it with `edit_file` and ran a command with `run_command`, all checked on disk.
+  **Silent-acceptance trap:** `grep_search`, `find_by_name`, `list_dir` and `read_url_content` pass the registry check and
+  reach the model as nothing (as main agent and as subagent), so a name the registry accepts is not proof that it works;
+  none is emitted. **Narrowing:** `search` has no dedicated name and maps to `read_file`, and the fetch half of `web`
+  maps to `search_web` only. **Dropped class:** `skill` has no Antigravity name and is omitted with one `tools-drop …
+  no-equivalent-on-cli` record per declaring agent (ten of the twelve declaring agents), and a declaration of `skill`
+  alone stops the build. **Default line:** an agent with no `metadata.tools` gets `tools: [read_file, edit_file,
+  write_file, run_command, manage_task, search_web]`, the vendor's rendering of "all tools", because an omitted key gives
+  a read-only 9-tool default (`send_message`, `read_file`, `search_web`, `schedule`, `generate_image`, `call_mcp_tool`,
+  `list_resources`, `read_resource`, `manage_task`; issue #1867). The line broadens such an agent (`run_command`,
+  `edit_file`, `write_file`, so a review-only agent such as `security` can now run commands and write files on
+  Antigravity) and narrows it (`schedule`, `generate_image` and, as main agent, `send_message` are no longer received);
+  an agent that must not write declares `metadata.tools`. An explicit `tools: []` keeps only `call_mcp_tool`,
+  `list_resources`, `read_resource` and `manage_task`. **Residual risk:** the names are pinned to `agy` 1.5.9. A renamed
+  tool fails loudly at agent start (`unknown component: tool "<name>" not found in registry`), a name that becomes a
+  silent no-op does not; re-probe the table on each Antigravity CLI bump (no automatic check). `mainAgent`, `subagent`
+  and `inheritCustomizations` stay unemitted (delta 03 R44).
 
 ### 4d — Skill bundled scripts
 
@@ -2450,14 +2456,12 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   `model-mappings/claude.org.yml` (`docs/org-model-mapping-override.md`), and the rollback is `guard.state: withheld`
   with `copilot-reader-fails-on-unserved-model` back to `holds: true`. Lifted by a probe on a bring-your-own-key
   provider.
-- [GAP-confirmation] Antigravity CLI agent `tools` allowlist (row 4c) — the build emits no `tools` key for Antigravity
-  and records one `tools-drop … unsupported-on-cli` per declaring agent (spec 0291 R14). Antigravity documents
-  `view_file`, `replace_file_content`, `grep_search` and `run_command` and warns that a misspelled name may hang the
-  subagent, so the class-to-name mapping is unverified and is not guessed. Lifted when each class's exact Antigravity
-  name is established by a probe on a named ticket. The cost of the gap is now measured (issue #1867): without a
-  `tools` key an Antigravity agent gets a read-only default set, so no compiled agent can run a command or write a
-  file; and a misspelled name fails fast with an explicit error on `agy` 1.5.9 instead of hanging. The fix is tracked
-  by issue #2049.
+- [GAP-confirmation] Antigravity CLI agent `tools` allowlist (row 4c) — lifted by spec 0291 delta 03 (issue #2049): the
+  build now writes a `tools` line for every Antigravity agent, mapped from `metadata.tools` or, when absent, the vendor's
+  all-tools line. Residual risk: the names are pinned to `agy` 1.5.9 (probed 2026-11-15). A renamed tool fails loudly at
+  agent start, but a name that becomes a silent no-op does not (`grep_search`, `find_by_name`, `list_dir` and
+  `read_url_content` already are), so the table must be re-probed on each Antigravity CLI bump; no automatic check exists.
+  `skill` has no Antigravity name and is dropped with a `tools-drop … no-equivalent-on-cli` record.
 - [GAP-confirmation] Copilot CLI agent `tools` names for `skill` and `message` (row 4c) — no Copilot name exists in
   <https://docs.github.com/en/copilot/reference/custom-agents-configuration> (primary aliases `execute`, `read`,
   `edit`, `search`, `agent`, `web`, `todo`) nor in <https://docs.github.com/en/copilot/concepts/agents/about-agent-skills>
@@ -2882,9 +2886,9 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   or branch, which the Pre-Edit Guard forbids for edits.
 
 - **[GAP, intentional] Antigravity compiled agent shape (rows 4, 28, 30, 38, spec 0053 delta-01, issue #1847).** All four
-  CLIs now compile an agent as a flat `<name>.md`. The remaining Antigravity asymmetries are intentional: no tool
-  restriction is emitted (the documented tool names are `view_file`, `replace_file_content`, `grep_search`,
-  `run_command`, and translating a Claude Code name such as `Bash` would invent vendor semantics), no `model` field,
+  CLIs now compile an agent as a flat `<name>.md`. The remaining Antigravity asymmetries are intentional: the
+  `tools` line comes from `metadata.tools` or the vendor's all-tools default (spec 0291 delta 03; it was first not emitted
+  here, and no `claude.allowed-tools` name such as `Bash` is ever translated), no `model` field,
   and the extension-plugin packaging still copies agent directories whole. The change is documentation-driven.
   Evidence: a live discovery probe of `agy` 1.5.5 on a case-sensitive file system discovered `AGENT.md`, `agent.md`,
   `Agent.md` and the flat form, and an agent carrying unknown `enable_*` keys; runtime semantics were **not** verified
@@ -2896,9 +2900,9 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   signed in, issue #1867, row 4c): an omitted `subagent` or `mainAgent` leaves the agent usable as a subagent and
   through `agy --agent`, and `false` removes it from that route. An omitted `tools` is **not** the documented `[]`: it
   gives a 9-tool read-only default set with no `run_command` and no file edit or write tool, while an explicit
-  `tools: []` keeps only four always-present tools (MCP access and `manage_task`). Every compiled Antigravity agent is
-  therefore read-only, the committed `developer` agent included; this is wider than the R27 risk, which named
-  `pr-reviewer` only. Lifted with the `tools` gap of row 4c.
+  `tools: []` keeps only four always-present tools (MCP access and `manage_task`). Before spec 0291 delta 03 every
+  compiled Antigravity agent was therefore read-only, the committed `developer` agent included; that is closed: the
+  compiled agent now carries a `tools` line (row 4c).
 
 ## Adding a new CLI
 

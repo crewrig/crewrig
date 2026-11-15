@@ -16,14 +16,12 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   `model-mappings/claude.org.yml` (`docs/org-model-mapping-override.md`), and the rollback is `guard.state: withheld`
   with `copilot-reader-fails-on-unserved-model` back to `holds: true`. Lifted by a probe on a bring-your-own-key
   provider.
-- [GAP-confirmation] Antigravity CLI agent `tools` allowlist (row 4c) — the build emits no `tools` key for Antigravity
-  and records one `tools-drop … unsupported-on-cli` per declaring agent (spec 0291 R14). Antigravity documents
-  `view_file`, `replace_file_content`, `grep_search` and `run_command` and warns that a misspelled name may hang the
-  subagent, so the class-to-name mapping is unverified and is not guessed. Lifted when each class's exact Antigravity
-  name is established by a probe on a named ticket. The cost of the gap is now measured (issue #1867): without a
-  `tools` key an Antigravity agent gets a read-only default set, so no compiled agent can run a command or write a
-  file; and a misspelled name fails fast with an explicit error on `agy` 1.5.9 instead of hanging. The fix is tracked
-  by issue #2049.
+- [GAP-confirmation] Antigravity CLI agent `tools` allowlist (row 4c) — lifted by spec 0291 delta 03 (issue #2049): the
+  build now writes a `tools` line for every Antigravity agent, mapped from `metadata.tools` or, when absent, the vendor's
+  all-tools line. Residual risk: the names are pinned to `agy` 1.5.9 (probed 2026-11-15). A renamed tool fails loudly at
+  agent start, but a name that becomes a silent no-op does not (`grep_search`, `find_by_name`, `list_dir` and
+  `read_url_content` already are), so the table must be re-probed on each Antigravity CLI bump; no automatic check exists.
+  `skill` has no Antigravity name and is dropped with a `tools-drop … no-equivalent-on-cli` record.
 - [GAP-confirmation] Copilot CLI agent `tools` names for `skill` and `message` (row 4c) — no Copilot name exists in
   <https://docs.github.com/en/copilot/reference/custom-agents-configuration> (primary aliases `execute`, `read`,
   `edit`, `search`, `agent`, `web`, `todo`) nor in <https://docs.github.com/en/copilot/concepts/agents/about-agent-skills>
@@ -448,9 +446,9 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   or branch, which the Pre-Edit Guard forbids for edits.
 
 - **[GAP, intentional] Antigravity compiled agent shape (rows 4, 28, 30, 38, spec 0053 delta-01, issue #1847).** All four
-  CLIs now compile an agent as a flat `<name>.md`. The remaining Antigravity asymmetries are intentional: no tool
-  restriction is emitted (the documented tool names are `view_file`, `replace_file_content`, `grep_search`,
-  `run_command`, and translating a Claude Code name such as `Bash` would invent vendor semantics), no `model` field,
+  CLIs now compile an agent as a flat `<name>.md`. The remaining Antigravity asymmetries are intentional: the
+  `tools` line comes from `metadata.tools` or the vendor's all-tools default (spec 0291 delta 03; it was first not emitted
+  here, and no `claude.allowed-tools` name such as `Bash` is ever translated), no `model` field,
   and the extension-plugin packaging still copies agent directories whole. The change is documentation-driven.
   Evidence: a live discovery probe of `agy` 1.5.5 on a case-sensitive file system discovered `AGENT.md`, `agent.md`,
   `Agent.md` and the flat form, and an agent carrying unknown `enable_*` keys; runtime semantics were **not** verified
@@ -462,6 +460,6 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   signed in, issue #1867, row 4c): an omitted `subagent` or `mainAgent` leaves the agent usable as a subagent and
   through `agy --agent`, and `false` removes it from that route. An omitted `tools` is **not** the documented `[]`: it
   gives a 9-tool read-only default set with no `run_command` and no file edit or write tool, while an explicit
-  `tools: []` keeps only four always-present tools (MCP access and `manage_task`). Every compiled Antigravity agent is
-  therefore read-only, the committed `developer` agent included; this is wider than the R27 risk, which named
-  `pr-reviewer` only. Lifted with the `tools` gap of row 4c.
+  `tools: []` keeps only four always-present tools (MCP access and `manage_task`). Before spec 0291 delta 03 every
+  compiled Antigravity agent was therefore read-only, the committed `developer` agent included; that is closed: the
+  compiled agent now carries a `tools` line (row 4c).
