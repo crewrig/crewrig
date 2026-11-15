@@ -5,11 +5,8 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  waitFor,
-  waitForNewInstance,
-  type DaemonState,
-} from "./lib/windows-service-fixture.ts";
+import { waitFor, type DaemonState } from "./lib/windows-service-fixture.ts";
+import { waitForNewInstance } from "./lib/wait-for-instance.ts";
 
 const st = (instance: string, port = 1): DaemonState => ({ pid: 1, ppid: 0, port, instance });
 const up = () => Promise.resolve(true);
@@ -17,7 +14,10 @@ const up = () => Promise.resolve(true);
 test("former pattern: a restart that landed before the state was cleared is never seen", async () => {
   let state: DaemonState | null = st("B"); // the keep-alive restart already wrote its state
   state = null; // clearState(c)
-  await assert.rejects(waitFor("daemon restarted by start", () => state, 300, 20), /timed out/);
+  await assert.rejects(
+    waitFor("daemon restarted by start", () => state, 300, 20),
+    /timed out/,
+  );
 });
 
 test("new wait: finds the instance the keep-alive trigger started before `start`", async () => {
@@ -40,7 +40,13 @@ test("new wait: bounded, and names what it saw", async () => {
     /no new instance/,
   );
   await assert.rejects(
-    waitForNewInstance(() => st("B"), "A", () => Promise.resolve(false), 150, 20),
+    waitForNewInstance(
+      () => st("B"),
+      "A",
+      () => Promise.resolve(false),
+      150,
+      20,
+    ),
     /not healthy/,
   );
 });

@@ -29,9 +29,9 @@ import {
   readState,
   runId,
   waitFor,
-  waitForNewInstance,
   type StandInChain,
 } from "./lib/windows-service-fixture.ts";
+import { waitForNewInstance } from "./lib/wait-for-instance.ts";
 
 // Bounded readiness wait for the daemon restarted after `stop`: slow windows-latest runners need
 // more than the former 60 s, and the job's own timeout (16 min) still bounds the whole chain.
