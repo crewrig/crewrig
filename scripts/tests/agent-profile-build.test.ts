@@ -25,7 +25,8 @@ process.env.GIT_CONFIG_NOSYSTEM = "1";
 
 const NOTE = /^model-note.*claude.*guard-withheld/;
 const DROP = /^model-drop.*copilot.*metadata\.model\.intelligence.*unsupported-on-cli/;
-// #1937: the reasoning rung is dropped on Gemini CLI and Copilot, and substituted on Antigravity.
+// #1937: the reasoning rung is dropped on Gemini CLI and Copilot, and encoded in the Antigravity
+// model name (substituted when no exact variant exists).
 const REASONING_DROP =
   /^model-drop\t[^\t]+\t(gemini|copilot)\tmetadata\.model\.reasoning\t[^\t]+\tunsupported-on-cli$/;
 const RUNG_NOTE =
@@ -84,7 +85,8 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
   // Spec 0291 R13, R29: one antigravity line per declaring source, one copilot line when it declares
   // `skill` or `message`, one gemini line when it declares `agent` or `message`.
   // #1937: each source declaring a reasoning rung gets one gemini and one copilot reasoning drop,
-  // and an antigravity substitution note when the rung is one Antigravity does not encode (medium).
+  // and an antigravity substitution note when the rung is one Antigravity does not encode (#2040:
+  // every rung has -low, -medium and -high variants, so only xhigh and max are substituted).
   const reasoningOf = (f: string): string | undefined =>
     (
       (readFrontmatter(tree.read(f)).metadata ?? {}) as {
@@ -92,7 +94,10 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
       }
     ).model?.reasoning;
   const reasoned = sources.filter((f) => reasoningOf(f) !== undefined);
-  const wantRungNotes = reasoned.filter((f) => reasoningOf(f) === "medium").length;
+  const wantRungNotes = reasoned.filter((f) => {
+    const r = reasoningOf(f);
+    return r === "xhigh" || r === "max";
+  }).length;
   const wantToolsDrops = declaring.reduce((n, f) => {
     const meta = (readFrontmatter(tree.read(f)).metadata ?? {}) as {
       tools?: string[];

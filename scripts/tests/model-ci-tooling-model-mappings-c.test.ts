@@ -130,7 +130,7 @@ const CASES: Case[] = [
   [
     "A26 and A11 no offering selectable",
     "A11",
-    { "gemini.yml": (t) => t.replace(/ {6}intelligence: (low|medium|high)\n/g, "") },
+    { "gemini.yml": (t) => t.replace(/ {6}intelligence: (low|medium|high|xhigh)\n/g, "") },
   ],
   [
     "A3 and A15 zero-offerings shape",

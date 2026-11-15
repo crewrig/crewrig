@@ -49,24 +49,25 @@ export function agentSource(lines: readonly string[]): string {
 }
 
 /**
- * The shell oracle is frozen at the pre-0291 behaviour (spec 0291 R2 changed the twin only), so
- * its input is a byte copy of the `claude.yml` committed before the guard lift (`withheld`,
- * the two retired terms), never the live mapping. The goldens are not edited.
+ * The shell oracle is frozen: its goldens were recorded once from the deleted shell library, so
+ * its input is a byte copy of the mappings it was recorded against, never the live mapping, and
+ * the goldens are not edited. `claude.yml` is the copy committed before the guard lift (spec 0291
+ * R2 changed the twin only: `withheld`, the two retired terms). `gemini.yml` and
+ * `antigravity.yml` are the copies committed before the #2040 lineup refresh (spec 0197 delta-03
+ * R52: a lineup change touches the mapping file alone, so it must not reach a frozen oracle).
  */
-const FROZEN_CLAUDE = path.join(
-  REPO,
-  "scripts/tests/fixtures/build-components/oracle-mappings/claude.yml",
-);
+const FROZEN_DIR = path.join(REPO, "scripts/tests/fixtures/build-components/oracle-mappings");
+const FROZEN = ["claude.yml", "gemini.yml", "antigravity.yml"] as const;
 
 function copyMappings(tmp: string, name: string): string {
   const dir = path.join(tmp, name, "model-mappings");
   fs.mkdirSync(dir, { recursive: true });
   for (const f of fs.readdirSync(MM)) fs.copyFileSync(path.join(MM, f), path.join(dir, f));
-  fs.copyFileSync(FROZEN_CLAUDE, path.join(dir, "claude.yml"));
+  for (const f of FROZEN) fs.copyFileSync(path.join(FROZEN_DIR, f), path.join(dir, f));
   return path.dirname(dir);
 }
 
-/** A `REPO_DIR` root whose mappings are the real ones, with the frozen `claude.yml` (see above). */
+/** A `REPO_DIR` root whose mappings are the real ones, with the frozen copies (see above). */
 export function oracleRoot(tmp: string): string {
   const root = path.join(tmp, "oracle-root");
   return fs.existsSync(root) ? root : copyMappings(tmp, "oracle-root");
