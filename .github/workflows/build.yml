@@ -6,7 +6,7 @@ on:
     # Spec 0168 delta-01 R11: the draft/ready transitions must re-run the
     # workflow so R1 is enforced in full after a spec-PR is marked ready.
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
-    branches: [main, "release/**"]
+    branches: [main, "release/**", "test/1933-probe-base"]
 
   push:
     branches: [main, "release/**"]
