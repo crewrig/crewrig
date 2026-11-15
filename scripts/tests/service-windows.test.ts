@@ -21,7 +21,6 @@ import type { DaemonKind } from "../lib/service/names.ts";
 import { chromaChain, mcpChain, renderTaskFile } from "../lib/service/windows-task-xml.ts";
 import {
   alive,
-  clearState,
   commandLineOf,
   disposeChain,
   healthz,
@@ -32,7 +31,11 @@ import {
   waitFor,
   type StandInChain,
 } from "./lib/windows-service-fixture.ts";
+import { waitForNewInstance } from "./lib/wait-for-instance.ts";
 
+// Bounded readiness wait for the daemon restarted after `stop`: slow windows-latest runners need
+// more than the former 60 s, and the job's own timeout (16 min) still bounds the whole chain.
+const RESTART_WAIT_MS = 120_000;
 const skip = process.platform !== "win32";
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "crewrig-service-win-"));
 const id = runId();
@@ -121,9 +124,15 @@ async function lifecycle(kind: DaemonKind): Promise<void> {
       `after-stop kind=${kind} state=${ended.state} lastResult=0x${ended.lastResult.toString(16)}`,
     );
 
-    clearState(c);
+    // No clearState here: the keep-alive trigger may already have restarted the task, and `start`
+    // is then ignored (IgnoreNew). Wait for any new instance and its /healthz instead (issue 2007).
     assert.equal(backend.start(c.names).ok, true);
-    const second = await waitFor("daemon restarted by start", () => readState(c), 60_000);
+    const second = await waitForNewInstance(
+      () => readState(c),
+      first.instance,
+      healthz,
+      RESTART_WAIT_MS,
+    );
     assert.notEqual(second.instance, first.instance);
     assert.equal(snap(c).state, 4);
   } finally {
