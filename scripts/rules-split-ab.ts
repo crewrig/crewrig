@@ -9,6 +9,13 @@
 //   node scripts/rules-split-ab.ts --resume DIR --approved-cap 15  # after a cost-guard stop
 //   node scripts/rules-split-ab.ts --rescore DIR [DIR ...] --scenario 1   # offline, no model call
 //   node scripts/rules-split-ab.ts --scenarios 5 --arms A --runs 6 --cap 2.4 --out FRESH_DIR
+//   node scripts/rules-split-ab.ts --scenarios 5 --runs 5 --cap 1.1 --seed-arm-a OLD_DIR --out FRESH_DIR
+//
+// --seed-arm-a OLD_DIR (fresh --out only): the first attempt of each arm A run of OLD_DIR is re-scored
+// with the current criteria and enters the new directory under its run index, uncharged (its cost was
+// paid earlier); a seeded first attempt that scores invalid is dropped and that run is made again.
+// Scenario 5 with both arms runs arm A first and compares only if A passes at least 4 of 5 (control
+// gate); otherwise the verdict is `control-failed` (withheld, exit 6) and arm B is not run.
 //
 // Options: --arm-a-ref <ref> (arm A: only 60-tools.md, via `git show <ref>:...`), --arm-a-rule and
 // --arm-b-rule <path> (repeatable; override the refs and the working tree), --worker-settings <path>
@@ -43,7 +50,7 @@ import type { RunRecord, ScenarioVerdict } from "./lib/rules-split-ab/compare.ts
 import { AuthError, makeClaudeExecutor } from "./lib/rules-split-ab/exec.ts";
 import { runExperiment } from "./lib/rules-split-ab/orchestrate.ts";
 import { renderReport } from "./lib/rules-split-ab/report.ts";
-import { formatRescore, rescoreDirs } from "./lib/rules-split-ab/rescore.ts";
+import { formatRescore, rescoreDirs, seedArmA } from "./lib/rules-split-ab/rescore.ts";
 import { SCENARIOS } from "./lib/rules-split-ab/scenarios.ts";
 import { buildClaudeArgs } from "./lib/rules-split-ab/scratch.ts";
 
@@ -83,6 +90,7 @@ function main(): void {
         cap: { type: "string" },
         rescore: { type: "string", multiple: true },
         scenario: { type: "string" },
+        "seed-arm-a": { type: "string" },
       },
       strict: true,
       allowPositionals: true,
@@ -179,6 +187,16 @@ function main(): void {
   if (values.resume && fs.existsSync(ledgerFile))
     prior = (JSON.parse(fs.readFileSync(ledgerFile, "utf8")) as { records: RunRecord[] }).records;
 
+  if (values["seed-arm-a"]) {
+    if (values.resume) usage("--seed-arm-a is for a fresh --out, not --resume");
+    for (const sc of scenarios)
+      try {
+        prior.push(...seedArmA(path.resolve(values["seed-arm-a"]), sc.id));
+      } catch (e) {
+        usage((e as Error).message);
+      }
+  }
+
   const skillDir = path.join(repo, "artifacts/library/skills/harness-report");
   const execute = makeClaudeExecutor({
     armRules: { A: armA, B: armB },
@@ -228,7 +246,13 @@ function main(): void {
         );
         process.exit(4);
       }
-      process.exit(vs.includes("regression") ? 1 : vs.includes("blocked") ? 6 : 0);
+      process.exit(
+        vs.includes("regression")
+          ? 1
+          : vs.includes("blocked") || vs.includes("control-failed")
+            ? 6
+            : 0,
+      );
     })
     .catch((e: unknown) => {
       process.stderr.write(`rules-split-ab: ${(e as Error).message}\n`);

@@ -4,7 +4,12 @@
 
 import { canStart, charge, createLedger, perRunBudget } from "./budget.ts";
 import type { Ledger } from "./budget.ts";
-import { applyTruncationRule, scenarioVerdict } from "./compare.ts";
+import {
+  applyTruncationRule,
+  CONTROL_GATE_SCENARIO,
+  controlGate,
+  scenarioVerdict,
+} from "./compare.ts";
 import type { AttemptRecord, RunRecord, ScenarioVerdict } from "./compare.ts";
 import { scoreRun } from "./criteria.ts";
 import type { Scenario } from "./scenarios.ts";
@@ -36,7 +41,7 @@ export interface ExperimentOptions {
   perRunCap?: number;
   /** Projected cost of the first run, before any run is charged (default: the per-run cap). */
   projectionSeed?: number;
-  /** Records of an earlier, stopped invocation (resume). */
+  /** Records of an earlier, stopped invocation (resume), or `seeded` records (not charged). */
   prior?: RunRecord[];
   onRecord?: (r: RunRecord) => void;
 }
@@ -61,7 +66,7 @@ export async function runExperiment(o: ExperimentOptions): Promise<ExperimentRes
   let stopped: { reason: string } | null = null;
 
   for (const p of o.prior ?? []) {
-    for (const a of p.attempts) ledger = charge(ledger, a.charged, perRunCap);
+    if (!p.seeded) for (const a of p.attempts) ledger = charge(ledger, a.charged, perRunCap);
     if (isComplete(p)) records.push(p);
   }
   const find = (s: number, arm: string, idx: number) =>
@@ -128,9 +133,13 @@ export async function runExperiment(o: ExperimentOptions): Promise<ExperimentRes
     return true;
   }
 
-  async function ensureRuns(scenario: Scenario, upTo: number): Promise<boolean> {
+  async function ensureRuns(
+    scenario: Scenario,
+    upTo: number,
+    armList: Array<"A" | "B"> = arms,
+  ): Promise<boolean> {
     for (let idx = 1; idx <= upTo; idx++) {
-      for (const arm of arms) {
+      for (const arm of armList) {
         if (find(scenario.id, arm, idx)) continue;
         if (!(await executeRun(scenario, arm, idx))) return false;
       }
@@ -149,7 +158,21 @@ export async function runExperiment(o: ExperimentOptions): Promise<ExperimentRes
     return scenarioVerdict(s.a, s.b, { extendTo });
   }
 
+  const armRecords = (s: Scenario, arm: "A" | "B") =>
+    records
+      .filter((r) => r.scenario === s.id && r.arm === arm && isComplete(r))
+      .sort((x, y) => x.runIndex - y.runIndex);
+
   for (const scenario of scenarioList(o.scenarios)) {
+    const gated = scenario.id === CONTROL_GATE_SCENARIO && arms.includes("A") && arms.includes("B");
+    if (gated) {
+      // control gate (delta-03 ADDED 3): arm A completes first; B is only run, and compared, if it holds
+      if (!(await ensureRuns(scenario, runs, ["A"]))) break;
+      if (!controlGate(armRecords(scenario, "A").map((r) => r.status)).holds) {
+        verdicts[scenario.id] = { verdict: "control-failed", extend: false };
+        continue;
+      }
+    }
     if (!(await ensureRuns(scenario, runs))) break;
     if (arms.length < 2) continue;
     let v = verdictOf(scenario);

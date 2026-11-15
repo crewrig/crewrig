@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import { buildCallLog, buildTranscript } from "../lib/rules-split-ab/fixture-cases.ts";
+import type { RunRecord } from "../lib/rules-split-ab/compare.ts";
 import { runExperiment } from "../lib/rules-split-ab/orchestrate.ts";
 import type { ExecuteFn } from "../lib/rules-split-ab/orchestrate.ts";
 import { SCENARIOS } from "../lib/rules-split-ab/scenarios.ts";
@@ -304,5 +305,90 @@ describe("runExperiment, S5 invalid handling and budget (delta-02)", () => {
     const r = await runExperiment({ scenarios: [S5], execute, runs: 5 });
     assert.equal(calls.length, 10);
     assert.equal(r.verdicts[5]?.verdict, "no-regression");
+  });
+});
+
+describe("runExperiment, S5 control gate and seeded arm A (delta-03)", () => {
+  const S5 = SCENARIOS.find((x) => x.id === 5)!;
+  const dismiss = { tools: [], text: "Obsidian is not relevant here." } as const;
+  const make = (ok: (arm: string, idx: number) => boolean) => {
+    const calls: string[] = [];
+    const execute: ExecuteFn = async (req) => {
+      calls.push(`${req.arm}${req.runIndex}t${req.attempt}`);
+      const spec = ok(req.arm, req.runIndex) ? passing(5) : { ...dismiss };
+      return {
+        transcript: buildTranscript({ ...spec, tools: [...spec.tools], cost: 0.1 }),
+        callLog: buildCallLog([]),
+      };
+    };
+    return { execute, calls };
+  };
+  const seeded = (idx: number, status: "pass" | "invalid"): RunRecord => ({
+    scenario: 5,
+    arm: "A",
+    runIndex: idx,
+    attempts: [
+      { status, note: "", subtype: "success", costUsd: 0.07, charged: 0, firstCallTokens: null },
+    ],
+    status,
+    truncatedTwice: false,
+    seeded: true,
+  });
+  test("arm A runs first, B is compared only when A passes at least 4 of 5", async () => {
+    const { execute, calls } = make(() => true);
+    const r = await runExperiment({ scenarios: [S5], execute, runs: 5 });
+    assert.deepEqual(calls.slice(0, 5), ["A1t1", "A2t1", "A3t1", "A4t1", "A5t1"]);
+    assert.equal(calls.length, 10);
+    assert.equal(r.verdicts[5]?.verdict, "no-regression");
+  });
+  test("a failed control gate withholds the verdict and does not run arm B", async () => {
+    const { execute, calls } = make((arm, idx) => !(arm === "A" && idx <= 2));
+    const r = await runExperiment({ scenarios: [S5], execute, runs: 5 });
+    assert.ok(calls.every((c) => c.startsWith("A")));
+    assert.equal(r.verdicts[5]?.verdict, "control-failed");
+  });
+  test("4 passes of 5 holds the gate", async () => {
+    const { execute } = make((arm, idx) => !(arm === "A" && idx === 3));
+    const r = await runExperiment({ scenarios: [S5], execute, runs: 5 });
+    assert.notEqual(r.verdicts[5]?.verdict, "control-failed");
+  });
+  test("seeded records count as run indexes 1 to 3: only A4 and A5 are executed, uncharged", async () => {
+    const { execute, calls } = make(() => true);
+    const r = await runExperiment({
+      scenarios: [S5],
+      execute,
+      arms: ["A"],
+      runs: 5,
+      prior: [seeded(1, "pass"), seeded(2, "pass"), seeded(3, "pass")],
+    });
+    assert.deepEqual(calls, ["A4t1", "A5t1"]);
+    assert.equal(r.records.length, 5);
+    assert.ok(Math.abs(r.ledger.spent - 0.2) < 1e-9);
+    assert.equal(r.ledger.charges.length, 2);
+  });
+  test("a seeded first attempt that is invalid is rerun from scratch", async () => {
+    const { execute, calls } = make(() => true);
+    await runExperiment({
+      scenarios: [S5],
+      execute,
+      arms: ["A"],
+      runs: 2,
+      prior: [seeded(1, "pass"), seeded(2, "invalid")],
+    });
+    assert.deepEqual(calls, ["A2t1"]);
+  });
+  test("the cap stops the runner when the running cost plus one attempt would exceed it", async () => {
+    const { execute, calls } = make(() => true);
+    const r = await runExperiment({
+      scenarios: [S5],
+      execute,
+      arms: ["A"],
+      runs: 5,
+      cap: 0.25,
+      projectionSeed: 0.08,
+    });
+    assert.ok(r.stopped);
+    assert.equal(calls.length, 2);
+    assert.deepEqual(r.verdicts, {});
   });
 });

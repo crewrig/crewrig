@@ -1,6 +1,7 @@
 // report.ts — the A/B table recorded on issue #1990 (spec 0308 R12). Only `pass`, `fail` and
 // `invalid` appear as statuses; a truncation shows as an `invalid` cell with its subtype note.
 
+import { CONTROL_GATE_SCENARIO, controlGate } from "./compare.ts";
 import type { RunRecord, ScenarioVerdict } from "./compare.ts";
 
 export interface ReportInput {
@@ -36,7 +37,7 @@ export function renderReport(r: ReportInput): string {
       )
       .join("; ");
     const last = rec.attempts[rec.attempts.length - 1];
-    const note = rec.truncatedTwice ? " (truncated twice)" : "";
+    const note = (rec.truncatedTwice ? " (truncated twice)" : "") + (rec.seeded ? " (seeded)" : "");
     out.push(
       `| ${rec.scenario} | ${rec.arm} | ${rec.runIndex} | ${rec.status}${note} | ${att} | ${last?.firstCallTokens ?? ""} |`,
     );
@@ -66,7 +67,23 @@ export function renderReport(r: ReportInput): string {
     );
   }
   out.push("", "## Verdict per scenario", "", "| Scenario | Verdict |", "|---|---|");
-  for (const [id, v] of Object.entries(r.verdicts)) out.push(`| ${id} | ${v.verdict} |`);
+  for (const [id, v] of Object.entries(r.verdicts))
+    out.push(
+      `| ${id} | ${v.verdict === "control-failed" ? "control-failed (S5 verdict withheld: arm A did not pass 4 of 5)" : v.verdict} |`,
+    );
+  const armA = r.records.filter(
+    (x) =>
+      x.scenario === CONTROL_GATE_SCENARIO &&
+      x.arm === "A" &&
+      (x.status !== "invalid" || x.attempts.length >= 2),
+  );
+  if (armA.length > 0) {
+    const g = controlGate(armA.map((x) => x.status));
+    out.push(
+      "",
+      `S5 control gate: arm A passes ${g.passes} of ${g.runs} runs (needs at least 4 of 5): ${g.holds ? "holds" : "does not hold"}.`,
+    );
+  }
 
   const tokens = (arm: "A" | "B"): number | null => {
     const rec = r.records.find((x) => x.scenario === 2 && x.arm === arm && x.attempts.length > 0);

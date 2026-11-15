@@ -10,7 +10,7 @@ import { describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { buildCallLog, buildTranscript } from "../lib/rules-split-ab/fixture-cases.ts";
-import { formatRescore, rescoreDirs } from "../lib/rules-split-ab/rescore.ts";
+import { formatRescore, rescoreDirs, seedArmA } from "../lib/rules-split-ab/rescore.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const runner = path.resolve(here, "..", "rules-split-ab.ts");
@@ -25,7 +25,7 @@ const update = {
 };
 const piped = { name: "Bash", input: { command: "git log --oneline | head -5" } };
 
-function makeDir(cells: Record<string, typeof piped[]>, old: Record<string, string>): string {
+function makeDir(cells: Record<string, (typeof piped)[]>, old: Record<string, string>): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ab-rescore-"));
   fs.mkdirSync(path.join(dir, "runs"));
   const records: object[] = [];
@@ -83,7 +83,10 @@ describe("rescoreDirs", () => {
     const d = makeDir({ A1: [] }, { A1: "pass" });
     fs.writeFileSync(
       path.join(d, "runs", "s1-A1-try2.transcript.jsonl"),
-      buildTranscript({ tools: [search, { name: "Edit", input: { file_path: "x" } }, update], text: "ok" }),
+      buildTranscript({
+        tools: [search, { name: "Edit", input: { file_path: "x" } }, update],
+        text: "ok",
+      }),
     );
     fs.writeFileSync(path.join(d, "runs", "s1-A1-try2.calls.jsonl"), "");
     const x = rescoreDirs([d], 1);
@@ -98,12 +101,22 @@ describe("runner --rescore", () => {
   test("re-scores without spawning claude, CI set or not, and exits 0", () => {
     const dir = makeDir({ A1: [piped], B1: [] }, { A1: "fail", B1: "pass" });
     for (const CI of [undefined, "true"]) {
-      const env = { ...process.env, PATH: "/nonexistent-bin" } as Record<string, string | undefined>;
+      const env = { ...process.env, PATH: "/nonexistent-bin" } as Record<
+        string,
+        string | undefined
+      >;
       if (CI) env.CI = CI;
       else delete env.CI;
       const r = spawnSync(
         process.execPath,
-        ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", runner, "--rescore", dir, "--scenario", "1"],
+        [
+          "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+          runner,
+          "--rescore",
+          dir,
+          "--scenario",
+          "1",
+        ],
         { encoding: "utf8", env: env as NodeJS.ProcessEnv, timeout: 30000 },
       );
       assert.equal(r.status, 0, r.stderr);
@@ -114,5 +127,53 @@ describe("runner --rescore", () => {
   test("--rescore without --scenario is a usage error", () => {
     const r = spawnSync(process.execPath, [runner, "--rescore", os.tmpdir()], { encoding: "utf8" });
     assert.equal(r.status, 2);
+  });
+});
+
+describe("S5 attempts and seeding (delta-03)", () => {
+  const ASK = "Do you want me to create a note in your Obsidian vault?";
+  function s5Dir(tries: Record<string, string>): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ab-rescore5-"));
+    fs.mkdirSync(path.join(dir, "runs"));
+    for (const [tag, text] of Object.entries(tries)) {
+      fs.writeFileSync(
+        path.join(dir, "runs", `s5-${tag}.transcript.jsonl`),
+        buildTranscript({ tools: [], text, cost: 0.07 }),
+      );
+      fs.writeFileSync(path.join(dir, "runs", `s5-${tag}.calls.jsonl`), buildCallLog([]));
+    }
+    return dir;
+  }
+  const dir = s5Dir({
+    "A1-try1": ASK,
+    "A1-try2": "Done.",
+    "A2-try1": "Obsidian is not relevant here.",
+    "A2-try2": ASK,
+  });
+  test("lists every attempt and counts the first attempts", () => {
+    const src = rescoreDirs([dir], 5).sources[0]!;
+    assert.deepEqual(
+      src.tries.map((t) => `${t.tag}/${t.attempt}=${t.status}`),
+      ["A1/1=pass", "A1/2=invalid", "A2/1=invalid", "A2/2=pass"],
+    );
+    assert.deepEqual(src.firstAttempts.A, { pass: 1, fail: 0, invalid: 1 });
+    const out = formatRescore(rescoreDirs([dir], 5));
+    assert.match(out, /s5-A1 try1: pass/);
+    assert.match(out, /arm A first attempts: pass 1, fail 0, invalid 1/);
+  });
+  test("seedArmA re-scores try1 of arm A, uncharged, keeping run indexes", () => {
+    const recs = seedArmA(dir, 5);
+    assert.deepEqual(
+      recs.map((r) => `${r.runIndex}:${r.status}:${r.seeded}:${r.attempts[0]!.charged}`),
+      ["1:pass:true:0", "2:invalid:true:0"],
+    );
+  });
+  test("runner --seed-arm-a with --resume is a usage error", () => {
+    const r = spawnSync(
+      process.execPath,
+      [runner, "--scenarios", "5", "--arms", "A", "--seed-arm-a", dir, "--resume", dir],
+      { encoding: "utf8", env: { ...process.env, CI: "" } },
+    );
+    assert.equal(r.status, 2, r.stderr);
   });
 });

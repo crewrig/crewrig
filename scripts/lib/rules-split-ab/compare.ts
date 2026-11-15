@@ -20,9 +20,14 @@ export interface RunRecord {
   status: Status;
   /** The run and its single rerun were both truncated (non-success result subtype). */
   truncatedTwice: boolean;
+  /**
+   * Re-scored from an earlier invocation's first attempt (`--seed-arm-a`, delta-03 ADDED 2): its cost
+   * was paid and is not charged to the ledger of this one.
+   */
+  seeded?: boolean;
 }
 
-export type VerdictKind = "no-regression" | "extend" | "regression" | "blocked";
+export type VerdictKind = "no-regression" | "extend" | "regression" | "blocked" | "control-failed";
 export interface ScenarioVerdict {
   verdict: VerdictKind;
   extend: boolean;
@@ -73,4 +78,11 @@ export function scenarioVerdict(
   if (hasInvalid) return { verdict: "blocked", extend: false };
   if (needsExtension && !extended) return { verdict: "extend", extend: true };
   return { verdict: "no-regression", extend: false };
+}
+
+/** The S5 control gate (delta-03 ADDED 3): arm A passes at least 4 of 5 runs (a ratio of 0.8). */
+export const CONTROL_GATE_SCENARIO = 5;
+export function controlGate(a: Status[]): { holds: boolean; passes: number; runs: number } {
+  const passes = a.filter((x) => x === "pass").length;
+  return { holds: a.length > 0 && passes * 5 >= a.length * 4, passes, runs: a.length };
 }

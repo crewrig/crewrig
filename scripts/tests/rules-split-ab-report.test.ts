@@ -3,7 +3,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { applyTruncationRule, scenarioVerdict } from "../lib/rules-split-ab/compare.ts";
+import {
+  applyTruncationRule,
+  controlGate,
+  scenarioVerdict,
+} from "../lib/rules-split-ab/compare.ts";
 import type { RunRecord } from "../lib/rules-split-ab/compare.ts";
 import { renderReport } from "../lib/rules-split-ab/report.ts";
 
@@ -246,5 +250,53 @@ describe("renderReport", () => {
     });
     assert.match(m, /stopped/i);
     assert.match(m, /coordinator/i);
+  });
+});
+
+describe("S5 control gate (delta-03 ADDED 3)", () => {
+  test("holds at 4 of 5 passes, not at 3 of 5", () => {
+    assert.equal(controlGate([P, P, P, P, F]).holds, true);
+    assert.equal(controlGate([P, P, P, I, F]).holds, false);
+    assert.equal(controlGate([]).holds, false);
+  });
+  const rec = (arm: "A" | "B", i: number, status: "pass" | "fail"): RunRecord => ({
+    scenario: 5,
+    arm,
+    runIndex: i,
+    attempts: [],
+    status,
+    truncatedTwice: false,
+  });
+  test("the report withholds the S5 verdict when the gate fails and says so", () => {
+    const m = renderReport({
+      records: [1, 2, 3].map((i) => rec("A", i, "fail")),
+      verdicts: { 5: { verdict: "control-failed", extend: false } },
+      spent: 0.3,
+      cap: 12,
+      stopped: null,
+    });
+    assert.match(m, /does not hold/);
+    assert.match(m, /withheld/);
+    assert.doesNotMatch(m, /\| 5 \| no-regression/);
+  });
+  test("the report states the gate and the verdict when it holds; none while unmeasured", () => {
+    const records = [1, 2, 3, 4, 5].flatMap((i) => [rec("A", i, "pass"), rec("B", i, "pass")]);
+    const m = renderReport({
+      records,
+      verdicts: { 5: { verdict: "no-regression", extend: false } },
+      spent: 1,
+      cap: 12,
+      stopped: null,
+    });
+    assert.match(m, /arm A passes 5 of 5 runs.*holds/);
+    assert.match(m, /\| 5 \| no-regression \|/);
+    const stopped = renderReport({
+      records: records.slice(0, 3),
+      verdicts: {},
+      spent: 1,
+      cap: 12,
+      stopped: { reason: "cost guard" },
+    });
+    assert.doesNotMatch(stopped, /Verdict per scenario[\s\S]*\| 5 \|/);
   });
 });
