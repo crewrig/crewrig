@@ -371,6 +371,11 @@
           "title": "ADR 0025 — Slim the fixed context of worker and subagent sessions",
           "path": "docs/adr/0025-slim-the-fixed-context-of-worker-and-subagent-sessions.md",
           "nav_order": 250
+        },
+        {
+          "title": "ADR 0026 — Allow a standing merge authorisation given in advance",
+          "path": "docs/adr/0026-allow-a-standing-merge-authorisation-given-in-advance.md",
+          "nav_order": 260
         }
       ]
     }

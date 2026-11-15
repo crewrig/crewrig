@@ -176,8 +176,14 @@ each rule below removes a call or a decision from the workers.
    coordinator groups the merge-ready PRs of the run and asks the owner once
    per group, just before executing those merges; the merges follow that
    permission immediately, as `AGENTS.md` requires. A denied merge is retried
-   once, then escalated to the owner, never delegated. A standing
-   authorisation given in advance is out of scope here and tracked in #1984.
+   once, then escalated to the owner, never delegated. When the
+   owner gave a standing merge authorisation in advance, the coordinator
+   relays it verbatim in the worker brief, widening nothing. A merge it
+   covers proceeds with no just-before ask once the three conditions above
+   (plus any the owner added) hold at merge time; if one is unmet, the
+   just-before ask applies. Scope and rules:
+   [`docs/interaction-modes.md`](../interaction-modes.md) → *User-gate
+   definition*.
 4. **Trust worker evidence.** Re-verify a PR only on a gap or a contradiction
    in the final report, or by sampling. Re-reading every PR before approval
    repeats work the workers already evidenced.
