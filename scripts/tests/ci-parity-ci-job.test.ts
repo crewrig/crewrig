@@ -25,6 +25,11 @@ import {
   replaceOnce,
   runCheck,
 } from "./lib/ci-parity-fixture.ts";
+import {
+  readReferenceText,
+  editReference,
+  replaceInReference,
+} from "./lib/ci-reference-fixtures.ts";
 
 const WF = ".github/workflows/build.yml";
 const DORNY =
@@ -83,7 +88,7 @@ test("shape A (no filter): no R27, no R17, no divergence report", () => {
 test("an unsupported glob in an effective set fails R27b, naming capability and entry", () => {
   const root = makeFixture();
   addCiJob(root, "figure-labels");
-  editYaml(path.join(root, "ci/ci-capabilities.yml"), (doc) => {
+  editReference(root, (doc) => {
     const cap = capOf(doc, "figure-labels");
     const t = map(list(cap["trigger"], "trigger")[0], "trigger");
     t["paths"] = ["a/{b,c}"];
@@ -140,8 +145,8 @@ test("a ci-job yq input that differs from the version GitLab installs fails nami
 
 test("requires.yq moves the GitLab version: the GitHub input must follow", () => {
   const root = makeFixture();
-  replaceOnce(
-    path.join(root, "ci/ci-capabilities.yml"),
+  replaceInReference(
+    root,
     '      install: omit-dev\n      yq: "4.44.3"\n    command:\n      - task ci:skill-scripts-ts',
     '      install: omit-dev\n      yq: "4.54.1"\n    command:\n      - task ci:skill-scripts-ts',
   );
@@ -171,11 +176,7 @@ test("a ci-job apt input outside the packages requires.tools implies fails namin
 
 test("dropping a tool from requires.tools makes the ci-job apt input a divergence", () => {
   const root = makeFixture();
-  replaceOnce(
-    path.join(root, "ci/ci-capabilities.yml"),
-    "      tools: [task, tesseract]\n",
-    "      tools: [task]\n",
-  );
+  replaceInReference(root, "      tools: [task, tesseract]\n", "      tools: [task]\n");
   const r = runCheck(root);
   assert.equal(r.status, 1);
   assert.match(
@@ -199,7 +200,7 @@ test("a ci-job python input absent from the reference runtime fails naming the j
 
 test("a python runtime the ci-job python input does not provide fails naming the job", () => {
   const root = makeFixture();
-  editYaml(path.join(root, "ci/ci-capabilities.yml"), (doc) => {
+  editReference(root, (doc) => {
     map(capOf(doc, "figure-labels")["requires"])["runtime"] = ["node@24", "python@3.12"];
   });
   const r = runCheck(root);
@@ -295,7 +296,7 @@ const loadYaml = (f: string): Doc => asMap(yaml.load(fs.readFileSync(f, "utf8"))
 function assertStagedLayout(root: string): void {
   const dir = path.join(root, ".github", "workflows");
   const callerDoc = loadYaml(path.join(dir, "build.yml"));
-  const reference = loadYaml(path.join(root, "ci", "ci-capabilities.yml"));
+  const reference = asMap(yaml.load(readReferenceText(root)));
   const groupOf = new Map<string, string>();
   for (const c of reference["capabilities"] as Doc[]) {
     const cap = asMap(c);

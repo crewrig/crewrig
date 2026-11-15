@@ -16,6 +16,7 @@ import { globToRegExp } from "../lib/glob-engine.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
 import { logicalCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 interface Capability {
   readonly id: string;
@@ -68,10 +69,10 @@ const BUILD_COMMAND = new RegExp(
 const NODE_ONLY_CAPABILITIES: ReadonlySet<string> = new Set(["core-paths", "repository-scan"]);
 
 function loadReference(): { readonly capabilities: Capability[] } {
-  const text = fs.readFileSync(path.join(REPO, "ci", "ci-capabilities.yml"), "utf8");
+  const text = readReferenceText(REPO);
   const doc: unknown = yamlLib.load(text);
   const caps = (doc as { capabilities?: unknown } | null)?.capabilities;
-  assert.ok(Array.isArray(caps), "ci/ci-capabilities.yml has a capabilities list");
+  assert.ok(Array.isArray(caps), "the capability reference has a capabilities list");
   return { capabilities: caps as Capability[] };
 }
 

@@ -9,6 +9,7 @@ import { test } from "node:test";
 import { load } from "js-yaml";
 
 import { REPO } from "./lib/build-fixture-tree.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 interface Capability {
   id: string;
@@ -23,7 +24,7 @@ interface Capability {
 }
 
 const caps = (
-  load(fs.readFileSync(path.join(REPO, "ci", "ci-capabilities.yml"), "utf8")) as {
+  load(readReferenceText(REPO)) as {
     capabilities: Capability[];
   }
 ).capabilities;

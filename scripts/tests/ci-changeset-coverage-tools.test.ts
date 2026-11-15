@@ -27,9 +27,10 @@ import {
   YqSeq,
   type YqNode,
 } from "../lib/yq-accessors/index.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const REAL = fs.readFileSync(path.join(REPO, "ci", "ci-capabilities.yml"), "utf8");
+const REAL = readReferenceText(REPO);
 
 const COVERAGE_TOOLS = "tools: [yq, jq, task, tesseract]";
 /** The two-line `requires` head of changeset-coverage: the runtime line alone is not unique. */

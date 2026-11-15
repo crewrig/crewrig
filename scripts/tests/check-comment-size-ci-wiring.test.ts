@@ -15,6 +15,7 @@ import { ciTaskCommands, resolveCapabilityCommands } from "./lib/ci-task-command
 import { yamlLib } from "./lib/yaml-lib.ts";
 import { gatePaths } from "./lib/capability-path-scan.ts";
 import { readWorkflowUnionText } from "./lib/workflow-union.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const ID = "check-comment-size";
 const SCRIPT = "scripts/check-comment-size.ts";
@@ -95,7 +96,7 @@ function assertTaskfile(tree: TaskfileTree): void {
 }
 
 describe("check-comment-size CI wiring", () => {
-  test("ci/ci-capabilities.yml", () => assertCapabilities(read("ci", "ci-capabilities.yml")));
+  test("capability reference", () => assertCapabilities(readReferenceText(REPO)));
   test("GitHub workflow", () => assertGithub(readWorkflowUnionText(REPO)));
   test("GitLab pipeline", () => assertGitlab(read(".gitlab-ci.yml")));
   test("Taskfile target", () => assertTaskfile(loadTaskfileTree(REPO)));
@@ -116,7 +117,7 @@ describe("check-comment-size CI wiring", () => {
   test("mutation: a capability on the wrong runtime is rejected", () => {
     assert.throws(() =>
       assertCapabilities(
-        read("ci", "ci-capabilities.yml").replace(
+        readReferenceText(REPO).replace(
           /(id: check-comment-size[\s\S]*?runtime: )node@24/,
           "$1node@22",
         ),

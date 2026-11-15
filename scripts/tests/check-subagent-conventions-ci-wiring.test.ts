@@ -23,6 +23,7 @@ import {
 } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 import { readWorkflowUnionText } from "./lib/workflow-union.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const ID = "check-subagent-conventions";
 const HOST = "check-description-length";
@@ -163,19 +164,19 @@ function assertTaskfile(tree: TaskfileTree): void {
 }
 
 const capPaths = (): readonly string[] => {
-  const cap = capsOf(read("ci", "ci-capabilities.yml")).find((c) => c.id === HOST);
+  const cap = capsOf(readReferenceText(REPO)).find((c) => c.id === HOST);
   return effectivePaths(cap as Cap, (cap as Cap).trigger?.[0] ?? {});
 };
 
 describe("check-subagent-conventions CI wiring (joined to check-description-length)", () => {
-  test("ci/ci-capabilities.yml", () => assertCapabilities(read("ci", "ci-capabilities.yml")));
+  test("capability reference", () => assertCapabilities(readReferenceText(REPO)));
   test("GitHub workflow", () => assertGithub(readWorkflowUnionText(REPO)));
   test("GitLab pipeline", () => assertGitlab(read(".gitlab-ci.yml"), capPaths()));
   test("Taskfile mirror", () => assertTaskfile(loadTaskfileTree(REPO)));
   test("mutation: a task that does not run a breaching root is rejected", () => {
     assert.throws(() =>
       assertCapabilities(
-        read("ci", "ci-capabilities.yml"),
+        readReferenceText(REPO),
         hostCmds().filter((c) => !onRoot(c, "stale-block")),
       ),
     );
@@ -183,16 +184,14 @@ describe("check-subagent-conventions CI wiring (joined to check-description-leng
   test("mutation: a task without the wiring test is rejected", () => {
     assert.throws(() =>
       assertCapabilities(
-        read("ci", "ci-capabilities.yml"),
+        readReferenceText(REPO),
         hostCmds().map((c) => c.replaceAll("check-subagent-conventions-ci-wiring.test.ts", "")),
       ),
     );
   });
   test("mutation: a dedicated capability or GitLab job is rejected", () => {
     assert.throws(() =>
-      assertCapabilities(
-        `${read("ci", "ci-capabilities.yml")}  - id: ${ID}\n`.replace(/\n$/, "\n"),
-      ),
+      assertCapabilities(`${readReferenceText(REPO)}  - id: ${ID}\n`.replace(/\n$/, "\n")),
     );
     assert.throws(() =>
       assertGitlab(`${read(".gitlab-ci.yml")}\n${ID}:\n  stage: governance\n`, capPaths()),

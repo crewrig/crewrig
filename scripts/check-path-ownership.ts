@@ -22,6 +22,12 @@ import { load } from "js-yaml";
 import { UnsupportedGlobError } from "./lib/glob-engine.ts";
 import { readTextLf } from "./lib/line-endings.ts";
 import {
+  ReferenceNotFoundError,
+  ReferenceReadError,
+  readReference,
+  sourceOf,
+} from "./lib/ci-parity/reference-read.ts";
+import {
   OwnershipInputError,
   evaluate,
   formatReport,
@@ -46,16 +52,23 @@ function readOptional(rel: string): string | null {
 }
 
 function readCapabilities(): unknown {
-  const text = readOptional(REFERENCE);
-  if (text === null) throw new WiringError(`${REFERENCE} not found`);
+  let ref;
+  try {
+    ref = readReference(repoRoot());
+  } catch (err) {
+    if (err instanceof ReferenceNotFoundError) throw new WiringError(`${REFERENCE} not found`);
+    if (err instanceof ReferenceReadError) throw new WiringError(err.message);
+    throw err;
+  }
+  const source = sourceOf(ref);
   let doc: unknown;
   try {
-    doc = load(text);
+    doc = load(ref.text);
   } catch (err) {
-    throw new WiringError(`${REFERENCE} is not valid YAML: ${(err as Error).message}`);
+    throw new WiringError(`${source} is not valid YAML: ${(err as Error).message}`);
   }
   const caps = (doc as { capabilities?: unknown } | null)?.capabilities;
-  if (caps === undefined) throw new WiringError(`${REFERENCE} has no 'capabilities' list`);
+  if (caps === undefined) throw new WiringError(`${source} has no 'capabilities' list`);
   return caps;
 }
 

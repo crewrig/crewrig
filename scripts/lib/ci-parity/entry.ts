@@ -1,13 +1,17 @@
 // entry.ts — one check-ci-parity run: the sections in the shell's order, then the verdict.
 // PENDING_SECTIONS lists the sections not yet ported (none).
 
-import fs from "node:fs";
-
 import { firstLine } from "../first-line.ts";
 import { arm3, traceability } from "./traceability.ts";
 import { reportValidity, verdict } from "./findings.ts";
 import { checkReference, collectIds } from "./reference.ts";
 import { arm1 } from "./arm1.ts";
+import {
+  ReferenceNotFoundError,
+  ReferenceReadError,
+  readReference,
+  sourceOf,
+} from "./reference-read.ts";
 import { arm2 } from "./gitlab-arm.ts";
 import { ParityGap, ShellAbort, newState } from "./state.ts";
 
@@ -23,12 +27,24 @@ export interface Outcome {
 export function run(_args: string[], repoDir: string): Outcome {
   const state = newState(repoDir);
   const done = (): Outcome => ({ stdout: state.stdout, stderr: state.stderr, code: state.code });
-  if (!fs.existsSync(state.reference) || !fs.statSync(state.reference).isFile()) {
-    state.stderr += `Error: CI reference not found: ${state.reference}\n`;
-    state.code = 2;
-    return done();
+  let ref;
+  try {
+    ref = readReference(repoDir);
+  } catch (e) {
+    if (e instanceof ReferenceNotFoundError) {
+      state.stderr += `Error: CI reference not found: ${e.path}\n`;
+      state.code = 2;
+      return done();
+    }
+    if (e instanceof ReferenceReadError) {
+      state.stderr += e.format();
+      state.code = 1;
+      return done();
+    }
+    throw e;
   }
-  if (!checkReference(state, fs.readFileSync(state.reference, "utf8"))) return done();
+  state.reference = `${repoDir}/${sourceOf(ref)}`;
+  if (!checkReference(state, ref.text)) return done();
   if (reportValidity(state)) return done();
   collectIds(state);
   try {

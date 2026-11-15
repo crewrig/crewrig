@@ -3,7 +3,7 @@
 // Usage: evaluateWiring(repoDir) -> { code, stdout, stderr }
 // A `scripts/tests/test-*.sh` script is WIRED iff the token `scripts/tests/<name>`
 // appears on a line of a CI surface (`.github/workflows/*.yml|*.yaml`,
-// `ci/ci-capabilities.yml`) with no `#` before its FIRST occurrence on that line and
+// `ci/ci-capabilities.yml` or `ci/capabilities/`) with no `#` before its FIRST occurrence on that line and
 // no name character `[A-Za-z0-9._-]` right after it. Only the first occurrence of a
 // line is judged, as the shell twin does. Otherwise the test must be named in
 // `ci/test-wiring-exemptions.txt` (`name<WS>reason`).
@@ -18,6 +18,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 
 import { globToRegExp } from "../glob-engine.ts";
+import { ReferenceNotFoundError, readReference } from "../ci-parity/reference-read.ts";
 
 export interface Outcome {
   code: number;
@@ -82,8 +83,14 @@ function readSurfaces(repo: string): string[] {
   }
   const taskfiles = `${repo}/taskfiles`;
   if (isDir(taskfiles)) collectYml(taskfiles, files);
-  files.push(`${repo}/ci/ci-capabilities.yml`, `${repo}/Taskfile.yml`);
-  return files.filter(isFile).map((f) => readFileSync(f, "utf8"));
+  files.push(`${repo}/Taskfile.yml`);
+  const texts = files.filter(isFile).map((f) => readFileSync(f, "utf8"));
+  try {
+    texts.push(readReference(repo).text);
+  } catch (e) {
+    if (!(e instanceof ReferenceNotFoundError)) throw e;
+  }
+  return texts;
 }
 
 /** First-occurrence rule: judge only the first `token` of each line. */
@@ -203,7 +210,7 @@ export function evaluateWiring(repo: string): Outcome {
     err += `FAILED: ${orphans.length} test script(s) run in no CI workflow and are not exempted:\n`;
     for (const n of orphans) err += `  - scripts/tests/${n}\n`;
     err += "\nWire each into a CI workflow (a step in the check-components job of\n";
-    err += ".github/workflows/build.yml and ci/ci-capabilities.yml), or add it to\n";
+    err += ".github/workflows/build.yml and the CI capability reference), or add it to\n";
     err += "ci/test-wiring-exemptions.txt with a reason (spec 0076).\n";
   }
   if (ex.reasonless.length > 0) {

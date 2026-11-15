@@ -6,7 +6,7 @@
 //     ownership with the CI engines' semantics, not bash `[[ == ]]` (R13);
 //   - the real entry point (scripts/check-path-ownership.ts), black-box, run
 //     against throwaway `git init` repositories through CREWRIG_REPO_DIR. The
-//     fixture holds a minimal ci/ci-capabilities.yml and the exemption lists.
+//     fixture holds a minimal capability reference and the exemption lists.
 //
 // The entry point contract: exit 0 clean, 1 findings, 2 wiring fault. Finding
 // lines read `path-ownership: <rule-id>: <path-or-entry>[:<line>]: <message>`
@@ -21,12 +21,12 @@ import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { writeReferenceDir } from "./lib/ci-reference-fixtures.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CHECK = path.join(REPO, "scripts", "check-path-ownership.ts");
 const CORE_LIST = "ci/path-ownership-exemptions.txt";
 const OVERLAY = "ci/org/path-ownership-exemptions.txt";
-const REFERENCE_PATH = "ci/ci-capabilities.yml";
 
 // --- Glob engine (R13) --------------------------------------------------------
 
@@ -211,7 +211,8 @@ function repo(tree: Tree = BASE_TREE, opts: FixtureOptions = {}): string {
   temps.push(dir);
   git(dir, "init", "-q", "-b", "main");
   const ref = opts.rawReference ?? reference(opts.caps ?? BASE_CAPS);
-  write(dir, { [REFERENCE_PATH]: ref, ...tree });
+  writeReferenceDir(dir, ref);
+  write(dir, tree);
   git(dir, "add", "-A");
   if (opts.noCommit !== true) git(dir, "commit", "-q", "-m", "fixture");
   if (opts.untracked) write(dir, opts.untracked);

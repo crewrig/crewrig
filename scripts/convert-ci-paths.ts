@@ -3,7 +3,7 @@
 // capability that already carries a capability-level `paths:` is left alone).
 //
 // Usage: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/convert-ci-paths.ts [file]
-//   file defaults to ci/ci-capabilities.yml; the file is edited in place.
+//   file defaults to every file of the CI capability reference; each is edited in place.
 //
 // Rewrite (a TEXT edit: every comment and the order of the file are preserved, the YAML is never
 // re-serialised; the existing readers only DECIDE, lines are edited):
@@ -16,7 +16,7 @@
 
 import fs from "node:fs";
 
-import { readCapabilities } from "./lib/ci-parity/reference-read.ts";
+import { readCapabilities, readReference } from "./lib/ci-parity/reference-read.ts";
 import { parse } from "./lib/yq-accessors/index.ts";
 
 const indentOf = (l: string): number => l.length - l.trimStart().length;
@@ -110,10 +110,13 @@ export function convert(text: string): Outcome {
 }
 
 if (import.meta.main) {
-  const file = process.argv[2] ?? "ci/ci-capabilities.yml";
-  const r = convert(fs.readFileSync(file, "utf8"));
-  fs.writeFileSync(file, r.text);
-  console.log(`converted ${r.converted.length} capabilities`);
-  console.log(`cache.files dropped (equal to the paths): ${r.cacheDropped.join(", ") || "none"}`);
-  console.log(`trigger-level lists kept (differ): ${r.differing.join(", ") || "none"}`);
+  // No argument: every file of the reference (the legacy file, else each file of ci/capabilities/).
+  const files = process.argv[2] ? [process.argv[2]] : readReference(".").files;
+  for (const file of files) {
+    const r = convert(fs.readFileSync(file, "utf8"));
+    fs.writeFileSync(file, r.text);
+    console.log(`${file}: converted ${r.converted.length} capabilities`);
+    console.log(`cache.files dropped (equal to the paths): ${r.cacheDropped.join(", ") || "none"}`);
+    console.log(`trigger-level lists kept (differ): ${r.differing.join(", ") || "none"}`);
+  }
 }

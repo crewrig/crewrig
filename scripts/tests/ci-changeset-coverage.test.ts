@@ -26,6 +26,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { writeReferenceDir } from "./lib/ci-reference-fixtures.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SCRIPT =
@@ -162,8 +163,7 @@ function commit(dir: string, files: Record<string, string>): string {
 function plainDir(reference: string = REFERENCE): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ci-changeset-coverage-"));
   temps.push(dir);
-  fs.mkdirSync(path.join(dir, "ci"), { recursive: true });
-  fs.writeFileSync(path.join(dir, "ci", "ci-capabilities.yml"), reference);
+  writeReferenceDir(dir, reference);
   return dir;
 }
 

@@ -1,0 +1,5 @@
+FAILED: 1 reference-validity violation(s) in /repo/ci/capabilities/:
+  - ci/capabilities/modules.yml: capability 'dup' is also defined in ci/capabilities/gate.yml
+
+The reference is the source of truth; refusing to check the engines against
+a malformed reference (spec 0309 R3).

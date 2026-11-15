@@ -115,6 +115,32 @@ test("reference drift: an invalid reference (validity bullet) names the capabili
   assert.match(r.text, /validity rule 2/);
 });
 
+// The shared reader (spec 0309 R3) fails before any check runs; its block names a file per bullet.
+const READER_CASES: [string, string | null, RegExp][] = [
+  ["reader-invalid-content", null, /not valid reference content/],
+  ["reader-duplicate-id", "dup", /also defined in ci\/capabilities\/gate\.yml/],
+  ["reader-group-mismatch", "x", /has group 'governance', but this file holds group 'modules'/],
+  ["reader-file-name", null, /name is not <group>\[-<part>\]\.yml/],
+  ["reader-empty-directory", null, /holds no file/],
+  ["reader-legacy-beside", null, /still exists beside ci\/capabilities\//],
+];
+for (const [name, id, text] of READER_CASES) {
+  test(`reference drift: the reader failure '${name}' is one reference-drift record`, () => {
+    const { status, report } = fromFixture(name);
+    assert.equal(status, 1);
+    assert.ok(report.data && "records" in report.data);
+    assert.equal(report.data.count, 1);
+    const r = report.data.records[0];
+    assert.ok(r);
+    assert.equal(r.kind, "reference-drift");
+    assert.equal(r.id, id);
+    assert.equal(r.engine, "reference");
+    assert.equal(r.action, "propose");
+    assert.equal(r.ambiguous, false);
+    assert.match(r.text, text);
+  });
+}
+
 test("reference drift: a capability without group, then the stale pipeline it causes", () => {
   const { status, report } = fromFixture("reference-drift-group");
   assert.equal(status, 1);
@@ -205,6 +231,7 @@ test("ambiguous is true exactly for hand-authored-drift, over every fixture reco
     "stale-derived-pipeline",
     "reference-drift-validity",
     "reference-drift-group",
+    ...READER_CASES.map(([n]) => n),
     "hand-authored-drift",
     "evidence-less-exception",
     "untraceable-job",

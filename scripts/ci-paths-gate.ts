@@ -16,6 +16,7 @@ import path from "node:path";
 import { UnsupportedGlobError } from "./lib/glob-engine.ts";
 import { decide } from "./lib/ci-paths-gate/gate.ts";
 import { readEffective } from "./lib/ci-paths-gate/reference.ts";
+import { readReference } from "./lib/ci-parity/reference-read.ts";
 
 function usage(msg: string): number {
   process.stderr.write(`ci-paths-gate: ${msg}\n`);
@@ -38,10 +39,7 @@ async function main(argv: string[]): Promise<number> {
   const repo = process.env["REPO_DIR"] || path.resolve(import.meta.dirname, "..");
   let d;
   try {
-    const eff = readEffective(
-      fs.readFileSync(path.join(repo, "ci/ci-capabilities.yml"), "utf8"),
-      id,
-    );
+    const eff = readEffective(readReference(repo).text, id);
     d = await decide(id, event, before, eff.paths);
   } catch (e) {
     if (e instanceof UnsupportedGlobError) return usage(e.message);

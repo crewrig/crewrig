@@ -22,6 +22,7 @@ import { selectForShas } from "../lib/ci-pre-push/select.ts";
 import { taskEnv } from "../lib/ci-pre-push/run.ts";
 import { git, gitEnv, initRepo, writeRel } from "./lib/governance-git-fixture.ts";
 import { REPO, makeSandbox, runEntry, stageNodeModules } from "./lib/governance-sandbox.ts";
+import { readReferenceText, writeReferenceDir } from "./lib/ci-reference-fixtures.ts";
 
 interface Row {
   /** Failure class, as analysed on #1761. */
@@ -114,14 +115,13 @@ const ROWS: readonly Row[] = [
     marker:
       /DRIFT: capability 'check-agents-size' \(github-actions\): job 'check-agents-size' exhibits 0 of 1 declared business steps/,
     mutate: (copy) => {
-      const file = path.join(copy, "ci/ci-capabilities.yml");
-      const text = fs.readFileSync(file, "utf8");
+      const text = readReferenceText(copy);
       assert.ok(
         text.includes(`${PARITY_COMMAND}\n`),
         "the capability command to drift was not found",
       );
-      fs.writeFileSync(
-        file,
+      writeReferenceDir(
+        copy,
         text.replace(`${PARITY_COMMAND}\n`, `${PARITY_COMMAND} --replay-drift\n`),
       );
     },

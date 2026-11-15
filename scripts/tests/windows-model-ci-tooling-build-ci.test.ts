@@ -15,11 +15,11 @@ import { fileURLToPath } from "node:url";
 import { defaultIsFile } from "../lib/worktree-claim/launch-windows.ts";
 import { expectStatus, resolveInterpreters, spawnEntry, why } from "./lib/windows-proof-support.ts";
 import type { Run } from "./lib/windows-proof-support.ts";
+import { copyReference } from "./lib/ci-reference-fixtures.ts";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const script = path.join(repo, "scripts", "build-ci.ts");
 const committed = fs.readFileSync(path.join(repo, ".gitlab-ci.yml"));
-const reference = fs.readFileSync(path.join(repo, "ci", "ci-capabilities.yml"));
 
 /** A scratch root holding `bin/` and `work/` (a repo-shaped dir with ci/ and the given output). */
 function withBox<T>(
@@ -34,7 +34,7 @@ function withBox<T>(
     const work = path.join(root, "work");
     fs.mkdirSync(bin);
     fs.mkdirSync(path.join(work, "ci"), { recursive: true });
-    fs.writeFileSync(path.join(work, "ci", "ci-capabilities.yml"), reference);
+    copyReference(repo, work);
     // build-ci reads the Task pin at generation (spec 0282); a root without one fails closed.
     fs.copyFileSync(path.join(repo, "ci", "task-pin.json"), path.join(work, "ci", "task-pin.json"));
     if (output !== null) fs.writeFileSync(path.join(work, ".gitlab-ci.yml"), output);

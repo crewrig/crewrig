@@ -11,6 +11,7 @@ import {
   runBuildCi,
   UNKNOWN_TOOL_REFERENCE,
   VALID_REFERENCE,
+  writeReferenceDir,
 } from "./lib/ci-reference-fixtures.ts";
 
 describe("build-ci synthetic write and manual rules (cases M, N)", () => {
@@ -19,7 +20,7 @@ describe("build-ci synthetic write and manual rules (cases M, N)", () => {
     const out = path.join(root, ".gitlab-ci.yml");
     assert.equal(runBuildCi(root).status, 0, "M0 initial valid generation succeeds");
     const initial = fs.readFileSync(out);
-    fs.writeFileSync(path.join(root, "ci", "ci-capabilities.yml"), UNKNOWN_TOOL_REFERENCE);
+    writeReferenceDir(root, UNKNOWN_TOOL_REFERENCE);
     assert.equal(runBuildCi(root).status, 1, "M1 generation fails on invalid capability");
     assert.ok(fs.readFileSync(out).equals(initial), "M2 byte-identical after failure");
     const left = fs.readdirSync(root).filter((n) => n.startsWith(".gitlab-ci.yml.tmp."));
