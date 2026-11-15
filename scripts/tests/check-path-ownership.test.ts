@@ -286,6 +286,19 @@ describe("check-path-ownership: ownership (R13, R15, R18)", () => {
     assert.deepEqual(counts(r), [6, 5, 1]);
   });
 
+  test("a new reference file is unowned until a capability's pull-request path covers it (spec 0309 R2, R5)", () => {
+    const tree = { ...BASE_TREE, "tooling/capability-parts.json": "{}\n" };
+    const r = check(repo(tree));
+    assert.equal(r.status, 1, r.all);
+    assert.match(r.all, /unowned: tooling\/capability-parts\.json/);
+    const caps = {
+      ...BASE_CAPS,
+      shape: [{ on: "pull-request" as const, paths: ["tooling/capability-parts.json"] }],
+    };
+    const ok = check(repo(tree, { caps }));
+    assert.equal(ok.status, 0, ok.all);
+  });
+
   test("adding a reasoned exemption makes the same tree pass", () => {
     const tree = {
       ...BASE_TREE,

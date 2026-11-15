@@ -16,6 +16,10 @@ import { readReference } from "../lib/ci-parity/reference-read.ts";
 import { get, parse, tag, YqMap, YqSeq } from "../lib/yq-accessors/index.ts";
 import { readWorkflowUnionYaml } from "./lib/workflow-union.ts";
 
+// Capabilities added under spec 0309 delta-02 R12(a): filtered on pull-request, unfiltered on push
+// from their first commit. This is the one named exception to the rule above.
+const UNFILTERED_ON_PUSH = new Set(["ci-file-limit"]);
+
 const caps = new Map(readCapabilities(parse(readReference(".").text)).map((c) => [c.id, c]));
 
 /** The capability ids of the `ci-job` steps of build.yml, by job. */
@@ -49,6 +53,7 @@ test("a build.yml job filtered on pull_request is filtered identically on push",
     }
     const pr = cap.triggers.find((t) => t.kind === "pull-request");
     if (pr === undefined || pr.paths.length === 0) continue;
+    if (UNFILTERED_ON_PUSH.has(id)) continue;
     filtered++;
     const push = cap.triggers.find((t) => t.kind === "push");
     if (push === undefined || push.paths.length === 0)

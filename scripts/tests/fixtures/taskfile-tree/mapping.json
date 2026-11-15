@@ -201,6 +201,7 @@
   "ci:check-model-mappings": "taskfiles/ci/governance.yml",
   "ci:check-agent-profiles": "taskfiles/ci/governance.yml",
   "ci:agent-profile-migration": "taskfiles/ci/governance.yml",
+  "ci:ci-file-limit": "taskfiles/ci/governance.yml",
   "ci:ci-parity": "taskfiles/ci/governance.yml",
   "ci:check-plan-review": "taskfiles/ci/governance.yml",
   "ci:alert-scheduled-failure": "taskfiles/ci/governance.yml",

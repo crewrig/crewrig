@@ -1,0 +1,34 @@
+# CI capabilities: group governance, part ci-shape (format: docs/ci-reference-format.md, spec 0309).
+capabilities:
+
+  # Spec 0309 R5 and R12(a): the per-file limit on the hand-authored CI files, and the split proof
+  # (R13 of delta-01). The pull-request trigger carries the path filter; the push trigger carries
+  # none, because a job added under R12(a) runs unfiltered on push from its first commit
+  # (delta-02 R12(a)). The filter sits on the trigger, not on the capability, so push never inherits it.
+  - id: ci-file-limit
+    group: governance
+    name: "Check the per-file limit of the CI files and the reference split proof"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+        paths:
+          - "scripts/tests/ci-file-limit.test.ts"
+          - "scripts/tests/ci-split-proof.test.ts"
+          - "scripts/ci-split.ts"
+          - "scripts/lib/ci-split/**"
+          - "scripts/lib/glob-engine.ts"
+          - "ci/capabilities/**"
+          - "ci/capability-parts.json"
+          - ".gitlab-ci.yml"
+          - ".github/workflows/build.yml"
+          - ".github/workflows/_ci-*.yml"
+          - "taskfiles/ci/governance.yml"
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:ci-file-limit

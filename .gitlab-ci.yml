@@ -1000,6 +1000,30 @@ lint-typescript-selftest:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
       changes: *lint-typescript-selftest-changes-1
 
+ci-file-limit:
+  stage: governance
+  image: node:24
+  before_script:
+    - !reference [.task-install, script]
+    - npm ci --omit=dev --workspaces=false
+  script:
+    - "task ci:ci-file-limit"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/tests/ci-file-limit.test.ts"
+        - "scripts/tests/ci-split-proof.test.ts"
+        - "scripts/ci-split.ts"
+        - "scripts/lib/ci-split/**"
+        - "scripts/lib/glob-engine.ts"
+        - "ci/capabilities/**"
+        - "ci/capability-parts.json"
+        - ".gitlab-ci.yml"
+        - ".github/workflows/build.yml"
+        - ".github/workflows/_ci-*.yml"
+        - "taskfiles/ci/governance.yml"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
 ci-parity:
   stage: governance
   image: node:24

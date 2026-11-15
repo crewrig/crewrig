@@ -116,6 +116,7 @@ task: Available tasks for this project:
 * ci:check-taskfile-tree:                    Check the Taskfile tree layout and contract (pre-push mirror of the CI job)
 * ci:check-taskfile-tree-selftest:           Run the Taskfile tree self-tests (pre-push mirror of the CI job)
 * ci:chroma-mcp:                             Run the chroma-mcp CI capability (pre-push mirror of the CI job)
+* ci:ci-file-limit:                          Check the per-file limit of the CI files and the reference split proof (pre-push mirror of the CI job)
 * ci:ci-parity:                              Test the CI generator and parity harness (cached by the ci-cache-guard capability key)
 * ci:ci-pre-push-replay:                     Run the ci-pre-push-replay CI capability (pre-push mirror of the CI job)
 * ci:cli-matrix-fresh:                       Check docs/cli-matrix.md is fresh (pre-push mirror of the CI job)
