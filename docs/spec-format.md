@@ -347,8 +347,9 @@ content-approval discharges the spec-PR's merge-authorization request, which
 is therefore not fired a second time (see
 [`interaction-modes.md`](interaction-modes.md) → *User-gate definition*). In
 `AUTO`, where no SPECS-stage content-approval gate runs, the approval event
-is the **merge-authorization request**, which still fires and remains the
-sole approval event. The rule is thus mode-independent in effect — no mode
+is the **merge-authorization request**, which still fires unless a standing
+authorisation covers the merge (same section), and remains the sole approval
+event. The rule is thus mode-independent in effect — no mode
 lacks a real approval decision to record — while the gate that constitutes
 that decision differs by mode. The transition SHALL be recorded **only
 after** that approval event has been secured; recording `status: approved`

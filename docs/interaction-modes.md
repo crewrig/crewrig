@@ -118,8 +118,8 @@ carve-out does **not** reach the pre-merge merge-authorization gate
 (kind 2 above) — defined above as "a distinct action-authorization,
 NOT an artifact-validation gate" — so the *Notes on the matrix* claim
 that the gate is waived only by the two carve-outs (the one-file
-spec-PR discharge and the standing authorisation) stays true, and *Branching Strategy* in `AGENTS.md` is neither weakened nor
-touched.
+spec-PR discharge and the standing authorisation) stays true, and
+*Branching Strategy* in `AGENTS.md` is neither weakened nor touched.
 
 These clauses bound the plan's size and the loop's length; they remove no item from the reviewer's checklist at any tier.
 

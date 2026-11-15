@@ -104,7 +104,8 @@ input before spawning the reviewer is a process violation in
 INTERMEDIATE, MINIMAL, and AUTO modes. The REVIEW loop in those modes
 is fully autonomous from the moment the PR exists — no user gate fires
 until the max-iteration guardrail (see *Max-iteration guardrail*) or the
-final merge-authorization request.
+final merge-authorization request (carve-outs:
+[`interaction-modes.md`](interaction-modes.md) → *User-gate definition*).
 
 **Self-healing backstop.** Step 1 above is an orchestrator obligation,
 not a suggestion — but if it is ever missed and the `pr-reviewer` seat
