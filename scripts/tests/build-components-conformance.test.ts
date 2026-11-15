@@ -115,7 +115,21 @@ const movedAgents = [
 const agents = fs.existsSync(agentsDir)
   ? [...fs.readdirSync(agentsDir), ...movedAgents].sort()
   : [];
-const agentDirOf = (a: string): string => (movedAgents.includes(a) ? libraryAgentsDir : agentsDir);
+// Issue #1937: the live core profiles now declare `reasoning`, which the frozen shell never knew, so
+// the eleven core agents are read from a frozen copy (`oracle-agents/`) of their sources as on main
+// before that change, the way `oracle-mappings/` freezes the Claude mapping. The goldens stay keyed
+// and valued as recorded; the live state is checked by agent-profile-committed.test.ts.
+const frozenAgentsDir = path.join(
+  REPO,
+  "scripts",
+  "tests",
+  "fixtures",
+  "build-components",
+  "oracle-agents",
+);
+const frozenAgents = new Set(fs.existsSync(frozenAgentsDir) ? fs.readdirSync(frozenAgentsDir) : []);
+const agentDirOf = (a: string): string =>
+  movedAgents.includes(a) ? libraryAgentsDir : frozenAgents.has(a) ? frozenAgentsDir : agentsDir;
 const TARGETS = ["claude", "gemini", "copilot", "antigravity"];
 const profileDir = path.join(REPO, "scripts", "tests", "fixtures", "agent-profiles");
 const fixtures = fs.existsSync(profileDir) ? fs.readdirSync(profileDir).sort() : [];

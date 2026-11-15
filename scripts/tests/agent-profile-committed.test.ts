@@ -285,6 +285,36 @@ describe("T7 — R1,R2,R4: the 22-row baseline, checked four ways over the sourc
   });
 });
 
+describe("T9 — #1937: the frozen oracle-agents fixture has not drifted from the 723ad8f baseline", () => {
+  // The shell-oracle conformance cases read these eleven core sources, not the live ones (the live
+  // profiles declare `reasoning`, which the frozen shell never knew). Closed list, baseline rungs.
+  const dir = path.join(REPO, "scripts", "tests", "fixtures", "build-components", "oracle-agents");
+  const names = fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort();
+  const frozen = BASELINE.filter(([n]) => fs.existsSync(path.join(dir, n, "AGENT.md")));
+
+  test("the fixture holds exactly the baseline rows that were core agents", () => {
+    assert.equal(names.length, 11);
+    assert.deepEqual(
+      frozen.map(([n]) => n),
+      names,
+    );
+  });
+  test("each fixture source declares the baseline intelligence rung and no reasoning", () => {
+    for (const [name, rung] of frozen) {
+      const model = (
+        readFrontmatter(fs.readFileSync(path.join(dir, name, "AGENT.md"), "utf8")).metadata as {
+          model?: Record<string, unknown>;
+        }
+      ).model;
+      assert.deepEqual(model, { intelligence: rung }, name);
+    }
+  });
+});
+
 describe("T8 — spec 0306 R9, R20: omitClaudeMd on the committed agent trees", () => {
   // The agent list comes from the committed sources, never from a literal count (plan v2 v1-F5).
   const core = fs
