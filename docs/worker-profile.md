@@ -39,14 +39,13 @@ claude --settings ~/.crewrig/claude-profiles/worker.settings.json \
 
 The coordinator variant replaces the file with `coordinator.settings.json`. Strict MCP is a launcher flag, not a settings key (W4): with the empty `--mcp-config`, no MCP tool name or server instruction enters the context. A worker that needs a server passes it in that `--mcp-config` instead of the empty object. MemPalace is not needed: a worker skips the session-start sweep.
 
-## How an Orca worker receives a profile
+## How a launched worker receives a profile
 
-Read-only investigation of Orca 1.4.258, nothing changed in Orca:
-
-- `orca orchestration worker-start` has **no flag for extra CLI arguments or environment** (`--agent`, `--model`, `--effort` are the only launch options).
-- Orca's per-agent launch options are the **global** settings `agentDefaultArgs.<agent>` and `agentDefaultEnv.<agent>`, set in Orca's settings. They apply to **every** Claude agent Orca launches: workers, the coordinator and interactive tabs alike. (On the authoring machine `claude` carries `--dangerously-skip-permissions`; that is a local value, not a default.) Adding `--settings ...` there would also apply the worker profile to the coordinator, which then loses `Workflow` and `Artifact`.
-- **Safest option:** reuse a terminal. Start `claude --settings ~/.crewrig/claude-profiles/worker.settings.json --strict-mcp-config --mcp-config '{"mcpServers":{}}'` by hand in a terminal, then dispatch with `orca orchestration worker-start --terminal <handle> --worktree <selector>`. Only that terminal carries the profile; interactive tabs are unaffected.
-- Second option, if every Orca-launched Claude agent should be slim: put the flags in `agentDefaultArgs.claude`, and run the coordinator outside Orca-launched tabs or with `coordinator.settings.json` passed by hand.
+- Pass the profile with `--settings <profile>` plus the strict MCP flags at launch, as in the recipe above.
+- A launcher that offers launch options applies them either per worker or globally.
+- A launcher-wide default applies to every agent it launches, the coordinator included, so interactive and coordinator sessions would be slim too. Pass the coordinator profile by hand, or run the coordinator outside those sessions, so it keeps `Workflow` and `Artifact`.
+- Reusing a session started by hand with the flags is the safest option: it leaves other sessions unaffected.
+- The launcher is not configured by CrewRig.
 
 ## Measured effect
 
