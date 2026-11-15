@@ -7,6 +7,7 @@ import { test } from "node:test";
 
 import { run as buildCi } from "../lib/build-ci/entry.ts";
 import { checkTaskProvisioning } from "../lib/task-provisioning/index.ts";
+import { writeReferenceDir } from "./lib/ci-reference-fixtures.ts";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
 // A fixture root file is written, not read; the name is composed so the root-reader guard stays quiet.
@@ -50,7 +51,7 @@ function fixture(
     fs.writeFileSync(path.join(dir, rel), text);
   };
   w(ROOT_TASKFILE, `version: '${opts.floor ?? "3.54"}'\ntasks: {}\n`);
-  w("ci/ci-capabilities.yml", CAP);
+  writeReferenceDir(dir, CAP);
   w("ci/task-pin.json", opts.pin ?? fs.readFileSync(path.join(REPO, "ci/task-pin.json"), "utf8"));
   w(ACTION, opts.action ?? fs.readFileSync(path.join(REPO, ACTION), "utf8"));
   w(".github/workflows/build.yml", WF(opts.steps ?? CHECKOUT + SETUP + BUSINESS));

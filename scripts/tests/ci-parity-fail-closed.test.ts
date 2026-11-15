@@ -4,6 +4,7 @@
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
@@ -16,9 +17,16 @@ import {
   runCheck,
   type YMap,
 } from "./lib/ci-parity-fixture.ts";
+import {
+  ReferenceNotFoundError,
+  ReferenceReadError,
+  docOf,
+  readCapabilities,
+  readReference,
+} from "../lib/ci-parity/reference-read.ts";
+import { editReference } from "./lib/ci-reference-fixtures.ts";
 
 const buildYml = (fx: string) => path.join(fx, ".github", "workflows", "build.yml");
-const refYml = (fx: string) => path.join(fx, "ci", "ci-capabilities.yml");
 
 function job(doc: YMap, name: string): YMap {
   return map(map(doc["jobs"], "jobs")[name], `job ${name}`);
@@ -34,7 +42,7 @@ function ghEdit(edit: (doc: YMap) => void): string {
 function refEdit(edit: (doc: YMap) => void, gitlab = true): string {
   const fx = makeFixture();
   if (!gitlab) fs.rmSync(path.join(fx, ".gitlab-ci.yml"), { force: true });
-  editYaml(refYml(fx), edit);
+  editReference(fx, edit);
   return fx;
 }
 function fails(fx: string, label: string, needles: readonly string[]): void {
@@ -211,4 +219,163 @@ test("S17 (spec 0287 R11): a callee file that does not match the group fails", (
     capOf(doc, "lint-specs")["group"] = "modules";
   });
   fails(fx, "S17", ["job 'lint-specs'", "_ci-gate.yml", "_ci-modules.yml", "R11"]);
+});
+
+// ---------------------------------------------------------------------------------------------
+// The shared reader of the capability reference (spec 0309 R3, R13(0)): `readReference` and the
+// parity guard that fronts it. Sandboxes hold only `ci/`; no workflow or pipeline arm runs.
+
+const cap = (id: string, group?: string): string =>
+  `  - id: ${id}\n${group === undefined ? "" : `    group: ${group}\n`}    name: "${id}"\n` +
+  `    trigger:\n      - on: push\n        branches: [main]\n    portability: portable\n` +
+  `    requires:\n      runtime: node@22\n    command:\n      - npm install\n`;
+const refFile = (...caps: string[]): string => `capabilities:\n${caps.join("")}`;
+
+function sandbox(files: Record<string, string>, legacy?: string): string {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "ref-reader-"));
+  process.on("exit", () => fs.rmSync(root, { recursive: true, force: true }));
+  for (const [name, text] of Object.entries(files)) {
+    fs.mkdirSync(path.join(root, "ci", "capabilities"), { recursive: true });
+    fs.writeFileSync(path.join(root, "ci", "capabilities", name), text);
+  }
+  if (legacy !== undefined) {
+    fs.mkdirSync(path.join(root, "ci"), { recursive: true });
+    fs.writeFileSync(path.join(root, "ci", "ci-capabilities.yml"), legacy);
+  }
+  return root;
+}
+
+/** The reader failure of `root`: its violations, which the parity guard must print the same way. */
+function readerFailure(root: string): { file: string; message: string }[] {
+  let caught: unknown;
+  try {
+    readReference(root);
+  } catch (e) {
+    caught = e;
+  }
+  assert.ok(caught instanceof ReferenceReadError, "readReference must fail closed");
+  const r = runCheck(root);
+  assert.equal(r.status, 1, `${r.stdout}${r.stderr}`);
+  assert.ok(
+    r.stderr.includes(
+      `FAILED: ${caught.violations.length} reference-validity violation(s) in ${root}/ci/capabilities/:\n`,
+    ),
+    r.stderr,
+  );
+  for (const v of caught.violations)
+    assert.ok(r.stderr.includes(`  - ${v.file}: ${v.message}\n`), `no bullet for ${v.file}`);
+  return caught.violations;
+}
+
+test("R3: a file that is not valid reference content fails, naming the file", () => {
+  const v = readerFailure(
+    sandbox({ "gate.yml": refFile(cap("a", "gate")), "modules.yml": "capabilities: [unclosed\n" }),
+  );
+  assert.deepEqual(
+    v.map((x) => x.file),
+    ["ci/capabilities/modules.yml"],
+  );
+  assert.match(v[0]?.message ?? "", /not valid reference content/);
+});
+
+test("R3: an id defined in two files fails, naming both files", () => {
+  const v = readerFailure(
+    sandbox({
+      "gate.yml": refFile(cap("dup", "gate")),
+      "modules.yml": refFile(cap("dup", "modules")),
+    }),
+  );
+  assert.equal(v.length, 1);
+  assert.equal(v[0]?.file, "ci/capabilities/modules.yml");
+  assert.match(v[0]?.message ?? "", /'dup' is also defined in ci\/capabilities\/gate\.yml/);
+});
+
+test("R3: a capability whose group is not its file's group fails, naming the file and capability", () => {
+  const v = readerFailure(sandbox({ "modules.yml": refFile(cap("x", "governance")) }));
+  assert.equal(v[0]?.file, "ci/capabilities/modules.yml");
+  assert.match(
+    v[0]?.message ?? "",
+    /capability 'x' has group 'governance', but this file holds group 'modules'/,
+  );
+});
+
+test("R3: a file name outside the six groups and standalone fails, naming the file", () => {
+  const v = readerFailure(
+    sandbox({
+      "gate.yml": refFile(cap("a", "gate")),
+      "misc.yml": refFile(cap("b")),
+      "notes.txt": "x",
+    }),
+  );
+  assert.deepEqual(v.map((x) => x.file).sort(), [
+    "ci/capabilities/misc.yml",
+    "ci/capabilities/notes.txt",
+  ]);
+});
+
+test("R3: a directory with no file fails, naming the directory", () => {
+  const root = sandbox({});
+  fs.mkdirSync(path.join(root, "ci", "capabilities"), { recursive: true });
+  const v = readerFailure(root);
+  assert.deepEqual(v, [{ file: "ci/capabilities/", message: "holds no file" }]);
+});
+
+test("R3: the legacy file left beside the directory fails, naming it", () => {
+  const v = readerFailure(
+    sandbox({ "gate.yml": refFile(cap("a", "gate")) }, refFile(cap("a", "gate"))),
+  );
+  assert.equal(v[0]?.file, "ci/ci-capabilities.yml");
+  assert.match(v[0]?.message ?? "", /still exists beside ci\/capabilities\//);
+});
+
+test("R3: a directory holding only ungrouped files is valid while no capability names a group", () => {
+  const ok = sandbox({ "standalone.yml": refFile(cap("a"), cap("b")) });
+  const ref = readReference(ok);
+  assert.deepEqual(
+    [...ref.fileOf],
+    [
+      ["a", "ci/capabilities/standalone.yml"],
+      ["b", "ci/capabilities/standalone.yml"],
+    ],
+  );
+  const r = runCheck(ok);
+  assert.equal(r.status, 0, `${r.stdout}${r.stderr}`);
+  // The same directory fails once an ungrouped file holds a grouped capability.
+  const v = readerFailure(sandbox({ "standalone.yml": refFile(cap("a"), cap("b", "gate")) }));
+  assert.match(
+    v[0]?.message ?? "",
+    /capability 'b' has group 'gate', but this file holds ungrouped/,
+  );
+});
+
+test("R3: with no directory the legacy file is read, and its absence keeps the not-found error", () => {
+  const legacy = sandbox({}, refFile(cap("a", "gate"), cap("b")));
+  const ref = readReference(legacy);
+  assert.deepEqual(ref.files, ["ci/ci-capabilities.yml"]);
+  assert.equal(ref.text, refFile(cap("a", "gate"), cap("b")));
+  assert.equal(runCheck(legacy).status, 0);
+  const none = sandbox({});
+  assert.throws(() => readReference(none), ReferenceNotFoundError);
+  const r = runCheck(none);
+  assert.equal(r.status, 2);
+  assert.ok(r.stderr.includes(`Error: CI reference not found: ${none}/ci/ci-capabilities.yml`));
+});
+
+test("R13(0): files in byte order of name, entries in file order within each file", () => {
+  const root = sandbox({
+    "windows.yml": refFile(cap("w2", "windows"), cap("w1", "windows")),
+    "gate-b.yml": refFile(cap("g3", "gate")),
+    "gate-a.yml": refFile(cap("g2", "gate"), cap("g1", "gate")),
+    "standalone.yml": refFile(cap("s")),
+  });
+  const ref = readReference(root);
+  assert.deepEqual(
+    ref.files.map((f) => path.basename(f)),
+    ["gate-a.yml", "gate-b.yml", "standalone.yml", "windows.yml"],
+  );
+  assert.deepEqual([...ref.fileOf.keys()], ["g2", "g1", "g3", "s", "w2", "w1"]);
+  assert.deepEqual(
+    readCapabilities(docOf(ref)).map((c) => c.id),
+    ["g2", "g1", "g3", "s", "w2", "w1"],
+  );
 });

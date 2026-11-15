@@ -82,12 +82,17 @@ export interface Outcome {
 }
 
 /** The drift verdict; `committed` is null when the output file does not exist. */
-export function checkDrift(fresh: string, committed: string | null, output: string): Outcome {
+export function checkDrift(
+  fresh: string,
+  committed: string | null,
+  output: string,
+  source = "ci/ci-capabilities.yml",
+): Outcome {
   if (committed === null) {
     return {
       stdout: "",
       stderr:
-        `DRIFT: ${output} does not exist (expected from ci/ci-capabilities.yml)\n` +
+        `DRIFT: ${output} does not exist (expected from ${source})\n` +
         "FAILED: run 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts' to generate it.\n",
       code: 1,
     };
@@ -102,7 +107,7 @@ export function checkDrift(fresh: string, committed: string | null, output: stri
   return {
     stdout: "",
     stderr:
-      `DRIFT: ${output} differs from a fresh derivation of ci/ci-capabilities.yml\n\n` +
+      `DRIFT: ${output} differs from a fresh derivation of ${source}\n\n` +
       normalDiff(committed, fresh) +
       "\nFAILED: run 'node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts' to regenerate the GitLab pipeline.\n",
     code: 1,

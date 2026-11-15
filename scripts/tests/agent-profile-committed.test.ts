@@ -14,6 +14,7 @@ import { claudeGuardState, REPO } from "./lib/build-fixture-tree.ts";
 import { readFrontmatter } from "./lib/build-sandbox.ts";
 import { ciTaskCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 export const BASELINE = `accessibility-auditor medium
 accessibility-tester medium
@@ -74,7 +75,7 @@ const RUNGS: Rung[] = [
 
 describe("T1 — R36: component-drift's --check command is still wired", () => {
   test("T1 committed::component-drift wiring carries the --check invocation", () => {
-    const doc = yamlLib.load(read("ci/ci-capabilities.yml")) as {
+    const doc = yamlLib.load(readReferenceText(REPO)) as {
       capabilities: { id: string; command?: unknown }[];
     };
     const cap = doc.capabilities.find((c) => c.id === "component-drift");

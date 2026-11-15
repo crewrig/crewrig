@@ -19,6 +19,7 @@ import { describe, test } from "node:test";
 import { REPO } from "./lib/build-fixture-tree.ts";
 import { effectivePaths } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const INDEX = "docs/agent-team-protocol.md";
 const ROLE_DIR = "docs/agent-team-protocol";
@@ -476,7 +477,7 @@ describe("agent-team-protocol split guards (spec 0274)", () => {
   });
 
   test("CI wiring: governance-checks-ts runs on docs and AGENTS.md edits", () => {
-    const text = fs.readFileSync(path.join(REPO, "ci", "ci-capabilities.yml"), "utf8");
+    const text = readReferenceText(REPO);
     const caps = (
       yamlLib.load(text) as {
         capabilities?: { id: string; paths?: string[]; trigger: { paths?: string[] }[] }[];

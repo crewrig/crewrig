@@ -21,6 +21,7 @@ import {
 import { yamlLib } from "./lib/yaml-lib.ts";
 import { gatePaths } from "./lib/capability-path-scan.ts";
 import { readWorkflowUnionText } from "./lib/workflow-union.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 interface Capability {
   readonly id: string;
@@ -52,10 +53,10 @@ const COVERED = [
 ];
 
 function loadCapability(): Capability {
-  const text = fs.readFileSync(path.join(REPO, "ci", "ci-capabilities.yml"), "utf8");
+  const text = readReferenceText(REPO);
   const caps = (yamlLib.load(text) as { capabilities?: Capability[] }).capabilities ?? [];
   const cap = caps.find((c) => c.id === ID);
-  assert.ok(cap, `ci/ci-capabilities.yml has a capability '${ID}'`);
+  assert.ok(cap, `the capability reference has a capability '${ID}'`);
   return cap;
 }
 

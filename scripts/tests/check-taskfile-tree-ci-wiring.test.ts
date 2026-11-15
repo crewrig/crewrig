@@ -18,6 +18,7 @@ import { resolveCapabilityCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 import { gatePaths } from "./lib/capability-path-scan.ts";
 import { readWorkflowUnionText } from "./lib/workflow-union.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const ID = "check-taskfile-tree";
 const ROOT = ["Task", "file.yml"].join("");
@@ -236,19 +237,17 @@ function assertGitlab(text: string): void {
 }
 
 describe("check-taskfile-tree CI wiring", () => {
-  test("ci/ci-capabilities.yml", () => assertCapabilities(read("ci", "ci-capabilities.yml")));
+  test("capability reference", () => assertCapabilities(readReferenceText(REPO)));
   test("GitHub workflow", () => assertGithub(readWorkflowUnionText(REPO)));
   test("GitLab pipeline", () => assertGitlab(read(".gitlab-ci.yml")));
   test("ci tasks run the guard and the suites", () => assertTasks(readCiTaskfiles()));
 
   test("every job running a loader-importing test installs dependencies first", () => {
-    const caps = (yamlLib.load(read("ci", "ci-capabilities.yml")) as { capabilities: Cap[] })
-      .capabilities;
+    const caps = (yamlLib.load(readReferenceText(REPO)) as { capabilities: Cap[] }).capabilities;
     assertInstallBeforeLoaderTests(caps, loaderImporterTests());
   });
   test("mutation: spec-view without its install command is rejected", () => {
-    const caps = (yamlLib.load(read("ci", "ci-capabilities.yml")) as { capabilities: Cap[] })
-      .capabilities;
+    const caps = (yamlLib.load(readReferenceText(REPO)) as { capabilities: Cap[] }).capabilities;
     const sv = caps.find((c) => c.id === "spec-view");
     assert.ok(sv?.command);
     sv.command = sv.command.filter((c) => !INSTALL.test(c));
@@ -274,9 +273,7 @@ describe("check-taskfile-tree CI wiring", () => {
   });
   test("mutation: a Taskfile filter without taskfiles/** is rejected", () => {
     assert.throws(() =>
-      assertCapabilities(
-        read("ci", "ci-capabilities.yml").replace(/\n\s*- "taskfiles\/\*\*"/g, ""),
-      ),
+      assertCapabilities(readReferenceText(REPO).replace(/\n\s*- "taskfiles\/\*\*"/g, "")),
     );
   });
 });

@@ -9,8 +9,9 @@ import { describe, it } from "node:test";
 import { ciTaskCommands } from "./lib/ci-task-commands.ts";
 import { jobText, REPO, runBuildCi, topLevelKeys } from "./lib/ci-reference-fixtures.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
-const referenceText = fs.readFileSync(path.join(REPO, "ci", "ci-capabilities.yml"), "utf8");
+const referenceText = readReferenceText(REPO);
 const outputText = fs.readFileSync(path.join(REPO, ".gitlab-ci.yml"), "utf8");
 
 interface Capability {

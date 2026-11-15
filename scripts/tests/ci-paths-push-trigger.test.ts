@@ -12,12 +12,11 @@ import { test } from "node:test";
 import { decide } from "../lib/ci-paths-gate/gate.ts";
 import { readEffective } from "../lib/ci-paths-gate/reference.ts";
 import { readCapabilities } from "../lib/ci-parity/reference-read.ts";
+import { readReference } from "../lib/ci-parity/reference-read.ts";
 import { get, parse, tag, YqMap, YqSeq } from "../lib/yq-accessors/index.ts";
 import { readWorkflowUnionYaml } from "./lib/workflow-union.ts";
 
-const caps = new Map(
-  readCapabilities(parse(fs.readFileSync("ci/ci-capabilities.yml", "utf8"))).map((c) => [c.id, c]),
-);
+const caps = new Map(readCapabilities(parse(readReference(".").text)).map((c) => [c.id, c]));
 
 /** The capability ids of the `ci-job` steps of build.yml, by job. */
 function ciJobIds(): Map<string, string> {
@@ -67,7 +66,7 @@ test("a build.yml job filtered on pull_request is filtered identically on push",
 test("R7: the gate decision of a paths-filtered capability is unchanged by the split", async () => {
   const id = "component-drift-selftest";
   const callee = ".github/workflows/_ci-extensions.yml";
-  const eff = readEffective(fs.readFileSync("ci/ci-capabilities.yml", "utf8"), id).paths;
+  const eff = readEffective(readReference(".").text, id).paths;
   for (const kind of ["pull-request", "push"]) {
     const now = eff[kind] ?? [];
     assert.ok(now.includes(".github/workflows/build.yml"), `${kind}: build.yml stays`);

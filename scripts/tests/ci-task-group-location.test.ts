@@ -11,6 +11,8 @@ import { loadTaskfileTree } from "../lib/taskfile-tree.ts";
 import { ROOT_FILE } from "../lib/taskfile-tree-parse.ts";
 import { yamlLib as yaml } from "./lib/yaml-lib.ts";
 import { REPO } from "./lib/governance-sandbox.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
+import { copyReference } from "./lib/ci-reference-fixtures.ts";
 
 const CONTROL = new Set(["pre-push", "hooks-install", "hooks-uninstall", "hooks-status"]);
 const GROUP_FILES: Record<string, string[]> = {
@@ -18,7 +20,7 @@ const GROUP_FILES: Record<string, string[]> = {
 };
 
 function misplaced(repo: string): string[] {
-  const caps = yaml.load(fs.readFileSync(path.join(repo, "ci", "ci-capabilities.yml"), "utf8")) as {
+  const caps = yaml.load(readReferenceText(repo)) as {
     capabilities: { id: string; group?: string; portability?: string }[];
   };
   const groupOf = new Map(caps.capabilities.map((c) => [c.id, c.group]));
@@ -54,11 +56,7 @@ describe("ci task group location (spec 0287)", () => {
     try {
       fs.cpSync(path.join(REPO, ROOT_FILE), path.join(tmp, ROOT_FILE));
       fs.cpSync(path.join(REPO, "taskfiles"), path.join(tmp, "taskfiles"), { recursive: true });
-      fs.mkdirSync(path.join(tmp, "ci"));
-      fs.cpSync(
-        path.join(REPO, "ci", "ci-capabilities.yml"),
-        path.join(tmp, "ci", "ci-capabilities.yml"),
-      );
+      copyReference(REPO, tmp);
       assert.deepEqual(misplaced(tmp), []);
       const mod = path.join(tmp, "taskfiles", "ci", "modules.yml");
       const gov = path.join(tmp, "taskfiles", "ci", "governance.yml");

@@ -9,11 +9,12 @@ import os from "node:os";
 import path from "node:path";
 import { after } from "node:test";
 
+import { readReferenceText, writeReferenceDir } from "./ci-reference-fixtures.ts";
 import { applyNormalDiff } from "./normal-diff-apply.ts";
 import { REPO } from "./worktree-fixtures.ts";
 
 export const TS = path.join(REPO, "scripts", "build-ci.ts");
-export const REAL_REF = fs.readFileSync(path.join(REPO, "ci", "ci-capabilities.yml"), "utf8");
+export const REAL_REF = readReferenceText(REPO);
 export const SKIP = false;
 export const roots: string[] = [];
 after(() => {
@@ -27,12 +28,11 @@ interface Run {
   generated: string | null;
 }
 
-/** A scratch repo root holding `ci/ci-capabilities.yml` (and a committed output if given). */
+/** A scratch repo root holding the capability reference (and a committed output if given). */
 function tree(reference: string, committed?: string): string {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "crewrig-bci-")));
   roots.push(root);
-  fs.mkdirSync(path.join(root, "ci"));
-  fs.writeFileSync(path.join(root, "ci", "ci-capabilities.yml"), reference);
+  writeReferenceDir(root, reference);
   if (committed !== undefined) fs.writeFileSync(path.join(root, ".gitlab-ci.yml"), committed);
   return root;
 }

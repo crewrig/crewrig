@@ -24,6 +24,7 @@ import {
   writeSkill,
 } from "./lib/skill-evals-fixtures.ts";
 import type { Repo } from "./lib/skill-evals-fixtures.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
 
@@ -134,7 +135,7 @@ test("CI wiring: the GitHub job and the GitLab capability map the PR draft state
     gate.jobs["lint-specs"]?.env?.["CREWRIG_PR_DRAFT"],
     "same mapping as spec 0168 delta-01",
   );
-  const caps = yaml.load(fs.readFileSync(path.join(ROOT, "ci/ci-capabilities.yml"), "utf8")) as
+  const caps = yaml.load(readReferenceText(ROOT)) as
     | { capabilities?: Array<{ id: string; env?: Record<string, string> }> }
     | Array<{ id: string; env?: Record<string, string> }>;
   const list = Array.isArray(caps) ? caps : (caps.capabilities ?? []);

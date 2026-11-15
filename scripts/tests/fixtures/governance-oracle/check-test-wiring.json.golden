@@ -22,7 +22,7 @@
   ],
   "status": 1,
   "stdout": "",
-  "stderr": "FAILED: 1 test script(s) run in no CI workflow and are not exempted:\n  - scripts/tests/test-foo.sh\n\nWire each into a CI workflow (a step in the check-components job of\n.github/workflows/build.yml and ci/ci-capabilities.yml), or add it to\nci/test-wiring-exemptions.txt with a reason (spec 0076).\n"
+  "stderr": "FAILED: 1 test script(s) run in no CI workflow and are not exempted:\n  - scripts/tests/test-foo.sh\n\nWire each into a CI workflow (a step in the check-components job of\n.github/workflows/build.yml and the CI capability reference), or add it to\nci/test-wiring-exemptions.txt with a reason (spec 0076).\n"
  },
  "first": {
   "input": [
@@ -34,7 +34,7 @@
   ],
   "status": 1,
   "stdout": "",
-  "stderr": "FAILED: 1 test script(s) run in no CI workflow and are not exempted:\n  - scripts/tests/test-a.sh\n\nWire each into a CI workflow (a step in the check-components job of\n.github/workflows/build.yml and ci/ci-capabilities.yml), or add it to\nci/test-wiring-exemptions.txt with a reason (spec 0076).\n"
+  "stderr": "FAILED: 1 test script(s) run in no CI workflow and are not exempted:\n  - scripts/tests/test-a.sh\n\nWire each into a CI workflow (a step in the check-components job of\n.github/workflows/build.yml and the CI capability reference), or add it to\nci/test-wiring-exemptions.txt with a reason (spec 0076).\n"
  },
  "missing": {
   "input": null,

@@ -10,6 +10,7 @@ import { test } from "node:test";
 
 import { cacheKey } from "../lib/ci-cache-guard/key.ts";
 import { decide } from "../lib/ci-paths-gate/gate.ts";
+import { writeReferenceDir } from "./lib/ci-reference-fixtures.ts";
 
 const ok = (out: string) => async () => out;
 const G = { "pull-request": ["a/**"], push: ["a/**"] };
@@ -55,7 +56,7 @@ function repo(): string {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), "gate-"));
   fs.mkdirSync(path.join(d, "ci"));
   fs.mkdirSync(path.join(d, "a"));
-  fs.writeFileSync(path.join(d, "ci/ci-capabilities.yml"), REF);
+  writeReferenceDir(d, REF);
   fs.writeFileSync(path.join(d, "a/f.txt"), "hello");
   return d;
 }
@@ -85,7 +86,7 @@ test("cli: any other event runs the job, unsupported glob exit 2, retired shadow
     d,
   );
   assert.equal(b.status, 2);
-  fs.writeFileSync(path.join(d, "ci/ci-capabilities.yml"), REF.replace('"a/**"', '"a/{b,c}"'));
+  writeReferenceDir(d, REF.replace('"a/**"', '"a/{b,c}"'));
   const c = cli("scripts/ci-paths-gate.ts", ["--capability", "demo", "--event", "pull_request"], d);
   assert.equal(c.status, 2);
 });

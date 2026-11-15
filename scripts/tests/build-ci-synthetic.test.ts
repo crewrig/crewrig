@@ -20,6 +20,7 @@ import { generate } from "../lib/build-ci/entry.ts";
 import { parseTaskPin, secondaryRuntimeInstallLines } from "../lib/build-ci/tools.ts";
 import { applyNormalDiff } from "./lib/normal-diff-apply.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const pipeline = (root: string): string => path.join(root, ".gitlab-ci.yml");
 
@@ -73,7 +74,7 @@ describe("build-ci synthetic (group S)", () => {
   });
 
   it("K0, K1: the real reference generates parseable single-document YAML", () => {
-    const root = newRoot(fs.readFileSync(path.join(REPO, "ci", "ci-capabilities.yml"), "utf8"));
+    const root = newRoot(readReferenceText(REPO));
     const res = runBuildCi(root);
     assert.equal(res.status, 0, "K0 generate from the real reference succeeds");
     assert.equal(res.stderr, "");
