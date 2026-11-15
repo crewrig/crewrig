@@ -127,6 +127,42 @@ describe("rules-split-ab runner", () => {
     assert.match(r.stderr, /nope\.md/);
   });
 
+  test("--cap sets the cap (default 12), --approved-cap stays an alias, both together are refused", () => {
+    const d = run(["--dry-run", ...rules, "--cap", "2.4"], { CI: undefined });
+    assert.equal(d.status, 0, d.stderr);
+    assert.match(d.stdout, /cap 2\.4 USD/);
+    assert.match(run(["--dry-run", ...rules], { CI: undefined }).stdout, /cap 12 USD/);
+    assert.equal(run(["--dry-run", ...rules, "--cap", "0"], { CI: undefined }).status, 2);
+    assert.equal(
+      run(["--dry-run", ...rules, "--cap", "2", "--approved-cap", "3"], { CI: undefined }).status,
+      2,
+    );
+  });
+
+  test("the plan lists only the selected arms, and states the projection seed", () => {
+    const r = run(["--dry-run", ...rules, "--scenarios", "5", "--arms", "A", "--runs", "6"], {
+      CI: undefined,
+    });
+    assert.equal(r.status, 0, r.stderr);
+    const lines = r.stdout.split("\n").filter((l) => l.startsWith("scenario "));
+    assert.equal(lines.length, 1);
+    assert.match(lines[0] as string, /scenario 5 arm A/);
+    assert.match(r.stdout, /6 runs per arm/);
+    assert.match(r.stdout, /0\.113/);
+  });
+
+  test("--runs above 5 needs a single arm, and is at most 6", () => {
+    assert.equal(run(["--dry-run", ...rules, "--runs", "6"], { CI: undefined }).status, 2);
+    assert.equal(
+      run(["--dry-run", ...rules, "--arms", "A", "--runs", "7"], { CI: undefined }).status,
+      2,
+    );
+    assert.equal(
+      run(["--dry-run", ...rules, "--arms", "A", "--runs", "6"], { CI: undefined }).status,
+      0,
+    );
+  });
+
   test("an unknown option is a usage error (exit 2)", () => {
     assert.equal(run(["--bogus"], { CI: undefined }).status, 2);
   });

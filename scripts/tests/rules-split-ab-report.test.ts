@@ -171,6 +171,9 @@ describe("renderReport", () => {
     assert.match(md, /invalid/);
     assert.doesNotMatch(md, /truncated\b(?! twice)(?!.*subtype)[^|]*\|\s*$/m);
   });
+  test("states the mean cost per run over the charged attempts", () => {
+    assert.match(md, /Mean cost per run: 0\.47 USD over 3 charged runs/);
+  });
   test("shows the subtype notes of truncated attempts", () => {
     assert.match(md, /error_max_budget_usd/);
     assert.match(md, /error_max_turns/);

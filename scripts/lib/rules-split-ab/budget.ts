@@ -1,6 +1,5 @@
 // budget.ts — the cost ledger and guard (spec 0308 R8): a run starts only while the running cost
-// plus its projected cost (the mean of the charged runs, the per-run cap before any) stays under
-// the cap. Pure and immutable.
+// plus its projected cost (the mean of the charged runs, the seed before any) stays under the cap. Pure and immutable.
 
 export interface Ledger {
   cap: number;
@@ -18,12 +17,17 @@ export function charge(l: Ledger, cost: number | null, perRunCap = 0.6): Ledger 
   return { ...l, spent: l.spent + c, charges: [...l.charges, c] };
 }
 
-export function projectedCost(l: Ledger, perRunCap: number): number {
-  return l.charges.length === 0 ? perRunCap : l.spent / l.charges.length;
+/** The mean charged run, or `seed` (default the per-run cap) before any run was charged. */
+export function projectedCost(l: Ledger, perRunCap: number, seed = perRunCap): number {
+  return l.charges.length === 0 ? seed : l.spent / l.charges.length;
 }
 
-export function canStart(l: Ledger, perRunCap: number): { ok: boolean; reason?: string } {
-  const projected = projectedCost(l, perRunCap);
+export function canStart(
+  l: Ledger,
+  perRunCap: number,
+  seed = perRunCap,
+): { ok: boolean; reason?: string } {
+  const projected = projectedCost(l, perRunCap, seed);
   if (l.spent + projected < l.cap) return { ok: true };
   return {
     ok: false,

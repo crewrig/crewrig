@@ -34,6 +34,8 @@ export interface ExperimentOptions {
   extendTo?: number;
   cap?: number;
   perRunCap?: number;
+  /** Projected cost of the first run, before any run is charged (default: the per-run cap). */
+  projectionSeed?: number;
   /** Records of an earlier, stopped invocation (resume). */
   prior?: RunRecord[];
   onRecord?: (r: RunRecord) => void;
@@ -73,7 +75,7 @@ export async function runExperiment(o: ExperimentOptions): Promise<ExperimentRes
     const attempts: AttemptRecord[] = [];
     const truncs: boolean[] = [];
     for (let attempt = 1; attempt <= 2; attempt++) {
-      const guard = canStart(ledger, perRunCap);
+      const guard = canStart(ledger, perRunCap, o.projectionSeed);
       if (!guard.ok) {
         stopped = { reason: guard.reason ?? "cost guard" };
         if (attempts.length > 0) {

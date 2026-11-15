@@ -59,3 +59,27 @@ describe("guard", () => {
     assert.ok(Math.abs(perRunBudget(charge(createLedger(12), 11.8), 0.6) - 0.2) < 1e-9);
   });
 });
+
+describe("projection seed (delta-02 ADDED 6)", () => {
+  test("before any charged run the projection is the seed, not the per-run cap", () => {
+    assert.equal(projectedCost(createLedger(1), 0.6, 0.113), 0.113);
+    assert.equal(canStart(createLedger(0.7), 0.6, 0.113).ok, true);
+    assert.equal(canStart(createLedger(0.1), 0.6, 0.113).ok, false);
+  });
+  test("after a charged run the projection is the mean so far, whatever the seed", () => {
+    const l = charge(createLedger(12), 0.3);
+    assert.ok(Math.abs(projectedCost(l, 0.6, 0.113) - 0.3) < 1e-9);
+  });
+  test("running cost plus the mean exceeding the remaining cap stops", () => {
+    let l = createLedger(0.35);
+    l = charge(l, 0.12);
+    l = charge(l, 0.12);
+    const g = canStart(l, 0.6, 0.113); // 0.24 + 0.12 = 0.36 > 0.35
+    assert.equal(g.ok, false);
+    assert.match(g.reason ?? "", /coordinator/);
+    assert.equal(canStart({ ...l, cap: 0.4 }, 0.6, 0.113).ok, true);
+  });
+  test("the seed defaults to the per-run cap (existing behaviour)", () => {
+    assert.equal(projectedCost(createLedger(12), 0.6), 0.6);
+  });
+});

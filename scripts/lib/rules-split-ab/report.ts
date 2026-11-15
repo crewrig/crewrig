@@ -82,6 +82,13 @@ export function renderReport(r: ReportInput): string {
       `Arm A ${ta}, arm B ${tb}, delta ${tb - ta} (B minus A).`,
     );
   }
-  out.push("", `## Cost`, "", `Total ${usd(r.spent)} USD of a ${r.cap} USD cap.`, "");
+  const charged = r.records.flatMap((x) => x.attempts.map((a) => a.charged));
+  out.push("", `## Cost`, "", `Total ${usd(r.spent)} USD of a ${r.cap} USD cap.`);
+  if (charged.length > 0)
+    out.push(
+      "",
+      `Mean cost per run: ${usd(charged.reduce((a, b) => a + b, 0) / charged.length)} USD over ${charged.length} charged runs.`,
+    );
+  out.push("");
   return out.join("\n");
 }

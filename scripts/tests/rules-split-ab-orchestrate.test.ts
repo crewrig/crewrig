@@ -50,7 +50,16 @@ function passing(n: number): { tools: Tools; text: string } {
         text: "ok",
       };
     case 5:
-      return { tools: [], text: "May I write it?" };
+      return {
+        tools: [
+          {
+            name: "obsidian_list_vaults",
+            input: {},
+            result: JSON.stringify([{ id: "scratch", name: "scratch-vault" }]),
+          },
+        ],
+        text: "May I write it as an Obsidian note?",
+      };
     case 6:
       return {
         tools: [
@@ -228,5 +237,72 @@ describe("runExperiment, single arm (calibration)", () => {
       ["A1", "A2"],
     );
     assert.deepEqual(r.verdicts, {});
+  });
+});
+
+describe("runExperiment, S5 invalid handling and budget (delta-02)", () => {
+  const S5 = SCENARIOS.find((x) => x.id === 5)!;
+  const silent = {
+    tools: [
+      {
+        name: "obsidian_list_vaults",
+        input: {},
+        result: JSON.stringify([{ id: "scratch", name: "scratch-vault" }]),
+      },
+    ],
+    text: "Done: the comment is added.",
+  } as const;
+  const scripted = (plan: (arm: string, idx: number, attempt: number) => "pass" | "silent") => {
+    const calls: string[] = [];
+    const execute: ExecuteFn = async (req) => {
+      calls.push(`${req.arm}${req.runIndex}t${req.attempt}`);
+      const spec = plan(req.arm, req.runIndex, req.attempt) === "pass" ? passing(5) : { ...silent };
+      return {
+        transcript: buildTranscript({ ...spec, tools: [...spec.tools], cost: 0.1 }),
+        callLog: buildCallLog([]),
+      };
+    };
+    return { execute, calls };
+  };
+  test("an invalid S5 run is rerun once and the rerun can pass", async () => {
+    const { execute, calls } = scripted((a, i, t) =>
+      a === "A" && i === 1 && t === 1 ? "silent" : "pass",
+    );
+    const r = await runExperiment({ scenarios: [S5], execute, arms: ["A"], runs: 2 });
+    assert.deepEqual(calls, ["A1t1", "A1t2", "A2t1"]);
+    assert.equal(r.records[0]?.status, "pass");
+    assert.equal(r.records[0]?.attempts.length, 2);
+  });
+  test("a second invalid is recorded as invalid, never a pass, and blocks the verdict", async () => {
+    const { execute, calls } = scripted((a, i) => (a === "B" && i === 1 ? "silent" : "pass"));
+    const r = await runExperiment({ scenarios: [S5], execute, runs: 1 });
+    assert.deepEqual(calls, ["A1t1", "B1t1", "B1t2"]);
+    const b = r.records.find((x) => x.arm === "B")!;
+    assert.equal(b.status, "invalid");
+    assert.equal(b.attempts.length, 2);
+    assert.equal(r.verdicts[5]?.verdict, "blocked");
+  });
+  test("the projection seed stops the runner before the first run when the cap is below it", async () => {
+    const { execute, calls } = scripted(() => "pass");
+    const r = await runExperiment({
+      scenarios: [S5],
+      execute,
+      arms: ["A"],
+      cap: 0.1,
+      projectionSeed: 0.113,
+    });
+    assert.ok(r.stopped);
+    assert.equal(calls.length, 0);
+  });
+  test("calibration allows up to 6 runs of arm A", async () => {
+    const { execute, calls } = scripted(() => "pass");
+    await runExperiment({ scenarios: [S5], execute, arms: ["A"], runs: 6 });
+    assert.equal(calls.length, 6);
+  });
+  test("5 runs per arm compare both arms with no extension past 5", async () => {
+    const { execute, calls } = scripted(() => "pass");
+    const r = await runExperiment({ scenarios: [S5], execute, runs: 5 });
+    assert.equal(calls.length, 10);
+    assert.equal(r.verdicts[5]?.verdict, "no-regression");
   });
 });

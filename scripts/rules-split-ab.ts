@@ -7,10 +7,16 @@
 //   node scripts/rules-split-ab.ts [--arm-a-ref origin/main] [--out DIR]
 //   node scripts/rules-split-ab.ts --arm-a-rule A.md --arm-b-rule B1.md --arm-b-rule B2.md
 //   node scripts/rules-split-ab.ts --resume DIR --approved-cap 15  # after a cost-guard stop
+//   node scripts/rules-split-ab.ts --rescore DIR [DIR ...] --scenario 1   # offline, no model call
+//   node scripts/rules-split-ab.ts --scenarios 5 --arms A --runs 6 --cap 2.4 --out FRESH_DIR
 //
 // Options: --arm-a-ref <ref> (arm A: only 60-tools.md, via `git show <ref>:...`), --arm-a-rule and
 // --arm-b-rule <path> (repeatable; override the refs and the working tree), --worker-settings <path>
 // --arms A|B|A,B (a single arm is a calibration run, no verdict), --out must be a fresh directory.
+// --cap <usd> is the remaining cap of this invocation (default 12; the ledger of each invocation
+// starts at zero, so pass what is left). The guard stops (exit 4) when the running cost plus the mean
+// cost per run so far, seeded by 0.113 USD, would reach the cap. --approved-cap is the same flag
+// under its resume name. --runs is 1 to 5, or 1 to 6 with a single arm (S5 calibration).
 // (scratch-HOME mode: passed as --settings in scenario 2 only; real-HOME mode: merged into the
 // per-run settings file in scenario 2), --scenarios 1,8, --runs 2, --model, --out, --keep-scratch.
 //
@@ -37,6 +43,7 @@ import type { RunRecord, ScenarioVerdict } from "./lib/rules-split-ab/compare.ts
 import { AuthError, makeClaudeExecutor } from "./lib/rules-split-ab/exec.ts";
 import { runExperiment } from "./lib/rules-split-ab/orchestrate.ts";
 import { renderReport } from "./lib/rules-split-ab/report.ts";
+import { formatRescore, rescoreDirs } from "./lib/rules-split-ab/rescore.ts";
 import { SCENARIOS } from "./lib/rules-split-ab/scenarios.ts";
 import { buildClaudeArgs } from "./lib/rules-split-ab/scratch.ts";
 
@@ -45,6 +52,8 @@ const repo = path.resolve(here, "..");
 const RULES_DIR = "artifacts/core/rules";
 const CAP = 12;
 const PER_RUN = 0.6;
+/** Observed mean cost per run (delta-02 ADDED 6): the projection before any run is charged. */
+const SEED = 0.113;
 
 function usage(msg: string): never {
   process.stderr.write(`rules-split-ab: ${msg}\n`);
@@ -53,8 +62,9 @@ function usage(msg: string): never {
 
 function main(): void {
   let values;
+  let positionals: string[];
   try {
-    ({ values } = parseArgs({
+    ({ values, positionals } = parseArgs({
       options: {
         "dry-run": { type: "boolean" },
         "arm-a-ref": { type: "string" },
@@ -70,12 +80,28 @@ function main(): void {
         "keep-scratch": { type: "boolean" },
         "auth-home": { type: "string" },
         arms: { type: "string" },
+        cap: { type: "string" },
+        rescore: { type: "string", multiple: true },
+        scenario: { type: "string" },
       },
       strict: true,
+      allowPositionals: true,
     }));
   } catch (e) {
     usage((e as Error).message);
   }
+
+  if (values.rescore) {
+    const n = Number(values.scenario);
+    if (!Number.isInteger(n) || n < 1) usage("--rescore needs --scenario <number>");
+    try {
+      process.stdout.write(formatRescore(rescoreDirs([...values.rescore, ...positionals], n)));
+    } catch (e) {
+      usage((e as Error).message);
+    }
+    return;
+  }
+  if (positionals.length > 0) usage(`unexpected argument ${positionals[0]}`);
 
   const authHome = values["auth-home"] ?? "auto";
   if (authHome !== "auto" && authHome !== "scratch" && authHome !== "real")
@@ -85,16 +111,20 @@ function main(): void {
   const arms = armsArg.split(",") as Array<"A" | "B">;
   const model = values.model ?? "claude-sonnet-5-5";
   const runs = Number(values.runs ?? "2");
-  if (!Number.isInteger(runs) || runs < 1 || runs > 5)
-    usage("--runs must be an integer from 1 to 5");
+  const maxRuns = arms.length === 1 ? 6 : 5;
+  if (!Number.isInteger(runs) || runs < 1 || runs > maxRuns)
+    usage(`--runs must be an integer from 1 to ${maxRuns} (6 only with a single arm)`);
   const ids = values.scenarios
     ? values.scenarios.split(",").map(Number)
     : SCENARIOS.map((s) => s.id);
   const scenarios = ids.map(
     (id) => SCENARIOS.find((s) => s.id === id) ?? usage(`unknown scenario ${id}`),
   );
-  const cap = values["approved-cap"] !== undefined ? Number(values["approved-cap"]) : CAP;
-  if (!Number.isFinite(cap) || cap <= 0) usage("--approved-cap must be a positive number");
+  if (values.cap !== undefined && values["approved-cap"] !== undefined)
+    usage("--cap and --approved-cap are the same flag: pass one");
+  const capArg = values.cap ?? values["approved-cap"];
+  const cap = capArg !== undefined ? Number(capArg) : CAP;
+  if (!Number.isFinite(cap) || cap <= 0) usage("--cap must be a positive number");
 
   const aRef = values["arm-a-ref"] ?? "origin/main";
   const explicitA = values["arm-a-rule"];
@@ -109,7 +139,7 @@ function main(): void {
     if (!fs.existsSync(f)) usage(`rule file not found: ${f}`);
 
   if (values["dry-run"]) {
-    dryRun({ authHome, scenarios, model, runs, cap, aRef, explicitA, armB, workerSettings });
+    dryRun({ authHome, scenarios, arms, model, runs, cap, aRef, explicitA, armB, workerSettings });
     return;
   }
 
@@ -176,7 +206,16 @@ function main(): void {
     );
   };
 
-  runExperiment({ scenarios, execute, runs, arms, cap, perRunCap: PER_RUN, prior })
+  runExperiment({
+    scenarios,
+    execute,
+    runs,
+    arms,
+    cap,
+    perRunCap: PER_RUN,
+    projectionSeed: SEED,
+    prior,
+  })
     .then((r) => {
       persist(r.records, r.ledger.spent, r.verdicts, r.stopped);
       process.stdout.write(
@@ -200,6 +239,7 @@ function main(): void {
 function dryRun(p: {
   authHome: "auto" | "scratch" | "real";
   scenarios: typeof SCENARIOS;
+  arms: Array<"A" | "B">;
   model: string;
   runs: number;
   cap: number;
@@ -210,13 +250,13 @@ function dryRun(p: {
 }): void {
   const out: string[] = [];
   out.push(
-    `rules-split-ab dry run: cap ${p.cap} USD, per-run --max-budget-usd ${PER_RUN}, model ${p.model}, ${p.runs} runs per arm, no model call`,
+    `rules-split-ab dry run: cap ${p.cap} USD, per-run --max-budget-usd ${PER_RUN}, model ${p.model}, ${p.runs} runs per arm, projection seed ${SEED} USD per run, no model call`,
   );
   out.push(
     `arm A rules: ${p.explicitA ? p.explicitA.join(", ") : `git show ${p.aRef}:${RULES_DIR}/60-tools.md`}`,
   );
   out.push(`arm B rules: ${p.armB.join(", ")}`);
-  const n = p.scenarios.length * p.runs * 2;
+  const n = p.scenarios.length * p.runs * p.arms.length;
   out.push(
     `worst case: ${n} runs x ${PER_RUN} = ${(n * PER_RUN).toFixed(1)} USD before extensions; the guard stops the runner at the cap`,
   );
@@ -228,7 +268,7 @@ function dryRun(p: {
         : "auth: scratch HOME first; once its auth check fails the runner switches to the real-HOME mode (--auth-home real)",
   );
   for (const s of p.scenarios) {
-    for (const arm of ["A", "B"] as const) {
+    for (const arm of p.arms) {
       const real = p.authHome === "real";
       const scratch = {
         root: "<scratch>",
