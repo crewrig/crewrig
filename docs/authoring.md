@@ -94,7 +94,7 @@ metadata:
 
 | Target | Emission |
 |---|---|
-| Claude Code | frontmatter `model: sonnet` and `effort: medium`; the description carries no model sentence |
+| Claude Code | frontmatter `model: sonnet` and `effort: medium`; the description carries no model sentence but ends with `Give its work medium reasoning effort.` |
 | Gemini CLI | frontmatter `model: gemini-3.1-pro-preview` (`reasoning` dropped, `unsupported-on-cli`) |
 | GitHub Copilot CLI | *(nothing — both keys `unsupported-on-cli`)* |
 | Antigravity CLI | guidance `Run this agent on the gemini-3.1-pro-low model.` (the `reasoning` rung substituted) |
@@ -103,7 +103,7 @@ metadata:
 
 | Target | Emission |
 |---|---|
-| Claude Code | frontmatter `model: opus` and `effort: medium`; the description carries no model sentence |
+| Claude Code | frontmatter `model: opus` and `effort: medium`; the description carries no model sentence but ends with `Give its work medium reasoning effort.` |
 | Gemini CLI | frontmatter `model: gemini-3.1-pro-preview` |
 | GitHub Copilot CLI | *(nothing — `unsupported-on-cli`)* |
 | Antigravity CLI | guidance `Run this agent on the gemini-3.1-pro-low model.` |
