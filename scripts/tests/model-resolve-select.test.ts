@@ -54,13 +54,13 @@ const mini = (offers: string[], ...profile: string[]) =>
 const TABLE: Record<string, readonly string[]> = {
   claude: ["haiku", "haiku", "haiku", "sonnet", "opus", "fable", "fable"],
   gemini: [
-    ...Array<string>(3).fill("gemini-4-hydrogen"),
-    "gemini-3.8-flash",
+    ...Array<string>(3).fill("gemini-3.5-flash-lite"),
+    "gemini-4-hydrogen",
     ...Array<string>(3).fill("gemini-4-argon"),
   ],
   antigravity: [
-    ...Array<string>(3).fill("gemini-4-hydrogen-medium"),
-    "gemini-3.8-flash-medium",
+    ...Array<string>(3).fill("gemini-3.5-flash-lite-medium"),
+    "gemini-4-hydrogen-medium",
     ...Array<string>(3).fill("gemini-4-argon-medium"),
   ],
   copilot: Array<string>(7).fill(""),
@@ -98,7 +98,12 @@ describe("C1, C3, C4, C13(i): selection on the real mappings", () => {
     const r = real("antigravity", "intelligence: medium", "reasoning: high");
     assert.deepEqual(
       [r.offeringId, r.fmLines, r.prose, r.diagLines],
-      ["gemini-4-hydrogen-high", [], "Run this agent on the gemini-4-hydrogen-high model.", []],
+      [
+        "gemini-3.5-flash-lite-high",
+        [],
+        "Run this agent on the gemini-3.5-flash-lite-high model.",
+        [],
+      ],
     );
   });
 

@@ -415,7 +415,7 @@ broken:
    can run; (ii) the token is a `-`-delimited segment of `native-value`; (iii)
    where that token is itself a member of the characteristic's closed spec
    0195 domain, it SHALL equal `provides.<characteristic>`. Clause (iii) has
-   real teeth on a `reasoning` token — the Antigravity mapping's `gemini-3.8-flash-low` encoding
+   real teeth on a `reasoning` token — the Antigravity mapping's `gemini-4-hydrogen-low` encoding
    `reasoning: low` must also *provide* `low`, and does — but it is
    **deliberately vacuous** on a family token that is not itself a domain
    member: `intelligence: flash` and `intelligence: haiku` name a vendor

@@ -108,7 +108,7 @@ describe("check-model-mappings.ts deviations (spec 0262 req 24)", () => {
   });
 
   test("(e) an offering id starting with '-' is accepted and printed literally", () => {
-    const repo = repoWith("gemini.yml", swap("id: gemini-4-hydrogen", "id: -dash"));
+    const repo = repoWith("gemini.yml", swap("id: gemini-3.5-flash-lite", "id: -dash"));
     assert.equal(ts(repo).status, 0);
     const r = ts(repo, ["--print-selection"]);
     assert.equal(r.status, 0);

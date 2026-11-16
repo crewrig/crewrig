@@ -95,9 +95,9 @@ metadata:
 | Target | Emission |
 |---|---|
 | Claude Code | frontmatter `model: sonnet` and `effort: medium`; the description carries no model or reasoning sentence |
-| Gemini CLI | frontmatter `model: gemini-3.8-flash` (`reasoning` dropped, `unsupported-on-cli`) |
+| Gemini CLI | frontmatter `model: gemini-4-hydrogen` (`reasoning` dropped, `unsupported-on-cli`) |
 | GitHub Copilot CLI | *(nothing — both keys `unsupported-on-cli`)* |
-| Antigravity CLI | guidance `Run this agent on the gemini-3.8-flash-medium model.` (the `reasoning` rung encoded in the model name) |
+| Antigravity CLI | guidance `Run this agent on the gemini-4-hydrogen-medium model.` (the `reasoning` rung encoded in the model name) |
 
 `artifacts/core/agents/architect/AGENT.md` declares `intelligence: xhigh` and `reasoning: medium`:
 
@@ -116,15 +116,15 @@ Every core agent declares both axes. Each cell below comes from `node scripts/bu
 |---|---|---|---|---|
 | `architect` | xhigh / medium | `opus` + effort `medium` | `gemini-4-argon` | `gemini-4-argon-medium` |
 | `security` | xhigh / medium | `opus` + effort `medium` | `gemini-4-argon` | `gemini-4-argon-medium` |
-| `pr-reviewer` | high / high | `sonnet` + effort `high` | `gemini-3.8-flash` | `gemini-3.8-flash-high` |
-| `developer` | high / medium | `sonnet` + effort `medium` | `gemini-3.8-flash` | `gemini-3.8-flash-medium` |
-| `tester` | high / medium | `sonnet` + effort `medium` | `gemini-3.8-flash` | `gemini-3.8-flash-medium` |
-| `spec-author` | high / medium | `sonnet` + effort `medium` | `gemini-3.8-flash` | `gemini-3.8-flash-medium` |
-| `doc-writer` | high / medium | `sonnet` + effort `medium` | `gemini-3.8-flash` | `gemini-3.8-flash-medium` |
-| `ci-configurator` | high / medium | `sonnet` + effort `medium` | `gemini-3.8-flash` | `gemini-3.8-flash-medium` |
-| `ci-debugger` | high / medium | `sonnet` + effort `medium` | `gemini-3.8-flash` | `gemini-3.8-flash-medium` |
-| `ci-parity` | high / medium | `sonnet` + effort `medium` | `gemini-3.8-flash` | `gemini-3.8-flash-medium` |
-| `pr-logbook` | medium / high | `haiku` + effort `high` | `gemini-4-hydrogen` | `gemini-4-hydrogen-high` |
+| `pr-reviewer` | high / high | `sonnet` + effort `high` | `gemini-4-hydrogen` | `gemini-4-hydrogen-high` |
+| `developer` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `tester` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `spec-author` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `doc-writer` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `ci-configurator` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `ci-debugger` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `ci-parity` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `pr-logbook` | medium / high | `haiku` + effort `high` | `gemini-3.5-flash-lite` | `gemini-3.5-flash-lite-high` |
 
 Why these values (evidence for requirement 4 of [spec 0200](../specs/0200-core-agent-profile-migration.md), which lets a later change declare `reasoning` on a source if it carries evidence for the value). Spec 0200 was a migration: its requirement 2 (no tier revised) bound that change set only. The profiles come from the owner's decision on #1937 (2026-11-15), taken from the measurements of the epic #1930 run (21 `pr-reviewer` launches, an `architect` run on Opus, and the other agents' observed work):
 

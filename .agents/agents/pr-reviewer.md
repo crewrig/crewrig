@@ -1,6 +1,6 @@
 ---
 name: pr-reviewer
-description: "Delegate to review a pull request or a spec pull request cold, with no authoring context, and get a posted verdict (Approve, Request Changes or Comment) with a seat line and class-tagged findings. Use when a PR needs an independent review, a REVIEW pass, a second opinion before merge or a re-review of a change after fixes; spawn it with a references-only brief (seat, artifact, examined revision, prior verdicts, disposition). Trigger terms - review PR, cold review, audit pull request, verdict, REVIEW pass. Not for fixing the change, writing a PR body or composing a commit message. Run this agent on the gemini-3.8-flash-high model."
+description: "Delegate to review a pull request or a spec pull request cold, with no authoring context, and get a posted verdict (Approve, Request Changes or Comment) with a seat line and class-tagged findings. Use when a PR needs an independent review, a REVIEW pass, a second opinion before merge or a re-review of a change after fixes; spawn it with a references-only brief (seat, artifact, examined revision, prior verdicts, disposition). Trigger terms - review PR, cold review, audit pull request, verdict, REVIEW pass. Not for fixing the change, writing a PR body or composing a commit message. Run this agent on the gemini-4-hydrogen-high model."
 tools: [read_file, edit_file, write_file, run_command, manage_task, send_message]
 metadata:
   provenance:

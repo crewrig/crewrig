@@ -125,9 +125,9 @@ const rows: readonly (readonly [string, string, string])[] = [
     "true",
   ],
   [
-    "antigravity records eleven observed-not-declared identifiers",
+    "antigravity records fourteen observed-not-declared identifiers",
     len(at(a, "observed-not-declared")),
-    "11",
+    "14",
   ],
 ];
 
