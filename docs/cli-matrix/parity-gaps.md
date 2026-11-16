@@ -452,12 +452,19 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   and the extension-plugin packaging still copies agent directories whole. The change is documentation-driven.
   Evidence: a live discovery probe of `agy` 1.5.5 on a case-sensitive file system discovered `AGENT.md`, `agent.md`,
   `Agent.md` and the flat form, and an agent carrying unknown `enable_*` keys; runtime semantics were **not** verified
-  because no signed-in session was available. Unverified, each tracked by a follow-up issue opened separately from this
-  change: (1) the runtime effect of the removed `enable_write_tools`, `enable_mcp_tools` and `enable_subagent_tools`
-  keys (if `agy` honours `enable_write_tools`, `pr-reviewer`, whose Claude Code tool list includes `Bash`, loses write
-  ability; spec 0053 delta-01 R27 accepts that risk); (2) the vendor defaults of `tools`, `subagent` and `mainAgent`
-  (now verified, see below); (3) the Antigravity plugin layout for agents. **Defaults verified live** (`agy` 1.5.9,
-  signed in, issue #1867, row 4c): an omitted `subagent` or `mainAgent` leaves the agent usable as a subagent and
+  because no signed-in session was available. Left open then, each tracked by a follow-up issue opened separately from
+  this change: (1) the runtime effect of the removed `enable_write_tools`, `enable_mcp_tools` and
+  `enable_subagent_tools` keys (now verified, see below); (2) the vendor defaults of `tools`, `subagent` and
+  `mainAgent` (now verified, see below); (3) the Antigravity plugin layout for agents. **`enable_*` keys verified
+  live** (`agy` 1.5.9, signed in, issue #1866): as agent frontmatter they have no effect. `enable_write_tools: true`
+  without `tools` still yields the 9-tool read-only default set, and `enable_write_tools: false` next to a `tools`
+  list removes nothing. The keys survive only as the `EnableWriteTools`, `EnableMCPTools` and `EnableSubagentTools`
+  parameters of the model-facing `define_subagent` tool, which defines a new subagent at run time. `invoke_subagent`
+  has no such parameter, so a parent cannot narrow the tools of a file-defined agent: invoked as a subagent, an agent
+  with an explicit `tools` list wrote a file and ran a command. `define_subagent` also refuses a name a file-defined
+  agent already holds (`agent "<name>" already exists`), so it cannot shadow one. The spec 0053 delta-01 R27 risk is
+  moot. **Defaults verified live** (`agy` 1.5.9, signed in, issue #1867, row 4c): an omitted `subagent` or `mainAgent`
+  leaves the agent usable as a subagent and
   through `agy --agent`, and `false` removes it from that route. An omitted `tools` is **not** the documented `[]`: it
   gives a 9-tool read-only default set with no `run_command` and no file edit or write tool, while an explicit
   `tools: []` keeps only four always-present tools (MCP access and `manage_task`). Before spec 0291 delta 03 every
