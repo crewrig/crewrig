@@ -448,16 +448,16 @@ candidate follow-up issue. **Do not fix them in this ticket.**
 - **[GAP, intentional] Antigravity compiled agent shape (rows 4, 28, 30, 38, spec 0053 delta-01, issue #1847).** All four
   CLIs now compile an agent as a flat `<name>.md`. The remaining Antigravity asymmetries are intentional: the
   `tools` line comes from `metadata.tools` or the vendor's all-tools default (spec 0291 delta 03; it was first not emitted
-  here, and no `claude.allowed-tools` name such as `Bash` is ever translated), no `model` field,
-  and the extension-plugin packaging still copies agent directories whole. The change is documentation-driven.
+  here, and no `claude.allowed-tools` name such as `Bash` is ever translated), no `model` field.
+  The change is documentation-driven.
   Evidence: a live discovery probe of `agy` 1.5.5 on a case-sensitive file system discovered `AGENT.md`, `agent.md`,
   `Agent.md` and the flat form, and an agent carrying unknown `enable_*` keys; runtime semantics were **not** verified
   because no signed-in session was available. Left open then, each tracked by a follow-up issue opened separately from
   this change: (1) the runtime effect of the removed `enable_write_tools`, `enable_mcp_tools` and
   `enable_subagent_tools` keys (now verified, see below); (2) the vendor defaults of `tools`, `subagent` and
-  `mainAgent` (now verified, see below); (3) the Antigravity plugin layout for agents. **`enable_*` keys verified
-  live** (`agy` 1.5.9, signed in, issue #1866): as agent frontmatter they have no effect. `enable_write_tools: true`
-  without `tools` still yields the 9-tool read-only default set, and `enable_write_tools: false` next to a `tools`
+  `mainAgent` (now verified, see below); (3) the Antigravity plugin layout for agents (now verified, see below).
+  **`enable_*` keys verified live** (`agy` 1.5.9, signed in, issue #1866): as agent frontmatter they have no effect.
+  `enable_write_tools: true` without `tools` still yields the 9-tool read-only default set, and `enable_write_tools: false` next to a `tools`
   list removes nothing. The keys survive only as the `EnableWriteTools`, `EnableMCPTools` and `EnableSubagentTools`
   parameters of the model-facing `define_subagent` tool, which defines a new subagent at run time. `invoke_subagent`
   has no such parameter, so a parent cannot narrow the tools of a file-defined agent: invoked as a subagent, an agent
@@ -470,3 +470,7 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   `tools: []` keeps only four always-present tools (MCP access and `manage_task`). Before spec 0291 delta 03 every
   compiled Antigravity agent was therefore read-only, the committed `developer` agent included; that is closed: the
   compiled agent now carries a `tools` line (row 4c).
+  **Plugin agent layout verified live** (`agy` 1.5.9, issue #1868): `agy plugin validate`, `install` and `agents`
+  discover a flat `agents/<name>.md`, `AGENT.md` and `agent.md`; a nested install carried sibling files; the vendor
+  plugin-migration guide in the binary prescribes `agents/<name>.md`; the plugin now emits `agents/<name>.md` (spec
+  0254 delta-02). Item (3) is closed.
