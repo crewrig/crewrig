@@ -29,7 +29,7 @@ surfaces:
       - item: model
         key: model
         domain:
-          values: [gemini-4-hydrogen, gemini-3.8-flash, gemini-4-argon]
+          values: [gemini-3.5-flash-lite, gemini-4-hydrogen, gemini-4-argon]
         grounds:
           - declares: key
             citation: >-
@@ -39,11 +39,12 @@ surfaces:
           - declares: domain
             citation: >-
               https://aistudio.google.com/docs/models (fetched 2026-11-15)
-              lists model codes "gemini-4-hydrogen" and "gemini-4-argon" and a
-              models table row "`gemini-3.8-flash`", the three identifiers
-              this mapping's offerings name. The bundled Gemini CLI
-              documentation illustrates the model surface with concrete
-              identifiers and documents no alias domain, so concrete
+              lists model codes "gemini-4-hydrogen" and "gemini-4-argon".
+              "gemini-3.5-flash-lite" is the third identifier this mapping's
+              offerings name; it rests on the owner's report of 2026-11-16
+              (see that offering's assumption), not on that fetch. The bundled
+              Gemini CLI documentation illustrates the model surface with
+              concrete identifiers and documents no alias domain, so concrete
               identifiers are what this mapping names (spec 0197 Decision 5).
       - item: temperature
         key: temperature
@@ -120,11 +121,38 @@ surfaces:
               `modelConfigs.overrides`.
 
 offerings:
-  - id: gemini-4-hydrogen
+  - id: gemini-3.5-flash-lite
     rank: 1
-    native-value: gemini-4-hydrogen
+    native-value: gemini-3.5-flash-lite
     provides:
       intelligence: medium
+      specialization: general
+    encodes:
+      intelligence: flash
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: >-
+          Dated 2026-11-16: the owner reported that Gemini CLI accepts the
+          concrete identifier `gemini-3.5-flash-lite`. The locally installed
+          gemini-cli 0.28.2 bundle does not list it, so acceptance rests on the
+          owner's report. It corrects the owner's report of 2026-11-15, which
+          had named `gemini-4-hydrogen` here.
+      - declares: provides.intelligence
+        assumption: >-
+          Dated 2026-11-16: the owner's report maps `gemini-3.5-flash-lite`
+          (the haiku anchor) onto the spec 0195 R7 anchor rung `medium`. It is
+          not a capability measurement (spec 0197 `## Open questions`).
+      - declares: supports-reasoning-surface
+        citation: >-
+          This mapping's frontmatter surface declares no reasoning item
+          (spec 0197 R40), so A17 forces false structurally.
+
+  - id: gemini-4-hydrogen
+    rank: 2
+    native-value: gemini-4-hydrogen
+    provides:
+      intelligence: high
       specialization: general
     encodes:
       intelligence: hydrogen
@@ -133,42 +161,17 @@ offerings:
       - declares: native-value
         assumption: >-
           Model code: https://aistudio.google.com/docs/models (fetched
-          2026-11-15) lists model code "gemini-4-hydrogen". Dated 2026-11-15: the owner reported
-          that Gemini CLI accepts the concrete identifier `gemini-4-hydrogen`. The
-          locally installed gemini-cli 0.28.2 bundle does not list it, so
-          acceptance rests on the owner's report.
+          2026-11-15) lists model code "gemini-4-hydrogen". Dated 2026-11-16: the
+          owner reported that Gemini CLI accepts the concrete identifier
+          `gemini-4-hydrogen`. The locally installed gemini-cli 0.28.2 bundle
+          does not list it, so acceptance rests on the owner's report.
       - declares: provides.intelligence
         assumption: >-
-          Dated 2026-11-15: the owner's report maps `gemini-4-hydrogen` (the haiku anchor) onto the spec
-          0195 R7 anchor rung `medium`. It is not a capability
-          measurement (spec 0197 `## Open questions`).
-      - declares: supports-reasoning-surface
-        citation: >-
-          This mapping's frontmatter surface declares no reasoning item
-          (spec 0197 R40), so A17 forces false structurally.
-
-  - id: gemini-3.8-flash
-    rank: 2
-    native-value: gemini-3.8-flash
-    provides:
-      intelligence: high
-      specialization: general
-    encodes:
-      intelligence: flash
-    supports-reasoning-surface: false
-    grounds:
-      - declares: native-value
-        assumption: >-
-          Model code: https://aistudio.google.com/docs/models (fetched
-          2026-11-15) lists the models table row "`gemini-3.8-flash`". Dated 2026-11-15: the owner reported
-          that Gemini CLI accepts the concrete identifier `gemini-3.8-flash`. The
-          locally installed gemini-cli 0.28.2 bundle does not list it, so
-          acceptance rests on the owner's report.
-      - declares: provides.intelligence
-        assumption: >-
-          Dated 2026-11-15: the owner's report maps `gemini-3.8-flash` (the sonnet anchor) onto the spec
-          0195 R7 anchor rung `high`. The AI Studio page calls it "Our previous-generation Flash model…" and the owner keeps it at `high` (owner decision 2026-11-15). It is not a capability
-          measurement (spec 0197 `## Open questions`).
+          Dated 2026-11-16: the owner's report maps `gemini-4-hydrogen` (the
+          sonnet anchor) onto the spec 0195 R7 anchor rung `high`. It corrects
+          the owner's report of 2026-11-15, which had made `gemini-4-hydrogen`
+          the haiku anchor and kept `gemini-3.8-flash` as the sonnet anchor. It
+          is not a capability measurement (spec 0197 `## Open questions`).
       - declares: supports-reasoning-surface
         citation: >-
           This mapping's frontmatter surface declares no reasoning item

@@ -50,7 +50,7 @@ describe("degradation cases", () => {
         "probe",
         "gemini",
         "unreadable-cell",
-        "offering=gemini-4-hydrogen native-value=not-a-domain-member outside the frontmatter model key's declared domain",
+        "offering=gemini-3.5-flash-lite native-value=not-a-domain-member outside the frontmatter model key's declared domain",
       ),
     ]);
   });
@@ -216,7 +216,7 @@ describe("rules (d), (e) and (g) on the real mappings", () => {
 
   test("rule (d) a specialization no gemini offering serves falls back, one drop", () => {
     const r = real("gemini", "intelligence: high", "specialization: image-generation");
-    assert.equal(r.offeringId, "gemini-3.8-flash");
+    assert.equal(r.offeringId, "gemini-4-hydrogen");
     assert.ok(
       r.diagLines.includes(
         drop("gemini", "metadata.model.specialization", "image-generation", "unserved-value"),
@@ -226,7 +226,7 @@ describe("rules (d), (e) and (g) on the real mappings", () => {
 
   test("rule (e) an inexact encoded rung selects the nearest below and notes it, no drop", () => {
     const r = real("antigravity", "intelligence: high", "reasoning: xhigh");
-    assert.equal(r.offeringId, "gemini-3.8-flash-high");
+    assert.equal(r.offeringId, "gemini-4-hydrogen-high");
     assert.deepEqual(r.diagLines, [
       tab(
         "model-note",
