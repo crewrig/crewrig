@@ -48,8 +48,10 @@ plugin format.
 - a nested directory without an `AGENT.md` SHALL be skipped, and sibling files of a
   nested agent SHALL NOT be copied;
 - the output SHALL contain no sub-directory under `agents/`;
-- when the agents location is absent or holds no agent, no `agents/` entry is
-  written and no agent line is printed (the `claude` behaviour).
+- when the agents subject is not declared or its location is not a directory, no
+  `agents/` entry is written and no agent line is printed; when the location is a
+  directory, `agents/` is created before any agent is examined, so a location that
+  holds no agent yields an empty `agents/` directory (the `claude` behaviour).
 
 The log lines SHALL mirror `scripts/lib/extension/plugin-claude.ts` exactly. The agent
 file content is copied as it is, with no frontmatter rewriting.
@@ -57,7 +59,10 @@ file content is copied as it is, with no frontmatter rewriting.
 **Requirement 32 — Regression tests.** `scripts/tests/extension-plugin-antigravity.test.ts`
 SHALL cover four cases: a nested agent flattened to `agents/<name>.md`; a flat agent
 copied under its name; a directory without `AGENT.md` skipped; a sibling file of a
-nested agent not copied (and no sub-directory under `agents/`).
+nested agent not copied (and no sub-directory under `agents/`). The existing
+assertions that encode the retired clause (the expected output listing holding
+`agents/<name>/` and its sibling files, and the test asserting that a flat agent file
+is skipped) SHALL be replaced, not kept beside the new cases.
 
 **Requirement 33 — Documentation of the verified layout.** The Antigravity entry of
 `docs/cli-matrix/rows/13.md` and the "[GAP, intentional] Antigravity compiled agent
@@ -99,8 +104,9 @@ Scenario 2 (happy, flat). Given `agents/helper.md`, when built, then `agents/hel
 exists and the log has the line `Copied agent: helper` indented by two spaces.
 
 Scenario 3 (failure path). Given `agents/stray/README.md` and no `AGENT.md`, when
-built, then nothing is emitted for `stray`, the build does not fail and no agent line
-is printed for it.
+built, then nothing is emitted for `stray`, the build does not fail, no agent line is
+printed for it, and the plugin holds an empty `agents/` directory when `stray` is the
+only entry.
 
 ## Out of scope
 
