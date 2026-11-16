@@ -1,5 +1,5 @@
 // extension-plugin-antigravity.test.ts — the Antigravity CLI plugin renderer (spec 0254 R11, R17,
-// R18): the whole output tree and the printed lines over throwaway extension trees.
+// R18, delta-02 R31-R33): the whole output tree and the printed lines over throwaway extension trees.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -43,7 +43,8 @@ describe("buildAntigravityPlugin", () => {
       "  Copied skill: helper",
       "  Rendered command to skill: greet",
       "  Rendered command to skill: plain",
-      "  Copied agent: nested",
+      "  Copied agent: flat",
+      "  Copied agent (flattened): nested",
       "  Copied: hooks/",
       "",
       `Plugin built: ${out}`,
@@ -52,9 +53,8 @@ describe("buildAntigravityPlugin", () => {
     assert.deepEqual(cap.err, []);
     assert.deepEqual(Object.keys(readTree(out)).sort(), [
       "agents/",
-      "agents/nested/",
-      "agents/nested/AGENT.md",
-      "agents/nested/PROMPT.md",
+      "agents/flat.md",
+      "agents/nested.md",
       "dist/",
       "dist/index.js",
       "hooks/",
@@ -88,13 +88,18 @@ describe("buildAntigravityPlugin", () => {
     );
   });
 
-  test("agent directories are copied whole; loose files are skipped", () => {
-    const { out } = build(cleanContext());
-    assert.equal(
-      fs.readFileSync(path.join(out, "agents", "nested", "PROMPT.md"), "utf8"),
-      "sibling\n",
-    );
-    assert.ok(!fs.existsSync(path.join(out, "agents", "flat.md")));
+  test("agents are flattened to agents/<name>.md (spec 0254 delta-02 R31, R32)", () => {
+    const files = cleanContext();
+    files["agents/empty/NOTES.md"] = "no agent file\n";
+    const { cap, out } = build(files);
+    assert.equal(fs.readFileSync(path.join(out, "agents", "nested.md"), "utf8"), "nested agent\n");
+    assert.ok(fs.existsSync(path.join(out, "agents", "flat.md")));
+    assert.ok(!fs.existsSync(path.join(out, "agents", "empty")));
+    assert.ok(!fs.existsSync(path.join(out, "agents", "empty.md")));
+    assert.ok(!fs.existsSync(path.join(out, "agents", "nested")));
+    assert.ok(!cap.out.some((l) => l.includes("empty")));
+    assert.ok(cap.out.includes("  Copied agent (flattened): nested"));
+    assert.ok(cap.out.includes("  Copied agent: flat"));
   });
 
   test("the context is written raw to rules/AGENTS.md", () => {
