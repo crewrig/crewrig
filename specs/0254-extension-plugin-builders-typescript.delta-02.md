@@ -1,7 +1,7 @@
 ---
 id: "0254"
 slug: extension-plugin-builders-typescript
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1868
