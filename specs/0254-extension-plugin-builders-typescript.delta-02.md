@@ -104,9 +104,9 @@ Scenario 2 (happy, flat). Given `agents/helper.md`, when built, then `agents/hel
 exists and the log has the line `Copied agent: helper` indented by two spaces.
 
 Scenario 3 (failure path). Given `agents/stray/README.md` and no `AGENT.md`, when
-built, then nothing is emitted for `stray`, the build does not fail, no agent line is
-printed for it, and the plugin holds an empty `agents/` directory when `stray` is the
-only entry.
+built, then nothing is emitted for `stray`, the build does not fail, no agent
+line is printed for it, and the plugin holds an empty `agents/` directory when
+`stray` is the only entry.
 
 ## Out of scope
 
