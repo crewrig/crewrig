@@ -1,0 +1,11 @@
+{
+  "testEngine": {"name": "axe-core", "version": "4.10.2"},
+  "url": "http://localhost:3000/signup",
+  "violations": [
+    {"id": "color-contrast", "impact": "serious", "help": "Elements must meet minimum color contrast ratio thresholds", "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast", "nodes": [{}, {}, {}]},
+    {"id": "image-alt", "impact": "critical", "help": "Images must have alternate text", "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/image-alt", "nodes": [{}]},
+    {"id": "region", "impact": "moderate", "help": "All page content should be contained by landmarks", "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/region", "nodes": [{}, {}]},
+    {"id": "landmark-unique", "impact": "minor", "help": "Landmarks should have a unique role or role/label/title combination", "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/landmark-unique", "nodes": [{}]}
+  ],
+  "passes": [], "incomplete": [], "inapplicable": []
+}

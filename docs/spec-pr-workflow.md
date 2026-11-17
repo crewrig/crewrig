@@ -4,6 +4,14 @@
 
 <!-- crewrig-doc: published=false -->
 
+> **Scope (ADR-0024).** This workflow applies only to changes that alter
+> user- or adopter-observable behaviour or a contract shared across components
+> or CLIs. Skill, agent and command content, model or tools within the existing
+> vocabulary, bundled scripts implementing an existing contract, `evals/evals.json`
+> cases and bug fixes restoring documented behaviour have no spec-PR: the issue
+> checklist is the contract and the plan goes in the PR body. No check requires
+> a spec for such an issue-only ticket.
+
 This keeps the WHAT auditable as a standalone diff and decouples the
 qualification timeline from the realization timeline.
 
@@ -257,7 +265,7 @@ created by the ready transition, never a re-run of a draft-era run.
 
 **GitLab.** `CI_MERGE_REQUEST_DRAFT` (introduced in GitLab 17.10, the minimum
 for this feature; an older instance leaves the variable undefined, which means
-not draft) maps onto `CREWRIG_PR_DRAFT` in `ci/ci-capabilities.yml`. The
+not draft) maps onto `CREWRIG_PR_DRAFT` in `ci/capabilities/`. The
 variable is fixed at pipeline creation, and marking an MR ready is not
 documented to create a pipeline, so the head pipeline may be a stale
 draft-era one (R12). Step (d) requires a fresh merge-request pipeline: create

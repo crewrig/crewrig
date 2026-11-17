@@ -11,6 +11,7 @@
     {"path":"<HOME>/.gemini","kind":"dir"},
     {"path":"<HOME>/.gemini/00_SOUL.md","kind":"file","mode":"0644","sha256":"repo:config/SOUL.md"},
     {"path":"<HOME>/.gemini/20_ORGANIZATION.md","kind":"file","mode":"0644","sha256":"repo:config/ORGANIZATION.md"},
+    {"path":"<HOME>/.gemini/60_MEMORY.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/rules/60-memory.md"},
     {"path":"<HOME>/.gemini/60_TOOLS.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/rules/60-tools.md"},
     {"path":"<HOME>/.gemini/65_TOOLS.md","kind":"file","mode":"0644","sha256":"repo:config/TOOLS.md"},
     {"path":"<HOME>/.local","kind":"dir"},

@@ -6,6 +6,12 @@ import path from "node:path";
 
 import { checkDrift, type Outcome } from "./check.ts";
 import { portableCapabilities } from "./reference.ts";
+import {
+  ReferenceNotFoundError,
+  ReferenceReadError,
+  readReference,
+  sourceOf,
+} from "../ci-parity/reference-read.ts";
 import { emitJob, emitTaskInstallJob } from "./render-job.ts";
 import { HEADER, STAGES, WORKFLOW } from "./render-yaml.ts";
 import {
@@ -36,13 +42,12 @@ export function generate(
 
 export function run(argv: readonly string[], repoDir: string): Outcome {
   const checkMode = argv.includes("--check");
-  const reference = path.join(repoDir, "ci", "ci-capabilities.yml");
   const output = path.join(repoDir, ".gitlab-ci.yml");
-  if (!fs.existsSync(reference) || !fs.statSync(reference).isFile()) {
-    return { stdout: "", stderr: `Error: CI reference not found: ${reference}\n`, code: 2 };
-  }
   let fresh: string;
+  let source: string;
   try {
+    const ref = readReference(repoDir);
+    source = sourceOf(ref);
     const pinFile = path.join(repoDir, "ci", "task-pin.json");
     if (!fs.existsSync(pinFile)) throw new BuildCiError(`Error: Task pin not found: ${pinFile}.`);
     const pin = parseTaskPin(fs.readFileSync(pinFile, "utf8"));
@@ -51,14 +56,17 @@ export function run(argv: readonly string[], repoDir: string): Outcome {
     const yqPins = fs.existsSync(yqFile)
       ? parseYqPin(fs.readFileSync(yqFile, "utf8"))
       : repoYqPins();
-    fresh = generate(fs.readFileSync(reference, "utf8"), pin, yqPins);
+    fresh = generate(ref.text, pin, yqPins);
   } catch (e) {
+    if (e instanceof ReferenceNotFoundError)
+      return { stdout: "", stderr: `Error: CI reference not found: ${e.path}\n`, code: 2 };
+    if (e instanceof ReferenceReadError) return { stdout: "", stderr: e.format(), code: 1 };
     if (e instanceof BuildCiError) return { stdout: "", stderr: `${e.message}\n`, code: e.code };
     throw e;
   }
   if (checkMode) {
     const committed = fs.existsSync(output) ? fs.readFileSync(output, "utf8") : null;
-    return checkDrift(fresh, committed, output);
+    return checkDrift(fresh, committed, output, source);
   }
   const tmp = `${output}.tmp.${process.pid}`;
   fs.writeFileSync(tmp, fresh);

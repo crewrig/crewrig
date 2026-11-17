@@ -1,8 +1,8 @@
 // plugin-antigravity.ts — the Antigravity CLI plugin renderer (spec 0254 R11, R17, R18).
 // Twin of scripts/build-antigravity-extension.ts :92-247 (everything after the shared start,
 // which lives in plugin-common.ts): manifest, MCP (the neutral `${extensionRoot}` stays
-// unresolved), raw context, skills, commands to skills, whole agent directories, hooks directory
-// and the two closing lines.
+// unresolved), raw context, skills, commands to skills, flattened agents (`agents/<name>.md`, spec 0254 delta-02 R31), hooks
+// directory and the two closing lines.
 
 import fs from "node:fs";
 
@@ -13,26 +13,31 @@ import {
   emitContext,
   emitMcp,
   isDirectory,
+  isFile,
   listEntries,
   startPlugin,
 } from "./plugin-common.ts";
 import type { PluginPlan } from "./plugin-common.ts";
 import { obj, writeJsonText } from "./json-write.ts";
 import { subjectLocation, subjectPresent } from "./manifest.ts";
-import { copyTree } from "./tree-copy.ts";
 import type { ExtCtx } from "./types.ts";
 
-/** `agents/<name>` for every agent directory, copied whole (`cp -r`); loose files are skipped. */
+/** `agents/<name>.md` for every agent: nested `AGENT.md` flattened, flat `*.md` copied (as Claude). */
 function copyAgents(plan: PluginPlan): void {
   const { manifest, extDir, outDir, ctx } = plan;
   const dir = `${extDir}/${subjectLocation(manifest, "agents", "agents/").replace(/\/+$/, "")}`;
   if (!subjectPresent(manifest, "agents") || !isDirectory(dir)) return;
   fs.mkdirSync(`${outDir}/agents`, { recursive: true });
   for (const entry of listEntries(dir)) {
-    if (!isDirectory(`${dir}/${entry}`)) continue;
-    for (const notice of copyTree(`${dir}/${entry}`, `${outDir}/agents/${entry}`))
-      ctx.io.err(notice);
-    ctx.io.out(`  Copied agent: ${entry}`);
+    const from = `${dir}/${entry}`;
+    if (isDirectory(from)) {
+      if (!isFile(`${from}/AGENT.md`)) continue;
+      fs.copyFileSync(`${from}/AGENT.md`, `${outDir}/agents/${entry}.md`);
+      ctx.io.out(`  Copied agent (flattened): ${entry}`);
+    } else if (isFile(from) && entry.endsWith(".md")) {
+      fs.copyFileSync(from, `${outDir}/agents/${entry}`);
+      ctx.io.out(`  Copied agent: ${entry.slice(0, -".md".length)}`);
+    }
   }
 }
 

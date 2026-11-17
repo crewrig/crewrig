@@ -23,6 +23,7 @@ const DEPLOYED = [
   "30_USER_PROFILE.md",
   "40_USER_EXPERTISE.md",
   "50_USER_TEAM.md",
+  "60_MEMORY.md",
   "60_TOOLS.md",
   "65_TOOLS.md",
   "66_ORG_RULES.md",
@@ -52,7 +53,7 @@ function declaredDeployed(): string[] {
 }
 
 describe("the Gemini overlay-enrollment guard reads the declaration", () => {
-  it("the declaration names exactly the nine overlays the setup deploys", () => {
+  it("the declaration names exactly the ten overlays the setup deploys", () => {
     const fromDeclaration = declaredDeployed();
 
     assert.deepEqual(fromDeclaration, DEPLOYED);

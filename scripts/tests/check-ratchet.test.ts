@@ -167,6 +167,18 @@ describe("spec 0238 ratchet scenarios", () => {
     assert.match(line, /tool-config/);
   });
 
+  test("a .js/.mjs under an eval files/ directory passes, the same file elsewhere fails", () => {
+    const fixture = "artifacts/library/skills/demo/evals/files/dyn.js";
+    const nested = "artifacts/core/skills/demo/evals/files/sub/astro.config.mjs";
+    expectClean(ratchet(repo({ [fixture]: "x\n", [nested]: "export default {};\n" })));
+    expectFinding(
+      ratchet(repo({ "artifacts/library/skills/demo/evals/dyn.js": "x\n" })),
+      "js-unlisted",
+      "artifacts/library/skills/demo/evals/dyn.js",
+    );
+    expectFinding(ratchet(repo({ "lib/dyn.js": "x\n" })), "js-unlisted", "lib/dyn.js");
+  });
+
   test("an added Python file without a mempalace import fails as py-no-mempalace", () => {
     const dir = repo({ "tools/new.py": "import os\nprint(os.getcwd())\n" });
     expectFinding(ratchet(dir, { baseRef: "main" }), "py-no-mempalace", "tools/new.py");

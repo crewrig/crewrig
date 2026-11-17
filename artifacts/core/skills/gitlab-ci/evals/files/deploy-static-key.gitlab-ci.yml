@@ -1,0 +1,15 @@
+stages:
+  - deploy
+
+deploy-site:
+  stage: deploy
+  image: amazon/aws-cli:2.17.0
+  variables:
+    AWS_DEFAULT_REGION: eu-west-1
+  script:
+    # The two AWS_* credentials below are stored as CI/CD variables in the project settings.
+    - export AWS_ACCESS_KEY_ID="$DEPLOY_AWS_ACCESS_KEY_ID"
+    - export AWS_SECRET_ACCESS_KEY="$DEPLOY_AWS_SECRET_ACCESS_KEY"
+    - aws s3 sync ./public s3://example-static-site --delete
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

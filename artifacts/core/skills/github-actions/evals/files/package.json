@@ -1,0 +1,16 @@
+{
+  "name": "orders-api",
+  "version": "1.4.0",
+  "private": true,
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "lint": "eslint .",
+    "test": "vitest run",
+    "build": "tsc -p ."
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

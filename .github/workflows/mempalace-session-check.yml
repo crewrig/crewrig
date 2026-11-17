@@ -1,7 +1,7 @@
 name: MemPalace Session Check
 
 # Spec 0246 (issue #1410): mirrors the `mempalace-session-check` capability of
-# ci/ci-capabilities.yml.
+# ci/capabilities/.
 on:
   pull_request:
     branches: [main, "release/**"]
@@ -25,24 +25,6 @@ on:
       - "hooks/*-usage-capture-hooks.json"
   push:
     branches: [main, "release/**"]
-    paths:
-      - "scripts/mempalace-session-check.ts"
-      - "scripts/session-check-hooks.ts"
-      - "scripts/lib/mempalace-registration.ts"
-      - "scripts/lib/session-check-throttle.ts"
-      - "scripts/lib/session-check-config.ts"
-      - "scripts/lib/tmp-file.ts"
-      - "scripts/usage-capture-optin.ts"
-      - "scripts/status-mcp-server.ts"
-      - "scripts/lib/service/**"
-      - "scripts/setup-*-interactive.ts"
-      - "scripts/tests/mempalace-registration*.test.ts"
-      - "scripts/tests/mempalace-session-check.test.ts"
-      - "scripts/tests/session-check-*.test.ts"
-      - "scripts/tests/lib/session-check-harness.ts"
-      - "scripts/tests/fixtures/session-check/**"
-      - "hooks/*-transcript-hooks.json"
-      - "hooks/*-usage-capture-hooks.json"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

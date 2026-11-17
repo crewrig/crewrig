@@ -58,7 +58,7 @@ tasks:
   markdown-links:
     desc: Run the Markdown link suite tests (pre-push mirror of the CI job)
     cmds:
-      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-markdown-links.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-markdown-links.test.ts {{.REPO_DIR}}/scripts/tests/check-markdown-links-shared-references.test.ts'
   repository-scan:
     desc: Scan the repository for machine paths, broken Markdown links and core-path drift (pre-push mirror of the CI job)
     cmds:

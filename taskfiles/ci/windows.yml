@@ -13,7 +13,7 @@ tasks:
   # TEMPLATE (spec 0240 R12-R15) — the reusable `windows-latest` job shape.
   # A later sub-spec copies this job, renames it, points the three steps at
   # its own migrated script and suites, states its own --budget-ms next to its
-  # script, and records the copy in ci/ci-capabilities.yml as
+  # script, and records the copy in ci/capabilities/ as
   # `portability: specific` (engine github-actions: GitLab exposes no Windows
   # runner). Steps run under pwsh, a non-POSIX interpreter, on purpose.
   # Budget: 750 ms initial for node-floor-guard.js, to be recalibrated to
@@ -31,7 +31,7 @@ tasks:
   windows-service-task:
     desc: Windows proof of service task (CI mirror of the windows-latest job)
     cmds:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-names.test.ts scripts/tests/service-backend.test.ts scripts/tests/service-probe.test.ts scripts/tests/service-os-inspect.test.ts scripts/tests/service-listener-pid.test.ts scripts/tests/service-process-tree.test.ts scripts/tests/service-owner-check.test.ts scripts/tests/service-task-snapshot.test.ts scripts/tests/service-task-ownership.test.ts scripts/tests/service-schtasks.test.ts scripts/tests/service-schtasks-uninstall.test.ts scripts/tests/service-snapshot-failure.test.ts scripts/tests/service-task-state.test.ts scripts/tests/service-windows-task-xml.test.ts scripts/tests/service-unit-render.test.ts scripts/tests/service-launcher-record.test.ts scripts/tests/service-launcher-child.test.ts scripts/tests/service-launcher-token.test.ts scripts/tests/service-launcher-palace-path.test.ts scripts/tests/service-bundle-closure.test.ts scripts/tests/service-launcher-installed-wrapper.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-names.test.ts scripts/tests/service-backend.test.ts scripts/tests/service-probe.test.ts scripts/tests/service-os-inspect.test.ts scripts/tests/service-listener-pid.test.ts scripts/tests/service-process-tree.test.ts scripts/tests/service-owner-check.test.ts scripts/tests/service-task-snapshot.test.ts scripts/tests/service-task-ownership.test.ts scripts/tests/service-schtasks.test.ts scripts/tests/service-schtasks-uninstall.test.ts scripts/tests/service-snapshot-failure.test.ts scripts/tests/service-task-state.test.ts scripts/tests/service-windows-task-xml.test.ts scripts/tests/service-unit-render.test.ts scripts/tests/service-launcher-record.test.ts scripts/tests/service-launcher-child.test.ts scripts/tests/service-launcher-token.test.ts scripts/tests/service-launcher-palace-path.test.ts scripts/tests/service-bundle-closure.test.ts scripts/tests/service-launcher-installed-wrapper.test.ts scripts/tests/windows-service-fixture-wait.test.ts
       - |
         rc=0
         node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-windows.test.ts || rc=1

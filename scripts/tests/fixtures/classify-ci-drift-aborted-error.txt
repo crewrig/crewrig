@@ -1,0 +1,1 @@
+Error: /repo/.gitlab-ci.yml: more than one YAML document is not supported

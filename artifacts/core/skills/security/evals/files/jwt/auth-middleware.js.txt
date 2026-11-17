@@ -1,0 +1,23 @@
+'use strict';
+
+const jwt = require('jsonwebtoken');
+
+const SECRET = process.env.JWT_SECRET;
+
+// Authenticate an API request from its bearer token.
+function authenticate(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token = header.replace(/^Bearer /, '');
+  try {
+    const claims = jwt.verify(token, SECRET, {
+      algorithms: ['HS256'],
+      ignoreExpiration: true,
+    });
+    req.user = { id: claims.sub, role: claims.role };
+    next();
+  } catch (err) {
+    res.status(401).json({ error: 'invalid token' });
+  }
+}
+
+module.exports = { authenticate };

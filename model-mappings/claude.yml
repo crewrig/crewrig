@@ -180,34 +180,58 @@ offerings:
 
 guard:
   id: copilot-shared-read
-  spec: specs/0143-copilot-subagent-model-fallback.delta-01.md R8
-  state: withheld
+  spec: specs/0291-agent-model-tools-allowlist.md R1, R3
+  state: directed
   terms:
     - id: defect-not-established-fixed
       statement: >-
-        The upstream defect github/copilot-cli#4437 is not established fixed.
-      holds: true
+        On a standard GitHub-hosted account, the upstream defect
+        github/copilot-cli#4437 is not established fixed.
+      holds: false
       evidence: >-
-        Probe run 20260902T153919Z-0aa9 of issue #1103 returned the verdict
-        BUG-PRESENT against github/copilot-cli#4437 on GitHub Copilot CLI
-        1.0.82 (spec 0197 R37).
+        Probe of 2026-11-10 on GitHub Copilot CLI 1.0.109 (recorded in issue
+        #1851), on a standard GitHub-hosted account: agents under
+        .claude/agents/ declaring `model: sonnet`, `model: claude-sonnet-5-5`
+        and `model: claude-sonnet-4.5` each produced a warning and a fallback
+        to the session model; a subagent spawned through the `task` tool
+        answered on the session model; every run succeeded. The probe does not
+        cover a bring-your-own-key provider, where github/copilot-cli#4437 was
+        reported (Copilot 1.0.79, Ollama), nor an account on which Claude
+        models are served. Spec 0143 delta-01 R8 asked for evidence on
+        BYOK/Ollama providers; spec 0291 R4 narrows that clause to the standard
+        account and accepts the bring-your-own-key case as an unverified
+        residual risk (rollback: guard.state back to withheld and the second
+        term back to holds true; an organization re-withholds through its own
+        mapping, docs/org-model-mapping-override.md).
       grounds:
         - declares: holds
           citation: >-
-            Probe run 20260902T153919Z-0aa9 of issue #1103, verdict
-            BUG-PRESENT (spec 0197 R37).
-    - id: copilot-reader-consumes-claude-surface
+            Probe of 2026-11-10 on GitHub Copilot CLI 1.0.109, standard
+            GitHub-hosted account, recorded in issue #1851 (spec 0291 R3, R4).
+    - id: copilot-reader-fails-on-unserved-model
       statement: >-
-        A GitHub Copilot CLI reader may consume the .claude/agents/ surface.
-      holds: true
+        A GitHub Copilot CLI reader of .claude/agents/ fails, or silently
+        misroutes a subagent, whose `model:` it cannot serve.
+      holds: false
       evidence: >-
-        The control leg of the same probe run 20260902T153919Z-0aa9 is direct
-        live evidence that GitHub Copilot CLI consumes the .claude/agents/
-        surface; RR -> GitHub Copilot CLI -> Shared-read hazard records probe B
-        on Copilot CLI 1.0.82 finding all three cells CONSUMED, nested and flat
-        under .claude/agents/ and at ~/.copilot/agents/ (spec 0197 R37).
+        Differs from defect-not-established-fixed: that term concerns the
+        specific upstream defect (silent misrouting of a subagent on a
+        standard account); this term concerns the observable outcome on a
+        Copilot reader whatever the cause. The probe of 2026-11-10 on GitHub
+        Copilot CLI 1.0.109 on a standard GitHub-hosted account saw a warning
+        and a fallback to the session model, with the run succeeding, so this
+        term does not hold there. The warning fires on agent invocation only,
+        once per invocation, never at startup or discovery (coordinator probe
+        of 2026-11-11, Copilot CLI 1.0.109: no warning without an agent, exactly
+        one with `--agent`). Not covered: a bring-your-own-key provider and an
+        account on which Claude models are served. An adopter on a
+        bring-your-own-key provider flips this term, not the first, because it
+        states what that adopter's Copilot readers may do, which no probe
+        covers for them. Rollback: set guard.state to withheld and this term to
+        holds true (rule A23 requires both).
       grounds:
         - declares: holds
           citation: >-
-            Probe run 20260902T153919Z-0aa9 control leg, and probe B's
-            three-cell CONSUMED outcome on Copilot CLI 1.0.82 (spec 0197 R37).
+            Probe of 2026-11-10 on GitHub Copilot CLI 1.0.109, standard
+            GitHub-hosted account, recorded in issue #1851, and the invocation
+            probe of 2026-11-11 recorded there (spec 0291 R3, R4).

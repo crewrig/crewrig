@@ -28,6 +28,7 @@
     {"path":"<HOME>/.gemini/antigravity-cli/30_USER_PROFILE.md","kind":"file","mode":"0644","sha256":"repo:config/PROFILE.md"},
     {"path":"<HOME>/.gemini/antigravity-cli/40_USER_EXPERTISE.md","kind":"file","mode":"0644","sha256":"repo:config/expertise/BACKEND-JAVA.md"},
     {"path":"<HOME>/.gemini/antigravity-cli/50_USER_TEAM.md","kind":"file","mode":"0644","sha256":"repo:config/teams/ATLAS.md"},
+    {"path":"<HOME>/.gemini/antigravity-cli/60_MEMORY.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/rules/60-memory.md"},
     {"path":"<HOME>/.gemini/antigravity-cli/60_TOOLS.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/rules/60-tools.md"},
     {"path":"<HOME>/.gemini/antigravity-cli/65_TOOLS.md","kind":"file","mode":"0644","sha256":"repo:config/TOOLS.md"},
     {"path":"<HOME>/.gemini/config","kind":"dir"},

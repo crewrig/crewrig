@@ -13,7 +13,8 @@ import path from "node:path";
 import { scrubGitEnv } from "../git-env.ts";
 
 export const BUDGET_SECONDS = 60;
-export const DRAFT_TASK = "lint-specs";
+/** Tasks that receive CREWRIG_PR_DRAFT=true: a push precedes a PR that is ready for review (spec 0168, spec 0290 R52). */
+export const DRAFT_TASKS: readonly string[] = ["lint-specs", "skill-evals-attestation"];
 
 export interface TaskResult {
   id: string;
@@ -37,7 +38,7 @@ export interface RunOptions {
   log?: (line: string) => void;
 }
 
-/** Environment of one task: BASE_REF for all, CREWRIG_PR_DRAFT=true for `lint-specs` only. */
+/** Environment of one task: BASE_REF for all, CREWRIG_PR_DRAFT=true for `DRAFT_TASKS` only. */
 export function taskEnv(id: string, opts: RunOptions): NodeJS.ProcessEnv {
   // Git exports GIT_DIR to a hook; no GIT_* variable may reach a task (spec 0279 R21).
   const env: NodeJS.ProcessEnv = scrubGitEnv(opts.env ?? process.env);
@@ -53,7 +54,7 @@ export function taskEnv(id: string, opts: RunOptions): NodeJS.ProcessEnv {
     .filter((v) => v !== undefined && v !== "")
     .join(path.delimiter);
   if (opts.baseRef !== undefined && opts.baseRef !== null) env["BASE_REF"] = opts.baseRef;
-  if (id === DRAFT_TASK) env["CREWRIG_PR_DRAFT"] = "true";
+  if (DRAFT_TASKS.includes(id)) env["CREWRIG_PR_DRAFT"] = "true";
   return env;
 }
 

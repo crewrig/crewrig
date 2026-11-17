@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
 
@@ -28,19 +29,23 @@ export function hasTestTarget(command: string): boolean {
   return targets.some((token) => token.includes("/") || token.endsWith(".ts"));
 }
 
-function ciFiles(): string[] {
+/** Every CI surface as `[label, text]`: the capability reference first, then the workflows. */
+function ciSources(): [string, string][] {
   const workflows = path.join(ROOT, ".github", "workflows");
   const files = fs
     .readdirSync(workflows)
     .filter((name) => name.endsWith(".yml"))
-    .map((name) => path.join(workflows, name));
-  return [path.join(ROOT, "ci", "ci-capabilities.yml"), ...files];
+    .map((name): [string, string] => [
+      path.relative(ROOT, path.join(workflows, name)),
+      fs.readFileSync(path.join(workflows, name), "utf8"),
+    ]);
+  return [["capability reference", readReferenceText(ROOT)], ...files];
 }
 
 describe("every node --test command of the CI names a test target", () => {
-  for (const file of ciFiles()) {
-    test(path.relative(ROOT, file), () => {
-      const bare = nodeTestCommands(fs.readFileSync(file, "utf8")).filter(
+  for (const [label, text] of ciSources()) {
+    test(label, () => {
+      const bare = nodeTestCommands(text).filter(
         (command) => !command.trim().startsWith("#") && !hasTestTarget(command),
       );
       assert.deepEqual(

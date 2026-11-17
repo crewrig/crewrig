@@ -1,0 +1,47 @@
+{
+  "body": "## IDEA Session \u2014 Config format\n\n**Parent issue:** #73\n**Governance mode:** solo\n**Owner:** maintainer\n\n---\n",
+  "comments": [
+    {
+      "author": {
+        "login": "alice"
+      },
+      "body": "## Proposal: YAML config\n\n**Submitter:** alice\n\n### Summary\nUse YAML files.\n\n### Rationale\nAddresses the parent issue.\n\n### Trade-offs\nCosts differ.\n\n### Open questions\nNone.",
+      "createdAt": "2026-03-02T10:00:00Z"
+    },
+    {
+      "author": {
+        "login": "bob"
+      },
+      "body": "## Proposal: TOML config\n\n**Submitter:** bob\n\n### Summary\nUse TOML files.\n\n### Rationale\nAddresses the parent issue.\n\n### Trade-offs\nCosts differ.\n\n### Open questions\nNone.",
+      "createdAt": "2026-03-02T10:01:00Z"
+    },
+    {
+      "author": {
+        "login": "maintainer"
+      },
+      "body": "[CANDIDATE] Proposal: YAML config",
+      "createdAt": "2026-03-02T10:02:00Z"
+    },
+    {
+      "author": {
+        "login": "maintainer"
+      },
+      "body": "VOTE: APPROVE",
+      "createdAt": "2026-03-02T10:03:00Z"
+    },
+    {
+      "author": {
+        "login": "maintainer"
+      },
+      "body": "[CANDIDATE] Proposal: JSON config",
+      "createdAt": "2026-03-02T10:04:00Z"
+    },
+    {
+      "author": {
+        "login": "alice"
+      },
+      "body": "VOTE: REJECT",
+      "createdAt": "2026-03-02T10:05:00Z"
+    }
+  ]
+}

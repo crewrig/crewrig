@@ -1,0 +1,366 @@
+# CI capabilities: group windows, part other (format: docs/ci-reference-format.md, spec 0309).
+capabilities:
+
+  # --- Engine-specific: Windows runner scaffolding (spec 0240 R12-R15) -----
+
+  # The reusable `windows-latest` job shape: Node.js 24 from a non-POSIX interpreter (pwsh), the portable shared-module
+  # suites and the timing-budget harness on the floor guard. Later sub-specs copy the job and record each copy here.
+  - id: windows-node-floor-guard
+    group: windows
+    name: "Windows scaffolding: floor guard, shared modules and timing budget"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-node-floor-guard
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-node-floor-guard`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 70-81), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15).
+
+  # Spec 0252 R24: the Windows service task proof, a copy of the template above, against the real Task Scheduler (`MEASURE:` lines).
+  - id: windows-service-task
+    group: windows
+    name: "Windows service task: Task Scheduler lifecycle, restart proof and refusal legs"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-service-task
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-service-task`) because it
+        drives the real Windows Task Scheduler (`schtasks.exe`). GitLab CI, as
+        configured for this repository, exposes no Windows runner: every
+        generated GitLab job derives its `image` from `requires.runtime`
+        through `runtime_to_image` (scripts/build-ci.ts), which maps only to
+        Linux Docker images, and .gitlab-ci.yml declares no runner `tags:` that
+        could select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15).
+
+
+  # Spec 0252 R24 (PR C): the ChromaDB trio proof, a copy of windows-service-task.
+  - id: windows-chroma-trio
+    group: windows
+    name: "Windows ChromaDB trio: start, stop and status entries and the Task Scheduler leg"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-chroma-trio
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-chroma-trio`) because it
+        drives the real Windows Task Scheduler (`schtasks.exe`). GitLab CI, as
+        configured for this repository, exposes no Windows runner: every
+        generated GitLab job derives its `image` from `requires.runtime`
+        through `runtime_to_image` (scripts/build-ci.ts), which maps only to
+        Linux Docker images, and .gitlab-ci.yml declares no runner `tags:` that
+        could select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15).
+  # Spec 0252 R24 (PR D): the MCP daemon proof, a copy of windows-chroma-trio.
+  - id: windows-mcp-daemon
+    group: windows
+    name: "Windows MCP daemon: status report, owner verdicts and uninstall against the Task Scheduler"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-mcp-daemon
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-mcp-daemon`) because it
+        drives the real Windows Task Scheduler (`schtasks.exe`). GitLab CI, as
+        configured for this repository, exposes no Windows runner: every
+        generated GitLab job derives its `image` from `requires.runtime`
+        through `runtime_to_image` (scripts/build-ci.ts), which maps only to
+        Linux Docker images, and .gitlab-ci.yml declares no runner `tags:` that
+        could select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15).
+  # Spec 0252 R24 (PR E): the doctor's fourth section and the repair verbs on a real Windows host, a copy of
+  # windows-mcp-daemon.
+  - id: windows-doctor-repair
+    group: windows
+    name: "Windows doctor and repair: the background service section against the Task Scheduler, and the repair verbs"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-doctor-repair
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-doctor-repair`) because it
+        drives the real Windows Task Scheduler (`schtasks.exe`). GitLab CI, as
+        configured for this repository, exposes no Windows runner: every
+        generated GitLab job derives its `image` from `requires.runtime`
+        through `runtime_to_image` (scripts/build-ci.ts), which maps only to
+        Linux Docker images, and .gitlab-ci.yml declares no runner `tags:` that
+        could select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15).
+  # Spec 0243 R28 (reworded at delta-03): the usage-capture row's copy of the template above. Both TypeScript entries run
+  # from pwsh, each CLI and surface through the invocation rows 37 and 37e/37f of docs/cli-matrix.md (Antigravity CLI
+  # surfaces in the guarded form, `cmd /c "<command>"`); the b1/b2/b3 legs prove the guard against a planted node.cmd and
+  # node.bat; three timing budgets (R15) apply.
+  - id: windows-usage-capture
+    group: windows
+    name: "Windows usage capture: entries, per-CLI and per-surface command lines, guarded-form legs and timing budgets"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: ci
+    command:
+      - task ci:windows-usage-capture
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-usage-capture`). GitLab CI,
+        as configured for this repository, exposes no Windows runner: every
+        generated GitLab job derives its `image` from `requires.runtime`
+        through `runtime_to_image` (scripts/build-ci.ts lines 70-81), which
+        maps only to Linux Docker images, and .gitlab-ci.yml declares no
+        runner `tags:` that could select a Windows executor. There is no
+        faithful equivalent on the other supported engines (spec 0240 R15,
+        spec 0243 R28).
+
+  # Spec 0253 R27 (delta-01 R17, R24): the usage-wrappers row's copy of the template above: the nine TypeScript usage
+  # entries from pwsh, offline, no Python and no `bash`, against an isolated temp HOME and usage root
+  # (scripts/tests/usage-wrappers-windows.test.ts). Timings are recorded with a `timing:` line, never gated (R24).
+  - id: windows-usage-wrappers
+    group: windows
+    name: "Windows usage wrappers: the nine TypeScript entries run offline from pwsh, timings recorded"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-usage-wrappers
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-usage-wrappers`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0253 R27).
+
+  # Spec 0248 R33, R34: the worktree git guard row's copy of the template above. Both TypeScript entries run from pwsh:
+  # the guard from each CLI's command line through the invocation rows 37 and 37e/37f of docs/cli-matrix.md, the claim
+  # tool through the R34(d) sequence; two timing budgets (R33) apply.
+  - id: windows-worktree-git-guard
+    group: windows
+    name: "Windows worktree git guard: entries, per-CLI command lines, claim tool and timing budgets"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-worktree-git-guard
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-worktree-git-guard`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 70-81), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0248 R34).
+
+  # Spec 0247 R31, R19: the MemPalace transcript hook row's copy of the template above. The entry runs from pwsh against a
+  # loopback stub daemon, each CLI's command line through the invocation rows 37 and 37f of docs/cli-matrix.md, and four
+  # timing budgets (R19) apply to the `PostToolUse`, `Stop` (50 MB transcript) and `UserPromptSubmit` payloads.
+  - id: windows-mempalace-transcript
+    group: windows
+    name: "Windows MemPalace transcript hook: entry against a stub daemon, per-CLI command lines and timing budgets"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-mempalace-transcript
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-mempalace-transcript`).
+        GitLab CI, as configured for this repository, exposes no Windows
+        runner: every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0247 R31).
+
+  # Spec 0250 R28, R29: the component-build row's copy of the template above. The production dependencies are installed
+  # first (spec 0240 R4), the floor guard runs, then scripts/tests/lib/windows-build-proof.ts proves the write path: a
+  # build into a throwaway REPO_DIR matches the four committed trees byte for byte. The path-printing suites (`-output*`,
+  # `-names`, `-hardening-*-e2e`) and the shell-parity, conformance, differential and YAML corpus suites are left to Linux
+  # (spec 0250 R28: not the suites that need `bash`). No timing budget (R29).
+  - id: windows-build-components
+    group: windows
+    name: "Windows component build: production install, floor guard, write-path proof and unit suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-build-components
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-build-components`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0250 R28).
+
+  # Spec 0253 R27, R17: the history import and operational commands row's copy of the template above. The TypeScript
+  # sync-from-upstream entry runs from pwsh, offline, against a local upstream repository the suite creates, with Git for
+  # Windows and no `bash`. Timings are recorded (R24), never gated.
+  - id: windows-sync-from-upstream
+    group: windows
+    name: "Windows sync from upstream: TypeScript entry against a local upstream repository, no bash"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-sync-from-upstream
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-sync-from-upstream`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0253 R27).
+
+  - id: windows-history-import
+    group: windows
+    name: "Windows history import: importer and prune-transcripts entries against a fake mempalace package, no bash"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    requires:
+      runtime: [node@24, python@3.12]
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:windows-history-import
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Runs on the GitHub-hosted `windows-latest` runner
+        (.github/workflows/_ci-windows.yml, job `windows-history-import`). GitLab
+        CI, as configured for this repository, exposes no Windows runner:
+        every generated GitLab job derives its `image` from
+        `requires.runtime` through `runtime_to_image`
+        (scripts/build-ci.ts lines 93-104), which maps only to Linux Docker
+        images, and .gitlab-ci.yml declares no runner `tags:` that could
+        select a Windows executor. There is no faithful equivalent on the
+        other supported engines (spec 0240 R15, spec 0253 R27).

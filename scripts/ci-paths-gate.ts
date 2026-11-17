@@ -2,7 +2,7 @@
 //
 // Usage: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-paths-gate.ts
 //          --capability <id> [--event <name>] [--before <sha>]
-//   Defaults: --event $GITHUB_EVENT_NAME, --before $GATE_BEFORE. Reads ci/ci-capabilities.yml
+//   Defaults: --event $GITHUB_EVENT_NAME, --before $GATE_BEFORE. Reads ci/capabilities/
 //   (REPO_DIR overrides the root). The diff is `git diff --name-only HEAD^1 HEAD` for
 //   pull_request and `<before> HEAD` for push; any failure fails open.
 // Output: `changed=true|false` appended to $GITHUB_OUTPUT (stdout when unset).
@@ -16,6 +16,7 @@ import path from "node:path";
 import { UnsupportedGlobError } from "./lib/glob-engine.ts";
 import { decide } from "./lib/ci-paths-gate/gate.ts";
 import { readEffective } from "./lib/ci-paths-gate/reference.ts";
+import { ReferenceReadError, readReference } from "./lib/ci-parity/reference-read.ts";
 
 function usage(msg: string): number {
   process.stderr.write(`ci-paths-gate: ${msg}\n`);
@@ -38,12 +39,10 @@ async function main(argv: string[]): Promise<number> {
   const repo = process.env["REPO_DIR"] || path.resolve(import.meta.dirname, "..");
   let d;
   try {
-    const eff = readEffective(
-      fs.readFileSync(path.join(repo, "ci/ci-capabilities.yml"), "utf8"),
-      id,
-    );
+    const eff = readEffective(readReference(repo).text, id);
     d = await decide(id, event, before, eff.paths);
   } catch (e) {
+    if (e instanceof ReferenceReadError) return usage(e.format());
     if (e instanceof UnsupportedGlobError) return usage(e.message);
     return usage((e as Error).message);
   }

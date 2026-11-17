@@ -8,10 +8,11 @@ task: Available tasks for this project:
 * build-components-gemini:                   Build community components for Gemini CLI only (Node.js 24)
 * build-copilot-plugin:                      Build a Copilot CLI plugin from an extension (task build-copilot-plugin EXT=hello-world)
 * check-agent-profiles:                      Check agent capability-profile conformance against spec 0195 (local mirror of the CI guard, spec 0198)
+* check-agent-script-citations:              Fail when an agent body cites a scripts/ path outside a crewrig-repo-only fence (issue #1863, spec 0289)
 * check-claude-agent-layout:                 Check the compiled .claude/agents/ tree holds only flat <name>.md files (local mirror of the CI guard, spec 0201)
 * check-comment-size:                        Fail when a plan or verdict comment body exceeds 12288 bytes (spec 0275 R-E2). Author-side: task check-comment-size -- <file> (or pipe the body on stdin)
 * check-components:                          Check that generated community components match source (drift detection) and run the assembly verification test (Node.js 24)
-* check-description-length:                  Fail when a skill or agent description exceeds 300 characters (spec 0269 R11)
+* check-description-length:                  Fail when a skill or agent description exceeds 1024 characters (spec 0293)
 * check-extension-manifest-version:          Enforce a single authoritative version across an extension's manifests (local mirror of the CI guard, spec 0044)
 * check-extension-provenance:                Enforce extension skill/agent provenance carrier presence + routing (local mirror of the CI guard, spec 0043)
 * check-extension-version-bump:              Enforce carrier-version bump on modified extension skill/agent sources (local mirror of the CI guard, spec 0044)
@@ -20,12 +21,15 @@ task: Available tasks for this project:
 * check-model-mappings:                      Check model-mapping conformance against docs/model-mapping-format.md (local mirror of the CI guard, spec 0197)
 * check-plan-review:                         Decide whether a plan needs the cold second-architect review (spec 0277). Orchestrator-side at PLAN time: task check-plan-review -- <spec> [<plan>|-] [--prior-review] (plan on stdin when absent)
 * check-seat-brief:                          Fail when a seated-pass brief breaches the references-only form (spec 0276). Orchestrator-side, before the spawn: task check-seat-brief -- <file> (or pipe the brief on stdin; --template <specs|plan|review> prints a skeleton)
+* check-skill-quality:                       Lint skill sources against the authoring standard; a skill that ships evals is protected (spec 0293). Author-side: task check-skill-quality -- <skill> [--strict] [--json]
 * check-skill-versions:                      Enforce provenance.version bump on changed skill/agent sources (local mirror of the CI guard)
+* check-subagent-conventions:                Check every compiled agent ends with the subagent conventions block and the Claude Code key (local mirror of the CI guard, spec 0306)
 * check-taskfile-commands:                   Check Taskfile.yml names no POSIX-only command, modulo the owned exemption list (local mirror of the CI guard, spec 0266 R13)
 * create-extension:                          Scaffold a new extension from skeleton (task create-extension NAME=my-ext)
 * default:                                   
 * erasable-ts:                               Reject TypeScript syntax Node type stripping cannot erase (spec 0238 R5)
 * fix-markdown:                              Auto-fix Markdown formatting issues
+* fixed-context-probe:                       PAID: measure first-call input tokens of a worker and a developer subagent against the ADR-0025 threshold (never in CI)
 * format-ts:                                 Check TypeScript formatting with Oxfmt (spec 0238 R8)
 * harness-curate:                            Run the Harness Curator (task harness-curate -- [--apply | --from-stdin])
 * host-safety:                               Run the test-harness host-safety check, as CI does (spec 0267)
@@ -71,11 +75,14 @@ task: Available tasks for this project:
 * setup-claude-interactive:                  Interactive Claude Code setup with team/expertise/level selection (copy by default)
 * setup-copilot-interactive:                 Interactive GitHub Copilot CLI setup (workspace settings + optional transcript hooks)
 * setup-gemini-interactive:                  Interactive setup with team/expertise/level selection
+* skill-evals:                               Run the evals of one skill, or of every changed skill (--changed), locally (spec 0290); pass the arguments after --
 * test-components:                           Test the build-components canonical_repo validator
 * test-derive-spec-status:                   Run the merged-spec status derivation suite, as CI does (spec 0109 delta-04)
+* test-fixed-context-probe:                  Run the fixed-context probe's unit suite on fixture transcripts (no model call)
 * test-harness-curate:                       Smoke-test the Harness Curator against the bundled fixture
 * test-playwright-mcp:                       Run the Playwright MCP registration suites (model, JSONC scanner, config reader), as CI does (spec 0245)
 * test-runtime-foundations:                  Run the floor guard, dependency-step and shared-module suites, as CI does (spec 0240)
+* test-skill-evals:                          Run the skill eval runner suites in mock mode (no key, no network), as CI does (spec 0290)
 * test-spec-view:                            Run the spec effective view suite, as CI does (spec 0273)
 * test-ticket-pickup:                        Run the ticket-pickup check's suites (model, fake-forge end to end, interleavings), as CI does (spec 0244)
 * test-windows-hook-probe:                   Run the Windows hook command-line parsing probe's suite, as CI does (spec 0237)
@@ -109,8 +116,10 @@ task: Available tasks for this project:
 * ci:check-taskfile-tree:                    Check the Taskfile tree layout and contract (pre-push mirror of the CI job)
 * ci:check-taskfile-tree-selftest:           Run the Taskfile tree self-tests (pre-push mirror of the CI job)
 * ci:chroma-mcp:                             Run the chroma-mcp CI capability (pre-push mirror of the CI job)
+* ci:ci-file-limit:                          Check the per-file limit of the CI files and the reference split proof (pre-push mirror of the CI job)
 * ci:ci-parity:                              Test the CI generator and parity harness (cached by the ci-cache-guard capability key)
 * ci:ci-pre-push-replay:                     Run the ci-pre-push-replay CI capability (pre-push mirror of the CI job)
+* ci:ci-push-unfiltered:                     Check that every verifying capability runs unfiltered on a push to main (pre-push mirror of the CI job)
 * ci:cli-matrix-fresh:                       Check docs/cli-matrix.md is fresh (pre-push mirror of the CI job)
 * ci:cli-matrix-fresh-selftest:              Run the CLI matrix builder test (pre-push mirror of the CI job)
 * ci:component-drift:                        Check built components match their sources (cached by the ci-cache-guard capability key)
@@ -156,6 +165,8 @@ task: Available tasks for this project:
 * ci:setup-differential:                     Run the setup-differential CI capability (pre-push mirror of the CI job)
 * ci:setup-modules-ts:                       Run the setup-modules-ts CI capability (pre-push mirror of the CI job)
 * ci:setup-oracle:                           Run the setup entry-point oracle (sandbox, stubs, golden, prompt-inventory and mutation suites)
+* ci:skill-evals-attestation:                Check that every changed skill carries a fresh evals/results.json (no model call, no credential; pre-push mirror of the CI job)
+* ci:skill-evals-tests:                      Run the skill eval runner own suites in mock mode (no key, no network; pre-push mirror of the CI job)
 * ci:skill-scripts-ts:                       Run the skill-scripts-ts CI capability (pre-push mirror of the CI job)
 * ci:test-wiring:                            Check every test is wired into CI and no stray test exists (pre-push mirror of the CI job)
 * ci:test-wiring-selftest:                   Run the test-wiring and test-strays guard self-tests (pre-push mirror of the CI job)

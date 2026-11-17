@@ -1,0 +1,3 @@
+  DRIFT: capability 'build' (github-actions): business step diverges from the declared command — unexpected step: 'npm run bogus' (R3)
+
+FAILED: 1 CI parity violation(s) detected (spec 0049).

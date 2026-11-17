@@ -1,0 +1,3 @@
+Validating...
+syntax.yml is invalid.
+1 (<unknown>): did not find expected ',' or ']' while parsing a flow sequence at line 1 column 9

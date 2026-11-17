@@ -1,7 +1,8 @@
 // check-pinned-images.ts — flag GitLab CI container references that are not pinned to an immutable
 // @sha256: digest (the TypeScript entry of check-pinned-images.sh; same text scan, same output).
 //
-// Usage: node check-pinned-images.ts <pipeline-file-or-directory>
+// Usage: node check-pinned-images.ts <pipeline-file-or-directory> [--json]
+//        node check-pinned-images.ts --help
 //
 // Scanned surface (text scan; no registry call, no Docker, no live GitLab):
 //   - `image: <ref>` (job-level, global, and default:)
@@ -10,7 +11,8 @@
 // Directory mode scans `<dir>/.gitlab-ci.yml` plus any YAML under `<dir>/.gitlab/`. A bare variable
 // reference with no tag (for example a registry-image variable) is skipped.
 //
-// Exit: 0 all pinned or nothing to scan, 1 a finding or a bad target, 2 usage.
+// Exit: 0 all pinned or nothing to scan, 1 a finding or a bad target, 2 usage. This script keeps these
+// legacy exit codes under --json too: it does not adopt exit 3.
 //
 // Self-contained on purpose: one file, no import, runs under any package type (spec 0258).
 
@@ -31,20 +33,66 @@ void (async () => {
   const out: string[] = [];
   const err: string[] = [];
   const bytes = (s: string): string => Buffer.from(s, "utf8").toString("latin1");
+  // --json: one {ok, data, findings} object on stdout, the human text on stderr, same exit codes.
+  interface Finding {
+    rule: string;
+    message: string;
+    path?: string;
+    line?: number;
+  }
+  const findings: Finding[] = [];
+  let scanned: number | null = null;
+  let json = false;
   const flush = (): void => {
+    if (json) {
+      const human = (out.join("") + err.join("")).replace(/\u001b\[[0-9;]*m/g, "");
+      if (human !== "") process.stderr.write(Buffer.from(human, "latin1"));
+      const code = typeof process.exitCode === "number" ? process.exitCode : 0;
+      const data = scanned === null ? null : { files: scanned };
+      process.stdout.write(`${JSON.stringify({ ok: code === 0, data, findings })}\n`);
+      return;
+    }
     if (out.length > 0) process.stdout.write(Buffer.from(out.join(""), "latin1"));
     if (err.length > 0) process.stderr.write(Buffer.from(err.join(""), "latin1"));
   };
 
   const name = path.basename(process.argv[1] ?? "check-pinned-images.ts");
   const args = process.argv.slice(2);
-  if (args.length !== 1) {
+  if (args.length === 1 && args[0] === "--help") {
+    process.stdout.write(
+      `Usage: node scripts/${name} <pipeline-file-or-directory> [--json]
+       node scripts/${name} --help
+
+Flags GitLab CI \`image:\` and \`services:\` references that are not pinned to an immutable
+@sha256: digest. A text scan: no registry call, no Docker, no live GitLab. Directory mode scans
+<dir>/.gitlab-ci.yml plus the YAML under <dir>/.gitlab/.
+
+Options:
+  --json   print one JSON object {ok, data, findings} on stdout and the human text on stderr;
+           data is {files: <number of files scanned>}
+  --help   print this text (as the only argument)
+
+Exit codes (legacy, kept under --json; this script does not use exit 3):
+  0 all pinned or nothing to scan, 1 an unpinned reference or a missing or unreadable target,
+  2 usage error.
+`,
+    );
+    return;
+  }
+  json = args.includes("--json");
+  const jsonCall = args.length === 2 && args.filter((a) => a === "--json").length === 1;
+  const other = args.find((a) => a !== "--json");
+  if (json ? !jsonCall || other === "--help" : args.length !== 1) {
     err.push(`Usage: ${name} <pipeline-file-or-directory>\n`);
+    findings.push({
+      rule: "usage",
+      message: "expected one pipeline file or directory, with optional --json",
+    });
     process.exitCode = 2;
     flush();
     return;
   }
-  const target = args[0] ?? "";
+  const target = (json ? other : args[0]) ?? "";
 
   const kindOf = (p: string): "dir" | "file" | "none" => {
     try {
@@ -87,11 +135,17 @@ void (async () => {
     files.push(target);
   } else {
     err.push(`${RED}[FAIL] not a file or directory: ${bytes(target)}${RESET}\n`);
+    findings.push({
+      rule: "precondition",
+      message: `not a file or directory: ${target}`,
+      path: target,
+    });
     process.exitCode = 1;
     flush();
     return;
   }
   if (files.length === 0) {
+    scanned = 0;
     out.push(`no GitLab pipeline file found under: ${bytes(target)}\n`);
     flush();
     return;
@@ -125,14 +179,23 @@ void (async () => {
     if (DIGEST.test(value)) return;
     out.push(`${RED}[UNPINNED]${RESET} ${bytes(file)}:${String(lineno)}: ${value}\n`);
     violations += 1;
+    findings.push({
+      rule: "unpinned-image",
+      message: `${value} is not pinned to a @sha256: digest; pin it by digest`,
+      path: file,
+      line: lineno,
+    });
   };
 
+  scanned = files.length;
   for (const f of files) {
     let text: string;
     try {
       text = fs.readFileSync(f, "latin1").replaceAll("\0", "");
     } catch {
       err.push(`${name}: ${bytes(f)}: cannot read the file\n`);
+      findings.push({ rule: "precondition", message: `${f}: cannot read the file`, path: f });
+      scanned = null;
       process.exitCode = 1;
       flush();
       return;

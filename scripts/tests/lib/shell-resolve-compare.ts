@@ -38,6 +38,37 @@ export function bashIntegerOnly(shell: Outcome, twin: Outcome): string | null {
     : `the remaining lines differ: ${ours}`;
 }
 
+const MODEL_SENTENCE = /Run this agent on the \S+ model\.\s*/;
+/**
+ * Spec 0291 R2 (one carrier at a time): under a directed guard the twin carries the model on the
+ * frontmatter alone, while the frozen shell also writes the guidance sentence. Only `prose`
+ * differs, and the twin's prose is the shell's minus that sentence.
+ */
+export function oneCarrierOnly(shell: Outcome, twin: Outcome): string | null {
+  if (differing(shell, twin).join() !== "prose")
+    return `differs in ${differing(shell, twin)}, not prose only`;
+  if (!MODEL_SENTENCE.test(shell.prose))
+    return "the shell wrote no model sentence: the difference vanished";
+  const expected = shell.prose.replace(MODEL_SENTENCE, "").trim();
+  return expected === twin.prose ? null : `twin prose is "${twin.prose}", not "${expected}"`;
+}
+
+const REASONING_SENTENCE = /Give its work \S+ reasoning effort\.\s*/;
+/**
+ * Spec 0291 delta-02 R34 (reasoning item): under a directed guard with an in-domain rung the twin
+ * carries reasoning on the frontmatter `effort:` alone, while the frozen shell writes both the
+ * model and the reasoning sentences. Only `prose` differs, and the twin's prose is empty.
+ */
+export function oneCarrierBoth(shell: Outcome, twin: Outcome): string | null {
+  if (differing(shell, twin).join() !== "prose")
+    return `differs in ${differing(shell, twin)}, not prose only`;
+  if (!MODEL_SENTENCE.test(shell.prose) || !REASONING_SENTENCE.test(shell.prose))
+    return "the shell did not write both sentences: the difference vanished";
+  const rest = shell.prose.replace(MODEL_SENTENCE, "").replace(REASONING_SENTENCE, "").trim();
+  if (rest !== "") return `the shell prose holds more than the two sentences: "${rest}"`;
+  return twin.prose === "" ? null : `twin prose is "${twin.prose}", not ""`;
+}
+
 /** One case's problems against a table of documented differences; an unlisted difference is one. */
 export function checkCase(
   c: ResolveCase,

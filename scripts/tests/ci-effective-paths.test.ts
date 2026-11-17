@@ -40,13 +40,14 @@ const INHERIT = `    paths:
     cache:
       env: []`;
 
-test("inherit: pull-request and push take the capability paths, scheduled does not", () => {
+test("inherit: only pull-request takes the capability paths; push and scheduled do not (0309 delta-02 R6)", () => {
   const [c] = readCapabilities(parse(cap(INHERIT, TWO)));
   const t = c!.triggers;
   assert.deepEqual(t[0]!.paths, ["a/**", "b/**"]);
-  assert.deepEqual(t[1]!.paths, ["a/**", "b/**"]);
+  assert.deepEqual(t[1]!.paths, []);
   assert.deepEqual(t[2]!.paths, []);
   assert.equal(t[0]!.inherited, true);
+  assert.equal(t[1]!.inherited, false);
   assert.equal(t[2]!.inherited, false);
 });
 
@@ -58,7 +59,16 @@ test("own trigger paths win over the capability paths", () => {
   const [c] = readCapabilities(parse(cap(INHERIT, trig)));
   assert.deepEqual(c!.triggers[0]!.paths, ["own/**"]);
   assert.equal(c!.triggers[0]!.inherited, false);
-  assert.deepEqual(c!.triggers[1]!.paths, ["a/**", "b/**"]);
+  assert.deepEqual(c!.triggers[1]!.paths, []);
+});
+
+test("a push trigger's own paths are kept (a side-effect capability keeps its filter)", () => {
+  const trig = `      - on: pull-request
+      - on: push
+        paths:
+          - "own/**"`;
+  const [c] = readCapabilities(parse(cap(INHERIT, trig)));
+  assert.deepEqual(c!.triggers[1]!.paths, ["own/**"]);
 });
 
 test("cache.files defaults to the capability paths, an own list wins", () => {
@@ -87,10 +97,10 @@ test("path-ownership counts the inherited pull-request paths", () => {
   assert.deepEqual(ownershipGlobs(doc.capabilities), ["a/**", "b/**"]);
 });
 
-test("generator: the inherited list is emitted once under an anchor and aliased", () => {
+test("generator: the push rule carries no changes:, the merge-request rule keeps its list", () => {
   const out = generate(cap(INHERIT.replace(/\n    cache:\n      env: \[\]/, ""), TWO), pin);
-  assert.equal((out.match(/changes: &demo-changes-1/g) ?? []).length, 1);
-  assert.equal((out.match(/changes: \*demo-changes-1/g) ?? []).length, 1);
+  assert.equal((out.match(/changes:/g) ?? []).length, 1);
+  assert.doesNotMatch(out, /changes: \*/);
   assert.equal((out.match(/- "a\/\*\*"/g) ?? []).length, 1);
 });
 
@@ -125,7 +135,7 @@ alias-job:
       files: *p
       env: []
     trigger:
-      - on: push
+      - on: pull-request
 `);
   const [c] = readCapabilities(ref);
   assert.deepEqual(c!.cacheFiles, ["p/**"]);

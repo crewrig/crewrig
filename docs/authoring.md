@@ -73,50 +73,94 @@ Prompt content here — shared across all tools, written once.
 
 An agent source — and only an agent source — declares what its work needs from a model. It does so as a **capability profile** under `metadata.model:`, naming characteristics such as `intelligence`, never a concrete model, a vendor, or a CLI-namespaced key: the retired `metadata.claude.model` is no longer an available way to choose an agent's model.
 
-On the upstream-owned tiers (`core`, `library`), a source's `metadata:` block admits exactly two keys, `provenance` and `model`. A source that carries no `metadata.model:` block keeps session-model inheritance and needs no edit.
+On the upstream-owned tiers (`core`, `library`), a source's `metadata:` block admits exactly three keys, `provenance`, `model` and, on an `AGENT.md` only, `tools` (see *Declaring a tool allowlist* below). A source that carries no `metadata.model:` block keeps session-model inheritance and needs no edit.
+
+On Claude Code the declared need reaches the compiled agent as a `model:` frontmatter key, and as that key alone: the description no longer ends with `Run this agent on the <model> model.` (spec 0291 R1, R2). That sentence remains on the Antigravity description, whose target has no frontmatter model surface, and returns on Claude Code under a `withheld` guard, which is how an organization on a bring-your-own-key provider keeps it ([`docs/org-model-mapping-override.md`](org-model-mapping-override.md)).
 
 What a declared profile resolves to on each target, and how the build performs that resolution, is [`docs/model-mapping-format.md`](model-mapping-format.md)'s contract; how an adopting organization changes that outcome for its own fork is [`docs/org-model-mapping-override.md`](org-model-mapping-override.md)'s; what the migration of the core agents and of the compiled Claude Code layout asks of that organization is [`docs/agent-profile-migration.md`](agent-profile-migration.md)'s. The closed frontmatter shape itself is normative on [`artifacts/FORMAT.md`](../artifacts/FORMAT.md).
 
 ### Worked examples
 
-Every emission below was printed by `node scripts/build-components.ts --resolve <agent-source> <target>` against `main` at `18b026d`, not composed by hand — re-run the same command at that commit to re-derive it. At the current head the same emission is `node scripts/build-components.ts --resolve <agent-source> <target>`, run after `node scripts/lib/node-floor-guard.js` as a separate step.
+Every emission below comes from `node scripts/build-components.ts --resolve <agent-source> <target>`, not composed by hand; run it after `node scripts/lib/node-floor-guard.js`, as a separate step, to re-derive one. The Claude Code rows follow the guard lift of spec 0291.
 
-`artifacts/core/agents/doc-writer/AGENT.md` declares:
+`artifacts/core/agents/developer/AGENT.md` declares:
 
 ```yaml
 metadata:
   model:
-    intelligence: medium
+    intelligence: high
+    reasoning: medium
 ```
 
 | Target | Emission |
 |---|---|
-| Claude Code | guidance `Run this agent on the haiku model.` appended to `description`; no `model:` frontmatter field |
-| Gemini CLI | frontmatter `model: gemini-3.5-flash` |
-| GitHub Copilot CLI | *(nothing — `unsupported-on-cli`)* |
-| Antigravity CLI | guidance `Run this agent on the gemini-3.8-flash-low model.` |
+| Claude Code | frontmatter `model: sonnet` and `effort: medium`; the description carries no model or reasoning sentence |
+| Gemini CLI | frontmatter `model: gemini-4-hydrogen` (`reasoning` dropped, `unsupported-on-cli`) |
+| GitHub Copilot CLI | *(nothing — both keys `unsupported-on-cli`)* |
+| Antigravity CLI | guidance `Run this agent on the gemini-4-hydrogen-medium model.` (the `reasoning` rung encoded in the model name) |
 
-`artifacts/core/agents/developer/AGENT.md` declares `intelligence: high`:
-
-| Target | Emission |
-|---|---|
-| Claude Code | guidance `Run this agent on the sonnet model.`; no `model:` frontmatter field |
-| Gemini CLI | frontmatter `model: gemini-3.1-pro-preview` |
-| GitHub Copilot CLI | *(nothing — `unsupported-on-cli`)* |
-| Antigravity CLI | guidance `Run this agent on the gemini-3.1-pro-low model.` |
-
-`artifacts/core/agents/architect/AGENT.md` declares `intelligence: xhigh`:
+`artifacts/core/agents/architect/AGENT.md` declares `intelligence: xhigh` and `reasoning: medium`:
 
 | Target | Emission |
 |---|---|
-| Claude Code | guidance `Run this agent on the opus model.`; no `model:` frontmatter field |
-| Gemini CLI | frontmatter `model: gemini-3.1-pro-preview` |
+| Claude Code | frontmatter `model: opus` and `effort: medium`; the description carries no model or reasoning sentence |
+| Gemini CLI | frontmatter `model: gemini-4-argon` |
 | GitHub Copilot CLI | *(nothing — `unsupported-on-cli`)* |
-| Antigravity CLI | guidance `Run this agent on the gemini-3.1-pro-low model.` |
+| Antigravity CLI | guidance `Run this agent on the gemini-4-argon-medium model.` |
+
+### Profiles of the core agents
+
+Every core agent declares both axes. Each cell below comes from `node scripts/build-components.ts --resolve <agent-source> <target>`, not composed by hand.
+
+| Agent | intelligence / reasoning | Claude Code | Gemini CLI | Antigravity CLI |
+|---|---|---|---|---|
+| `architect` | xhigh / medium | `opus` + effort `medium` | `gemini-4-argon` | `gemini-4-argon-medium` |
+| `security` | xhigh / medium | `opus` + effort `medium` | `gemini-4-argon` | `gemini-4-argon-medium` |
+| `pr-reviewer` | high / high | `sonnet` + effort `high` | `gemini-4-hydrogen` | `gemini-4-hydrogen-high` |
+| `developer` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `tester` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `spec-author` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `doc-writer` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `ci-configurator` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `ci-debugger` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `ci-parity` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `pr-logbook` | medium / high | `haiku` + effort `high` | `gemini-3.5-flash-lite` | `gemini-3.5-flash-lite-high` |
+
+Why these values (evidence for requirement 4 of [spec 0200](../specs/0200-core-agent-profile-migration.md), which lets a later change declare `reasoning` on a source if it carries evidence for the value). Spec 0200 was a migration: its requirement 2 (no tier revised) bound that change set only. The profiles come from the owner's decision on #1937 (2026-11-15), taken from the measurements of the epic #1930 run (21 `pr-reviewer` launches, an `architect` run on Opus, and the other agents' observed work):
+
+- `architect`, `security` (xhigh / medium): judgment-heavy design and threat analysis that justifies the top intelligence rung; the work is bounded by a brief, so medium effort is enough and a higher effort only adds cost.
+- `pr-reviewer` (high / high): launched most often (21 times in the run) and the one agent whose misses are costly, so it keeps a high effort on a mid-tier model rather than a top model.
+- `developer`, `tester`, `spec-author`, `doc-writer`, `ci-configurator`, `ci-debugger`, `ci-parity` (high / medium): bounded implementation, authoring and diagnosis inside existing contracts; a mid-tier model at medium effort.
+- `pr-logbook` (medium / high): templated composition against a format; a small model suffices and a high effort keeps the format rules followed.
+
+The tiers of `security` (raised) and `doc-writer` (raised) are not measured individually yet; the next epic run measures them.
+
+Gaps, by design of the mappings:
+
+- GitHub Copilot CLI emits nothing for any agent: both `intelligence` and `reasoning` are `unsupported-on-cli`, so the column is omitted.
+- Gemini CLI drops `reasoning` (`model-drop ... unsupported-on-cli`) and resolves from `intelligence` alone.
+- Antigravity CLI encodes the `reasoning` rung in the model name: every rung has `-low`, `-medium` and `-high` variants. A declared rung with no exact variant (`xhigh`, `max`) selects the nearest lower one, with a `reasoning-rung-substituted` note. A source that declares no `reasoning` gets `-medium`, the lowest-ranked variant of each rung (spec 0197 requirement 23).
 
 `artifacts/library/agents/harness-curator/AGENT.md` carries no
 `metadata.model:` block — the **profile-less** case: all four targets emit
 nothing.
+
+## Declaring a tool allowlist
+
+An agent source MAY declare which classes of tool its work needs under `metadata.tools:`, a non-empty list drawn from `read`, `search`, `edit`, `execute`, `web`, `agent`, `skill` and `message`, without duplicates (spec 0291):
+
+```yaml
+metadata:
+  model:
+    intelligence: high
+  tools: [read, search, web]
+```
+
+Each CLI that has a tool allowlist receives the declaration in its own tool names, in the vocabulary's order: Claude Code `tools: Read, Grep, Glob, WebFetch, WebSearch`, Copilot CLI `tools: [read, search, web]`, Gemini CLI the native `read_file`, `grep_search`, `web_fetch` family, Antigravity CLI `tools: [read_file, search_web]`. The mapping table, the Copilot and Gemini omissions (`skill` and `message` on Copilot, `agent` and `message` on Gemini, each with one `tools-drop` record, and a build failure when nothing is left) and the Antigravity mapping (`skill` omitted, an agent that declares nothing gets the vendor's all-tools line) are normative in [`artifacts/FORMAT.md`](../artifacts/FORMAT.md). A source that declares nothing behaves exactly as before on Claude Code, Copilot CLI and Gemini CLI; on Antigravity CLI it gets `tools: [read_file, edit_file, write_file, run_command, manage_task, search_web]`. A declaration the build cannot map (not a list, empty, a name outside the vocabulary, a duplicate) stops the build, naming the file, the key, the value and the eight classes.
+
+A tool allowlist withholds every tool it does not name. On Claude Code that includes the MCP tools, unless listed, and `SendMessage`, `Skill`, `ToolSearch` and `TodoWrite` (<https://code.claude.com/docs/en/sub-agents>, read 2026-11-11; the page states that an allowlist excludes the MCP tools it does not list, and that `SendMessage`, `ToolSearch` and `TodoWrite` are withheld too is an inference from it). `SendMessage` and `Skill` are expressed by the classes `message` and `skill`; MCP tools, `ToolSearch` and `TodoWrite` remain outside the eight classes, so an agent whose body requires one of those three SHALL NOT declare `metadata.tools` until the vocabulary covers it, and an agent whose body requires `Skill` or `SendMessage` names `skill` or `message` in its allowlist. On the shared `.claude/agents/` surface, Copilot CLI treats `Bash`, `Read`, `Edit`, `Write`, `Grep`, `Glob`, `WebFetch`, `WebSearch` and `Task` as aliases of its own names; `Agent` is not an alias and is ignored there, as are `Skill` and `SendMessage`, so a declared `agent`, `skill` or `message` class reaches Claude Code but not a Copilot reader of that directory, which fails toward fewer tools.
+
+The rule: an allowlist withholds every tool it does not name, so an editing agent's allowlist names skill. An allowlist MAY be declared for any agent. It withholds `Skill` and `SendMessage` too, so an agent that has `edit` or `execute` and omits `skill` loses the skill listing and the `Skill` tool its body tells the model to use, and an agent that reports to its caller through `SendMessage` and omits `message` loses that channel; every allowlist that contains `edit` or `execute` therefore names `skill`, and the allowlist of an agent that talks to its caller through `SendMessage` names `message` (ADR-0025, *Path to the targets*). `scripts/check-component-metadata-keys.ts` enforces the `skill` part on `core` and `library` sources, rejects `metadata.tools` on a skill or command source, and leaves `message` to review; the adopter tiers (`community`, `org`) are outside the check. With `execute` the restriction still protects nothing, since a shell can write files and mutate remote state: for such an agent the allowlist is a context-size tool. An agent that receives an allowlist and carries a `harness-report` paragraph says in its body that it reports a friction in its final reply when its tool set withholds the MCP tool that records it, as `seo-specialist` does.
 
 ## The build
 

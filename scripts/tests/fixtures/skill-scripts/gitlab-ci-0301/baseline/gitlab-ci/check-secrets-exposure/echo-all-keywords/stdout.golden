@@ -1,0 +1,24 @@
+[RISK] ci.yml:2: echo/printf of a credential-named variable
+       why: printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it
+[RISK] ci.yml:3: echo/printf of a credential-named variable
+       why: printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it
+[RISK] ci.yml:4: echo/printf of a credential-named variable
+       why: printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it
+[RISK] ci.yml:5: echo/printf of a credential-named variable
+       why: printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it
+[RISK] ci.yml:6: echo/printf of a credential-named variable
+       why: printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it
+[RISK] ci.yml:7: echo/printf of a credential-named variable
+       why: printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it
+[RISK] ci.yml:8: echo/printf of a credential-named variable
+       why: printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it
+[RISK] ci.yml:9: echo/printf of a credential-named variable
+       why: printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it
+[RISK] ci.yml:10: echo/printf of a credential-named variable
+       why: printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it
+[RISK] ci.yml:11: echo/printf of a credential-named variable
+       why: printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it
+[RISK] ci.yml:12: echo/printf of a credential-named variable
+       why: printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it
+[RISK] ci.yml:13: echo/printf of a credential-named variable
+       why: printing a secret to the job log persists it in the log; masking is best-effort and a transformed value bypasses it

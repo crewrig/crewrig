@@ -157,7 +157,7 @@ function grouped(a: string): string[] {
 }
 
 describe("installedTargets on throwaway trees", () => {
-  test("every kind in the R17 order; hidden and malformed entries are skipped", () => {
+  test("every kind in the R17 order (agent key .agents/agents/<name>.md, spec 0053 delta-01 R20); hidden and malformed entries are skipped", () => {
     const a = build(`
       core/skills/s/SKILL.md @s; core/skills/nofile/; core/skills/loose.md
       core/commands/c.md @c; core/commands/dir.md/x; core/commands/.hid.md; core/commands/note.txt
@@ -169,7 +169,7 @@ describe("installedTargets on throwaway trees", () => {
     assert.deepEqual(grouped(a), [
       `skills: ${CLI4("skills/s")}`,
       "commands: .claude/skills/c .gemini/commands/c.toml .github/skills/c .agents/skills/c",
-      "agents: .claude/agents/g.md .gemini/agents/g.md .github/agents/g.md .agents/agents/g",
+      "agents: .claude/agents/g.md .gemini/agents/g.md .github/agents/g.md .agents/agents/g.md",
       "policies: claude:rules/p.md gemini:policies/p.md antigravity:rules/p.md",
       "hooks: gemini:hooks/h.json",
       "themes: gemini:settings.themes.t",

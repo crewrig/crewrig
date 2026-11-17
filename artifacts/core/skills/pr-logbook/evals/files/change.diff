@@ -1,0 +1,69 @@
+diff --git a/src/client.ts b/src/client.ts
+index 3f2a1c4..9b7d0e8 100644
+--- a/src/client.ts
++++ b/src/client.ts
+@@ -1,18 +1,41 @@
+ import { request } from "./transport.ts";
++import { backoffDelay } from "./backoff.ts";
+ 
+ export interface WidgetClientOptions {
+   baseUrl: string;
+   timeoutMs?: number;
++  maxRetries?: number;
+ }
+ 
+ export class WidgetClient {
+   constructor(private readonly options: WidgetClientOptions) {}
+ 
+   async getWidget(id: string): Promise<Widget> {
+-    const res = await request(`${this.options.baseUrl}/widgets/${id}`, {
+-      timeoutMs: this.options.timeoutMs ?? 5000,
+-    });
+-    if (!res.ok) throw new Error(`widget ${id}: HTTP ${res.status}`);
+-    return res.json() as Promise<Widget>;
++    const maxRetries = this.options.maxRetries ?? 3;
++    for (let attempt = 0; ; attempt++) {
++      const res = await request(`${this.options.baseUrl}/widgets/${id}`, {
++        timeoutMs: this.options.timeoutMs ?? 5000,
++      });
++      if (res.ok) return res.json() as Promise<Widget>;
++      const transient = res.status === 429 || res.status >= 500;
++      if (!transient || attempt >= maxRetries)
++        throw new Error(`widget ${id}: HTTP ${res.status}`);
++      await new Promise((r) => setTimeout(r, backoffDelay(attempt)));
++    }
+   }
+ }
+diff --git a/src/backoff.ts b/src/backoff.ts
+new file mode 100644
+index 0000000..c41e5d2
+--- /dev/null
++++ b/src/backoff.ts
+@@ -0,0 +1,6 @@
++/** Exponential backoff with full jitter: attempt 0 waits up to 100 ms, then doubles, capped at 5 s. */
++export function backoffDelay(attempt: number): number {
++  const ceiling = Math.min(5000, 100 * 2 ** attempt);
++  return Math.floor(Math.random() * ceiling);
++}
+diff --git a/test/client.test.ts b/test/client.test.ts
+index 7d1e9a0..e52b6f3 100644
+--- a/test/client.test.ts
++++ b/test/client.test.ts
+@@ -20,3 +20,19 @@ test("getWidget throws on HTTP 404", async () => {
+   const client = new WidgetClient({ baseUrl: server.url });
+   await expect(client.getWidget("w1")).rejects.toThrow("HTTP 404");
+ });
++
++test("getWidget retries a 503 and then succeeds", async () => {
++  server.respondWith([503, 503, 200]);
++  const client = new WidgetClient({ baseUrl: server.url });
++  await expect(client.getWidget("w1")).resolves.toMatchObject({ id: "w1" });
++  expect(server.requestCount).toBe(3);
++});
++
++test("getWidget gives up after maxRetries", async () => {
++  server.respondWith([503, 503, 503, 503, 503]);
++  const client = new WidgetClient({ baseUrl: server.url, maxRetries: 2 });
++  await expect(client.getWidget("w1")).rejects.toThrow("HTTP 503");
++  expect(server.requestCount).toBe(3);
++});

@@ -3,4 +3,4 @@ AGENTS.md
 docs/spec-format.md
 docs/adr/
 scripts/lib/governance/
-ci/ci-capabilities.yml
+ci/capabilities/

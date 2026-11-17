@@ -9,14 +9,22 @@
 // reassigned, so each CLI composes its own (spec 0198 R5).
 //
 // Files. Claude Code, Copilot and Antigravity: `---`, frontmatter, `---`, an empty line,
-// the body, with the provenance block spliced in. Gemini CLI: the frontmatter carries no
+// the body, with the provenance block spliced in. A `metadata.tools` declaration becomes the
+// `tools:` line after the directed lines, in each CLI's own names (agent-tools.ts, spec 0291). Gemini CLI: the frontmatter carries no
 // `metadata:` (Gemini rejects it, issue #54), so the provenance travels as an HTML comment
 // on the line after the closing `---`, an empty line when there is none, and no splice
 // (the source argument of the write is `null`).
+//
+// Conventions block (spec 0306). Every body is `job.body`: the source body, a blank line, the
+// fragment `artifacts/core/fragments/subagent-conventions.md` (conventions-block.ts). Only the
+// Claude Code emitter adds the frontmatter line `omitClaudeMd: true`, last, before the `metadata`
+// block that the write splices in.
 
 import { resolveAgent } from "../model-resolve.ts";
 import type { ResolveContext, ResolveResult } from "../model-resolve.ts";
 import { joinRoot } from "./args.ts";
+import { noToolName, readAgentTools, toolsDrop, toolsLine } from "./agent-tools.ts";
+import { assertNoHandCopy, loadConventions, withConventions } from "./conventions-block.ts";
 import { emitDiagLine } from "./diagnostics.ts";
 import { emitAntigravityAgent } from "./emit-agent-antigravity.ts";
 import type { AgentJob } from "./emit-agent-antigravity.ts";
@@ -39,6 +47,30 @@ function resolveFor(ctx: Ctx, model: ResolveContext, job: AgentJob, cli: CliId):
   return resolved;
 }
 
+/**
+ * The `tools:` line of `cli`, after the directed lines (spec 0291 R11); none when the source
+ * declares none (R12). A class with no name on Gemini (`agent`, `message`) or Copilot (`skill`,
+ * `message`) is dropped with a record, and the build fails when nothing else remains (R13, R29).
+ */
+function toolsLines(ctx: Ctx, job: AgentJob, cli: "gemini" | "claude" | "copilot"): string[] {
+  if (job.tools === null) return [];
+  const { line, omitted } = toolsLine(cli, job.tools);
+  if (cli !== "claude" && omitted.length === job.tools.length)
+    throw noToolName(job.source, cli, job.tools);
+  if (omitted.length > 0) {
+    emitDiagLine(ctx, toolsDrop(job.name, cli, omitted, "no-equivalent-on-cli"));
+  }
+  return [line];
+}
+
+/**
+ * Fold a block-scalar description onto one line: the emitted value sits inside double quotes and
+ * Claude Code cannot load an agent whose quoted description spans several lines (issue #1956).
+ */
+export function foldDescription(text: string): string {
+  return text.replace(/\s*\n\s*/g, " ").trim();
+}
+
 /** The `name`, `description` and directed lines every CLI's agent file starts from. */
 function head(job: AgentJob, resolved: ResolveResult): string[] {
   const description =
@@ -48,25 +80,40 @@ function head(job: AgentJob, resolved: ResolveResult): string[] {
 
 function emitGemini(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
   const resolved = resolveFor(ctx, model, job, "gemini");
-  const frontmatter = [...head(job, resolved), ...resolved.fmLines];
+  const frontmatter = [
+    ...head(job, resolved),
+    ...resolved.fmLines,
+    ...toolsLines(ctx, job, "gemini"),
+  ];
   const comment = geminiProvenanceComment(job.source);
-  const content = `---\n${frontmatter.join("\n")}\n---\n${comment}\n${job.source.body}`;
+  const content = `---\n${frontmatter.join("\n")}\n---\n${comment}\n${job.body}`;
   const target = joinRoot(ctx.platform, job.outRoot, `.gemini/agents/${job.name}.md`);
   checkOrWrite(ctx, target, content, null, job.outRoot);
 }
 
 function emitClaude(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
   const resolved = resolveFor(ctx, model, job, "claude");
-  const frontmatter = [...head(job, resolved), ...licenseLines(job.source), ...resolved.fmLines];
+  const frontmatter = [
+    ...head(job, resolved),
+    ...licenseLines(job.source),
+    ...resolved.fmLines,
+    ...toolsLines(ctx, job, "claude"),
+    // Last line assembled, ahead of the spliced `metadata` block (spec 0306 R8).
+    "omitClaudeMd: true",
+  ];
   const target = joinRoot(ctx.platform, job.outRoot, `.claude/agents/${job.name}.md`);
-  checkOrWrite(ctx, target, markdownFile(frontmatter, job.source.body), job.source, job.outRoot);
+  checkOrWrite(ctx, target, markdownFile(frontmatter, job.body), job.source, job.outRoot);
 }
 
 function emitCopilot(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
   const resolved = resolveFor(ctx, model, job, "copilot");
-  const frontmatter = [...head(job, resolved), ...resolved.fmLines];
+  const frontmatter = [
+    ...head(job, resolved),
+    ...resolved.fmLines,
+    ...toolsLines(ctx, job, "copilot"),
+  ];
   const target = joinRoot(ctx.platform, job.outRoot, `.github/agents/${job.name}.md`);
-  checkOrWrite(ctx, target, markdownFile(frontmatter, job.source.body), job.source, job.outRoot);
+  checkOrWrite(ctx, target, markdownFile(frontmatter, job.body), job.source, job.outRoot);
 }
 
 /** `build_agents <tier> <tier_dir>`, writing under `outRoot`. */
@@ -86,7 +133,24 @@ export function buildAgents(
     if (name === null) continue;
     ctx.io.out(`Building agent: ${name}`);
 
-    const job: AgentJob = { name, description: source.field("description"), source, outRoot };
+    // Validated for every agent whichever CLIs are selected (spec 0291 R10): an invalid
+    // declaration stops the build before any file of this agent is written.
+    const tools = readAgentTools(source);
+    // The conventions block (spec 0306): read once, only here where an agent is emitted and a
+    // CLI is selected; a refusal comes before any file of this agent is written.
+    const anySelected = (["gemini", "claude", "copilot", "antigravity"] as const).some((c) =>
+      selects(ctx, c),
+    );
+    const block = anySelected ? loadConventions(ctx) : null;
+    if (block !== null) assertNoHandCopy(block, source.file, source.body);
+    const job: AgentJob = {
+      name,
+      description: foldDescription(source.field("description")),
+      source,
+      outRoot,
+      body: block === null ? source.body : withConventions(block, source.body),
+      tools,
+    };
     if (selects(ctx, "gemini")) emitGemini(ctx, model, job);
     if (selects(ctx, "claude")) emitClaude(ctx, model, job);
     if (selects(ctx, "copilot")) emitCopilot(ctx, model, job);

@@ -137,5 +137,15 @@ export function resolveItem(scope: ItemScope, state: ResolveState, item: string)
     state.value[idx] = item === "reasoning" ? projection : declared;
   }
   state.fm[idx] = fmOk;
-  state.gd[idx] = expressedGd;
+  // Spec 0291 R2 and delta-02 R34: one carrier at a time. `model` goes to guidance only when the
+  // frontmatter surface cannot carry it (withheld guard, or a value outside the key's domain);
+  // `reasoning` likewise, and the withheld guard also sends it to guidance (it only suppresses
+  // `model` above, so the guard state is read here).
+  const fmCarries =
+    fmOk &&
+    (item === "model" ||
+      (item === "reasoning" &&
+        scope.guardState !== "withheld" &&
+        valueInDomain(yaml, doc, fmAddr, "reasoning", projection)));
+  state.gd[idx] = expressedGd && !fmCarries;
 }

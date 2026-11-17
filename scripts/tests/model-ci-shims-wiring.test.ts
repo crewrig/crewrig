@@ -16,6 +16,7 @@ import { globToRegExp } from "../lib/glob-engine.ts";
 import { REPO } from "./lib/build-fixture-tree.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 import { logicalCommands } from "./lib/ci-task-commands.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const SHIMS = [
   "check-model-mappings",
@@ -142,9 +143,9 @@ function workflows(): [string, Workflow][] {
 
 // A migrated capability runs `task ci:<id>`: judge the commands its task body runs (with the
 // provisioning line its `requires.install` stands for), not the single delegating line.
-const CAPS = (load("ci/ci-capabilities.yml") as { capabilities: Capability[] }).capabilities.map(
-  (c) => ({ ...c, command: logicalCommands(c as never) }),
-);
+const CAPS = (
+  yamlLib.load(readReferenceText(REPO)) as { capabilities: Capability[] }
+).capabilities.map((c) => ({ ...c, command: logicalCommands(c as never) }));
 
 describe("jobs that run a model/CI shim declare Node.js 24 and the production install", () => {
   test("the shim-running set was derived", () => {

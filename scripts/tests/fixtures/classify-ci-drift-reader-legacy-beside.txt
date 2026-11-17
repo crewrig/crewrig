@@ -1,0 +1,5 @@
+FAILED: 1 reference-validity violation(s) in /repo/ci/capabilities/:
+  - ci/ci-capabilities.yml: still exists beside ci/capabilities/; delete it (the directory is the reference)
+
+The reference is the source of truth; refusing to check the engines against
+a malformed reference (spec 0309 R3).

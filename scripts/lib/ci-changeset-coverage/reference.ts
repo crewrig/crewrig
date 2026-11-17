@@ -1,4 +1,4 @@
-// reference.ts — the `changeset-gated: true` capabilities of ci/ci-capabilities.yml in reference
+// reference.ts — the `changeset-gated: true` capabilities of ci/capabilities/ in reference
 // order, read with the shared yq reader instead of spawning `yq` (spec 0262 req 4, 5, 11).
 //
 // Usage: gatedPlan(text). Exit codes: not applicable. Finding-line format: not applicable.

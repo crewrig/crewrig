@@ -76,6 +76,11 @@ export const antigravityDescriptor: SetupDescriptor = {
     shared: [
       file("config/ORGANIZATION.md", "ORGANIZATION.md", "20_ORGANIZATION.md"),
       file("artifacts/core/rules/60-tools.md", "artifacts/core/rules/60-tools.md", "60_TOOLS.md"),
+      file(
+        "artifacts/core/rules/60-memory.md",
+        "artifacts/core/rules/60-memory.md",
+        "60_MEMORY.md",
+      ),
       file("config/TOOLS.md", "TOOLS.md", "65_TOOLS.md"),
       store,
       { ...file("AGENTS.org.md", "AGENTS.org.md", "66_ORG_RULES.md"), optional: true },

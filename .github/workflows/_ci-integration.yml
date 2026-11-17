@@ -74,7 +74,7 @@ jobs:
         run: npm ci
 
       - name: Test the runtime foundations
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/with-stub-daemon.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/with-stub-daemon.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts scripts/tests/fixed-context-probe.test.ts
 
       - name: Test the history import and prune oracles (POSIX only)
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/prune-transcripts-oracle.test.ts
@@ -129,6 +129,30 @@ jobs:
         with:
           id: worktree-guard
           install: none
+
+  skill-evals-attestation:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    env:
+      BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+      CREWRIG_PR_DRAFT: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'true' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/ci-job
+        with:
+          id: skill-evals-attestation
+          install: none
+
+  skill-evals-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: skill-evals-tests
+          install: omit-dev
 
   # Spec 0247 R31, plan step 22(a): black-box suites of the TypeScript
   # MemPalace transcript hook and of its wiring; the Bash oracle runs through

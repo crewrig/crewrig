@@ -1,0 +1,10 @@
+{"type":"system","subtype":"hook_started","hook_name":"SessionStart:startup","session_id":"00000000-0000-4000-8000-000000000001"}
+{"type":"system","subtype":"init","cwd":"/scratch/proj","session_id":"00000000-0000-4000-8000-000000000001","tools":[],"model":"claude-sonnet-5-5"}
+{"type":"assistant","message":{"model":"claude-sonnet-5-5","role":"assistant","content":[{"type":"tool_use","id":"toolu_0001","name":"Bash","input":{"command":"git checkout -b fix/0044-typo"}}],"usage":{"input_tokens":2,"cache_creation_input_tokens":116,"cache_read_input_tokens":58829,"output_tokens":16}},"session_id":"00000000-0000-4000-8000-000000000001"}
+{"type":"rate_limit_event","rate_limit_info":{"status":"allowed"},"session_id":"00000000-0000-4000-8000-000000000001"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_0001","content":"ok","is_error":false}]},"session_id":"00000000-0000-4000-8000-000000000001"}
+{"type":"assistant","message":{"model":"claude-sonnet-5-5","role":"assistant","content":[{"type":"tool_use","id":"toolu_0002","name":"Edit","input":{"file_path":"README.md"}}],"usage":{"input_tokens":2,"cache_creation_input_tokens":10,"cache_read_input_tokens":70000,"output_tokens":8}},"session_id":"00000000-0000-4000-8000-000000000001"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_0002","content":"ok","is_error":false}]},"session_id":"00000000-0000-4000-8000-000000000001"}
+{"type":"assistant","message":{"model":"claude-sonnet-5-5","role":"assistant","content":[{"type":"text","text":"Fixed on a branch."}],"usage":{"input_tokens":2,"cache_creation_input_tokens":10,"cache_read_input_tokens":70000,"output_tokens":4}},"session_id":"00000000-0000-4000-8000-000000000001"}
+{"type":"result","subtype":"success","is_error":false,"num_turns":3,"result":"Fixed on a branch.","stop_reason":"end_turn","session_id":"00000000-0000-4000-8000-000000000001","total_cost_usd":0.1,"usage":{"input_tokens":4,"output_tokens":78},"permission_denials":[]}
+{"type":"system","subtype":"session_state_changed","state":"idle","session_id":"00000000-0000-4000-8000-000000000001"}

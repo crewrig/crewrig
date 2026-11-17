@@ -50,12 +50,12 @@ describe("check-comment-size", () => {
     assert.match(r.stderr, /12290 bytes/);
   });
 
-  it("exits non-zero on a missing path and on a directory", () => {
+  it("exits 3 (precondition) on a missing path and on a directory", () => {
     const missing = run([path.join(tmp, "nope.md")]);
-    assert.equal(missing.status, 1);
+    assert.equal(missing.status, 3);
     assert.match(missing.stderr, /Error: .*nope\.md: No such file or directory/);
     const dir = run([tmp]);
-    assert.equal(dir.status, 1);
+    assert.equal(dir.status, 3);
     assert.match(dir.stderr, /Is a directory/);
   });
 

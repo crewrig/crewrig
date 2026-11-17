@@ -1,0 +1,424 @@
+# CI capabilities: group integration (format: docs/ci-reference-format.md, spec 0309).
+capabilities:
+
+  # Spec 0256 R40 (ticket #1335), PR A: the oracle of the four setup entry points: the shell setup scripts run in a sandbox
+  # HOME with stub CLIs and the resulting trees are compared with the committed goldens. `jq` and `git` are real. The
+  # golden suites skip themselves off Linux and use no network. A change to the shell the oracle drives reruns it.
+  - id: setup-oracle
+    group: integration
+    name: "Run the setup entry-point oracle: sandbox, stubs, golden, prompt-inventory and mutation suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/**"
+      - "config/**"
+      - "hooks/**"
+      - "artifacts/core/rules/**"
+      - "artifacts/core/system-context/**"
+      - "mcp-servers.org.json"
+      - "AGENTS.org.md"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/tests/setup-sandbox.test.ts"
+      - "scripts/tests/setup-stubs.test.ts"
+      - "scripts/tests/setup-golden-harness.test.ts"
+      - "scripts/tests/setup-golden-smoke.test.ts"
+      - "scripts/tests/setup-golden-claude.test.ts"
+      - "scripts/tests/setup-golden-gemini.test.ts"
+      - "scripts/tests/setup-golden-copilot.test.ts"
+      - "scripts/tests/setup-golden-antigravity.test.ts"
+      - "scripts/tests/setup-prompt-inventory.test.ts"
+      - "scripts/tests/setup-oracle-mutation.test.ts"
+      - "scripts/tests/setup-golden-deviations.test.ts"
+      - "scripts/tests/setup-entry-form.test.ts"
+      - "scripts/tests/lib/setup-*.ts"
+      - "scripts/tests/lib/real-home-guard.ts"
+      - "scripts/tests/fixtures/setup-golden/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq, task]
+      install: omit-dev
+    command:
+      - task ci:setup-oracle
+
+  - id: figure-labels
+    group: integration
+    name: "Check figure labels with OCR"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/tests/windows-governance-figure-labels.test.ts"
+      - "scripts/tests/governance-suite-figure-labels.test.ts"
+      - "docs/assets/**/*.png"
+      - "docs/assets/**/*.prompt.md"
+      - "scripts/check-figure-labels.ts"
+      - "scripts/lib/governance/**"
+      - "scripts/lib/sequence-matcher.ts"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task, tesseract]
+    command:
+      - task ci:figure-labels
+
+  - id: mempalace
+    group: integration
+    name: "Test mempalace transcript, pin, and runtime guards"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/tests/mempalace-doctor-*.test.ts"
+      - "scripts/tests/mempalace-runtime-guard-*.test.ts"
+      - "scripts/tests/mempalace-pin-*.test.ts"
+      - "scripts/tests/mempalace-version-range.test.ts"
+      - "scripts/tests/lib/doctor-machine.ts"
+      - "scripts/tests/lib/doctor-wrappers.ts"
+      - "scripts/tests/lib/mempalace-guard-fixture.ts"
+      - "scripts/tests/lib/mempalace-pin-rig.ts"
+      - "scripts/tests/lib/mempalace-range-scan.ts"
+      - "scripts/tests/fixtures/mempalace-pin/**"
+      - "scripts/tests/mempalace-http-client-reuse.test.ts"
+      - "scripts/tests/system-context-store.test.ts"
+      - "scripts/tests/setup-transcript-antigravity-*.test.ts"
+      - "scripts/tests/mempalace-transcript-antigravity-payload.test.ts"
+      - "scripts/tests/lib/antigravity-transcript-rig.ts"
+      - "scripts/tests/setup-transcript-*.test.ts"
+      - "scripts/tests/lib/transcript-manifest-rig.ts"
+      - "scripts/tests/antigravity-manage-sandbox.test.ts"
+      - "scripts/tests/antigravity-tier-twin.test.ts"
+      - "scripts/tests/lib/antigravity-fixtures.ts"
+      - "scripts/tests/lib/worktree-fixtures.ts"
+      - "scripts/tests/lib/install-sandbox.ts"
+      - "scripts/tests/e2e-probes-antigravity-discovery.test.ts"
+      - "hooks/worktree-git-guard.ts"
+      - "hooks/mempalace-transcript.ts"
+      - "scripts/tests/fixtures/mempalace-transcript/**"
+      - "scripts/worktree-claim.ts"
+      - "scripts/tests/lib/print-manage-declarations.ts"
+      - "scripts/lib/**"
+      - "artifacts/library/skills/mempalace/**"
+      - "artifacts/library/skills/harness-report/**"
+      - "config/copilot/*.json.template"
+      - "scripts/manage-antigravity-component.ts"
+      - "scripts/setup-*-interactive.ts"
+      - "scripts/tests/setup-retarget-*.test.ts"
+      - "scripts/tests/lib/setup-*.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/tests/lib/hermetic-env.ts"
+      - "scripts/tests/lib/real-home-guard.ts"
+      - "scripts/tests/lib/print-setup-declarations.ts"
+      - "scripts/tests/fixtures/setup-golden/**"
+      - "scripts/tests/fixtures/setup-declarations/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      # python@3.12 is the primary/image runtime (unchanged); node@24 is a SECONDARY runtime this job also needs for its
+      # TypeScript test (mempalace-http-client-reuse.test.ts), installed alongside the image (spec 0242, issue #1370).
+      runtime: [python@3.12, node@24]
+      tools: [yq, jq, task]
+      install: omit-dev
+    cache:
+      files:
+        - "scripts/tests/mempalace-doctor-*.test.ts"
+        - "scripts/tests/mempalace-runtime-guard-*.test.ts"
+        - "scripts/tests/mempalace-pin-*.test.ts"
+        - "scripts/tests/mempalace-version-range.test.ts"
+        - "scripts/tests/lib/doctor-machine.ts"
+        - "scripts/tests/lib/doctor-wrappers.ts"
+        - "scripts/tests/lib/mempalace-guard-fixture.ts"
+        - "scripts/tests/lib/mempalace-pin-rig.ts"
+        - "scripts/tests/lib/mempalace-range-scan.ts"
+        - "scripts/tests/fixtures/mempalace-pin/**"
+        - "scripts/tests/mempalace-http-client-reuse.test.ts"
+        - "scripts/tests/system-context-store.test.ts"
+        - "scripts/tests/setup-transcript-antigravity-*.test.ts"
+        - "scripts/tests/mempalace-transcript-antigravity-payload.test.ts"
+        - "scripts/tests/lib/antigravity-transcript-rig.ts"
+        - "scripts/tests/setup-transcript-*.test.ts"
+        - "scripts/tests/lib/transcript-manifest-rig.ts"
+        - "scripts/tests/antigravity-manage-sandbox.test.ts"
+        - "scripts/tests/antigravity-tier-twin.test.ts"
+        - "scripts/tests/lib/antigravity-fixtures.ts"
+        - "scripts/tests/lib/worktree-fixtures.ts"
+        - "scripts/tests/lib/install-sandbox.ts"
+        - "scripts/tests/e2e-probes-antigravity-discovery.test.ts"
+        - "hooks/worktree-git-guard.ts"
+        - "hooks/mempalace-transcript.ts"
+        - "scripts/tests/fixtures/mempalace-transcript/**"
+        - "scripts/worktree-claim.ts"
+        - "scripts/tests/lib/print-manage-declarations.ts"
+        - "scripts/lib/**"
+        - "artifacts/library/skills/mempalace/**"
+        - "artifacts/library/skills/harness-report/**"
+        - "config/copilot/*.json.template"
+        - "scripts/ci-cache-guard.ts"
+        - "scripts/setup-*-interactive.ts"
+        - "scripts/tests/setup-retarget-*.test.ts"
+        - "scripts/tests/lib/setup-*.ts"
+        - "scripts/tests/lib/build-fixture-tree.ts"
+        - "scripts/tests/lib/hermetic-env.ts"
+        - "scripts/tests/lib/real-home-guard.ts"
+        - "scripts/tests/lib/print-setup-declarations.ts"
+        - "scripts/tests/fixtures/setup-golden/**"
+        - "scripts/tests/fixtures/setup-declarations/**"
+      env: []
+    command:
+      - task ci:mempalace
+
+  - id: chroma-mcp
+    group: integration
+    name: "Test chroma server, MCP daemon, and worktree claim"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/tests/chroma-wrapper-source.test.ts"
+      - "scripts/tests/chroma-wrapper-live.test.ts"
+      - "scripts/tests/chroma-fd-limits.test.ts"
+      - "scripts/tests/mcp-daemon-*.test.ts"
+      - "scripts/tests/lib/mcp-daemon-rig.ts"
+      - "scripts/tests/service-launcher-palace-path.test.ts"
+      - "scripts/tests/repair-restore-modes.test.ts"
+      - "scripts/tests/repair-report-handoff.test.ts"
+      - "scripts/tests/lib/repair-rig.ts"
+      - "scripts/tests/switch-rotate-token.test.ts"
+      - "scripts/worktree-claim.ts"
+      - "hooks/worktree-git-guard.ts"
+      - "scripts/lib/**"
+      - "config/launchd/**"
+      - "config/systemd/**"
+      - "config/windows/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      # python@3.12 is the primary/image runtime (unchanged); node@24 is a SECONDARY runtime: worktree-claim.ts is the
+      # TypeScript claim tool and exits 1 below Node.js 24 (spec 0248 R26, R36).
+      runtime: [python@3.12, node@24]
+      tools: [yq, task]
+      install: omit-dev
+    cache:
+      files:
+        - "scripts/tests/chroma-wrapper-source.test.ts"
+        - "scripts/tests/chroma-wrapper-live.test.ts"
+        - "scripts/tests/chroma-fd-limits.test.ts"
+        - "scripts/tests/mcp-daemon-*.test.ts"
+        - "scripts/tests/lib/mcp-daemon-rig.ts"
+        - "scripts/tests/service-launcher-palace-path.test.ts"
+        - "scripts/tests/repair-restore-modes.test.ts"
+        - "scripts/tests/repair-report-handoff.test.ts"
+        - "scripts/tests/lib/repair-rig.ts"
+        - "scripts/tests/switch-rotate-token.test.ts"
+        - "scripts/worktree-claim.ts"
+        - "hooks/worktree-git-guard.ts"
+        - "scripts/lib/**"
+        - "config/launchd/**"
+        - "config/systemd/**"
+        - "config/windows/**"
+        - "scripts/ci-cache-guard.ts"
+      env: []
+    command:
+      - task ci:chroma-mcp
+
+  # e2e is the heaviest group; it stays enforced on push/PR (changeset-gated) but is ALSO manually triggerable (spec 0147
+  # R8). The `manual` trigger maps to GitLab `when: manual` and GHA `workflow_dispatch`.
+  - id: e2e
+    group: integration
+    name: "Run the e2e regression suite"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+      - on: manual
+    paths:
+      - "scripts/tests/e2e-*.test.ts"
+      - "scripts/tests/lib/e2e-*.ts"
+      - "scripts/tests/fixtures/e2e-oracle/**"
+      - "tests/e2e/**"
+      - "scripts/e2e/**"
+      - "docs/cli-matrix.md"
+      - "docs/cli-matrix/**"
+      - "scripts/build-cli-matrix.ts"
+      - "scripts/lib/build-cli-matrix/**"
+      - "docker/e2e/.versions.lock"
+      - ".gitignore"
+    portability: portable
+    changeset-gated: true
+    requires:
+      # python@3.12 stays the primary/image runtime; node@24 is a SECONDARY runtime for the
+      # TypeScript oracle suites (spec 0261). jq is preinstalled on the GitHub runner.
+      runtime: [python@3.12, node@24]
+      tools: [yq, jq, task]
+      install: omit-dev
+      yq: "4.44.3"
+    command:
+      - task ci:e2e
+
+  # Spec 0240 R4-R11, R13, R16: the Node.js floor guard, the production-dependency step and the shared scripts/lib/
+  # TypeScript modules with their node --test suites. No `paths:` filter, like `ratchet`: the suites are fast, and a
+  # lockfile or setup-script change must re-run them. production-dependencies.test.ts skips itself when `npm ping` fails.
+  - id: runtime-foundations
+    group: integration
+    name: "Node.js floor guard, production-dependency step and shared TS modules"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - npm ci
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/node-floor-guard.test.ts scripts/tests/paths.test.ts scripts/tests/line-endings.test.ts scripts/tests/tmp-file.test.ts scripts/tests/require-dependency.test.ts scripts/tests/check-timing-budget.test.ts scripts/tests/with-stub-daemon.test.ts scripts/tests/setup-dependency-step.test.ts scripts/tests/production-dependencies.test.ts scripts/tests/fixed-context-probe.test.ts
+      # Spec 0253 PLAN v3 A4: the history-import and prune oracles (POSIX only: they drive the shell originals through bash).
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/prune-transcripts-oracle.test.ts
+      # Spec 0253 PLAN v3 C7: the cross-platform unit tests of the TypeScript history-import and prune entries.
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/history-import.test.ts scripts/tests/prune-transcripts-ts.test.ts scripts/tests/prune-transcripts-ts-run.test.ts scripts/tests/history-import-python.test.ts scripts/tests/history-import-prune-python.test.ts
+      # Spec 0252 R21 (PLAN step A1-A3): the stop, uninstall and switch-argument oracles of the MCP daemon lifecycle scripts (POSIX only).
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/stop-mcp-server-oracle.test.ts scripts/tests/uninstall-mcp-daemon-oracle.test.ts scripts/tests/switch-mempalace-http-args-oracle.test.ts
+      # Spec 0252 requirement 4 (PLAN step 7): the MemPalace helper modules shared with row F3 (python detection, version pin); hermetic.
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-python.test.ts scripts/tests/mempalace-python-shebang.test.ts scripts/tests/mempalace-pin.test.ts
+      # Spec 0252 PR B (issue #1330): the service module, the MCP launcher and the MemPalace helpers; the win32-only
+      # suites run in `windows-service-task`.
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-backend.test.ts scripts/tests/service-bundle-closure.test.ts scripts/tests/service-launcher-installed-wrapper.test.ts scripts/tests/service-exec.test.ts scripts/tests/service-file-size.test.ts scripts/tests/service-install.test.ts scripts/tests/service-launchd-systemd.test.ts scripts/tests/service-launcher-child.test.ts scripts/tests/service-launcher-record.test.ts scripts/tests/service-launcher-token.test.ts scripts/tests/service-launcher-palace-path.test.ts scripts/tests/service-listener-pid.test.ts scripts/tests/service-names.test.ts scripts/tests/service-os-inspect.test.ts scripts/tests/service-owner-check.test.ts scripts/tests/service-probe.test.ts scripts/tests/service-process-tree.test.ts scripts/tests/service-program-install.test.ts scripts/tests/service-schtasks.test.ts scripts/tests/service-schtasks-uninstall.test.ts scripts/tests/service-snapshot-failure.test.ts scripts/tests/service-task-ownership.test.ts scripts/tests/service-task-snapshot.test.ts scripts/tests/service-task-state.test.ts scripts/tests/service-token-argv.test.ts scripts/tests/service-trust-wrapper.test.ts scripts/tests/service-unit-render.test.ts scripts/tests/service-windows-task-xml.test.ts scripts/tests/mcp-launcher-lifecycle.test.ts
+      # Spec 0258 R15, R28, R34 (ticket #1337): the calendar-trigger renderers and backends of the service layer, the
+      # harness-curator differential (shell leg retired with the `.sh` shims, spec 0258 R32) and its callers guard. No `paths:`
+      # filter: the job already runs on every change, which covers the curator and schedule paths.
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-schedule-launchd-systemd.test.ts scripts/tests/service-schedule-names.test.ts scripts/tests/service-schedule-render.test.ts scripts/tests/service-schedule-schtasks.test.ts scripts/tests/harness-curator-differential.test.ts scripts/tests/harness-curator-callers.test.ts
+      # Spec 0252 PR C (issue #1330): the ChromaDB trio, black-box through the TypeScript entries, and the open-file floor
+      # (needs python3; the Windows-capable parts also run in `windows-chroma-trio`).
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/chroma-lifecycle.test.ts scripts/tests/chroma-launch.test.ts scripts/tests/chroma-launch-env.test.ts
+      # Spec 0252 PR D (issue #1330): the MCP daemon status report against stand-ins (the Windows-capable parts also run in `windows-mcp-daemon`).
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/status-mcp-lifecycle.test.ts scripts/tests/status-mcp-lifecycle-windows.test.ts
+      # Spec 0252 PR D (issue #1330): the all-or-nothing switch, the token file and the token-bearing config backup (review i1-F38).
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/service-token.test.ts scripts/tests/switch-transaction.test.ts scripts/tests/switch-replace.test.ts scripts/tests/service-backup-config.test.ts
+      # Spec 0252 PR E (issue #1330): the switch residue repair, black-box through the TypeScript entry (POSIX stubs), and its
+      # platform-neutral oracle (also run in `windows-doctor-repair`).
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/repair-verbs.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/repair-windows.test.ts
+      # Spec 0252 PR E (issue #1330): the doctor report, black-box through the TypeScript entry (Windows fourth section via the os-inspect seam).
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/doctor-sections.test.ts scripts/tests/doctor-sections-windows.test.ts
+
+  # Spec 0248 R36: the TypeScript worktree git guard and worktree claim tool have their own black-box suites, which the
+  # two Bash oracles (run through the shims in test-wiring, mempalace and chroma-mcp) do not replace. `jq` is declared for
+  # the differential test of the payload chain (R5), skipped with an explicit line where `jq` is absent. Deliberately NOT
+  # changeset-gated (node@22 rule, see `changeset-coverage`): the fail-safe job carries no `jq`.
+  - id: worktree-guard
+    group: integration
+    name: "Validate the worktree git guard and worktree claim tool (TypeScript)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "hooks/worktree-git-guard.ts"
+      - "scripts/worktree-claim.ts"
+      - "scripts/lib/worktree-claim/**"
+      - "scripts/lib/hook-*.ts"
+      - "scripts/lib/node-floor-guard.js"
+      - "scripts/hook-wiring.ts"
+      - "scripts/tests/worktree-*.test.ts"
+      - "scripts/tests/lib/worktree-*.ts"
+      - "scripts/tests/lib/spawn-spy.ts"
+      - "scripts/tests/lib/windows-invocation.ts"
+      - "scripts/tests/fixtures/worktree-claim/**"
+      - "scripts/tests/fixtures/worktree-guard/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq, task]
+    command:
+      - task ci:worktree-guard
+
+  # Spec 0290: attestation check (no model call, no secret); unfiltered like check-skill-versions, it selects changed skills itself.
+  - id: skill-evals-attestation
+    group: integration
+    name: "Check that changed skills carry a fresh evals/results.json attestation"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      history-depth: full
+      tools: [task]
+    env:
+      BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+      CREWRIG_PR_DRAFT: "$CI_MERGE_REQUEST_DRAFT"
+    command:
+      - task ci:skill-evals-attestation
+
+  - id: skill-evals-tests
+    group: integration
+    name: "Run the skill eval runner own suites (mock mode, no key, no network)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/skill-evals/**"
+      - "scripts/skill-evals*.ts"
+      - "scripts/tests/skill-evals-*.test.ts"
+      - "scripts/tests/lib/skill-evals-*.ts"
+      - "tests/e2e/lib/llm_judge*"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:skill-evals-tests
+
+  # Spec 0247 R31, plan step 22(a): the black-box suites of the TypeScript MemPalace transcript hook and of its wiring
+  # (hook-transcript-* suites). The Bash oracle keeps running through the shim in the `mempalace` capability above.
+  # Deliberately NOT changeset-gated (node@22 rule, see `changeset-coverage`).
+  - id: mempalace-transcript
+    group: integration
+    name: "Validate the MemPalace transcript hook and its wiring (TypeScript)"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "hooks/mempalace-transcript.*"
+      - "scripts/lib/mempalace-transcript/**"
+      - "scripts/lib/tls-env.ts"
+      - "scripts/lib/tls-env-quote.ts"
+      - "scripts/lib/transcript-recognition.ts"
+      - "scripts/lib/hook-*.ts"
+      - "scripts/hook-wiring.ts"
+      - "scripts/lib/usage-store/mcp.*"
+      - "scripts/usage-capture-optin.ts"
+      - "scripts/setup-*-interactive.ts"
+      - "hooks/*-transcript-hooks.json"
+      - "scripts/tests/mempalace-transcript-*.test.ts"
+      - "scripts/tests/hook-transcript-*.test.ts"
+      - "scripts/tests/lib/with-stub-daemon.ts"
+      - "scripts/tests/lib/transcript-*.ts"
+      - "scripts/tests/lib/spawn-spy.ts"
+      - "scripts/tests/lib/windows-invocation.ts"
+      - "scripts/tests/fixtures/mempalace-transcript/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:mempalace-transcript

@@ -14,6 +14,7 @@ import { after, describe, test } from "node:test";
 
 import {
   cleanupTmp,
+  coreGuard,
   idsOf,
   loadFile,
   makeRun,
@@ -224,7 +225,8 @@ describe("remove:", () => {
       "claude",
     );
     assert.equal(r.offeringId, "haiku");
-    assert.match(r.diagLines.join("\n"), /guard-withheld/);
+    // the guard survives the removal: its note appears exactly when the committed state withholds
+    assert.equal(/guard-withheld/.test(r.diagLines.join("\n")), coreGuard().state === "withheld");
   });
 
   test("a remove: that is not a list is ignored", () => {

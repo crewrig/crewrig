@@ -1,0 +1,4 @@
+lint-markdown: unknown option --fix
+Usage: node lint-markdown [--json] [--require-tools] [--] <file.md>...
+  Runs markdownlint on the files. Exit 0 clean, 1 findings, 2 usage error,
+  3 unreadable input or (with --require-tools) markdownlint missing.

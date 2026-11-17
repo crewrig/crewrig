@@ -1,0 +1,110 @@
+[
+  {
+    "event": "pull_request",
+    "result": "success",
+    "output": "true",
+    "expected": "skip"
+  },
+  {
+    "event": "pull_request",
+    "result": "success",
+    "output": "false",
+    "expected": "run"
+  },
+  {
+    "event": "pull_request",
+    "result": "success",
+    "output": null,
+    "expected": "run"
+  },
+  {
+    "event": "pull_request",
+    "result": "failure",
+    "output": "true",
+    "expected": "run"
+  },
+  {
+    "event": "pull_request",
+    "result": "failure",
+    "output": "false",
+    "expected": "run"
+  },
+  {
+    "event": "pull_request",
+    "result": "failure",
+    "output": null,
+    "expected": "run"
+  },
+  {
+    "event": "push",
+    "result": "success",
+    "output": "true",
+    "expected": "run"
+  },
+  {
+    "event": "push",
+    "result": "success",
+    "output": "false",
+    "expected": "run"
+  },
+  {
+    "event": "push",
+    "result": "success",
+    "output": null,
+    "expected": "run"
+  },
+  {
+    "event": "push",
+    "result": "failure",
+    "output": "true",
+    "expected": "run"
+  },
+  {
+    "event": "push",
+    "result": "failure",
+    "output": "false",
+    "expected": "run"
+  },
+  {
+    "event": "push",
+    "result": "failure",
+    "output": null,
+    "expected": "run"
+  },
+  {
+    "event": "workflow_dispatch",
+    "result": "success",
+    "output": "true",
+    "expected": "run"
+  },
+  {
+    "event": "workflow_dispatch",
+    "result": "success",
+    "output": "false",
+    "expected": "run"
+  },
+  {
+    "event": "workflow_dispatch",
+    "result": "success",
+    "output": null,
+    "expected": "run"
+  },
+  {
+    "event": "workflow_dispatch",
+    "result": "failure",
+    "output": "true",
+    "expected": "run"
+  },
+  {
+    "event": "workflow_dispatch",
+    "result": "failure",
+    "output": "false",
+    "expected": "run"
+  },
+  {
+    "event": "workflow_dispatch",
+    "result": "failure",
+    "output": null,
+    "expected": "run"
+  }
+]

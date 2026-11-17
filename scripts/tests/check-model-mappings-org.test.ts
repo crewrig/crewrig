@@ -12,6 +12,7 @@ import { runEntry } from "./lib/governance-sandbox.ts";
 import {
   assertConform,
   assertRejected,
+  at,
   baseDoc,
   bareRoot,
   ENTRY,
@@ -21,6 +22,7 @@ import {
   runChecker,
   writeCase,
   writeMapping,
+  yamlLib,
   zeroOfferingsDoc,
   type Doc,
 } from "./lib/model-mapping-fixtures.ts";
@@ -129,14 +131,74 @@ describe("check-model-mappings org channel (section 1b)", () => {
     assert.ok(!out.includes("model-mappings/claude.org.yml: A7"), out);
   });
 
-  test("pass 3 catches a directed guard composed across files with still-holding inherited terms (A23, scenario 9)", () => {
-    const dir = claudeRootWithOrg("target: claude\nguard:\n  state: directed\n");
+  // The committed state decides the direction of the disagreement, so flipping the guard
+  // (spec 0291 R4 rollback) needs no edit here.
+  const coreState = String(
+    at(
+      yamlLib.load(fs.readFileSync(path.join(REPO, "model-mappings", "claude.yml"), "utf8")),
+      "guard",
+      "state",
+    ),
+  );
+  const opposite = coreState === "directed" ? "withheld" : "directed";
+
+  test("pass 3 catches a guard state composed across files that disagrees with the inherited terms (A23, scenario 9)", () => {
+    const dir = claudeRootWithOrg(`target: claude\nguard:\n  state: ${opposite}\n`);
     const res = runChecker(dir);
     assertRejected(res, []);
     const out = `${res.stdout}${res.stderr}`;
     assert.ok(out.includes("model-mappings/claude (mapping in force): A23"), out);
     assert.ok(!out.includes("model-mappings/claude.yml: A23"), out);
     assert.ok(!out.includes("model-mappings/claude.org.yml: A23"), out);
+  });
+
+  test("an organisation re-withholds: withheld plus the second term holding passes as the mapping in force (spec 0291 R5)", () => {
+    const dir = claudeRootWithOrg(
+      [
+        "target: claude",
+        "guard:",
+        "  state: withheld",
+        "  terms:",
+        "    - id: copilot-reader-fails-on-unserved-model",
+        "      statement: A Copilot reader of .claude/agents/ fails on a model it cannot serve.",
+        "      holds: true",
+        "      evidence: Observed on our bring-your-own-key provider.",
+        "      grounds:",
+        "        - declares: holds",
+        "          assumption: Observed on our bring-your-own-key provider.",
+        "",
+      ].join("\n"),
+    );
+    // a replaced term is a whole node: it carries every required key, not `holds` alone
+    const res = runChecker(dir);
+    assert.equal(res.status, 0, `${res.stdout}${res.stderr}`);
+    // stderr carries the two merge lines of the override, and nothing else
+    assert.deepEqual(
+      res.stderr
+        .split("\n")
+        .filter((l) => l !== "")
+        .map((l) => l.split("\t")[2]),
+      ["guard/state", "guard/terms/copilot-reader-fails-on-unserved-model"],
+    );
+  });
+
+  test("an org file still overriding the retired term id adds a third term and fails A22 (spec 0291 R21)", () => {
+    const dir = claudeRootWithOrg(
+      [
+        "target: claude",
+        "guard:",
+        "  state: withheld",
+        "  terms:",
+        "    - id: copilot-reader-consumes-claude-surface",
+        "      holds: true",
+        "",
+      ].join("\n"),
+    );
+    const res = runChecker(dir);
+    assertRejected(res, []);
+    const out = `${res.stdout}${res.stderr}`;
+    assert.ok(out.includes("model-mappings/claude (mapping in force): A22"), out);
+    assert.ok(out.includes("exactly two are required"), out);
   });
 
   test("--print-selection label field 1 is model-mappings/<target> for every target, never a path", () => {

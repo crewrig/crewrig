@@ -8,7 +8,7 @@
 // unconditionally, with no diff and no base ref. These tests pin that contract.
 //
 // Every fixture is a throwaway directory holding a minimal
-// ci/ci-capabilities.yml. Each command appends its tag to a log file in the
+// ci/capabilities/. Each command appends its tag to a log file in the
 // fixture, so the log is the observable verdict: which gated commands ran, and
 // in which order. The script is run from a foreign working directory, so a tag
 // landing in the fixture also proves the commands run inside REPO_DIR.
@@ -26,6 +26,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { writeReferenceDir } from "./lib/ci-reference-fixtures.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SCRIPT =
@@ -162,8 +163,7 @@ function commit(dir: string, files: Record<string, string>): string {
 function plainDir(reference: string = REFERENCE): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ci-changeset-coverage-"));
   temps.push(dir);
-  fs.mkdirSync(path.join(dir, "ci"), { recursive: true });
-  fs.writeFileSync(path.join(dir, "ci", "ci-capabilities.yml"), reference);
+  writeReferenceDir(dir, reference);
   return dir;
 }
 

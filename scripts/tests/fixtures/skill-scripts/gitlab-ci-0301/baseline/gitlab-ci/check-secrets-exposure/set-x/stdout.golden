@@ -1,0 +1,22 @@
+[RISK] ci.yml:3: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret variable values
+[RISK] ci.yml:4: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret variable values
+[RISK] ci.yml:5: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret variable values
+[RISK] ci.yml:6: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret variable values
+[RISK] ci.yml:7: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret variable values
+[RISK] ci.yml:9: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret variable values
+[RISK] ci.yml:10: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret variable values
+[RISK] ci.yml:22: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret variable values
+[RISK] ci.yml:23: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret variable values
+[RISK] ci.yml:24: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret variable values
+[RISK] ci.yml:25: set -x / set +x
+       why: shell xtrace prints every expanded command, including secret variable values

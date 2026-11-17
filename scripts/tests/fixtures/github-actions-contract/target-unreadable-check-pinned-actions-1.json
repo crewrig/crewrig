@@ -1,0 +1,5 @@
+{
+  "status": 1,
+  "stdout": "{\"ok\":false,\"data\":{\"files\":[],\"violations\":0},\"findings\":[{\"rule\":\"target-unreadable\",\"message\":\"not a file or directory: missing.yml\"}]}\n",
+  "stderr": "[FAIL] not a file or directory: missing.yml\n"
+}

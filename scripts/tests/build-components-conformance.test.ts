@@ -26,6 +26,8 @@ import {
   checkCase,
   diffOutcomes,
   limited,
+  oneCarrierBoth,
+  oneCarrierOnly,
   replayGate,
   REPO,
   runShellResolve,
@@ -34,7 +36,13 @@ import {
   type Outcome,
   type ResolveCase,
 } from "./lib/shell-resolve-harness.ts";
-import { BUILDERS, casesOf, EXEMPT_LABELS, type Builder } from "./lib/mapping-fixtures.ts";
+import {
+  BUILDERS,
+  casesOf,
+  EXEMPT_LABELS,
+  oracleRoot,
+  type Builder,
+} from "./lib/mapping-fixtures.ts";
 
 const skip = replayGate();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "conformance-"));
@@ -50,6 +58,25 @@ const DOCUMENTED: readonly Documented[] = [
       "print `integer expected`; the twin selects the same offering and prints nothing",
     keys: ["x_rank_nonnumeric#0", "x_context#2"],
     verify: bashIntegerOnly,
+  },
+  {
+    id: "r2-one-carrier",
+    clause:
+      "spec 0291 R2 (supersedes the word 'additionally' of spec 0197 R31): under a directed " +
+      "guard the twin carries the model on the frontmatter alone, the frozen shell also writes " +
+      "'Run this agent on the <model> model.' into the guidance prose",
+    keys: ["M3_mut#0"],
+    verify: oneCarrierOnly,
+  },
+  {
+    id: "r2-reasoning-one-carrier",
+    clause:
+      "spec 0291 delta-02 R34, reasoning item (supersedes the word 'additionally' of spec 0197 " +
+      "R31 for reasoning): under a directed guard the twin carries the reasoning on the " +
+      "frontmatter `effort:` alone, the frozen shell also writes 'Give its work <rung> " +
+      "reasoning effort.' into the guidance prose",
+    keys: ["M7_directed#0"],
+    verify: oneCarrierBoth,
   },
 ];
 
@@ -80,7 +107,40 @@ const groupOf = (b: Builder) => () =>
   compare(`builder ${b.label}: ${b.name}`, casesOf(b, tmp, b.build(tmp)));
 
 const agentsDir = path.join(REPO, "artifacts", "core", "agents");
-const agents = fs.existsSync(agentsDir) ? fs.readdirSync(agentsDir).sort() : [];
+// Spec 0307: eleven of the 22 corpus agents moved to artifacts/library/agents; the corpus labels stay
+// `core agent <name>/<target>` so the recorded goldens keep their keys.
+const libraryAgentsDir = path.join(REPO, "artifacts", "library", "agents");
+const movedAgents = [
+  "accessibility-auditor",
+  "accessibility-tester",
+  "astro-developer",
+  "copywriter",
+  "designer",
+  "frontend-developer",
+  "regression-sentinel",
+  "scenario-author",
+  "seo-specialist",
+  "visual-regression-tester",
+  "web-conformity-checker",
+];
+const agents = fs.existsSync(agentsDir)
+  ? [...fs.readdirSync(agentsDir), ...movedAgents].sort()
+  : [];
+// Issue #1937: the live core profiles now declare `reasoning`, which the frozen shell never knew, so
+// the eleven core agents are read from a frozen copy (`oracle-agents/`) of their sources as on main
+// before that change, the way `oracle-mappings/` freezes the mappings. The goldens stay keyed
+// and valued as recorded; the live state is checked by agent-profile-committed.test.ts.
+const frozenAgentsDir = path.join(
+  REPO,
+  "scripts",
+  "tests",
+  "fixtures",
+  "build-components",
+  "oracle-agents",
+);
+const frozenAgents = new Set(fs.existsSync(frozenAgentsDir) ? fs.readdirSync(frozenAgentsDir) : []);
+const agentDirOf = (a: string): string =>
+  movedAgents.includes(a) ? libraryAgentsDir : frozenAgents.has(a) ? frozenAgentsDir : agentsDir;
 const TARGETS = ["claude", "gemini", "copilot", "antigravity"];
 const profileDir = path.join(REPO, "scripts", "tests", "fixtures", "agent-profiles");
 const fixtures = fs.existsSync(profileDir) ? fs.readdirSync(profileDir).sort() : [];
@@ -89,9 +149,9 @@ const plain = BUILDERS.filter((b) => b.org !== true);
 if (skip === undefined) {
   const agentCase = (a: string, target: string): ResolveCase => ({
     label: `core agent ${a}/${target}`,
-    repoDir: REPO,
+    repoDir: oracleRoot(tmp),
     agent: a,
-    source: path.join(agentsDir, a, "AGENT.md"),
+    source: path.join(agentDirOf(a), a, "AGENT.md"),
     target,
   });
   const fixtureCases = fixtures.flatMap((f) =>
@@ -151,7 +211,7 @@ describe("resolution: the shell library and its twin agree", describeSkip, () =>
     const listed = all.filter(
       (r) => problems([r]).length === 0 && diffOutcomes(r.shell, r.twin).length > 0,
     );
-    assert.equal(listed.length, 2, "the documented differences all fire (a vanished one fails)");
+    assert.equal(listed.length, 4, "the documented differences all fire (a vanished one fails)");
     t.diagnostic(
       `${all.length} pairs (${real.length} real), ${results.size} groups, ${listed.length} listed differences`,
     );

@@ -1,0 +1,27 @@
+{
+  "skill_name": "frontend",
+  "content_hash": "sha256:1f958d87a02cf7e6e3b3cb8887a3126f3cc958486c47de4cd839a0e08536ea5d",
+  "runner_version": "3.0.0",
+  "executor_model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "date": "2026-11-14T13:24:40.574Z",
+  "status": "fail",
+  "eval_pass_rate": 0.8333333333333334,
+  "probe_pass_rate": 0.8181818181818182,
+  "base_eval_pass_rate": 0.6666666666666666,
+  "threshold": 0.8,
+  "tolerance": 0.16666666666666666,
+  "evals_passed": 5,
+  "evals_total": 6,
+  "probes_passed": 9,
+  "probes_total": 11,
+  "executor_runs": 17,
+  "judge_calls": 6,
+  "cost_usd": 0.68932,
+  "skill_loaded": 4,
+  "unloaded_evals": [
+    2,
+    6
+  ]
+}

@@ -1,0 +1,18 @@
+Replay fixtures of the GLAB_BIN stub (spec 0301 R10 as amended by delta-01). glab 1.130.0.
+
+REAL captures (stdout, stderr and exit status of `glab ci lint`), taken with glab 1.130.0 against
+gitlab.com and scrubbed: the project path became `group/project` (`group%2Fproject` in the API URL),
+the unreachable host is the neutral `unreachable.invalid`; no host, project id or user name remains.
+The shape of the text (prefix, status, cause, glab's own line wrapping) is untouched.
+  valid               a valid pipeline                                     exit 0
+  invalid             unknown stage (the one error GitLab reports)          exit 1
+  invalid-syntax      a YAML syntax error                                   exit 1
+  invalid-rules       an invalid rules:if expression                        exit 1
+  invalid-include     an include: of a file that does not exist             exit 1
+  auth-failure        a rejected token (401 Unauthorized)                   exit 1, stdout empty
+  connection-failure  an unreachable host (no such host)                    exit 1, stdout empty
+  not-a-repository    outside a git checkout, no --repo                     exit 1, stdout empty
+
+DERIVED (written from the real ones, not captured):
+  derived-two-lines, derived-both-markers, derived-exit0-no-marker, derived-exit1-no-marker,
+  derived-unrecognized-stderr

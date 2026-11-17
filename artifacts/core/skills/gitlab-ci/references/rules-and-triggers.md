@@ -1,5 +1,18 @@
 # Rules and triggers reference
 
+## Contents
+
+- [Evaluation surface](#evaluation-surface)
+- [The `rules:` list](#the-rules-list)
+- [`workflow:rules:` — whole-pipeline gating](#workflowrules--whole-pipeline-gating)
+- [Predefined CI/CD variables used in rules](#predefined-cicd-variables-used-in-rules)
+- [Expression operators in `rules:if`](#expression-operators-in-rulesif)
+- [Pipeline types and trigger mechanisms](#pipeline-types-and-trigger-mechanisms)
+- [Legacy `only:` / `except:` (superseded by `rules:`)](#legacy-only--except-superseded-by-rules)
+- [Common patterns](#common-patterns)
+- [Pitfalls](#pitfalls)
+- [Cross-reference — this repository](#cross-reference--this-repository)
+
 The control-flow language that decides **whether** a job runs and
 **what kind of pipeline** runs at all. Read this before writing any
 non-trivial `rules:` clause or `workflow:` gate. Memorising the
@@ -221,8 +234,8 @@ unset variable is the empty string (falsy).
 | `pipeline` | Created by another pipeline's `trigger:` (multi-project, upstream). |
 | `parent_pipeline` | Created by a parent via `trigger:include` (child pipeline). |
 
-Mapping the neutral trigger vocabulary onto these is the job of
-`scripts/build-ci.ts` — see the cross-reference at the end.
+Mapping the neutral trigger vocabulary onto these is the job of the
+CrewRig repository's CI generator — see the cross-reference at the end.
 
 ## Expression operators in `rules:if`
 
@@ -449,9 +462,10 @@ workflow:
 
 ## Cross-reference — this repository
 
+This section applies to the CrewRig repository only.
 The generated `.gitlab-ci.yml` at the repo root is **derived**, not
-hand-authored: `scripts/build-ci.ts` (spec 0048) reads the neutral
-capability reference `ci/ci-capabilities.yml` and maps its
+hand-authored: the generator, which keeps the GitLab pipeline in step
+with the other CI engines, reads the neutral capability reference `ci/capabilities/` and maps its
 engine-neutral trigger vocabulary — `push` / `pull-request` / `tag` /
 `scheduled` / `manual`, qualified by `branches` / `paths` /
 `tag-pattern` filters — onto the GitLab `rules:` constructs documented
@@ -462,3 +476,7 @@ in [`docs/ci-reference-format.md`](../../../../../docs/ci-reference-format.md)
 — do not redefine it here. This reference documents the GitLab target
 syntax the generator emits; the format doc owns the neutral source
 contract.
+
+<!-- crewrig-repo-only:start -->
+CrewRig repository only: the generator is `scripts/build-ci.ts`.
+<!-- crewrig-repo-only:end -->

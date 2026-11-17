@@ -45,6 +45,21 @@ tasks:
         msg: "Run: task lint-bootstrap"
     cmds:
       - task: :check-description-length
+      - task: :check-agent-script-citations
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/agent-script-citations.test.ts
+      - task: :check-subagent-conventions
+      - 'CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/pass {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/fragment-invalid {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/fragment-invalid-provenance {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/missing-block {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/stale-block {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/missing-omit-key {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/foreign-omit-key {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/source-carries-block {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - '! CREWRIG_REPO_DIR={{.REPO_DIR}}/scripts/tests/fixtures/subagent-conventions/no-fragment {{.NODE_SCRIPTS}}/check-subagent-conventions.ts'
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-subagent-conventions.test.ts {{.REPO_DIR}}/scripts/tests/check-subagent-conventions-ci-wiring.test.ts
+      - task: :check-skill-quality
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-skill-quality.test.ts {{.REPO_DIR}}/scripts/tests/check-skill-quality-contract.test.ts {{.REPO_DIR}}/scripts/tests/check-skill-quality-grammar.test.ts
   test-wiring:
     desc: Check every test is wired into CI and no stray test exists (pre-push mirror of the CI job)
     cmds:
@@ -92,6 +107,7 @@ tasks:
     preconditions: *needs-js-yaml
     cmds:
       - '{{.NODE_SCRIPTS}}/check-claude-agent-layout.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-agent-layout-cases.test.ts {{.REPO_DIR}}/scripts/tests/governance-check-claude-agent-layout.test.ts'
   ci-pre-push-replay:
     desc: Run the ci-pre-push-replay CI capability (pre-push mirror of the CI job)
     preconditions: *needs-js-yaml
@@ -129,14 +145,24 @@ tasks:
     desc: Run the agent-profile migration regression suite (cached by the ci-cache-guard capability key)
     preconditions: *needs-js-yaml
     cmds:
-      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability agent-profile-migration -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/agent-profile-baseline-doc.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-build.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-committed.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability agent-profile-migration -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/agent-profile-baseline-doc.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-build.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-committed.test.ts {{.REPO_DIR}}/scripts/tests/agent-profile-web-library-tier.test.ts'
   ci-parity:
     desc: Test the CI generator and parity harness (cached by the ci-cache-guard capability key)
     preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability ci-parity -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-parity-positive.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-fail-closed.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-stray-scan.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-path-filters.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-path-filters-undet.test.ts {{.REPO_DIR}}/scripts/tests/ci-shrink-report.test.ts {{.REPO_DIR}}/scripts/tests/ci-effective-paths.test.ts {{.REPO_DIR}}/scripts/tests/ci-paths-push-trigger.test.ts {{.REPO_DIR}}/scripts/tests/ci-paths-gate.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-ci-job.test.ts {{.REPO_DIR}}/scripts/tests/ci-job-yq.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability ci-parity -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-parity-positive.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-fail-closed.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-stray-scan.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-path-filters.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-path-filters-undet.test.ts {{.REPO_DIR}}/scripts/tests/ci-effective-paths.test.ts {{.REPO_DIR}}/scripts/tests/ci-paths-push-trigger.test.ts {{.REPO_DIR}}/scripts/tests/ci-paths-gate.test.ts {{.REPO_DIR}}/scripts/tests/ci-parity-ci-job.test.ts {{.REPO_DIR}}/scripts/tests/ci-pr-scope.test.ts {{.REPO_DIR}}/scripts/tests/ci-job-yq.test.ts {{.REPO_DIR}}/scripts/tests/classify-ci-drift.test.ts {{.REPO_DIR}}/scripts/tests/classify-ci-drift-guard.test.ts {{.REPO_DIR}}/scripts/tests/ci-reference-validity-block.test.ts'
       - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability ci-parity -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-ci-real-tree.test.ts {{.REPO_DIR}}/scripts/tests/build-ci-synthetic.test.ts {{.REPO_DIR}}/scripts/tests/build-ci-synthetic-write.test.ts'
+  ci-file-limit:
+    desc: Check the per-file limit of the CI files and the reference split proof (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-split-proof.test.ts {{.REPO_DIR}}/scripts/tests/ci-file-limit.test.ts
+  ci-push-unfiltered:
+    desc: Check that every verifying capability runs unfiltered on a push to main (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/ci-push-unfiltered.test.ts {{.REPO_DIR}}/scripts/tests/ci-windows-condition.test.ts
   check-plan-review:
     desc: Check the plan review gate against its fixtures (pre-push mirror of the CI job)
     cmds:

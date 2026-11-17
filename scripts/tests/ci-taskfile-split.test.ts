@@ -62,6 +62,8 @@ const GROUP_FILES: Record<string, readonly string[]> = {
     "check-metadata-keys",
     "check-claude-agent-layout",
     "check-ci-parity",
+    "ci-file-limit",
+    "ci-push-unfiltered",
     "ci-parity",
     "gitlab-ci-check",
     "alert-scheduled-failure",
@@ -93,6 +95,8 @@ const GROUP_FILES: Record<string, readonly string[]> = {
     "e2e",
     "worktree-guard",
     "mempalace-transcript",
+    "skill-evals-attestation",
+    "skill-evals-tests",
   ],
 };
 
@@ -108,8 +112,8 @@ describe("taskfiles/ci split (spec 0278 R23)", () => {
   const tree = loadTaskfileTree(REPO);
   const ciTasks = tree.tasks.filter((t) => t.name.startsWith("ci:"));
 
-  it("defines each of the 99 ci:* names in exactly the file of the R23 table", () => {
-    assert.equal(ciTasks.length, 99);
+  it("defines each of the 103 ci:* names in exactly the file of the R23 table", () => {
+    assert.equal(ciTasks.length, 103);
     for (const t of ciTasks) {
       const id = t.name.slice("ci:".length);
       assert.ok(expectedFiles(id).includes(t.file), `${t.name} is in ${t.file}`);

@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
+import { claudeDescriptor } from "../lib/setup/cli-claude.ts";
 import { listExisting } from "../lib/setup/steps-rules.ts";
 import {
   PICKS,
@@ -85,7 +86,7 @@ describe("rules-shared", posix, () => {
     fs.writeFileSync(path.join(box.repo, "AGENTS.org.md"), "# org\n");
     const withOrg = await runRules(rulesDescriptor("gemini", ["rules-shared"]), VALIDATION);
     const lines = withOrg.out.split("\n").filter((l) => l.startsWith("  Copied"));
-    assert.deepEqual(lines.slice(3, 6), [
+    assert.deepEqual(lines.slice(4, 7), [
       "  Copied dir: artifacts/core/system-context -> ~/.crewrig/system-context",
       "  Copied: AGENTS.org.md -> 66_ORG_RULES.md",
       "  Copied: SOUL.md -> 00_SOUL.md",
@@ -107,8 +108,8 @@ describe("rules-shared", posix, () => {
       VALIDATION,
     );
     const lines = result.out.split("\n").filter((l) => l.startsWith("  Copied"));
-    assert.equal(lines.length, 5);
-    assert.match(lines[4] ?? "", /^ {2}Copied dir: artifacts\/core\/system-context/);
+    assert.equal(lines.length, 6);
+    assert.match(lines[5] ?? "", /^ {2}Copied dir: artifacts\/core\/system-context/);
     assert.ok(!result.out.includes("66_ORG_RULES"));
   });
 });
@@ -182,5 +183,70 @@ describe("rules-selection: markers and the fail-closed policy", posix, () => {
     assert.equal(result.status, 0);
     assert.ok(!result.out.includes("Select your"));
     assert.deepEqual(fs.readdirSync(path.join(box.home, ".claude")).sort(), ["rules"]);
+  });
+});
+
+describe("rules-shared: a missing core rule (spec 0308 R4)", posix, () => {
+  test("an absent 60-memory.md makes the step reject, naming the file", async () => {
+    const rules = path.join(box.repo, "artifacts-copy", "core", "rules");
+    fs.mkdirSync(rules, { recursive: true });
+    fs.copyFileSync(
+      path.join(box.repo, "artifacts", "core", "rules", "60-tools.md"),
+      path.join(rules, "60-tools.md"),
+    );
+    fs.rmSync(path.join(box.repo, "artifacts"), { force: true });
+    fs.renameSync(path.join(box.repo, "artifacts-copy"), path.join(box.repo, "artifacts"));
+    const result = await runRules(
+      { ...rulesDescriptor("claude", ["rules-shared"]), rules: claudeDescriptor.rules },
+      [...VALIDATION],
+    ).catch((e: unknown) => ({ status: 1, out: "", err: String(e) }));
+    assert.notEqual(result.status, 0);
+    assert.match(result.err, /60-memory\.md/);
+  });
+});
+
+describe("home-dirs (spec 0305)", posix, () => {
+  const profile = (): string =>
+    path.join(box.home, ".crewrig", "claude-profiles", "worker.settings.json");
+  const run = (answers: readonly string[]) =>
+    runRules(
+      {
+        ...rulesDescriptor("claude", ["rules-existing", "rules-shared", "home-dirs"]),
+        rules: claudeDescriptor.rules,
+      },
+      answers,
+    );
+
+  test("the profiles are deployed when the existing rules are kept, and ~/.claude gains nothing", async () => {
+    const rules = path.join(box.home, ".claude", "rules");
+    fs.mkdirSync(rules, { recursive: true });
+    fs.writeFileSync(path.join(rules, "00-soul.md"), "seeded\n");
+    const run1 = await run(["rules-action=keep"]);
+    assert.equal(run1.status, 0);
+    assert.ok(fs.existsSync(profile()), "worker profile deployed under keep");
+    assert.deepEqual(fs.readdirSync(rules), ["00-soul.md"]);
+    assert.deepEqual(fs.readdirSync(path.join(box.home, ".claude")), ["rules"]);
+  });
+
+  test("a second run refreshes the directory in place", async () => {
+    assert.equal((await run([...VALIDATION])).status, 0);
+    assert.ok(fs.existsSync(profile()));
+    assert.equal((await run(["rules-action=refresh", ...VALIDATION])).status, 0);
+    assert.ok(fs.existsSync(profile()));
+  });
+
+  test("an absent optional source places nothing and prints nothing", async () => {
+    fs.rmSync(path.join(box.repo, "artifacts"), { force: true });
+    fs.mkdirSync(path.join(box.repo, "artifacts"));
+    const result = await runRules(
+      {
+        ...rulesDescriptor("claude", ["home-dirs"]),
+        rules: claudeDescriptor.rules,
+      },
+      [],
+    );
+    assert.equal(result.status, 0);
+    assert.equal(result.out, "");
+    assert.ok(!fs.existsSync(path.join(box.home, ".crewrig")));
   });
 });

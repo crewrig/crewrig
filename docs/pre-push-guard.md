@@ -37,7 +37,7 @@ On `git push`, `.githooks/pre-push` resolves the checkout it runs in and calls
 1. Computes the changeset: the files that differ between `HEAD` and its
    merge-base with `origin/main`, unioned over every ref being pushed.
 2. Selects the capabilities of the **fast tier** whose `pull-request` `paths:`
-   filter in `ci/ci-capabilities.yml` matches the changeset. A capability
+   filter in `ci/capabilities/` matches the changeset. A capability
    without a path filter always runs.
 3. Runs the matching `ci:<id>` tasks concurrently with a pool of
    `min(4, available cores)`. Each task's output is buffered and printed only on
@@ -205,7 +205,7 @@ per-CLI script, hook file or wiring (see row 45 of the
 
 ## Add a `ci:<id>` task
 
-Each fast-tier capability `<id>` of `ci/ci-capabilities.yml` has a task
+Each fast-tier capability `<id>` of `ci/capabilities/` has a task
 `ci:<id>` in one of the group files `taskfiles/ci/<group>.yml` (flattened under `ci:` by
 `taskfiles/ci.yml`; put the task in the file of its stage group, and keep every file
 within 200 lines). The rule is that the task runs **exactly the

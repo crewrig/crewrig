@@ -71,15 +71,19 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   spec 0266 (ticket #1344, slice 3b) once the Bash oracle `test.sh` was replaced; `docs/shell-removal.md` maps each
   removed path to its `node` command, while `curate.py` and `apply.py` stay Python. The eleven scripts of the
   `github-actions`, `gitlab-ci` and `pr-reviewer` skills (spec 0258) are also TypeScript entries, their `.sh` retired
-  outright, so the curator is not the first skill to ship entries; the claim of symmetry is scoped to the built tree,
-  which carries the skill `scripts/` for all four CLIs. It does not extend to a user directory: when a `TIER` install
-  copies a skill there (`scripts/lib/setup/tier-install.ts`), the Copilot CLI installs only the skill's `SKILL.md` into
-  `~/.copilot/skills/<name>/`, so a skill's `scripts/` reach a Copilot user directory only through the repository tree,
-  not through that install. Relative Markdown link ascent depths are adjusted symmetrically across all targets (issue #872). **Build-system
+  outright, so the curator is not the first skill to ship entries; the built tree carries the skill `scripts/` for all four CLIs, and so does a user
+  directory: when a `TIER` install copies a skill there (`scripts/lib/setup/tier-install.ts`), the Copilot CLI installs the whole
+  skill directory (`SKILL.md`, `scripts/`, `references/`, `assets/`, mode bits kept, a prior install replaced) into
+  `~/.copilot/skills/<name>/` through `installDir`, like the other CLI targets
+  (issue #1850, spec 0258 delta 03).
+  Relative Markdown link ascent depths are adjusted symmetrically across all targets (issue #872). **Build-system
   parity (spec 0250 R19):** the TypeScript build produces the 272 committed generated files identically on Linux and
   Windows (CI run 37940874726 on PR #1506, job `windows-build-proof`: 272 files identical on `linux` and `win32`) and on
   macOS (measured locally); the generated tree is one set of files shared by all four CLI columns, so no CLI column
   differs from another.
+  Shared reference files a skill body cites as `references/shared-<topic>.md` are copied byte for byte from
+  `artifacts/core/shared/references/<topic>.md` into `references/` of the built skill of every CLI column by
+  `scripts/lib/build-components/shared-references.ts` (spec 0293 R11); the copy is symmetric and opens no parity gap.
 - **Source of truth:** `scripts/build-components.ts` `buildSkills` + `outputRootForTier`
 - **Claude Code:** ✅ `core`: `.claude/skills/<name>/SKILL.md` · non-`core`:
   `dist/<tier>/.claude/skills/<name>/SKILL.md`
@@ -89,6 +93,11 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `dist/<tier>/.github/skills/<name>/SKILL.md`
 - **Antigravity CLI:** ✅ `scripts/build-components.ts --target antigravity` (spec 0053 / PR #441); `core`:
   `.agents/skills/<name>/SKILL.md` · non-`core`: `dist/<tier>/.agents/skills/<name>/SKILL.md`
+- **Web skills (spec 0307):** `astro`, `copywriting`, `frontend` and `web-tester` are `library` sources, no longer `core`.
+  They are built to `dist/library/` only and delivered by the automatic library step of setup at home scope, one
+  statement per CLI: Claude Code `~/.claude/skills/<name>/`, Gemini CLI `~/.gemini/skills/<name>/`, Antigravity CLI
+  `~/.gemini/config/skills/<name>/`, GitHub Copilot CLI `~/.copilot/skills/<name>/` (all four CLIs receive the skills;
+  no parity gap). None is committed to `.claude/`, `.gemini/`, `.github/` or `.agents/` any more.
 
 ### 4 — Agent definitions directory
 
@@ -107,12 +116,32 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Gemini CLI:** ✅ `.gemini/agents/<name>.md` (flat file)
 - **Copilot CLI:** ✅ `.github/agents/<name>.md` (flat file) **[GAP-confirmation]** — repo-level layout not in the
   public reference
-- **Antigravity CLI:** ✅ `.agents/agents/<name>/AGENT.md` (directory; spec 0053). Corrected in spec 0119: this cell
-  previously read `.antigravity/agents/<name>.md` (flat file), which contradicted both `build_agents` (now `buildAgents`
-  in the TypeScript build) and row 1's `.agents/` root. The spec 0119 collision key derives from these paths, so the
-  contradiction would have made that guard unauditable against its own reference table. Since spec 0201 flattened the
-  Claude cell of this row, this Antigravity path no longer mirrors it — both remain per-agent directories on their own
-  terms, but the parallelism this cell once described no longer holds.
+- **Antigravity CLI:** ✅ `.agents/agents/<name>.md` (flat file; spec 0053 delta-01, issue #1847). Frontmatter is
+  `name`, `description`, `tools` and the `metadata` provenance block, in that order (spec 0291 delta 03 R38); no
+  `enable_*`, `license` or `compatibility` key is emitted. The compiled agent was the directory `.agents/agents/<name>/AGENT.md` (spec 0053) before delta-01; the
+  build removes that retired directory when it holds only a provenance-carrying `AGENT.md`, and `--check` reports it as
+  drift. The flat file replaces the documented lowercase `<name>/agent.md` form because a case-only rename aliases on
+  case-insensitive volumes. History: spec 0119 corrected this cell away from `.antigravity/agents/<name>.md`, and the
+  spec 0119 collision key derives from these paths, so it now reads `.agents/agents/<name>.md`. All four CLIs now
+  compile an agent as a flat `<name>.md`.
+- **Subagent memory and conventions block (spec 0306):** every compiled agent ends with a blank line and
+  `artifacts/core/fragments/subagent-conventions.md`; only Claude Code also gets `omitClaudeMd: true` (a Claude Code
+  key; the block is for all). Claude Code: key verified as file frontmatter (ADR-0025 P11). Gemini CLI: subagents
+  already run without memory files (source reading of `agents/local-executor.js`, 0.28.2, not a run); they gain the six
+  rules. Copilot CLI: no per-agent switch found in `copilot --help` or `copilot help config`; about 300 duplicated
+  tokens when instructions load; `--agent developer` 38.8k against 49.0k (C5), cause unresolved; it also reads
+  `.claude/agents/` and meets the key there (not probed). Antigravity CLI: no per-agent frontmatter surface found
+  (row 33), behaviour not verified. Not-found is evidence-of-search: no gap recorded. Extension-packaged agents and
+  plugin trees carry neither (R14).
+- **Web and SEO agents (spec 0307):** the eleven agents `accessibility-auditor`, `accessibility-tester`,
+  `astro-developer`, `copywriter`, `designer`, `frontend-developer`, `regression-sentinel`, `scenario-author`,
+  `seo-specialist`, `visual-regression-tester` and `web-conformity-checker` are `library` sources, no longer `core`: they
+  build to `dist/library/` and are delivered at home scope by the automatic library step of setup, one statement per
+  CLI. Claude Code `~/.claude/agents/<name>.md`, Gemini CLI `~/.gemini/agents/<name>.md` and Antigravity CLI
+  `~/.gemini/config/agents/<name>.md` receive them. **GitHub Copilot CLI does not: its library agent install is
+  declined by design [GAP-confirmation]** (the same gap as `harness-curator`), so a Copilot user does not get these
+  eleven agents from setup; this is a named parity gap, not an asymmetry left implicit. Not committed to any project
+  tree any more.
 
 ### 4b — Agent provenance carrier
 
@@ -137,14 +166,70 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 
 ### 4c — Agent tool mapping / capabilities
 
-- **Feature:** Agent tool mapping / capabilities — maps tool requirements/capabilities from source frontmatter to
-  output agent definitions
-- **Source of truth:** `scripts/build-components.ts` `buildAgents` (shell origin `build_agents`)
-- **Claude Code:** ❌ N/A (Claude Code does not use agent-level allowed-tools)
-- **Gemini CLI:** ❌ N/A (Gemini CLI has no agent-level tool requirements)
-- **Copilot CLI:** ❌ N/A (Copilot CLI has no agent-level tool requirements)
-- **Antigravity CLI:** ✅ Mapped: maps `Bash` from `claude.allowed-tools` to `enable_write_tools: true` and supports
-  explicit `antigravity` configuration block (`enable_write_tools`, `enable_mcp_tools`, `enable_subagent_tools`) (spec 0137)
+- **Feature:** Agent tool mapping / capabilities — maps the tool classes an agent source declares under
+  `metadata.tools` (`read`, `search`, `edit`, `execute`, `web`, `agent`, `skill`, `message`; spec 0291 and its delta 01) to each CLI's own tool allowlist in
+  the output agent definition. Opt-in on Claude Code, Copilot CLI and Gemini CLI: a source that declares nothing gets no `tools` key there. On Antigravity CLI every agent gets a `tools` line, the vendor's all-tools line when it declares nothing (spec 0291 delta 03 R40). An allowlist
+  withholds every tool it does not name (MCP tools, `SendMessage`, `Skill`, `ToolSearch` and `TodoWrite` on Claude Code), so
+  an allowlist may be declared for any agent, and one that contains `edit` or `execute` must name `skill`, enforced by
+  `scripts/check-component-metadata-keys.ts` on `artifacts/core/` and `artifacts/library/`; `message` is left to review
+  (spec 0291 R17 as amended by delta 01).
+- **Source of truth:** `scripts/lib/build-components/agent-tools.ts`, `scripts/lib/build-components/emit-agents.ts`
+  (`buildAgents`; shell origin `build_agents`), `scripts/lib/build-components/emit-agent-antigravity.ts`
+- **Claude Code:** ✅ Mapped: `tools: Read, Grep, Glob, …` (a comma-separated string, after `model:`), names per
+  <https://code.claude.com/docs/en/sub-agents> read 2026-11-11; delta 01 adds `skill` → `Skill` and `message` →
+  `SendMessage`, both named by the background-subagent tool list of that page (read 2026-11-14). The old `claude.allowed-tools` of an agent source is read
+  by no agent emitter (only skills and commands); the dead declaration was removed from `pr-reviewer` (spec 0291 R19)
+- **Gemini CLI:** ✅ Mapped: `tools: [read_file, read_many_files, list_directory, …]`, the native identifiers of
+  <https://geminicli.com/docs/reference/tools/> read 2026-11-11, under the strict `tools` key of row 43 (Gemini CLI
+  0.28.2). The `agent` class has no Gemini name (subagents cannot call other subagents): it is omitted with one
+  `tools-drop … no-equivalent-on-cli` record, and a declaration that leaves no tool stops the build. Delta 01 adds
+  `skill` → `activate_skill` ("loads specialized procedural expertise from the `.gemini/skills` directory", read
+  2026-11-14, no CLI version stated) and no name for `message`: `complete_task` returns the result to the parent agent
+  and ends the mission, so it is not a message channel and is not mapped. `[GAP-confirmation]`
+- **Copilot CLI:** ✅ Mapped: `tools: [read, search, …]` in `.github/agents/`, the primary names of
+  <https://docs.github.com/en/copilot/reference/custom-agents-configuration> read 2026-11-11. The `skill` and `message` classes have no Copilot name: the primary aliases
+  are `execute`, `read`, `edit`, `search`, `agent`, `web` and `todo`, and
+  <https://docs.github.com/en/copilot/concepts/agents/about-agent-skills> (read 2026-11-14) states no way to name a skill in
+  a custom agent's `tools` list (skills are discovered from `.github/skills`, `.claude/skills`, `.agents/skills`,
+  `~/.copilot/skills` and `~/.agents/skills`, which are discovery paths, not an allowlist name); no user-level,
+  hook-level or alternative-path mechanism was found. Each is omitted with one `tools-drop … no-equivalent-on-cli`
+  record and a declaration that leaves no tool stops the build; `[GAP-confirmation]`. Copilot also honors
+  `tools:` in the shared `.claude/agents/` (row 32), where it aliases `Bash`, `Read`, `Edit`, `Write`, `Grep`, `Glob`,
+  `WebFetch`, `WebSearch` and `Task`; `Agent`, `Skill` and `SendMessage` are not aliases there, so a declared `agent`,
+  `skill` or `message` class does not reach a Copilot reader of that directory, which fails toward fewer tools. **Subagent fixed context** (Copilot CLI 1.0.112, probe of 2026-11-14, issue #1995, CrewRig
+  worktree, a personal `developer` agent declaring `tools:` and `model: gemini-3.8-flash`): a `task` subagent starts with
+  **4.3k** first-call input tokens (built-in `explore`: 4,301 with 11 tool definitions, 2.7k; `developer`: 4,315 with
+  9 tools, 2.1k) against a main session of **74.9k** on the same run (26 tools, 21.0k; `custom_instructions` 39.4k).
+  Custom instructions (`AGENTS.md`, `~/.copilot/instructions/*`) are therefore **not inherited** by `task` subagents, so
+  O1 of ADR-0025 is already the Copilot behaviour and needs no switch there. The main-session figure differs from the
+  49.3k of row 7b because that run used `claude-sonnet-5.5` (the model of a scratch home copied from the real
+  `config.json`) instead of the pinned `gemini-3.8-flash`, and token counts differ by model: compare figures within a
+  model only. A first attempt with the real home failed: the user-level
+  `preToolUse` hook of `~/.copilot/hooks/` errored in the Copilot session sandbox (`EPERM` on its script) and Copilot
+  denied the `task` call (`Denied by preToolUse hook ... (hook errored)`), observed once, on this hook and this sandbox: a failing `preToolUse` hook can block delegation
+- **Antigravity CLI:** ✅ Emitted (spec 0291 delta 03 R37 to R41, issue #2049), pinned to `agy` 1.5.9, probed signed in
+  on 2026-11-15; the `[GAP-confirmation]` of spec 0291 R14 is lifted, with a residual risk (below). The compiled agent
+  always carries a `tools` line, after `description` and before `metadata`. Mapping, from the vendor migration guide
+  embedded in `agy` and from the probe: `read` and `search` → `read_file`; `edit` → `edit_file`, `write_file`; `execute` →
+  `run_command`, `manage_task`; `web` → `search_web`; `agent` → `invoke_subagent`; `message` → `send_message`; `skill` →
+  none. Each name is written once, in the vocabulary's order. A subagent given the vendor's all-tools list created a file
+  with `write_file`, changed it with `edit_file` and ran a command with `run_command`, all checked on disk.
+  **Silent-acceptance trap:** `grep_search`, `find_by_name`, `list_dir` and `read_url_content` pass the registry check and
+  reach the model as nothing (as main agent and as subagent), so a name the registry accepts is not proof that it works;
+  none is emitted. **Narrowing:** `search` has no dedicated name and maps to `read_file`, and the fetch half of `web`
+  maps to `search_web` only. **Dropped class:** `skill` has no Antigravity name and is omitted with one `tools-drop …
+  no-equivalent-on-cli` record per declaring agent (ten of the twelve declaring agents), and a declaration of `skill`
+  alone stops the build. **Default line:** an agent with no `metadata.tools` gets `tools: [read_file, edit_file,
+  write_file, run_command, manage_task, search_web]`, the vendor's rendering of "all tools", because an omitted key gives
+  a read-only 9-tool default (`send_message`, `read_file`, `search_web`, `schedule`, `generate_image`, `call_mcp_tool`,
+  `list_resources`, `read_resource`, `manage_task`; issue #1867). The line broadens such an agent (`run_command`,
+  `edit_file`, `write_file`, so a review-only agent such as `security` can now run commands and write files on
+  Antigravity) and narrows it (`schedule`, `generate_image` and, as main agent, `send_message` are no longer received);
+  an agent that must not write declares `metadata.tools`. An explicit `tools: []` keeps only `call_mcp_tool`,
+  `list_resources`, `read_resource` and `manage_task`. **Residual risk:** the names are pinned to `agy` 1.5.9. A renamed
+  tool fails loudly at agent start (`unknown component: tool "<name>" not found in registry`), a name that becomes a
+  silent no-op does not; re-probe the table on each Antigravity CLI bump (no automatic check). `mainAgent`, `subagent`
+  and `inheritCustomizations` stay unemitted (delta 03 R44).
 
 ### 4d — Skill bundled scripts
 
@@ -157,10 +242,9 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   which retargeted every caller to `node scripts/<name>.ts`. `lint-skill` resolves `js-yaml` from the script directory,
   then from the working directory, and falls back to a line scan with a one-line note when neither has it. The four CLIs
   consume the same skill scripts: these three skills are `core`, and the committed built tree carries a skill's
-  `scripts/` on all four surfaces. The one asymmetry is a different path, not the build: the overlay-tier install of
-  non-`core` skills into a user directory (`scripts/lib/setup/tier-install.ts`) places `SKILL.md` only for Copilot CLI,
-  while Claude Code, Gemini CLI and Antigravity CLI receive the whole skill directory; it does not touch these `core`
-  skills. Recorded, not changed. Windows proof: the `windows-skill-scripts` job runs each entry from PowerShell and
+  `scripts/` on all four surfaces. The overlay-tier install of non-`core` skills into a user
+  directory (`scripts/lib/setup/tier-install.ts`) now places the whole skill directory for all four CLIs, Copilot CLI
+  included (issue #1850; it was `SKILL.md` only before). Windows proof: the `windows-skill-scripts` job runs each entry from PowerShell and
   `cmd.exe` with no `bash` on the child `PATH` (`scripts/tests/windows-skill-scripts.test.ts`)
 - **Source of truth:** `artifacts/core/skills/{github-actions,gitlab-ci,pr-reviewer}/scripts/*.ts`;
   `scripts/build-components.ts` `propagateSkillResources`
@@ -168,8 +252,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   skill directory
 - **Gemini CLI:** ✅ `.gemini/skills/<name>/scripts/<name>.ts` (core tree); overlay-tier install copies the whole skill
   directory
-- **Copilot CLI:** ✅ `.github/skills/<name>/scripts/<name>.ts` (core tree); ⚠️ overlay-tier install to
-  `~/.copilot` places `SKILL.md` only (non-`core` skills)
+- **Copilot CLI:** ✅ `.github/skills/<name>/scripts/<name>.ts` (core tree); ✅ overlay-tier install to
+  `~/.copilot` copies the whole skill directory (non-`core` skills; issue #1850)
 - **Antigravity CLI:** ✅ `.agents/skills/<name>/scripts/<name>.ts` (core tree)
 
 ### 5 — Slash-command directory
@@ -318,23 +402,71 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Feature:** User-level layered context (00–65 priority files) — deployed by the TypeScript setup entries
   `scripts/setup-<cli>-interactive.ts` (spec 0256, row 10b)
 - **Source of truth:** `config/SOUL.md`, `config/level/`, `config/ORGANIZATION.md`, `config/PROFILE.md`,
-  `config/expertise/`, `config/teams/`, `artifacts/core/rules/60-tools.md` (priority 60, core; total core-rules size
+  `config/expertise/`, `config/teams/`, `artifacts/core/rules/60-tools.md` and `artifacts/core/rules/60-memory.md` (priority 60, core; the orchestrator memory
+  protocol moved to the second file by spec 0308; total core-rules size
   capped by `scripts/check-rules-size.ts`, spec 0270, relocated blocks in `docs/mempalace-*.md` and
   `docs/friction-failure-mode.md`), `config/TOOLS.md` (priority 65, overlay)
-- **Claude Code:** ✅ `~/.claude/rules/60-tools.md` (core) + `~/.claude/rules/65-org-tools.md` (overlay), plus other
-  `*.md` files — deployed by `setup-claude-interactive.ts`
-- **Gemini CLI:** ✅ `~/.gemini/60_TOOLS.md` (core) + `~/.gemini/65_TOOLS.md` (overlay), plus other `[0-6][0-9]_*.md`
+- **Claude Code:** ✅ `~/.claude/rules/60-tools.md` and `~/.claude/rules/60-memory.md` (core) +
+  `~/.claude/rules/65-org-tools.md` (overlay), plus other `*.md` files — deployed by `setup-claude-interactive.ts`. The
+  worker settings profile excludes `**/rules/60-memory.md` (spec 0308 R7); the coordinator profile excludes nothing
+- **Gemini CLI:** ✅ `~/.gemini/60_TOOLS.md` and `~/.gemini/60_MEMORY.md` (core) + `~/.gemini/65_TOOLS.md` (overlay), plus other `[0-6][0-9]_*.md`
   files — deployed by `setup-gemini-interactive.ts`. Gemini loads **only** files enrolled in `context.fileName`
   (`~/.gemini/settings.json` ← `config/gemini/settings.json`), unlike Claude/Copilot which read an entire directory,
-  so every deployed overlay MUST also be enrolled there (e.g. `65_TOOLS.md`; the priority-66 org-rules overlay is
+  so every deployed overlay MUST also be enrolled there (e.g. `60_MEMORY.md`, `65_TOOLS.md`; the priority-66 org-rules overlay is
   enrolled likewise, see row 7e) (#576)
-- **Copilot CLI:** ✅ `~/.copilot/instructions/60-tools.instructions.md` (core) +
-  `~/.copilot/instructions/65-org-tools.instructions.md` (overlay), plus other `*.instructions.md` files — deployed by
-  `setup-copilot-interactive.ts`
+- **Copilot CLI:** ✅ `~/.copilot/instructions/60-tools.instructions.md` and
+  `~/.copilot/instructions/60-memory.instructions.md` (core) + `~/.copilot/instructions/65-org-tools.instructions.md`
+  (overlay), plus other `*.instructions.md` files — deployed by `setup-copilot-interactive.ts`. Copilot workers load
+  `60-memory.instructions.md`: the CLI has no per-file exclusion (`--no-custom-instructions` is all-or-nothing, ADR-0025 C2). **Fixed-context evidence** (Copilot CLI 1.0.112, probes of 2026-11-14, issue #1995;
+  method of ADR-0025's appendix, tokens read from the per-call `session.usage_record` and `system_segments` events of
+  `~/.copilot/session-state/<id>/events.jsonl`; main model pinned to `gemini-3.8-flash`, prompt "Reply with the single
+  word OK."): (1) CrewRig worktree, real home: **49,273** first-call input tokens, of which `custom_instructions`
+  24,984, `tool_instructions` 6,612, 26 tool definitions 13,111 (C1 of the ADR read 49.0k). `copilot instruction list`
+  (no model run) shows what loads: `.github/copilot-instructions.md`, `AGENTS.md` and `CLAUDE.md` of the repository
+  (Copilot reads `CLAUDE.md` but does not resolve its `@AGENTS.md` import, so it adds almost nothing), nine personal
+  files and `~/.copilot/AGENTS.md`. (2) **`COPILOT_HOME` pointing to a scratch home** holding `config.json` and only
+  `20-organization`, `60-tools`, `65-org-tools` and `66-org-rules`: **40,664** (−8.6k, −17%), `custom_instructions`
+  17,717; the instruction set, the hooks and the user agents of the home are all swapped by one variable, and the
+  repository files still load. Authentication survives the override (the copied `config.json`). (3) **`applyTo`
+  frontmatter**, scratch git project outside the repository, one 32 KB `*.instructions.md` in `.github/instructions/`
+  and one in the scratch home, both `applyTo: "nothing-matches-this/**"`: **15,721** with `custom_instructions` **204**
+  (both files out of context); the same files with `applyTo: "**"`: 31,779, `custom_instructions` 15,375 (both in).
+  `applyTo` therefore works at project and personal scope, and `copilot instruction list` reports a non-matching file as
+  discovered, so the list shows sources, not what enters the context. The 15.7k floor with no instruction is the
+  built-in prompt (system segments 6.0k) and the tool definitions (10.1k). Not isolated: the tool definitions grew to
+  13.0k and `tool_instructions` to 6.5k in the CrewRig worktree, probably because the `task` tool lists the repository's
+  agents
+- **Gemini and Antigravity workers:** per-file exclusion of `60_MEMORY.md` not verified (no evidence recorded, spec 0308 R7).
+  Antigravity has an agent-level switch instead, not a per-file one: `inheritCustomizations: false` (see the Antigravity
+  evidence below). Gemini CLI could not be probed (see its entry)
 - **Antigravity CLI:** ✅ `~/.gemini/antigravity-cli/` — priority `[0-6][0-9]_*.md` files deployed by
-  `setup-antigravity-interactive.ts`; concatenated into `~/.gemini/config/AGENTS.md` (the single system context file
+  `setup-antigravity-interactive.ts` (`60_MEMORY.md` next to `60_TOOLS.md`); concatenated into `~/.gemini/config/AGENTS.md` (the single system context file
   Antigravity CLI reads) at the end of each setup run; any superseded `~/.gemini/GEMINI.md` context file is removed to
-  prevent duplicate/stale rule loading (spec 0054 / PR #443; spec 0061 delta-01 / issue #478; spec 0061 delta-02 / issue #1082)
+  prevent duplicate/stale rule loading (spec 0054 / PR #443; spec 0061 delta-01 / issue #478; spec 0061 delta-02 / issue #1082).
+  **Fixed-context evidence** (`agy` 1.5.9, probes of 2026-11-15, issue #1995; method of ADR-0025's appendix, tokens read
+  from the `gen_metadata` rows of each conversation file in `~/.gemini/antigravity-cli/conversations/`, prompt "Reply with
+  the single word OK"): (1) CrewRig worktree: **18,864** first-call input tokens; the context holds `AGENTS.md` as the only
+  rule (16,916 characters; `CLAUDE.md` is not loaded and the `@AGENTS.org.md` import inside `AGENTS.md` is not resolved), a
+  skills listing of 14,281 characters and a subagent listing of 8,200. (2) Empty scratch directory: **10,340**, with no
+  rule at all. **On the probed machine the setup output is absent**: `~/.gemini/config/AGENTS.md` and
+  `~/.gemini/antigravity-cli/[0-6][0-9]_*.md` do not exist, so the cost of the deployed user-level rules is not measured
+  (estimate only: the 26.4 KB of core rules would add about 7.5k tokens at the 3.5 characters per token observed). (3) A
+  subagent inherits `AGENTS.md` and the skills listing by default: the committed `developer` agent starts at **11,897**.
+  `inheritCustomizations: false` in a markdown agent's frontmatter (`agy` 1.1.14 per `agy changelog`: the agent no longer
+  adopts "your skills, rules, plugins, subagents and MCP servers") takes a probe subagent from **8,743** to **4,092** and
+  removes the rules, skills and subagent listing from its prompt. (4) `agy --agent <name>` with a `mainAgent: true` agent
+  that sets the switch takes a main session from 15,074 to **3,900**, or **4,306** with `tools: [read_file, edit_file,
+  write_file, run_command, manage_task, search_web]` declared: a per-launch worker profile in the workspace's
+  `.agents/agents/`, wholesale (rules, skills, plugins, subagents, MCP servers), the project `AGENTS.md` included; its
+  effect on global `~/.gemini/config` rules is not probed. (5) Rule triggers in `.agents/rules/*.md`: only
+  `trigger: always_on` enters the prompt in full; `model_decision` adds its path and description, `glob` (matching
+  nothing) and `manual` add nothing. User-scope rules are not probed. `agy --settings` takes "a JSON object of
+  settings.json keys"; none that excludes a rule was found (help text, embedded documentation), not probed
+- **Gemini CLI authentication:** the baseline cannot be measured on an individual free-tier account. Gemini CLI 0.28.2,
+  `gemini -p "Reply with the single word OK" -o json` from an empty directory, 2026-11-15 (issue #1995): exit 1,
+  `IneligibleTierError`, `reasonCode: 'UNSUPPORTED_CLIENT'`, `tierId: 'free-tier'`: "This client is no longer supported for
+  Gemini Code Assist for individuals. To continue using Gemini, please migrate to the Antigravity suite of products". A
+  paid, Workspace or API-key account is not tested, so this does not say that Gemini CLI is unsupported for those
 
 ### 7c — MCP server configuration file
 
@@ -459,16 +591,23 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Copilot CLI:** ✅ Fallback: `setup-copilot-interactive.ts` deploys `AGENTS.org.md` →
   `~/.copilot/instructions/66-org-rules.instructions.md`. Copilot does not resolve `@file` includes in instruction files
   and auto-reads only the standard `AGENTS.md` name. **Fallback drift:** the deployed copy is taken at setup time;
-  editing `AGENTS.org.md` requires re-running setup (org rules change rarely; setup is idempotent)
+  editing `AGENTS.org.md` requires re-running setup (org rules change rarely; setup is idempotent). **Verified** (`copilot instruction list`, Copilot CLI 1.0.112, issue
+  #1995): the repository's `AGENTS.org.md` is not among the discovered sources, so the deployed priority-66 copy is the
+  only way the org rules reach a Copilot session; `AGENTS.md` and `CLAUDE.md` load, `CLAUDE.md` without its `@` imports
 - **Antigravity CLI:** ✅ Fallback: `setup-antigravity-interactive.ts` deploys `AGENTS.org.md` →
   `~/.gemini/antigravity-cli/66_ORG_RULES.md` (priority 66); included in the `~/.gemini/config/AGENTS.md` concatenation
-  (spec 0061 delta-01). Same pattern as Gemini CLI (spec 0054)
+  (spec 0061 delta-01). Same pattern as Gemini CLI (spec 0054). **Verified: the repository route is absent** (`agy` 1.5.9, prompt dump of a
+  session in the CrewRig worktree, issue #1995): the only rule in the prompt is the repository's `AGENTS.md`; its
+  `@AGENTS.org.md` import is not resolved (no text of `AGENTS.org.md` in the prompt) and `CLAUDE.md` is not loaded, so
+  the deployed priority-66 copy is the only candidate route for the org rules, as on Copilot. **Not observed:** that copy
+  reaching a session, because `~/.gemini/config/AGENTS.md` does not exist on the probed machine
 
 ### 7f — User-space system-context store
 
 - **Feature:** User-space system-context store — on-demand direct read (spec 0068)
 - **Source of truth:** `artifacts/core/system-context/`, `scripts/lib/setup/files.ts` (`install_dir` of the retired
-  `common.sh`), `scripts/setup-*-interactive.ts`, `artifacts/core/rules/60-tools.md` (retrieval protocol + stubs)
+  `common.sh`), `scripts/setup-*-interactive.ts`, `artifacts/core/rules/60-tools.md` (retrieval protocol, friction stub) and
+  `artifacts/core/rules/60-memory.md` (the four other stubs, moved by spec 0308)
 - **Claude Code:** ✅ `~/.crewrig/system-context/` installed by `setup-claude-interactive.ts` (`install_dir`, link/copy
   duality). **Direct read PASS-default** — the Step 1 probe read the store from an untrusted scratch dir with bare
   `claude -p`, no flags/config (the `Read` tool has unrestricted absolute-path access). Evidence:
@@ -681,7 +820,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   staying at its path; re-running setup from a durable checkout repairs it, and setup warns when that checkout is a
   linked worktree (`warn_if_linked_worktree`, `docs/usage-capture.md` → *Checkout-location dependency*). CI:
   `mempalace-transcript`, `mempalace-transcript-node-24-0` and `windows-mempalace-transcript`
-  (`ci/ci-capabilities.yml`).
+  (`ci/capabilities/`).
 - **Source of truth:** `hooks/mempalace-transcript.ts`, `scripts/lib/mempalace-transcript/`, `scripts/lib/tls-env.ts`,
   `scripts/lib/transcript-recognition.ts`, `scripts/lib/hook-transcript-cli.ts`,
   `scripts/lib/hook-transcript-manifest.ts`, `scripts/lib/transcript-hook-rewrite.ts`,
@@ -967,6 +1106,11 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   are asserted structurally by `scripts/tests/setup-transcript-antigravity-manifest.test.ts`; spec 0054 / PR #443, spec
   0061 delta-01 / issue #478; `dist/library/.agents` is auto-built via
   `node scripts/build-components.ts --target antigravity` if missing, before the install step — spec 0107, issue #618)
+- **Library web components (spec 0307):** the automatic library step of each `setup-<cli>-interactive.ts` installs the
+  eleven web and SEO agents and the four web skills at home scope: Claude Code and Gemini CLI and Antigravity CLI skills
+  and agents, Copilot CLI skills only (agents named gap, row 4). Setup builds `dist/library/` first when absent. It
+  never removes stale project-tree copies; `scripts/sync-from-upstream.ts` does in a fork (spec 0064 orphan cleanup).
+  Restore command: `node scripts/setup-<cli>-interactive.ts`, or the component-management command for one component.
 
 ### 10b — Interactive setup entries in TypeScript
 
@@ -1133,7 +1277,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Antigravity CLI:** ✅ `scripts/build-antigravity-extension.ts` — mirrors `build-claude-plugin.ts`; resolves
   extension name across tiers, reads `extension.json` (no `gemini-extension.json` fallback — retired, spec 0183 R14:
   an extension with no committed `extension.json` fails naming `scripts/migrate-extension.ts`), generates `plugin.json`
-  at output root, copies skills/agents, renders command pivots as skills when `convertToSkills` is `true`, renders the
+  at output root, copies skills, flattens agents to `agents/<name>.md` like Claude (spec 0254 delta-02,
+  live-verified `agy` 1.5.9), renders command pivots as skills when `convertToSkills` is `true`, renders the
   context file via the shared resolver when a `context` source is declared (row 5d, spec 0181, issue #1007 — no longer
   a copy from a per-CLI `antigravity.contextFileName` key, retired), copies the extension's `hooks/` handler tree into
   the output when the generic `hooks` section is declared (spec 0179 R9/v2-F1 — the emitted command is
@@ -1501,22 +1646,23 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   plain `git`-only Bash 3.2 scripts (spec 0111) invoked from the shell, with no per-CLI surface, no MCP tool, and no
   forge API — requirement 4 makes forge-independence a requirement, and `AGENTS.md` → *Forge Access* keeps the
   credential the one the contributor already holds for `git`. The behavioural contract each CLI's `spec-author` consumes
+  (through the skill's bundled `scripts/scaffold-spec.ts`, which runs this tool, not through the agent prompt)
   is the exit code only: `0` secured, `3` allocated-but-unsecured (stdout carries `unsecured-id: true` verbatim), `1`
   genuine failure. **Enforcement is CI-side, not CLI-side:** the `check-spec-id-reserved` capability in
-  `ci/ci-capabilities.yml` (portable, `history-depth: full`, no `tools:` key — git is installed conditionally as
+  `ci/capabilities/` (portable, `history-depth: full`, no `tools:` key — git is installed conditionally as
   `command[0]` so the GitLab `debian:stable-slim` job needs no generator change) becomes the GHA job of the same name
   plus the generated `.gitlab-ci.yml` job. **Delta-02** (`specs/0112-spec-id-reservation.delta-02.md`, requirements
   17-21) adds that the `--issue`-only path now reuses an existing per-issue reservation instead of always computing a
   new one.
 - **Source of truth:** `scripts/reserve-spec-id.ts`, `scripts/check-spec-id-reserved.ts`, `.crewrig/spec-id-carrier`,
-  `ci/ci-capabilities.yml`, `docs/spec-pr-workflow.md` → *Reserving the spec id*,
+  `ci/capabilities/`, `docs/spec-pr-workflow.md` → *Reserving the spec id*,
   `specs/0112-spec-id-reservation.delta-02.md`
 - **Claude Code:** ✅ consumed by `.claude/skills/spec-author/SKILL.md` + `.claude/agents/spec-author.md` (built from
   `artifacts/core/`, row 3 core path)
 - **Gemini CLI:** ✅ same contract via `.gemini/skills/spec-author/SKILL.md` + `.gemini/agents/spec-author.md`
 - **Copilot CLI:** ✅ same contract via `.github/skills/spec-author/SKILL.md` + `.github/agents/spec-author.md`
 - **Antigravity CLI:** ✅ same contract via `.agents/skills/spec-author/SKILL.md` +
-  `.agents/agents/spec-author/AGENT.md`
+  `.agents/agents/spec-author.md`
 
 ### 29 — Tool-boundary git worktree guard
 
@@ -1568,7 +1714,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   scope* rules one out by name. Spec 0271 (superseding spec 0226 R1-R6) replaced the seated-pass step-3/step-6 exemption
   by the rule that every subagent skips the session-start sweep entirely, which does not change this row's "uniform, not
   per-CLI" parity story: no new CLI-specific path, command, hook, or build output — the edited files (`AGENTS.md`,
-  `artifacts/core/rules/60-tools.md`, `docs/reviewer-seat.md`) are either already covered by row 7b's byte-identical
+  `artifacts/core/rules/60-memory.md`, `docs/reviewer-seat.md`) are either already covered by row 7b's byte-identical
   cross-CLI deployment or read directly from the repo, never CLI-specific.
 - **Source of truth:** `docs/reviewer-seat.md` (normative contract); sources
   `artifacts/core/agents/pr-reviewer/AGENT.md`, `artifacts/core/skills/{pr-reviewer,architect,spec-author}/SKILL.md`
@@ -1578,7 +1724,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   (built by `scripts/build-components.ts --target gemini`; row 3 core path)
 - **Copilot CLI:** ✅ `.github/agents/pr-reviewer.md` + `.github/skills/{pr-reviewer,architect,spec-author}/SKILL.md`
   (built by `scripts/build-components.ts --target copilot`; row 3 core path)
-- **Antigravity CLI:** ✅ `.agents/agents/pr-reviewer/AGENT.md` +
+- **Antigravity CLI:** ✅ `.agents/agents/pr-reviewer.md` +
   `.agents/skills/{pr-reviewer,architect,spec-author}/SKILL.md` (built by
   `scripts/build-components.ts --target antigravity`; row 3 core path)
 
@@ -1630,6 +1776,12 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   surface. Consequence for spec 0201 (epic #1100 seam (g)): flattening the compiled Claude Code output does **not**
   remove Copilot's consumption of the `.claude/agents/` surface under either per-file layout — the requirement 8
   shared-read guard of `specs/0143-copilot-subagent-model-fallback.delta-01.md` remains necessary regardless.
+  **Probe of 2026-11-10, Copilot CLI 1.0.109** (issue #1851, standard GitHub-hosted account, agents in
+  `.claude/agents/`): Copilot **honors `tools:`** there. `tools: Read, Grep, Glob` exposed `glob`, `grep` and `view`
+  (plus Copilot's default `skill` and `sql`) and refused file creation and shell, through the alias table (`Bash`,
+  `Read`, `Edit`, `Write`, `Grep`, `Glob`, `WebFetch`, `WebSearch` and `Task`; `Agent` is not an alias and is ignored).
+  The same probe saw `model: sonnet`, `model: claude-sonnet-5-5` and `model: claude-sonnet-4.5` each produce a warning
+  and a fallback to the session model (row 33)
 - **Antigravity CLI:** ❌ N/A — not a consumer of epic #1100's compiled-layout seam (out of scope)
 
 ### 33 — Per-agent model-mapping declaration surface
@@ -1639,16 +1791,43 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   (row 34), and populated against a real declaring source since spec 0200 migrated the 22 core agent sources onto
   `metadata.model:` (docs/agent-profile-migration.md).
 - **Source of truth:** `model-mappings/<target>.yml`, `docs/model-mapping-format.md`, `scripts/check-model-mappings.ts`
-- **Claude Code:** ✅ frontmatter `model` and `effort`; the `model` item alone is withheld by the shared-read guard
-  (spec 0143 delta-01 R8, `resolveItem` in `scripts/lib/model-resolve/resolve-item.ts`) while its state is `withheld`,
-  with the declination stated on the guidance surface instead — `effort` reaches frontmatter regardless of the guard's
-  state
+- **Claude Code:** ✅ frontmatter `model` and `effort`; the shared-read guard `copilot-shared-read` is recorded
+  `directed` (spec 0291 R1) with both terms `holds: false`, so every compiled `.claude/agents/<name>.md` carries
+  `model:` and no `Run this agent on the <model> model.` sentence: the model has one carrier at a time (spec 0291 R2,
+  `resolveItem` in `scripts/lib/model-resolve/resolve-item.ts`), guidance only under a `withheld` guard or for a value
+  outside the key's domain. **Verified on Copilot CLI ≥ 1.0.109** (probe of 2026-11-10, issue #1851, standard
+  GitHub-hosted account): `model: sonnet`, `model: claude-sonnet-5-5` and `model: claude-sonnet-4.5` each produced a
+  warning and a fallback to the session model, a subagent spawned through the `task` tool answered on the session model,
+  and every run succeeded. **Residual risk, accepted and unverified (spec 0291 R4):** a bring-your-own-key provider,
+  where `github/copilot-cli#4437` was reported (Copilot 1.0.79, Ollama), and an account on which Claude models are
+  served. Rollback is one step: `guard.state` back to `withheld` and `copilot-reader-fails-on-unserved-model` back to
+  `holds: true`, then rebuild; an organization re-withholds through its own mapping
+  (`docs/org-model-mapping-override.md`). **Superseded, without editing those specs:** spec 0143 delta-01 R8 (its
+  BYOK clause, narrowed to a standard account), spec 0197 R30 (second term, now `copilot-reader-fails-on-unserved-model`),
+  the word "additionally" in R31, R37 (recorded `withheld`) and the scenario "the shared-read guard is directed", spec 0197
+  delta-02 ("stays withheld"), and the statements in spec 0200 that the guard stays `withheld`; R31's withheld clause, R32
+  and R35 stay in force
 - **Gemini CLI:** ✅ frontmatter `model`/`temperature`/`max_turns`; reasoning ⚠️ out-of-band in `settings.json`
   `modelConfigs.overrides` only, no guidance surface
 - **Copilot CLI:** ⚠️ zero offerings, unconfigured by design — the served model lineup is deployment knowledge the
-  core layer does not have (spec 0197 R41)
+  core layer does not have (spec 0197 R41). On Copilot the declared model, read from `model:` in `.claude/agents/`, is
+  **advisory**: the warning fires only on agent invocation, once per invocation, never at startup or discovery
+  (evidence: Copilot CLI 1.0.109 probe on 2026-11-11 by the maintainers, two agents with `model: sonnet` in
+  `.claude/agents/`; `copilot -p` without an agent gave zero warnings, `copilot --agent <name>` gave exactly one
+  `Warning: Custom agent "<name>" specifies model "sonnet" which is not available; using "<session model>" instead`, the
+  session model on that account being a Gemini model). Whether Copilot should instead receive a dotted Claude model id
+  such as `claude-sonnet-5.5` is out of scope here and tracked in issue #1877. **Honored when served** (Copilot CLI 1.0.112, probe of 2026-11-14, issue #1995): a `task`
+  subagent running a personal agent that declares `model: gemini-3.8-flash` answered on that model while the session ran
+  on `claude-sonnet-5.5`, and the built-in `explore` subagent ran on a third model, so a declared model that the
+  account serves was applied per subagent in this probe (the fallback for an unserved model is the one recorded above,
+  not re-tested here)
 - **Antigravity CLI:** ⚠️ guidance surface only — no per-agent frontmatter surface exists on this target (spec
-  0197 Premise 1)
+  0197 Premise 1). Re-read on `agy` 1.5.9 (issue #1995): the frontmatter of a markdown agent does carry fields
+  (`mainAgent`, `subagent`, `hidden`, `inheritMcp`, `commandExecutionPolicy`, `inheritCustomizations`, `tools`; row 7b
+  has the context-inheritance one), but none names a model, and the CLI's own migration guide says to drop `model`; the
+  statement holds for the model only. Live semantics of `subagent` and `mainAgent` (issue #1867): both default to `true` when omitted;
+  `subagent: false` drops the agent from the parent's subagent listing and `invoke_subagent` refuses it, and
+  `mainAgent: false` makes `agy --agent <name>` exit with `unknown agent`
 
 ### 34 — Build-time resolution of a declared profile against the mapping in force
 
@@ -1656,18 +1835,22 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   the 22 core agent sources migrated onto `metadata.model:` by spec 0200 (`docs/agent-profile-migration.md`); a
   resolution never fails a build (spec 0197 R15), degrading a mapping's unreadable cells and a target's unserved axes to
   drop records on the build's diagnostic stream instead. Since spec 0200, each migrated source's compiled output
-  consequently carries: guidance prose naming the resolved alias on Claude Code and Antigravity CLI, a `model:` field on
-  Gemini CLI, and no change on GitHub Copilot CLI (beyond the `metadata.provenance.version` line every version bump
+  consequently carries: guidance prose naming the resolved alias on Antigravity CLI, a `model:` field on Claude Code
+  (since spec 0291; before it, the same guidance prose, which a `withheld` guard still produces) and on Gemini CLI, and
+  no change on GitHub Copilot CLI (beyond the `metadata.provenance.version` line every version bump
   reaches).
 - **Source of truth:** `scripts/lib/model-resolve.ts` (`resolveAgent`, modules in `scripts/lib/model-resolve/`),
   `scripts/build-components.ts` `buildAgents`, `scripts/check-agent-profiles.ts`
-- **Claude Code:** ✅ writes `effort:` (frontmatter), and `model:` only while the guard's state is `directed`; while
-  `withheld`, the model item is directed onto the compiled `description` instead (row 33's guard)
+- **Claude Code:** ✅ writes `model:` and `effort:` (frontmatter) while the guard's state is `directed`, which is its
+  recorded state since spec 0291 (Copilot CLI ≥ 1.0.109 verified, row 33); the sentence `Run this agent on the <model>
+  model.` is then not written, since the model has one carrier at a time. While `withheld`, or for a value outside the
+  `model:` key's domain, the model item is directed onto the compiled `description` instead (row 33's guard)
 - **Gemini CLI:** ✅ writes `model:`/`temperature:`/`max_turns:` (frontmatter) — re-probed live for Gemini CLI 0.46.0
   (issue #1116, spec 0198 R22) confirming those three keys are accepted; withholds `reasoning` and every tuning knob the
   mapping's out-of-band surface alone names
 - **Copilot CLI:** ⚠️ withholds every item — `model-mappings/copilot.yml` declares zero offerings (row 33), so
-  every declared axis and knob drops `unsupported-on-cli`
+  every declared axis and knob drops `unsupported-on-cli` in `.github/agents/`. A Copilot reader of `.claude/agents/`
+  meets the Claude `model:` there and treats it as advisory (row 33; the dotted-id question is issue #1877)
 - **Antigravity CLI:** ✅ writes the model item onto the compiled `description` alone (no frontmatter surface exists on
   this target, row 33); withholds every tuning knob the same way
 
@@ -1906,8 +2089,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   user data; a hook that does real work SHALL NOT ship on an unmeasured cell (spec 0258 R21). Owner of the obligation:
   spec 0258; the measurement, run on the maintainer's Windows machine with `scripts/probe-windows-hook-parsing.ts`, is
   tracked by issue #1601 and replaces this row. Parity: the four CLIs consume the same hook source
-  (`extensions/core/hello-world/hooks/*.ts`); the Copilot CLI installs only the `SKILL.md` of a skill, never its
-  `scripts/` (`scripts/lib/setup/tier-install.ts`), an existing asymmetry this spec records and does not change.
+  (`extensions/core/hello-world/hooks/*.ts`); the Copilot CLI user-scope install also places a skill's whole directory,
+  `scripts/` included (`scripts/lib/setup/tier-install.ts`, issue #1850, spec 0258 delta 03).
 - **Source of truth:** `extensions/core/hello-world/hooks/prompt-logger.ts`,
   `extensions/core/hello-world/hooks/shell-logger.ts`, `extension-skeleton/hook/hooks/logger.ts`,
   `scripts/tests/extension-hooks-differential.test.ts`, `scripts/probe-windows-hook-parsing.ts`
@@ -1930,7 +2113,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 ### 38 — Ticket-pickup ownership check
 
 - **Feature:** Ticket-pickup ownership check (spec 0244) — before any branch, spec id, or worktree for a ticket, the
-  agent runs one forge-agnostic tool that determines the owner from the forge assignment record (first taker since last
+  agent (through the `spec-author` skill's bundled `scripts/scaffold-spec.ts`, which wraps the pickup check and the id
+  reservation, and by hand before a delta-spec) runs one forge-agnostic tool that determines the owner from the forge assignment record (first taker since last
   free), self-assigns a free ticket, repairs displacements without ever emptying the set, and fails closed (exit codes
   `0`/`1`/`2`/`3`/`4`/`5`, `docs/ticket-ownership.md`). Parity is **uniform, not per-CLI**: the same command on every
   CLI, no hook, no CLI-exclusive primitive. Forge sub-note — GitHub: `gh api` timeline `assigned`/`unassigned` events,
@@ -1959,7 +2143,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   then `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ticket-pickup.ts --issue <N>` as two separate steps,
   never chained with `&&` — some CLIs' Windows shell is PowerShell 5.1, row 37) run through the CLI's shell tool;
   reached through `AGENTS.md` (row 7e entry points) and the compiled `spec-author` skill and agent
-  (`.agents/skills/spec-author/SKILL.md`, `.agents/agents/spec-author/AGENT.md`)
+  (`.agents/skills/spec-author/SKILL.md`, `.agents/agents/spec-author.md`)
 
 ### 39 — OS service management
 
@@ -2048,7 +2232,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   can load a named skill at start, so the AGENT.md sentence "read the skill once at the start" could be dropped for that
   CLI. **Evidence:** Claude Code documents subagent frontmatter `skills:` upstream (not observed in this session);
   Gemini CLI 0.28.2 validates local agent frontmatter with a strict schema in `agentLoader.js` (`name`, `description`,
-  `display_name`, `tools`, `model`, `temperature`, `max_turns`, `timeout_mins`) and `docs/core/subagents.md` never
+  `display_name`, `tools`, `model`, `temperature`, `max_turns`, `timeout_mins`; the `tools` key it admits is now emitted
+  from `metadata.tools`, row 4c, spec 0291) and `docs/core/subagents.md` never
   mentions skills; Copilot CLI and Antigravity CLI were not determined (the Copilot binary was not inspected,
   Antigravity CLI is not installed here). **Decision:** KEEP the instruction in every AGENT.md and emit no field, since
   a per-CLI conditional would need a new emitter mechanism, which spec 0269 excludes.
@@ -2098,10 +2283,36 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Copilot CLI:** ✅ native `git push` runs the hook; no CLI wiring
 - **Antigravity CLI:** ✅ native `git push` runs the hook; no CLI wiring
 
+### 46 — Worker and coordinator settings profiles
+
+- **Feature:** Worker and coordinator settings profiles (spec 0305, ADR-0025 O2, ticket #1988) — two committed settings
+  files that slim the fixed context of a worker session (denied harness tools, excluded personal rules, hidden web
+  agents and skills, bundled skills off), passed explicitly at launch and never applied to a user's own sessions.
+  Documented in [`docs/worker-profile.md`](worker-profile.md) and [`docs/claude-allowlist.md`](claude-allowlist.md).
+  **Decision:** Claude Code only in this change; the other three CLIs get no equivalent, with the ADR-0025 *CLI parity*
+  evidence recorded per cell. Evidence for Gemini CLI and Antigravity CLI is weaker than for Claude Code and Copilot CLI.
+- **Source of truth:** `artifacts/core/claude-profiles/`, `scripts/lib/setup/cli-claude.ts` (`rules.homeDirs` and the
+  `home-dirs` step, independent of the keep-existing-rules answer), `scripts/tests/claude-profiles.test.ts`
+- **Claude Code:** ✅ `~/.crewrig/claude-profiles/{worker,coordinator}.settings.json` installed by
+  `setup-claude-interactive.ts` (`install_dir`, link/copy duality); applied with `claude --settings <file>
+  --strict-mcp-config --mcp-config <json>`; nothing is written under `~/.claude/`. First-call input 73,071 → 41,548
+  (committed profile alone) and 37,433 with the adopter-local allowlist, on the owner's home
+- **Gemini CLI:** ⚠️ no equivalent shipped. `GEMINI_CLI_SYSTEM_SETTINGS_PATH` is read in `settings.js` (source reading
+  of 0.28.2), **not probed**; the probe was refused with `IneligibleTierError` (`UNSUPPORTED_CLIENT`, `free-tier`),
+  re-confirmed on 2026-11-15 for an individual free-tier account only (issue #1995; a paid, Workspace or API-key account
+  is untested). Rules are enrolled per file in `context.fileName` (row 7b). Follow-up F8 of ADR-0025
+- **Copilot CLI:** ⚠️ no equivalent shipped. `--no-custom-instructions` is all-or-nothing, AGENTS.md included
+  (49.0k → 22.6k, ADR-0025 probe C2); no per-file exclusion found. Follow-up F8
+- **Antigravity CLI:** ⚠️ no equivalent shipped, but a carrier exists. `agy -p` is authenticated now and `agy --settings`
+  takes settings.json keys, none of which excludes a rule (not found, not probed). `agy --agent <name>` with a
+  `mainAgent: true` agent that sets `inheritCustomizations: false` took a probe session from 15,074 to 3,900 first-call
+  input tokens (4,306 with worker tools), wholesale and workspace-scoped (issue #1995, row 7b; ADR-0025 appendix, probes
+  A4 and A4b). The worker agent itself is not shipped; follow-up proposed in the ADR appendix
+
 > **Cross-reference — CI-engine × capability axis (spec 0047, ADR-0012).** The
 > CI-engine × CI-capability axis is a *different* axis from the CLI × feature
 > matrix above and is self-documented by its own source of truth:
-> [`ci/ci-capabilities.yml`](../ci/ci-capabilities.yml), normatively described
+> [`ci/capabilities/`](../ci/capabilities/), normatively described
 > by [`docs/ci-reference-format.md`](ci-reference-format.md). This row is a
 > **voluntary cross-reference for discoverability**, not a triggered CLI-matrix
 > obligation — `ci/` does not appear on the *CLI Matrix Maintenance* literal
@@ -2110,7 +2321,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 >
 > **GitLab pipeline generator (spec 0048).** The GitLab pipeline is **derived**
 > from that reference, not hand-authored: `scripts/build-ci.ts` reads
-> `ci/ci-capabilities.yml` and emits one GitLab job per *portable* capability
+> `ci/capabilities/` and emits one GitLab job per *portable* capability
 > into [`.gitlab-ci.yml`](../.gitlab-ci.yml) at the repo root (job key ==
 > capability id; `requires:` → `image`/`before_script`/`GIT_DEPTH`; `env:` → `variables:`; `command:`
 > → `script:`). Engine-specific capabilities are skipped with no placeholder
@@ -2143,7 +2354,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 >
 > **CI execution speed (spec 0147).** The former monolithic `check-components`
 > capability (one job, ~85 sequential steps) is decomposed into focused,
-> parallel, changeset-gated capabilities in `ci/ci-capabilities.yml`, each with
+> parallel, changeset-gated capabilities in `ci/capabilities/`, each with
 > its own `paths:` trigger filter and a `changeset-gated: true` marker. On both
 > engines a job runs only when a changed file matches its `paths:` set (GitLab
 > `changes:`; GitHub Actions the `ci-job` runtime path gate, spec 0283 R6). Heavy
@@ -2156,7 +2367,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > `path-ownership` capability with no `paths:` filter runs
 > `scripts/check-path-ownership.ts` on every change on both engines (spec 0147
 > delta-01 R11-R20): it evaluates every tracked file, reads ownership from the
-> `pull-request` `paths:` sets of `ci/ci-capabilities.yml` at check time, and
+> `pull-request` `paths:` sets of `ci/capabilities/` at check time, and
 > fails closed when a file is neither owned nor listed in
 > `ci/path-ownership-exemptions.txt` (or the optional organization overlay
 > `ci/org/path-ownership-exemptions.txt`). It needs no base ref, so it replaces
@@ -2187,7 +2398,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > executed none. The runtime stray check moved into the job that already runs
 > each suite: every suite command is declared as
 > `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- bash scripts/tests/<suite>` (the form of that period, retired with the shell suites)
-> in `ci/ci-capabilities.yml`, in the hand-authored GitHub Actions steps and,
+> in `ci/capabilities/`, in the hand-authored GitHub Actions steps and,
 > through `scripts/build-ci.ts`, in `.gitlab-ci.yml`, so both engines run it
 > identically. `scripts/check-ci-parity.ts` unwraps only the generated
 > `--cache-dir` layer, so a missing scan on either engine is a parity failure,
@@ -2207,7 +2418,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 > the rows, their verdicts, and their evidence are unchanged.
 >
 > **Multi-runtime `requires.runtime` (spec 0242).** `requires.runtime` in
-> `ci/ci-capabilities.yml` now optionally accepts a list, not only a bare
+> `ci/capabilities/` now optionally accepts a list, not only a bare
 > scalar: a portable capability whose command genuinely needs more than one
 > language runtime declares each entry. The `mempalace` capability is the
 > first to do so (`requires.runtime: [python@3.12, node@24]`) because it
@@ -2239,6 +2450,31 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   silent routing failure of `github/copilot-cli#4437`. Empirical reproduction: probe run `20260902T153919Z-0aa9` of
   issue #1103, verdict `BUG-PRESENT`, plus the unknown BYOK lineup recorded in the live-verification research report
   (issue #1111 comment 5523492666). Spec 0197 R42 states the condition a later delta must meet to lift this.
+- [GAP-confirmation] Bring-your-own-key guard (row 33) — spec 0291 lifted the `copilot-shared-read` guard on a probe
+  of a standard GitHub-hosted account (Copilot CLI 1.0.109, issue #1851). It does not cover a bring-your-own-key provider,
+  where `github/copilot-cli#4437` was reported (Copilot 1.0.79, Ollama), nor an account on which Claude models are served.
+  The maintainer accepted the residual risk (spec 0291 R4); an adopter on such a provider re-withholds through
+  `model-mappings/claude.org.yml` (`docs/org-model-mapping-override.md`), and the rollback is `guard.state: withheld`
+  with `copilot-reader-fails-on-unserved-model` back to `holds: true`. Lifted by a probe on a bring-your-own-key
+  provider.
+- [GAP-confirmation] Antigravity CLI agent `tools` allowlist (row 4c) — lifted by spec 0291 delta 03 (issue #2049): the
+  build now writes a `tools` line for every Antigravity agent, mapped from `metadata.tools` or, when absent, the vendor's
+  all-tools line. Residual risk: the names are pinned to `agy` 1.5.9 (probed 2026-11-15). A renamed tool fails loudly at
+  agent start, but a name that becomes a silent no-op does not (`grep_search`, `find_by_name`, `list_dir` and
+  `read_url_content` already are), so the table must be re-probed on each Antigravity CLI bump; no automatic check exists.
+  `skill` has no Antigravity name and is dropped with a `tools-drop … no-equivalent-on-cli` record.
+- [GAP-confirmation] Copilot CLI agent `tools` names for `skill` and `message` (row 4c) — no Copilot name exists in
+  <https://docs.github.com/en/copilot/reference/custom-agents-configuration> (primary aliases `execute`, `read`,
+  `edit`, `search`, `agent`, `web`, `todo`) nor in <https://docs.github.com/en/copilot/concepts/agents/about-agent-skills>
+  (read 2026-11-14), which lists skill discovery paths and no allowlist name; no user-level, hook-level or
+  alternative-path mechanism was found. The build omits both with one `tools-drop … no-equivalent-on-cli` per agent and
+  fails when nothing else remains (spec 0291 delta 01 R29). Lifted by a documented name or a probe on a named ticket;
+  a name is not guessed.
+- [GAP-confirmation] Gemini CLI agent `tools` name for `message` (row 4c) — <https://geminicli.com/docs/reference/tools/>
+  lists no tool that sends a message to a parent agent (`complete_task` returns the result and ends the mission, so it is
+  not mapped) and <https://geminicli.com/docs/core/subagents/> (read 2026-11-14) states only that a subagent reports back
+  on completion. Omitted with one `tools-drop … no-equivalent-on-cli` per agent (spec 0291 delta 01 R29). Lifted by a
+  documented name or a probe on a named ticket.
 - [GAP] Antigravity CLI per-agent model frontmatter surface (row 33) — no per-agent `model:` field exists on this
   target; `model-mappings/antigravity.yml` states its declination on the guidance surface instead. Empirical
   reproduction: `agy --help`, `agy models`, `~/.gemini/antigravity-cli/settings.json`, and ten on-disk documentation
@@ -2329,7 +2565,7 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   library and the `mempalace` CLI (`wake-up`) but is **absent from the agent-facing MCP tool surface** on the installed **3.6.0**
   (pinned `>=3.6.0,<3.7`; re-verified 2026-07-20 against the live 36-tool surface, issue #566). Unlike the gaps above,
   this is **not** a cross-CLI asymmetry: all four CLIs share the one MCP surface (row 7d), so the gap is uniform across
-  them. The **MCP-only access** guard in `artifacts/core/rules/60-tools.md` forbids reaching it ad-hoc, and the
+  them. The **MCP-only access** guard in `artifacts/core/rules/60-memory.md` forbids reaching it ad-hoc, and the
   deterministic session-start sweep (that file's *Wake-up budget* stub; full figures in
   `docs/mempalace-wakeup-budget.md`) is its bounded substitute. Candidate follow-up: an upstream request to expose the
   wake-up through MCP (consent-gated, out of scope for spec 0069).
@@ -2357,7 +2593,7 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   `~/.gemini/agents/`, listed twice while its unique-named siblings at the same two roots were each listed once (`agy` 1.1.11,
   2026-08-11, two runs; `docs/runbooks/antigravity-discovery-probe.md`). The live instance is `harness-curator`, which
   after spec 0123 exists at `~/.gemini/agents/harness-curator.md` from the Gemini setup and
-  `~/.gemini/config/agents/harness-curator/AGENT.md` from the Antigravity setup. Both are the same crewrig component
+  `~/.gemini/config/agents/harness-curator.md` from the Antigravity setup (flat since spec 0053 delta-01). Both are the same crewrig component
   rendered for two CLIs, so either resolution yields the same agent and the only effect is a doubled line in the
   listing. Recorded rather than worked around: renaming a shipped component to dodge a vendor listing artifact would
   cost more than the artifact does.
@@ -2529,7 +2765,7 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   Antigravity CLI still reads its acknowledgement. A command wired directly to the `.ts` is not a shim: with Node.js
   downgraded after setup it fails with Node.js's own non-zero status and no `{}`, until setup is re-run on Node.js 24 or
   later (spec 0243 R30). Setup checks the floor only when it runs, and below it writes no direct form. Evidence: the
-  capability `mempalace-transcript-node-24-0` in `ci/ci-capabilities.yml`. Recovery: install Node.js 24 or later and
+  capability `mempalace-transcript-node-24-0` in `ci/capabilities/`. Recovery: install Node.js 24 or later and
   re-run setup.
 
 <!-- Validation backend gaps (spec 0080) -->
@@ -2649,6 +2885,36 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   cover it; it is attributed through the worktree/branch channel from the capturing process's cwd. Evidence and fixtures
   in row 44. Not an asymmetry of the keep-one-call kind: it fails only when the subagent runs outside a ticket worktree
   or branch, which the Pre-Edit Guard forbids for edits.
+
+- **[GAP, intentional] Antigravity compiled agent shape (rows 4, 28, 30, 38, spec 0053 delta-01, issue #1847).** All four
+  CLIs now compile an agent as a flat `<name>.md`. The remaining Antigravity asymmetries are intentional: the
+  `tools` line comes from `metadata.tools` or the vendor's all-tools default (spec 0291 delta 03; it was first not emitted
+  here, and no `claude.allowed-tools` name such as `Bash` is ever translated), no `model` field.
+  The change is documentation-driven.
+  Evidence: a live discovery probe of `agy` 1.5.5 on a case-sensitive file system discovered `AGENT.md`, `agent.md`,
+  `Agent.md` and the flat form, and an agent carrying unknown `enable_*` keys; runtime semantics were **not** verified
+  because no signed-in session was available. Left open then, each tracked by a follow-up issue opened separately from
+  this change: (1) the runtime effect of the removed `enable_write_tools`, `enable_mcp_tools` and
+  `enable_subagent_tools` keys (now verified, see below); (2) the vendor defaults of `tools`, `subagent` and
+  `mainAgent` (now verified, see below); (3) the Antigravity plugin layout for agents (now verified, see below).
+  **`enable_*` keys verified live** (`agy` 1.5.9, signed in, issue #1866): as agent frontmatter they have no effect.
+  `enable_write_tools: true` without `tools` still yields the 9-tool read-only default set, and `enable_write_tools: false` next to a `tools`
+  list removes nothing. The keys survive only as the `EnableWriteTools`, `EnableMCPTools` and `EnableSubagentTools`
+  parameters of the model-facing `define_subagent` tool, which defines a new subagent at run time. `invoke_subagent`
+  has no such parameter, so a parent cannot narrow the tools of a file-defined agent: invoked as a subagent, an agent
+  with an explicit `tools` list wrote a file and ran a command. `define_subagent` also refuses a name a file-defined
+  agent already holds (`agent "<name>" already exists`), so it cannot shadow one. The spec 0053 delta-01 R27 risk is
+  moot. **Defaults verified live** (`agy` 1.5.9, signed in, issue #1867, row 4c): an omitted `subagent` or `mainAgent`
+  leaves the agent usable as a subagent and
+  through `agy --agent`, and `false` removes it from that route. An omitted `tools` is **not** the documented `[]`: it
+  gives a 9-tool read-only default set with no `run_command` and no file edit or write tool, while an explicit
+  `tools: []` keeps only four always-present tools (MCP access and `manage_task`). Before spec 0291 delta 03 every
+  compiled Antigravity agent was therefore read-only, the committed `developer` agent included; that is closed: the
+  compiled agent now carries a `tools` line (row 4c).
+  **Plugin agent layout verified live** (`agy` 1.5.9, issue #1868): `agy plugin validate`, `install` and `agents`
+  discover a flat `agents/<name>.md`, `AGENT.md` and `agent.md`; a nested install carried sibling files; the vendor
+  plugin-migration guide in the binary prescribes `agents/<name>.md`; the plugin now emits `agents/<name>.md` (spec
+  0254 delta-02). Item (3) is closed.
 
 ## Adding a new CLI
 

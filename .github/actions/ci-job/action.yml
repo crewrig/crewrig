@@ -7,7 +7,7 @@ description: >-
   satisfiable. Logic is inline: the shell-allowlist ratchet forbids a new shell file.
 inputs:
   id:
-    description: Capability id in ci/ci-capabilities.yml.
+    description: Capability id in ci/capabilities/.
     required: true
   node:
     description: Node.js major version.

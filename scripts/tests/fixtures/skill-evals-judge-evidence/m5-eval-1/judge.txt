@@ -1,0 +1,4 @@
+1 VERDICT=PASS EVIDENCE="Support teams can obtain the list of widgets they are allowed to see as a CSV file that opens in a spreadsheet, through a new `widgets export` command, and can trust that a file at the requested path is always complete and usable."
+2 VERDICT=PASS EVIDENCE="7. When a file already exists at the `--out` path and the export fails, the command MUST leave that existing file unchanged."
+3 VERDICT=PASS EVIDENCE="### Failure path: service error mid-export - **Given** the widgets service fails after part of the list has been retrieved - **When** the caller runs `widgets export --out widgets.csv`"
+4 VERDICT=PASS EVIDENCE="The only columns are `id,name,owner,created_at` and the only option is `--out`, both from the ticket. The out-of-scope list states 'Extra columns, column selection, filtering, sorting or date-range options.'"

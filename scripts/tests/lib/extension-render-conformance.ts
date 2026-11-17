@@ -52,7 +52,7 @@ export const EXPECTED_ANTIGRAVITY: readonly string[] = [
   "rules/AGENTS.md",
   "skills/greeter/SKILL.md",
   "skills/hello/SKILL.md",
-  "agents/reference-guide/AGENT.md",
+  "agents/reference-guide.md",
   "hooks.json",
   "hooks/prompt-logger.ts",
   "hooks/shell-logger.ts",

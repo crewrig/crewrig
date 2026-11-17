@@ -2,7 +2,7 @@
 
 <!-- crewrig-doc: published=false -->
 
-<!-- Extracted verbatim from artifacts/core/rules/60-tools.md lines 294-315. Cross-references to other sections refer to that file. -->
+<!-- Extracted verbatim from artifacts/core/rules/60-memory.md (formerly lines 294-315 of 60-tools.md). Cross-references to other sections refer to that file. -->
 
 **Why not `mempalace_search` without a wing filter?** The `transcripts`
 wing typically contains thousands of raw transcript drawers, many

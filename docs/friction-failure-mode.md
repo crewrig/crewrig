@@ -2,7 +2,7 @@
 
 <!-- crewrig-doc: published=false -->
 
-<!-- Extracted verbatim from artifacts/core/rules/60-tools.md lines 501-524. Cross-references to other sections refer to that file. -->
+<!-- Expands the paragraph on the documented failure mode in the section "How to tag — the `harness-report` skill" of artifacts/core/rules/60-tools.md. Cross-references to other sections refer to that file. -->
 
 The fire-and-forget tag has one **documented failure mode**: the
 MemPalace write path may be unavailable — a peer holds the write lock

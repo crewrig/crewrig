@@ -1,0 +1,5 @@
+{
+  "status": 1,
+  "stdout": "{\"ok\":false,\"data\":{\"files\":[\"wfs/a.yml\"],\"violations\":0},\"findings\":[{\"rule\":\"internal-error\",\"message\":\"EACCES: permission denied, open 'wfs/a.yml'\"}]}\n",
+  "stderr": "check-pinned-actions.ts: EACCES: permission denied, open 'wfs/a.yml'\n"
+}

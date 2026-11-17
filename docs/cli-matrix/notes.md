@@ -3,7 +3,7 @@
 > **Cross-reference — CI-engine × capability axis (spec 0047, ADR-0012).** The
 > CI-engine × CI-capability axis is a *different* axis from the CLI × feature
 > matrix above and is self-documented by its own source of truth:
-> [`ci/ci-capabilities.yml`](../../ci/ci-capabilities.yml), normatively described
+> [`ci/capabilities/`](../../ci/capabilities/), normatively described
 > by [`docs/ci-reference-format.md`](../ci-reference-format.md). This row is a
 > **voluntary cross-reference for discoverability**, not a triggered CLI-matrix
 > obligation — `ci/` does not appear on the *CLI Matrix Maintenance* literal
@@ -12,7 +12,7 @@
 >
 > **GitLab pipeline generator (spec 0048).** The GitLab pipeline is **derived**
 > from that reference, not hand-authored: `scripts/build-ci.ts` reads
-> `ci/ci-capabilities.yml` and emits one GitLab job per *portable* capability
+> `ci/capabilities/` and emits one GitLab job per *portable* capability
 > into [`.gitlab-ci.yml`](../../.gitlab-ci.yml) at the repo root (job key ==
 > capability id; `requires:` → `image`/`before_script`/`GIT_DEPTH`; `env:` → `variables:`; `command:`
 > → `script:`). Engine-specific capabilities are skipped with no placeholder
@@ -45,7 +45,7 @@
 >
 > **CI execution speed (spec 0147).** The former monolithic `check-components`
 > capability (one job, ~85 sequential steps) is decomposed into focused,
-> parallel, changeset-gated capabilities in `ci/ci-capabilities.yml`, each with
+> parallel, changeset-gated capabilities in `ci/capabilities/`, each with
 > its own `paths:` trigger filter and a `changeset-gated: true` marker. On both
 > engines a job runs only when a changed file matches its `paths:` set (GitLab
 > `changes:`; GitHub Actions the `ci-job` runtime path gate, spec 0283 R6). Heavy
@@ -58,7 +58,7 @@
 > `path-ownership` capability with no `paths:` filter runs
 > `scripts/check-path-ownership.ts` on every change on both engines (spec 0147
 > delta-01 R11-R20): it evaluates every tracked file, reads ownership from the
-> `pull-request` `paths:` sets of `ci/ci-capabilities.yml` at check time, and
+> `pull-request` `paths:` sets of `ci/capabilities/` at check time, and
 > fails closed when a file is neither owned nor listed in
 > `ci/path-ownership-exemptions.txt` (or the optional organization overlay
 > `ci/org/path-ownership-exemptions.txt`). It needs no base ref, so it replaces
@@ -89,7 +89,7 @@
 > executed none. The runtime stray check moved into the job that already runs
 > each suite: every suite command is declared as
 > `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- bash scripts/tests/<suite>` (the form of that period, retired with the shell suites)
-> in `ci/ci-capabilities.yml`, in the hand-authored GitHub Actions steps and,
+> in `ci/capabilities/`, in the hand-authored GitHub Actions steps and,
 > through `scripts/build-ci.ts`, in `.gitlab-ci.yml`, so both engines run it
 > identically. `scripts/check-ci-parity.ts` unwraps only the generated
 > `--cache-dir` layer, so a missing scan on either engine is a parity failure,
@@ -109,7 +109,7 @@
 > the rows, their verdicts, and their evidence are unchanged.
 >
 > **Multi-runtime `requires.runtime` (spec 0242).** `requires.runtime` in
-> `ci/ci-capabilities.yml` now optionally accepts a list, not only a bare
+> `ci/capabilities/` now optionally accepts a list, not only a bare
 > scalar: a portable capability whose command genuinely needs more than one
 > language runtime declares each entry. The `mempalace` capability is the
 > first to do so (`requires.runtime: [python@3.12, node@24]`) because it

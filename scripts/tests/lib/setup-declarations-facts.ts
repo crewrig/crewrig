@@ -217,6 +217,9 @@ export function declarationFacts(d: SetupDescriptor): Fact[] {
     f.push([`rules.shared.${i + 1}`, `${file.src} -> ${place(file.dest)}${optional}`]);
   });
   f.push(["rules.store", `${d.rules.store.src} -> ${place(d.rules.store.dest)}`]);
+  (d.rules.homeDirs ?? []).forEach((dir, i) => {
+    f.push([`rules.home-dir.${i + 1}`, `${dir.src} -> ${home(dir.dest)}`]);
+  });
   f.push(["rules.pick-order", d.rules.pickOrder.join(",")]);
   for (const kind of d.rules.pickOrder) {
     const file = d.rules.selections[kind];

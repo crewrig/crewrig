@@ -1,0 +1,298 @@
+# CI capabilities: standalone, part usage (format: docs/ci-reference-format.md, spec 0309).
+capabilities:
+
+  # usage-record-schema validates the usage record contract (spec 0205). Deliberately NOT changeset-gated (node@22 rule,
+  # see `changeset-coverage`): the fail-safe job (ci-changeset-coverage.ts) provisions python@3.12 + yq + node@24.
+  - id: usage-record-schema
+    name: "Validate usage record schema and fixtures"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "schemas/**"
+      - "scripts/lib/usage-record-validator.js"
+      - "scripts/tests/usage-record-schema.test.ts"
+      - "scripts/tests/fixtures/usage-records/**"
+      - "package.json"
+      - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - npm install
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-record-schema.test.ts
+
+  # usage-capture validates the spec 0206 capture-adapter module tree and the spec 0211 per-CLI usage-capture opt-in
+  # (scripts/usage-capture-optin.ts). NOT changeset-gated, as usage-record-schema above.
+  - id: usage-capture
+    name: "Validate usage capture adapters and fixtures"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "hooks/claude-transcript-hooks.json"
+      - "hooks/gemini-transcript-hooks.json"
+      - "hooks/copilot-transcript-hooks.json"
+      - "scripts/lib/usage-capture/**"
+      - "scripts/usage-backfill.ts"
+      - "scripts/tests/e2e-usage-headless.test.ts"
+      - "scripts/tests/fixtures/usage-capture/**"
+      - "hooks/claude-usage-capture-hooks.json"
+      - "hooks/gemini-usage-capture-hooks.json"
+      - "hooks/copilot-usage-capture-hooks.json"
+      - "scripts/usage-capture-optin.ts"
+      - "scripts/setup-claude-interactive.ts"
+      - "scripts/setup-gemini-interactive.ts"
+      - "scripts/setup-copilot-interactive.ts"
+      - "scripts/tests/usage-capture-optin-*.test.ts"
+      - "scripts/tests/lib/optin-*.ts"
+      - "scripts/tests/fixtures/setup-usage-capture/**"
+      - "hooks/usage-capture.ts"
+      - "hooks/antigravity-statusline-shim.ts"
+      - "hooks/worktree-git-guard.ts"
+      - "scripts/lib/hook-*.ts"
+      - "scripts/hook-wiring.ts"
+      - "scripts/check-timing-budget.ts"
+      - "scripts/setup-antigravity-interactive.ts"
+      - "scripts/tests/antigravity-statusline-shim.test.ts"
+      - "scripts/tests/setup-transcript-antigravity-*.test.ts"
+      - "scripts/tests/mempalace-transcript-antigravity-payload.test.ts"
+      - "scripts/tests/lib/antigravity-transcript-rig.ts"
+      - "scripts/tests/hook-*"
+      - "scripts/tests/lib/hook-*"
+      - "scripts/tests/usage-capture-*"
+      - "scripts/tests/lib/usage-capture-*"
+      - "docs/cli-matrix.md"
+      - "docs/cli-matrix/**"
+      - "scripts/build-cli-matrix.ts"
+      - "scripts/lib/build-cli-matrix/**"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/setup-*-interactive.ts"
+      - "scripts/tests/setup-retarget-*.test.ts"
+      - "scripts/tests/lib/setup-*.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/tests/lib/hermetic-env.ts"
+      - "scripts/tests/lib/real-home-guard.ts"
+      - "scripts/tests/lib/print-setup-declarations.ts"
+      - "scripts/tests/fixtures/setup-golden/**"
+      - "scripts/tests/fixtures/setup-declarations/**"
+      - "scripts/lib/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq]
+    command:
+      - npm install
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/e2e-usage-headless.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/antigravity-statusline-shim.test.ts scripts/tests/hook-*.test.ts scripts/tests/usage-capture-*.test.ts
+
+  # usage-storage validates the usage-record storage contract (spec 0207): the journal write path, wing derivation,
+  # drain/sweep, mirror gating and catch-up against a fake daemon, and the ajv-precompiled standalone validator's own
+  # drift gate. NOT changeset-gated, as usage-record-schema above (node@22 rule).
+  - id: usage-storage
+    name: "Validate the usage-record storage contract"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/usage-store/**"
+      - "scripts/usage-query.ts"
+      - "scripts/usage-prune.ts"
+      - "scripts/usage-mirror.ts"
+      - "scripts/usage-inventory.ts"
+      - "scripts/usage-drain.ts"
+      - "scripts/usage-task.ts"
+      - "scripts/usage-attribute.ts"
+      - "scripts/usage-backfill.ts"
+      - "scripts/build-usage-validator.js"
+      - "scripts/tests/usage-mirror-catchup.test.ts"
+      - "scripts/tests/usage-mirror-prune.test.ts"
+      - "scripts/tests/usage-mirror-failures.test.ts"
+      - "scripts/tests/usage-mirror-mutants.test.ts"
+      - "scripts/tests/lib/usage-mirror-rig.ts"
+      - "scripts/tests/lib/usage-mirror-records.ts"
+      - "scripts/tests/lib/usage-mirror-backlog.ts"
+      - "scripts/tests/usage-storage-journal.test.ts"
+      - "scripts/tests/usage-storage-query.test.ts"
+      - "scripts/tests/usage-storage-gate.test.ts"
+      - "scripts/tests/usage-mirror-spawn.test.ts"
+      - "scripts/tests/usage-storage-wing.test.ts"
+      - "scripts/tests/usage-storage-drain.test.ts"
+      - "scripts/tests/usage-storage-prune.test.ts"
+      - "scripts/tests/lib/usage-storage-rig.ts"
+      - "scripts/tests/lib/usage-storage-driver.ts"
+      - "scripts/tests/lib/usage-mutants.ts"
+      - "scripts/tests/lib/mutation-copy.ts"
+      - "scripts/tests/lib/capability.ts"
+      - "scripts/tests/usage-inventory.test.ts"
+      - "scripts/lib/usage-wrapper.ts"
+      - "scripts/tests/usage-wrappers-oracle.test.ts"
+      - "scripts/tests/usage-wrappers.test.ts"
+      - "scripts/tests/hermetic-env.test.ts"
+      - "scripts/tests/lib/hermetic-env.ts"
+      - "scripts/tests/fixtures/usage-storage/**"
+      - "schemas/**"
+      - "package.json"
+      - "package-lock.json"
+      - "docs/usage-storage.md"
+      - "docs/usage-organization.md"
+    portability: portable
+    requires:
+      # node@24 (bumped from node@22): scripts/usage-inventory.ts and its test run directly from .ts source via Node's built-in
+      # type stripping (spec 0238), which requires Node >= 24 — see DEVELOPMENT.md, "TypeScript toolchain and ratchet". Kept
+      # its own id, distinct from the `ratchet`/`lint-typescript` capabilities (spec 0238 R1-R8): this capability validates the
+      # usage-record storage contract, and a plain `node --test` on .ts sources needs no `tsc`/Oxlint/Oxfmt nor an extra `npm ci`.
+      runtime: node@24
+    command:
+      - npm install
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-storage-journal.test.ts scripts/tests/usage-storage-query.test.ts scripts/tests/usage-storage-gate.test.ts scripts/tests/usage-mirror-spawn.test.ts scripts/tests/usage-storage-wing.test.ts scripts/tests/usage-storage-drain.test.ts scripts/tests/usage-storage-prune.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-mirror-catchup.test.ts scripts/tests/usage-mirror-prune.test.ts scripts/tests/usage-mirror-failures.test.ts scripts/tests/usage-mirror-mutants.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-inventory.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-wrappers-oracle.test.ts scripts/tests/usage-wrappers.test.ts scripts/tests/hermetic-env.test.ts
+      - node scripts/build-usage-validator.js --check
+
+  # usage-attribution validates spec 0208's declaration channels, attribution ledger and per-fidelity rollups, and the
+  # registered-derived-store prune reach (spec 0207 delta-01 R28/R33). NOT changeset-gated, as usage-storage above. The
+  # capture tree is in the paths filter because the resolution point is scripts/lib/usage-capture/index.js and the
+  # backfill's no-channel rule is backfill.js: without it, an edit dropping the resolveAttribution() call would leave
+  # usage-capture, usage-storage and the attribution suite all green or unrun.
+  - id: usage-attribution
+    name: "Validate the usage-attribution declaration channels and ledger"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/usage-store/**"
+      - "scripts/lib/usage-capture/**"
+      - "scripts/usage-task.ts"
+      - "scripts/usage-attribute.ts"
+      - "scripts/tests/usage-attribution-channels.test.ts"
+      - "scripts/tests/usage-attribution-ledger-rollup.test.ts"
+      - "scripts/tests/usage-attribution-period-rollup.test.ts"
+      - "scripts/tests/usage-attribution-prune.test.ts"
+      - "scripts/tests/usage-attribution-mutations.test.ts"
+      - "scripts/tests/lib/usage-attribution-rig.ts"
+      - "scripts/tests/lib/usage-attribution-driver.ts"
+      - "scripts/tests/lib/usage-attribution-prune-rig.ts"
+      - "scripts/tests/lib/usage-mutants.ts"
+      - "scripts/tests/lib/mutation-copy.ts"
+      - "scripts/tests/lib/capability.ts"
+      - "scripts/tests/fixtures/usage-attribution/**"
+      - "docs/usage-attribution.md"
+      - "schemas/**"
+      - "package.json"
+      - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - npm install
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-attribution-channels.test.ts scripts/tests/usage-attribution-ledger-rollup.test.ts scripts/tests/usage-attribution-period-rollup.test.ts scripts/tests/usage-attribution-prune.test.ts scripts/tests/usage-attribution-mutations.test.ts
+
+  # usage-pricing validates spec 0209's comparative pricing engine, including the R37 registered-derived-store prune reach
+  # (the two-store case delta-01 R33 requires). Fully offline: a hand-built ~14-entry fixture price list, never the real
+  # 2.9 MB snapshot. NOT changeset-gated, as usage-storage above. The usage-store tree is in the paths filter because step
+  # 9 of the plan puts both halves of the R37 mechanism there: without it, a changeset touching only one would not run the
+  # suite that owns the R37 assertion. The usage-dashboard tree and entry script (cases 17 and 19) and the three
+  # usage-store entry scripts (usage-attribute.ts, usage-prune.ts, usage-query.ts; R37 prune cases 14 and 15, case 17,
+  # case 19) are in the paths filter because the suite runs them.
+  - id: usage-pricing
+    name: "Validate the usage-pricing model-id resolution, arithmetic, and prune reach"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/usage-price/**"
+      - "scripts/usage-price.ts"
+      - "scripts/tests/usage-pricing-compute.test.ts"
+      - "scripts/tests/usage-pricing-fx.test.ts"
+      - "scripts/tests/usage-pricing-rollup.test.ts"
+      - "scripts/tests/usage-pricing-rollup-period.test.ts"
+      - "scripts/tests/usage-pricing-prune.test.ts"
+      - "scripts/tests/usage-pricing-static.test.ts"
+      - "scripts/tests/usage-pricing-conversion.test.ts"
+      - "scripts/tests/usage-pricing-conversion-b.test.ts"
+      - "scripts/tests/lib/usage-pricing-rig.ts"
+      - "scripts/tests/lib/usage-pricing-driver.ts"
+      - "scripts/tests/lib/usage-pricing-case-kit.ts"
+      - "scripts/tests/lib/usage-pricing-conversion-world.ts"
+      - "scripts/tests/fixtures/usage-pricing/**"
+      - "model-prices.org.json"
+      - "scripts/lib/usage-store/**"
+      - "scripts/usage-attribute.ts"
+      - "scripts/usage-prune.ts"
+      - "scripts/usage-query.ts"
+      - "scripts/lib/usage-dashboard/**"
+      - "scripts/usage-dashboard.ts"
+      - "package.json"
+      - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - npm install
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-pricing-compute.test.ts scripts/tests/usage-pricing-fx.test.ts scripts/tests/usage-pricing-rollup.test.ts scripts/tests/usage-pricing-rollup-period.test.ts scripts/tests/usage-pricing-prune.test.ts scripts/tests/usage-pricing-static.test.ts scripts/tests/usage-pricing-conversion.test.ts scripts/tests/usage-pricing-conversion-b.test.ts
+
+  # usage-dashboard is spec 0210's three-form agreement, injection and loopback-bind suite (PLAN v2 steps 13-15). Fully
+  # offline, reusing the usage-pricing fixture price list. NOT changeset-gated, as usage-pricing above. The usage-store
+  # and usage-price trees and model-prices.org.json are in the paths filter because the view model reads through both, so
+  # a change to either can shift a dashboard figure.
+  - id: usage-dashboard
+    name: "Validate the usage dashboard's three delivery forms, injection safety, and loopback bind"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/usage-dashboard/**"
+      - "scripts/usage-dashboard.ts"
+      - "scripts/tests/usage-dashboard-agreement.test.ts"
+      - "scripts/tests/usage-dashboard-crosscheck.test.ts"
+      - "scripts/tests/usage-dashboard-buckets.test.ts"
+      - "scripts/tests/usage-dashboard-render.test.ts"
+      - "scripts/tests/usage-dashboard-empty.test.ts"
+      - "scripts/tests/usage-dashboard-page.test.ts"
+      - "scripts/tests/usage-dashboard-static.test.ts"
+      - "scripts/tests/usage-dashboard-home-marker.test.ts"
+      - "scripts/tests/usage-dashboard-server.test.ts"
+      - "scripts/tests/usage-dashboard-readonly.test.ts"
+      - "scripts/tests/usage-dashboard-mutations.test.ts"
+      - "scripts/tests/lib/usage-dashboard-rig.ts"
+      - "scripts/tests/lib/usage-dashboard-serve.ts"
+      - "scripts/tests/lib/usage-dashboard-views.ts"
+      - "scripts/tests/lib/usage-dashboard-checks.ts"
+      - "scripts/tests/lib/usage-dashboard-cells.ts"
+      - "scripts/tests/lib/usage-dashboard-text.ts"
+      - "scripts/tests/lib/usage-dashboard-mutate.ts"
+      - "scripts/tests/lib/mutation-copy.ts"
+      - "scripts/tests/lib/capability.ts"
+      - "scripts/tests/fixtures/usage-dashboard/**"
+      - "scripts/tests/fixtures/usage-pricing/**"
+      - "model-prices.org.json"
+      - "scripts/lib/usage-store/**"
+      - "scripts/lib/usage-price/**"
+      - "scripts/usage-query.ts"
+      - "scripts/usage-price.ts"
+      - "scripts/usage-attribute.ts"
+      - "scripts/usage-prune.ts"
+      - "schemas/usage-record/**"
+      - "package.json"
+      - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - npm install
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/usage-dashboard-agreement.test.ts scripts/tests/usage-dashboard-crosscheck.test.ts scripts/tests/usage-dashboard-buckets.test.ts scripts/tests/usage-dashboard-render.test.ts scripts/tests/usage-dashboard-empty.test.ts scripts/tests/usage-dashboard-page.test.ts scripts/tests/usage-dashboard-static.test.ts scripts/tests/usage-dashboard-home-marker.test.ts scripts/tests/usage-dashboard-server.test.ts scripts/tests/usage-dashboard-readonly.test.ts scripts/tests/usage-dashboard-mutations.test.ts

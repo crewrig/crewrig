@@ -24,6 +24,26 @@ permissions:
   actions: write
 
 jobs:
+  # Spec 0287 delta-02 R22-R24: classify the pull request as spec-only. A top-level job with its own
+  # `run:` step and no ci-job, so a failure never runs cancel-on-failure; no `needs`, no `if:`, no
+  # `continue-on-error`. `windows` reads its output (fail open: a failed pr-scope runs Windows).
+  pr-scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      spec-only: ${{ steps.scope.outputs.spec-only }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - id: scope
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-pr-scope.ts
+
   gate:
     uses: ./.github/workflows/_ci-gate.yml
 
@@ -74,5 +94,8 @@ jobs:
     needs: [gate, ratchet, lint-typescript]
     uses: ./.github/workflows/_ci-integration.yml
 
+  # Delta-02 R23 and D4: skipped only for a pull request whose pr-scope succeeded with spec-only true.
   windows:
+    needs: [pr-scope]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.pr-scope.result != 'success' || needs.pr-scope.outputs.spec-only != 'true') }}
     uses: ./.github/workflows/_ci-windows.yml

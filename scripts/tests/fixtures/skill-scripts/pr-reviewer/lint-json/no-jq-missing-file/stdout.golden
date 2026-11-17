@@ -1,2 +1,1 @@
-lint-json: jq not found — skipping JSON parse validation.
-missing.json: not a regular file
+missing.json: not a readable regular file

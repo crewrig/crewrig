@@ -1,6 +1,6 @@
 // tools.ts — the coverage-tools guard of the exhaustive run (spec 0147 delta-02 R25, R28-R30;
 // delta-03 R35, R36). Every tool required by a `changeset-gated: true` capability of
-// ci/ci-capabilities.yml must also be required by `changeset-coverage`, the capability that runs
+// ci/capabilities/ must also be required by `changeset-coverage`, the capability that runs
 // them all; and every gated capability's `requires.install` must rank no higher than the install
 // `changeset-coverage` performs (`none` < `omit-dev` < `install` = `ci`; any other value ranks
 // above all of them, so the guard fails closed). The performed install is the last

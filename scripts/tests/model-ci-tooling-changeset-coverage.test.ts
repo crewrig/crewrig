@@ -14,6 +14,7 @@ import {
   type DiffCase,
   type SideCtx,
 } from "./lib/bash-suite-differential.ts";
+import { writeReferenceDir } from "./lib/ci-reference-fixtures.ts";
 
 const posix = process.platform === "win32" ? { skip: "shell legs need bash" } : {};
 const CASE: DiffCase = { script: "scripts/ci-changeset-coverage.ts" };
@@ -62,7 +63,7 @@ function agree(
 ) {
   shared ??= createDifferential(CASE);
   for (const ctx of Object.values(shared.ctx)) {
-    if (reference !== null) put(ctx, "ci/ci-capabilities.yml", reference);
+    if (reference !== null) writeReferenceDir(ctx.root, reference);
     extra?.(ctx);
   }
   const r = shared.run({ ...CASE, ...c });
@@ -70,14 +71,10 @@ function agree(
 }
 
 describe("ci-changeset-coverage twin: TS-only (spec 0262 delta-02 (g))", () => {
-  test("an unparseable reference prints one Error line and exits 1", () => {
+  test("an unparseable reference prints the reader's FAILED block and exits 1", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "model-ci-tooling-cov-"));
     try {
-      fs.mkdirSync(path.join(root, "ci"));
-      fs.writeFileSync(
-        path.join(root, "ci", "ci-capabilities.yml"),
-        "capabilities: [unclosed\n  - x: : :\n",
-      );
+      writeReferenceDir(root, "capabilities: [unclosed\n  - x: : :\n");
       const r = spawnSync(
         process.execPath,
         [
@@ -90,7 +87,11 @@ describe("ci-changeset-coverage twin: TS-only (spec 0262 delta-02 (g))", () => {
         },
       );
       assert.equal(r.status, 1);
-      assert.match(r.stderr, /^Error: .*ci-capabilities\.yml: [^\n]+\n$/);
+      assert.match(
+        r.stderr,
+        /^FAILED: 1 reference-validity violation\(s\) in .*ci\/capabilities\/:\n/,
+      );
+      assert.match(r.stderr, /\n {2}- ci\/capabilities\/gate\.yml: not valid reference content: /);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

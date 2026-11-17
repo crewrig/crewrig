@@ -53,7 +53,8 @@ to form the agent's full context:
 | 30 | `config/PROFILE.md` | Personal information |
 | 40 | `config/expertise/<ROLE>.md` | Technical specialization |
 | 50 | `config/teams/<TEAM>.md` | Team practices and norms |
-| 60 | `artifacts/core/rules/60-tools.md` | Memory architecture and core tool rules |
+| 60 | `artifacts/core/rules/60-memory.md` | Memory architecture and orchestrator memory protocol (excluded from Claude Code workers) |
+| 60 | `artifacts/core/rules/60-tools.md` | Core tool rules and the memory obligations that bind every agent |
 | 65 | `config/TOOLS.md` | Organization-specific tool guidelines |
 
 **Gemini CLI** loads these via numeric-prefix files in `~/.gemini/` with
@@ -446,10 +447,10 @@ artifacts/
 │   │   ├── pr-logbook/    # Lifecycle: PR and logbook composer
 │   │   ├── pr-reviewer/   # Lifecycle: independent PR reviewer + linters
 │   │   │   └── scripts/   # lint-markdown.ts, lint-skill.ts, ...
-│   │   └── # … 10 role skills (architect, astro, copywriting, developer, doc-writer,
-│   │       # frontend, github-actions, security, tester, web-tester)
+│   │   └── # … 6 role skills (architect, developer, doc-writer, github-actions,
+│   │       # security, tester); astro, copywriting, frontend and web-tester live in the library tier
 │   └── agents/            # Sub-agent definitions (lifecycle + role agents)
-│       └── # … spec-author, pr-logbook, pr-reviewer, architect + 17 role agents
+│       └── # … spec-author, pr-logbook, pr-reviewer, architect + 7 role agents; the 11 web and SEO agents live in the library tier
 ├── library/               # Upstream-owned harness machinery (user-home scope)
 │   ├── skills/
 │   │   ├── harness-report/    # Skill: tag frictions during real work

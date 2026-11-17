@@ -1,0 +1,317 @@
+# CI capabilities: group modules, part other (format: docs/ci-reference-format.md, spec 0309).
+capabilities:
+
+  # Spec 0250 R27, R28 (issue #1332): the TypeScript component-build core, its library twins and their node --test suites.
+  # `paths:` lists every entry literally (only `*` and `**`, per scripts/lib/glob-engine.ts). Needs yq: the parity suites
+  # drive the shell build. The install is the production command of spec 0240 R4, so suites are NAMED, not globbed, to
+  # keep the dev-toolchain suite (build-components-built-trees.test.ts, run in `lint-typescript`) out. The conformance,
+  # differential and YAML corpus suites spawn `bash` and `yq` and retire with the shell script (PR D).
+  - id: build-components-ts
+    group: modules
+    name: "Run the TypeScript component-build core and shared library twin suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/build-components.*"
+      - "scripts/lib/build-components/**"
+      - "artifacts/core/fragments/**"
+      - "scripts/lib/skill-citations/**"
+      - "scripts/lib/render-command.ts"
+      - "scripts/lib/component-resolve.ts"
+      - "scripts/lib/model-resolve.ts"
+      - "scripts/lib/yaml-text.ts"
+      - "scripts/lib/escape-control.ts"
+      - "scripts/lib/line-endings.ts"
+      - "scripts/lib/paths.ts"
+      - "scripts/lib/tmp-file.ts"
+      - "scripts/lib/require-dependency.ts"
+      - "scripts/lib/node-floor-guard.js"
+      - "scripts/lib/model-resolve/**"
+      - "scripts/tests/build-components-*.test.ts"
+      - "scripts/tests/build-sandbox.test.ts"
+      - "scripts/tests/repo-agent-frontmatter.test.ts"
+      - "scripts/tests/lib/build-sandbox.ts"
+      - "scripts/tests/yaml-text.test.ts"
+      - "scripts/tests/render-command.test.ts"
+      - "scripts/tests/component-resolve.test.ts"
+      - "scripts/tests/model-resolve-*.test.ts"
+      - "scripts/tests/lib/yaml-lib.ts"
+      - "scripts/tests/lib/shell-resolve-harness.ts"
+      - "scripts/tests/lib/mapping-fixtures.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/tests/lib/windows-build-proof.ts"
+      - "scripts/tests/lib/shim-env.ts"
+      - "scripts/tests/fixtures/build-components/**"
+      - "artifacts/**"
+      - "model-mappings/**"
+      - "tests/fixtures/**"
+      - "crewrig.config.toml"
+      - "package.json"
+      - "package-lock.json"
+      - ".agents/agents/**"
+      - ".agents/skills/**"
+      - ".claude/agents/**"
+      - ".claude/skills/**"
+      - ".gemini/agents/**"
+      - ".gemini/commands/**"
+      - ".gemini/skills/**"
+      - ".github/agents/**"
+      - ".github/skills/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [yq, task]
+      install: omit-dev
+    command:
+      - task ci:build-components-ts
+
+  # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24 release, where type stripping still emits an
+  # ExperimentalWarning. No `paths:` filter, like mempalace-transcript-node-24-0 below: any shared-module change can
+  # reintroduce a warning. The production install comes first, as the entry-form suite runs a build that loads js-yaml.
+  - id: build-components-ts-node-24-0
+    group: modules
+    name: "Component build entry is silent on Node.js 24.0.0"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24.0.0
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/build-components-entry-form.test.ts
+
+  # Spec 0254 R22, R27: the TypeScript extension and plugin builder modules, entries and twin suites (row G1b of epic
+  # #1231). `jq`, `yq` and `bash` are spawned on purpose by suites that retire with the shell scripts (PR D, rows I1, J3,
+  # J4); `yq` stays declared until the differential test is deleted (plan v1-F2). The install carries the dev
+  # dependencies: the scaffold toolchain test (spec 0258 requirement 26) fails, rather than skips, when CI is set and tsc,
+  # Oxlint or Oxfmt is absent.
+  - id: extension-builders-ts
+    group: modules
+    name: "Run the TypeScript extension and plugin builder suites, the golden proof and the real-tree check"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/lib/extension/**"
+      - "scripts/lib/org-mcp.ts"
+      - "scripts/build-extension.*"
+      - "scripts/build-claude-plugin.*"
+      - "scripts/build-copilot-plugin.*"
+      - "scripts/build-antigravity-extension.*"
+      - "scripts/migrate-extension.*"
+      - "scripts/lib/extension-*.json"
+      - "scripts/lib/render-command.ts"
+      - "scripts/lib/yaml-text.ts"
+      - "scripts/lib/line-endings.ts"
+      - "scripts/lib/paths.ts"
+      - "scripts/lib/tmp-file.ts"
+      - "scripts/lib/glob-engine.ts"
+      - "scripts/lib/require-dependency.ts"
+      - "scripts/lib/node-floor-guard.js"
+      - "scripts/tests/extension-*.test.ts"
+      - "scripts/tests/lib/extension-*.ts"
+      - "scripts/tests/lib/shell-extension-harness.ts"
+      - "scripts/tests/lib/plugin-ctx.ts"
+      - "scripts/tests/lib/windows-extension-proof.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/tests/fixtures/extension-golden/**"
+      - "scripts/tests/fixtures/extension-hooks/**"
+      - "scripts/create-extension.ts"
+      - "scripts/lib/create-extension/**"
+      - "scripts/tests/create-extension-*"
+      - "scripts/tests/lib/create-extension-*"
+      - "scripts/tests/fixtures/create-extension/**"
+      - "extensions/**"
+      - "extension-skeleton/**"
+      - "package.json"
+      - "package-lock.json"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq, yq, task]
+      install: install
+    command:
+      - task ci:extension-builders-ts
+
+  # Spec 0254 R4: the extension entries print nothing on the oldest Node.js 24 release. No `paths:` filter, like
+  # build-components-ts-node-24-0: any shared-module change can reintroduce a warning.
+  - id: extension-builders-ts-node-24-0
+    group: modules
+    name: "Extension and plugin builder entries are silent on Node.js 24.0.0"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24.0.0
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/extension-entry-form.test.ts
+
+  # Spec 0258 R27-R29 (ticket #1337), PR A: the skill-script oracle: each skill's bundled shell script runs in a sandbox
+  # and is compared with the committed goldens. Linux only (Linux-byte goldens; suites spawn `bash`, `jq` and Go `yq`). No
+  # dev-toolchain. On GitHub `yq` is pinned to v4.44.3 and its sha256 checked, the version the goldens were generated
+  # with.
+  - id: skill-scripts-ts
+    group: modules
+    name: "Run the skill-script oracle and its YAML leg"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "artifacts/**/skills/*/scripts/**"
+      - "scripts/tests/skill-scripts-*"
+      - "scripts/tests/lib/skill-scripts-*"
+      - "scripts/tests/fixtures/skill-scripts/**"
+      - "scripts/tests/skill-script-citations.test.ts"
+      - "scripts/tests/fixtures/skill-scripts-citations/**"
+      - "scripts/tests/callers-sweep.test.ts"
+      - "scripts/tests/lib/callers-sweep.ts"
+      - "artifacts/**"
+      - "README.md"
+      - "Taskfile.yml"
+      - "taskfiles/**"
+      - "scripts/lib/taskfile-tree.ts"
+      - "scripts/lib/taskfile-tree-parse.ts"
+      - "scripts/lib/governance/taskfile-tree-guard.ts"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq, yq, task]
+      install: omit-dev
+      yq: "4.44.3"
+    command:
+      - task ci:skill-scripts-ts
+
+  # Spec 0259 R26-R28 (ticket #1338): the governance-check suites. Linux only. The shell oracle legs retired with the
+  # switch PR (the shell originals are forwarding shims), so no jq or yq is needed. The floor guard runs after the
+  # production dependency step.
+  - id: governance-checks-ts
+    group: modules
+    name: "Run the TypeScript governance-check suites and their shell oracle legs"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/check-*.ts"
+      - "scripts/lib/governance/**"
+      - "scripts/lib/sequence-matcher.ts"
+      - "scripts/tests/governance-*"
+      - "scripts/tests/lib/governance-*"
+      - "scripts/tests/check-agents-size.test.ts"
+      - "scripts/tests/check-rules-size.test.ts"
+      - "scripts/tests/check-comment-size*"
+      - "scripts/tests/check-seat-brief*"
+      - "scripts/tests/check-plan-review*"
+      - "scripts/tests/seat-ledger.test.ts"
+      - "scripts/tests/economy-measure.test.ts"
+      - "artifacts/core/skills/pr-reviewer/scripts/check-comment-size.ts"
+      - "scripts/tests/fixtures/comment-size/**"
+      - "scripts/tests/fixtures/seat-brief/**"
+      - "scripts/tests/fixtures/plan-review/**"
+      - "scripts/tests/fixtures/seat-ledger/**"
+      - "scripts/tests/fixtures/economy-1410/**"
+      - "scripts/lib/seat-ledger*.ts"
+      - "scripts/lib/economy-transform.ts"
+      - "scripts/economy-*.ts"
+      - "docs/**"
+      - "AGENTS.md"
+      - "scripts/tests/fixtures/agent-team-protocol/**"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:governance-checks-ts
+
+  # Spec 0262 R21-R23 (ticket #1339): the model-CI-tooling suites and their shell-versus-TypeScript differential legs. Linux
+  # only; `jq` and `yq` are installed so the differential suites find the pinned tools. Glob discovery: later PRs add
+  # scripts/tests/model-ci-tooling-*.test.ts files and never edit this capability.
+  - id: model-ci-tooling-ts
+    group: modules
+    name: "Run the TypeScript model-CI-tooling suites and their shell differential legs"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/tests/model-ci-tooling-*"
+      - "scripts/tests/lib/bash-suite-differential.ts"
+      - "scripts/tests/lib/differential-*.ts"
+      - "scripts/tests/lib/scratch-remote.ts"
+      - "scripts/merge-spec-pr.*"
+      - "scripts/lib/governance/merge-spec-pr.ts"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [jq, yq, task]
+      install: omit-dev
+      yq: "4.44.3"
+    command:
+      - task ci:model-ci-tooling-ts
+
+  # Spec 0243 R5: the hook entries print nothing on the oldest Node.js 24 release (entry form check and unstubbed silence
+  # runs of every CLI's slow path, v1-F5, under exactly 24.0.0). No `paths:` filter, like node-floor-guard: any
+  # shared-module change can reintroduce a warning.
+  - id: usage-capture-node-24-0
+    group: modules
+    name: "Usage-capture hook entries are silent on Node.js 24.0.0"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24.0.0
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/hook-entry-form.test.ts
+
+  # Spec 0248 R10: the two TypeScript entries print nothing on the oldest Node.js 24 release (entry form check and
+  # unstubbed silence runs of the guard and the claim tool under exactly 24.0.0). No `paths:` filter, like
+  # usage-capture-node-24-0 above: any shared-module change can reintroduce a warning.
+  - id: worktree-guard-node-24-0
+    group: modules
+    name: "Worktree guard and claim entries are silent on Node.js 24.0.0"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24.0.0
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/worktree-entry-form.test.ts
+
+  # Spec 0247 R1: the transcript hook entry prints nothing on the oldest Node.js 24 release. No `paths:` filter, like
+  # usage-capture-node-24-0 above: any shared-module change can reintroduce a warning.
+  - id: mempalace-transcript-node-24-0
+    group: modules
+    name: "MemPalace transcript hook entry is silent on Node.js 24.0.0"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24.0.0
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-transcript-entry-form.test.ts

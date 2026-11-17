@@ -2,7 +2,7 @@
 
 <!-- crewrig-doc: published=false -->
 
-<!-- Extracted verbatim from artifacts/core/rules/60-tools.md lines 154-199. Cross-references to other sections refer to that file. -->
+<!-- Extracted verbatim from artifacts/core/rules/60-memory.md (formerly lines 154-199 of 60-tools.md). Cross-references to other sections refer to that file. -->
 
 > **Carve-out for bundled skill/agent scripts.** A skill or agent may
 > ship a versioned, source-controlled script that walks MemPalace

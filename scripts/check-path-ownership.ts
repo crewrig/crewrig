@@ -3,7 +3,7 @@
 // Usage: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-path-ownership.ts
 //
 // Every tracked file must be owned (matched by a `paths:` glob of a capability's
-// `pull-request` trigger in ci/ci-capabilities.yml) or exempt (matched by an entry
+// `pull-request` trigger in ci/capabilities/) or exempt (matched by an entry
 // of ci/path-ownership-exemptions.txt or the optional adopter overlay
 // ci/org/path-ownership-exemptions.txt). The exemption lists must be clean: no entry
 // with an empty reason, none matching no tracked file; a redundant entry (every match
@@ -22,6 +22,12 @@ import { load } from "js-yaml";
 import { UnsupportedGlobError } from "./lib/glob-engine.ts";
 import { readTextLf } from "./lib/line-endings.ts";
 import {
+  ReferenceNotFoundError,
+  ReferenceReadError,
+  readReference,
+  sourceOf,
+} from "./lib/ci-parity/reference-read.ts";
+import {
   OwnershipInputError,
   evaluate,
   formatReport,
@@ -31,7 +37,7 @@ import {
 import type { Exemption } from "./lib/path-ownership.ts";
 import { WiringError, repoRoot, trackedFiles } from "./lib/ts-scope.ts";
 
-const REFERENCE = "ci/ci-capabilities.yml";
+const REFERENCE = "ci/capabilities/";
 const CORE_LIST = "ci/path-ownership-exemptions.txt";
 const OVERLAY_LIST = "ci/org/path-ownership-exemptions.txt";
 
@@ -46,16 +52,23 @@ function readOptional(rel: string): string | null {
 }
 
 function readCapabilities(): unknown {
-  const text = readOptional(REFERENCE);
-  if (text === null) throw new WiringError(`${REFERENCE} not found`);
+  let ref;
+  try {
+    ref = readReference(repoRoot());
+  } catch (err) {
+    if (err instanceof ReferenceNotFoundError) throw new WiringError(`${REFERENCE} not found`);
+    if (err instanceof ReferenceReadError) throw new WiringError(err.format());
+    throw err;
+  }
+  const source = sourceOf(ref);
   let doc: unknown;
   try {
-    doc = load(text);
+    doc = load(ref.text);
   } catch (err) {
-    throw new WiringError(`${REFERENCE} is not valid YAML: ${(err as Error).message}`);
+    throw new WiringError(`${source} is not valid YAML: ${(err as Error).message}`);
   }
   const caps = (doc as { capabilities?: unknown } | null)?.capabilities;
-  if (caps === undefined) throw new WiringError(`${REFERENCE} has no 'capabilities' list`);
+  if (caps === undefined) throw new WiringError(`${source} has no 'capabilities' list`);
   return caps;
 }
 

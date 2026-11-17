@@ -12,11 +12,16 @@
 # declination is stated on the guidance surface instead.
 #
 # Every offering here is composite (spec 0197 Decision 7): its native
-# identifier encodes both a capability-class token (`flash`/`pro`) and a
+# identifier encodes both a family token (`flash`/`hydrogen`/`argon`) and a
 # reasoning-rung token (`low`/`medium`/`high`) in one `-`-delimited value, so
 # each offering declares `provides.reasoning` alongside `provides.intelligence`
 # — matching what it encodes, per the checker's A10 clause (i) — and reasoning
 # is served by model selection, not by a second field.
+#
+# Ranks ascend by intelligence rung (3.5-flash-lite `medium`, hydrogen `high`, argon
+# `xhigh`); within each rung the `-medium` variant has the lowest rank, so R23's
+# lowest-rank pick selects it when the profile declares no reasoning axis.
+# Reasoning narrows by R21 to the variant whose encoded reasoning matches.
 
 target: antigravity
 
@@ -39,9 +44,9 @@ surfaces:
               no orchestrator behaviour (spec 0197 R43).
 
 offerings:
-  - id: gemini-3.8-flash-medium
+  - id: gemini-3.5-flash-lite-medium
     rank: 1
-    native-value: gemini-3.8-flash-medium
+    native-value: gemini-3.5-flash-lite-medium
     provides:
       intelligence: medium
       reasoning: medium
@@ -52,25 +57,20 @@ offerings:
     supports-reasoning-surface: false
     grounds:
       - declares: native-value
-        citation: >-
-          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
-          `gemini-3.8-flash-medium` among its fourteen reported identifiers.
-          Rank 1 is the lowest rank this mapping declares, so R23's
-          lowest-rank pick selects this offering whenever the candidate set
-          includes it and reasoning is omitted: at the declared `medium`
-          rung (spec 0197 delta-01, issue #1134).
+        assumption: >-
+          Dated 2026-11-16: the owner reported the `gemini-3.5-flash-lite` suffixes (`-low`, `-medium`, `-high`) on 2026-11-16 without a verbatim `agy models` extract, so `gemini-3.5-flash-lite-medium` is an assumed identifier to confirm. Within the `medium` rung this is the lowest rank (rank 1), so R23's lowest-rank pick selects it when reasoning is omitted (spec 0197 delta-01, issue #1134).
       - declares: provides.intelligence
         assumption: >-
-          Same ground as `gemini-3.8-flash-low` below: vendor family naming,
-          not a capability measurement.
+          Dated 2026-11-16: the owner's report maps `gemini-3.5-flash-lite` (the haiku anchor) onto the spec 0195
+          R7 anchor rung `medium`. It corrects the owner's report of 2026-11-15, which had named `gemini-4-hydrogen` as the haiku anchor. It is not a capability measurement.
       - declares: provides.reasoning
         assumption: >-
-          Same ground as `gemini-3.8-flash-low` below: the identifier's own
-          suffix, not a capability measurement.
+          The rung rests on the identifier's own `-medium` suffix, observable but
+          not a capability measurement, per spec 0197 `## Open questions`.
 
-  - id: gemini-3.8-flash-low
+  - id: gemini-3.5-flash-lite-low
     rank: 2
-    native-value: gemini-3.8-flash-low
+    native-value: gemini-3.5-flash-lite-low
     provides:
       intelligence: medium
       reasoning: low
@@ -81,25 +81,20 @@ offerings:
     supports-reasoning-surface: false
     grounds:
       - declares: native-value
-        citation: >-
-          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
-          `gemini-3.8-flash-low` among its fourteen reported identifiers.
-          Rank 2 is higher than `gemini-3.8-flash-medium` (rank 1), so this
-          offering is reached when R21 narrows to encoded reasoning `low`
-          (spec 0197 delta-01, issue #1134).
+        assumption: >-
+          Dated 2026-11-16: the owner reported the `gemini-3.5-flash-lite` suffixes (`-low`, `-medium`, `-high`) on 2026-11-16 without a verbatim `agy models` extract, so `gemini-3.5-flash-lite-low` is an assumed identifier to confirm. Rank 2 is reached when R21 narrows to encoded reasoning `low` at the `medium` intelligence rung.
       - declares: provides.intelligence
         assumption: >-
-          The rung rests on the vendor's own family naming — pro above
-          flash — observable in the identifier but not a capability
-          measurement (spec 0197 `## Open questions`).
+          Dated 2026-11-16: the owner's report maps `gemini-3.5-flash-lite` (the haiku anchor) onto the spec 0195
+          R7 anchor rung `medium`. It corrects the owner's report of 2026-11-15, which had named `gemini-4-hydrogen` as the haiku anchor. It is not a capability measurement.
       - declares: provides.reasoning
         assumption: >-
-          The rung rests on the identifier's own suffix, observable but not a
-          capability measurement, per the same open question.
+          The rung rests on the identifier's own `-low` suffix, observable but
+          not a capability measurement, per spec 0197 `## Open questions`.
 
-  - id: gemini-3.8-flash-high
+  - id: gemini-3.5-flash-lite-high
     rank: 3
-    native-value: gemini-3.8-flash-high
+    native-value: gemini-3.5-flash-lite-high
     provides:
       intelligence: medium
       reasoning: high
@@ -110,94 +105,215 @@ offerings:
     supports-reasoning-surface: false
     grounds:
       - declares: native-value
-        citation: >-
-          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
-          `gemini-3.8-flash-high` among its fourteen reported identifiers.
-          Rank 3 is reached when R21 narrows to encoded reasoning `high`
-          at the `medium` intelligence rung (spec 0197 delta-01, issue #1134).
+        assumption: >-
+          Dated 2026-11-16: the owner reported the `gemini-3.5-flash-lite` suffixes (`-low`, `-medium`, `-high`) on 2026-11-16 without a verbatim `agy models` extract, so `gemini-3.5-flash-lite-high` is an assumed identifier to confirm. Rank 3 is reached when R21 narrows to encoded reasoning `high` at the `medium` intelligence rung.
       - declares: provides.intelligence
         assumption: >-
-          Same ground as `gemini-3.8-flash-low` above: vendor family naming,
-          not a capability measurement.
+          Dated 2026-11-16: the owner's report maps `gemini-3.5-flash-lite` (the haiku anchor) onto the spec 0195
+          R7 anchor rung `medium`. It corrects the owner's report of 2026-11-15, which had named `gemini-4-hydrogen` as the haiku anchor. It is not a capability measurement.
       - declares: provides.reasoning
         assumption: >-
-          Same ground as `gemini-3.8-flash-low` above: the identifier's own
-          suffix, not a capability measurement.
+          The rung rests on the identifier's own `-high` suffix, observable but
+          not a capability measurement, per spec 0197 `## Open questions`.
 
-  - id: gemini-3.1-pro-high
+  - id: gemini-4-hydrogen-medium
     rank: 4
-    native-value: gemini-3.1-pro-high
+    native-value: gemini-4-hydrogen-medium
     provides:
       intelligence: high
-      reasoning: high
+      reasoning: medium
       specialization: general
     encodes:
-      intelligence: pro
-      reasoning: high
+      intelligence: hydrogen
+      reasoning: medium
     supports-reasoning-surface: false
     grounds:
       - declares: native-value
-        citation: >-
-          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
-          `gemini-3.1-pro-high` among its fourteen reported identifiers. Rank 4
-          is the lower of the two ranks this mapping gives its two `high`-rung
-          offerings (`gemini-3.1-pro-high` and `gemini-3.1-pro-low`, the
-          mapping's highest declared rung), so R23's lowest-rank pick selects
-          THIS offering — not `gemini-3.1-pro-low` — whenever the candidate
-          set is the pair of them: at the declared `high` rung itself absent a
-          narrowing `reasoning` declaration, and under R17's ceiling clause
-          for a declared `xhigh`, `xxhigh` or `max` rung, since this mapping
-          declares no higher rung (confirmed by hand, by
-          `scripts/check-model-mappings.sh --print-selection` and by the
-          golden per-rung table in `scripts/tests/test-check-model-mappings.sh`;
-          spec 0197 delta-01, issue #1134).
+        assumption: >-
+          Dated 2026-11-16: the owner reported the `gemini-4-hydrogen` suffixes (`-low`, `-medium`, `-high`) on 2026-11-16 without a verbatim `agy models` extract, so `gemini-4-hydrogen-medium` is an assumed identifier to confirm. Within the `high` rung this is the lowest rank (rank 4), so R23's lowest-rank pick selects it when reasoning is omitted (spec 0197 delta-01, issue #1134).
       - declares: provides.intelligence
         assumption: >-
-          The rung rests on the vendor's own family naming — pro above
-          flash — observable in the identifier but not a capability
-          measurement (spec 0197 `## Open questions`).
+          Dated 2026-11-16: the owner's report maps `gemini-4-hydrogen` (the sonnet anchor) onto the spec 0195
+          R7 anchor rung `high`. It corrects the owner's report of 2026-11-15, which had named `gemini-3.8-flash` as the sonnet anchor. It is not a capability measurement.
       - declares: provides.reasoning
         assumption: >-
-          The rung rests on the identifier's own suffix, observable but not a
-          capability measurement, per the same open question.
+          The rung rests on the identifier's own `-medium` suffix, observable but
+          not a capability measurement, per spec 0197 `## Open questions`.
 
-  - id: gemini-3.1-pro-low
+  - id: gemini-4-hydrogen-low
     rank: 5
-    native-value: gemini-3.1-pro-low
+    native-value: gemini-4-hydrogen-low
     provides:
       intelligence: high
       reasoning: low
       specialization: general
     encodes:
-      intelligence: pro
+      intelligence: hydrogen
       reasoning: low
     supports-reasoning-surface: false
     grounds:
       - declares: native-value
-        citation: >-
-          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
-          `gemini-3.1-pro-low` among its fourteen reported identifiers. Rank 5
-          is the HIGHER of this mapping's two `high`-rung ranks, so R23's
-          lowest-rank pick never selects this offering from the intelligence
-          axis alone — `gemini-3.1-pro-high` (rank 4) is selected instead, both
-          at the declared `high` rung and under R17's ceiling clause for a
-          declared `xhigh`, `xxhigh` or `max` rung (spec 0197 delta-01,
-          issue #1134). This offering is reached when R21 narrows to encoded
-          reasoning `low` (or as nearest-lower fallback for `medium`).
+        assumption: >-
+          Dated 2026-11-16: the owner reported the `gemini-4-hydrogen` suffixes (`-low`, `-medium`, `-high`) on 2026-11-16 without a verbatim `agy models` extract, so `gemini-4-hydrogen-low` is an assumed identifier to confirm. Rank 5 is reached when R21 narrows to encoded reasoning `low` at the `high` intelligence rung.
       - declares: provides.intelligence
         assumption: >-
-          Same ground as `gemini-3.1-pro-high` above: vendor family naming,
-          not a capability measurement.
+          Dated 2026-11-16: the owner's report maps `gemini-4-hydrogen` (the sonnet anchor) onto the spec 0195
+          R7 anchor rung `high`. It corrects the owner's report of 2026-11-15, which had named `gemini-3.8-flash` as the sonnet anchor. It is not a capability measurement.
       - declares: provides.reasoning
         assumption: >-
-          Same ground as `gemini-3.1-pro-high` above: the identifier's own
-          suffix, not a capability measurement.
+          The rung rests on the identifier's own `-low` suffix, observable but
+          not a capability measurement, per spec 0197 `## Open questions`.
+
+  - id: gemini-4-hydrogen-high
+    rank: 6
+    native-value: gemini-4-hydrogen-high
+    provides:
+      intelligence: high
+      reasoning: high
+      specialization: general
+    encodes:
+      intelligence: hydrogen
+      reasoning: high
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: >-
+          Dated 2026-11-16: the owner reported the `gemini-4-hydrogen` suffixes (`-low`, `-medium`, `-high`) on 2026-11-16 without a verbatim `agy models` extract, so `gemini-4-hydrogen-high` is an assumed identifier to confirm. Rank 6 is reached when R21 narrows to encoded reasoning `high` at the `high` intelligence rung.
+      - declares: provides.intelligence
+        assumption: >-
+          Dated 2026-11-16: the owner's report maps `gemini-4-hydrogen` (the sonnet anchor) onto the spec 0195
+          R7 anchor rung `high`. It corrects the owner's report of 2026-11-15, which had named `gemini-3.8-flash` as the sonnet anchor. It is not a capability measurement.
+      - declares: provides.reasoning
+        assumption: >-
+          The rung rests on the identifier's own `-high` suffix, observable but
+          not a capability measurement, per spec 0197 `## Open questions`.
+
+  - id: gemini-4-argon-medium
+    rank: 7
+    native-value: gemini-4-argon-medium
+    provides:
+      intelligence: xhigh
+      reasoning: medium
+      specialization: general
+    encodes:
+      intelligence: argon
+      reasoning: medium
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: >-
+          Dated 2026-11-15: `agy models` output reported by the owner on 2026-11-15 lists `gemini-4-argon-medium`; the owner reported the gemini-4-argon suffixes the same day without a verbatim extract. Within the `xhigh` rung this is the lowest rank (rank 7), so R23's lowest-rank pick selects it when reasoning is omitted (spec 0197 delta-01, issue #1134).
+      - declares: provides.intelligence
+        assumption: >-
+          Dated 2026-11-15: the owner's report maps `gemini-4-argon` (the opus anchor) onto the spec 0195
+          R7 anchor rung `xhigh`. It is not a capability measurement.
+      - declares: provides.reasoning
+        assumption: >-
+          The rung rests on the identifier's own `-medium` suffix, observable but
+          not a capability measurement, per spec 0197 `## Open questions`.
+
+  - id: gemini-4-argon-low
+    rank: 8
+    native-value: gemini-4-argon-low
+    provides:
+      intelligence: xhigh
+      reasoning: low
+      specialization: general
+    encodes:
+      intelligence: argon
+      reasoning: low
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: >-
+          Dated 2026-11-15: `agy models` output reported by the owner on 2026-11-15 lists `gemini-4-argon-low`; the owner reported the gemini-4-argon suffixes the same day without a verbatim extract. Rank 8 is reached when R21 narrows to encoded reasoning `low` at the `xhigh` intelligence rung.
+      - declares: provides.intelligence
+        assumption: >-
+          Dated 2026-11-15: the owner's report maps `gemini-4-argon` (the opus anchor) onto the spec 0195
+          R7 anchor rung `xhigh`. It is not a capability measurement.
+      - declares: provides.reasoning
+        assumption: >-
+          The rung rests on the identifier's own `-low` suffix, observable but
+          not a capability measurement, per spec 0197 `## Open questions`.
+
+  - id: gemini-4-argon-high
+    rank: 9
+    native-value: gemini-4-argon-high
+    provides:
+      intelligence: xhigh
+      reasoning: high
+      specialization: general
+    encodes:
+      intelligence: argon
+      reasoning: high
+    supports-reasoning-surface: false
+    grounds:
+      - declares: native-value
+        assumption: >-
+          Dated 2026-11-15: `agy models` output reported by the owner on 2026-11-15 lists `gemini-4-argon-high`; the owner reported the gemini-4-argon suffixes the same day without a verbatim extract. Rank 9 is reached when R21 narrows to encoded reasoning `high` at the `xhigh` intelligence rung.
+      - declares: provides.intelligence
+        assumption: >-
+          Dated 2026-11-15: the owner's report maps `gemini-4-argon` (the opus anchor) onto the spec 0195
+          R7 anchor rung `xhigh`. It is not a capability measurement.
+      - declares: provides.reasoning
+        assumption: >-
+          The rung rests on the identifier's own `-high` suffix, observable but
+          not a capability measurement, per spec 0197 `## Open questions`.
 
 observed-not-declared:
+  - native-value: gemini-3.8-flash-low
+    ground: >-
+      Not part of the owner lineup of 2026-11-16, which maps the sonnet anchor
+      to gemini-4-hydrogen. Previously declared at the `high` rung (owner
+      lineup of 2026-11-15).
+    grounds:
+      - declares: ground
+        citation: >-
+          `agy models` output reported by the owner on 2026-11-15 lists
+          `gemini-3.8-flash-low`, verbatim as
+          `gemini-3.8-flash-low  Gemini 3.8 Flash (Low)`.
+  - native-value: gemini-3.8-flash-medium
+    ground: >-
+      Not part of the owner lineup of 2026-11-16, which maps the sonnet anchor
+      to gemini-4-hydrogen. Previously declared at the `high` rung (owner
+      lineup of 2026-11-15).
+    grounds:
+      - declares: ground
+        citation: >-
+          `agy models` output reported by the owner on 2026-11-15 lists
+          `gemini-3.8-flash-medium`, verbatim as
+          `gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)`.
+  - native-value: gemini-3.8-flash-high
+    ground: >-
+      Not part of the owner lineup of 2026-11-16, which maps the sonnet anchor
+      to gemini-4-hydrogen. Previously declared at the `high` rung (owner
+      lineup of 2026-11-15).
+    grounds:
+      - declares: ground
+        citation: >-
+          `agy models` output reported by the owner on 2026-11-15 lists
+          `gemini-3.8-flash-high`, verbatim as
+          `gemini-3.8-flash-high  Gemini 3.8 Flash (High)`.
+  - native-value: gemini-3.1-pro-high
+    ground: >-
+      Superseded by gemini-4-argon (owner lineup of 2026-11-15)
+    grounds:
+      - declares: ground
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.1-pro-high`.
+  - native-value: gemini-3.1-pro-low
+    ground: >-
+      Superseded by gemini-4-argon (owner lineup of 2026-11-15)
+    grounds:
+      - declares: ground
+        citation: >-
+          RR -> Antigravity CLI -> Declaration surface: `agy models` lists
+          `gemini-3.1-pro-low`.
   - native-value: gemini-3.7-flash-low
     ground: >-
-      Superseded generation, displaced by gemini-3.8-flash-low within the
-      same family (spec 0197 R44).
+      Superseded generation of the Gemini Flash family, which is no longer in
+      the declared lineup (owner lineup of 2026-11-16, spec 0197 R44).
     grounds:
       - declares: ground
         citation: >-
@@ -205,8 +321,8 @@ observed-not-declared:
           `gemini-3.7-flash-low` alongside the newer `gemini-3.8-flash-low`.
   - native-value: gemini-3.7-flash-medium
     ground: >-
-      Superseded generation, displaced by gemini-3.8-flash-medium within the
-      same family (spec 0197 R44).
+      Superseded generation of the Gemini Flash family, which is no longer in
+      the declared lineup (owner lineup of 2026-11-16, spec 0197 R44).
     grounds:
       - declares: ground
         citation: >-
@@ -215,8 +331,8 @@ observed-not-declared:
           `gemini-3.8-flash-medium`.
   - native-value: gemini-3.7-flash-high
     ground: >-
-      Superseded generation, displaced by gemini-3.8-flash-high within the
-      same family (spec 0197 R44).
+      Superseded generation of the Gemini Flash family, which is no longer in
+      the declared lineup (owner lineup of 2026-11-16, spec 0197 R44).
     grounds:
       - declares: ground
         citation: >-
@@ -224,8 +340,8 @@ observed-not-declared:
           `gemini-3.7-flash-high` alongside the newer `gemini-3.8-flash-high`.
   - native-value: gemini-3.6-flash-low
     ground: >-
-      Superseded generation, displaced by gemini-3.8-flash-low within the
-      same family (spec 0197 R44).
+      Superseded generation of the Gemini Flash family, which is no longer in
+      the declared lineup (owner lineup of 2026-11-16, spec 0197 R44).
     grounds:
       - declares: ground
         citation: >-
@@ -233,8 +349,8 @@ observed-not-declared:
           `gemini-3.6-flash-low` alongside the newer `gemini-3.8-flash-low`.
   - native-value: gemini-3.6-flash-medium
     ground: >-
-      Superseded generation, displaced by gemini-3.8-flash-medium within the
-      same family (spec 0197 R44).
+      Superseded generation of the Gemini Flash family, which is no longer in
+      the declared lineup (owner lineup of 2026-11-16, spec 0197 R44).
     grounds:
       - declares: ground
         citation: >-
@@ -243,8 +359,8 @@ observed-not-declared:
           `gemini-3.8-flash-medium`.
   - native-value: gemini-3.6-flash-high
     ground: >-
-      Superseded generation, displaced by gemini-3.8-flash-high within the
-      same family (spec 0197 R44).
+      Superseded generation of the Gemini Flash family, which is no longer in
+      the declared lineup (owner lineup of 2026-11-16, spec 0197 R44).
     grounds:
       - declares: ground
         citation: >-

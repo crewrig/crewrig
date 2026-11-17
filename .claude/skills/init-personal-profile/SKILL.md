@@ -1,110 +1,81 @@
 ---
 name: init-personal-profile
-description: "Build your personal profile (config/PROFILE.md) through a guided interview. Collects identity, tooling preferences, active projects, growth plan, and working philosophy to personalize the AI assistant experience."
+description: "Builds the user's personal profile file config/PROFILE.md through a guided interview and a scaffold script that renders and checks it. Use when a user wants to create or refresh their personal profile, personalize the AI assistant, or types /init-personal-profile. Trigger terms: personal profile, PROFILE.md, onboarding interview, identity, tooling preferences, growth plan, working philosophy. Not for team or role files (init-team, init-expertise) or the agent identity file (init-soul)."
 user-invocable: true
 allowed-tools:
   - Read
   - Write
-  - Edit
   - Bash
   - AskUserQuestion
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.0"
+    version: "1.1.0"
 ---
 
 
-You are an onboarding specialist whose job is to help a new user create their
-personal profile by filling in `config/PROFILE.md` based on the template at
-`config/PROFILE.md.template`.
+Help the user write `config/PROFILE.md`, the file that tells the assistant who they are and how they
+work. You run the interview, which is judgement; a script renders the file in the template shape and
+checks it.
 
 ## Interaction rules
 
-- **Use your host CLI's structured-question facility** for any closed
-  question with a bounded set of choices (language, channels, yes/no
-  confirmations, etc.) — Claude Code's `AskUserQuestion` tool, Gemini CLI's
-  `ask_user` tool, or Antigravity CLI's `ask_question` tool. On GitHub
-  Copilot CLI, which exposes no distinct structured-question tool, present
-  the same bounded choices as a clearly labeled plain-text list instead of
-  free-form prose. Never simulate a multiple-choice menu in plain text on a
-  CLI that has a structured facility available.
-- Use free-form chat ONLY when the user must provide open-ended content (full
-  name, project description, personal values, etc.).
-- Each structured-question call supports 1 to 4 questions and 2 to 4 options
-  per question. Batch related closed questions together when it improves
-  flow.
-- The "Other" fallback is added automatically by the tool — do not include it
-  manually in your option lists.
-- Keep `header` labels short (max 12 characters), e.g. "Language", "Editor",
-  "Channels".
+- Closed questions with a bounded set of choices go through your host CLI's structured-question
+  tool: `AskUserQuestion` on Claude Code, `ask_user` on Gemini CLI, `ask_question` on Antigravity
+  CLI. GitHub Copilot CLI has none, so present the same choices as a labeled plain-text list there.
+  On the other CLIs a plain-text menu is skipped or misread.
+- Open-ended content is free-form chat.
+- A structured question takes 1 to 4 questions of 2 to 4 options; the tool adds "Other" itself, so
+  leave it out of your lists. Keep `header` labels under 12 characters.
 
-## Phase 0 — Language
+## Interview
 
-1. Detect the system locale by running `echo $LANG`.
-2. Use your structured-question facility with `header: "Language"` to
-   confirm the preferred conversation language. Provide the detected
-   language as the first option (suffixed with "(Recommended)") and English
-   as the second option. If relevant, add one more common option; otherwise
-   rely on the automatic "Other" fallback.
+Ask in the language the user picks; the file itself is written in the language they prefer.
+Never assume an answer: an invented fact in a profile steers every later session.
 
-All subsequent questions MUST be asked in the chosen language. The final
-PROFILE.md can be written in either language depending on the user's preference.
+1. **Language.** Detect the locale with `echo $LANG`; confirm the conversation language with
+   `header: "Language"`, the detected one first as "(Recommended)", English second.
+2. **Identity.** Read `git config user.name` and `git config user.email`; confirm them (options "Use as
+   is", "Edit name", "Edit email", "Edit both"). Ask Team, Role, Department and Location in chat.
+3. **Tooling.** Editor and plugins, terminal and shell: chat. Communication channels: multi-select
+   (`header: "Channels"`: Slack, Email, Video call, Chat). Work rhythm (`header: "Rhythm"`: Deep focus
+   blocks, Frequent short bursts, Async-first, Meeting-heavy).
+4. **Active projects.** Loop: name, responsibility and objective in chat, then `header: "Add project"`
+   ("Add another", "Done").
+5. **Growth plan.** Chat: primary focus for the next six months, concrete goals.
+6. **Working philosophy.** Chat: core values, collaboration preferences, notes. Propose a polished
+   summary and confirm it ("Approve", "Tweak wording", "Rewrite from scratch").
 
-## Phase 1 — Identity
+## Generation
 
-1. Retrieve `git config user.name` and `git config user.email` automatically.
-2. Use your structured-question facility to confirm or correct these values
-   (options: "Use as is", "Edit name", "Edit email", "Edit both").
-3. Ask for free-form fields in chat: Team, Role, Department, Location.
+1. Write the answers to a scratch JSON file as `{identity: {full_name, email, language, team, role,
+   department, location}, tooling: {editor, terminal, communication, rhythm}, projects: [{name,
+   responsibility, objective}], growth: {focus, goals}, philosophy: {values, collaboration, notes}}`;
+   leave out what the user skipped.
+2. Run the dry-run command, show `data.content`, and confirm with `header: "Finalize"` ("Save as
+   is", "Edit a section", "Discard draft").
+3. Save, run the linter, and close with a short encouraging message.
 
-## Phase 2 — Tooling Preferences
+## Scaffold scripts
 
-Ask about each item with the appropriate tool:
-- Editor & plugins: free-form chat (open-ended).
-- Terminal and shell setup: free-form chat.
-- Preferred communication channels: your structured-question facility with
-  multi-select and options like "Slack", "Email", "Video call", "Chat".
-  Header: "Channels".
-- Typical work rhythm or focus patterns: your structured-question facility
-  with options like "Deep focus blocks", "Frequent short bursts",
-  "Async-first", "Meeting-heavy". Header: "Rhythm".
+A command cannot bundle files, so the scripts ship with the `init-team` skill, installed beside
+this command on every CLI. Locate them once before writing:
 
-## Phase 3 — Active Projects
+```sh
+find . ~/.claude ~/.gemini ~/.copilot ~/.agents ~/.github -maxdepth 6 \
+  -path '*/skills/init-team/scripts/scaffold-config-file.ts' 2>/dev/null | head -1
+```
 
-Use an interactive loop:
-1. Ask in chat for project name, responsibility, and objective (free-form).
-2. Use your structured-question facility with `header: "Add project"` and
-   options "Add another", "Done" to control the loop.
-3. Repeat until the user selects "Done".
+If nothing is found, stop and tell the user to install the `init-team` skill: writing the file by
+hand would skip the shape check. Below, `<scripts>` is the directory of that path. Both scripts
+exit `0` (ok), `1` (finding), `2` (usage error) or `3` (precondition failed), and take `--json`.
 
-## Phase 4 — Growth Plan
+| When | Command | Exit `1` means |
+|---|---|---|
+| To show the draft | `node <scripts>/scaffold-config-file.ts --kind profile --answers <answers.json> --dry-run` (draft in `data.content`) | An answers field is missing or malformed; the finding names it. |
+| To save | the same without `--dry-run`; add `--force` only when the user chose to replace an existing file | `target-exists`: `config/PROFILE.md` exists and was not written; ask the user whether to overwrite. |
+| After saving | `node <scripts>/lint-config-file.ts --kind profile config/PROFILE.md` | A section is missing, empty or still a placeholder; fix the answers and save again. |
 
-- Free-form chat: primary learning focus over the next six months.
-- Free-form chat: concrete goals or milestones.
-
-## Phase 5 — Working Philosophy
-
-- Free-form chat: core professional values.
-- Free-form chat: collaboration preferences.
-- Propose a polished summary in chat, then use your structured-question
-  facility to confirm ("Approve", "Tweak wording", "Rewrite from scratch").
-
-## Phase 6 — Generation
-
-1. Assemble all answers into `config/PROFILE.md` following the template
-   structure from `config/PROFILE.md.template`.
-2. Present the result to the user for final review in chat.
-3. Use your structured-question facility with `header: "Finalize"` and
-   options "Save as is", "Edit a section", "Discard draft" to confirm
-   completion.
-4. End with an encouraging message.
-
----
-
-**Constraints:**
-- Always ask the user — never assume answers.
-- Prefer your structured-question facility for closed questions; use chat
-  for open-ended ones.
-- Maximum 4 options when presenting choices (tool enforces this).
+The answers file is JSON written to a scratch location; its fields are listed by
+`node <scripts>/scaffold-config-file.ts --help`.

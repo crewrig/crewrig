@@ -65,6 +65,11 @@ export const geminiDescriptor: SetupDescriptor = {
         label: "artifacts/core/rules/60-tools.md -> 60_TOOLS.md",
       },
       {
+        src: "artifacts/core/rules/60-memory.md",
+        dest: "60_MEMORY.md",
+        label: "artifacts/core/rules/60-memory.md -> 60_MEMORY.md",
+      },
+      {
         src: "config/TOOLS.md",
         dest: "65_TOOLS.md",
         label: "TOOLS.md -> 65_TOOLS.md",

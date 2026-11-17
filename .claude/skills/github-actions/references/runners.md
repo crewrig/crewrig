@@ -5,6 +5,15 @@ GitHub-hosted runner inventory, self-hosted runner architecture, label
 and group selection, runner security model, and the constraints that
 apply to composite actions and container jobs.
 
+## Contents
+
+- GitHub-hosted runners
+- Self-hosted runners
+- Containers and services
+- Composite-action constraints
+- Workflow commands
+- Runner diagnostics
+
 ## GitHub-hosted runners
 
 GitHub provisions ephemeral VMs per job, destroyed after the job
@@ -22,9 +31,8 @@ to them:
 | `ubuntu-22.04` | Ubuntu 22.04 LTS | Still supported; expect retirement on the upstream LTS cadence. |
 | `windows-2025`, `windows-latest` | Windows Server 2025 | `latest` follows the most recent supported version. |
 | `windows-2022` | Windows Server 2022 | Older but stable. |
-| `macos-15`, `macos-latest` | macOS Sequoia (Apple silicon) | Apple-silicon by default on the recent `macos-*` labels. |
-| `macos-14` | macOS Sonoma (Apple silicon) | |
-| `macos-13` | macOS Ventura (Intel) | The last Intel macOS label; verify availability before relying on it. |
+| `macos-15`, `macos-26`, `macos-latest` | macOS (Apple silicon) | Apple silicon is the default on the `macos-*` labels. |
+| `macos-15-intel`, `macos-26-intel` | macOS (Intel) | The Intel labels carry an explicit `-intel` suffix. Check GitHub's runner list before relying on an older macOS label: retired images disappear. |
 
 For long-lived workflows, pin the explicit version label
 (`ubuntu-24.04`, not `ubuntu-latest`). `*-latest` rolls forward
@@ -33,11 +41,12 @@ transition.
 
 ### Hardware
 
-Standard (free for public repos, paid for private):
+Standard runners (free for public repos, billed for private):
 
-- **Linux / Windows standard:** 4 vCPU, 16 GB RAM, 14 GB SSD.
-- **macOS standard:** 3 vCPU, 7 GB RAM (Intel) / 4 vCPU, 7 GB RAM
-  (Apple silicon).
+- **Linux / Windows, public repositories:** 4 vCPU, 16 GB RAM, 14 GB SSD.
+- **Linux / Windows, private repositories:** 2 vCPU, 8 GB RAM, 14 GB SSD.
+- **macOS Intel (`-intel` labels):** 4 vCPU, 14 GB RAM, 14 GB SSD.
+- **macOS Apple silicon:** 3 vCPU (M1), 7 GB RAM, 14 GB SSD.
 
 Larger runners (paid, opt-in per repo or org):
 
@@ -212,13 +221,15 @@ the calling workflow is on. Limitations:
 
 - Every `run:` step **must** declare `shell:` — no inheritance from
   the workflow's `defaults.run.shell`.
-- `continue-on-error:` and `timeout-minutes:` are unsupported on
-  steps within the composite action.
+- A composite step supports `continue-on-error:`; `timeout-minutes:` is
+  not among the documented composite step keys, so set it on the
+  calling job or step instead.
 - The composite action cannot declare its own `container:` or
   `services:` — those live at the calling job's level.
 - `secrets` are not directly accessible inside the composite; pass
-  them in as `inputs:` (with the caveat that input values are visible
-  in logs unless masked manually via `::add-mask::`).
+  them in as `inputs:`. A registered secret stays masked in logs, but
+  a value derived from it (a substring, an encoding) is not: mask it
+  with `::add-mask::`.
 
 ## Workflow commands
 
@@ -235,9 +246,8 @@ commands:
 | `echo "::notice::msg"` / `::warning::` / `::error::` | Annotation surface. |
 | `echo "## Heading" >> "$GITHUB_STEP_SUMMARY"` | Markdown summary on the run page. |
 
-`::set-output` and `::set-env` (the old in-line forms) are deprecated
-and disabled by default since the 2022 CVE — use the file-based
-channels above.
+`::set-output` (deprecated) and `::set-env` (disabled for security
+reasons) are the old in-line forms: use the file-based channels above.
 
 ## Runner diagnostics
 

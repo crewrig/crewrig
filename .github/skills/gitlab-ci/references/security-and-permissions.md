@@ -1,5 +1,18 @@
 # Security and permissions reference
 
+## Contents
+
+- [The `CI_JOB_TOKEN`](#the-ci_job_token)
+- [Member roles — who can run and edit pipelines](#member-roles--who-can-run-and-edit-pipelines)
+- [Protected branches and protected tags](#protected-branches-and-protected-tags)
+- [Protected environments](#protected-environments)
+- [OIDC and `id_tokens:`](#oidc-and-id_tokens)
+- [Masked and protected variables](#masked-and-protected-variables)
+- [Fork and untrusted-contributor trust](#fork-and-untrusted-contributor-trust)
+- [Least-privilege recipes](#least-privilege-recipes)
+- [Security defaults](#security-defaults)
+- [Auditing](#auditing)
+
 GitLab CI/CD has no single token whose scope map you tune the way GitHub
 Actions tunes `GITHUB_TOKEN` via `permissions:`. The pipeline's
 authority is spread across distinct primitives: the `CI_JOB_TOKEN` and

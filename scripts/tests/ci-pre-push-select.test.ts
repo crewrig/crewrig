@@ -14,6 +14,7 @@ import {
 } from "../lib/ci-pre-push/select.ts";
 import { addSelfRemote, commitAll, git, newRepo, writeRel } from "./lib/governance-git-fixture.ts";
 import { REPO } from "./lib/governance-sandbox.ts";
+import { writeReferenceDir } from "./lib/ci-reference-fixtures.ts";
 
 const cap = (id: string, paths?: string[]): string => `  - id: ${id}
     name: "${id}"
@@ -41,7 +42,7 @@ const ALL = ["always", "docs", "specs", "tasks", "arts"];
 /** A repo on `main` with the fixtures committed and `origin` pointing at itself. */
 function fixture(caps = CAPS(), tier = TIER(ALL)): string {
   const dir = newRepo();
-  writeRel(dir, "ci/ci-capabilities.yml", caps);
+  writeReferenceDir(dir, caps);
   writeRel(dir, "ci/pre-push-tier.json", tier);
   writeRel(dir, "README.md", "base\n");
   commitAll(dir, "base");
@@ -123,7 +124,7 @@ describe("selectForShas over a real repository", () => {
 
   it("shows both paths of a rename", () => {
     const dir = newRepo();
-    writeRel(dir, "ci/ci-capabilities.yml", CAPS());
+    writeReferenceDir(dir, CAPS());
     writeRel(dir, "ci/pre-push-tier.json", TIER(ALL));
     writeRel(dir, "docs/moved.md", "content that is long enough to be detected as a rename\n");
     commitAll(dir, "base");
@@ -172,7 +173,7 @@ describe("selectFromChangeset (pure)", () => {
 
 function loadCapabilitiesFrom(text: string): ReturnType<typeof loadCapabilities> {
   const dir = newRepo();
-  writeRel(dir, "ci/ci-capabilities.yml", text);
+  writeReferenceDir(dir, text);
   return loadCapabilities(dir);
 }
 

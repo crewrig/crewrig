@@ -1,0 +1,5 @@
+Usage: simulate-job <workflow-file> <job-id> [event-type] [--json]
+
+Dry-runs one job locally with act (default event: push). The run is skipped with exit 0 when act, the docker CLI or a reachable
+Docker daemon is missing. --json prints {ok, data, findings} on stdout.
+Exit codes: 0 ok or skipped, 1 workflow file not found, otherwise the status of act, 2 usage error.

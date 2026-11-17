@@ -22,6 +22,8 @@ import {
 } from "./lib/ci-parity-fixture.ts";
 import { ciTaskCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
+import { editReference } from "./lib/ci-reference-fixtures.ts";
 
 const SCAN_PREFIX =
   "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/ci-cache-guard.ts --stray-scan -- ";
@@ -30,9 +32,7 @@ const NOTES_YML = (fx: string) => path.join(fx, ".github", "workflows", "release
 const BUILD_YML = (fx: string) => path.join(fx, ".github", "workflows", "build.yml");
 
 function lastCommand(fx: string, id: string): string {
-  const doc = map(
-    yamlLib.load(fs.readFileSync(path.join(fx, "ci", "ci-capabilities.yml"), "utf8")),
-  );
+  const doc = map(yamlLib.load(readReferenceText(fx)));
   const cmds = list(capOf(doc, id)["command"], `command of ${id}`);
   return String(cmds[cmds.length - 1]);
 }
@@ -62,8 +62,7 @@ function inlineChroma(fx: string): void {
   const tests = last.slice(last.indexOf(marker) + marker.length);
   const declared = `${SCAN_PREFIX}${tests}`;
   let files: string[] = [];
-  const capFile = path.join(fx, "ci", "ci-capabilities.yml");
-  editYaml(capFile, (doc) => {
+  editReference(fx, (doc) => {
     const c = capOf(doc, "chroma-mcp");
     c["command"] = [declared];
     const req = map(c["requires"]);

@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "deny": [
+      "Agent(accessibility-auditor)",
+      "Agent(accessibility-tester)",
+      "Agent(astro-developer)",
+      "Agent(copywriter)",
+      "Agent(designer)",
+      "Agent(frontend-developer)",
+      "Agent(regression-sentinel)",
+      "Agent(scenario-author)",
+      "Agent(seo-specialist)",
+      "Agent(visual-regression-tester)",
+      "Agent(web-conformity-checker)"
+    ]
+  },
+  "skillOverrides": {
+    "astro": "off",
+    "copywriting": "off",
+    "frontend": "off",
+    "web-tester": "off"
+  }
+}

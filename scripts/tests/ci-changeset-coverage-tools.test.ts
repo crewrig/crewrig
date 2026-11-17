@@ -1,6 +1,6 @@
 // ci-changeset-coverage-tools.test.ts — the coverage-tools guard of the exhaustive run (spec 0147
 // delta-02 R25, R28-R31, issue #1770; delta-03 R35-R37, issue #1825). Every tool required by a
-// changeset-gated capability of ci/ci-capabilities.yml must be required by `changeset-coverage`, the
+// changeset-gated capability of ci/capabilities/ must be required by `changeset-coverage`, the
 // capability that runs them all, and every gated `requires.install` must rank no higher than the
 // install `changeset-coverage` performs (`none` < `omit-dev` < `install` = `ci`, unknown above all).
 //
@@ -27,9 +27,10 @@ import {
   YqSeq,
   type YqNode,
 } from "../lib/yq-accessors/index.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const REAL = fs.readFileSync(path.join(REPO, "ci", "ci-capabilities.yml"), "utf8");
+const REAL = readReferenceText(REPO);
 
 const COVERAGE_TOOLS = "tools: [yq, jq, task, tesseract]";
 /** The two-line `requires` head of changeset-coverage: the runtime line alone is not unique. */
@@ -132,13 +133,13 @@ function withInstall(text: string, id: string, value: string): string {
 /** Copy (b): changeset-coverage's first command back to the production install (pre-delta-03). */
 const COPY_B = withCoverageCommands(REAL, [OMIT_DEV, ...COVERAGE_TAIL]);
 
-/** The four gated capabilities that need dev dependencies, in reference order (delta-03). */
+/** The four gated capabilities that need dev dependencies, in reader order (delta-03, spec 0309 R13(0)). */
 function theFour(performed: string): string[] {
   return [
+    inst("lint-specs-selftest", "install", performed),
+    inst("lint-typescript-selftest", "ci", performed),
     inst("path-ownership-selftest", "ci", performed),
     inst("host-safety-selftest", "ci", performed),
-    inst("lint-typescript-selftest", "ci", performed),
-    inst("lint-specs-selftest", "install", performed),
   ];
 }
 

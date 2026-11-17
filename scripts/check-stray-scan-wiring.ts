@@ -6,7 +6,7 @@
 //
 //   R17a  Every registered suite command engages the stray scan. A command whose program
 //         is `bash scripts/tests/test-*.sh` is a finding, in the capability reference
-//         (`command:` entries of ci/ci-capabilities.yml) and in the hand-authored GitHub
+//         (`command:` entries of ci/capabilities/) and in the hand-authored GitHub
 //         Actions jobs (`run:` of every step under .github/workflows). The accepted form is
 //         `node scripts/ci-cache-guard.ts --stray-scan -- bash scripts/tests/<suite>`. Before
 //         the program is read, a command is split on newlines, its whitespace normalised, and
@@ -46,10 +46,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { load } from "js-yaml";
 import { UnsupportedGlobError, globToRegExp } from "./lib/glob-engine.ts";
+import {
+  ReferenceNotFoundError,
+  ReferenceReadError,
+  readReference,
+  sourceOf,
+} from "./lib/ci-parity/reference-read.ts";
 import { readTextLf } from "./lib/line-endings.ts";
 import { WiringError, repoRoot, trackedFiles } from "./lib/ts-scope.ts";
 
-const REFERENCE = "ci/ci-capabilities.yml";
+const REFERENCE = "ci/capabilities/";
 const WORKFLOWS_DIR = ".github/workflows";
 const PREFIX = "stray-scan-wiring";
 
@@ -149,13 +155,31 @@ function pullRequestTriggers(id: string, trigger: unknown): PullRequestTrigger[]
   return out;
 }
 
+function readReferenceYaml(): { doc: unknown; source: string } {
+  let ref;
+  try {
+    ref = readReference(repoRoot());
+  } catch (err) {
+    if (err instanceof ReferenceNotFoundError)
+      throw new WiringError(`cannot read ${REFERENCE}: ${err.message}`);
+    if (err instanceof ReferenceReadError) throw new WiringError(err.format());
+    throw err;
+  }
+  const source = sourceOf(ref);
+  try {
+    return { doc: load(ref.text), source };
+  } catch (err) {
+    throw new WiringError(`${source} is not valid YAML: ${(err as Error).message}`);
+  }
+}
+
 function readCapabilities(): Capability[] {
-  const doc = readYaml(REFERENCE);
+  const { doc, source } = readReferenceYaml();
   const caps = isRecord(doc) ? doc.capabilities : undefined;
-  if (caps === undefined) throw new WiringError(`${REFERENCE} has no 'capabilities' list`);
-  if (!Array.isArray(caps)) throw new WiringError(`${REFERENCE}: 'capabilities' is not a list`);
+  if (caps === undefined) throw new WiringError(`${source} has no 'capabilities' list`);
+  if (!Array.isArray(caps)) throw new WiringError(`${source}: 'capabilities' is not a list`);
   return (caps as unknown[]).map((cap) => {
-    if (!isRecord(cap)) throw new WiringError(`${REFERENCE}: a capability entry is not a mapping`);
+    if (!isRecord(cap)) throw new WiringError(`${source}: a capability entry is not a mapping`);
     const id = typeof cap.id === "string" ? cap.id : "?";
     let commands: string[] = [];
     if (cap.command !== undefined) {
@@ -263,7 +287,7 @@ function evaluate(
       message:
         `owned by ${ids.join(", ")} but no owner's pull-request \`paths:\` matches it, ` +
         "so a change to the suite would not run its owner; add the suite to the owner's `paths:` " +
-        "(and the matching GitHub path filter) in ci/ci-capabilities.yml",
+        "(and the matching GitHub path filter) in the CI capability reference (ci/capabilities/)",
     });
   }
   return { commands, suites: suites.length, owned, findings };

@@ -1,0 +1,1 @@
+{"ok":false,"data":null,"findings":[{"rule":"precondition","message":"not a file or directory: missing.yml","path":"missing.yml"}]}

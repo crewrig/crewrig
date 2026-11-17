@@ -1,6 +1,6 @@
 // check-model-mappings-committed.test.ts — Replaces scripts/tests/test-check-model-mappings.sh
 // section 3 (spec 0265, row J2, P8): the four real committed mapping files run green against the
-// checkout itself (CREWRIG_REPO_DIR = the checkout, read-only), plus the 26 content assertions
+// checkout itself (CREWRIG_REPO_DIR = the checkout, read-only), plus the 31 content assertions
 // that pin what the generic checker cannot know, as data-driven rows over js-yaml loads
 // (formerly `assert_yq` with `yq -r`).
 
@@ -36,6 +36,17 @@ const trio = (d: unknown, i: number): string =>
 const reasoning = (i: number): string =>
   `${String(at(offer(docs.antigravity, i), "encodes", "reasoning"))}|${String(at(offer(docs.antigravity, i), "provides", "reasoning"))}`;
 
+const ids = (list: unknown): string =>
+  (Array.isArray(list) ? list : []).map((t) => String(at(t, "id"))).join(",");
+/** A23 as a row: `withheld` iff some term holds, `directed` iff none does. */
+const guardAgreement = (d: unknown): string => {
+  const anyHolds = (
+    Array.isArray(at(d, "guard", "terms")) ? (at(d, "guard", "terms") as unknown[]) : []
+  ).some((t) => at(t, "holds") === true);
+  const state = String(at(d, "guard", "state"));
+  return state === (anyHolds ? "withheld" : "directed") ? "agrees" : `disagrees: ${state}`;
+};
+
 const c = docs.claude;
 const g = docs.gemini;
 const a = docs.antigravity;
@@ -67,7 +78,16 @@ const rows: readonly (readonly [string, string, string])[] = [
     String(at(c, "surfaces", 0, "items", 1, "projection", "none")),
     "unmapped",
   ],
-  ["claude guard state is withheld", String(at(c, "guard", "state")), "withheld"],
+  [
+    "claude guard state agrees with its terms (A23), whichever state it records",
+    guardAgreement(c),
+    "agrees",
+  ],
+  [
+    "claude guard terms are the two ids of spec 0291 R3",
+    ids(at(c, "guard", "terms")),
+    "defect-not-established-fixed,copilot-reader-fails-on-unserved-model",
+  ],
   ["claude guard has exactly two terms", len(at(c, "guard", "terms")), "2"],
   [
     "claude guidance model item carries an assumption, not a citation",
@@ -90,8 +110,8 @@ const rows: readonly (readonly [string, string, string])[] = [
   ),
   ["copilot has zero offerings", len(at(docs.copilot, "offerings")), "0"],
   ["copilot declares a zero-offerings block", has(docs.copilot, "zero-offerings"), "true"],
-  ["antigravity has exactly five offerings", len(at(a, "offerings")), "5"],
-  ...(["medium", "low", "high", "high", "low"] as const).map(
+  ["antigravity has exactly nine offerings", len(at(a, "offerings")), "9"],
+  ...(["medium", "low", "high", "medium", "low", "high", "medium", "low", "high"] as const).map(
     (rung, i) =>
       [
         `antigravity offering ${i + 1} encodes and provides matching reasoning (${rung})`,
@@ -105,9 +125,9 @@ const rows: readonly (readonly [string, string, string])[] = [
     "true",
   ],
   [
-    "antigravity records nine observed-not-declared identifiers",
+    "antigravity records fourteen observed-not-declared identifiers",
     len(at(a, "observed-not-declared")),
-    "9",
+    "14",
   ],
 ];
 
@@ -119,8 +139,8 @@ describe("check-model-mappings committed content (section 3)", () => {
     }
   });
 
-  test("the content table has its 26 rows", () => {
-    assert.equal(rows.length, 26);
+  test("the content table has its 31 rows", () => {
+    assert.equal(rows.length, 31);
   });
 
   for (const [name, got, expected] of rows) {

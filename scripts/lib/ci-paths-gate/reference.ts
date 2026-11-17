@@ -1,5 +1,5 @@
 // reference.ts — the effective path set, cache files and cache env of one capability, read from
-// ci/ci-capabilities.yml through the ci-parity reader (spec 0283 R3/R6, spec 0049 delta-02 R25).
+// ci/capabilities/ through the ci-parity reader (spec 0283 R3/R6, spec 0049 delta-02 R25).
 //
 // Usage: readEffective(refText, id). Throws Error for an unknown id.
 

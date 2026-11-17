@@ -17,8 +17,16 @@ tasks:
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-skill-versions.ts
 
   check-description-length:
-    desc: "Fail when a skill or agent description exceeds 300 characters (spec 0269 R11)"
+    desc: "Fail when a skill or agent description exceeds 1024 characters (spec 0293)"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-description-length.ts
+
+  check-agent-script-citations:
+    desc: "Fail when an agent body cites a scripts/ path outside a crewrig-repo-only fence (issue #1863, spec 0289)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-agent-script-citations.ts
+
+  check-skill-quality:
+    desc: "Lint skill sources against the authoring standard; a skill that ships evals is protected (spec 0293). Author-side: task check-skill-quality -- <skill> [--strict] [--json]"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-skill-quality.ts {{.CLI_ARGS}}
 
   check-comment-size:
     desc: "Fail when a plan or verdict comment body exceeds 12288 bytes (spec 0275 R-E2). Author-side: task check-comment-size -- <file> (or pipe the body on stdin)"
@@ -67,6 +75,10 @@ tasks:
   check-claude-agent-layout:
     desc: "Check the compiled .claude/agents/ tree holds only flat <name>.md files (local mirror of the CI guard, spec 0201)"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-claude-agent-layout.ts
+
+  check-subagent-conventions:
+    desc: "Check every compiled agent ends with the subagent conventions block and the Claude Code key (local mirror of the CI guard, spec 0306)"
+    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-subagent-conventions.ts
 
   skill:check:
     desc: "Verify built skill (+ optional agent) mirrors for one component across .claude/, .gemini/, .github/. Usage: task skill:check NAME=<skill-name>"

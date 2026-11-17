@@ -24,6 +24,7 @@ export const claudeDescriptor: SetupDescriptor = {
     "identity-check",
     "rules-existing",
     "rules-shared",
+    "home-dirs",
     "tls-offer",
     "deps-install",
     "mcp",
@@ -65,6 +66,11 @@ export const claudeDescriptor: SetupDescriptor = {
         label: "artifacts/core/rules/60-tools.md -> rules/60-tools.md",
       },
       {
+        src: "artifacts/core/rules/60-memory.md",
+        dest: "60-memory.md",
+        label: "artifacts/core/rules/60-memory.md -> rules/60-memory.md",
+      },
+      {
         src: "config/TOOLS.md",
         dest: "65-org-tools.md",
         label: "TOOLS.md -> rules/65-org-tools.md",
@@ -85,6 +91,14 @@ export const claudeDescriptor: SetupDescriptor = {
       dest: ".crewrig/system-context",
       label: "artifacts/core/system-context -> ~/.crewrig/system-context",
     },
+    homeDirs: [
+      {
+        src: "artifacts/core/claude-profiles",
+        dest: ".crewrig/claude-profiles",
+        label: "artifacts/core/claude-profiles -> ~/.crewrig/claude-profiles",
+        optional: true,
+      },
+    ],
     pickOrder: ["team", "expertise", "level"],
     selections: {
       team: {

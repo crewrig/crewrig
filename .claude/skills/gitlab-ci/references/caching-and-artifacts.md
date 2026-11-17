@@ -1,5 +1,24 @@
 # Caching and artifacts reference
 
+## Contents
+
+- [How the cache works](#how-the-cache-works)
+- [`cache:key`](#cachekey)
+- [`cache:paths`](#cachepaths)
+- [`cache:policy`](#cachepolicy)
+- [`cache:when`](#cachewhen)
+- [`cache:untracked` and `cache:unprotect`](#cacheuntracked-and-cacheunprotect)
+- [Multiple caches and `fallback_keys`](#multiple-caches-and-fallback_keys)
+- [Distributed cache (S3 / GCS)](#distributed-cache-s3--gcs)
+- [How artifacts work](#how-artifacts-work)
+- [`artifacts:paths` and `artifacts:exclude`](#artifactspaths-and-artifactsexclude)
+- [`artifacts:expire_in` and `artifacts:when`](#artifactsexpire_in-and-artifactswhen)
+- [`artifacts:name` and `artifacts:expose_as`](#artifactsname-and-artifactsexpose_as)
+- [`artifacts:reports`](#artifactsreports)
+- [Controlling which artifacts are fetched](#controlling-which-artifacts-are-fetched)
+- [Language recipes](#language-recipes)
+- [Pitfalls](#pitfalls)
+
 GitLab CI/CD exposes two distinct mechanisms for moving files in and out
 of jobs. They look similar and are constantly confused, so the headline
 distinction comes first.

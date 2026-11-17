@@ -1,0 +1,5 @@
+{
+  "status": 1,
+  "stdout": "{\"ok\":false,\"data\":{\"ran\":false},\"findings\":[{\"rule\":\"target-unreadable\",\"message\":\"workflow file not found: missing.yml\"}]}\n",
+  "stderr": "[FAIL] workflow file not found: missing.yml\n"
+}

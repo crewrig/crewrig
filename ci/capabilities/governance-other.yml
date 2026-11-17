@@ -1,0 +1,380 @@
+# CI capabilities: group governance, part other (format: docs/ci-reference-format.md, spec 0309).
+capabilities:
+
+  - id: agent-profile-migration
+    group: governance
+    name: "Run the agent-profile migration regression suite"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/build-components.ts"
+      - "scripts/build-components.ts"
+      - "scripts/tests/build-components-canonical-repo.test.ts"
+      - "scripts/tests/agent-profile-*.test.ts"
+      - "scripts/tests/lib/build-sandbox.ts"
+      - "scripts/lib/**"
+      - "artifacts/**"
+      - "extensions/**"
+      - ".crewrig/core-paths.txt"
+      - "docs/layers.md"
+      - "docs/agent-profile-migration.md"
+      - "model-mappings/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [yq, task]
+      install: omit-dev
+    cache:
+      files:
+        - "scripts/build-components.ts"
+        - "scripts/build-components.ts"
+        - "scripts/tests/build-components-canonical-repo.test.ts"
+        - "scripts/tests/agent-profile-*.test.ts"
+        - "scripts/tests/lib/build-sandbox.ts"
+        - "scripts/lib/**"
+        - "artifacts/**"
+        - "extensions/**"
+        - ".crewrig/core-paths.txt"
+        - "docs/agent-profile-migration.md"
+        - "model-mappings/**"
+        - "scripts/ci-cache-guard.ts"
+      env: []
+    command:
+      - task ci:agent-profile-migration
+
+  - id: misc
+    group: governance
+    name: "Run miscellaneous portability and reservation checks"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/tests/governance-suite-no-machine-paths.test.ts"
+      - "scripts/tests/lib/governance-*.ts"
+      - "scripts/tests/governance-gemini-overlay-enrollment-cases.test.ts"
+      - "scripts/tests/lib/build-fixture-tree.ts"
+      - "scripts/tests/reserve-spec-id-contract.test.ts"
+      - "scripts/tests/reserve-spec-id-carrier-reuse.test.ts"
+      - "scripts/tests/reserve-spec-id-races.test.ts"
+      - "scripts/tests/check-spec-id-reserved-blocking.test.ts"
+      - "scripts/tests/check-spec-id-reserved-mark.test.ts"
+      - "scripts/tests/check-spec-id-reserved-origin.test.ts"
+      - "scripts/tests/check-spec-id-reserved-degraded.test.ts"
+      - "scripts/tests/check-spec-id-reserved-base-ref.test.ts"
+      - "scripts/tests/lib/reserve-spec-id-fixture.ts"
+      - "scripts/tests/lib/spec-id-fixture.ts"
+      - "scripts/tests/lib/spec-id-constants.ts"
+      - "scripts/tests/lib/scratch-remote.ts"
+      - "scripts/tests/lib/differential-guard.ts"
+      - "scripts/reserve-spec-id.ts"
+      - "scripts/check-spec-id-reserved.ts"
+      - "model-mappings/**"
+      - "scripts/setup-gemini-interactive.ts"
+      - "config/gemini/settings.json"
+      - "scripts/lib/**"
+      - "scripts/tests/lib/print-setup-declarations.ts"
+      - "scripts/tests/lib/setup-declarations-*.ts"
+      - "scripts/check-gemini-overlay-enrollment.ts"
+      - "scripts/lib/governance/**"
+      - "scripts/check-no-machine-paths.ts"
+    portability: portable
+    changeset-gated: true
+    requires:
+      # node@24 is the PRIMARY runtime on purpose (finding i1-F16): the GitLab image is derived from the FIRST entry, so
+      # the job runs on the pinned node:24 image like every other Node job, not an unpinned NodeSource script on
+      # python:3.12. The check entries fail closed below Node.js 24; no python runtime is declared. The GitLab leg cannot
+      # be run locally; it is covered by build-ci.ts --check and check-ci-parity.ts only.
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:misc
+
+  - id: check-model-mappings
+    group: governance
+    name: "Check model-mapping conformance and run its mutation test suite"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "model-mappings/**"
+      - "docs/model-mapping-format.md"
+      - "scripts/check-model-mappings.ts"
+      - "scripts/tests/check-model-mappings-rejections.test.ts"
+      - "scripts/tests/check-model-mappings-org.test.ts"
+      - "scripts/tests/check-model-mappings-selection.test.ts"
+      - "scripts/tests/check-model-mappings-committed.test.ts"
+      - "scripts/tests/lib/model-mapping-fixtures.ts"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [yq, task]
+      install: omit-dev
+    command:
+      - task ci:check-model-mappings
+
+  - id: check-agent-profiles
+    group: governance
+    name: "Check agent capability-profile conformance and run its mutation test suite"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "artifacts/**"
+      - "scripts/check-agent-profiles.ts"
+      - "scripts/tests/check-agent-profiles-rejections.test.ts"
+      - "scripts/tests/check-agent-profiles-green.test.ts"
+      - "scripts/tests/lib/agent-profile-fixtures.ts"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [yq, task]
+      install: omit-dev
+    command:
+      - task ci:check-agent-profiles
+
+  - id: check-metadata-keys
+    group: governance
+    name: "Check the component metadata: closed key set and run its mutation test suite"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "artifacts/**"
+      - "scripts/check-component-metadata-keys.ts"
+      - "scripts/lib/governance/**"
+      - "scripts/lib/build-components/**"
+      - "scripts/lib/render-command.ts"
+      - "scripts/lib/yaml-text.ts"
+      - "scripts/lib/require-dependency.ts"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:check-metadata-keys
+
+  - id: check-claude-agent-layout
+    group: governance
+    name: "Check the compiled Claude Code and Antigravity agent trees are flat and run their mutation test suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - ".claude/agents/**"
+      - ".agents/agents/**"
+      - "scripts/build-components.ts"
+      - "scripts/build-components.ts"
+      - "scripts/lib/build-components/**"
+      - "scripts/check-claude-agent-layout.ts"
+      - "scripts/lib/governance/**"
+      - "scripts/tests/governance-*agent-layout*.test.ts"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:check-claude-agent-layout
+
+  - id: test-harness-curate
+    group: governance
+    name: "Smoke-test the harness curator"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/harness-curator-curate-fixture.test.ts scripts/tests/harness-curator-curate-units.test.ts scripts/tests/harness-curator-apply-dry-run.test.ts scripts/tests/harness-curator-apply-units.test.ts scripts/tests/harness-curator-setup-schedule.test.ts scripts/tests/harness-curator-real-palace.test.ts"
+
+  # check-skill-versions and check-extension-version-bump compare the change against its base ref; the workflow gates them
+  # on `if: github.event_name == 'pull_request'` (.github/workflows/build.yml lines 173, 186), so the trigger is
+  # pull-request only. They need `history-depth: full` (GHA `fetch-depth: 0`) to resolve the base ref (delta-02 R12).
+  - id: check-skill-versions
+    group: governance
+    name: "Enforce version bump on changed skill/agent sources"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      history-depth: full
+      tools: [task]
+    env:
+      BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    command:
+      - task ci:check-skill-versions
+
+  # Spec 0269 R11, amended by spec 0293 R2: a skill or agent description is capped at 1,024 characters, on the
+  # artifacts/ sources and on the compiled outputs of every CLI. Spec 0293 R19: the same job lints the skill sources.
+  - id: check-description-length
+    group: governance
+    name: "Cap descriptions at 1024 characters, lint skill sources, fence agent script citations and check the subagent conventions block"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "artifacts/**"
+      - ".claude/skills/**"
+      - ".claude/agents/**"
+      - ".gemini/skills/**"
+      - ".gemini/agents/**"
+      - ".github/skills/**"
+      - ".github/agents/**"
+      - ".agents/skills/**"
+      - ".agents/agents/**"
+      - "scripts/check-description-length.ts"
+      - "scripts/check-agent-script-citations.ts"
+      - "scripts/check-subagent-conventions.ts"
+      - "scripts/tests/check-subagent-conventions*"
+      - "scripts/tests/fixtures/subagent-conventions/**"
+      - "scripts/tests/agent-script-citations.test.ts"
+      - "scripts/tests/fixtures/*script-citations/**"
+      - "artifacts/core/skills/pr-reviewer/scripts/lint-skill.ts"
+      - "scripts/lib/governance/**"
+      - "scripts/lib/build-components/**"
+      - "scripts/lib/require-dependency.ts"
+      - "scripts/check-skill-quality.ts"
+      - "scripts/lib/skill-*/**"
+      - "scripts/lib/paths.ts"
+      - "scripts/tests/check-skill-quality*.test.ts"
+      - "scripts/tests/lib/skill-quality-fixture.ts"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:check-description-length
+
+  - id: check-extension-version-bump
+    group: governance
+    name: "Enforce carrier-version bump on changed extension sources"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      history-depth: full
+    env:
+      BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    command:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-version-bump.ts
+
+  # check-spec-id-reserved compares the change against its base ref and reads the reservation namespaces on the remote, so
+  # it needs `history-depth: full`, as the two version-bump guards above. The workflow gates it on
+  # `if: github.event_name == 'pull_request'` (spec 0112 R10 origin discrimination has no meaning on a push), so the
+  # trigger is pull-request only.
+  #
+  # NO `tools:` KEY, deliberately. The generated GitLab job runs on the default `debian:stable-slim` image, which ships no
+  # git, so git is installed CONDITIONALLY as the first line of `command:`, a business step, not setup. Declaring
+  # `tools: [git]` would still fail check-ci-parity.ts Arm 2 (reference↔GitLab): `git`/`diff` have no `tool_install_lines`
+  # recipe in build-ci.ts, so a GitLab job needing either hard-errors at generation time (Arm 1 no longer blocks: since
+  # #1216 `git`/`diff` count as preinstalled on ubuntu-latest). The git line must carry NO nested `sudo` (`normalize_cmd`
+  # strips only a *leading* one), or it would diverge from the declared command.
+  - id: check-spec-id-reserved
+    group: governance
+    name: "Verify every spec id added by the change was secured"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      history-depth: full
+    env:
+      BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+      CREWRIG_PR_BASE_REPO: "$CI_PROJECT_PATH"
+      CREWRIG_PR_HEAD_REPO: "$CI_MERGE_REQUEST_SOURCE_PROJECT_PATH"
+    command:
+      - command -v git >/dev/null || (apt-get update && apt-get install -y --no-install-recommends git ca-certificates)
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-spec-id-reserved.ts
+
+  - id: check-seat-brief
+    group: governance
+    name: "Check the seat brief linter against its fixtures"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/check-seat-brief.ts"
+      - "scripts/lib/governance/seat-brief.ts"
+      - "scripts/lib/governance/report.ts"
+      - "scripts/tests/check-seat-brief*"
+      - "scripts/tests/fixtures/seat-brief/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:check-seat-brief
+
+  - id: check-plan-review
+    group: governance
+    name: "Check the plan review gate against its fixtures"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/check-plan-review.ts"
+      - "scripts/lib/governance/plan-review-gate.ts"
+      - ".crewrig/plan-components.txt"
+      - ".crewrig/shared-contract-paths.txt"
+      - "scripts/tests/check-plan-review*"
+      - "scripts/tests/fixtures/plan-review/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:check-plan-review
+
+  - id: check-feedback-routing
+    group: governance
+    name: "Enforce upstream-tier feedback routing"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-feedback-routing.ts

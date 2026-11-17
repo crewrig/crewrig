@@ -2,6 +2,8 @@
 
 <!-- crewrig-doc: section=reference nav_order=110 published=true title="Agent capability-profile migration" -->
 
+Since spec 0307, eleven of the 22 baseline sources below live under `artifacts/library/agents/`; the 22-row baseline is unchanged and still checked.
+
 The core agent sources declare CLI-agnostic capability profiles
 (`metadata.model:`) instead of a Claude Code model alias
 (`metadata.claude.model`), per [spec 0200](../specs/0200-core-agent-profile-migration.md)
@@ -12,6 +14,8 @@ narrowing this change set's own requirement 22 forces on two of the
 parent spec's requirements, and the observable diagnostic-stream change.
 The authoring-facing account of what a capability profile is and how a
 source declares one lives in [`docs/authoring.md`](authoring.md).
+
+> **Historical baseline.** The tables below record the migration at `723ad8f`; they are not the current profiles. Issue #1937 (the "later change" that requirement 4 of spec 0200 allows) declared `reasoning` and revised the tiers of the core agents afterwards. The current profiles and what they resolve to per CLI are in the table of [`docs/authoring.md`](authoring.md#profiles-of-the-core-agents).
 
 ## The 23-row translation table
 
@@ -120,7 +124,10 @@ contradicting the conclusion above:
   <alias> model.` — the resolution's own emission under requirement 14,
   not an authoring instruction. The other three compiled agent trees stay
   at 0 hits: the Antigravity guidance prose names a Gemini offering, not a
-  Claude alias.
+  Claude alias. (Spec 0291 later moved that alias to a `model: <alias>`
+  frontmatter key and removed the sentence from the Claude description;
+  the 22 hits are then the `model:` lines, and the sentence returns under a
+  `withheld` guard.)
 - **This change set's own new and edited test files add further,
   deliberate alias mentions**, in the same spirit as class 6 above: the
   refreshed `C2(b)` literal of the since-retired `test-model-resolution.sh` now pins
@@ -186,30 +193,28 @@ requirement 22 obliges, and differ in no other byte.
 
 ## The diagnostic stream
 
-Measured on the migrated tree with all four targets built (run `node scripts/lib/node-floor-guard.js` first, as a separate step; the build needs Node.js 24 or newer, and `js-yaml` comes from the setup dependency step; the counts were first taken through `node scripts/build-components.ts`, which forwards to the same build):
+Re-measured at spec 0291 delta 03 (2026-11-15; the guard lift and `metadata.tools` before it) with all four targets built (run `node scripts/lib/node-floor-guard.js` first, as a separate step; the build needs Node.js 24 or newer, and `js-yaml` comes from the setup dependency step):
 
 | Invocation | Lines | Shapes |
 |---|---|---|
-| `node scripts/build-components.ts --target all` | **44** | 22 `model-note … claude guard-withheld …` (one per migrated agent, requirement 21) + 22 `model-drop … copilot metadata.model.intelligence <rung> unsupported-on-cli` (one per migrated agent, requirement 21). Nothing else |
-| `node scripts/build-components.ts --target all --check` | **48** | the same 44, plus **4** `model-note developer <target> no-mapping …` — one per target, for the single agent of the assembly test's synthetic root |
+| `node scripts/build-components.ts --target all` | **65** | 33 `model-drop … copilot` + 11 `model-drop … gemini` + 10 `tools-drop … copilot` + 1 `tools-drop … gemini` + 10 `tools-drop … antigravity metadata.tools skill no-equivalent-on-cli` (one per agent that declares `skill`, spec 0291 delta 03 R42; it was 12 `unsupported-on-cli`, one per declaring agent, before). Measured on 2026-11-15 from a real build (67 lines before delta 03). No `guard-withheld` line: the guard is `directed` (spec 0291 R1, R5). The plain run builds the library tier as well |
+| `node scripts/build-components.ts --target all --check` | **65** | the same 44 `model-drop` and 21 `tools-drop` lines (10 of them Antigravity); `--check` also prints its own progress lines, and does not run the assembly suite (spec 0250 R33, (c)) |
+| the 22-core-source root of `agent-profile-build.test.ts` | derived | 22 `model-drop`, plus one `tools-drop` per source for each target that has no name for a declared class, plus 22 `guard-withheld` only while the committed guard is `withheld`; the Antigravity `tools-drop` count is 10, pinned by the test |
+| the assembly suite's synthetic root, added | **+4** | `model-note developer <target> no-mapping …` — one per target, for the single agent of `scripts/tests/build-assembly-routing.test.ts`'s root, which holds no `model-mappings/`: **69** lines when counted together with the stream above (spec 0291 R7) |
 
-**Mechanism.** `--check` ends by running a second, smaller build under a
-fresh `mktemp -d` root (`scripts/tests/build-assembly-routing.test.ts`) that
-holds no `model-mappings/` and only the `developer` skill and agent of
-`core` plus the fixture overlay, so the resolution finds no mapping in
-force and emits a `no-mapping` note for that one profiled agent on each of
-the four targets. Until issue #1432 that root held the whole `core` and
-`library` trees, which made the figure 88. This is a property of
-`--check`'s own second, synthetic build — not of "the migrated tree"
-requirement 21 binds — so requirement 21 is satisfied exactly by the
-44-line stream a plain build emits, and the 4 additional lines are a real,
-new-since-this-change-set observable on every CI run of the
-`component-drift` capability (which invokes `--check`): exit status stays
-0, and `build-assembly-routing.test.ts` still passes, since it verifies
-assembly structure rather than model emissions. No requirement of spec
-0200 binds that suite's synthetic root, and giving it one would change the
-root every assembly assertion runs against — a blast radius wider than
-this change set, left to a follow-up ticket if a reviewer wants it closed.
+Before spec 0291 the first two rows read **44** and **48**: 22 `model-note … claude guard-withheld …` lines were part of the stream, because the guard was `withheld` and every Claude Code agent kept the sentence in its description. An organization that re-withholds the guard (`docs/org-model-mapping-override.md`) gets those 22 `guard-withheld` notes back, one per Claude Code agent (spec 0197 R32).
+
+**Mechanism.** The 4 `no-mapping` notes belong to the assembly suite
+(`scripts/tests/build-assembly-routing.test.ts`), which builds a second,
+smaller root under a fresh `mktemp -d`: it holds no `model-mappings/` and
+only the `developer` skill and agent of `core` plus the fixture overlay, so
+the resolution finds no mapping in force and emits a `no-mapping` note for
+that one profiled agent on each of the four targets. Until issue #1432 that
+root held the whole `core` and `library` trees, which made the figure 88.
+This is a property of that suite's own synthetic build, not of "the migrated
+tree" requirement 21 binds, and no requirement of spec 0200 binds that
+root: giving it one would change the root every assembly assertion runs
+against, a blast radius wider than this change set.
 
 ## Decoupling record (requirements 32-34)
 
@@ -241,3 +246,16 @@ acting either: the compiled agent trees carry the `regenerable` policy
 (`.crewrig/core-paths.txt`), so the next `scripts/sync-from-upstream.ts` run
 restores the new flat files, removes the retired nested ones as orphans, and
 reports rather than aborts on any member a fork had locally diverged.
+
+**Follow-up (spec 0053 delta-01, issue #1847).** The compiled Antigravity
+agent is now the flat `.agents/agents/<name>.md`, like the other three CLIs,
+carrying `name`, `description`, `tools` (spec 0291 delta 03; first omitted) and the `metadata` provenance block
+(the `enable_*`, `license` and `compatibility` keys are no longer emitted).
+An adopter who installed the retired `~/.gemini/config/agents/<name>/AGENT.md`
+has that directory removed at their next Antigravity setup (`Migrated away:
+<path>`), but only when it holds nothing except a provenance-carrying
+`AGENT.md`; a directory with any other content is left in place with a
+warning. A synchronizing fork lands on the new layout without acting: the
+`.agents/agents` tree carries the `regenerable` policy, so the next
+`scripts/sync-from-upstream.ts` run restores the flat files and removes the
+retired nested ones as orphans.

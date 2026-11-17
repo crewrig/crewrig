@@ -1,7 +1,8 @@
 ---
 name: idea
-description: "IDEA stage lifecycle skill for structured idea-convergence. Activate before a SPECS session whenever multiple competing, overlapping, or complementary proposals must be resolved first. Supports three governance modes (solo, unanimity, vote) and produces one or more SPECS issues as output."
+description: "Runs a structured idea-convergence session on a forge issue: opens the session, triages and compares competing proposals, tallies votes under the solo, unanimity or vote governance mode, and closes with one or more SPECS issues or a no-consensus record. Use when several competing, overlapping or complementary proposals address the same parent issue and must converge before a spec is written, or when asked to open, tally or close an IDEA session. Trigger terms: IDEA session, converge proposals, competing designs, candidate, VOTE comment, quorum, unanimity, no consensus. Not for a ticket whose intent is already clear (spec-author), reviewing a pull request (pr-reviewer) or open-ended brainstorming."
 license: Apache-2.0
+compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts) and the forge CLI (gh for GitHub; glab or tea users export the issue JSON and translate the printed commands)."
 allowed-tools:
   - Read
   - Bash
@@ -11,368 +12,74 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.0"
+    version: "1.2.0"
 ---
 
 
 # Idea
 
-The `idea` skill opens and manages a structured idea-convergence session — the
-optional IDEA stage that sits before SPECS in the ADR-0010 lifecycle. Use it when
-two or more competing, overlapping, or complementary proposals for a problem coexist
-and must be converged before a spec can be written.
+An IDEA session settles which of several proposals becomes the spec's intent, and leaves an auditable record on a forge issue: proposals, triage, comparison, votes and outcome are all comments on one session issue. It sits before SPECS and is optional. When a single clear intent exists, go straight to `spec-author`.
 
-The skill is forge-agnostic: it operates on forge issues (GitHub, GitLab, Gitea)
-using the host CLI's native commands and does not call any forge-specific API
-directly.
+Mechanical steps are scripts; you supply the judgement (clustering ideas, comparing, composing, designating the candidate). Run each as `node <skill-dir>/scripts/<name>.ts`. All take `--json` for `{ok, data, findings}` and `--help`; exit `2` means a wrong invocation and `3` a failed environment (usually `gh` unavailable or unauthenticated), never a verdict on the session.
 
-## When to activate
+| When | Command | Exit `1` means |
+|---|---|---|
+| Opening | `idea-open.ts --mode <m> --issue <N> --description <t>` plus the governance options of the mode | Never used. `--dry-run` prints the `gh` commands and the issue body and runs nothing. |
+| Before any decision to close | `idea-tally.ts --issue <N>` (or `--comments-file <exported.json>`) | No usable candidate: `candidate-required` (two or more proposals survive and none is designated) or `no-proposals`. Designate a candidate first. |
+| Closing | `idea-close.ts --issue <S> --outcome resolved\|no-consensus --parent <N> ...` | Refused: `threshold-not-met` or `winner-mismatch`. Do not close as resolved. |
 
-- Explicit user invocation: the user types `/idea` (or the equivalent CLI activation
-  phrase). Required flags: `--mode=solo|unanimity|vote`, `--issue=<parent-issue-number>`.
-  Optional governance parameters vary by mode (see *Governance modes* below).
-- Any situation where multiple independent proposals address the same parent issue
-  and a structured decision record is needed before the SPECS stage begins.
+Read `data` of the tally, not only the exit code: `threshold_met` is the verdict, `missing` names who has not voted, `ignored` and the warning findings say which comments were not counted and why. Pass the tally's `--json` output to `idea-close.ts --tally-file` so the closing comment carries the real counts.
 
-Do **not** activate on a ticket where a single clear intent already exists — proceed
-directly to `spec-author` instead.
+## Governance modes
 
-## Inputs
+The mode and its parameters are fixed when the session issue is created, and are written into its body by `idea-open.ts` (the tally reads them back from there). Changing them mid-session would let the outcome be steered after the votes are visible, so the only recourse is to close the session as no-consensus and open a new one.
 
-The skill requires two mandatory parameters at open time:
+| Mode | Parameters | Threshold |
+|---|---|---|
+| `solo` | `--owner <login>`: one decision authority. Default to the invoking user's login when the user gives none. | The owner posts `VOTE: APPROVE`. A `REJECT` is a veto that leaves the session open. |
+| `unanimity` | `--owners <a,b,...>` | Every owner has approved. One `REJECT` blocks, and the session stays open. |
+| `vote` | `--voters <a,b,...>` and `--quorum <pct>` (1-100) | Approvals are at least `quorum` percent of the approve and reject votes, with at least one such vote. `ABSTAIN` is left out of the denominator. |
 
-| Parameter | Description |
-|---|---|
-| `--mode=<governance-mode>` | One of `solo`, `unanimity`, or `vote`. |
-| `--issue=<N>` | The parent issue number the convergence is anchored to. |
+Optional `--dimensions "a;b"` replaces the default comparison dimensions at open time; they cannot change later.
 
-Additional governance parameters depend on the mode:
+## Session workflow
 
-| Mode | Additional parameters |
-|---|---|
-| `solo` | `--owner=<identity>` — the single decision authority (defaults to the invoking user if omitted). |
-| `unanimity` | `--owners=<identity>[,<identity>…]` — the exhaustive list of identities who must all approve. |
-| `vote` | `--voters=<identity>[,<identity>…]`, `--quorum=<pct>` (integer, e.g. `60` for 60 %). Both required. |
+1. **Open.** Run `idea-open.ts`. It creates `[IDEA] <description> (parent #N)` with the labels `idea-session` and `idea-<mode>` and comments on the parent issue. On a forge other than GitHub, run it with `--dry-run` and translate the commands.
+2. **Collect proposals** as comments on the session issue, each in this shape, so they compare cleanly:
 
-All governance parameters are **immutable** after the session issue is created.
-No mechanism exists to change the mode, the owner list, the voter set, or the
-quorum threshold mid-session.
+   ```markdown
+   ## Proposal: <title>
 
-## Opening a session
+   **Submitter:** <identity>
 
-1. **Create the session issue** on the forge.
-   - Title: `[IDEA] <brief description> (parent #<N>)`.
-   - Labels: `idea-session` plus the governance sub-label (`idea-solo`,
-     `idea-unanimity`, or `idea-vote`).
-   - Body follows the *Session issue template* below.
-2. **Log the session opening** on the parent issue as a cross-reference comment.
+   ### Summary
+   <one to three sentences>
 
-### Session issue template
+   ### Rationale
+   <why this addresses the parent issue>
 
-```markdown
-## IDEA Session — <brief description>
+   ### Trade-offs
+   <advantages and costs, explicit>
 
-**Parent issue:** #<N>
-**Governance mode:** <mode>
-**<Mode-specific parameters>**
+   ### Open questions
+   <unresolved points that may affect feasibility or design>
+   ```
 
----
+3. **Triage.** Judge each proposal on relevance (does it address the parent issue), feasibility (realizable within reasonable constraints) and non-duplication (a distinct mechanism from an accepted proposal, not merely different wording; the earlier submission is the one kept). Reject with a comment whose first line is exactly `[TRIAGE-REJECTED] Proposal: <title>`, followed by `**Criterion failed:**` and a `**Reason:**` grounded in the proposal. Rejected proposals take no further part.
+4. **Compare.** Post one comment presenting every survivor against every dimension. Defaults: implementation complexity, architectural alignment (existing architecture, ADRs, constraints), reversibility.
+5. **Compose (optional).** When survivors are complementary rather than exclusive, post a hybrid as `[COMPOSITION] Proposal: <title>` naming its sources (`**Composed from:**`), in the standard proposal format. It then competes like any survivor.
+6. **Designate the candidate.** With two or more survivors, post a top-level comment whose first line is exactly `[CANDIDATE] Proposal: <title>`, naming a surviving proposal or composition. Votes bind to the latest valid designation, and a new valid designation voids every earlier vote because voters approved something else; they must recast. A designation naming an unknown title designates nothing and voids nothing. With exactly one survivor and no designation ever posted, that survivor is the implicit candidate.
+7. **Vote.** Eligible identities post a top-level comment that is exactly `VOTE: APPROVE`, `VOTE: REJECT` or `VOTE: ABSTAIN` (reactions and replies do not count; a voter's latest vote stands). Run `idea-tally.ts` as often as useful.
+8. **Close.** Close only on a tally with `threshold_met: true`, or when the owner decides to stop.
+   - Resolved: create the SPECS issues first, each seeded with the winner's summary as its intent and linking the session issue; then run `idea-close.ts --outcome resolved --spec <N:description> ... --tally-file <tally.json>`.
+   - No consensus (allowed at any time, no SPECS issue is created, the parent stays open): `idea-close.ts --outcome no-consensus --reason "<why>"`. The reason is the useful part of the record; state what blocked convergence.
 
-### Proposals
+   Every closed session carries exactly one terminal label (`idea-resolved` or `idea-no-consensus`); the script adds it, so do not close a session by hand.
 
-_Proposals are submitted as comments on this issue using the structured
-format defined by the `idea` skill. Each accepted proposal is listed here
-by the session owner after the triage phase._
+## Retroactive review loop
 
-### Comparison
+The session is the audit record of how an intent was chosen. A review finding of class `spec` that traces to an inadequately converged set of proposals may justify a new session on the parent issue; the orchestrator decides, it is not automatic. Finding classes: `references/shared-finding-class-taxonomy.md`.
 
-_Populated by the session owner after triage._
+## Friction
 
-### Vote tally
-
-_Populated after the governance phase opens._
-```
-
-## Proposal format (R6)
-
-Every proposal submitted to an IDEA session SHALL be posted as a comment on the
-session issue and conform to the following structure:
-
-```markdown
-## Proposal: <title>
-
-**Submitter:** <identity>
-
-### Summary
-<One-to-three-sentence description of the proposed approach.>
-
-### Rationale
-<Why this approach addresses the parent issue.>
-
-### Trade-offs
-<Advantages and disadvantages. Be explicit about costs.>
-
-### Open questions
-<Unresolved points that may affect feasibility or design.>
-```
-
-## Triage phase (R7)
-
-After the proposal submission window, the session owner evaluates each proposal
-against three criteria:
-
-1. **Relevance** — does the proposal address the parent issue?
-2. **Feasibility** — is the proposal realizable within reasonable constraints?
-3. **Non-duplication** — is the proposal substantively distinct from an already-
-   accepted proposal in the same session?
-
-Proposals that fail any criterion are documented in a comment prefixed
-`[TRIAGE-REJECTED]` with the criterion and rejection reason stated explicitly.
-Rejected proposals do not advance to the comparison or governance phase.
-
-Example rejection comment:
-
-```markdown
-[TRIAGE-REJECTED] Proposal: <title>
-
-**Criterion failed:** Non-duplication
-**Reason:** This proposal is substantively identical to "Proposal: <existing title>"
-submitted by <identity> on <date>. The key mechanism (X) is the same; the
-difference in wording does not constitute a distinct approach.
-```
-
-## Comparison phase (R8)
-
-Proposals that survive triage are compared across a shared set of dimensions.
-
-**Default dimensions:**
-
-| Dimension | Description |
-|---|---|
-| Implementation complexity | Estimated effort and structural impact on the codebase. |
-| Architectural alignment | Degree of fit with the project's existing architecture, ADRs, and stated constraints. |
-| Reversibility | Ease of undoing or replacing the decision if requirements change later. |
-
-The session owner MAY declare additional or replacement dimensions at open time
-by listing them in the session issue body. Declared dimensions apply for the
-lifetime of the session and cannot be changed mid-session.
-
-The comparison SHALL be documented as a structured comment on the session issue,
-presenting each surviving proposal against every declared dimension. The comment
-is authored by the session owner after triage completes.
-
-## Composition phase (R9)
-
-When two or more surviving proposals are complementary rather than mutually
-exclusive, the session owner MAY trigger a composition phase. A composed
-(hybrid) proposal:
-
-- Is posted as a new comment on the session issue prefixed `[COMPOSITION]`.
-- Names the source proposals it synthesizes.
-- Conforms to the same *Proposal format* (R6) as any other proposal.
-- Enters the governance phase in the same position as any surviving proposal.
-
-Example composition prefix:
-
-```markdown
-[COMPOSITION] Proposal: <hybrid title>
-
-**Composed from:** "Proposal: <A>" and "Proposal: <B>"
-**Submitter:** <session owner identity>
-
-### Summary
-...
-```
-
-## Candidate designation (R15/R16)
-
-When two or more proposals survive triage (R7) and have not been merged via
-composition (R9), the session owner SHALL designate exactly one surviving
-proposal or composition as the current candidate before any vote comment can
-count toward the governance threshold (R3/R10). The designation is a
-top-level comment matching exactly the form `[CANDIDATE] Proposal: <title>`
-— mirroring the bracket-prefix convention already established by
-`[TRIAGE-REJECTED]` (R7) and `[COMPOSITION]` (R9) — where `<title>` names a
-proposal or composition already present in the session. A `[CANDIDATE]`
-comment naming a title absent from the session is invalid and designates
-nothing.
-
-**Required vs. implicit.** A `[CANDIDATE]` comment is mandatory once two or
-more surviving, non-composed proposals exist after triage. When exactly one
-proposal survives triage and no `[CANDIDATE]` comment has ever been posted in
-the session, that lone survivor is the implicit candidate from the moment it
-alone survives — no `[CANDIDATE]` comment is required for its votes to count.
-
-**Re-designation rule.** Posting a new valid `[CANDIDATE]` comment voids
-every vote comment posted before it. Eligible voters must recast their vote
-against the newly designated candidate for it to count toward the governance
-threshold.
-
-Example candidate designation comment:
-
-```markdown
-[CANDIDATE] Proposal: <title>
-```
-
-## Consensus protocol (R10)
-
-The official vote mechanism is structured vote comments on the session issue.
-A valid vote comment matches exactly one of the following forms:
-
-```text
-VOTE: APPROVE
-VOTE: REJECT
-VOTE: ABSTAIN
-```
-
-- Each eligible voter (per the declared governance parameters) casts exactly one
-  vote comment per session.
-- Emoji reactions on the session issue MAY serve as informal signals but are
-  **not** counted toward any governance threshold.
-- Only votes posted as top-level comments (not as replies to other comments) count.
-
-A vote comment binds to the proposal or composition named by the most
-recently posted valid `[CANDIDATE]` comment at the time the vote was cast —
-or to the implicit candidate (R16) when exactly one proposal survives triage
-and no `[CANDIDATE]` comment has been posted. See *Candidate designation
-(R15/R16)* above. The *Threshold calculation* below counts only vote
-comments posted after the current candidate's designation timestamp;
-re-designation voids and requires eligible voters to recast their votes.
-
-### Threshold calculation
-
-| Mode | Threshold |
-|---|---|
-| `solo` | The declared owner posts `VOTE: APPROVE`. |
-| `unanimity` | Every declared owner has posted `VOTE: APPROVE` (not `REJECT` or `ABSTAIN`). |
-| `vote` | `(APPROVE count / total cast non-ABSTAIN votes) × 100 ≥ quorum` AND at least one non-ABSTAIN vote was cast. `ABSTAIN` votes are excluded from the denominator. |
-
-## Success path (R12)
-
-When the declared governance threshold is met:
-
-1. Post a **closing comment** on the session issue naming:
-   - The winning proposal (or composition).
-   - The final vote tally.
-   - The parent issue reference.
-2. **Create one or more SPECS issues**, each:
-   - Pre-populated with the winning proposal's summary as the intent statement.
-   - Cross-referencing the IDEA session issue in its body.
-3. **Close the session issue** with the label `idea-resolved`.
-
-Example closing comment:
-
-```markdown
-## IDEA Session — Resolved
-
-**Winning proposal:** <title>
-**Vote tally:** APPROVE: N, REJECT: M, ABSTAIN: K
-
-The session is closed. The following SPECS issue(s) have been created:
-- #<specs-issue-number>: <brief description>
-
-**Parent issue:** #<parent-N>
-**IDEA session:** this issue (closed `idea-resolved`)
-```
-
-## Failure path (R13)
-
-The session owner MAY close an IDEA session at any time without reaching the
-governance threshold. To do so:
-
-1. Add the label `idea-no-consensus` to the session issue.
-2. Post a **mandatory closure comment** stating the reason the session is being
-   closed without consensus.
-3. Close the session issue.
-
-No SPECS issue is created on this path. The parent issue remains open for a
-future attempt (which MAY open a new IDEA session).
-
-Example closure comment:
-
-```markdown
-## IDEA Session — Closed Without Consensus
-
-**Reason:** <explicit statement of why no consensus was reached>
-
-No SPECS issue has been created. The parent issue #<N> remains open.
-A new IDEA session may be opened against the same parent issue.
-```
-
-## Terminal state contract (R14)
-
-Every closed IDEA session issue SHALL carry exactly one of the two terminal
-labels:
-
-- `idea-resolved` — the session produced one or more SPECS issues.
-- `idea-no-consensus` — the session closed without consensus and no SPECS
-  issues were created.
-
-No other terminal state is defined. An IDEA session issue that is closed
-without one of these labels is a protocol violation.
-
-## Governance modes (R3)
-
-### `solo`
-
-A single named decision authority. The session closes the moment the owner
-casts `VOTE: APPROVE` on the winning proposal.
-
-- One owner only. Multiple owners are not supported in `solo` mode —
-  use `unanimity` instead.
-- The owner may post `VOTE: REJECT` to veto without closing the session.
-  The session remains open until the owner approves or manually closes it
-  via the failure path.
-
-### `unanimity`
-
-A declared set of owners. The session closes only when **every** declared owner
-has posted `VOTE: APPROVE`. A single `VOTE: REJECT` from any owner blocks
-consensus; the session remains open (it does not auto-close on a veto). Manual
-closure via the failure path is the only alternative exit.
-
-### `vote`
-
-A named voter set and a quorum threshold (integer percentage, 1–100). The
-session closes when the percentage of APPROVE votes among all non-ABSTAIN
-votes reaches or exceeds the declared threshold. `VOTE: ABSTAIN` is excluded
-from the denominator (it neither advances nor blocks quorum).
-
-## Immutability rule (R4)
-
-The declared governance mode and all its parameters (owner identity, owner list,
-voter set, quorum threshold) are immutable for the lifetime of the session. They
-are recorded in the session issue body at open time and cannot be changed by
-any subsequent comment, label, or edit.
-
-A request to change governance parameters mid-session SHALL be rejected. The
-only recourse is to close the current session via the failure path and open a
-new session with the corrected parameters.
-
-## Forge-agnostic operation (R11)
-
-The consensus protocol operates on forge issues and comments. The skill does not
-call any forge-specific API directly. All forge interactions (issue creation,
-comment posting, label management, issue closure) are performed via the host
-CLI's existing forge tooling (e.g., `gh` for GitHub, `glab` for GitLab).
-
-## Finding class taxonomy
-
-When invoked as part of the retroactive review loop (per
-[`docs/retroactive-loop.md`](../../../docs/retroactive-loop.md) → *Routing
-matrix*), this skill participates as follows:
-
-- **As author.** Every IDEA session produces an auditable record of proposals,
-  triage decisions, comparisons, votes, and the closing outcome — all as
-  comments on the session issue.
-- **As re-spawn target.** The IDEA stage is pre-SPECS. REVIEW findings of class
-  `spec` that reveal a requirements conflict arising from an inadequately
-  converged set of proposals MAY prompt a new IDEA session against the parent
-  issue. The decision to re-enter IDEA is the orchestrator's, not automatic.
-
-## Friction reporting
-
-When a recognition signal fires (see `config/TOOLS.md` → *Friction Reporting →
-Recognition signals*), invoke the `harness-report` skill
-(`artifacts/library/skills/harness-report/SKILL.md`) rather than reimplementing
-the protocol inline.
+Report workflow friction as described in `references/shared-friction-reporting.md`.
