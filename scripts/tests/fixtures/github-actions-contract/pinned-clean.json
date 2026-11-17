@@ -1,0 +1,5 @@
+{
+  "status": 0,
+  "stdout": "{\"ok\":true,\"data\":{\"files\":[\"wf.yml\"],\"violations\":0},\"findings\":[]}\n",
+  "stderr": "[OK] all action references are pinned to a SHA\n"
+}

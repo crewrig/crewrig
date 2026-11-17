@@ -1,0 +1,8 @@
+[RISK] ci.yml:1: literal access token / private key
+       why: a recognizable credential literal is committed in the pipeline — revoke it and store it as a masked + protected CI/CD variable
+[RISK] ci.yml:3: literal access token / private key
+       why: a recognizable credential literal is committed in the pipeline — revoke it and store it as a masked + protected CI/CD variable
+[RISK] ci.yml:4: literal access token / private key
+       why: a recognizable credential literal is committed in the pipeline — revoke it and store it as a masked + protected CI/CD variable
+[RISK] ci.yml:7: literal access token / private key
+       why: a recognizable credential literal is committed in the pipeline — revoke it and store it as a masked + protected CI/CD variable

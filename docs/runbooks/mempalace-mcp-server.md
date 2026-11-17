@@ -289,7 +289,7 @@ live in `~/.gemini/settings.json`. If that file is deleted or replaced
 wholesale, both go, and the check that would report the missing registration
 goes with them. The session starts with no warning.
 
-The backstop is the agent-side rule in `artifacts/core/rules/60-tools.md` →
+The backstop is the agent-side rule in `artifacts/core/rules/60-memory.md` →
 *Session Start* → *Memory unavailable — say so, never skip silently* (spec
 0246 R13). An agent with no `mempalace_*` tool tells you so before any work.
 To repair, run `node scripts/lib/node-floor-guard.js`, then

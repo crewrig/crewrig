@@ -1,0 +1,11 @@
+--- a/package.json
++++ b/package.json
+@@ -6,7 +6,7 @@
+     "node": ">=18"
+   },
+   "dependencies": {
+-    "express": "^4.19.2",
++    "express": "^5.0.1",
+     "jsonwebtoken": "^9.0.2",
+     "pg": "^8.11.5"
+   },

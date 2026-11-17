@@ -10,13 +10,24 @@ import { describe, test } from "node:test";
 import { copyTracked, makeSandbox, REPO, runEntry } from "./lib/governance-sandbox.ts";
 
 const ENTRY = path.join(REPO, "scripts", "check-claude-agent-layout.ts");
-const OK_LINE = "OK: .claude/agents/ holds only flat *.md files.\n";
+const OK_LINE =
+  "OK: .claude/agents/ holds only flat *.md files.\nOK: .agents/agents/ holds only flat *.md files.\n";
 const POSIX = { skip: process.platform === "win32" };
 
 /** A sandbox root whose `.claude/agents` is filled by `build`. */
 function tree(build: (agents: string) => void): string {
   const root = makeSandbox("agent-layout-");
   const agents = path.join(root, ".claude", "agents");
+  fs.mkdirSync(agents, { recursive: true });
+  fs.mkdirSync(path.join(root, ".agents", "agents"), { recursive: true });
+  build(agents);
+  return root;
+}
+
+/** A sandbox root whose `.agents/agents` is filled by `build`; `.claude/agents` is absent. */
+function agentsTree(build: (agents: string) => void): string {
+  const root = makeSandbox("agent-layout-agy-");
+  const agents = path.join(root, ".agents", "agents");
   fs.mkdirSync(agents, { recursive: true });
   build(agents);
   return root;
@@ -67,6 +78,30 @@ describe("check-claude-agent-layout.ts cases", () => {
     }
   });
 
+  test("names b and b/AGENT.md: a nested .agents/agents directory is rejected", () => {
+    const r = check(
+      agentsTree((a) => {
+        write(a, "a.md");
+        write(a, "b/AGENT.md", "x");
+      }),
+    );
+    assert.equal(r.status, 1);
+    assert.ok(r.stderr.includes("  - .agents/agents/b\n"), r.stderr);
+    assert.ok(r.stderr.includes("  - .agents/agents/b/AGENT.md\n"), r.stderr);
+  });
+
+  test("passes on flat, empty, absent", () => {
+    assert.equal(check(agentsTree((a) => write(a, "a.md"))).status, 0);
+    assert.equal(check(agentsTree(() => {})).status, 0);
+    assert.equal(check(makeSandbox("agent-layout-none-")).status, 0);
+  });
+
+  test(".agents checked when .claude/agents absent", () => {
+    const r = check(agentsTree((a) => write(a, "b/AGENT.md", "x")));
+    assert.equal(r.status, 1);
+    assert.ok(r.stderr.includes("under .agents/agents:"), r.stderr);
+  });
+
   test("case-h: the real repository tree is clean (criterion A4)", () => {
     const r = check(REPO);
     assert.equal(r.status, 0, r.stdout + r.stderr);
@@ -94,5 +129,27 @@ describe("check-claude-agent-layout.ts cases", () => {
     assert.notEqual(check(root).status, 0, "the shipped guard rejects the nested fixture");
     const mutant = check(root, path.join(box, "scripts", "check-claude-agent-layout.ts"));
     assert.equal(mutant.status, 0, mutant.stderr);
+  });
+
+  test("mutated guard accepting a sub-directory fails: the .agents/agents tree", () => {
+    const module = "scripts/lib/governance/agent-layout.ts";
+    const original = fs.readFileSync(path.join(REPO, module), "utf8");
+    const mutated = original.replace(
+      "if (legal) continue;",
+      "if (legal) continue;\n    if (followsToDirectory(entry)) continue;",
+    );
+    assert.notEqual(mutated, original, "the mutation must change the module");
+    const box = makeSandbox("agent-layout-agy-mutant-");
+    copyTracked(box, [
+      "scripts/check-claude-agent-layout.ts",
+      "scripts/lib/governance",
+      "scripts/lib/node-floor-guard.js",
+      "package.json",
+    ]);
+    fs.writeFileSync(path.join(box, module), mutated);
+    const root = agentsTree((a) => write(a, "developer/AGENT.md", "x"));
+    assert.equal(check(root).status, 1, "the shipped guard rejects the nested fixture");
+    const mutant = check(root, path.join(box, "scripts", "check-claude-agent-layout.ts"));
+    assert.equal(mutant.status, 0, "the mutant accepts it, so the suite must reject the mutant");
   });
 });

@@ -8,6 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
+import { writeReferenceDir } from "./lib/ci-reference-fixtures.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
 const NODE_ARGS = ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON"];
@@ -33,9 +34,8 @@ const BASE_ENV: NodeJS.ProcessEnv = {
 describe("ci-changeset-coverage: gated commands run with a closed standard input", () => {
   function run(command: string, input: string | undefined) {
     const repo = fresh("repo");
-    fs.mkdirSync(path.join(repo, "ci"));
-    fs.writeFileSync(
-      path.join(repo, "ci", "ci-capabilities.yml"),
+    writeReferenceDir(
+      repo,
       `capabilities:\n  - id: gated\n    changeset-gated: true\n    command:\n      - ${command}\n`,
     );
     return spawnSync(

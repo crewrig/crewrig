@@ -1,0 +1,6 @@
+{
+  "adr": "docs/adr/0025-slim-the-fixed-context-of-worker-and-subagent-sessions.md",
+  "unit": "first-call input tokens (input + cache read + cache creation)",
+  "worker": 40000,
+  "subagent": 30000
+}

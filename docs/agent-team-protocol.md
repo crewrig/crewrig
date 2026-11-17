@@ -107,3 +107,7 @@ Moved to [orchestrator](agent-team-protocol/orchestrator.md#team-shutdown).
 ### On a harness that genuinely exposes team primitives
 
 Moved to [orchestrator](agent-team-protocol/orchestrator.md#harness-team-primitives).
+
+## Coordinator playbook
+
+Moved to [orchestrator](agent-team-protocol/orchestrator.md#coordinator-playbook); the reusable brief is [worker-brief-template](agent-team-protocol/worker-brief-template.md).

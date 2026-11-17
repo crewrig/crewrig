@@ -29,6 +29,7 @@ import {
   stageNodeModules,
 } from "./lib/governance-sandbox.ts";
 import { docOf, yamlLib } from "./lib/yaml-lib.ts";
+import { seedConventionsFragment } from "./lib/build-fixture-tree.ts";
 
 const ENTRY = path.join(REPO, "scripts", "check-agent-profiles.ts");
 const sandbox = makeSandbox("agent-profiles-green-");
@@ -103,6 +104,7 @@ describe("build resilience", () => {
       "crewrig.config.toml",
     ]);
     stageNodeModules(root);
+    seedConventionsFragment(root);
     writeSource(path.join(root, "artifacts", "core", "agents", "probe"), "AGENT", (doc: Doc) => {
       modelOf(doc)["intelligence"] = "bogus";
     });

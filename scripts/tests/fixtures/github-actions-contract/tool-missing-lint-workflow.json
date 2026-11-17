@@ -1,0 +1,5 @@
+{
+  "status": 0,
+  "stdout": "{\"ok\":true,\"data\":{\"files\":[]},\"findings\":[{\"rule\":\"tool-missing\",\"message\":\"actionlint not found, the lint was skipped: install it (brew install actionlint)\",\"severity\":\"warning\"}]}\n",
+  "stderr": "[SKIP] actionlint not found — install: brew install actionlint\n"
+}

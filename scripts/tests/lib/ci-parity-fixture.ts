@@ -15,6 +15,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { readReference } from "../../lib/ci-parity/reference-read.ts";
 import { yamlLib } from "./yaml-lib.ts";
 import { scrubGitEnv } from "../../lib/git-env.ts";
 
@@ -128,7 +129,7 @@ export function editYaml(file: string, edit: (doc: YMap) => void): void {
   fs.writeFileSync(file, yamlLib.dump(doc, { lineWidth: -1, noRefs: true }));
 }
 
-/** The reference capability `id` of a loaded `ci-capabilities.yml`; throws when absent. */
+/** The reference capability `id` of a loaded capability reference; throws when absent. */
 export function capOf(doc: YMap, id: string): YMap {
   const found = list(doc["capabilities"], "capabilities").find((c) => map(c)["id"] === id);
   if (found === undefined) throw new Error(`no capability '${id}' in the reference`);
@@ -137,15 +138,15 @@ export function capOf(doc: YMap, id: string): YMap {
 
 /** `paths` of the `kind` trigger (`pull-request`, `push`) of `id` in the REAL, unmutated reference. */
 export function refPaths(id: string, kind: string): string[] {
-  const doc = map(
-    yamlLib.load(fs.readFileSync(path.join(REPO, "ci", "ci-capabilities.yml"), "utf8")),
-  );
+  const doc = map(yamlLib.load(readReference(REPO).text));
   const trigger = list(capOf(doc, id)["trigger"], `trigger of ${id}`).find(
     (t) => map(t)["on"] === kind,
   );
   if (trigger === undefined) throw new Error(`capability '${id}' has no '${kind}' trigger`);
-  // Spec 0283 R3: a trigger without its own paths inherits the capability-level list.
+  // Spec 0283 R3: a pull-request trigger without its own paths inherits the capability-level
+  // list; a push trigger inherits nothing (spec 0309 delta-02 R6).
   const own = map(trigger)["paths"];
+  if (own === undefined && kind === "push") return [];
   return list(own ?? capOf(doc, id)["paths"], `paths of ${id}/${kind}`).map(String);
 }
 

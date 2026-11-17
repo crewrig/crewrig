@@ -7,8 +7,8 @@
 Every non-trivial ticket SHALL flow through the four-stage lifecycle
 **SPECS → PLAN → DEV → REVIEW**. REVIEW loops back into the upstream
 stage corresponding to the class of each finding (`tech` → DEV,
-`arch` → PLAN, `spec` → SPECS). The lifecycle terminates only when a
-full REVIEW pass produces zero findings.
+`arch` → PLAN, `spec` → SPECS). The lifecycle terminates when a
+REVIEW pass has no blocking finding.
 
 ```text
    user intent

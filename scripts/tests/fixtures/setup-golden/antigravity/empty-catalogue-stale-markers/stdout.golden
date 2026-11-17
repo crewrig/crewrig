@@ -5,6 +5,7 @@
 Installing shared configuration...
   Copied: ORGANIZATION.md -> 20_ORGANIZATION.md
   Copied: artifacts/core/rules/60-tools.md -> 60_TOOLS.md
+  Copied: artifacts/core/rules/60-memory.md -> 60_MEMORY.md
   Copied: TOOLS.md -> 65_TOOLS.md
   Copied dir: artifacts/core/system-context -> ~/.crewrig/system-context
   Copied: SOUL.md -> 00_SOUL.md
@@ -70,7 +71,7 @@ Migrating components left at the superseded placement...
   MemPalace session check registered in ~/.gemini/config/hooks.json
 
 Generating <HOME>/.gemini/config/AGENTS.md...
-  Generated: <HOME>/.gemini/config/AGENTS.md (736 lines)
+  Generated: <HOME>/.gemini/config/AGENTS.md (774 lines)
 
 ====================================
   Setup complete
@@ -82,11 +83,12 @@ Active context files:
   <HOME>/.gemini/antigravity-cli/00_SOUL.md
   <HOME>/.gemini/antigravity-cli/20_ORGANIZATION.md
   <HOME>/.gemini/antigravity-cli/30_USER_PROFILE.md
+  <HOME>/.gemini/antigravity-cli/60_MEMORY.md
   <HOME>/.gemini/antigravity-cli/60_TOOLS.md
   <HOME>/.gemini/antigravity-cli/65_TOOLS.md
 
 System context file (Antigravity runtime):
-  <HOME>/.gemini/config/AGENTS.md (736 lines)
+  <HOME>/.gemini/config/AGENTS.md (774 lines)
 
 MCP servers (from mcp_config.json):
   - mempalace

@@ -214,7 +214,7 @@ export function installedTargets(artifactsDir: string): TargetRecord[] {
       emit(`.claude/agents/${name}.md`, "agents");
       emit(`.gemini/agents/${name}.md`, "agents");
       emit(`.github/agents/${name}.md`, "agents");
-      emit(`.agents/agents/${name}`, "agents");
+      emit(`.agents/agents/${name}.md`, "agents");
     }
 
     for (const base of glob(path.join(tierPath, "policies"))) {

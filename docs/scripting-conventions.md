@@ -239,7 +239,7 @@ discussed in the PR.
 `.github/workflows/scripting-conventions.yml` runs a small `grep` pass on
 `scripts/` and `hooks/` to flag new occurrences of the chained-test pattern
 (Rule 3) and bare `except` (Rule 1). The same checks run on GitLab, from the
-shared capability declaration in `ci/ci-capabilities.yml`.
+shared capability declaration in `ci/capabilities/`.
 
 All checks are intentionally lightweight; they do not try to be a full linter.
 False positives are handled with the `acknowledged-exception` tag.

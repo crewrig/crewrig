@@ -23,6 +23,7 @@ import {
   why,
 } from "./lib/windows-proof-support.ts";
 import type { Run } from "./lib/windows-proof-support.ts";
+import { replaceInReference } from "./lib/ci-reference-fixtures.ts";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const script = path.join(repo, "scripts", "check-ci-parity.ts");
@@ -81,11 +82,7 @@ function driftedTree(work: string): void {
     recursive: true,
   });
   fs.copyFileSync(path.join(repo, ".gitlab-ci.yml"), path.join(work, ".gitlab-ci.yml"));
-  const ref = path.join(work, "ci", "ci-capabilities.yml");
-  fs.writeFileSync(
-    ref,
-    fs.readFileSync(ref, "utf8").replace("command:", "command:\n      - echo extra"),
-  );
+  replaceInReference(work, "command:", "command:\n      - echo extra");
 }
 
 describe("windows model-ci-tooling: check-ci-parity", () => {

@@ -1,5 +1,17 @@
 # Includes and components reference
 
+## Contents
+
+- [Picking a composition mechanism](#picking-a-composition-mechanism)
+- [`include:` — the four classic forms](#include--the-four-classic-forms)
+- [`include:` with `rules:` and `inputs:`](#include-with-rules-and-inputs)
+- [CI/CD Components — the modern reusable unit](#cicd-components--the-modern-reusable-unit)
+- [`extends:` and `!reference[…]` across includes](#extends-and-reference-across-includes)
+- [`trigger:include` — composition by reference](#triggerinclude--composition-by-reference)
+- [Merge and override semantics](#merge-and-override-semantics)
+- [Versioning strategy and supply-chain hardening](#versioning-strategy-and-supply-chain-hardening)
+- [Common pitfalls](#common-pitfalls)
+
 GitLab CI/CD has no single "function call" primitive. Composition is
 assembled from several keywords that each cover one axis of reuse:
 `include:` pulls external configuration into the current pipeline,

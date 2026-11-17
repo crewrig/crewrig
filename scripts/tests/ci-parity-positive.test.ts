@@ -16,13 +16,13 @@ import {
   replaceOnce,
   runCheck,
 } from "./lib/ci-parity-fixture.ts";
+import { editReference } from "./lib/ci-reference-fixtures.ts";
 
 const OK_LINE =
   "OK: reference, GitHub Actions, GitLab agree on the portable capability set; every pipeline job is traceable.";
 const ANNOTATION = "  deploy: # ci-capability: pages-deploy";
 
 const buildYml = (fx: string) => path.join(fx, ".github", "workflows", "build.yml");
-const refYml = (fx: string) => path.join(fx, "ci", "ci-capabilities.yml");
 const gitlabYml = (fx: string) => path.join(fx, ".gitlab-ci.yml");
 
 test("P1 + P2a: conforming tree passes, names both engines, deploy fallback resolves", () => {
@@ -89,7 +89,7 @@ for (const [label, tool] of [
   test(`${label}: '${tool}' requirement is exempt on GitHub Actions (GHA-only)`, () => {
     const fx = makeFixture();
     fs.rmSync(gitlabYml(fx), { force: true });
-    editYaml(refYml(fx), (doc) => {
+    editReference(fx, (doc) => {
       map(capOf(doc, "check-agents-size")["requires"])["tools"] = [tool, "task"];
     });
     const r = runCheck(fx);
@@ -101,7 +101,7 @@ for (const [label, tool] of [
 test("P6: python3 requirement satisfied by actions/setup-python alone (GHA-only)", () => {
   const fx = makeFixture();
   fs.rmSync(gitlabYml(fx), { force: true });
-  editYaml(refYml(fx), (doc) => {
+  editReference(fx, (doc) => {
     list(map(capOf(doc, "figure-labels")["requires"])["tools"]).push("python3");
   });
   editYaml(buildYml(fx), (doc) => {

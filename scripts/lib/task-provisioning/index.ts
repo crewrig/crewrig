@@ -2,10 +2,14 @@
 // workflow job records through the ci-parity readers, then runs checks (a) to (d). Any unreadable
 // input fails closed with a notice naming the file.
 
-import fs from "node:fs";
-
 import { UnsupportedGlobError } from "../glob-engine.ts";
 import { checkReference, collectIds } from "../ci-parity/reference.ts";
+import {
+  ReferenceNotFoundError,
+  ReferenceReadError,
+  readReference,
+  sourceOf,
+} from "../ci-parity/reference-read.ts";
 import { ParityGap, newState } from "../ci-parity/state.ts";
 import { traceability } from "../ci-parity/traceability.ts";
 import { checkAction, checkGithubJobs } from "./github.ts";
@@ -20,10 +24,17 @@ export interface GuardOutcome {
 export function checkTaskProvisioning(repoDir: string): GuardOutcome {
   try {
     const state = newState(repoDir);
-    if (!fs.existsSync(state.reference))
-      return { findings: [`ci/ci-capabilities.yml: not found`], code: 1 };
-    if (!checkReference(state, fs.readFileSync(state.reference, "utf8")))
-      return { findings: [state.stderr.trim()], code: 1 };
+    let ref;
+    try {
+      ref = readReference(repoDir);
+    } catch (e) {
+      if (e instanceof ReferenceNotFoundError)
+        return { findings: [`${e.path.slice(repoDir.length + 1)}: not found`], code: 1 };
+      if (e instanceof ReferenceReadError) return { findings: [e.format().trim()], code: 1 };
+      throw e;
+    }
+    state.reference = `${repoDir}/${sourceOf(ref)}`;
+    if (!checkReference(state, ref.text)) return { findings: [state.stderr.trim()], code: 1 };
     collectIds(state);
     traceability(state);
     const { pin, findings } = readPin(repoDir);

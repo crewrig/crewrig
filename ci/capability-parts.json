@@ -1,0 +1,56 @@
+{
+  "gate": [
+    { "part": "tooling", "ids": ["check-task*", "ratchet*", "lint-typescript*"] },
+    { "part": "other", "ids": ["*"] }
+  ],
+  "modules": [
+    { "part": "setup", "ids": ["install-ts*", "setup-*", "release-*", "packaging-*"] },
+    { "part": "other", "ids": ["*"] }
+  ],
+  "governance": [
+    { "part": "ci-shape", "ids": ["ci-file-limit", "ci-push-unfiltered"] },
+    {
+      "part": "ci",
+      "ids": [
+        "ci-*",
+        "check-ci-*",
+        "gitlab-ci-*",
+        "test-wiring*",
+        "path-ownership*",
+        "host-safety*",
+        "changeset-*",
+        "node-floor-guard",
+        "alert-*"
+      ]
+    },
+    { "part": "other", "ids": ["*"] }
+  ],
+  "extensions": [
+    { "part": "build", "ids": ["build", "component-drift*", "setup*", "core-paths"] },
+    { "part": "other", "ids": ["*"] }
+  ],
+  "integration": [{ "ids": ["*"] }],
+  "windows": [
+    {
+      "part": "tooling",
+      "ids": [
+        "windows-extension-*",
+        "windows-install-*",
+        "windows-packaging-*",
+        "windows-harness-*",
+        "windows-create-*",
+        "windows-skill-*",
+        "windows-e2e-*",
+        "windows-governance-*",
+        "windows-model-*",
+        "windows-setup-*"
+      ]
+    },
+    { "part": "other", "ids": ["*"] }
+  ],
+  "standalone": [
+    { "part": "usage", "ids": ["usage-*"] },
+    { "part": "release", "ids": ["release*", "pages-*"] },
+    { "part": "other", "ids": ["*"] }
+  ]
+}

@@ -26,27 +26,6 @@ on:
       - "package-lock.json"
   push:
     branches: [main, "release/**"]
-    paths:
-      - "scripts/lib/usage-store/**"
-      - "scripts/lib/usage-capture/**"
-      - "scripts/usage-task.ts"
-      - "scripts/usage-attribute.ts"
-      - "scripts/tests/usage-attribution-channels.test.ts"
-      - "scripts/tests/usage-attribution-ledger-rollup.test.ts"
-      - "scripts/tests/usage-attribution-period-rollup.test.ts"
-      - "scripts/tests/usage-attribution-prune.test.ts"
-      - "scripts/tests/usage-attribution-mutations.test.ts"
-      - "scripts/tests/lib/usage-attribution-rig.ts"
-      - "scripts/tests/lib/usage-attribution-driver.ts"
-      - "scripts/tests/lib/usage-attribution-prune-rig.ts"
-      - "scripts/tests/lib/usage-mutants.ts"
-      - "scripts/tests/lib/mutation-copy.ts"
-      - "scripts/tests/lib/capability.ts"
-      - "scripts/tests/fixtures/usage-attribution/**"
-      - "docs/usage-attribution.md"
-      - "schemas/**"
-      - "package.json"
-      - "package-lock.json"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

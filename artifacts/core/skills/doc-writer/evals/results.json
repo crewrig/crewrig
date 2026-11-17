@@ -1,0 +1,22 @@
+{
+  "skill_name": "doc-writer",
+  "content_hash": "sha256:a5494dcb42fdba3c40c240b5f4cc5bccba0d8ba4d3dc4eeb4e1b0b10c45fe60d",
+  "runner_version": "2.1.0",
+  "executor_model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "date": "2026-11-12T22:16:42.774Z",
+  "status": "pass",
+  "eval_pass_rate": 0.8,
+  "probe_pass_rate": 0.9,
+  "base_eval_pass_rate": 0.2,
+  "threshold": 0.8,
+  "tolerance": 0.05,
+  "evals_passed": 4,
+  "evals_total": 5,
+  "probes_passed": 9,
+  "probes_total": 10,
+  "executor_runs": 15,
+  "judge_calls": 5,
+  "cost_usd": null
+}

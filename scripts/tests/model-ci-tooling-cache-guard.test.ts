@@ -16,6 +16,7 @@ import {
 } from "./lib/bash-suite-differential.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 import { readWorkflowUnionText } from "./lib/workflow-union.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const posix = process.platform === "win32" ? { skip: "shell legs need bash" } : {};
 const CASE: DiffCase = { script: "scripts/ci-cache-guard.ts" };
@@ -136,10 +137,7 @@ describe("ci-cache-guard twin: real capability key-file lists", posix, () => {
   test("every --key-files list of .github/workflows/build.yml is accepted", () => {
     const ref = readWorkflowUnionText(path.join(import.meta.dirname, "..", ".."));
     // Migrated cached capabilities key by `--capability`: their lists are the declared cache.files.
-    const refYml = fs.readFileSync(
-      path.join(import.meta.dirname, "..", "..", "ci", "ci-capabilities.yml"),
-      "utf8",
-    );
+    const refYml = readReferenceText(path.join(import.meta.dirname, "..", ".."));
     const declared = (
       yamlLib.load(refYml) as { capabilities: { cache?: { files?: string[] } }[] }
     ).capabilities

@@ -1,0 +1,214 @@
+{
+  "skill_name": "harness-curator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "frictions.json is an export of nine drawers of the friction wing, in the drawer-list format. Run the curator as a dry run over it and save its JSON output, unchanged, to report.json. Then write the run summary you would post to the user to summary.md. The curator script has a test mode that reads a JSON list of drawers from standard input instead of MemPalace; use it, so that no MemPalace server and no forge are needed. Do not use --apply, and do not call gh, glab, tea or git push: only write the files asked for, in the current directory.",
+      "expected_output": "report.json is the curator's JSON report for the nine drawers; summary.md states the counts of the run.",
+      "files": [
+        "evals/files/frictions.json"
+      ],
+      "expectations": [
+        "summary.md states how many frictions were read and how many were skipped as malformed, and the figures match report.json.",
+        "summary.md states how many clusters were formed, how many reached the threshold and how many were parked, and the figures match report.json.",
+        "summary.md reports the routing failure and says that no issue was opened by this run."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "report.json"
+        },
+        {
+          "type": "file_exists",
+          "path": "summary.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "report.json",
+          "pattern": "\"total_drawers\": 9"
+        },
+        {
+          "type": "file_contains",
+          "path": "report.json",
+          "pattern": "\"skipped_malformed\": 1"
+        },
+        {
+          "type": "file_contains",
+          "path": "report.json",
+          "pattern": "\"clusters_above_threshold\": 3"
+        },
+        {
+          "type": "file_contains",
+          "path": "report.json",
+          "pattern": "\"routing_failures\": 1"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "wing-clean.json and wing-rotten.json are two exports of the friction wing, in the drawer-list format. For each, run the curator as a dry run and decide whether the wing is healthy enough to open issues from, using the health criteria of the curator skill. Write health.json as one JSON object keyed by file stem, each value an object with `verdict` (`healthy` or `unhealthy`) and `reason` (one sentence). The curator script has a test mode that reads a JSON list of drawers from standard input instead of MemPalace; use it, so that no MemPalace server and no forge are needed. Do not use --apply, and do not call gh, glab, tea or git push: only write the files asked for, in the current directory.",
+      "expected_output": "health.json judges wing-clean healthy and wing-rotten unhealthy, the latter because of its malformed drawers and its unroutable cluster.",
+      "files": [
+        "evals/files/wing-clean.json",
+        "evals/files/wing-rotten.json"
+      ],
+      "expectations": [
+        "The reason given for wing-rotten cites its malformed drawers (4 of 8) and, or, its cluster that has no canonical repository to route to.",
+        "The reason given for wing-clean says that nothing is malformed and nothing failed to route."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "health.json"
+        },
+        {
+          "type": "file_contains",
+          "path": "health.json",
+          "pattern": "\"wing-clean\":\\s*\\{[^}]*\"verdict\":\\s*\"healthy\""
+        },
+        {
+          "type": "file_contains",
+          "path": "health.json",
+          "pattern": "\"wing-rotten\":\\s*\\{[^}]*\"verdict\":\\s*\"unhealthy\""
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "transcripts.json is an export of transcript drawers. Run the curator's deep sweep over it, in the test mode, and save the review document it produces, unchanged, to review.md. The deep sweep never opens issues. The curator script has a test mode that reads a JSON list of drawers from standard input instead of MemPalace; use it, so that no MemPalace server and no forge are needed. Do not use --apply, and do not call gh, glab, tea or git push: only write the files asked for, in the current directory.",
+      "expected_output": "review.md is the Markdown checklist of candidate drawers produced by the deep sweep.",
+      "files": [
+        "evals/files/transcripts.json"
+      ],
+      "expectations": [
+        "review.md lists tr-001, tr-002 and tr-004 as candidates and does not list tr-003, which holds no friction signal.",
+        "review.md is a Markdown review document of checkbox items, not a JSON report."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "review.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "review.md",
+          "pattern": "\\n- \\[ \\] Drawer `tr-001`"
+        },
+        {
+          "type": "file_contains",
+          "path": "review.md",
+          "pattern": "\\n- \\[ \\] Drawer `tr-004`"
+        },
+        {
+          "type": "file_contains",
+          "path": "review.md",
+          "pattern": "^(?![\\s\\S]*Drawer `tr-003`)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "frictions.json is an export of nine drawers of the friction wing, in the drawer-list format. Run the curator as a dry run over it, then write to commands.sh the exact `gh issue create` commands you would run to open the issues by hand, one per cluster the curator reports, using the repository, title, body and labels it gives. Only write the file; do not run any of the commands. The curator script has a test mode that reads a JSON list of drawers from standard input instead of MemPalace; use it, so that no MemPalace server and no forge are needed. Do not use --apply, and do not call gh, glab, tea or git push: only write the files asked for, in the current directory.",
+      "expected_output": "commands.sh holds one gh issue create command for each of the three clusters above the threshold, with the three labels, and none for the parked or unroutable ones.",
+      "files": [
+        "evals/files/frictions.json"
+      ],
+      "expectations": [
+        "commands.sh holds exactly three issue-creation commands, one each for the clusters release-checklist, yq-merge and json-output, and none for the singleton that was parked or for the cluster that could not be routed.",
+        "Every command in commands.sh targets acme/agent-config and carries the labels harness-feedback, a room label and a severity label."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "commands.sh"
+        },
+        {
+          "type": "file_contains",
+          "path": "commands.sh",
+          "pattern": "gh issue create"
+        },
+        {
+          "type": "file_contains",
+          "path": "commands.sh",
+          "pattern": "--repo[ =][\"']?(https://github\\.com/)?acme/agent-config"
+        },
+        {
+          "type": "file_contains",
+          "path": "commands.sh",
+          "pattern": "--label[ =][\"']?harness-feedback"
+        },
+        {
+          "type": "file_contains",
+          "path": "commands.sh",
+          "pattern": "--label[ =][\"']?room:"
+        },
+        {
+          "type": "file_contains",
+          "path": "commands.sh",
+          "pattern": "--label[ =][\"']?severity:"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "frictions.json is an export of nine drawers of the friction wing, in the drawer-list format. A maintainer wants a stricter sweep: a cluster must hold at least three reports to be proposed, unless a report is of high severity. Run the curator as a dry run with that threshold and save its JSON output, unchanged, to report-t3.json. The curator script has a test mode that reads a JSON list of drawers from standard input instead of MemPalace; use it, so that no MemPalace server and no forge are needed. Do not use --apply, and do not call gh, glab, tea or git push: only write the files asked for, in the current directory.",
+      "expected_output": "report-t3.json shows two clusters above the threshold and two parked.",
+      "files": [
+        "evals/files/frictions.json"
+      ],
+      "expectations": [
+        "report-t3.json lists the clusters release-checklist and yq-merge as proposed, and json-output is no longer proposed."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "report-t3.json"
+        },
+        {
+          "type": "file_contains",
+          "path": "report-t3.json",
+          "pattern": "\"clusters_above_threshold\": 2"
+        },
+        {
+          "type": "file_contains",
+          "path": "report-t3.json",
+          "pattern": "\"clusters_parked\": 2"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "Run the harness curator and open one feedback issue for each cluster of accumulated frictions.",
+      "should_trigger": true
+    },
+    {
+      "query": "What frictions has the crew accumulated lately? Cluster them and tell me which ones deserve an issue.",
+      "should_trigger": true
+    },
+    {
+      "query": "Sweep the transcripts for frictions that nobody tagged, and give me a review checklist.",
+      "should_trigger": true
+    },
+    {
+      "query": "Check whether the friction wing is healthy before the curator opens issues from it, and summarise the run.",
+      "should_trigger": true
+    },
+    {
+      "query": "Tag a friction right now: the skill prompt I just followed misled me and I had to redo the step.",
+      "should_trigger": false
+    },
+    {
+      "query": "Open a bug issue on our application repository for the checkout error that customers reported.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write the retrospective of our last sprint with what went well and what did not.",
+      "should_trigger": false
+    },
+    {
+      "query": "Set up a weekly cron job that runs the unit tests of my project and mails me the result.",
+      "should_trigger": false
+    }
+  ]
+}

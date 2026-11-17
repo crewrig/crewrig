@@ -186,13 +186,13 @@ describe("G2 policies (spec 0020)", () => {
 
   test("bbb excluded ci/org child survives the strict ci orphan cleanup", () => {
     const upstream = makeUpstream(sr, [
-      { "ci/ci-capabilities.yml": "upstream CI capability reference" },
+      { "ci/capabilities/gate.yml": "upstream CI capability reference" },
     ]);
     const adopter = makeAdopter(sr, {
       upstream,
       manifest: ["ci\tstrict", "ci/org\texcluded"],
       files: {
-        "ci/ci-capabilities.yml": "upstream CI capability reference",
+        "ci/capabilities/gate.yml": "upstream CI capability reference",
         "ci/org/gitlab-ci.custom.yml": "org-owned CI overlay content",
       },
     });

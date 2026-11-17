@@ -1,0 +1,23 @@
+{
+  "skill_name": "init-team",
+  "content_hash": "sha256:82ae4ee7533b560522e71f7c44fdb5020da89c69a1522aa7456485839886ea74",
+  "runner_version": "3.0.0",
+  "executor_model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "date": "2026-11-14T12:51:29.789Z",
+  "status": "pass",
+  "eval_pass_rate": 1,
+  "probe_pass_rate": 0.7,
+  "base_eval_pass_rate": null,
+  "threshold": 0.8,
+  "tolerance": 0.2,
+  "evals_passed": 5,
+  "evals_total": 5,
+  "probes_passed": 7,
+  "probes_total": 10,
+  "executor_runs": 15,
+  "judge_calls": 5,
+  "cost_usd": 0.446025,
+  "skill_loaded": 5
+}

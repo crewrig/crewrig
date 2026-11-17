@@ -174,7 +174,7 @@ describe("tier routing (R9, ADR-0011)", () => {
   );
 
   test("an absent artifacts/ yields zero tiers and exit 0; a plain file and a dot directory are ignored", () => {
-    const tree = createFixtureTree();
+    const tree = createFixtureTree({ fragment: false });
     tree.config(CONFIG);
     const empty = tree.run([]);
     assert.equal(empty.status, 0);

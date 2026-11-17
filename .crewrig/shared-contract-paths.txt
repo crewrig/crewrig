@@ -11,6 +11,6 @@ docs/retroactive-loop.md
 docs/adr/
 docs/cli-matrix/rows/
 .crewrig/core-paths.txt
-ci/ci-capabilities.yml
+ci/capabilities/
 artifacts/core/rules/
 scripts/lib/governance/

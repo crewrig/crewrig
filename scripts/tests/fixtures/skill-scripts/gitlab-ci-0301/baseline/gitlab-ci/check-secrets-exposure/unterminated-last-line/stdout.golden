@@ -1,0 +1,2 @@
+[RISK] ci.yml:6: hardcoded value for a credential-named key
+       why: a secret committed in the pipeline is readable by anyone with repo access — move it to a masked + protected CI/CD variable

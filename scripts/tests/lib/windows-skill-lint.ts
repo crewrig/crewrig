@@ -45,11 +45,20 @@ export function lintSkill(c: Ctx): void {
     const good = exec(c, LINT, ["SKILL.md"]);
     expectStatus(good, 0);
     assert.equal(good.out, "", why(good, "the checkout carries js-yaml: no note"));
-    const bad = exec(c, LINT, ["NOLICENSE.md", "nope.md"]);
+    // an unreadable input wins over a finding: nothing is linted, only the unreadable path is named
+    const unreadable = exec(c, LINT, ["NOLICENSE.md", "nope.md"]);
+    expectStatus(unreadable, 3);
+    assert.equal(
+      unreadable.out,
+      "nope.md: not a readable regular file\n",
+      why(unreadable, "unreadable input"),
+    );
+    // the finding pin lives on its own run
+    const bad = exec(c, LINT, ["NOLICENSE.md"]);
     expectStatus(bad, 1);
     assert.equal(
       bad.out,
-      "NOLICENSE.md: missing required frontmatter key: license\nnope.md: not a regular file\n",
+      "NOLICENSE.md: missing required frontmatter key: license\n",
       why(bad, "findings"),
     );
   });
@@ -97,19 +106,30 @@ export function lintSkill(c: Ctx): void {
 /** The characters the `.cmd` launch rule refuses; `"` and a newline cannot go through a shell leg. */
 const SHELL_CHARS = ["&", "%", "^", "|", "<", ">"];
 const ALL_CHARS = [...SHELL_CHARS, '"', "\n"];
+const FILE_NAME_CHARS = ["&", "%", "^"];
 
 export function refusals(c: Ctx): void {
   attempt(c, "ws-cmd-launch-refusals", () => {
     if (!WIN) return; // the rule is a Windows one: a POSIX stub is an executable, never a `.cmd`
     for (const ch of c.leg === "direct" ? ALL_CHARS : SHELL_CHARS) {
       const arg = `a${ch}b.md`;
+      // Inputs are checked before the tool is launched, so the refusal is only reached by a
+      // readable file: `&`, `%` and `^` can be Windows file names and `|`, `<`, `>`, `"` and a
+      // newline cannot, so those are unreadable inputs (exit 3) and the tool never runs either way.
+      const writable = FILE_NAME_CHARS.includes(ch);
+      if (writable) fs.writeFileSync(path.join(c.box.work, arg), "# x\n");
       const md = exec(c, entry("pr-reviewer", "lint-markdown"), [arg]);
-      expectStatus(md, 1);
-      assert.match(
-        md.out,
-        /^lint-markdown\.ts: refusing an argument that cmd\.exe would interpret/,
-        why(md, JSON.stringify(arg)),
-      );
+      if (writable) {
+        expectStatus(md, 1);
+        assert.match(
+          md.out,
+          /^lint-markdown\.ts: refusing an argument that cmd\.exe would interpret/,
+          why(md, JSON.stringify(arg)),
+        );
+      } else {
+        expectStatus(md, 3);
+        assert.match(md.out, /not a readable regular file/, why(md, JSON.stringify(arg)));
+      }
       const job = exec(c, entry("github-actions", "simulate-job"), [
         "wf/.github/workflows/ci.yml",
         "b",
@@ -136,7 +156,10 @@ export function refusals(c: Ctx): void {
       ["pr-reviewer", "lint-python", "ruff"],
     ] as const) {
       writeStub(odd, c.box.stubs, tool);
-      const res = exec(c, entry(skill, name), ["a.md"], { dirs: [odd] });
+      // a readable input first, so that the launch refusal is what stops the run
+      const input = name === "lint-markdown" ? "a.md" : "a.py";
+      fs.writeFileSync(path.join(c.box.work, input), "# x\n");
+      const res = exec(c, entry(skill, name), [input], { dirs: [odd] });
       expectStatus(res, 1);
       assert.match(
         res.out,

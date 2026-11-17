@@ -41,6 +41,7 @@ void (async () => {
     "#                          [--max-issues <n>]",
     "#                          [--dedup]",
     "#                          [--deep] [--deep-window <n>]",
+    "#                          [--check] [--summary] [--max-malformed-ratio <r>] [--json]",
     "#",
     "# Options:",
     "#   --dry-run        Output JSON of clusters that would become issues (default).",
@@ -65,6 +66,17 @@ void (async () => {
     "#                    instead of clusters/issues. Incompatible with --apply.",
     "#   --deep-window    Maximum number of transcript drawers to scan in --deep",
     "#                    mode (default: 500).",
+    "#   --check          Health gate over a dry run: exit 0 when the wing is healthy,",
+    "#                    exit 1 when skipped_malformed exceeds --max-malformed-ratio of",
+    "#                    total_drawers or routing_failures is above zero. Prints the",
+    "#                    verdict; run it before --apply. Incompatible with --apply/--deep.",
+    "#   --summary        Print the run summary (frictions read and skipped, clusters",
+    "#                    formed, proposed and parked, routing failures) of a dry run.",
+    "#   --max-malformed-ratio",
+    "#                    Malformed share of drawers above which --check fails (default:",
+    "#                    0.25, the share that makes the report warn on stderr).",
+    "#   --json           With --check or --summary: print one {ok, data, findings}",
+    "#                    object on stdout instead of text. Usage errors keep exit 1.",
   ];
 
   /** First executable named `name` on PATH (PATHEXT on Windows); never spawns a lookup tool. */
@@ -163,11 +175,16 @@ void (async () => {
     let dedup = false;
     let deep = false;
     let deepWindow = "500";
+    let check = false;
+    let summary = false;
+    let asJson = false;
+    let maxMalformed = "0.25";
     const valued: Record<string, (v: string) => void> = {
       "--target-repo": (v) => (target = v),
       "--threshold": (v) => (threshold = v),
       "--max-issues": (v) => (maxIssues = v),
       "--deep-window": (v) => (deepWindow = v),
+      "--max-malformed-ratio": (v) => (maxMalformed = v),
     };
     for (let i = 0; i < argv.length; i++) {
       const a = argv[i] ?? "";
@@ -176,6 +193,9 @@ void (async () => {
       else if (a === "--from-stdin") fromStdin = true;
       else if (a === "--dedup") dedup = true;
       else if (a === "--deep") deep = true;
+      else if (a === "--check") check = true;
+      else if (a === "--summary") summary = true;
+      else if (a === "--json") asJson = true;
       else if (a === "--help" || a === "-h") {
         process.stdout.write(`${HELP.join("\n")}\n`);
         return;
@@ -199,6 +219,17 @@ void (async () => {
         1,
         "Error: --deep is incompatible with --apply (--deep produces a review document only).",
       );
+
+    const ratio = Number(maxMalformed);
+    if (!Number.isFinite(ratio) || ratio < 0 || ratio > 1)
+      return fail(1, "Error: --max-malformed-ratio must be a number between 0 and 1");
+    if ((check || summary) && (!dryRun || deep))
+      return fail(
+        1,
+        "Error: --check and --summary read a dry run; they exclude --apply and --deep.",
+      );
+    if (asJson && !check && !summary)
+      return fail(1, "Error: --json only applies to --check and --summary.");
 
     // --- Interpreter: MEMPALACE_PYTHON, pipx venv, python3; Windows adds python and `py -3` ---
     const pipx = which("pipx");
@@ -267,6 +298,56 @@ void (async () => {
     const r = await run(py.file, [...py.pre, path.join(dir, "curate.py")], "capture", env);
     if (r.status !== 0) return void (process.exitCode = r.status);
     const out = r.out.replace(/\n+$/, "");
+    if (check || summary) {
+      let rep: { stats: Record<string, number>; clusters: Record<string, unknown>[] };
+      try {
+        rep = JSON.parse(out) as typeof rep;
+      } catch {
+        return fail(
+          1,
+          "Error: the curator output is not JSON; run it with --dry-run to inspect it.",
+        );
+      }
+      const st = rep.stats;
+      const findings: { rule: string; message: string }[] = [];
+      const total = st.total_drawers ?? 0;
+      const bad = st.skipped_malformed ?? 0;
+      if (total > 0 && bad / total > ratio)
+        findings.push({
+          rule: "skipped-malformed",
+          message: `${bad} of ${total} drawers are malformed (above ${ratio}); read skipped[] and fix the filing source before opening issues.`,
+        });
+      if ((st.routing_failures ?? 0) > 0)
+        findings.push({
+          rule: "routing-failures",
+          message: `${st.routing_failures} cluster(s) have no canonical repository to route to; add canonical: to the frictions or pass --target-repo.`,
+        });
+      const healthy = findings.length === 0;
+      const lines: string[] = [];
+      if (check)
+        lines.push(
+          healthy ? "healthy" : "unhealthy",
+          ...findings.map((f) => `${f.rule}: ${f.message}`),
+        );
+      if (summary)
+        lines.push(
+          `- Frictions read: ${total} (valid ${st.valid_frictions ?? 0}, skipped as malformed ${bad}, already resolved ${st.skipped_resolved ?? 0})`,
+          `- Clusters: formed ${st.clusters_formed ?? 0}, above threshold ${st.clusters_above_threshold ?? 0}, parked ${st.clusters_parked ?? 0}, truncated ${st.clusters_truncated ?? 0}`,
+          `- Routing failures: ${st.routing_failures ?? 0}`,
+          ...rep.clusters.map(
+            (c) =>
+              `- Proposed: ${String(c.cluster_key)} (${String(c.cluster_size)}) -> ${String(c.target_repo)}`,
+          ),
+        );
+      const failed = check && !healthy;
+      if (asJson) {
+        process.stdout.write(
+          `${JSON.stringify({ ok: !failed, data: { healthy, stats: st, proposed: rep.clusters.map((c) => c.cluster_key) }, findings })}\n`,
+        );
+        process.stderr.write(`${lines.join("\n")}\n`);
+      } else process.stdout.write(`${lines.join("\n")}\n`);
+      return void (process.exitCode = failed ? 1 : 0);
+    }
     if (deep || dryRun) return void process.stdout.write(`${out}\n`);
 
     // --apply: one issue per cluster via apply.py; V0 is descriptive-only (issues, not MRs).

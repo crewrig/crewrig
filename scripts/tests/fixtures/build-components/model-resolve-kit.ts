@@ -161,6 +161,24 @@ export const FM_ENTRY = [
   "      - {item: temperature, key: temperature, domain: {type: number, min: 0.0, max: 2.0}}",
 ].join("\n");
 
+/**
+ * `FM_ENTRY` without its `model` item: the model then reaches the prose by guidance alone
+ * (spec 0291 R2 directs `model` onto one carrier at a time), so the renderer suites keep
+ * exercising the `{{model}}` placeholder.
+ */
+export const FM_NO_MODEL = FM_ENTRY.replace("      - {item: model, key: model}\n", "");
+
+/**
+ * `FM_NO_MODEL` whose `effort` domain leaves out `medium`: the frontmatter cannot carry that
+ * rung (the projection still reads it), so the guidance carries it. The renderer suites keep
+ * exercising both placeholders (spec 0291 delta-02 R34: guidance carries reasoning only where
+ * the frontmatter does not). Dropping the item instead would leave the rung with no projection.
+ */
+export const FM_NO_CARRIERS = FM_NO_MODEL.replace(
+  "domain: {values: [low, medium, high]}",
+  "domain: {values: [low, high]}",
+);
+
 /** A guidance surface carrying model and reasoning, template lines as given. */
 export function gdEntry(...template: string[]): string {
   const lines = template.map((l) => `      ${l}`);
@@ -209,6 +227,31 @@ export function mergeOf(root: string, target = "claude", mergeDir = mkTmp("merge
 export function loadFile(file: string): Record<string, unknown> {
   const doc: unknown = yamlLib.load(fs.readFileSync(file, "utf8"), { schema: yamlLib.CORE_SCHEMA });
   return isRecord(doc) ? doc : {};
+}
+
+/** The guard of the committed `model-mappings/claude.yml`: what a test derives its expectation from. */
+export interface CoreGuard {
+  readonly state: string;
+  readonly terms: ReadonlyArray<{ readonly id: string; readonly holds: boolean }>;
+  /** The ids of the terms that hold, comma-joined, as a `guard-withheld` note lists them. */
+  readonly holding: string;
+}
+export function coreGuard(): CoreGuard {
+  const guard = loadFile(path.join(REPO, "model-mappings", "claude.yml"))["guard"];
+  const g = isRecord(guard) ? guard : {};
+  const list: unknown = g["terms"];
+  const terms = (Array.isArray(list) ? list : []).filter(isRecord).map((t) => ({
+    id: String(t["id"]),
+    holds: t["holds"] === true,
+  }));
+  return {
+    state: String(g["state"]),
+    terms,
+    holding: terms
+      .filter((t) => t.holds)
+      .map((t) => t.id)
+      .join(","),
+  };
 }
 
 /** The `id` of every element of the sequence at `key`, in document order. */

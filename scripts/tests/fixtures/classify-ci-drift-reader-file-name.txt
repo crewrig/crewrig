@@ -1,0 +1,5 @@
+FAILED: 1 reference-validity violation(s) in /repo/ci/capabilities/:
+  - ci/capabilities/misc.yml: name is not <group>[-<part>].yml of gate, modules, governance, extensions, integration, windows or standalone[-<part>].yml
+
+The reference is the source of truth; refusing to check the engines against
+a malformed reference (spec 0309 R3).

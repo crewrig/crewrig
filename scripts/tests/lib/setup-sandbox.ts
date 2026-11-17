@@ -94,10 +94,12 @@ function buildRepo(repo: string, options: SetupSandboxOptions): void {
   copy("config", repo, (src) => !identity.test(src));
   copy("hooks", repo);
   fs.mkdirSync(path.join(repo, "artifacts/core/rules"), { recursive: true });
-  fs.copyFileSync(
-    path.join(REPO, "artifacts/core/rules/60-tools.md"),
-    path.join(repo, "artifacts/core/rules/60-tools.md"),
-  );
+  for (const rule of ["60-tools.md", "60-memory.md"]) {
+    fs.copyFileSync(
+      path.join(REPO, "artifacts/core/rules", rule),
+      path.join(repo, "artifacts/core/rules", rule),
+    );
+  }
   copy("artifacts/core/system-context", repo);
   if (options.omitIdentity !== true) {
     for (const name of ["SOUL", "PROFILE"]) {

@@ -13,7 +13,11 @@ import { describe, it } from "node:test";
 import { REPO } from "./lib/build-fixture-tree.ts";
 
 const STORE = path.join(REPO, "artifacts", "core", "system-context");
-const TOOLS = fs.readFileSync(path.join(REPO, "artifacts", "core", "rules", "60-tools.md"), "utf8");
+const RULES = path.join(REPO, "artifacts", "core", "rules");
+// The stubs live in 60-tools.md and, since spec 0308, in 60-memory.md.
+const TOOLS = ["60-tools.md", "60-memory.md"]
+  .map((f) => fs.readFileSync(path.join(RULES, f), "utf8"))
+  .join("\n");
 const storeFiles = fs
   .readdirSync(STORE, { withFileTypes: true })
   .filter((e) => e.isFile() && e.name.endsWith(".md"))

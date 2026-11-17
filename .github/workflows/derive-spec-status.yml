@@ -1,7 +1,7 @@
 name: Derive Spec Status Check
 
 # Spec 0109 delta-04 R23 (issue #1441): mirrors the `derive-spec-status`
-# capability of ci/ci-capabilities.yml.
+# capability of ci/capabilities/.
 on:
   pull_request:
     branches: [main, "release/**"]
@@ -12,11 +12,6 @@ on:
       - "scripts/tests/derive-spec-status.test.ts"
   push:
     branches: [main, "release/**"]
-    paths:
-      - "scripts/derive-spec-status.ts"
-      - "scripts/lib/spec-status-derivation.ts"
-      - "scripts/lib/ts-scope.ts"
-      - "scripts/tests/derive-spec-status.test.ts"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

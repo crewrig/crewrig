@@ -2,7 +2,7 @@
 
 <!-- crewrig-doc: section=architecture-adr nav_order=100 published=true title="ADR 0010 — SPECS to PLAN to DEV to REVIEW lifecycle" -->
 
-**Status:** Accepted (issue #166, parent EPIC #165); amended by [ADR-0020](0020-risk-proportional-ceremony.md)
+**Status:** Accepted (issue #166, parent EPIC #165); amended by [ADR-0020](0020-risk-proportional-ceremony.md) and [ADR-0024](0024-scope-specs-to-product-behaviour-and-end-review-on.md)
 
 ## Context
 
@@ -66,7 +66,7 @@ IDEA*). Tickets that do not require convergence proceed directly to SPECS.
 - **REVIEW** is a *looping* stage. Findings produced by REVIEW are
   classified (`tech` / `arch` / `spec`) and routed back to the
   corresponding upstream stage. The lifecycle terminates only when a
-  full REVIEW pass produces zero findings across all three classes.
+  REVIEW pass has no blocking finding (amended by ADR-0024; was zero findings across all three classes).
 
 The contract is mode-driven (FULL / INTERMEDIATE / MINIMAL / AUTO,
 see *Interaction modes* below): the same four stages run for every
@@ -88,13 +88,20 @@ and the routing engine land in dedicated tickets:
 
 ## Stage definitions and transition rules
 
+> **Amended by ADR-0024:** SPECS (and its spec-PR) applies only when a change alters
+> user- or adopter-observable behaviour or a contract shared across components or CLIs.
+> Skill/agent/command content, model or tools within the existing vocabulary,
+> skill-bundled scripts implementing an existing contract, `evals/evals.json` cases
+> and bug fixes restoring documented behaviour are issue-driven: the issue checklist
+> is the contract and the plan goes in the PR body.
+
 | Stage | Produces | Artifact location | Entry criteria | Exit criteria |
 |---|---|---|---|---|
 | **IDEA** *(optional)* | A converged intent + one or more SPECS issues | Session issue on the forge (labeled `idea-session`; closed with `idea-resolved` or `idea-no-consensus`) | Explicit `idea` skill invocation with `--mode` and `--issue` | Session issue closed with a terminal label (R14 of spec 0066) |
 | **SPECS** | A specification (the WHAT) | Spec file under `/specs/<spec-id>/` (format defined in #167) | A ticket exists with a user-evoked intent (may originate from a resolved IDEA session) | Spec PR is merged on `main` (mode-dependent: see *Interaction modes*) |
 | **PLAN** | A plan (the HOW: steps, blast radius, alternatives) | Comment on the logbook issue (format defined in #169) | A merged spec on `main` for this ticket | Plan is approved on the logbook issue (mode-dependent) |
 | **DEV** | Implementation diff | Feature branch in a dedicated worktree (per `AGENTS.md` → *Worktree Isolation*) | An approved plan on the logbook | A PR is opened and CI is green |
-| **REVIEW** | A verdict + zero or more findings | PR comment (`pr-reviewer` verdict format, per `AGENTS.md`) | An open PR with green CI | Verdict is APPROVE with zero findings of any class |
+| **REVIEW** | A verdict + zero or more findings | PR comment (`pr-reviewer` verdict format, per `AGENTS.md`) | An open PR with green CI | Verdict is APPROVE with no blocking finding (ADR-0024) |
 
 ### IDEA
 
@@ -300,12 +307,17 @@ These clauses bound the plan's size and the loop's length; they remove no item f
 
 ## REVIEW loop termination
 
+> **Amended by [ADR-0024](0024-scope-specs-to-product-behaviour-and-end-review-on.md):**
+> termination needs no *blocking* finding, not zero findings; review passes are
+> capped at 2 (`trivial`/`small`) and 3 (`standard`). The SPECS stage and
+> spec-PR apply only to product-behaviour or shared-contract changes.
+
 The lifecycle terminates at MERGE when, and only when, the following
 holds simultaneously:
 
 1. A REVIEW pass completes with verdict APPROVE.
-2. The same pass surfaces zero findings of any class (`tech`, `arch`,
-   `spec`).
+2. The same pass surfaces no blocking finding of any class (`tech`,
+   `arch`, `spec`); non-blocking findings go to the ledger (ADR-0024).
 3. CI is green on the head commit reviewed.
 
 Non-termination requires a re-loop per the routing matrix.

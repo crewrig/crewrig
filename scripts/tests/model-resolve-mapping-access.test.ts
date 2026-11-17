@@ -14,6 +14,7 @@ import { describe, test } from "node:test";
 import * as A from "../lib/model-resolve/mapping-access.ts";
 import { loadMapping } from "../lib/model-resolve/yaml-nodes.ts";
 import {
+  coreGuard,
   docOf,
   REPO,
   TARGETS,
@@ -43,7 +44,7 @@ const expected: Record<string, Expect> = {
     keys: ["model", "effort", "", ""],
     values: ["haiku sonnet opus fable", "low medium high xhigh max", "", ""],
     ranges: ["", "", "", ""],
-    guard: "withheld",
+    guard: coreGuard().state, // the committed state, so the guard rollback of spec 0291 R4 needs no test edit
     order: VOCAB,
     offerings: [
       "haiku:1:medium:true",
@@ -57,15 +58,15 @@ const expected: Record<string, Expect> = {
     gd: "",
     express: [true, false, true, true],
     keys: ["model", "", "temperature", "max_turns"],
-    values: ["gemini-3.1-flash-lite gemini-3.5-flash gemini-3.1-pro-preview", "", "", ""],
+    values: ["gemini-3.5-flash-lite gemini-4-hydrogen gemini-4-argon", "", "", ""],
     // `integer 1 `: no max declared, so the string ends in a blank (see the file header).
     ranges: ["", "", "number 0.0 2.0", "integer 1 "],
     guard: "",
     order: "model temperature max-turns reasoning top-p top-k max-output-tokens",
     offerings: [
-      "gemini-3.1-flash-lite:1:low:false",
-      "gemini-3.5-flash:2:medium:false",
-      "gemini-3.1-pro-preview:3:high:false",
+      "gemini-3.5-flash-lite:1:medium:false",
+      "gemini-4-hydrogen:2:high:false",
+      "gemini-4-argon:3:xhigh:false",
     ],
   },
   antigravity: {
@@ -78,11 +79,15 @@ const expected: Record<string, Expect> = {
     guard: "",
     order: VOCAB,
     offerings: [
-      "gemini-3.8-flash-medium:1:medium:false",
-      "gemini-3.8-flash-low:2:medium:false",
-      "gemini-3.8-flash-high:3:medium:false",
-      "gemini-3.1-pro-high:4:high:false",
-      "gemini-3.1-pro-low:5:high:false",
+      "gemini-3.5-flash-lite-medium:1:medium:false",
+      "gemini-3.5-flash-lite-low:2:medium:false",
+      "gemini-3.5-flash-lite-high:3:medium:false",
+      "gemini-4-hydrogen-medium:4:high:false",
+      "gemini-4-hydrogen-low:5:high:false",
+      "gemini-4-hydrogen-high:6:high:false",
+      "gemini-4-argon-medium:7:xhigh:false",
+      "gemini-4-argon-low:8:xhigh:false",
+      "gemini-4-argon-high:9:xhigh:false",
     ],
   },
   copilot: {
@@ -159,10 +164,7 @@ describe("accessors over the four real mappings", () => {
       A.guidanceTemplate(y, doc, "surfaces/guidance"),
       "Run this agent on the {{model}} model.\nGive its work {{reasoning}} reasoning effort.",
     );
-    assert.equal(
-      A.guardHoldingTerms(y, doc),
-      "defect-not-established-fixed,copilot-reader-consumes-claude-surface",
-    );
+    assert.equal(A.guardHoldingTerms(y, doc), coreGuard().holding);
   });
 
   test("antigravity: an offering's encoded reasoning rung is read, defaults fill the rest", () => {

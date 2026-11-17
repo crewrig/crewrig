@@ -1,0 +1,22 @@
+{
+  "skill_name": "tester",
+  "content_hash": "sha256:b818b8ff53a5d0387f34c0641d9cd550a63ab91388befffd2bca7a107ba63b6b",
+  "runner_version": "2.1.0",
+  "executor_model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "date": "2026-11-12T21:58:39.535Z",
+  "status": "fail",
+  "eval_pass_rate": 0.75,
+  "probe_pass_rate": 1,
+  "base_eval_pass_rate": null,
+  "threshold": 0.8,
+  "tolerance": 0.05,
+  "evals_passed": 3,
+  "evals_total": 4,
+  "probes_passed": 5,
+  "probes_total": 5,
+  "executor_runs": 9,
+  "judge_calls": 4,
+  "cost_usd": null
+}

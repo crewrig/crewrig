@@ -1,7 +1,7 @@
 name: Ticket Pickup Check
 
 # Spec 0244 (issue #1387): mirrors the `ticket-pickup` capability of
-# ci/ci-capabilities.yml.
+# ci/capabilities/.
 on:
   pull_request:
     branches: [main, "release/**"]
@@ -14,13 +14,6 @@ on:
       - "scripts/tests/fixtures/ticket-pickup/**"
   push:
     branches: [main, "release/**"]
-    paths:
-      - "scripts/ticket-pickup.ts"
-      - "scripts/lib/ticket-*.ts"
-      - "scripts/lib/forge-*.ts"
-      - "scripts/lib/ts-scope.ts"
-      - "scripts/tests/ticket-*.test.ts"
-      - "scripts/tests/fixtures/ticket-pickup/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

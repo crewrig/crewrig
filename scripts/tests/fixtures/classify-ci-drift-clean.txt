@@ -1,0 +1,1 @@
+OK: reference, GitHub Actions, GitLab agree on the portable capability set; every pipeline job is traceable.

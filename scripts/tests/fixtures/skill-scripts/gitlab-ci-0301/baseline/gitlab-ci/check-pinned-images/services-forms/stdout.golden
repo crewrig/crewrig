@@ -1,0 +1,5 @@
+[UNPINNED] ci.yml:3: redis
+[UNPINNED] ci.yml:4: postgres:16
+[UNPINNED] ci.yml:6: mongo:7
+[UNPINNED] ci.yml:8: nginx
+[UNPINNED] ci.yml:10: spaced:1

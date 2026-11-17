@@ -12,7 +12,8 @@ import { after, describe, test } from "node:test";
 
 import {
   cleanupTmp,
-  FM_ENTRY,
+  FM_NO_CARRIERS,
+  FM_NO_MODEL,
   makeRun,
   miniRoot,
   mkTmp,
@@ -30,7 +31,7 @@ const OFFER =
 const surface = (template: string, items = "[{item: model}, {item: reasoning}]"): string =>
   `  - id: gd\n    kind: guidance\n    template: ${template}\n    items: ${items}`;
 const render = (template: string, profile: string[] = ["reasoning: medium"], items?: string) => {
-  const root = miniRoot([OFFER], "", [FM_ENTRY, surface(template, items)]);
+  const root = miniRoot([OFFER], "", [FM_NO_CARRIERS, surface(template, items)]);
   return resolveProbe(makeRun(root), writeProfile(dir, "intelligence: high", ...profile), "t");
 };
 const lines = (...text: string[]): string => `|\n${text.map((l) => `      ${l}`).join("\n")}`;
@@ -101,7 +102,7 @@ describe("joining and trimming", () => {
   });
 
   test("no guidance surface at all: no prose", () => {
-    const root = miniRoot([OFFER], "", [FM_ENTRY]);
+    const root = miniRoot([OFFER], "", [FM_NO_MODEL]);
     assert.equal(
       resolveProbe(makeRun(root), writeProfile(dir, "intelligence: high"), "t").prose,
       "",
@@ -142,6 +143,8 @@ describe("unrenderable fragments (D7)", () => {
 describe("M5 on the real claude mapping", () => {
   test("renaming {{model}} to {{modell}} omits that sentence, the other survives", () => {
     const root = mutatedRoot("claude", (doc) => {
+      const guard = doc["guard"] as Record<string, unknown> | undefined;
+      if (guard !== undefined) guard["state"] = "withheld";
       const gd = listOf(doc, "surfaces").find((s) => s["id"] === "guidance");
       if (gd !== undefined)
         gd["template"] =

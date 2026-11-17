@@ -1,0 +1,5 @@
+{
+  "status": 0,
+  "stdout": "{\"ok\":true,\"data\":{\"ran\":false},\"findings\":[{\"rule\":\"tool-missing\",\"message\":\"act not found (brew install act), the simulation was skipped\",\"severity\":\"warning\"}]}\n",
+  "stderr": "[SKIP] act not found — install: brew install act\n       act runs GitHub Actions locally inside Docker containers.\n"
+}

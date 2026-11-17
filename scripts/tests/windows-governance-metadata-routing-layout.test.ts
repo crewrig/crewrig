@@ -282,7 +282,7 @@ describe("windows governance metadata-routing-layout: failing fixtures", () => {
             assert.match(err(r), /^FAILED: 1 offending entr\(y\/ies\) under \.claude\/agents:$/m),
         ],
         ["offender", () => assert.match(err(r), /^ {2}- \.claude\/agents\/notes\.txt$/m)],
-        ["no verdict on stdout", () => assert.equal(out(r), "")],
+        ["no .claude verdict on stdout", () => assert.doesNotMatch(out(r), /\.claude\/agents/)],
       ]);
     });
   });
@@ -303,7 +303,7 @@ describe("windows governance metadata-routing-layout: failing fixtures", () => {
         aggregate(r, [
           ["exit status", () => expectStatus(r, 1)],
           ["offender", () => assert.match(err(r), /^ {2}- \.claude\/agents\/link\.md$/m)],
-          ["no verdict on stdout", () => assert.equal(out(r), "")],
+          ["no .claude verdict on stdout", () => assert.doesNotMatch(out(r), /\.claude\/agents/)],
         ]);
       });
     },

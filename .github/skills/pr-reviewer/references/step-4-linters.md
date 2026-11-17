@@ -1,18 +1,15 @@
-# Step 4: bundled linters
+# Step 4: linters
 
-## 4. Run the bundled linter scripts
+Select the scripts by the extensions in the changed-files list and run each on its matching subset of paths, from the repository root so the tools find the repository's own configuration (`.oxlintrc.json`, `.oxfmtrc.json`, `node_modules/.bin`):
 
-Select scripts based on file extensions in the changed-files list, then
-invoke each with the matching subset of paths. Capture stdout and exit
-code; treat exit 0 as no findings, exit 1 as findings present.
+```bash
+node scripts/lint-markdown.ts <changed *.md files>
+node scripts/lint-skill.ts <changed SKILL.md files>
+node scripts/lint-python.ts <changed *.py files>
+node scripts/lint-json.ts <changed *.json files>
+node scripts/lint-typescript.ts <changed *.ts files>
+```
 
-`lint-typescript.ts` is invoked through Node, from the repository root
-so it finds the repository's `.oxlintrc.json`, `.oxfmtrc.json` and
-`node_modules/.bin`: `node lint-typescript.ts <changed *.ts files>`. It
-needs Node >= 24 (unflagged type stripping). On an older Node the
-interpreter fails before the script's own degrade path can run, so
-treat a non-zero exit that printed no `lint-typescript:` line — or a
-Node version below 24 — as "tool unavailable, skipped", never as a
-finding. The real Node floor guard is owned by sub-spec A2 (#1324).
+Exit `0` means no finding, `1` means findings, `2` means a usage mistake of yours, `3` means an input was unreadable or, with `--require-tools`, a tool is missing. Quote the stdout of any script that exited `1` verbatim in the verdict; do not paraphrase it.
 
-See *Scripts* below for the full table.
+Treat a missing optional tool as "tool unavailable, skipped" and say so in the verdict, never as a finding. `lint-typescript.ts` needs Node 24 or newer to run its `.ts` source: on an older Node the interpreter fails before the script can print its own `lint-typescript:` line, so a non-zero exit with no such line, or a Node version below 24, means the same: skipped.

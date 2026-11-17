@@ -36,6 +36,10 @@
     "desc": "Check agent capability-profile conformance against spec 0195 (local mirror of the CI guard, spec 0198)"
   },
   {
+    "name": "check-agent-script-citations",
+    "desc": "Fail when an agent body cites a scripts/ path outside a crewrig-repo-only fence (issue #1863, spec 0289)"
+  },
+  {
     "name": "check-claude-agent-layout",
     "desc": "Check the compiled .claude/agents/ tree holds only flat <name>.md files (local mirror of the CI guard, spec 0201)"
   },
@@ -49,7 +53,11 @@
   },
   {
     "name": "check-description-length",
-    "desc": "Fail when a skill or agent description exceeds 300 characters (spec 0269 R11)"
+    "desc": "Fail when a skill or agent description exceeds 1024 characters (spec 0293)"
+  },
+  {
+    "name": "check-skill-quality",
+    "desc": "Lint skill sources against the authoring standard; a skill that ships evals is protected (spec 0293). Author-side: task check-skill-quality -- <skill> [--strict] [--json]"
   },
   {
     "name": "check-extension-manifest-version",
@@ -82,6 +90,10 @@
   {
     "name": "check-seat-brief",
     "desc": "Fail when a seated-pass brief breaches the references-only form (spec 0276). Orchestrator-side, before the spawn: task check-seat-brief -- <file> (or pipe the brief on stdin; --template <specs|plan|review> prints a skeleton)"
+  },
+  {
+    "name": "check-subagent-conventions",
+    "desc": "Check every compiled agent ends with the subagent conventions block and the Claude Code key (local mirror of the CI guard, spec 0306)"
   },
   {
     "name": "check-skill-versions",
@@ -284,6 +296,14 @@
     "desc": "Run the setup-modules-ts CI capability (pre-push mirror of the CI job)"
   },
   {
+    "name": "ci:skill-evals-attestation",
+    "desc": "Check that every changed skill carries a fresh evals/results.json (no model call, no credential; pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:skill-evals-tests",
+    "desc": "Run the skill eval runner own suites in mock mode (no key, no network; pre-push mirror of the CI job)"
+  },
+  {
     "name": "ci:skill-scripts-ts",
     "desc": "Run the skill-scripts-ts CI capability (pre-push mirror of the CI job)"
   },
@@ -382,6 +402,10 @@
   {
     "name": "fix-markdown",
     "desc": "Auto-fix Markdown formatting issues"
+  },
+  {
+    "name": "fixed-context-probe",
+    "desc": "PAID: measure first-call input tokens of a worker and a developer subagent against the ADR-0025 threshold (never in CI)"
   },
   {
     "name": "format-ts",
@@ -600,6 +624,10 @@
     "desc": "Register the Playwright MCP server (opt-in) in Claude Code, Gemini CLI, GitHub Copilot CLI and Antigravity CLI, routed through scripts/tls-exec.ts; converges a legacy or relocated entry, leaves a customised one untouched (spec 0245). Requires Node.js >= 24; run it from the checkout you keep. Idempotent."
   },
   {
+    "name": "skill-evals",
+    "desc": "Run the evals of one skill, or of every changed skill (--changed), locally (spec 0290); pass the arguments after --"
+  },
+  {
     "name": "skill:check",
     "desc": "Verify built skill (+ optional agent) mirrors for one component across .claude/, .gemini/, .github/. Usage: task skill:check NAME=<skill-name>"
   },
@@ -624,6 +652,10 @@
     "desc": "Run the merged-spec status derivation suite, as CI does (spec 0109 delta-04)"
   },
   {
+    "name": "test-fixed-context-probe",
+    "desc": "Run the fixed-context probe's unit suite on fixture transcripts (no model call)"
+  },
+  {
     "name": "test-harness-curate",
     "desc": "Smoke-test the Harness Curator against the bundled fixture"
   },
@@ -634,6 +666,10 @@
   {
     "name": "test-runtime-foundations",
     "desc": "Run the floor guard, dependency-step and shared-module suites, as CI does (spec 0240)"
+  },
+  {
+    "name": "test-skill-evals",
+    "desc": "Run the skill eval runner suites in mock mode (no key, no network), as CI does (spec 0290)"
   },
   {
     "name": "test-spec-view",
@@ -786,6 +822,14 @@
   {
     "name": "ci:agent-profile-migration",
     "desc": "Run the agent-profile migration regression suite (cached by the ci-cache-guard capability key)"
+  },
+  {
+    "name": "ci:ci-file-limit",
+    "desc": "Check the per-file limit of the CI files and the reference split proof (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:ci-push-unfiltered",
+    "desc": "Check that every verifying capability runs unfiltered on a push to main (pre-push mirror of the CI job)"
   },
   {
     "name": "ci:ci-parity",

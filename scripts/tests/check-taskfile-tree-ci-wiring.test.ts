@@ -18,6 +18,7 @@ import { resolveCapabilityCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 import { gatePaths } from "./lib/capability-path-scan.ts";
 import { readWorkflowUnionText } from "./lib/workflow-union.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const ID = "check-taskfile-tree";
 const ROOT = ["Task", "file.yml"].join("");
@@ -144,7 +145,8 @@ function assertCapabilities(text: string): void {
   assert.ok((cap.requires?.tools ?? []).includes("task"), "requires the task tool");
   assert.equal(cap["changeset-gated"], true);
   assert.deepEqual(cap.trigger?.map((t) => t.on).sort(), ["pull-request", "push"]);
-  for (const t of cap.trigger ?? [])
+  // Spec 0309 delta-02 R6: only the pull-request trigger is filtered; push runs unfiltered.
+  for (const t of (cap.trigger ?? []).filter((x) => x.on === "pull-request"))
     for (const p of TREE_PATHS) assert.ok((t.paths ?? []).includes(p), `${t.on} paths has ${p}`);
   // Spec 0283 R1: the capability is the single `task ci:<id>` entry; the commands live in the task.
   assert.deepEqual(cap.command, [`task ci:${ID}`], "runs the migrated task");
@@ -162,7 +164,11 @@ function assertCapabilities(text: string): void {
       c.id !== `${ID}-selftest` &&
       (c.trigger ?? []).some((t) => (t.paths ?? []).includes(ROOT)),
   );
-  assert.deepEqual(listing.map((c) => c.id).sort(), [...LISTING_JOBS, "spec-view"].sort());
+  // ci-push-unfiltered reads the Taskfile closure of every capability command (spec 0309 R6, R7).
+  assert.deepEqual(
+    listing.map((c) => c.id).sort(),
+    [...LISTING_JOBS, "spec-view", "ci-push-unfiltered"].sort(),
+  );
   assert.ok(listing.length >= 3, "the jobs that list the root Taskfile are found");
   for (const c of listing.filter((l) => l.id !== "spec-view"))
     for (const t of c.trigger ?? [])
@@ -171,7 +177,7 @@ function assertCapabilities(text: string): void {
           assert.ok((t.paths ?? []).includes(p), `${c.id} ${t.on} paths has ${p}`);
   // spec-view reads the whole tree through the loader: it reruns on the tree and the loader only.
   const sv = listing.find((c) => c.id === "spec-view");
-  for (const t of sv?.trigger ?? [])
+  for (const t of (sv?.trigger ?? []).filter((x) => x.on === "pull-request"))
     for (const p of [
       ROOT,
       "taskfiles/**",
@@ -236,19 +242,17 @@ function assertGitlab(text: string): void {
 }
 
 describe("check-taskfile-tree CI wiring", () => {
-  test("ci/ci-capabilities.yml", () => assertCapabilities(read("ci", "ci-capabilities.yml")));
+  test("capability reference", () => assertCapabilities(readReferenceText(REPO)));
   test("GitHub workflow", () => assertGithub(readWorkflowUnionText(REPO)));
   test("GitLab pipeline", () => assertGitlab(read(".gitlab-ci.yml")));
   test("ci tasks run the guard and the suites", () => assertTasks(readCiTaskfiles()));
 
   test("every job running a loader-importing test installs dependencies first", () => {
-    const caps = (yamlLib.load(read("ci", "ci-capabilities.yml")) as { capabilities: Cap[] })
-      .capabilities;
+    const caps = (yamlLib.load(readReferenceText(REPO)) as { capabilities: Cap[] }).capabilities;
     assertInstallBeforeLoaderTests(caps, loaderImporterTests());
   });
   test("mutation: spec-view without its install command is rejected", () => {
-    const caps = (yamlLib.load(read("ci", "ci-capabilities.yml")) as { capabilities: Cap[] })
-      .capabilities;
+    const caps = (yamlLib.load(readReferenceText(REPO)) as { capabilities: Cap[] }).capabilities;
     const sv = caps.find((c) => c.id === "spec-view");
     assert.ok(sv?.command);
     sv.command = sv.command.filter((c) => !INSTALL.test(c));
@@ -257,9 +261,9 @@ describe("check-taskfile-tree CI wiring", () => {
   test("spec-view workflow installs dependencies and carries the tree filters", () => {
     const wf = read(".github", "workflows", "spec-view.yml");
     assert.ok(INSTALL.test(wf), "installs dependencies");
-    assert.equal(wf.split(`- "${ROOT}"`).length - 1, 2);
+    assert.equal(wf.split(`- "${ROOT}"`).length - 1, 1);
     for (const p of COMPANIONS.slice(0, 3))
-      assert.equal(wf.split(`- "${p}"`).length - 1, 2, `both filters have ${p}`);
+      assert.equal(wf.split(`- "${p}"`).length - 1, 1, `the pull-request filter has ${p}`);
   });
 
   test("mutation: a job that does not run the guard is rejected", () => {
@@ -274,9 +278,7 @@ describe("check-taskfile-tree CI wiring", () => {
   });
   test("mutation: a Taskfile filter without taskfiles/** is rejected", () => {
     assert.throws(() =>
-      assertCapabilities(
-        read("ci", "ci-capabilities.yml").replace(/\n\s*- "taskfiles\/\*\*"/g, ""),
-      ),
+      assertCapabilities(readReferenceText(REPO).replace(/\n\s*- "taskfiles\/\*\*"/g, "")),
     );
   });
 });

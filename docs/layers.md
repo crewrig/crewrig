@@ -78,8 +78,8 @@ contract — never flowing back upstream.
 
 | Path | Description |
 |---|---|
-| `ci/` | Platform-neutral CI capability reference (`ci/ci-capabilities.yml`). One entry per CI job — the engine-agnostic source of truth that the per-engine pipelines (GitHub Actions today, GitLab CI and others later) are derived from and drift-checked against. Core/`strict`; its normative shape is `docs/ci-reference-format.md` (ADR-0012). Top-level rather than under `.github/` so the reference reads as engine-neutral, not GitHub-owned. Also holds the path-ownership exemption list, `ci/path-ownership-exemptions.txt` (spec 0147 delta-01 R14, R24): the reasoned list of tracked files that no check exercises, read by `scripts/check-path-ownership.ts`; registered explicitly in `.crewrig/core-paths.txt` as `strict`. The `ci/org/` subtree is carved out as overlay (spec 0020) — see *Org overlay carve-outs in core trees* below. |
-| `.gitlab-ci.yml` | Generated GitLab CI pipeline (spec 0048). The derived GitLab form of the portable subset of `ci/ci-capabilities.yml` — one job per portable capability, produced by `scripts/build-ci.ts`. Core/`strict` (engine-neutral generated output, upstream-owned). Never hand-edited: `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts --check` guards it against drift from the reference in CI. The GitHub Actions workflows under `.github/workflows/` are NOT generated (spec 0048 R5); only GitLab is derived here. |
+| `ci/` | Platform-neutral CI capability reference (`ci/capabilities/`). One entry per CI job — the engine-agnostic source of truth that the per-engine pipelines (GitHub Actions today, GitLab CI and others later) are derived from and drift-checked against. Core/`strict`; its normative shape is `docs/ci-reference-format.md` (ADR-0012). Top-level rather than under `.github/` so the reference reads as engine-neutral, not GitHub-owned. Also holds the path-ownership exemption list, `ci/path-ownership-exemptions.txt` (spec 0147 delta-01 R14, R24): the reasoned list of tracked files that no check exercises, read by `scripts/check-path-ownership.ts`; registered explicitly in `.crewrig/core-paths.txt` as `strict`. The `ci/org/` subtree is carved out as overlay (spec 0020) — see *Org overlay carve-outs in core trees* below. |
+| `.gitlab-ci.yml` | Generated GitLab CI pipeline (spec 0048). The derived GitLab form of the portable subset of `ci/capabilities/` — one job per portable capability, produced by `scripts/build-ci.ts`. Core/`strict` (engine-neutral generated output, upstream-owned). Never hand-edited: `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts --check` guards it against drift from the reference in CI. The GitHub Actions workflows under `.github/workflows/` are NOT generated (spec 0048 R5); only GitLab is derived here. |
 
 ### Model mappings (spec 0197)
 
@@ -117,7 +117,9 @@ user-home scope (e.g., `~/.claude/skills/`), available to every workflow on the
 machine rather than only inside a CrewRig project checkout. Friction reporting,
 friction curation, and user-gate validation are **instances** of this contract,
 not an exhaustive member list; a future cross-cutting tool belongs here when it
-matches the contract.
+matches the contract. The web and SEO agents and the four web skills (spec 0307) are
+library members too: they are installed at home scope and are no longer part of
+the project tree.
 
 | Path | Description |
 |---|---|
@@ -125,6 +127,21 @@ matches the contract.
 | `artifacts/library/skills/harness-curator/` | Harness skill — friction clustering and issue authoring. |
 | `artifacts/library/skills/user-validate/` | Cross-cutting skill — backend-configurable user-gate validation. |
 | `artifacts/library/agents/harness-curator/` | Harness agent — curator specialist. |
+| `artifacts/library/skills/astro/` | Web skill (spec 0307) — Astro sites and content collections. |
+| `artifacts/library/skills/copywriting/` | Web skill (spec 0307) — web copy with length and phrase linting. |
+| `artifacts/library/skills/frontend/` | Web skill (spec 0307) — framework-agnostic HTML, CSS, Tailwind and accessibility. |
+| `artifacts/library/skills/web-tester/` | Web skill (spec 0307) — Playwright, RobotFramework and axe-core scenarios. |
+| `artifacts/library/agents/accessibility-auditor/` | Web agent (spec 0307) — manual WCAG 2.1 AA audit. |
+| `artifacts/library/agents/accessibility-tester/` | Web agent (spec 0307) — axe-core scan and CI accessibility suite. |
+| `artifacts/library/agents/astro-developer/` | Web agent (spec 0307) — Astro implementation. |
+| `artifacts/library/agents/copywriter/` | Web agent (spec 0307) — page copy. |
+| `artifacts/library/agents/designer/` | Web agent (spec 0307) — design tokens and component specs. |
+| `artifacts/library/agents/frontend-developer/` | Web agent (spec 0307) — semantic HTML, CSS and accessible behaviour. |
+| `artifacts/library/agents/regression-sentinel/` | Web agent (spec 0307) — smoke and regression pass against a baseline. |
+| `artifacts/library/agents/scenario-author/` | Web agent (spec 0307) — end-to-end scenarios. |
+| `artifacts/library/agents/seo-specialist/` | Web agent (spec 0307) — technical SEO audit. |
+| `artifacts/library/agents/visual-regression-tester/` | Web agent (spec 0307) — screenshot diffs across viewports. |
+| `artifacts/library/agents/web-conformity-checker/` | Web agent (spec 0307) — conformity of a page to a specification. |
 
 **`artifacts/core/`** — SDLC lifecycle tools and operational role skills and
 agents. Deployed to project scope (e.g., `.claude/skills/` in the workspace).
@@ -139,6 +156,8 @@ SDLC lifecycle tools:
 | `artifacts/core/skills/spec-author/` | Lifecycle skill — qualification stage author. |
 | `artifacts/core/skills/pr-logbook/` | Lifecycle skill — PR and logbook composer. |
 | `artifacts/core/skills/pr-reviewer/` | Lifecycle skill — independent PR reviewer. |
+| `artifacts/core/shared/references/` | Shared reference text that skills cite as `references/shared-<topic>.md`; the build copies it into each citing skill (spec 0293). |
+| `artifacts/core/fragments/` | Build input only: the single-source subagent conventions block that the build appends to every compiled agent (spec 0306); not installed to any user home, not mirrored into MemPalace, never read by an agent at run time. |
 | `artifacts/core/agents/spec-author/` | Lifecycle agent — spec-author specialist. |
 | `artifacts/core/agents/pr-logbook/` | Lifecycle agent — logbook composer specialist. |
 | `artifacts/core/agents/pr-reviewer/` | Lifecycle agent — PR reviewer specialist. |
@@ -158,13 +177,20 @@ Core rules files (deployed to user home at a fixed priority number):
 
 | Path | Description |
 |---|---|
-| `artifacts/core/rules/60-tools.md` | Framework-critical tool instructions: three-tier memory architecture, MemPalace protocol, harness engineering loop, Sequential Thinking, Obsidian access model. Deployed at priority 60. NOT a template — upstream content. |
+| `artifacts/core/rules/60-memory.md` | Orchestrator memory protocol, moved verbatim from `60-tools.md` (spec 0308): three-tier memory architecture, MemPalace protocol, Sequential Thinking, Obsidian access model stub, Memory Activation Summary. Deployed at priority 60 next to `60-tools.md`. The Claude Code worker profile excludes it. NOT a template — upstream content. |
+| `artifacts/core/rules/60-tools.md` | Framework-critical tool instructions that every session needs: system-context retrieval, the memory obligations that bind every agent (Obsidian write consent, MCP-only MemPalace access, copied verbatim from `60-memory.md`), forge access, user-gate validation backend, friction reporting (harness engineering loop), scannable recap format, idiomatic French. Deployed at priority 60. NOT a template — upstream content. |
 
 Core system-context store (installed to user home, read on demand):
 
 | Path | Description |
 |---|---|
 | `artifacts/core/system-context/` | Reference-heavy sections extracted from `60-tools.md` (spec 0068): Palace Structure Conventions, Long-Running Task Convention, MCP Tools Reference, Friction Reporting reference detail, Obsidian Protocol. Installed verbatim to `~/.crewrig/system-context/` by every `setup-<cli>-interactive.ts` entry (its `install_dir` twin), then read on demand — direct file read by default, MemPalace optional, explicit signal on failure (never silently omitted). NOT a template — upstream content. |
+
+Core Claude Code profiles (installed to user home, applied only by an explicit launcher flag):
+
+| Path | Description |
+|---|---|
+| `artifacts/core/claude-profiles/` | The worker and coordinator Claude Code settings files (spec 0305, ADR-0025 O2): `worker.settings.json` and `coordinator.settings.json`. Deployed to `~/.crewrig/claude-profiles/` by `setup-claude-interactive.ts` only (its `install_dir` twin); never written under `~/.claude/`. Passed with `claude --settings`; see [`worker-profile.md`](worker-profile.md). NOT a template — upstream content. |
 
 ### Built outputs
 
@@ -362,15 +388,11 @@ adopting organizations building their own role skills.
 | Path |
 |---|
 | `artifacts/core/skills/architect/` |
-| `artifacts/core/skills/astro/` |
-| `artifacts/core/skills/copywriting/` |
 | `artifacts/core/skills/developer/` |
 | `artifacts/core/skills/doc-writer/` |
-| `artifacts/core/skills/frontend/` |
 | `artifacts/core/skills/github-actions/` |
 | `artifacts/core/skills/security/` |
 | `artifacts/core/skills/tester/` |
-| `artifacts/core/skills/web-tester/` |
 
 ### Illustrative agents
 
@@ -380,23 +402,12 @@ points for adopting organizations.
 
 | Path |
 |---|
-| `artifacts/core/agents/accessibility-auditor/` |
-| `artifacts/core/agents/accessibility-tester/` |
-| `artifacts/core/agents/astro-developer/` |
 | `artifacts/core/agents/ci-configurator/` |
 | `artifacts/core/agents/ci-debugger/` |
-| `artifacts/core/agents/copywriter/` |
-| `artifacts/core/agents/designer/` |
 | `artifacts/core/agents/developer/` |
 | `artifacts/core/agents/doc-writer/` |
-| `artifacts/core/agents/frontend-developer/` |
-| `artifacts/core/agents/regression-sentinel/` |
-| `artifacts/core/agents/scenario-author/` |
 | `artifacts/core/agents/security/` |
-| `artifacts/core/agents/seo-specialist/` |
 | `artifacts/core/agents/tester/` |
-| `artifacts/core/agents/visual-regression-tester/` |
-| `artifacts/core/agents/web-conformity-checker/` |
 
 ### Identity and configuration templates
 

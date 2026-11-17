@@ -1,0 +1,10 @@
+{
+  "number": 78,
+  "title": "✨ Add a retry helper for flaky widget calls",
+  "body": "Adds `retry()` so callers stop hand-rolling loops. It calls the function up to `attempts` times and raises the last error when every attempt fails.",
+  "headRefName": "feat/77-retry-helper",
+  "baseRefName": "main",
+  "labels": [{ "name": "iter:1" }],
+  "author": { "login": "dev-a" },
+  "files": [{ "path": "src/widgets/retry.py" }, { "path": "tests/test_retry.py" }]
+}

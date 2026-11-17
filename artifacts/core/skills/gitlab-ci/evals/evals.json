@@ -1,0 +1,301 @@
+{
+  "skill_name": "gitlab-ci",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write a GitLab CI pipeline for a Node.js 22 web application built with npm (package-lock.json is committed). It needs a lint job, a unit-test job, and a build job that keeps the dist/ directory for later stages. The pipeline must run once per commit, on merge requests and on the default branch. Save it as authored.gitlab-ci.yml. Do not run gh, glab, tea or git push, do not call any GitLab instance, and do not create, edit, comment on or close any issue, merge request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "authored.gitlab-ci.yml is a valid-looking GitLab pipeline with lint, test and build jobs, pinned images, a lockfile-keyed cache, dist/ artifacts and workflow rules that avoid duplicate pipelines.",
+      "files": [],
+      "expectations": [
+        "The pipeline defines separate lint, unit-test and build jobs, and the build job keeps dist/ as an artifact.",
+        "Every image is pinned to a specific version tag or digest, never to latest or to a bare name with no tag.",
+        "A top-level workflow:rules block (or equivalent job rules) ensures that one commit pushed to a merge-request branch does not start two pipelines.",
+        "The npm cache is keyed on package-lock.json (cache:key:files or an equivalent lockfile-derived key) rather than on a constant string."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "authored.gitlab-ci.yml"
+        },
+        {
+          "type": "file_contains",
+          "path": "authored.gitlab-ci.yml",
+          "pattern": "(?:^|\\n)workflow:"
+        },
+        {
+          "type": "file_contains",
+          "path": "authored.gitlab-ci.yml",
+          "pattern": "\\n[ \\t]*rules:"
+        },
+        {
+          "type": "file_contains",
+          "path": "authored.gitlab-ci.yml",
+          "pattern": "package-lock\\.json"
+        },
+        {
+          "type": "file_contains",
+          "path": "authored.gitlab-ci.yml",
+          "pattern": "^(?![\\s\\S]*(?:^|\\n)[ \\t]*(?:only|except):)[\\s\\S]+$"
+        },
+        {
+          "type": "file_contains",
+          "path": "authored.gitlab-ci.yml",
+          "pattern": "^(?![\\s\\S]*image:[^\\n]*:latest)[\\s\\S]+$"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Review the GitLab CI pipeline in legacy-review.gitlab-ci.yml as a careful reviewer. Do not modify it. Write your findings to review-findings.md, one finding per item, each naming the job and the line or key it concerns and what to change. Do not run gh, glab, tea or git push, do not call any GitLab instance, and do not create, edit, comment on or close any issue, merge request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "review-findings.md reports the unpinned latest images, the legacy only/except keywords and the missing workflow:rules, each tied to a job, with a concrete fix.",
+      "files": [
+        "evals/files/legacy-review.gitlab-ci.yml"
+      ],
+      "expectations": [
+        "The review flags the node:latest image of the build and unit-tests jobs as unpinned and recommends a version tag or digest.",
+        "The review flags the only and except keywords as legacy and recommends rules:.",
+        "The review notes that the pipeline has no workflow:rules and says what that allows (duplicate or unwanted pipelines).",
+        "Every finding names a job of the file under review and none invents a job that is not in it."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "review-findings.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "review-findings.md",
+          "pattern": "latest"
+        },
+        {
+          "type": "file_contains",
+          "path": "review-findings.md",
+          "pattern": "only"
+        },
+        {
+          "type": "file_contains",
+          "path": "review-findings.md",
+          "pattern": "workflow"
+        },
+        {
+          "type": "file_contains",
+          "path": "legacy-review.gitlab-ci.yml",
+          "pattern": "node:latest"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Migrate the pipeline in only-except-migrate.gitlab-ci.yml from only/except to rules: without changing when any job runs. Write the result to migrated.gitlab-ci.yml and keep the images, scripts and stages as they are. Do not run gh, glab, tea or git push, do not call any GitLab instance, and do not create, edit, comment on or close any issue, merge request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "migrated.gitlab-ci.yml has no only or except key and uses rules: that keep each job's original conditions.",
+      "files": [
+        "evals/files/only-except-migrate.gitlab-ci.yml"
+      ],
+      "expectations": [
+        "run-tests runs on branch pipelines and merge-request pipelines and does not run on scheduled pipelines.",
+        "build-docs runs only when docs/**/* or mkdocs.yml change and does not run on tag pipelines.",
+        "publish-package runs only on tag pipelines.",
+        "The images, scripts and stages are unchanged from the source file."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "migrated.gitlab-ci.yml"
+        },
+        {
+          "type": "file_contains",
+          "path": "migrated.gitlab-ci.yml",
+          "pattern": "\\n[ \\t]*rules:"
+        },
+        {
+          "type": "file_contains",
+          "path": "migrated.gitlab-ci.yml",
+          "pattern": "if:"
+        },
+        {
+          "type": "file_contains",
+          "path": "migrated.gitlab-ci.yml",
+          "pattern": "mkdocs\\.yml"
+        },
+        {
+          "type": "file_contains",
+          "path": "migrated.gitlab-ci.yml",
+          "pattern": "^(?![\\s\\S]*(?:^|\\n)[ \\t]*(?:only|except):)[\\s\\S]+$"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "The deploy job in deploy-static-key.gitlab-ci.yml authenticates to AWS with a long-lived access key kept in CI/CD variables. Replace that with short-lived credentials obtained through GitLab OIDC and an AWS role, keeping the same s3 sync and the same branch rule. Write the result to deploy-oidc.gitlab-ci.yml and, in oidc-setup.md, list what must be configured on the AWS side. Do not run gh, glab, tea or git push, do not call any GitLab instance, and do not create, edit, comment on or close any issue, merge request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "deploy-oidc.gitlab-ci.yml declares id_tokens with an audience and assumes a role with the web identity token; no stored access key remains; oidc-setup.md lists the AWS-side trust configuration.",
+      "files": [
+        "evals/files/deploy-static-key.gitlab-ci.yml"
+      ],
+      "expectations": [
+        "The deploy job declares an id_tokens entry with an aud value and uses that token to obtain AWS credentials by assuming a role.",
+        "No long-lived AWS access key or secret key variable is used by the new job.",
+        "oidc-setup.md says the AWS role trust policy must restrict which GitLab project and ref may assume the role, not only the audience.",
+        "The s3 sync command and the default-branch rule are preserved."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "deploy-oidc.gitlab-ci.yml"
+        },
+        {
+          "type": "file_exists",
+          "path": "oidc-setup.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "deploy-oidc.gitlab-ci.yml",
+          "pattern": "id_tokens:"
+        },
+        {
+          "type": "file_contains",
+          "path": "deploy-oidc.gitlab-ci.yml",
+          "pattern": "[Ww]eb[Ii]dentity|WEB_IDENTITY"
+        },
+        {
+          "type": "file_contains",
+          "path": "deploy-oidc.gitlab-ci.yml",
+          "pattern": "^(?![\\s\\S]*AWS_SECRET_ACCESS_KEY)[\\s\\S]+$"
+        },
+        {
+          "type": "file_contains",
+          "path": "deploy-oidc.gitlab-ci.yml",
+          "pattern": "s3 sync"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Every push to a branch with an open merge request starts two pipelines for the same commit with the pipeline in double-pipeline.gitlab-ci.yml. Explain the cause in diagnosis.md and write a corrected pipeline to fixed-pipeline.gitlab-ci.yml that starts one pipeline per commit while still running on merge requests and on the default branch. Do not run gh, glab, tea or git push, do not call any GitLab instance, and do not create, edit, comment on or close any issue, merge request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "diagnosis.md explains that branch and merge-request pipelines both match the job rules; the fixed pipeline adds workflow:rules or equivalent so only one is created.",
+      "files": [
+        "evals/files/double-pipeline.gitlab-ci.yml"
+      ],
+      "expectations": [
+        "diagnosis.md says the two pipelines are a branch pipeline and a merge-request pipeline, both matching the job rules.",
+        "The fixed pipeline prevents the branch pipeline when a merge request is open for the branch, for example with a workflow:rules block.",
+        "The fixed pipeline still runs for merge-request events and for the default branch.",
+        "The jobs, images and scripts of the fixed pipeline are the same as the original."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "diagnosis.md"
+        },
+        {
+          "type": "file_exists",
+          "path": "fixed-pipeline.gitlab-ci.yml"
+        },
+        {
+          "type": "file_contains",
+          "path": "diagnosis.md",
+          "pattern": "merge_request_event|merge[- ]request pipeline"
+        },
+        {
+          "type": "file_contains",
+          "path": "fixed-pipeline.gitlab-ci.yml",
+          "pattern": "(?:^|\\n)workflow:"
+        },
+        {
+          "type": "file_contains",
+          "path": "fixed-pipeline.gitlab-ci.yml",
+          "pattern": "CI_OPEN_MERGE_REQUESTS|merge_request_event"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Review risky-debug.gitlab-ci.yml for security and reliability problems and write the findings to risk-review.md, each with the job or key concerned, why it matters, and the fix. Do not modify the pipeline. Do not run gh, glab, tea or git push, do not call any GitLab instance, and do not create, edit, comment on or close any issue, merge request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "risk-review.md flags the global CI_DEBUG_TRACE, set -x before a command using a password, the cache path outside the project directory and the unpinned remote include.",
+      "files": [
+        "evals/files/risky-debug.gitlab-ci.yml"
+      ],
+      "expectations": [
+        "The review flags CI_DEBUG_TRACE: \"true\" as exposing variable values, masked ones included, in job logs.",
+        "The review flags set -x in the deploy job, which runs before a command that uses DEPLOY_PASSWORD, as echoing the credential into the log.",
+        "The review flags the cache path /tmp/go-cache as outside the project directory, so the cache cannot be saved.",
+        "The review flags the remote include as fetched from a mutable URL with no pinning or integrity control."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "risk-review.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "risk-review.md",
+          "pattern": "CI_DEBUG_TRACE"
+        },
+        {
+          "type": "file_contains",
+          "path": "risk-review.md",
+          "pattern": "set -x"
+        },
+        {
+          "type": "file_contains",
+          "path": "risk-review.md",
+          "pattern": "/tmp/go-cache"
+        },
+        {
+          "type": "file_contains",
+          "path": "risk-review.md",
+          "pattern": "remote"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "Every push to my feature branch starts two pipelines in GitLab, one for the branch and one for the merge request. How do I stop the duplicate?",
+      "should_trigger": true
+    },
+    {
+      "query": "Write a GitLab CI/CD component with spec:inputs that builds and pushes a container image, so other projects can include it.",
+      "should_trigger": true
+    },
+    {
+      "query": "Here is our Jenkinsfile with build, test and deploy stages. Migrate it to a .gitlab-ci.yml.",
+      "should_trigger": true
+    },
+    {
+      "query": "glab ci lint says my .gitlab-ci.yml is invalid: 'jobs:deploy config contains unknown keys: needs_stage'. What is wrong?",
+      "should_trigger": true
+    },
+    {
+      "query": "My GitLab job stays pending with 'This job is stuck because no runners with matching tags are online'. How do I fix the runner tags?",
+      "should_trigger": true
+    },
+    {
+      "query": "Set up id_tokens in my .gitlab-ci.yml so the deploy job can assume an AWS role without stored keys.",
+      "should_trigger": true
+    },
+    {
+      "query": "Review this GitHub Actions workflow: the matrix job caches node_modules with actions/cache and the cache never hits. What is wrong with the key?",
+      "should_trigger": false
+    },
+    {
+      "query": "My Jenkinsfile declarative pipeline fails in the 'Test' stage with a groovy CPS error on a parallel block. Help me fix the Jenkinsfile.",
+      "should_trigger": false
+    },
+    {
+      "query": "Add resource requests and limits and a readiness probe to this Kubernetes Deployment manifest for our api service.",
+      "should_trigger": false
+    },
+    {
+      "query": "Do a security review of this Express handler: it builds a SQL query from req.query.id and returns user records.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write the description of my GitLab merge request: it renames the billing module and updates its tests. Use the usual summary, motivation and test plan sections.",
+      "should_trigger": false
+    },
+    {
+      "query": "My CircleCI pipeline restores the cache for node_modules with restore_cache but the key never matches. How should I build the cache key?",
+      "should_trigger": false
+    }
+  ]
+}

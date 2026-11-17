@@ -19,7 +19,7 @@ release commit itself — see [GitHub release PR](github-release-pr.md).
 
 The generated `.gitlab-ci.yml` at the repository root already carries the
 `release` and `release-rehearsal` jobs once it is in sync with
-`ci/ci-capabilities.yml` (`node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts --check`). A fork that
+`ci/capabilities/` (`node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-ci.ts --check`). A fork that
 uses that file as its GitLab project's pipeline configuration as-is needs
 no pipeline-file change at all.
 

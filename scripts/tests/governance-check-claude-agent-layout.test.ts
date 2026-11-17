@@ -27,6 +27,7 @@ function fixture(build: (agents: string) => void): string {
   roots.push(root);
   const agents = path.join(root, ".claude", "agents");
   fs.mkdirSync(agents, { recursive: true });
+  fs.mkdirSync(path.join(root, ".agents", "agents"), { recursive: true });
   build(agents);
   return root;
 }
@@ -39,7 +40,9 @@ function run(root: string): { status: number | null; stdout: string; stderr: str
   return { status: r.status, stdout: r.stdout, stderr: r.stderr };
 }
 
-const OK_LINE = "OK: .claude/agents/ holds only flat *.md files.\n";
+const CLAUDE_OK = "OK: .claude/agents/ holds only flat *.md files.\n";
+const AGENTS_OK = "OK: .agents/agents/ holds only flat *.md files.\n";
+const OK_LINE = CLAUDE_OK + AGENTS_OK;
 
 describe("check-claude-agent-layout.ts", () => {
   test("an empty agents directory is legal", () => {
@@ -52,13 +55,17 @@ describe("check-claude-agent-layout.ts", () => {
     roots.push(root);
     const r = run(root);
     assert.equal(r.status, 0);
-    assert.equal(r.stdout, `OK: ${root}/.claude/agents is absent — nothing to check.\n`);
+    assert.equal(
+      r.stdout,
+      `OK: ${root}/.claude/agents is absent — nothing to check.\n` +
+        `OK: ${root}/.agents/agents is absent — nothing to check.\n`,
+    );
   });
 
   test("a regular non-.md file is the only offender", () => {
     const r = run(fixture((a) => fs.writeFileSync(path.join(a, "notes.txt"), "x")));
     assert.equal(r.status, 1);
-    assert.equal(r.stdout, "");
+    assert.equal(r.stdout, AGENTS_OK);
     assert.match(
       r.stderr,
       /^\nFAILED: 1 offending entr\(y\/ies\) under \.claude\/agents:\n {2}- \.claude\/agents\/notes\.txt\n\n/,
@@ -118,7 +125,60 @@ describe("check-claude-agent-layout.ts", () => {
       fs.mkdirSync(path.join(root, ".claude"));
       fs.symlinkSync("../elsewhere", path.join(root, ".claude", "agents"));
       const r = run(root);
-      assert.deepEqual([r.status, r.stdout], [0, OK_LINE]);
+      assert.deepEqual(
+        [r.status, r.stdout],
+        [0, `${CLAUDE_OK}OK: ${root}/.agents/agents is absent — nothing to check.\n`],
+      );
     },
   );
+});
+
+describe("check-claude-agent-layout.ts, the .agents/agents tree (spec 0053 delta-01 R17)", () => {
+  /** A root whose `.agents/agents` is filled by `build`; `.claude/agents` is absent. */
+  function agentsOnly(build: (agents: string) => void): string {
+    const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "agent-layout-")));
+    roots.push(root);
+    const agents = path.join(root, ".agents", "agents");
+    fs.mkdirSync(agents, { recursive: true });
+    build(agents);
+    return root;
+  }
+
+  test(".agents is checked when .claude/agents is absent: a flat tree is clean", () => {
+    const root = agentsOnly((a) => fs.writeFileSync(path.join(a, "developer.md"), "x"));
+    const r = run(root);
+    assert.deepEqual(
+      [r.status, r.stdout, r.stderr],
+      [0, `OK: ${root}/.claude/agents is absent — nothing to check.\n${AGENTS_OK}`, ""],
+    );
+  });
+
+  test(".agents is checked when .claude/agents is absent: a nested directory fails, naming dir and file", () => {
+    const r = run(
+      agentsOnly((a) => {
+        fs.writeFileSync(path.join(a, "a.md"), "x");
+        fs.mkdirSync(path.join(a, "b"));
+        fs.writeFileSync(path.join(a, "b", "AGENT.md"), "x");
+      }),
+    );
+    assert.equal(r.status, 1);
+    const lines = r.stderr.split("\n").filter((l) => l.startsWith("  - "));
+    assert.deepEqual(lines, ["  - .agents/agents/b", "  - .agents/agents/b/AGENT.md"]);
+    assert.match(r.stderr, /FAILED: 2 offending entr\(y\/ies\) under \.agents\/agents:/);
+  });
+
+  test("an empty .agents/agents is legal", () => {
+    const r = run(agentsOnly(() => {}));
+    assert.equal(r.status, 0);
+    assert.ok(r.stdout.endsWith(AGENTS_OK), r.stdout);
+  });
+
+  test("an offender in .claude/agents does not hide .agents/agents, and either tree fails the run", () => {
+    const root = fixture((a) => fs.writeFileSync(path.join(a, "notes.txt"), "x"));
+    fs.mkdirSync(path.join(root, ".agents", "agents", "b"));
+    const r = run(root);
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /under \.claude\/agents:/);
+    assert.match(r.stderr, /under \.agents\/agents:/);
+  });
 });

@@ -181,7 +181,7 @@ export function evaluate(input: {
 function remedies(exemptionList: string, overlay: string): string[] {
   return [
     "path-ownership: every tracked file needs an owner or a reason; fix each unowned file one of two ways:",
-    "path-ownership:   1. extend the `paths:` of the capability in ci/ci-capabilities.yml whose checks exercise the file, " +
+    "path-ownership:   1. extend the `paths:` of the capability in the CI capability reference (ci/capabilities/) whose checks exercise the file, " +
       "and mirror the glob in that job's GitHub path filter (.github/workflows/build.yml); or",
     `path-ownership:   2. add '<glob><TAB><reason>' to ${exemptionList} (adopters: ${overlay}) ` +
       "when no check exercises the file, or a capability with no `paths:` filter does on every change.",

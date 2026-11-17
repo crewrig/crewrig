@@ -1,11 +1,11 @@
-// check-description-length.ts — fails when a skill or agent `description` exceeds 300
-// characters (spec 0269 R11), on artifacts/ sources and compiled outputs alike.
+// check-description-length.ts — fails when a skill or agent `description` exceeds 1,024
+// characters (spec 0269 R11 as amended by spec 0293 R2), on artifacts/ sources and compiled outputs alike.
 //
 // Usage: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-description-length.ts
 // `CREWRIG_REPO_DIR` overrides the repository root (default: this repository).
 //
 // Exit: 0 clean, 1 over-long descriptions, 2 prerequisite failure (js-yaml missing).
-// Finding lines (stdout): `FAIL <file> — description <n> chars (max 300)`.
+// Finding lines (stdout): `FAIL <file> — description <n> chars (max 1024)`.
 
 import path from "node:path";
 import { MAX_DESCRIPTION_CHARS, findOverlong } from "./lib/governance/description-length.ts";

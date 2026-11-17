@@ -1,0 +1,23 @@
+# Exemptions of the unfiltered push on main and release/** (spec 0309 delta-02 R6).
+#
+# Format: one entry per line, `<kind><TAB><id><TAB><reason>`; blank lines and `#` lines are ignored.
+#   no-push      a capability with no `push` trigger on those branches (pull-request-only, scheduled,
+#                manual, engine-specific).
+#   side-effect  a deploy or publish capability whose job mutates or publishes something outside the
+#                repository and keeps its push filter. A capability that runs a test or a check never
+#                qualifies.
+# `<id>` is a capability id, a workflow file or a job id. An empty reason, an unknown id, a stale entry
+# (the capability has an unfiltered push trigger) or a side-effect entry that reaches a test or a check
+# fails scripts/tests/ci-push-unfiltered.test.ts, which prints this list in full on every run.
+no-push	check-skill-versions	Pull-request-only check: it diffs the pull request against its target branch, which a push to main has no counterpart for.
+no-push	check-extension-version-bump	Pull-request-only check: it compares the pull request against its base for a version bump.
+no-push	check-spec-id-reserved	Pull-request-only check: it reads the spec ids a pull request adds against the reservations of its base.
+no-push	skill-evals-attestation	Pull-request-only check: it reads the attestation carried by the pull request description.
+no-push	changeset-coverage	Scheduled and manual capability: it audits the coverage of the changesets on a timer, not on a push.
+no-push	grep-anti-patterns	Pull-request-only GitHub workflow (scripting-conventions.yml): it greps the files a pull request changes.
+no-push	audit	Pull-request-only GitHub workflow (security-mcp.yml): it audits the dependencies a pull request changes.
+no-push	claude	Engine-specific bot-mention workflow, triggered by an issue or pull-request comment, never by a push.
+no-push	copilot	Engine-specific bot-mention workflow, triggered by an issue or pull-request comment, never by a push.
+no-push	alert-scheduled-failure	Scheduled-failure alert, triggered by the failed scheduled run it reports, never by a push.
+no-push	release-rehearsal	Manual rehearsal of a release; it has no push trigger and never runs on a push.
+side-effect	pages-deploy	Publishes the communication site to the github-pages environment, outside the repository, so it keeps its communication/** push filter and must not redeploy on every push.

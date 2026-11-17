@@ -6,6 +6,7 @@
     {"path":"<HOME>/.claude/rules/00-soul.md","kind":"file","mode":"0644","sha256":"repo:config/SOUL.md"},
     {"path":"<HOME>/.claude/rules/20-organization.md","kind":"file","mode":"0644","sha256":"repo:config/ORGANIZATION.md"},
     {"path":"<HOME>/.claude/rules/30-profile.md","kind":"file","mode":"0644","sha256":"repo:config/PROFILE.md"},
+    {"path":"<HOME>/.claude/rules/60-memory.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/rules/60-memory.md"},
     {"path":"<HOME>/.claude/rules/60-tools.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/rules/60-tools.md"},
     {"path":"<HOME>/.claude/rules/65-org-tools.md","kind":"file","mode":"0644","sha256":"repo:config/TOOLS.md"},
     {"path":"<HOME>/.claude/settings.json","kind":"file","mode":"0600","sha256":"062a6d3f186df3ffde5d3026a51b751ff560eb77d31d883d38a08ecb49ef4925"},

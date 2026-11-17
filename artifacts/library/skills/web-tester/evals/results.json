@@ -1,0 +1,23 @@
+{
+  "skill_name": "web-tester",
+  "content_hash": "sha256:1e355ce92ec177ca68b0d216089da09a6203d03011456eba5343ed8884d5ae4d",
+  "runner_version": "3.0.0",
+  "executor_model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "date": "2026-11-14T12:49:59.955Z",
+  "status": "pass",
+  "eval_pass_rate": 1,
+  "probe_pass_rate": 0.9333333333333333,
+  "base_eval_pass_rate": 0.8,
+  "threshold": 0.8,
+  "tolerance": 0.2,
+  "evals_passed": 5,
+  "evals_total": 5,
+  "probes_passed": 14,
+  "probes_total": 15,
+  "executor_runs": 20,
+  "judge_calls": 5,
+  "cost_usd": null,
+  "skill_loaded": 5
+}

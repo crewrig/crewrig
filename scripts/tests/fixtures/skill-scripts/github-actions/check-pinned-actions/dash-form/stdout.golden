@@ -1,1 +1,3 @@
+[UNPINNED] wf.yml:2: actions/checkout@v4
 [UNPINNED] wf.yml:4: actions/cache@v3
+[UNPINNED] wf.yml:5: actions/setup-node@v4

@@ -3,7 +3,7 @@
 // requirement 24, plan v2 step B2b.5). Twin of those functions: messages are the shell's, byte
 // for byte. Skills are replaced (`rm -rf` then copy) under `<cli home>/skills/<name>/`; Claude
 // agents land as `agents/<name>.md` (a directory of that name is removed first), Gemini agents as
-// flat `agents/<file>.md`; Copilot installs `SKILL.md` only (its agents are skipped on purpose,
+// flat `agents/<file>.md`; Copilot installs the whole skill directory (its agents are skipped on purpose,
 // `~/.copilot/agents` naming being unverified). The `library` tier installs automatically, the
 // `community` and `org` tiers behind `overlay.community` / `overlay.org` and only when their built
 // tier directory exists. Antigravity reuses `runOverlayTiers` with its own installer.
@@ -12,7 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { Cli } from "./context.ts";
-import { installFile } from "./files.ts";
+import { installDir } from "./files.ts";
 import type { FilesCtx } from "./files.ts";
 import type { PromptSession } from "./prompt.ts";
 import { ensureTierBuilt, isDirectory, stagingGate, stagingRoot } from "./tier-build.ts";
@@ -108,15 +108,14 @@ function installCopilotSkills(ctx: TierCtx, tier: string): void {
   fs.mkdirSync(skillsHome, { recursive: true });
   for (const name of globNames(staging)) {
     if (!isDirectory(path.join(staging, name))) continue;
-    const target = path.join(skillsHome, name);
-    fs.mkdirSync(target, { recursive: true });
-    const source = path.join(staging, name, "SKILL.md");
-    if (!isFile(source)) continue;
-    installFile(
+    if (!isFile(path.join(staging, name, "SKILL.md"))) continue;
+    // The whole skill directory (scripts/, references/, assets/), mode bits kept; a prior install
+    // is replaced, so a file removed from the source does not linger (issue #1850).
+    installDir(
       ctx,
-      source,
-      path.join(target, "SKILL.md"),
-      `${tier}/${name}/SKILL.md -> ~/.copilot/skills/${name}/SKILL.md`,
+      path.join(staging, name),
+      path.join(skillsHome, name),
+      `${tier}/${name} -> ~/.copilot/skills/${name}`,
     );
   }
 }

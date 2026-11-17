@@ -5,6 +5,15 @@ Each top-level and nested key is enumerated with semantics, defaults,
 and a worked example. Read the section that matches the key you are
 editing — do not guess from memory.
 
+## Contents
+
+- File location and naming
+- Top-level keys
+- Job-level keys
+- Step-level keys
+- Composite action syntax
+- Edge cases and quirks
+
 ## File location and naming
 
 Workflow files live under `.github/workflows/` and end in `.yml` or
@@ -130,9 +139,11 @@ defaults:
     working-directory: ./app
 ```
 
-The default shell on Linux/macOS is `bash -e -o pipefail {0}`; on
-Windows it is `pwsh -command ". '{0}'"`. Setting `shell: bash`
-explicitly on Windows runners pulls in Git Bash.
+The default shell on Linux/macOS is `bash -e {0}` (`sh` when `bash` is
+not found), with no `pipefail`. Setting `shell: bash` explicitly runs
+`bash --noprofile --norc -eo pipefail {0}`, which does fail a pipeline on
+its first failing command. On Windows the default is
+`pwsh -command ". '{0}'"`, and `shell: bash` pulls in Git Bash.
 
 ### `concurrency`
 
@@ -174,7 +185,7 @@ Pin the OS version. `ubuntu-latest` drifts on a rolling schedule.
 ### `needs`
 
 Dependency edges, single ID or array. The job runs after all listed
-jobs complete with a non-failure status (unless `if:` overrides). The
+jobs succeed (unless an `if:` condition overrides that). The
 outputs of `needs` jobs are exposed under
 `${{ needs.<id>.outputs.<name> }}`.
 
@@ -207,7 +218,7 @@ strategy:
   fail-fast: false
   max-parallel: 4
   matrix:
-    os: [ubuntu-24.04, macos-14, windows-2022]
+    os: [ubuntu-24.04, macos-15, windows-2022]
     node: ["20", "22"]
     include:
       - os: ubuntu-24.04
@@ -355,6 +366,7 @@ untrusted input into `run:`.
 ```yaml
 - env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    PR_NUMBER: ${{ github.event.pull_request.number }}
     PR_TITLE: ${{ github.event.pull_request.title }}
   run: |
     gh pr comment "$PR_NUMBER" --body "Title: $PR_TITLE"
@@ -377,7 +389,9 @@ to job outputs.
 - id: bump
   run: |
     echo "version=1.2.3" >> "$GITHUB_OUTPUT"
-- run: echo "${{ steps.bump.outputs.version }}"
+- env:
+    VERSION: ${{ steps.bump.outputs.version }}
+  run: echo "$VERSION"
 ```
 
 `$GITHUB_ENV` writes an environment variable visible to all
@@ -419,7 +433,7 @@ Composite actions have notable constraints:
 
 - `shell:` is mandatory on every `run:` step (no inheritance from
   workflow defaults).
-- `continue-on-error:` is not supported on steps.
+- `continue-on-error:` is supported on steps.
 - Conditional `if:` is supported.
 - No `services:` or `container:`.
 - Cannot use `secrets` directly; pass them as `inputs:`.
@@ -436,8 +450,10 @@ Composite actions have notable constraints:
 - **`if:` and `${{ }}`**: the `if:` key accepts an expression
   without the `${{ }}` wrapper; adding it is allowed but redundant.
 - **`needs:` semantics**: a job with `needs:` runs only if all
-  upstream jobs **succeed**. To run on failure, use
-  `if: ${{ always() }}` or `if: ${{ failure() }}`.
+  upstream jobs **succeed**. To run only after a failure, use
+  `if: ${{ failure() }}`; to run after success or failure but not after
+  a cancellation, use `if: ${{ !cancelled() }}`. Avoid `always()`: it also
+  runs after a cancellation, so a hung step keeps the run alive.
 - **`strategy.matrix` empty include**: a matrix containing only
   `include:` (no axes) generates one job per `include:` entry — useful
   for hand-curated combinations.

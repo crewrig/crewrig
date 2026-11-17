@@ -1,0 +1,222 @@
+{
+  "skill_name": "spec-author",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Author the specification for issue 77, whose text is in ticket-77.md. Run in AUTO mode: ask no questions. The spec id 0042 is already secured; use the slug widget-csv-export and write the spec to specs/0042-widget-csv-export.md. Do not run gh, glab, tea, git push or any script that reserves an id, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "specs/0042-widget-csv-export.md is a draft spec with the frontmatter fields of the spec format and the five mandatory sections in order; requirements use SHALL or MUST; scenarios cover a happy path and a failure path.",
+      "files": [
+        "evals/files/ticket-77.md"
+      ],
+      "expectations": [
+        "The Intent section of the spec is a single paragraph that says what changes for the user and names no technology, library or implementation technique.",
+        "Every numbered line of the Requirements section contains SHALL or MUST and can be tested on its own.",
+        "The Scenarios section holds at least one happy-path scenario and at least one failure-path scenario, each in Given, When, Then form.",
+        "The spec adds no CSV column, command option or file format that ticket-77.md does not mention, unless it records the addition as an open question."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "specs/0042-widget-csv-export.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0042-widget-csv-export.md",
+          "pattern": "\nid: \"0042\"\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0042-widget-csv-export.md",
+          "pattern": "\nslug: widget-csv-export\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0042-widget-csv-export.md",
+          "pattern": "\nstatus: draft\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0042-widget-csv-export.md",
+          "pattern": "\nrelated-issue: 77\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0042-widget-csv-export.md",
+          "pattern": "\\n## Intent\\n[\\s\\S]*\\n## Requirements\\n[\\s\\S]*\\n## Scenarios\\n[\\s\\S]*\\n## Out of scope\\n[\\s\\S]*\\n## Open questions"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0042-widget-csv-export.md",
+          "pattern": "^(?![\\s\\S]*unsecured-id)"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The spec in parent-spec.md (specs/0042-widget-export-csv.md on the main branch, already approved) needs a change found in review: the export must also accept a `--delimiter <char>` option, defaulting to a comma, and requirement R2 must say so. Author the delta-spec for it and write it to specs/0042-widget-export-csv.delta-01.md. Run in AUTO mode: ask no questions. Leave parent-spec.md untouched. Do not run gh, glab, tea, git push or any script that reserves an id, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "The delta-spec has the three delta sections ADDED, MODIFIED and REMOVED, all present, and none of the five sections of a full spec; the new option is under ADDED and the changed R2 under MODIFIED.",
+      "files": [
+        "evals/files/parent-spec.md"
+      ],
+      "expectations": [
+        "The ADDED section holds a requirement for the `--delimiter` option that defaults to a comma and uses SHALL or MUST.",
+        "The MODIFIED section restates requirement R2 as changed, naming R2.",
+        "The REMOVED section is present and states that nothing is removed, or lists only what the change removes; it does not invent a removal."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "specs/0042-widget-export-csv.delta-01.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0042-widget-export-csv.delta-01.md",
+          "pattern": "\n## ADDED\n[\\s\\S]*\n## MODIFIED\n[\\s\\S]*\n## REMOVED"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0042-widget-export-csv.delta-01.md",
+          "pattern": "^(?![\\s\\S]*\n## Intent\n)"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Author the specification for issue 77, whose text is in ticket-77.md, in INTERMEDIATE mode. The interview is already done and these are the answers: confirmed intent is the CSV export described in the ticket; the acceptance signal is that the exported file opens in a spreadsheet with a header row; the complexity is small; if the service fails there must be an error and no partial file. One point is unresolved and I cannot decide it now: whether widgets archived by their owner belong in the export. Record it so that it is not lost and do not decide it yourself. The spec id 0042 is already secured; use the slug widget-csv-export and write the spec to specs/0042-widget-csv-export.md. Do not run gh, glab, tea, git push or any script that reserves an id, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "The question about archived widgets sits in the Open questions section marked as parked by the user, and no requirement decides it.",
+      "files": [
+        "evals/files/ticket-77.md"
+      ],
+      "expectations": [
+        "The Open questions section contains a bullet about archived widgets that begins with the marker [USER-PARKED].",
+        "The Requirements and Scenarios sections never state that archived widgets are included in the export or that they are excluded from it.",
+        "The spec has a failure-path scenario where the export fails and no partial file remains."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "specs/0042-widget-csv-export.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0042-widget-csv-export.md",
+          "pattern": "\n## Open questions\n[\\s\\S]*\\[USER-PARKED\\][^\n]*[Aa]rchiv"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0042-widget-csv-export.md",
+          "pattern": "\ncomplexity: small\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0042-widget-csv-export.md",
+          "pattern": "\ninteraction-mode: INTERMEDIATE\n"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Author the specification for this intent, in AUTO mode with no questions: `widgets export --out <path>` must never silently overwrite a file that already exists, and an export of zero widgets must still produce a valid file. Context is in ticket-77.md. The spec id 0043 is already secured; use the slug widget-export-overwrite and write the spec to specs/0043-widget-export-overwrite.md. Do not run gh, glab, tea, git push or any script that reserves an id, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "The spec states what happens when the target file exists and names a permitted way to proceed, and what the file holds for zero widgets.",
+      "files": [
+        "evals/files/ticket-77.md"
+      ],
+      "expectations": [
+        "The spec states what happens when the target file already exists and names a permitted way to proceed, for example a flag or a different path, instead of only saying the overwrite is forbidden.",
+        "The spec states what the file contains when there are zero widgets."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "specs/0043-widget-export-overwrite.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0043-widget-export-overwrite.md",
+          "pattern": "\nid: \"0043\"\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0043-widget-export-overwrite.md",
+          "pattern": "\\n## Intent\\n[\\s\\S]*\\n## Requirements\\n[\\s\\S]*\\n## Scenarios\\n[\\s\\S]*\\n## Out of scope\\n[\\s\\S]*\\n## Open questions"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Author a trivial-tier specification in MINIMAL mode, with no questions, for this intent: rename the `--out` option of `widgets export` to `--output`, keeping `--out` as a deprecated alias that prints a warning. The ticket is issue 78. The id 0044 was allocated locally while offline, so it is NOT secured on the reference repository; use the slug rename-export-output and write the spec to specs/0044-rename-export-output.md. Do not run gh, glab, tea, git push or any script that reserves an id, and do not create, edit, comment on or close any issue, pull request or other forge artifact: only write the files asked for, in the current directory.",
+      "expected_output": "The spec records that the id is unsecured with the frontmatter line unsecured-id: true, states complexity trivial and keeps all five sections.",
+      "files": [
+        "evals/files/ticket-77.md"
+      ],
+      "expectations": [
+        "The requirements keep the deprecated `--out` alias working and say that it prints a warning.",
+        "The spec has a failure-path scenario, for example both options given at once or an unknown option, in Given, When, Then form."
+      ],
+      "checks": [
+        {
+          "type": "file_exists",
+          "path": "specs/0044-rename-export-output.md"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0044-rename-export-output.md",
+          "pattern": "^---\n(?:[^\n]*\n)*?id: \"0044\"\n(?:[^\n]*\n)*?unsecured-id: true\n(?:[^\n]*\n)*?---\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0044-rename-export-output.md",
+          "pattern": "\ncomplexity: trivial\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0044-rename-export-output.md",
+          "pattern": "\nrelated-issue: 78\n"
+        },
+        {
+          "type": "file_contains",
+          "path": "specs/0044-rename-export-output.md",
+          "pattern": "\\n## Intent\\n[\\s\\S]*\\n## Requirements\\n[\\s\\S]*\\n## Scenarios\\n[\\s\\S]*\\n## Out of scope\\n[\\s\\S]*\\n## Open questions"
+        }
+      ]
+    }
+  ],
+  "trigger_probes": [
+    {
+      "query": "Write a specification for the new CSV export feature before we plan it.",
+      "should_trigger": true
+    },
+    {
+      "query": "Issue 77 is a non-trivial ticket with no spec yet: qualify the intent and draft the spec file under specs/.",
+      "should_trigger": true
+    },
+    {
+      "query": "A spec-class review finding says spec 0042 is ambiguous; author the delta-spec that fixes it.",
+      "should_trigger": true
+    },
+    {
+      "query": "Interview me about this feature idea, then turn my answers into requirements and Given/When/Then scenarios.",
+      "should_trigger": true
+    },
+    {
+      "query": "Write the implementation plan for spec 0042: steps, blast radius and rollback.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write an ADR that records why we chose Postgres over MySQL.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write the pull request description for my change.",
+      "should_trigger": false
+    },
+    {
+      "query": "Write a commit message for my local change; nothing is pushed and there is no pull request.",
+      "should_trigger": false
+    },
+    {
+      "query": "Review spec pull request 95 cold and give a verdict on its requirements.",
+      "should_trigger": false
+    }
+  ]
+}

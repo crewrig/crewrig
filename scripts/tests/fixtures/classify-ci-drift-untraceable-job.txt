@@ -1,0 +1,3 @@
+  DRIFT: untraceable job 'mystery' in _ci-extensions.yml (github-actions) — not a capability id and no valid '# ci-capability:' annotation (R7)
+
+FAILED: 1 CI parity violation(s) detected (spec 0049).

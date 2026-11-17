@@ -1,18 +1,18 @@
 ---
 name: init-expertise
-description: Create a new expertise (role) file under config/expertise/ through a guided interview. Activate when an adopter wants a domain-expertise profile for a role the catalog lacks. Collects responsibilities and key practices, writes config/expertise/<ROLE>.md, never silently overwrites.
+description: "Creates a new expertise (role) file under config/expertise/ through a guided interview and a bundled scaffold script that derives the filename and refuses to overwrite. Use when an adopter wants a domain-expertise or persona profile for a role the catalog lacks, adds a role to config/expertise, or types /init-expertise. Trigger terms: new role file, expertise profile, persona, config/expertise, init expertise. Not for team profiles (init-team) or personal profiles."
 type: skill
 license: Apache-2.0
+compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts) and a host CLI with a structured-question tool (AskUserQuestion on Claude Code). Writes one Markdown file under config/."
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.0.3"
+    version: "2.0.0"
 claude:
   allowed-tools:
     - Read
     - Write
-    - Edit
     - Bash
     - AskUserQuestion
   user-invocable: true
@@ -20,96 +20,51 @@ claude:
 
 # Init Expertise
 
-Guide an adopter through creating a new domain-expertise role file under
-`config/expertise/`. The output is exactly one Markdown file conforming to
-the established catalog shape — an H1 role title, then `## Responsibilities`
-and `## Key Practices` (the `config/expertise/PRODUCT-OWNER.md` shape), or
-`## Stack` and `## Key Practices` when the role is tied to a concrete tech
-stack (the `config/expertise/BACKEND-JAVA.md` shape).
+Creates one file, `config/expertise/<NAME>.md`, in the catalog shape: an H1 role title, a one-line
+summary, then `## Responsibilities` (the `PRODUCT-OWNER.md` shape) or `## Stack` for a role tied to a
+concrete tech stack (the `BACKEND-JAVA.md` shape), then `## Key Practices`. You run the interview,
+which is judgement; the scripts derive the filename, refuse to clobber, render and check the file.
+The file is the organization's own, so upstream sync never touches it.
 
-## When to activate
+## Interview rules
 
-- The adopter types `/init-expertise` (or the host CLI equivalent).
-- The adopter asks to add a role/persona profile not already in
-  `config/expertise/`.
+- Closed questions with a bounded set of choices go through `AskUserQuestion` (shape, collision
+  decision, confirmation); a plain-text menu gets skipped or misread.
+- Open content (summary, responsibilities, stack items, practices) is free-form chat.
+- Talk in the user's language. The file is written in English, so translate the answers faithfully
+  and add nothing the user did not say: an invented responsibility would be read as the role's own.
+- Keep `header` labels under 12 characters.
 
-A new file created through this flow has no upstream version, so it is the
-organization's own from the start (it never enters the adopt-on-edit sync).
+## Steps
 
-## Interaction rules
+1. **Name.** Ask for the role name (for example "Data Engineer"). Run the resolve command; confirm
+   `config/expertise/<data.file>` with the user.
+2. **Collision.** If `data.exists` is true, ask with `AskUserQuestion` (`header: "Exists"`):
+   "Pick a different name" (back to step 1), "Overwrite the existing file", "Cancel" (stop, write
+   nothing). Overwriting is a decision the user takes, never a default.
+3. **Shape.** `AskUserQuestion` (`header: "Shape"`): "Responsibilities + Practices" (general role)
+   or "Stack + Practices" (role bound to a tech stack). It becomes `shape` in the answers.
+4. **Content**, in chat: the one-line summary ("You assist a ... who ..."); 3 to 5 responsibility
+   statements, or the core technologies for a stack; 3 to 5 key practices written as testable
+   statements, not vague wishes.
+5. **Draft.** Write the answers JSON to a scratch file, run the dry-run command and show
+   `data.content`. Ask with `AskUserQuestion` (`header: "Finalize"`): "Save as is", "Edit a
+   section" (back to the relevant step), "Discard draft".
+6. **Save and check.** Run the save command, then the linter. End with one line: the file is the
+   organization's own and upstream sync will not touch it.
 
-- **Always use `AskUserQuestion`** for closed questions with a bounded set of
-  choices (the role-shape choice, collision decisions, confirmations). Never
-  simulate a multiple-choice menu in plain text.
-- Use free-form chat ONLY for open-ended content (responsibility statements,
-  practice bullets, stack items).
-- Conduct the interview in the user's preferred conversation language; write
-  the file itself in English (project content is English-only).
-- Keep `header` labels short (max 12 characters).
+## Scripts
 
-## Phase 0 — Role name and filename
+Run `node scripts/<name>.ts` from the skill directory; paths you pass stay relative to the
+repository root. Both scripts take `--json` and exit `0` (ok), `1` (finding), `2` (usage error) or
+`3` (precondition failed: unreadable input, `--root` not a directory).
 
-1. Ask in chat for the role name (e.g. "Data Engineer").
-2. Derive the filename: uppercase, words joined by hyphens, `.md` extension
-   (e.g. `DATA-ENGINEER.md`). Confirm the derived `config/expertise/<NAME>.md`
-   path with the user.
+| When | Command | Exit `1` means |
+|---|---|---|
+| After the name is known, and again after any rename | `node scripts/scaffold-config-file.ts --kind expertise --name "<role name>" --json` | Never used here. Read `data.file` and `data.exists`. |
+| To show the draft, then to save it | `node scripts/scaffold-config-file.ts --kind expertise --answers <answers.json> --dry-run` (draft in `data.content`), then the same without `--dry-run` | `target-exists`: the file exists and was not written. Any other rule names an answers field to fix. |
+| After saving | `node scripts/lint-config-file.ts --kind expertise <path>` | A section is missing, out of order, empty or still a placeholder. Fix the answers and write again with `--force`, which is allowed here because this run created the file. |
 
-## Phase 1 — Anti-clobber guard (R8)
-
-1. Check whether `config/expertise/<NAME>.md` already exists
-   (`test -e config/expertise/<NAME>.md`).
-2. **If it exists, do NOT overwrite it silently.** Surface the collision and
-   require an explicit decision via `AskUserQuestion` (`header: "Exists"`,
-   options: "Pick a different name", "Overwrite the existing file", "Cancel").
-   - "Pick a different name" → return to Phase 0.
-   - "Overwrite" → proceed only after this explicit confirmation.
-   - "Cancel" → stop without writing.
-
-## Phase 2 — Shape
-
-Use `AskUserQuestion` (`header: "Shape"`) to choose the section layout:
-
-- "Responsibilities + Practices" — the general role shape (PRODUCT-OWNER).
-- "Stack + Practices" — for roles bound to a concrete tech stack
-  (BACKEND-JAVA).
-
-## Phase 3 — Content
-
-1. One-line role summary (free-form chat): "You assist a … who …".
-2. **Responsibilities** (if chosen) — collect 3–5 responsibility statements in
-   chat. **Stack** (if chosen) — collect the core technologies in chat.
-3. **Key Practices** — collect 3–5 concrete, actionable practice bullets in
-   chat (testable statements, not vague wishes).
-
-## Phase 4 — Generation
-
-1. Assemble the answers into `config/expertise/<NAME>.md`:
-
-   ```markdown
-   # <Role Name>
-
-   <one-line summary>
-
-   ## Responsibilities   (or ## Stack)
-
-   - …
-
-   ## Key Practices
-
-   - …
-   ```
-
-2. Present the draft for review in chat.
-3. Use `AskUserQuestion` (`header: "Finalize"`, options "Save as is",
-   "Edit a section", "Discard draft") to confirm before writing.
-4. Write the file only after explicit confirmation. End with a short pointer:
-   the file is the organization's own and will not be touched by upstream sync.
-
----
-
-**Constraints:**
-
-- NEVER overwrite an existing `config/expertise/*.md` without an explicit
-  user decision (R8).
-- Always ask the user — never invent responsibilities or practices.
-- The written file is English-only project content.
+Add `--force` to the save command only after the user has chosen to overwrite. Add `--root <dir>`
+when the repository root is not the current directory. The answers file is JSON; the field list is
+in `node scripts/scaffold-config-file.ts --help`.

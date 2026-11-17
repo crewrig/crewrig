@@ -3,7 +3,7 @@
 <!-- crewrig-doc: section=reference nav_order=60 published=true title="CI capability reference format" -->
 
 This document is the **normative description** of the shape of
-`ci/ci-capabilities.yml` — the platform-neutral CI capability reference
+`ci/capabilities/` — the platform-neutral CI capability reference
 mandated by [spec 0047](../specs/0047-ci-capability-reference.md) and decided
 in [ADR-0012](adr/0012-ci-reference-contract.md). It is contract **C1**: a
 candidate reference is judged valid or invalid against the rules below, and a
@@ -32,12 +32,67 @@ engine.
 
 ## File location and ownership
 
-- **Path:** `ci/ci-capabilities.yml` — one reference per repository.
+- **Path:** `ci/capabilities/` — one reference per repository, a directory of YAML
+  files (see *Layout of `ci/capabilities/`* below).
 - **Layer:** core, sync policy `strict` (upstream-owned; a local modification
   halts the upstream sync). Registered in
   [`docs/layers.md`](layers.md) and `.crewrig/core-paths.txt`.
 - **Format:** YAML, chosen because `yq` (mikefarah) is already a CI dependency
   (`.github/workflows/build.yml`); no new validation toolchain is introduced.
+
+## Layout of `ci/capabilities/`
+
+The reference is a directory, not one file (spec 0309 R2, ADR-0021 amendment
+2026-11). The old single file `ci/ci-capabilities.yml` no longer exists; a copy
+left beside the directory fails the checks.
+
+- **Group files.** A capability whose `group` field names a group lives in
+  `<group>.yml` or, when the per-file limit requires it, in
+  `<group>-<part>.yml`. The groups are `gate`, `modules`, `governance`,
+  `extensions`, `integration` and `windows`.
+- **Capabilities without a `group`** (the jobs of the standalone workflows)
+  live in `standalone-<part>.yml`. They are never forced into a group file.
+- **One file per capability id, content unchanged.** A capability's group is its
+  `group` field, never its file name alone. Every file starts with one comment
+  line (`# CI capabilities: group <group>[, part <part>] (format: ...)`) and
+  `capabilities:`.
+- **Reading order.** The shared reader returns files in the byte order of their
+  names, and entries in file order within each file. Hand-authored files stay
+  within the per-file limit of `scripts/tests/ci-file-limit.test.ts` (500 lines).
+
+### The parts rule
+
+`ci/capability-parts.json` fixes the placement. Per group (and `standalone` for
+the capabilities without one) it lists ordered parts, each with `ids`, a list of
+id globs; the first part whose glob matches takes the capability, and the last
+part of a group is `*`, so a new id goes to its first matching part, else to the
+catch-all. A group with a single part and no `part` name keeps the file name
+`<group>.yml`. A part that holds nothing writes no file. `scripts/ci-split.ts`
+applies the rule; a new capability is added by hand to the file the rule names.
+
+### Generated GitLab output: no include split
+
+`.gitlab-ci.yml` stays one generated file. No `include:` split per group is
+applied (spec 0309 R4): generated files are excluded from the per-file limit by
+their generated-file marker, so a split would add generated files for no
+measured benefit. Both engines are checked alike; no gap is accepted for this
+choice.
+
+### The shared header (moved)
+
+The comment that headed the single file is kept here once, not copied into each
+file:
+
+> Platform-neutral CI capability reference (spec 0047). One entry per
+> continuous-integration job, identified by a stable `id` that IS the pipeline
+> job's YAML key on every engine (contract C2). The shape is described normatively
+> in this document (contract C1); the decision is recorded in
+> `docs/adr/0012-ci-reference-contract.md`. Portable capabilities are generated
+> into every engine's pipeline. Engine-specific capabilities carry an
+> `exception` with evidence that the mechanism has no faithful equivalent on the
+> other supported engines (spec 0047 R5); they are hand-authored, never
+> generated. The reference DESCRIBES existing jobs; it generates nothing, runs no
+> drift check and executes no pipeline.
 
 ## Capability entry schema
 
@@ -260,7 +315,7 @@ reference):
 ```
 
 Which capabilities currently use the opt-out is read from the reference
-itself (`grep -n 'cache-guard:' ci/ci-capabilities.yml`); this document does
+itself (`grep -rn 'cache-guard:' ci/capabilities/`); this document does
 not list them, so the list cannot go stale here.
 
 A command that matches the wrapped-command pattern of `scripts/lib/build-ci/render-job.ts` is wrapped whatever it is,
@@ -272,12 +327,13 @@ guard outside and the scan inside (see *Stray scan of registered test suites*).
 A capability entry MAY declare a capability-level `paths:` list, next to
 `trigger:`. It is the one authority for the path set of the capability:
 
-- **Inheritance.** A `pull-request` or `push` trigger that declares no `paths:`
-  of its own takes the capability-level list. A trigger-level `paths:` stays
-  accepted and wins. Other trigger kinds never inherit.
+- **Inheritance.** A `pull-request` trigger that declares no `paths:` of its own
+  takes the capability-level list. A trigger-level `paths:` stays accepted and
+  wins. Other trigger kinds never inherit, and a `push` trigger inherits nothing
+  (see *Push form*).
 - **Effective path set.** The effective path set of a trigger is its own
-  `paths:`, else the capability-level `paths:` for a `pull-request` or `push`
-  trigger, else none, and a trigger with none is an unfiltered event. Every
+  `paths:`, else the capability-level `paths:` for a `pull-request` trigger,
+  else none, and a trigger with none is an unfiltered event. Every
   reader of the reference uses this one rule (the parity harness, the pre-push
   selection, the path-ownership check and the GitLab generator).
 - **`cache.files` default.** When `cache:` is declared without `files:`, the
@@ -292,8 +348,35 @@ A capability entry MAY declare a capability-level `paths:` list, next to
   lists were identical carries one capability-level `paths:`; a capability whose two
   lists differ keeps trigger-level lists; `cache.files` was dropped only where equal
   to the paths. The conversion was proven equivalent against a frozen snapshot, since deleted
-  with the `dorny/paths-filter` removal. `scripts/tests/ci-paths-push-trigger.test.ts` keeps the
-  `pull-request` and `push` path sets of every `ci-job` job of `build.yml` identical.
+  with the `dorny/paths-filter` removal. `scripts/tests/ci-paths-push-trigger.test.ts` holds
+  the reverse invariant of the push form: the `push` path set of every `ci-job` job of
+  `build.yml` is empty (spec 0309 delta-02 R1(d), R6).
+- **Push form (spec 0309 delta-02 R6).** On a push to `main` or `release/**` every
+  capability with a `push` trigger runs with no path filter, on both engines, whatever
+  the push changed. A `push` trigger therefore inherits no capability-level `paths:`: the
+  capability-level list is the pull-request filter only, beside an unfiltered `push`
+  trigger of the same capability. A `push` trigger that declares `paths:` of its own is a
+  filter and needs a `side-effect` entry in the exemption file. The parity reader, the
+  runtime gate and the generator read this one meaning; the generated GitLab push rule has
+  no `changes:`. Standalone workflows under `.github/workflows/` carry no `paths:` or
+  `paths-ignore:` on `on.push` either, unless the file is exempted. At the time of this
+  change, 124 of the 135 capabilities have a `push` trigger: one push to `main` starts 123
+  GitHub jobs (`pages-deploy` keeps its own push filter and is not counted) and 99 GitLab jobs.
+- **Exemption file `ci/push-main-exemptions.txt`.** One `kind<TAB>id<TAB>reason` line per
+  entry, reasons non-empty, printed in full by the wiring test. `no-push` names a
+  capability with no `push` trigger on those branches (pull-request-only, scheduled, tag- or
+  release-only, engine-specific). `side-effect` names a deploy or publish capability that
+  must not run again on every push and keeps its push filter (today `pages-deploy`); it is
+  rejected for a capability whose task closure reaches a test under `scripts/tests/` or a
+  `check-*` script. A stale entry fails.
+- **Wiring test.** `scripts/tests/ci-push-unfiltered.test.ts`, run by the `ci-push-unfiltered`
+  capability over `scripts/lib/ci-push/`, asserts offline cases (a) to (h) of delta-02 R6 on
+  the reference, the workflow files, `.gitlab-ci.yml` and the exemption file, and the
+  regression for `skill-size-budgets.test.ts` (R7).
+- **Cache invariance (h).** `cache.files` defaults to the capability-level `paths:` and never
+  falls back to a trigger, so moving the list off a push trigger leaves the effective
+  `cache.files` and `cache.env` of every capability, and the GitLab `cache:key:files` output,
+  unchanged; the wiring test asserts it on a fixture.
 
 The GitLab generator emits a list that appears twice in one job (the two rules'
 `changes:` lists, or the cache key `files:` equal to them) once under a YAML
@@ -345,7 +428,7 @@ that mechanism.
 
 - **Ownership.** A tracked file is *owned* when it matches a glob in the
   `paths:` of any `pull-request` trigger of any capability in
-  `ci/ci-capabilities.yml`. A `push`-only `paths:` confers no ownership, and a
+  `ci/capabilities/`. A `push`-only `paths:` confers no ownership, and a
   capability with no `paths:` filter confers none either (it runs on every
   change, so it owns nothing in particular).
 - **Evaluation.** `scripts/check-path-ownership.ts` evaluates **every** tracked
@@ -549,7 +632,8 @@ The check reads ownership from the reference, but the GitHub trigger of each
 job is hand-written. `scripts/check-ci-parity.ts` therefore compares, for every
 portable capability that has an attributed GitHub job, the reference `paths` of
 its `pull-request` and `push` triggers with the path filter GitHub applies to
-that job (spec 0049 delta-01, R12 to R24). A glob added to the reference and
+that job (spec 0049 delta-01, R12 to R24; the `push` half is superseded by the unfiltered push form
+above, so a push trigger is compared as unfiltered). A glob added to the reference and
 forgotten in the workflow, or the reverse, is a failure of the harness, not a
 silent gap.
 
@@ -887,6 +971,22 @@ mapping of the existing neutral vocabulary (spec 0047 R7, R9):
 
 It **never** edits a capability definition. The capability set and the neutral
 vocabulary are the stable contract; each engine is one mapping over them.
+
+## Capabilities that keep their own command (spec 0283 R2)
+
+A recorded exception to `command: [task ci:<id>]` is a `portability: specific` capability with
+evidence (spec 0283 R2). These capabilities keep their own command, or none; a test
+(`scripts/tests/ci-parity-ci-job.test.ts`) pins this list equal to the `specific` capabilities
+whose `command:` is absent or is not `task ci:<id>`:
+
+- `claude`: the `@claude` mention workflow, with no command.
+- `copilot`: the `@copilot-cli` mention workflow, with no command.
+- `pages-deploy`: the GitHub Pages deployment chain, with no command.
+- `pr-scope`: the spec-only classifier of `build.yml` (spec 0287 delta-02 R22), whose own `run:` step
+  must not go through `ci-job` because a failure there runs `cancel-on-failure`.
+
+Other capabilities whose command is not `task ci:<id>` are `portable` and not yet migrated: they are
+not exceptions.
 
 ## The `ci-job` thin job (spec 0283 R5, R6)
 

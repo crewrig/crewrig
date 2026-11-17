@@ -49,6 +49,7 @@ test("the repository fixture carries a real .git, identity files and real depend
     "package.json",
     "package-lock.json",
     "artifacts/core/rules/60-tools.md",
+    "artifacts/core/rules/60-memory.md",
     "artifacts/core/system-context",
     "hooks",
   ]) {

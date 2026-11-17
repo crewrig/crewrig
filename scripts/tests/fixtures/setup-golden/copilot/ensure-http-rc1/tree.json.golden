@@ -18,6 +18,7 @@
     {"path":"<HOME>/.copilot/instructions/30-profile.instructions.md","kind":"file","mode":"0644","sha256":"repo:config/PROFILE.md"},
     {"path":"<HOME>/.copilot/instructions/40-expertise.instructions.md","kind":"file","mode":"0644","sha256":"repo:config/expertise/BACKEND-JAVA.md"},
     {"path":"<HOME>/.copilot/instructions/50-team.instructions.md","kind":"file","mode":"0644","sha256":"repo:config/teams/ATLAS.md"},
+    {"path":"<HOME>/.copilot/instructions/60-memory.instructions.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/rules/60-memory.md"},
     {"path":"<HOME>/.copilot/instructions/60-tools.instructions.md","kind":"file","mode":"0644","sha256":"repo:artifacts/core/rules/60-tools.md"},
     {"path":"<HOME>/.copilot/instructions/65-org-tools.instructions.md","kind":"file","mode":"0644","sha256":"repo:config/TOOLS.md"},
     {"path":"<HOME>/.copilot/mcp-config.json","kind":"file","mode":"0600","sha256":"3609edd4cb8bbceccb431f5ed4faae4babb82ebe1af2d6ebac984cf62ce41ac8"},

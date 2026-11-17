@@ -210,6 +210,26 @@
           "title": "Pre-push guard",
           "path": "docs/pre-push-guard.md",
           "nav_order": 160
+        },
+        {
+          "title": "Skill evals",
+          "path": "docs/skill-evals.md",
+          "nav_order": 165
+        },
+        {
+          "title": "Skill authoring standard",
+          "path": "docs/skill-authoring-standard.md",
+          "nav_order": 166
+        },
+        {
+          "title": "Claude Code worker settings profile and launch recipe",
+          "path": "docs/worker-profile.md",
+          "nav_order": 167
+        },
+        {
+          "title": "Claude Code allowlist: plugins, skills, connectors and MCP",
+          "path": "docs/claude-allowlist.md",
+          "nav_order": 168
         }
       ]
     },
@@ -336,6 +356,26 @@
           "title": "ADR 0022 — Distribution model",
           "path": "docs/adr/0022-distribution-model.md",
           "nav_order": 220
+        },
+        {
+          "title": "ADR 0023 — Skill eval executor, judge routing and attestation",
+          "path": "docs/adr/0023-skill-eval-executor.md",
+          "nav_order": 230
+        },
+        {
+          "title": "ADR 0024 — Scope specs to product behaviour and end review on blocking findings",
+          "path": "docs/adr/0024-scope-specs-to-product-behaviour-and-end-review-on.md",
+          "nav_order": 240
+        },
+        {
+          "title": "ADR 0025 — Slim the fixed context of worker and subagent sessions",
+          "path": "docs/adr/0025-slim-the-fixed-context-of-worker-and-subagent-sessions.md",
+          "nav_order": 250
+        },
+        {
+          "title": "ADR 0026 — Allow a standing merge authorisation given in advance",
+          "path": "docs/adr/0026-allow-a-standing-merge-authorisation-given-in-advance.md",
+          "nav_order": 260
         }
       ]
     }

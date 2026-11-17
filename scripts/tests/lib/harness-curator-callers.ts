@@ -32,22 +32,19 @@ export const CALLERS: readonly Caller[] = [
       "node scripts/curate.ts --dry-run",
       "node scripts/curate.ts --deep",
       "node scripts/setup-labels.ts --repo",
-      `node ${SKILL}/scripts/schedule-curator.ts`,
-      `node ${SKILL}/scripts/curate.ts --apply --dedup --max-issues 5`,
+      "node scripts/schedule-curator.ts",
+      "node scripts/curate.ts --apply --dedup --max-issues 5",
     ],
   },
   { file: "artifacts/library/skills/harness-report/SKILL.md", required: [] },
   // The text moved to references/ (spec 0269); the guard follows it.
   {
     file: "artifacts/library/skills/harness-report/references/operating-mode.md",
-    required: [`node ${SKILL}/scripts/curate.ts --apply`],
+    // Spec 0289 R7: no source-tree path; the step runs the installed skill's own entry through Node.
+    required: ["node <harness-curator-skill-dir>/scripts/curate.ts --apply"],
   },
   {
     file: "artifacts/library/skills/harness-report/references/identify-and-route.md",
-    required: [],
-  },
-  {
-    file: "artifacts/library/skills/harness-report/references/self-reporting-bias.md",
     required: [],
   },
   { file: "artifacts/FORMAT.md", required: ["scripts/curate.ts"] },

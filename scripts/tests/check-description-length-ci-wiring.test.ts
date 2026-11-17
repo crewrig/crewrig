@@ -21,6 +21,7 @@ import {
 import { yamlLib } from "./lib/yaml-lib.ts";
 import { gatePaths } from "./lib/capability-path-scan.ts";
 import { readWorkflowUnionText } from "./lib/workflow-union.ts";
+import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 interface Capability {
   readonly id: string;
@@ -41,15 +42,21 @@ const COVERED = [
   ".github/skills/spec-author/SKILL.md",
   ".github/agents/spec-author.md",
   ".agents/skills/spec-author/SKILL.md",
-  ".agents/agents/spec-author/AGENT.md",
+  ".agents/agents/spec-author.md",
   SCRIPT,
+  "scripts/check-skill-quality.ts",
+  "scripts/lib/skill-quality/run.ts",
+  "scripts/lib/skill-citations/grammar.ts",
+  "scripts/lib/skill-evals/schema.ts",
+  "scripts/lib/paths.ts",
+  "scripts/tests/lib/skill-quality-fixture.ts",
 ];
 
 function loadCapability(): Capability {
-  const text = fs.readFileSync(path.join(REPO, "ci", "ci-capabilities.yml"), "utf8");
+  const text = readReferenceText(REPO);
   const caps = (yamlLib.load(text) as { capabilities?: Capability[] }).capabilities ?? [];
   const cap = caps.find((c) => c.id === ID);
-  assert.ok(cap, `ci/ci-capabilities.yml has a capability '${ID}'`);
+  assert.ok(cap, `the capability reference has a capability '${ID}'`);
   return cap;
 }
 
@@ -105,6 +112,11 @@ function assertJob(job: string): void {
 describe("check-description-length CI wiring", () => {
   test("the capability is wired", () => assertCapability(loadCapability()));
   test("the GitHub job is wired", () => assertJob(workflowJob()));
+
+  test("the job also lints the skill sources (spec 0293 R19): the capability's task runs the linter", () => {
+    const delegated = ciTaskDelegatedCommands(ID).join("\n");
+    assert.ok(delegated.includes("scripts/check-skill-quality.ts"), "the chain reaches the linter");
+  });
 
   test("mutation: a capability without a compiled tree in its paths is rejected", () => {
     const cap = structuredClone(loadCapability()) as unknown as {

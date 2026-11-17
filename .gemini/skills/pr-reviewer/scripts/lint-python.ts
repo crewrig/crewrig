@@ -1,8 +1,10 @@
 // lint-python.ts — Python linter for PR review.
 // Checks: ruff or flake8 (if available), bare print() in non-test files.
-// Usage: node lint-python.ts <file1.py> [file2.py ...]
-// Exit 0 = no findings, 1 = findings. Missing both ruff and flake8 degrades
-// gracefully (exit 0 with a one-line note on stdout).
+// Usage: node lint-python.ts [--json] [--require-tools] [--] <file1.py> [file2.py ...]
+// Exit 0 = no finding, 1 = findings, 2 = usage error, 3 = an input is unreadable or, with
+// --require-tools, neither ruff nor flake8 is installed. Without --require-tools a missing
+// linter degrades gracefully (exit 0 with a one-line note on stdout). With --json it prints
+// one {ok, data, findings} object on stdout and the human text on stderr.
 // Self-contained on purpose: no import, built-ins through process.getBuiltinModule.
 
 process.removeAllListeners("warning");
@@ -16,6 +18,7 @@ void (async () => {
 
   const NAME = "lint-python.ts";
   const bin = (s: string): string => Buffer.from(s, "utf8").toString("latin1");
+  const unbin = (s: string): string => Buffer.from(s, "latin1").toString("utf8");
   const say = (s: string): void => {
     process.stdout.write(Buffer.from(bin(s), "latin1"));
   };
@@ -66,35 +69,106 @@ void (async () => {
     }
   }
 
-  const files = process.argv.slice(2);
-  if (files.length === 0) {
-    say(`${NAME}: no files supplied — nothing to check.\n`);
+  interface Finding {
+    rule: string;
+    message: string;
+    severity?: "warning";
+  }
+  const USAGE =
+    "Usage: node lint-python.ts [--json] [--require-tools] [--] <file.py>...\n" +
+    "  Runs ruff (or flake8) and a bare print() check. Exit 0 clean, 1 findings, 2 usage error,\n" +
+    "  3 unreadable input or (with --require-tools) no linter installed.\n";
+  const argv = process.argv.slice(2);
+  let json = false;
+  let requireTools = false;
+  let help = false;
+  let usageError: string | undefined;
+  const files: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i] as string;
+    if (a === "--") {
+      files.push(...argv.slice(i + 1));
+      break;
+    }
+    if (a === "--json") json = true;
+    else if (a === "--require-tools") requireTools = true;
+    else if (a === "--help" || a === "-h") help = true;
+    else if (a.length > 1 && a.startsWith("-")) usageError ??= `unknown option ${a}`;
+    else files.push(a);
+  }
+  const log = (s: string): void => {
+    if (json) process.stderr.write(Buffer.from(bin(s), "latin1"));
+    else say(s);
+  };
+  const finish = (code: number, data: object | null, findings: Finding[]): void => {
+    if (json) process.stdout.write(`${JSON.stringify({ ok: code === 0, data, findings })}\n`);
+    process.exitCode = code;
+  };
+  if (help) {
+    process.stdout.write(USAGE);
     return;
   }
-  let findings = 0;
+  if (usageError !== undefined) {
+    log(`${NAME}: ${usageError}\n${USAGE}`);
+    finish(2, null, [{ rule: "usage", message: usageError }]);
+    return;
+  }
+  if (files.length === 0) {
+    log(`${NAME}: no files supplied — nothing to check.\n`);
+    finish(0, { files: [] }, []);
+    return;
+  }
+  // every input is checked before anything is linted: an unreadable one wins over a finding
+  const unreadable = files.filter((f) => {
+    try {
+      return !fs.statSync(f).isFile();
+    } catch {
+      return true;
+    }
+  });
+  if (unreadable.length > 0) {
+    for (const f of unreadable) log(`${f}: not a readable regular file\n`);
+    finish(
+      3,
+      null,
+      unreadable.map((f) => ({
+        rule: "precondition",
+        message: `${f}: not a readable regular file`,
+      })),
+    );
+    return;
+  }
+  const found: Finding[] = [];
 
   const ruff = findTool("ruff");
   const flake8 = ruff === undefined ? findTool("flake8") : undefined;
   const tool = ruff ?? flake8;
   if (tool === undefined) {
-    say(`${NAME}: neither ruff nor flake8 found — skipping static analysis.\n`);
+    if (requireTools) {
+      log(`${NAME}: neither ruff nor flake8 found — install one or drop --require-tools.\n`);
+      finish(3, null, [{ rule: "precondition", message: "neither ruff nor flake8 found" }]);
+      return;
+    }
+    log(`${NAME}: neither ruff nor flake8 found — skipping static analysis.\n`);
+    found.push({
+      rule: "tool-unavailable",
+      severity: "warning",
+      message: "neither ruff nor flake8 found; static analysis was skipped",
+    });
   } else {
     const res = run(tool, ruff === undefined ? files : ["check", ...files]);
     if (res.status !== 0) {
       let end = res.out.length;
       while (end > 0 && res.out[end - 1] === "\n") end--;
-      process.stdout.write(Buffer.from(`${res.out.slice(0, end)}\n`, "latin1"));
-      findings = 1;
+      const text = res.out.slice(0, end);
+      if (json) process.stderr.write(Buffer.from(`${text}\n`, "latin1"));
+      else process.stdout.write(Buffer.from(`${text}\n`, "latin1"));
+      for (const l of text.split("\n")) found.push({ rule: "lint", message: unbin(l) });
     }
   }
 
   // Bare print() in non-test files: any path containing `test` (so `tests` too) is skipped.
   for (const file of files) {
-    try {
-      if (!fs.statSync(file).isFile()) continue;
-    } catch {
-      continue;
-    }
     if (file.includes("test")) continue;
     let text: string;
     try {
@@ -105,11 +179,12 @@ void (async () => {
     const lines = text.split("\n");
     for (let i = 0; i < lines.length; i++) {
       if (/^[ \t\n\v\f\r]*print\(/.test(lines[i] as string)) {
-        say(`${file}:${i + 1}: bare print() in non-test file\n`);
-        findings = 1;
+        const message = `${file}:${i + 1}: bare print() in non-test file`;
+        log(`${message}\n`);
+        found.push({ rule: "bare-print", message });
       }
     }
   }
 
-  process.exitCode = findings;
+  finish(found.some((f) => f.severity !== "warning") ? 1 : 0, { files }, found);
 })();

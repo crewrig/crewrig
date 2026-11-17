@@ -26,6 +26,13 @@ import { frontmatterOfText } from "../render-command.ts";
 import { toYamlLib } from "../yaml-text.ts";
 
 const ADMITTED = new Set(["provenance", "model"]);
+/** Spec 0291 R9: `tools` is admitted on an agent source only (the allowlist of an agent). */
+const AGENT_ONLY = new Set(["tools"]);
+/**
+ * Spec 0291 R17 as amended by delta 01: an allowlist that contains one of these classes must
+ * also name `skill`, which an allowlist would otherwise withhold.
+ */
+const SKILL_REQUIRING_CLASSES = ["edit", "execute"];
 const GOVERNED_PREFIXES = ["artifacts/core/", "artifacts/library/"];
 
 export interface MetadataKeysInput {
@@ -105,6 +112,19 @@ export function isGoverned(file: string): boolean {
   return GOVERNED_PREFIXES.some((p) => file.startsWith(p) || file.includes(`/${p}`));
 }
 
+/** An agent source: `AGENT.md` (a skill or a command source is not). */
+const isAgentSource = (file: string): boolean => file.split("/").pop() === "AGENT.md";
+
+/** Whether `metadata.tools` names `edit` or `execute` and not `skill` (R17 as amended). */
+function missingSkill(fm: ReturnType<typeof createFrontmatter>, text: string): boolean {
+  const doc = fm.yaml.parse(text);
+  if (doc === null) return false;
+  const declared = fm.yaml.seq(doc, ["metadata", "tools"]);
+  return (
+    SKILL_REQUIRING_CLASSES.some((cls) => declared.includes(cls)) && !declared.includes("skill")
+  );
+}
+
 /** `null` aborts the script silently; otherwise the keys `yq keys | .[]` printed. */
 function metadataKeys(
   fm: ReturnType<typeof createFrontmatter>,
@@ -162,10 +182,19 @@ export function checkMetadataKeys(input: MetadataKeysInput): Outcome {
     const keys = metadataKeys(fm, text);
     if (keys === null) return { code: 1, stdout: "", stderr };
     if (keys === "absent") continue;
+    const agent = isAgentSource(file);
     for (const k of keys) {
-      if (k === "" || ADMITTED.has(k)) continue;
+      if (k === "") continue;
+      if (agent && AGENT_ONLY.has(k)) {
+        if (missingSkill(fm, text)) {
+          rejections += 1;
+          stderr += `${file}: K2 metadata.tools names edit or execute without the class skill; an allowlist withholds every tool it does not name, so an editing agent's allowlist names skill (spec 0291 R17 as amended by delta 01)\n`;
+        }
+        continue;
+      }
+      if (ADMITTED.has(k)) continue;
       rejections += 1;
-      stderr += `${file}: K1 metadata.${k} is not admitted — only metadata.provenance and metadata.model are, on artifacts/core/** and artifacts/library/** (spec 0200 R8)\n`;
+      stderr += `${file}: K1 metadata.${k} is not admitted — only metadata.provenance and metadata.model are, and metadata.tools on an AGENT.md, on artifacts/core/** and artifacts/library/** (spec 0200 R8, spec 0291 R9)\n`;
     }
   }
   if (rejections > 0) {
@@ -174,7 +203,7 @@ export function checkMetadataKeys(input: MetadataKeysInput): Outcome {
   }
   return {
     code: 0,
-    stdout: `OK: ${files.length} source(s) checked; every governed metadata: block admits only provenance and model.\n`,
+    stdout: `OK: ${files.length} source(s) checked; every governed metadata: block admits only provenance, model and, on an agent, tools.\n`,
     stderr: "",
   };
 }

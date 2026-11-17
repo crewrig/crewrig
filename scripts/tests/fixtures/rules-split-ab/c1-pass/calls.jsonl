@@ -1,0 +1,3 @@
+{"seq":0,"ts":"2026-01-01T00:00:00.000Z","surface":"mempalace","tool":"mempalace_search","args":{"wing":"ab-scratch","room":"task-handoff","query":"[TASK:ongoing]"}}
+{"seq":1,"ts":"2026-01-01T00:00:00.000Z","surface":"mempalace","tool":"mempalace_diary_read","args":{}}
+{"seq":2,"ts":"2026-01-01T00:00:00.000Z","surface":"mempalace","tool":"mempalace_update_drawer","args":{"drawer_id":"drw-42","content":"[TASK:checkpoint] resumed at greet()"}}

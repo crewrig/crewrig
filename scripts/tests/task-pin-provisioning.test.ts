@@ -11,6 +11,7 @@ import { test } from "node:test";
 import { run } from "../lib/build-ci/entry.ts";
 import { BuildCiError, parseTaskPin, taskRecipe } from "../lib/build-ci/tools.ts";
 import { installRecipeTool } from "../lib/ci-parity/probe-tokens.ts";
+import { copyReference } from "./lib/ci-reference-fixtures.ts";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
 const PIN_TEXT = fs.readFileSync(path.join(REPO, "ci", "task-pin.json"), "utf8");
@@ -60,11 +61,7 @@ test("taskRecipe pins the URL and checksum and ends on a version check", () => {
 
 test("build-ci fails closed when the pin is missing or bad", () => {
   const dir = tmp();
-  fs.mkdirSync(path.join(dir, "ci"));
-  fs.copyFileSync(
-    path.join(REPO, "ci", "ci-capabilities.yml"),
-    path.join(dir, "ci", "ci-capabilities.yml"),
-  );
+  copyReference(REPO, dir);
   const missing = run(["--check"], dir);
   assert.notEqual(missing.code, 0);
   assert.match(missing.stderr, /task pin not found/i);

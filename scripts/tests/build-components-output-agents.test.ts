@@ -8,7 +8,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
-import { createFixtureTree } from "./lib/build-fixture-tree.ts";
+import { reconcileRetiredAgentDir } from "../lib/build-components/retire-agent.ts";
+import { makeCtx, tempDir } from "./fixtures/build-components/ctx-kit.ts";
+import { conventionsFragment, createFixtureTree } from "./lib/build-fixture-tree.ts";
 import {
   agent,
   CONFIG,
@@ -17,6 +19,11 @@ import {
   seedMappings,
   source,
 } from "./fixtures/build-components/entry-kit.ts";
+
+// Spec 0306 R6, R8: every compiled agent ends with a blank line and the fragment; only the Claude
+// Code file gains `omitClaudeMd: true` as its last assembled frontmatter line.
+const BLOCK = `\n${conventionsFragment()}`;
+const OMIT = "omitClaudeMd: true\n";
 
 function build(extra: readonly string[], body = "Agent body.\n") {
   const tree = createFixtureTree();
@@ -34,63 +41,178 @@ describe("the four CLI shapes (R13)", () => {
     const tree = build(extra);
     assert.equal(
       tree.read(".gemini/agents/ag.md"),
-      '---\nname: ag\ndescription: "An agent."\n---\n\nAgent body.\n',
+      '---\nname: ag\ndescription: "An agent."\n---\n\nAgent body.\n' + BLOCK,
     );
     assert.equal(
       tree.read(".claude/agents/ag.md"),
-      '---\nname: ag\ndescription: "An agent."\nlicense: MIT\ncompatibility: "c"\n---\n\nAgent body.\n',
+      '---\nname: ag\ndescription: "An agent."\nlicense: MIT\ncompatibility: "c"\n' +
+        OMIT +
+        "---\n\nAgent body.\n" +
+        BLOCK,
     );
     assert.equal(
       tree.read(".github/agents/ag.md"),
-      '---\nname: ag\ndescription: "An agent."\n---\n\nAgent body.\n',
+      '---\nname: ag\ndescription: "An agent."\n---\n\nAgent body.\n' + BLOCK,
     );
     assert.equal(
-      tree.read(".agents/agents/ag/AGENT.md"),
-      '---\nname: ag\ndescription: "An agent."\nlicense: MIT\ncompatibility: "c"\n---\n\nAgent body.\n',
+      tree.read(".agents/agents/ag.md"),
+      '---\nname: ag\ndescription: "An agent."\n' +
+        "tools: [read_file, edit_file, write_file, run_command, manage_task, search_web]\n" +
+        "---\n\nAgent body.\n" +
+        BLOCK,
     );
   });
 
-  test("Antigravity places the agent in a directory of its own name", () => {
+  test("Antigravity places the agent as a flat file, never in a sub-directory (spec 0053 delta-01 R11)", () => {
     const tree = build([]);
-    assert.equal(tree.exists(".agents/agents/ag/AGENT.md"), true);
-    assert.equal(tree.exists(".agents/agents/ag.md"), false);
+    assert.equal(tree.exists(".agents/agents/ag.md"), true);
+    assert.equal(tree.exists(".agents/agents/ag"), false);
   });
 });
 
-describe("the Antigravity enable_* rule (R13)", () => {
-  const read = (extra: string[]): string =>
-    build(extra).read(".agents/agents/ag/AGENT.md").split("---\n")[1] ?? "";
+describe("the flat Antigravity agent (spec 0053 delta-01 R11-R13, #1847)", () => {
+  const prov = [
+    "metadata:",
+    "  provenance:",
+    '    canonical: "${CANONICAL_REPO}"',
+    "    version: 1.0",
+  ];
   const bash = ["claude:", "  allowed-tools:", "    - Read", "    - Bash"];
+  const flat = (extra: string[]): string => build(extra).read(".agents/agents/ag.md");
 
-  test("each key is written when present and neither empty nor null; false is kept", () => {
-    const fm = read([
-      "antigravity:",
-      "  enable_write_tools: false",
-      "  enable_mcp_tools: true",
-      "  enable_subagent_tools: null",
-    ]);
-    assert.equal(
-      fm,
-      'name: ag\ndescription: "An agent."\nenable_write_tools: false\nenable_mcp_tools: true\n',
+  test("flat <name>.md, keys name, description, tools, metadata in that order", () => {
+    const text = flat(["license: MIT", 'compatibility: "c"', ...prov]);
+    const fm = (text.split("---\n")[1] ?? "").split("\n").filter((l) => /^\S.*:/.test(l));
+    assert.deepEqual(
+      fm.map((l) => l.split(":")[0]),
+      ["name", "description", "tools", "metadata"],
     );
   });
 
-  test("enable_write_tools alone falls back to true when claude.allowed-tools has an element equal to Bash", () => {
-    assert.match(read(bash), /\nenable_write_tools: true\n$/);
-    assert.doesNotMatch(read(["claude:", "  allowed-tools:", "    - Bash2"]), /enable_write_tools/);
+  test("pr-reviewer: no enable_*, and the tools line is the vendor default, not derived from Bash (R13, delta 03 R40)", () => {
+    const text = flat(bash);
+    assert.doesNotMatch(text, /enable_|license|compatibility/);
     assert.match(
-      read([...bash, "antigravity:", "  enable_write_tools:"]),
-      /enable_write_tools: true/,
-    );
-    assert.match(
-      read([...bash, "antigravity:", "  enable_write_tools: false"]),
-      /enable_write_tools: false/,
+      text,
+      /\ntools: \[read_file, edit_file, write_file, run_command, manage_task, search_web\]\n/,
     );
   });
 
-  test("the fallback never applies to the other two keys", () => {
-    const fm = read(bash);
-    assert.doesNotMatch(fm, /enable_mcp_tools|enable_subagent_tools/);
+  test("source declaring antigravity.enable_write_tools builds silently", () => {
+    const text = flat(["antigravity:", "  enable_write_tools: true", "  enable_mcp_tools: false"]);
+    assert.doesNotMatch(text, /enable_/);
+  });
+});
+
+describe("retired Antigravity directory cleanup (spec 0053 delta-01 R14, R16, R29)", () => {
+  const PROV = [
+    "---",
+    "name: ag",
+    'description: "An agent."',
+    "metadata:",
+    "  provenance:",
+    '    canonical: "https://example.test/o/r"',
+    "---",
+    "",
+    "Old body.",
+    "",
+  ].join("\n");
+  const listing = (tree: ReturnType<typeof createFixtureTree>, rel: string): string[] =>
+    fs.readdirSync(tree.resolve(rel)).sort();
+
+  function seeded(files: Record<string, string> = { "AGENT.md": PROV }) {
+    const tree = createFixtureTree();
+    tree.config(CONFIG);
+    tree.artifact("core/agents/ag/AGENT.md", agent("ag"));
+    for (const [file, text] of Object.entries(files)) tree.write(`.agents/agents/ag/${file}`, text);
+    return tree;
+  }
+
+  test("stale dir removed, second run identical", () => {
+    const tree = seeded();
+    const first = tree.run([]);
+    assert.equal(first.status, 0, first.stderr + first.stdout);
+    assert.deepEqual(listing(tree, ".agents/agents"), ["ag.md"]);
+    const before = tree.read(".agents/agents/ag.md");
+    const second = tree.run([]);
+    assert.equal(second.status, 0);
+    assert.equal(tree.read(".agents/agents/ag.md"), before);
+    assert.deepEqual(listing(tree, ".agents/agents"), ["ag.md"]);
+    assert.doesNotMatch(second.stdout + second.stderr, /Removed|Migrated|retired/i);
+  });
+
+  test("stale dir with extra file left, warned, --check drift", () => {
+    const tree = seeded({ "AGENT.md": PROV, "NOTES.txt": "mine\n" });
+    const res = tree.run(["--target", "antigravity"]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.deepEqual(listing(tree, ".agents/agents/ag"), ["AGENT.md", "NOTES.txt"]);
+    assert.match(res.stderr, /\.agents\/agents\/ag\b/);
+    const check = tree.run(["--target", "antigravity", "--check"]);
+    assert.equal(check.status, 1);
+    assert.match(check.stdout, /DRIFT: .*\.agents\/agents\/ag\b/);
+  });
+
+  test("body-only provenance left", () => {
+    const body = "---\nname: ag\n---\n\nmetadata:\n  provenance:\n    canonical: x\n";
+    const tree = seeded({ "AGENT.md": body });
+    const res = tree.run(["--target", "antigravity"]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(tree.read(".agents/agents/ag/AGENT.md"), body);
+    assert.match(res.stderr, /\.agents\/agents\/ag\b/);
+  });
+
+  test("unterminated frontmatter fence left, warned", () => {
+    const body = "---\nname: ag\n\nmetadata:\n  provenance:\n    canonical: x\n";
+    const tree = seeded({ "AGENT.md": body });
+    const res = tree.run(["--target", "antigravity"]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(tree.read(".agents/agents/ag/AGENT.md"), body);
+    assert.match(res.stderr, /\.agents\/agents\/ag\b/);
+  });
+
+  test("orphan dir untouched, not reported by --check", () => {
+    const tree = seeded();
+    tree.write(".agents/agents/gone/AGENT.md", PROV);
+    const res = tree.run(["--target", "antigravity"]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(tree.read(".agents/agents/gone/AGENT.md"), PROV);
+    const check = tree.run(["--target", "antigravity", "--check"]);
+    assert.equal(check.status, 0, check.stdout);
+    assert.doesNotMatch(check.stdout, /gone/);
+  });
+
+  test("--check reports missing file and retired dir, tree unmodified", () => {
+    const tree = seeded();
+    const res = tree.run(["--target", "antigravity", "--check"]);
+    assert.equal(res.status, 1);
+    assert.match(res.stdout, /DRIFT: .*\.agents\/agents\/ag\.md does not exist/);
+    assert.match(res.stdout, /DRIFT: .*\.agents\/agents\/ag\b/);
+    assert.deepEqual(listing(tree, ".agents/agents"), ["ag"]);
+    assert.deepEqual(listing(tree, ".agents/agents/ag"), ["AGENT.md"]);
+  });
+
+  test("--check on a non-compared tier writes and cleans", () => {
+    const root = tempDir();
+    fs.mkdirSync(path.join(root, ".agents/agents/ag"), { recursive: true });
+    fs.writeFileSync(path.join(root, ".agents/agents/ag/AGENT.md"), PROV);
+    const { ctx } = makeCtx({ check: true, compare: false });
+    reconcileRetiredAgentDir(ctx, root, "ag");
+    assert.equal(fs.existsSync(path.join(root, ".agents/agents/ag")), false);
+    assert.equal(ctx.state.driftFound, false);
+  });
+
+  test("symlinked <name>/ left", { skip: process.platform === "win32" }, () => {
+    const tree = seeded({});
+    const target = tree.resolve("elsewhere");
+    fs.mkdirSync(target, { recursive: true });
+    fs.writeFileSync(path.join(target, "AGENT.md"), PROV);
+    fs.mkdirSync(tree.resolve(".agents/agents"), { recursive: true });
+    fs.symlinkSync(target, tree.resolve(".agents/agents/ag"), "dir");
+    const res = tree.run(["--target", "antigravity"]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(fs.lstatSync(tree.resolve(".agents/agents/ag")).isSymbolicLink(), true);
+    assert.equal(fs.readFileSync(path.join(target, "AGENT.md"), "utf8"), PROV);
+    assert.match(res.stderr, /\.agents\/agents\/ag\b/);
   });
 });
 
@@ -106,13 +228,10 @@ describe("the Gemini provenance comment (R12)", () => {
     assert.equal(
       tree.read(".gemini/agents/ag.md"),
       '---\nname: ag\ndescription: "An agent."\n---\n' +
-        '<!-- crewrig-provenance: version="1.0" canonical="https://example.test/o/r" feedback="" -->\nAgent body.\n',
+        '<!-- crewrig-provenance: version="1.0" canonical="https://example.test/o/r" feedback="" -->\nAgent body.\n' +
+        BLOCK,
     );
-    for (const file of [
-      ".claude/agents/ag.md",
-      ".github/agents/ag.md",
-      ".agents/agents/ag/AGENT.md",
-    ]) {
+    for (const file of [".claude/agents/ag.md", ".github/agents/ag.md", ".agents/agents/ag.md"]) {
       const text = tree.read(file);
       assert.match(
         text,
@@ -140,7 +259,7 @@ describe("a profile-bearing agent against the committed trees (R13, R19)", () =>
       ".gemini/agents/tester.md",
       ".claude/agents/tester.md",
       ".github/agents/tester.md",
-      ".agents/agents/tester/AGENT.md",
+      ".agents/agents/tester.md",
     ]) {
       assert.equal(tree.read(rel), fs.readFileSync(path.join(REPO, rel), "utf8"), rel);
     }
@@ -174,5 +293,376 @@ describe("a profile-bearing agent against the committed trees (R13, R19)", () =>
     const res = tree.run(["--diagnostics", log]);
     assert.equal(res.status, 0);
     assert.equal(fs.existsSync(log) ? fs.readFileSync(log, "utf8") : "", "");
+  });
+});
+
+// metadata.tools (spec 0291 R8-R15): byte goldens over fixture agents in a throwaway tree, never a
+// shipped agent. The build under test accepts the whole vocabulary; the ban on `execute` and `edit`
+// for shipped agents lives in the key check, not here.
+describe("metadata.tools: one declaration, three spellings (spec 0291 R11-R14)", () => {
+  const CLASSES = "read, search, edit, execute, web, agent, skill, message";
+  const meta = (list: string): string[] => ["metadata:", `  tools: ${list}`];
+  const fmFile = (lines: string[], claude = false): string =>
+    `---\nname: ag\ndescription: "An agent."\n${lines.join("\n")}${lines.length > 0 ? "\n" : ""}${claude ? OMIT : ""}---\n\nAgent body.\n${BLOCK}`;
+  const BODY = "Agent body.\n";
+
+  function built(list: string, ...args: string[]) {
+    const tree = createFixtureTree();
+    tree.config(CONFIG);
+    tree.artifact("core/agents/ag/AGENT.md", agent("ag", BODY, meta(list)));
+    const res = tree.run(args);
+    return { tree, res };
+  }
+  const stream = (stderr: string): string[] => lines(stderr).filter((l) => l.startsWith("tools-"));
+  const drop = (target: string, declared: string, reason: string): string =>
+    ["tools-drop", "ag", target, "metadata.tools", declared, reason].join("\t");
+
+  // The four names that `agy` 1.5.9 accepts and silently ignores (delta 03 R37): never emitted.
+  const SILENT = ["grep_search", "find_by_name", "list_dir", "read_url_content"];
+  const ANTI_ALL =
+    "[read_file, edit_file, write_file, run_command, manage_task, search_web, invoke_subagent, send_message]";
+
+  // class, claude, copilot, gemini, antigravity
+  const TABLE: ReadonlyArray<
+    readonly [string, string, string | null, string | null, string | null]
+  > = [
+    ["read", "Read", "[read]", "[read_file, read_many_files, list_directory]", "[read_file]"],
+    ["search", "Grep, Glob", "[search]", "[grep_search, glob]", "[read_file]"],
+    ["edit", "Edit, Write", "[edit]", "[write_file, replace]", "[edit_file, write_file]"],
+    ["execute", "Bash", "[execute]", "[run_shell_command]", "[run_command, manage_task]"],
+    ["web", "WebFetch, WebSearch", "[web]", "[web_fetch, google_web_search]", "[search_web]"],
+    ["agent", "Agent", "[agent]", null, "[invoke_subagent]"],
+    ["skill", "Skill", null, "[activate_skill]", null],
+    ["message", "SendMessage", null, null, "[send_message]"],
+  ];
+
+  for (const [cls, claude, copilot, gemini, antigravity] of TABLE) {
+    test(`the class ${cls} alone`, () => {
+      // A CLI with no name for the class fails the build (R13, R29, delta 03 R39); the others write the bytes.
+      const targets = ["claude"];
+      if (antigravity !== null) targets.push("antigravity");
+      if (copilot !== null) targets.push("copilot");
+      if (gemini !== null) targets.push("gemini");
+      for (const target of targets) {
+        const { tree, res } = built(`[${cls}]`, "--target", target);
+        assert.equal(res.status, 0, res.stderr);
+        if (target === "claude")
+          assert.equal(tree.read(".claude/agents/ag.md"), fmFile([`tools: ${claude}`], true));
+        if (target === "copilot")
+          assert.equal(tree.read(".github/agents/ag.md"), fmFile([`tools: ${copilot}`]));
+        if (target === "gemini")
+          assert.equal(tree.read(".gemini/agents/ag.md"), fmFile([`tools: ${gemini}`]));
+        if (target === "antigravity")
+          assert.equal(tree.read(".agents/agents/ag.md"), fmFile([`tools: ${antigravity}`]));
+      }
+      for (const [target, name, dir] of [
+        ["copilot", "Copilot CLI", ".github"],
+        ["gemini", "Gemini CLI", ".gemini"],
+        ["antigravity", "Antigravity CLI", ".agents"],
+      ] as const) {
+        if ((target === "copilot" ? copilot : target === "gemini" ? gemini : antigravity) !== null)
+          continue;
+        const { tree, res } = built(`[${cls}]`, "--target", target);
+        assert.equal(res.status, 1, res.stderr);
+        assert.ok(res.stderr.includes(`metadata.tools has no ${name} name for ${cls}`), res.stderr);
+        assert.equal(tree.exists(`${dir}/agents/ag.md`), false);
+      }
+    });
+  }
+
+  test("all eight classes: the Gemini and Antigravity names pinned literally, the drops of each CLI", () => {
+    const { tree, res } = built(`[${CLASSES}]`);
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(
+      tree.read(".claude/agents/ag.md"),
+      fmFile(
+        [
+          "tools: Read, Grep, Glob, Edit, Write, Bash, WebFetch, WebSearch, Agent, Skill, SendMessage",
+        ],
+        true,
+      ),
+    );
+    assert.equal(
+      tree.read(".github/agents/ag.md"),
+      fmFile(["tools: [read, search, edit, execute, web, agent]"]),
+    );
+    assert.equal(
+      tree.read(".gemini/agents/ag.md"),
+      fmFile([
+        "tools: [read_file, read_many_files, list_directory, grep_search, glob, write_file, replace, run_shell_command, web_fetch, google_web_search, activate_skill]",
+      ]),
+    );
+    assert.equal(tree.read(".agents/agents/ag.md"), fmFile([`tools: ${ANTI_ALL}`]));
+    for (const name of SILENT)
+      assert.doesNotMatch(tree.read(".agents/agents/ag.md"), new RegExp(name));
+    assert.deepEqual(stream(res.stderr).sort(), [
+      drop("antigravity", "skill", "no-equivalent-on-cli"),
+      drop("copilot", "skill,message", "no-equivalent-on-cli"),
+      drop("gemini", "agent,message", "no-equivalent-on-cli"),
+    ]);
+  });
+
+  test("the order of the source does not matter: every file is byte-identical to the vocabulary order", () => {
+    const forward = built(`[${CLASSES}]`);
+    const reversed = built("[message, skill, agent, web, execute, edit, search, read]");
+    assert.equal(reversed.res.status, 0, reversed.res.stderr);
+    for (const rel of [".claude", ".github", ".gemini", ".agents"].map((d) => `${d}/agents/ag.md`))
+      assert.equal(reversed.tree.read(rel), forward.tree.read(rel), rel);
+    assert.deepEqual(stream(reversed.res.stderr).sort(), stream(forward.res.stderr).sort());
+  });
+
+  test("a block-style list reads like the flow one", () => {
+    const tree = createFixtureTree();
+    tree.config(CONFIG);
+    tree.artifact(
+      "core/agents/ag/AGENT.md",
+      agent("ag", BODY, ["metadata:", "  tools:", "    - search", "    - read"]),
+    );
+    assert.equal(tree.run([]).status, 0);
+    assert.equal(tree.read(".github/agents/ag.md"), fmFile(["tools: [read, search]"]));
+  });
+
+  test("opt-in: a source without metadata.tools gets no tools key on Claude, Copilot and Gemini, the vendor all-tools line on Antigravity (R12, delta 03 R40)", () => {
+    const tree = createFixtureTree();
+    tree.config(CONFIG);
+    tree.artifact("core/agents/ag/AGENT.md", agent("ag", BODY, ["metadata:", "  other: x"]));
+    const res = tree.run([]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(stream(res.stderr).length, 0);
+    for (const rel of [".claude", ".github", ".gemini"].map((d) => `${d}/agents/ag.md`)) {
+      assert.equal(tree.read(rel), fmFile([], rel.startsWith(".claude")), rel);
+      assert.doesNotMatch(tree.read(rel), /tools/);
+    }
+    assert.equal(
+      tree.read(".agents/agents/ag.md"),
+      fmFile(["tools: [read_file, edit_file, write_file, run_command, manage_task, search_web]"]),
+    );
+  });
+
+  test("the tools line follows the directed model line and precedes the provenance block (R11)", () => {
+    const tree = createFixtureTree();
+    tree.config(CONFIG);
+    seedMappings(tree);
+    tree.artifact(
+      "core/agents/ag/AGENT.md",
+      agent("ag", BODY, [
+        "license: MIT",
+        "metadata:",
+        "  model:",
+        "    intelligence: high",
+        "  tools: [read, search]",
+        "  provenance:",
+        '    canonical: "https://example.test/o/r"',
+      ]),
+    );
+    assert.equal(tree.run([]).status, 0);
+    const claude = tree.read(".claude/agents/ag.md");
+    const keys = (claude.split("---\n")[1] ?? "").split("\n").filter((l) => /^\S.*:/.test(l));
+    assert.deepEqual(
+      keys.map((l) => l.split(":")[0]),
+      ["name", "description", "license", "model", "tools", "omitClaudeMd", "metadata"],
+    );
+    assert.match(
+      claude,
+      /\nmodel: sonnet\ntools: Read, Grep, Glob\nomitClaudeMd: true\nmetadata:\n/,
+    );
+    assert.match(tree.read(".github/agents/ag.md"), /\ntools: \[read, search\]\nmetadata:\n/);
+  });
+
+  test("Antigravity: [web, read, search, skill] writes the mapped line and one tools-drop for skill, on standard error and in the --diagnostics file (R37-R39)", () => {
+    const tree = createFixtureTree();
+    tree.config(CONFIG);
+    tree.artifact("core/agents/ag/AGENT.md", agent("ag", BODY, meta("[web, read, search, skill]")));
+    const log = tree.resolve("diag.log");
+    const res = tree.run(["--target", "antigravity", "--diagnostics", log]);
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(tree.read(".agents/agents/ag.md"), fmFile(["tools: [read_file, search_web]"]));
+    const want = drop("antigravity", "skill", "no-equivalent-on-cli");
+    assert.deepEqual(stream(res.stderr), [want]);
+    assert.deepEqual(lines(fs.readFileSync(log, "utf8")), [want]);
+  });
+
+  test("Antigravity: [read, search] de-duplicates to [read_file] and drops nothing (R37, R39)", () => {
+    const { tree, res } = built("[read, search]", "--target", "antigravity");
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(tree.read(".agents/agents/ag.md"), fmFile(["tools: [read_file]"]));
+    assert.deepEqual(stream(res.stderr), []);
+  });
+
+  test("Antigravity: [read, skill] writes [read_file] and one drop with declared skill (R39)", () => {
+    const { tree, res } = built("[read, skill]", "--target", "antigravity");
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(tree.read(".agents/agents/ag.md"), fmFile(["tools: [read_file]"]));
+    assert.deepEqual(stream(res.stderr), [drop("antigravity", "skill", "no-equivalent-on-cli")]);
+  });
+
+  test("Antigravity: [skill] alone fails the build, naming the CLI and the reason, no file, no empty list (R39)", () => {
+    const { tree, res } = built("[skill]", "--target", "antigravity");
+    assert.equal(res.status, 1, res.stderr);
+    assert.match(
+      res.stderr,
+      /^Error: .*AGENT\.md: metadata\.tools has no Antigravity CLI name for skill \(no name on that CLI/m,
+    );
+    assert.equal(tree.exists(".agents/agents/ag.md"), false);
+    assert.doesNotMatch(res.stderr, /tools: \[\]/);
+  });
+
+  test("Antigravity: --target antigravity alone writes the same line as --target all (R41)", () => {
+    const alone = built("[execute, edit]", "--target", "antigravity");
+    const all = built("[execute, edit]");
+    assert.equal(
+      alone.tree.read(".agents/agents/ag.md"),
+      fmFile(["tools: [edit_file, write_file, run_command, manage_task]"]),
+    );
+    assert.equal(alone.tree.read(".agents/agents/ag.md"), all.tree.read(".agents/agents/ag.md"));
+  });
+
+  test("Gemini: [read, agent] lists the read names only and records the omission (R13)", () => {
+    const { tree, res } = built("[read, agent]", "--target", "gemini");
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(
+      tree.read(".gemini/agents/ag.md"),
+      fmFile(["tools: [read_file, read_many_files, list_directory]"]),
+    );
+    assert.deepEqual(stream(res.stderr), [drop("gemini", "agent", "no-equivalent-on-cli")]);
+  });
+
+  test("skill and message together, in vocabulary order whatever the source order (delta 01 R28, R29)", () => {
+    for (const list of ["[skill, message]", "[message, skill]"]) {
+      const { tree, res } = built(list);
+      assert.equal(res.status, 1, res.stderr); // Copilot has neither name: R29 fails the build
+      const claude = built(list, "--target", "claude");
+      assert.equal(
+        claude.tree.read(".claude/agents/ag.md"),
+        fmFile(["tools: Skill, SendMessage"], true),
+      );
+      const gemini = built(list, "--target", "gemini");
+      assert.equal(gemini.res.status, 0, gemini.res.stderr);
+      assert.equal(gemini.tree.read(".gemini/agents/ag.md"), fmFile(["tools: [activate_skill]"]));
+      assert.deepEqual(stream(gemini.res.stderr), [
+        drop("gemini", "message", "no-equivalent-on-cli"),
+      ]);
+      const agy = built(list, "--target", "antigravity");
+      assert.equal(agy.tree.read(".agents/agents/ag.md"), fmFile(["tools: [send_message]"]));
+      assert.deepEqual(stream(agy.res.stderr), [
+        drop("antigravity", "skill", "no-equivalent-on-cli"),
+      ]);
+      assert.equal(tree.exists(".github/agents/ag.md"), false);
+    }
+  });
+
+  test("the scenario [message, skill, edit]: Claude, Gemini, Copilot and Antigravity (delta 01)", () => {
+    const { tree, res } = built("[message, skill, edit]");
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(
+      tree.read(".claude/agents/ag.md"),
+      fmFile(["tools: Edit, Write, Skill, SendMessage"], true),
+    );
+    assert.equal(
+      tree.read(".gemini/agents/ag.md"),
+      fmFile(["tools: [write_file, replace, activate_skill]"]),
+    );
+    assert.equal(tree.read(".github/agents/ag.md"), fmFile(["tools: [edit]"]));
+    assert.equal(
+      tree.read(".agents/agents/ag.md"),
+      fmFile(["tools: [edit_file, write_file, send_message]"]),
+    );
+    assert.deepEqual(stream(res.stderr).sort(), [
+      drop("antigravity", "skill", "no-equivalent-on-cli"),
+      drop("copilot", "skill,message", "no-equivalent-on-cli"),
+      drop("gemini", "message", "no-equivalent-on-cli"),
+    ]);
+  });
+
+  test("Copilot: [skill, message] fails the build, naming the CLI and the reason, no empty list (R29)", () => {
+    const { tree, res } = built("[skill, message]", "--target", "copilot");
+    assert.equal(res.status, 1, res.stderr);
+    assert.match(
+      res.stderr,
+      /^Error: .*AGENT\.md: metadata\.tools has no Copilot CLI name for skill, message \(no name on that CLI/m,
+    );
+    assert.equal(tree.exists(".github/agents/ag.md"), false);
+    assert.doesNotMatch(res.stderr, /tools: \[\]/);
+  });
+
+  test("Copilot: [read, skill] lists read only and records the omission (R29)", () => {
+    const { tree, res } = built("[read, skill]", "--target", "copilot");
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(tree.read(".github/agents/ag.md"), fmFile(["tools: [read]"]));
+    assert.deepEqual(stream(res.stderr), [drop("copilot", "skill", "no-equivalent-on-cli")]);
+  });
+
+  test("Gemini: [agent] alone fails the build, no file and no empty list (R13)", () => {
+    const { tree, res } = built("[agent]", "--target", "gemini");
+    assert.equal(res.status, 1, res.stderr);
+    assert.match(res.stderr, /^Error: .*AGENT\.md: metadata\.tools has no Gemini CLI name/m);
+    assert.equal(tree.exists(".gemini/agents/ag.md"), false);
+    assert.doesNotMatch(res.stderr, /tools: \[\]/);
+  });
+
+  test("a fixture agent declaring execute and edit builds for all four CLIs: the rule is the checker's (R15, R17)", () => {
+    const { tree, res } = built("[read, execute, edit]");
+    assert.equal(res.status, 0, res.stderr);
+    assert.equal(
+      tree.read(".gemini/agents/ag.md"),
+      fmFile([
+        "tools: [read_file, read_many_files, list_directory, write_file, replace, run_shell_command]",
+      ]),
+    );
+    assert.equal(
+      tree.read(".claude/agents/ag.md"),
+      fmFile(["tools: Read, Edit, Write, Bash"], true),
+    );
+    assert.equal(tree.read(".github/agents/ag.md"), fmFile(["tools: [read, edit, execute]"]));
+    assert.equal(
+      tree.read(".agents/agents/ag.md"),
+      fmFile(["tools: [read_file, edit_file, write_file, run_command, manage_task]"]),
+    );
+  });
+
+  const INVALID: ReadonlyArray<readonly [string, string, string]> = [
+    ["a scalar, not a list", "read", "read"],
+    ["a mapping, not a list", "{read: true}", "mapping"],
+    ["an empty list", "[]", "[]"],
+    ["a string outside the vocabulary", "[shell]", "shell"],
+    ["a differently cased name", "[read, Read]", "Read"],
+    ["a duplicate", "[read, search, read]", "read"],
+    ["an empty-string element", '[read, ""]', ""],
+    ["a nested list element", "[read, [search]]", ""],
+  ];
+  for (const [label, value, shown] of INVALID) {
+    for (const target of ["all", "antigravity", "claude"]) {
+      test(`${label} stops the build (--target ${target}), naming the file, the key, the value and the eight classes (R10)`, () => {
+        const { tree, res } = built(value, "--target", target);
+        assert.equal(res.status, 1, res.stderr);
+        assert.match(res.stderr, /artifacts\/core\/agents\/ag\/+AGENT\.md: metadata\.tools /);
+        assert.ok(res.stderr.includes(`value: ${shown};`), res.stderr);
+        assert.ok(res.stderr.includes(`the admitted classes are ${CLASSES}`), res.stderr);
+        for (const d of [".claude", ".github", ".gemini", ".agents"])
+          assert.equal(tree.exists(`${d}/agents/ag.md`), false, `${d} written despite the refusal`);
+      });
+    }
+  }
+});
+
+describe("a block-scalar description is folded onto one line (issue #1956)", () => {
+  test("every CLI file carries a single-line quoted description", () => {
+    const tree = createFixtureTree();
+    tree.config(CONFIG);
+    tree.artifact(
+      "core/agents/ag/AGENT.md",
+      source(["name: ag", "description: |", "  First line.", "  Second line."], "Agent body.\n"),
+    );
+    const res = tree.run([]);
+    assert.equal(res.status, 0, res.stderr + res.stdout);
+    for (const file of [
+      ".claude/agents/ag.md",
+      ".gemini/agents/ag.md",
+      ".github/agents/ag.md",
+      ".agents/agents/ag.md",
+    ]) {
+      const out = tree.read(file);
+      assert.ok(out.includes('description: "First line. Second line."\n'), `${file}:\n${out}`);
+    }
   });
 });

@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { makeSandbox, REPO, runEntry } from "./lib/governance-sandbox.ts";
+import { writeReferenceDir, readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
 const ENTRY = path.join(REPO, "scripts", "check-ci-pre-push-parity.ts");
 const ROOT_NAME = ["Task", "file.yml"].join("");
@@ -42,7 +43,7 @@ function stage(caps: string, tasks: string): string {
     path.join(dir, "taskfiles", "ci.yml"),
     `version: '3.54'\ntasks:\n${tasks}  pre-push:\n    cmds:\n      - echo control\n`,
   );
-  fs.writeFileSync(path.join(dir, "ci", "ci-capabilities.yml"), `capabilities:\n${caps}`);
+  writeReferenceDir(dir, `capabilities:\n${caps}`);
   fs.writeFileSync(path.join(dir, "ci", "pre-push-tier.json"), "{}");
   return dir;
 }
@@ -112,11 +113,10 @@ describe("R22 migrated capability", () => {
     const tasks = task("alpha", ["node scripts/b.ts"]);
     const dir = stage(cap("alpha", ["node scripts/a.ts"]), tasks);
     assert.equal(run(dir).status, 1, "raw and different");
-    const file = path.join(dir, "ci", "ci-capabilities.yml");
-    const raw = fs.readFileSync(file, "utf8");
-    fs.writeFileSync(file, `capabilities:\n${cap("alpha", ["task ci:alpha"])}`);
+    const raw = readReferenceText(dir);
+    writeReferenceDir(dir, `capabilities:\n${cap("alpha", ["task ci:alpha"])}`);
     assert.equal(run(dir).status, 0, "migrated");
-    fs.writeFileSync(file, raw);
+    writeReferenceDir(dir, raw);
     assert.equal(run(dir).status, 1, "reverted");
   });
 

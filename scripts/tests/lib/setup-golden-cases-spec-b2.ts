@@ -41,7 +41,7 @@ const AGY = ".gemini/antigravity-cli";
 const seedRules = (sb: SetupSandbox): void => put(sb.home, `${AGY}/99_CUSTOM.md`, "# mine\n");
 const stageTier = (sb: SetupSandbox, tier: string): void => {
   put(sb.repo, `dist/${tier}/.agents/skills/demo-${tier}/SKILL.md`, `# ${tier} skill\n`);
-  put(sb.repo, `dist/${tier}/.agents/agents/demo-${tier}/AGENT.md`, `# ${tier} agent\n`);
+  put(sb.repo, `dist/${tier}/.agents/agents/demo-${tier}.md`, `# ${tier} agent\n`);
 };
 const stale = (sb: SetupSandbox): void => {
   for (const kind of ["team", "expertise", "level"])

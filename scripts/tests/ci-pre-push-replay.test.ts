@@ -22,6 +22,7 @@ import { selectForShas } from "../lib/ci-pre-push/select.ts";
 import { taskEnv } from "../lib/ci-pre-push/run.ts";
 import { git, gitEnv, initRepo, writeRel } from "./lib/governance-git-fixture.ts";
 import { REPO, makeSandbox, runEntry, stageNodeModules } from "./lib/governance-sandbox.ts";
+import { readReferenceText, writeReferenceDir } from "./lib/ci-reference-fixtures.ts";
 
 interface Row {
   /** Failure class, as analysed on #1761. */
@@ -107,21 +108,20 @@ const ROWS: readonly Row[] = [
     },
   },
   {
-    // Arm 1 of the parity harness: the command list of a capability in ci/ci-capabilities.yml no
+    // Arm 1 of the parity harness: the command list of a capability in ci/capabilities/ no
     // longer matches the business steps of its build.yml job (the job runs `task ci:<id>`, spec 0283).
     name: "CI parity drift between build.yml and the capability file",
     id: "check-ci-parity",
     marker:
       /DRIFT: capability 'check-agents-size' \(github-actions\): job 'check-agents-size' exhibits 0 of 1 declared business steps/,
     mutate: (copy) => {
-      const file = path.join(copy, "ci/ci-capabilities.yml");
-      const text = fs.readFileSync(file, "utf8");
+      const text = readReferenceText(copy);
       assert.ok(
         text.includes(`${PARITY_COMMAND}\n`),
         "the capability command to drift was not found",
       );
-      fs.writeFileSync(
-        file,
+      writeReferenceDir(
+        copy,
         text.replace(`${PARITY_COMMAND}\n`, `${PARITY_COMMAND} --replay-drift\n`),
       );
     },

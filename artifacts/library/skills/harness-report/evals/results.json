@@ -1,0 +1,23 @@
+{
+  "skill_name": "harness-report",
+  "content_hash": "sha256:c18ed083fadbabf1e8c4dcf4f5dfe4c734473d84057f6d509bbf16967bd59f68",
+  "runner_version": "3.0.0",
+  "executor_model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "date": "2026-11-14T12:51:33.611Z",
+  "status": "pass",
+  "eval_pass_rate": 0.4,
+  "probe_pass_rate": 1,
+  "base_eval_pass_rate": null,
+  "threshold": 0.8,
+  "tolerance": 0.2,
+  "evals_passed": 2,
+  "evals_total": 5,
+  "probes_passed": 8,
+  "probes_total": 8,
+  "executor_runs": 13,
+  "judge_calls": 5,
+  "cost_usd": 0.43275,
+  "skill_loaded": 5
+}

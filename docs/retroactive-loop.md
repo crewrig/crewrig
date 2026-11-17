@@ -26,7 +26,9 @@ Rules:
 - A `tech` finding describing a foldable bug is also tracked as a folded item — see *Folded bugs*.
 - The loop SHALL NOT change the logbook issue (Rule A still holds).
 
-**Termination.** The lifecycle terminates at MERGE iff a REVIEW pass verdict is APPROVE AND the pass surfaces zero findings of any class AND CI is green on the head commit reviewed.
+**Termination.** The lifecycle terminates at MERGE iff a REVIEW pass verdict is APPROVE AND the pass surfaces no blocking finding AND CI is green on the head commit reviewed (ADR-0024, amending ADR-0010). Non-blocking findings are recorded in the findings ledger (#961) or a follow-up issue and never trigger another pass on their own.
+
+**Pass cap.** REVIEW runs at most **2 passes** at `trivial`/`small` and **3** at `standard`. Beyond the cap the coordinator decides: merge with ledger entries, or escalate. A fix pass is scoped to the change since the last reviewed revision (`docs/reviewer-seat.md` → *Bounded scope from the second pass*). The max-iteration guardrail below remains the outer bound.
 
 **Max-iteration guardrail.** The loop halts after **5 iterations** (configurable in the spec frontmatter, default 5) without termination. On halt, the orchestrator posts a structured summary on the logbook issue and pages the user regardless of mode (including AUTO).
 
@@ -102,15 +104,16 @@ input before spawning the reviewer is a process violation in
 INTERMEDIATE, MINIMAL, and AUTO modes. The REVIEW loop in those modes
 is fully autonomous from the moment the PR exists — no user gate fires
 until the max-iteration guardrail (see *Max-iteration guardrail*) or the
-final merge-authorization request.
+final merge-authorization request (carve-outs:
+[`interaction-modes.md`](interaction-modes.md) → *User-gate definition*).
 
 **Self-healing backstop.** Step 1 above is an orchestrator obligation,
 not a suggestion — but if it is ever missed and the `pr-reviewer` seat
 is spawned before the `iter:1` label lands, the `pr-reviewer` skill's
 own Preflight step notices the missing `iter:N` label and applies
 `iter:1` itself before minting any finding identifier
-(`artifacts/core/skills/pr-reviewer/SKILL.md` → *Iteration-label
-self-heal*). This is a second line of defense, not a relaxation of
+(`artifacts/core/skills/pr-reviewer/SKILL.md` → *Preflight: CI status and
+iteration label*, run through `scripts/iter-label.ts`). This is a second line of defense, not a relaxation of
 step 1: the orchestrator SHALL still apply the label before spawning.
 The two surfaces stay in lockstep per the *Routing matrix* convention
 below.

@@ -15,6 +15,7 @@ For production use, prefer copy mode (the default).
 Installing shared configuration...
   Linked: ORGANIZATION.md -> rules/20-organization.md
   Linked: artifacts/core/rules/60-tools.md -> rules/60-tools.md
+  Linked: artifacts/core/rules/60-memory.md -> rules/60-memory.md
   Linked: TOOLS.md -> rules/65-org-tools.md
   Linked dir: artifacts/core/system-context -> ~/.crewrig/system-context
   Linked: SOUL.md -> rules/00-soul.md
@@ -113,6 +114,7 @@ Active rule files:
 <HOME>/.claude/rules/30-profile.md
 <HOME>/.claude/rules/40-expertise.md
 <HOME>/.claude/rules/50-team.md
+<HOME>/.claude/rules/60-memory.md
 <HOME>/.claude/rules/60-tools.md
 <HOME>/.claude/rules/65-org-tools.md
 

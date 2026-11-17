@@ -532,6 +532,22 @@ A stale per-agent directory left under the user's Claude Code agent directory by
 
 The full account — what changed, why, and the per-agent migration record — is in [`docs/agent-profile-migration.md`](agent-profile-migration.md).
 
+## Web and SEO components moved to the library tier (spec 0307)
+
+The eleven agents `accessibility-auditor`, `accessibility-tester`, `astro-developer`, `copywriter`, `designer`,
+`frontend-developer`, `regression-sentinel`, `scenario-author`, `seo-specialist`, `visual-regression-tester` and
+`web-conformity-checker`, and the four skills `astro`, `copywriting`, `frontend` and `web-tester`, moved from the `core`
+tier to the `library` tier. They are no longer committed to the project trees (`.claude/`, `.gemini/`, `.github/`,
+`.agents/`) and instead reach each user's home directory through the automatic library step of setup.
+
+- **Restore them:** run `node scripts/setup-<cli>-interactive.ts` for the CLI in use (Claude Code, Gemini CLI,
+  Antigravity CLI or Copilot CLI), or the component-management command to install one component alone.
+- **Copilot CLI gap:** Copilot CLI receives the four skills but not the eleven agents, because its library agent
+  install is declined by design (cli-matrix rows 4 and 10). This is a named parity gap.
+- **Stale project copies:** setup never deletes them. In a fork that follows upstream, `scripts/sync-from-upstream.ts`
+  removes them through its orphan cleanup of upstream-deleted tracked files on `strict` and `regenerable` paths
+  (spec 0064). Outside that flow, delete them by hand.
+
 ## Enabling GitLab release publishing (optional)
 
 A GitLab-hosted fork can publish extension releases the same way the

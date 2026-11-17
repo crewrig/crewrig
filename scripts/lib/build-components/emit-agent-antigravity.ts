@@ -1,23 +1,30 @@
-// emit-agent-antigravity.ts — the Antigravity CLI agent file (spec 0250 R13).
+// emit-agent-antigravity.ts — the Antigravity CLI agent file (spec 0053 delta-01 R11-R13,
+// superseded for `tools` by spec 0291 delta-03 R37-R41).
 //
-// Twins scripts/build-components.sh `build_agents`, Antigravity branch (:987-1076): the
-// directory layout `.agents/agents/<name>/AGENT.md`, modelled on the Claude Code agent.
-// The capability profile is resolved for `antigravity` first (the mapping declares no
-// frontmatter surface, so the directed lines are always empty and the model item reaches
-// the description alone), then the frontmatter is `name`, `description`, `license`,
-// `compatibility`, the three `enable_*` lines, the directed lines.
+// Supersedes the directory layout of spec 0250 R13 and R15 (`.agents/agents/<name>/AGENT.md`
+// with `license`, `compatibility` and the `enable_*` keys): the compiled agent is the flat
+// regular file `.agents/agents/<name>.md`, whose frontmatter is `name`, `description`, `tools`
+// and the `metadata` provenance block, in that order, and nothing else. The capability profile
+// is still resolved for `antigravity` first (the mapping declares no frontmatter surface, so the
+// directed lines are always empty and the model item reaches the description alone).
 //
-// The `enable_*` rule (:1017-1058). Each key is read only when `antigravity` has it
-// (`has`), so an explicit `false` is kept; the text then counts when it is neither empty
-// nor `null`. `enable_write_tools` alone falls back to `true` when it does not count and
-// `claude.allowed-tools` has an element equal to `Bash`.
+// The build never reads `antigravity.enable_*` (a source that still declares one builds
+// silently) and derives nothing from `claude.allowed-tools`, `Bash` included (R13). The `tools`
+// line comes from `metadata.tools` (R37-R39) or, when absent, is the vendor's all-tools line
+// (R40): an omitted key gives a read-only default on `agy`. A declared class with no Antigravity
+// name (`skill`) is dropped with a `tools-drop` record. After the write, the retired
+// `.agents/agents/<name>/` directory is reconciled (retire-agent.ts).
 
 import { resolveAgent } from "../model-resolve.ts";
 import type { ResolveContext } from "../model-resolve.ts";
 import { joinRoot } from "./args.ts";
+import { ANTIGRAVITY_DEFAULT_TOOLS, noToolName, toolsDrop, toolsLine } from "./agent-tools.ts";
+import type { ToolClass } from "./agent-tools.ts";
 import { emitDiagLine } from "./diagnostics.ts";
-import { licenseLines, markdownFile, present } from "./tiers.ts";
+import { reconcileRetiredAgentDir } from "./retire-agent.ts";
+import { markdownFile } from "./tiers.ts";
 import { checkOrWrite } from "./write.ts";
+import { BuildFailure } from "./types.ts";
 import type { Ctx, SourceDoc } from "./types.ts";
 
 /** One agent source, read once, with the fields every CLI's file starts from. */
@@ -26,39 +33,37 @@ export interface AgentJob {
   readonly description: string;
   readonly source: SourceDoc;
   readonly outRoot: string;
+  /** The compiled body every CLI writes: source body, a blank line, the conventions block (R6). */
+  readonly body: string;
+  /** The validated `metadata.tools` classes in vocabulary order; `null` when not declared. */
+  readonly tools: readonly ToolClass[] | null;
 }
 
-/** `has("<key>")` then `yq -r`: the written text of `antigravity.<key>`, empty when absent. */
-function enableValue(source: SourceDoc, key: string): string {
-  const keys = ["antigravity", key];
-  return source.has(keys) ? source.nested(keys) : "";
-}
-
-/** `enable_write_tools`, with the `Bash` fallback; empty when it is not written. */
-function writeTools(source: SourceDoc): string {
-  const declared = enableValue(source, "enable_write_tools");
-  if (present(declared)) return declared;
-  return source.lines(["claude", "allowed-tools"]).includes("Bash") ? "true" : "";
-}
-
-/** Resolve the profile for `antigravity` and write `.agents/agents/<name>/AGENT.md`. */
+/** Resolve the profile for `antigravity` and write `.agents/agents/<name>.md`. */
 export function emitAntigravityAgent(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
   const { name, description, source } = job;
   const resolved = resolveAgent(model, name, source.file, "antigravity");
   for (const line of resolved.diagLines) emitDiagLine(ctx, line);
 
   const withProse = resolved.prose === "" ? description : `${description} ${resolved.prose}`;
-  const frontmatter = [`name: ${name}`, `description: "${withProse}"`, ...licenseLines(source)];
-  const enables: readonly (readonly [string, string])[] = [
-    ["enable_write_tools", writeTools(source)],
-    ["enable_mcp_tools", enableValue(source, "enable_mcp_tools")],
-    ["enable_subagent_tools", enableValue(source, "enable_subagent_tools")],
-  ];
-  for (const [key, value] of enables) {
-    if (present(value)) frontmatter.push(`${key}: ${value}`);
+  // Spec 0053 delta-01 R12: no directed lines exist for antigravity; fail loudly if that changes.
+  if (resolved.fmLines.length > 0) {
+    throw new BuildFailure(
+      `Error: ${source.file}: the antigravity profile produced frontmatter lines; the flat agent carries none`,
+    );
   }
-  frontmatter.push(...resolved.fmLines);
+  const frontmatter = [`name: ${name}`, `description: "${withProse}"`];
+  if (job.tools === null) {
+    frontmatter.push(ANTIGRAVITY_DEFAULT_TOOLS);
+  } else {
+    const { line, omitted } = toolsLine("antigravity", job.tools);
+    if (omitted.length === job.tools.length) throw noToolName(source, "antigravity", job.tools);
+    if (omitted.length > 0)
+      emitDiagLine(ctx, toolsDrop(name, "antigravity", omitted, "no-equivalent-on-cli"));
+    frontmatter.push(line);
+  }
 
-  const target = joinRoot(ctx.platform, job.outRoot, `.agents/agents/${name}/AGENT.md`);
-  checkOrWrite(ctx, target, markdownFile(frontmatter, source.body), source, job.outRoot);
+  const target = joinRoot(ctx.platform, job.outRoot, `.agents/agents/${name}.md`);
+  checkOrWrite(ctx, target, markdownFile(frontmatter, job.body), source, job.outRoot);
+  reconcileRetiredAgentDir(ctx, job.outRoot, name);
 }

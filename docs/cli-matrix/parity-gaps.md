@@ -9,6 +9,31 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   silent routing failure of `github/copilot-cli#4437`. Empirical reproduction: probe run `20260902T153919Z-0aa9` of
   issue #1103, verdict `BUG-PRESENT`, plus the unknown BYOK lineup recorded in the live-verification research report
   (issue #1111 comment 5523492666). Spec 0197 R42 states the condition a later delta must meet to lift this.
+- [GAP-confirmation] Bring-your-own-key guard (row 33) — spec 0291 lifted the `copilot-shared-read` guard on a probe
+  of a standard GitHub-hosted account (Copilot CLI 1.0.109, issue #1851). It does not cover a bring-your-own-key provider,
+  where `github/copilot-cli#4437` was reported (Copilot 1.0.79, Ollama), nor an account on which Claude models are served.
+  The maintainer accepted the residual risk (spec 0291 R4); an adopter on such a provider re-withholds through
+  `model-mappings/claude.org.yml` (`docs/org-model-mapping-override.md`), and the rollback is `guard.state: withheld`
+  with `copilot-reader-fails-on-unserved-model` back to `holds: true`. Lifted by a probe on a bring-your-own-key
+  provider.
+- [GAP-confirmation] Antigravity CLI agent `tools` allowlist (row 4c) — lifted by spec 0291 delta 03 (issue #2049): the
+  build now writes a `tools` line for every Antigravity agent, mapped from `metadata.tools` or, when absent, the vendor's
+  all-tools line. Residual risk: the names are pinned to `agy` 1.5.9 (probed 2026-11-15). A renamed tool fails loudly at
+  agent start, but a name that becomes a silent no-op does not (`grep_search`, `find_by_name`, `list_dir` and
+  `read_url_content` already are), so the table must be re-probed on each Antigravity CLI bump; no automatic check exists.
+  `skill` has no Antigravity name and is dropped with a `tools-drop … no-equivalent-on-cli` record.
+- [GAP-confirmation] Copilot CLI agent `tools` names for `skill` and `message` (row 4c) — no Copilot name exists in
+  <https://docs.github.com/en/copilot/reference/custom-agents-configuration> (primary aliases `execute`, `read`,
+  `edit`, `search`, `agent`, `web`, `todo`) nor in <https://docs.github.com/en/copilot/concepts/agents/about-agent-skills>
+  (read 2026-11-14), which lists skill discovery paths and no allowlist name; no user-level, hook-level or
+  alternative-path mechanism was found. The build omits both with one `tools-drop … no-equivalent-on-cli` per agent and
+  fails when nothing else remains (spec 0291 delta 01 R29). Lifted by a documented name or a probe on a named ticket;
+  a name is not guessed.
+- [GAP-confirmation] Gemini CLI agent `tools` name for `message` (row 4c) — <https://geminicli.com/docs/reference/tools/>
+  lists no tool that sends a message to a parent agent (`complete_task` returns the result and ends the mission, so it is
+  not mapped) and <https://geminicli.com/docs/core/subagents/> (read 2026-11-14) states only that a subagent reports back
+  on completion. Omitted with one `tools-drop … no-equivalent-on-cli` per agent (spec 0291 delta 01 R29). Lifted by a
+  documented name or a probe on a named ticket.
 - [GAP] Antigravity CLI per-agent model frontmatter surface (row 33) — no per-agent `model:` field exists on this
   target; `model-mappings/antigravity.yml` states its declination on the guidance surface instead. Empirical
   reproduction: `agy --help`, `agy models`, `~/.gemini/antigravity-cli/settings.json`, and ten on-disk documentation
@@ -99,7 +124,7 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   library and the `mempalace` CLI (`wake-up`) but is **absent from the agent-facing MCP tool surface** on the installed **3.6.0**
   (pinned `>=3.6.0,<3.7`; re-verified 2026-07-20 against the live 36-tool surface, issue #566). Unlike the gaps above,
   this is **not** a cross-CLI asymmetry: all four CLIs share the one MCP surface (row 7d), so the gap is uniform across
-  them. The **MCP-only access** guard in `artifacts/core/rules/60-tools.md` forbids reaching it ad-hoc, and the
+  them. The **MCP-only access** guard in `artifacts/core/rules/60-memory.md` forbids reaching it ad-hoc, and the
   deterministic session-start sweep (that file's *Wake-up budget* stub; full figures in
   `docs/mempalace-wakeup-budget.md`) is its bounded substitute. Candidate follow-up: an upstream request to expose the
   wake-up through MCP (consent-gated, out of scope for spec 0069).
@@ -127,7 +152,7 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   `~/.gemini/agents/`, listed twice while its unique-named siblings at the same two roots were each listed once (`agy` 1.1.11,
   2026-08-11, two runs; `docs/runbooks/antigravity-discovery-probe.md`). The live instance is `harness-curator`, which
   after spec 0123 exists at `~/.gemini/agents/harness-curator.md` from the Gemini setup and
-  `~/.gemini/config/agents/harness-curator/AGENT.md` from the Antigravity setup. Both are the same crewrig component
+  `~/.gemini/config/agents/harness-curator.md` from the Antigravity setup (flat since spec 0053 delta-01). Both are the same crewrig component
   rendered for two CLIs, so either resolution yields the same agent and the only effect is a doubled line in the
   listing. Recorded rather than worked around: renaming a shipped component to dodge a vendor listing artifact would
   cost more than the artifact does.
@@ -299,7 +324,7 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   Antigravity CLI still reads its acknowledgement. A command wired directly to the `.ts` is not a shim: with Node.js
   downgraded after setup it fails with Node.js's own non-zero status and no `{}`, until setup is re-run on Node.js 24 or
   later (spec 0243 R30). Setup checks the floor only when it runs, and below it writes no direct form. Evidence: the
-  capability `mempalace-transcript-node-24-0` in `ci/ci-capabilities.yml`. Recovery: install Node.js 24 or later and
+  capability `mempalace-transcript-node-24-0` in `ci/capabilities/`. Recovery: install Node.js 24 or later and
   re-run setup.
 
 <!-- Validation backend gaps (spec 0080) -->
@@ -419,3 +444,33 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   cover it; it is attributed through the worktree/branch channel from the capturing process's cwd. Evidence and fixtures
   in row 44. Not an asymmetry of the keep-one-call kind: it fails only when the subagent runs outside a ticket worktree
   or branch, which the Pre-Edit Guard forbids for edits.
+
+- **[GAP, intentional] Antigravity compiled agent shape (rows 4, 28, 30, 38, spec 0053 delta-01, issue #1847).** All four
+  CLIs now compile an agent as a flat `<name>.md`. The remaining Antigravity asymmetries are intentional: the
+  `tools` line comes from `metadata.tools` or the vendor's all-tools default (spec 0291 delta 03; it was first not emitted
+  here, and no `claude.allowed-tools` name such as `Bash` is ever translated), no `model` field.
+  The change is documentation-driven.
+  Evidence: a live discovery probe of `agy` 1.5.5 on a case-sensitive file system discovered `AGENT.md`, `agent.md`,
+  `Agent.md` and the flat form, and an agent carrying unknown `enable_*` keys; runtime semantics were **not** verified
+  because no signed-in session was available. Left open then, each tracked by a follow-up issue opened separately from
+  this change: (1) the runtime effect of the removed `enable_write_tools`, `enable_mcp_tools` and
+  `enable_subagent_tools` keys (now verified, see below); (2) the vendor defaults of `tools`, `subagent` and
+  `mainAgent` (now verified, see below); (3) the Antigravity plugin layout for agents (now verified, see below).
+  **`enable_*` keys verified live** (`agy` 1.5.9, signed in, issue #1866): as agent frontmatter they have no effect.
+  `enable_write_tools: true` without `tools` still yields the 9-tool read-only default set, and `enable_write_tools: false` next to a `tools`
+  list removes nothing. The keys survive only as the `EnableWriteTools`, `EnableMCPTools` and `EnableSubagentTools`
+  parameters of the model-facing `define_subagent` tool, which defines a new subagent at run time. `invoke_subagent`
+  has no such parameter, so a parent cannot narrow the tools of a file-defined agent: invoked as a subagent, an agent
+  with an explicit `tools` list wrote a file and ran a command. `define_subagent` also refuses a name a file-defined
+  agent already holds (`agent "<name>" already exists`), so it cannot shadow one. The spec 0053 delta-01 R27 risk is
+  moot. **Defaults verified live** (`agy` 1.5.9, signed in, issue #1867, row 4c): an omitted `subagent` or `mainAgent`
+  leaves the agent usable as a subagent and
+  through `agy --agent`, and `false` removes it from that route. An omitted `tools` is **not** the documented `[]`: it
+  gives a 9-tool read-only default set with no `run_command` and no file edit or write tool, while an explicit
+  `tools: []` keeps only four always-present tools (MCP access and `manage_task`). Before spec 0291 delta 03 every
+  compiled Antigravity agent was therefore read-only, the committed `developer` agent included; that is closed: the
+  compiled agent now carries a `tools` line (row 4c).
+  **Plugin agent layout verified live** (`agy` 1.5.9, issue #1868): `agy plugin validate`, `install` and `agents`
+  discover a flat `agents/<name>.md`, `AGENT.md` and `agent.md`; a nested install carried sibling files; the vendor
+  plugin-migration guide in the binary prescribes `agents/<name>.md`; the plugin now emits `agents/<name>.md` (spec
+  0254 delta-02). Item (3) is closed.

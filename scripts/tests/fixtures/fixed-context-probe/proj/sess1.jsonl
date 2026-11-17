@@ -1,0 +1,4 @@
+{"type":"attachment","attachment":{"type":"skill_listing","content":"big"}}
+{"type":"user","message":{"role":"user","content":"hi"}}
+{"type":"assistant","message":{"usage":{"input_tokens":3,"cache_read_input_tokens":1000,"cache_creation_input_tokens":72000,"output_tokens":9}}}
+{"type":"assistant","message":{"usage":{"input_tokens":1,"cache_read_input_tokens":73000,"cache_creation_input_tokens":50,"output_tokens":9}}}

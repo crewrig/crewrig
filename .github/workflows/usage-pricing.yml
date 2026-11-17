@@ -30,31 +30,6 @@ on:
       - "package-lock.json"
   push:
     branches: [main, "release/**"]
-    paths:
-      - "scripts/lib/usage-price/**"
-      - "scripts/usage-price.ts"
-      - "scripts/tests/usage-pricing-compute.test.ts"
-      - "scripts/tests/usage-pricing-fx.test.ts"
-      - "scripts/tests/usage-pricing-rollup.test.ts"
-      - "scripts/tests/usage-pricing-rollup-period.test.ts"
-      - "scripts/tests/usage-pricing-prune.test.ts"
-      - "scripts/tests/usage-pricing-static.test.ts"
-      - "scripts/tests/usage-pricing-conversion.test.ts"
-      - "scripts/tests/usage-pricing-conversion-b.test.ts"
-      - "scripts/tests/lib/usage-pricing-rig.ts"
-      - "scripts/tests/lib/usage-pricing-driver.ts"
-      - "scripts/tests/lib/usage-pricing-case-kit.ts"
-      - "scripts/tests/lib/usage-pricing-conversion-world.ts"
-      - "scripts/tests/fixtures/usage-pricing/**"
-      - "model-prices.org.json"
-      - "scripts/lib/usage-store/**"
-      - "scripts/usage-attribute.ts"
-      - "scripts/usage-prune.ts"
-      - "scripts/usage-query.ts"
-      - "scripts/lib/usage-dashboard/**"
-      - "scripts/usage-dashboard.ts"
-      - "package.json"
-      - "package-lock.json"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

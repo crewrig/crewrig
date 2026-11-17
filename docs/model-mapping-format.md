@@ -5,7 +5,7 @@
 This document is the **normative description** of the shape of
 `model-mappings/<target>.yml` — the per-CLI model mapping artifact mandated by
 [spec 0197](../specs/0197-model-mapping.md). It follows the precedent of
-`ci/ci-capabilities.yml` / [`docs/ci-reference-format.md`](ci-reference-format.md)
+`ci/capabilities/` / [`docs/ci-reference-format.md`](ci-reference-format.md)
 (spec 0197 Decision 1): a committed, engine-neutral YAML reference whose
 normative shape lives in a `docs/` format document, checked by a hermetic
 script rather than by convention.
@@ -224,6 +224,46 @@ SHALL be present and non-empty (R30, R33, A14a) and its `holds` declaration's
 ground SHALL be a `citation`, never an `assumption` — R33's "not on the
 strength of an indeterminate or absent observation" (A14b, *coherence*).
 
+**The recorded guard (spec 0291).** `model-mappings/claude.yml` records the
+guard `directed`, with both terms `holds: false`. The two terms are
+`defect-not-established-fixed`, narrowed to a standard GitHub-hosted account
+and citing the probe of 2026-11-10 on GitHub Copilot CLI 1.0.109 recorded in
+issue 1851, and `copilot-reader-fails-on-unserved-model`, which states the
+hazard itself: that a Copilot CLI reader of `.claude/agents/` fails or
+silently misroutes a subagent whose `model:` it cannot serve. Term 1 concerns
+the specific upstream defect (github/copilot-cli#4437); term 2 concerns the
+observable outcome on a Copilot reader whatever the cause. The probe saw a
+warning and a fallback to the session model, so term 2 does not hold, and an
+adopter on a bring-your-own-key provider flips term 2, not term 1
+([`docs/org-model-mapping-override.md`](org-model-mapping-override.md)). The
+probe does not cover a bring-your-own-key provider nor an account on which
+Claude models are served: that is an accepted, unverified residual risk
+(spec 0291 R4).
+
+**One carrier at a time (spec 0291 R2).** The `model` item is directed onto
+the guidance surface only when it is not directed onto the frontmatter
+surface: under a `withheld` guard, or when the resolved value is outside the
+frontmatter key's declared domain. Under a `directed` guard with a readable
+value the `model:` key alone carries it and the guidance sentence
+`Run this agent on the <model> model.` is not written. The `reasoning` item
+follows the same rule (spec 0291 delta-02 R34): the guidance sentence carries
+it unless the guard is not `withheld`, the frontmatter surface carries it and
+its value is inside the key's `effort` domain. Under a `directed` guard the
+`effort:` key alone carries a reasoning rung, and the description no longer
+ends with `Give its work <rung> reasoning effort.`. Under a `withheld` guard
+the `effort:` line and the sentence are both written. This supersedes, as a
+resolver rule, the word "additionally" of spec 0197 R31.
+
+**Superseded text.** Spec 0291 supersedes, without editing those specs:
+spec 0143 delta-01 R8 (its bring-your-own-key clause, narrowed to a standard
+account); spec 0197 R30 (the second term); the word "additionally" in spec
+0197 R31; spec 0197 R37 (recorded `withheld`) and its scenario "the
+shared-read guard is directed"; spec 0197 delta-02 ("stays withheld"); and
+the statements in spec 0200 that the guard stays `withheld`. Spec 0197 R31's
+withheld clause, R32 and R35 stay in force: a `withheld` guard still writes
+no `model:` key, keeps both sentences, and emits one `guard-withheld` note per
+agent.
+
 ### `zero-offerings` and `observed-not-declared`
 
 ```yaml
@@ -375,14 +415,14 @@ broken:
    can run; (ii) the token is a `-`-delimited segment of `native-value`; (iii)
    where that token is itself a member of the characteristic's closed spec
    0195 domain, it SHALL equal `provides.<characteristic>`. Clause (iii) has
-   real teeth on a `reasoning` token — `gemini-3.8-flash-low` encoding
+   real teeth on a `reasoning` token — the Antigravity mapping's `gemini-4-hydrogen-low` encoding
    `reasoning: low` must also *provide* `low`, and does — but it is
    **deliberately vacuous** on a family token that is not itself a domain
    member: `intelligence: flash` and `intelligence: haiku` name a vendor
    family or alias, not a rung, so clause (iii) never fires on them. A family
-   token MAY be shared by two offerings at two different rungs — the Gemini
-   mapping's `gemini-3.1-flash-lite` (`low`) and `gemini-3.5-flash`
-   (`medium`) both encode `intelligence: flash` — and this is the intended
+   token MAY be shared by offerings at different rungs — a vendor's `flash`
+   family offered at two rungs would encode `intelligence: flash` on both —
+   and this is the intended
    reading, not a gap clause (iii) failed to catch: the rung distinction
    lives entirely in `provides.intelligence`, and the encoded family token
    exists to satisfy clause (i)/(ii) alone. A reader auditing A10's coverage
@@ -410,7 +450,7 @@ reasoning item to exist (A17); an out-of-band surface may not declare `key`,
 `domain`, `projection`, or `template` (A18); a guidance template's
 placeholder set must equal its `carries` set (A20a) and respect the
 one-per-sentence rule (A20b); a guard's `state` must agree with its terms
-(A23); a `grounds` entry's `declares:` target must resolve and its aspect
+(A23, whichever state the committed file records: spec 0291 R4's rollback is one step); a `grounds` entry's `declares:` target must resolve and its aspect
 must be in the closed vocabulary (A25); every offering must declare
 `provides.intelligence` (A26); every `item:` value must be in the closed
 vocabulary (A27).

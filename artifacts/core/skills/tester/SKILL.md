@@ -1,16 +1,14 @@
 ---
 name: tester
-description: "Test authoring and test-strategy skill. Activate when writing
-  new tests, planning a test strategy, enumerating edge cases for a feature,
-  or reviewing whether a change has adequate coverage. Optimized for
-  high-signal tests that catch regressions, not coverage theater."
+description: "Writes high-signal tests and plans test strategy: a regression test for a bug fix verified failing-then-passing, the priority edge cases of a behaviour, integration tests against real dependencies, and the check that a tool is really unavailable before a test is skipped. Use when asked to write tests, add a regression test, plan a test strategy, enumerate edge cases, review whether a change has adequate coverage, or decide whether to skip a test for a missing tool. Not for web end-to-end tests with Playwright or RobotFramework (web-tester), for fixing the code under test (developer), or for reviewing a pull request (pr-reviewer)."
 type: skill
 license: Apache-2.0
+compatibility: "Requires Node.js 24 (the script runs as node scripts/probe-tool.ts) and the project's own test runner."
 metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.2.4"
+    version: "1.3.0"
 claude:
   allowed-tools:
     - Read
@@ -107,38 +105,34 @@ A test that never failed before the fix proves nothing.
 
 ### 6. Tool availability is empirical, not assumed
 
-Before declaring a test skipped because a tool, binary, subcommand, or
-service is "unavailable", you MUST run a concrete probe against it and
-cite the failure. Acceptable probes, in order of preference:
+A test skipped because a tool, binary, subcommand or service is
+"unavailable" is only as good as the check behind it: CLIs evolve faster
+than anyone's memory of them, so a skip rationale resting on a guess gets
+the test attempted again later at the user's expense.
 
-1. The tool's own discovery flag: `<tool> --help`, `<tool> --version`,
-   `<tool> <subcommand> --help`.
-2. A minimal real invocation with throwaway input (e.g.
-   `<tool> -p "hello"`, a no-op call with `--dry-run`).
-3. A `which <tool>` / `command -v <tool>` check, but only as a
-   precursor — a binary on `$PATH` may still expose the subcommand you
-   need.
+Before declaring the skip, run the probe:
 
-A tool is unavailable only when the probe produces one of:
+```sh
+node scripts/probe-tool.ts <tool> [<subcommand>] [--timeout <seconds>] [--json]
+```
 
-- A non-zero exit code, with stderr captured in the report.
-- An explicit error message ("command not found", "unknown subcommand",
-  "permission denied", "connection refused").
-- A timeout exceeding a stated bound.
+It runs the tool's help flag, then its version flag, directly and not
+through a shell, and looks the tool up on `PATH` as a precursor only
+(a binary on `PATH` can still lack the subcommand you need).
 
-Forbidden grounds for declaring unavailability:
+| Exit | Meaning | What to do |
+|---|---|---|
+| `0` | A probe exited `0`: the tool answers. | Write the test. Do not skip. |
+| `1` | No probe succeeded. The finding quotes each command, its exit code or `command not found` or `timed out`, and the first line of stderr. | Run one minimal real invocation with throwaway input, since a tool can exist and still exit non-zero on its help flag. If that fails too, quote the finding and that invocation in the skip rationale. |
+| `2` | Usage error. | Fix the command line. |
+| `3` | `PATH` is not set. | Set it, or give the tool as a path. |
 
-- "I don't recognize this subcommand." Recognition is not a probe —
-  CLIs evolve faster than training data.
-- "The documentation I've seen doesn't mention it." Documentation lags
-  releases.
-- "The previous attempt in this session failed." Re-probe; the
-  environment may have changed (PATH, login shell, credentials).
+These are not grounds for a skip: "I do not recognise this subcommand",
+"the documentation I have seen does not mention it", or "the previous
+attempt in this session failed". None is a probe, and the environment
+may have changed (`PATH`, login shell, credentials) since.
 
-When a probe fails, quote the exact command run and the exact output
-(exit code + first line of stderr) in the skip rationale. A skip
-without a quoted failure is a protocol violation and forces the test
-to be re-attempted.
+A skip without a quoted failure forces the test to be attempted again.
 
 ## Output expectations
 
@@ -148,24 +142,16 @@ to be re-attempted.
   being asserted — only when the test name alone is not self-evident.
 - Test data inline when small; in fixtures when reused or large.
 
-## Finding class taxonomy
+## Findings from a review loop
 
-When re-spawned as part of a `tech`-class iteration of the
-retroactive review loop (per
-[`docs/retroactive-loop.md`](../../../../docs/retroactive-loop.md)
-→ *Routing matrix*), the skill consumes reviewer findings each
-tagged with a `class:` field. The skill SHALL act on findings whose
-`class:` is `tech` and that touch the test surface, and SHALL
-surface a violation back to the orchestrator if any incoming
-finding it is asked to address omits the tag — a missing tag is a
-reviewer protocol error. Findings tagged `arch` or `spec` are
-out-of-scope for this skill and indicate misrouting; flag and
-return.
+When you are re-spawned to act on the findings of a review, act only on
+the findings tagged `class: tech` that touch the test surface. Return a
+finding with no tag to the orchestrator as a protocol error, and return
+an `arch` or `spec` finding as misrouted, without acting on either. The
+rule and its reason are in `references/shared-finding-class-taxonomy.md`.
 
 ## Friction reporting
 
-When a recognition signal fires (see `config/TOOLS.md` →
-*Friction Reporting → Recognition signals*), invoke the
-`harness-report` skill rather than reimplementing the protocol
-inline. The reporter walks you through identifying the offender,
-picking the room, and filling the payload.
+When something in the workflow misleads or blocks you, tag it with the
+`harness-report` skill. The rule is in
+`references/shared-friction-reporting.md`.

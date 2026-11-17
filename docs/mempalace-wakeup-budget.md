@@ -2,7 +2,7 @@
 
 <!-- crewrig-doc: published=false -->
 
-<!-- Originally extracted from artifacts/core/rules/60-tools.md. Cross-references to other sections refer to that file. -->
+<!-- Originally extracted from artifacts/core/rules/60-memory.md (formerly 60-tools.md). Cross-references to other sections refer to that file. -->
 
 **Wake-up budget (bounded).** The session-start sweep above is run by the
 orchestrator only and has a bounded, documented cost — every core step is

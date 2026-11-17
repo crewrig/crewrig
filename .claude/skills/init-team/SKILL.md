@@ -1,11 +1,11 @@
 ---
 name: init-team
-description: "Create a new team file under config/teams/ through a guided interview. Activate when an adopter wants a per-team context and configuration profile. Collects mission, technology stack and development practices, writes config/teams/<TEAM>.md, never silently overwrites."
+description: "Creates a new team file under config/teams/ through a guided interview and a bundled scaffold script that derives the filename and refuses to overwrite. Use when an adopter wants a per-team context and configuration profile, adds a team to config/teams, or types /init-team. Trigger terms: new team file, team profile, config/teams, team context, init team. Not for expertise or role profiles (init-expertise) or personal profiles."
 license: Apache-2.0
+compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts) and a host CLI with a structured-question tool (AskUserQuestion on Claude Code). Writes one Markdown file under config/."
 allowed-tools:
   - Read
   - Write
-  - Edit
   - Bash
   - AskUserQuestion
 user-invocable: true
@@ -13,90 +13,57 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.0.3"
+    version: "2.0.0"
 ---
 
 
 # Init Team
 
-Guide an adopter through creating a new team file under `config/teams/`. The
-output is exactly one Markdown file conforming to the established catalog
-shape (the `config/teams/FORGE.md` shape): an H1 team title, then `## Mission`,
-`## Technology Stack`, `## Development Practices`, and optional sections such
-as `## Rituals`, `## Collaboration Norms`, `## Documentation`,
-`## Issue Tracking`, and `## Key Contacts`.
+Creates one file, `config/teams/<NAME>.md`, in the catalog shape of `config/teams/FORGE.md`. You
+run the interview, which is judgement; the scripts derive the filename, refuse to clobber, render
+and check the file. The file is the organization's own, so upstream sync never touches it.
 
-## When to activate
+## Interview rules
 
-- The adopter types `/init-team` (or the host CLI equivalent).
-- The adopter asks to add a per-team context profile not already in
-  `config/teams/`.
+- Closed questions with a bounded set of choices go through `AskUserQuestion` (optional-section
+  choice, collision decision, confirmation); a plain-text menu gets skipped or misread.
+- Open content (mission, stack items, practices, contacts) is free-form chat.
+- Talk in the user's language. The file is written in English, so translate the answers faithfully
+  and add nothing the user did not say: an invented stack or practice would be read as the team's
+  own.
+- Keep `header` labels under 12 characters.
 
-A new file created through this flow has no upstream version, so it is the
-organization's own from the start (it never enters the adopt-on-edit sync).
+## Steps
 
-## Interaction rules
+1. **Name.** Ask for the team name (for example "Atlas"). Run the resolve command; confirm
+   `config/teams/<data.file>` with the user.
+2. **Collision.** If `data.exists` is true, ask with `AskUserQuestion` (`header: "Exists"`):
+   "Pick a different name" (back to step 1), "Overwrite the existing file", "Cancel" (stop, write
+   nothing). Overwriting is a decision the user takes, never a default.
+3. **Core content**, in chat: a short tagline; the **mission** (one paragraph: what the team builds
+   or operates and its north star); the **technology stack** (labeled bullets such as
+   `**Language:** Java 21`); 3 to 5 concrete **development practices**.
+4. **Optional sections.** `AskUserQuestion` (`header: "Sections"`, `multiSelect: true`): Rituals,
+   Collaboration Norms, Documentation, Issue Tracking, Key Contacts. Collect each selected one in
+   chat. Rituals is a paragraph, the others are bullet lists.
+5. **Draft.** Write the answers JSON to a scratch file, run the dry-run command and show
+   `data.content`. Ask with `AskUserQuestion` (`header: "Finalize"`): "Save as is", "Edit a
+   section" (back to the relevant step), "Discard draft".
+6. **Save and check.** Run the save command, then the linter. End with one line: the file is the
+   organization's own and upstream sync will not touch it.
 
-- **Always use `AskUserQuestion`** for closed questions with a bounded set of
-  choices (optional-section selection, collision decisions, confirmations).
-  Never simulate a multiple-choice menu in plain text.
-- Use free-form chat ONLY for open-ended content (mission, stack items,
-  practice bullets, contacts).
-- Conduct the interview in the user's preferred conversation language; write
-  the file itself in English (project content is English-only).
-- Keep `header` labels short (max 12 characters).
+## Scripts
 
-## Phase 0 — Team name and filename
+Run `node scripts/<name>.ts` from the skill directory; paths you pass stay relative to the
+repository root. Both scripts take `--json` and exit `0` (ok), `1` (finding), `2` (usage error) or
+`3` (precondition failed: unreadable input, `--root` not a directory).
 
-1. Ask in chat for the team name (e.g. "Atlas").
-2. Derive the filename: uppercase, words joined by hyphens, `.md` extension
-   (e.g. `ATLAS.md`). Confirm the derived `config/teams/<NAME>.md` path with
-   the user.
+| When | Command | Exit `1` means |
+|---|---|---|
+| After the name is known, and again after any rename | `node scripts/scaffold-config-file.ts --kind team --name "<team name>" --json` | Never used here. Read `data.file` and `data.exists`. |
+| To show the draft, then to save it | `node scripts/scaffold-config-file.ts --kind team --answers <answers.json> --dry-run` (draft in `data.content`), then the same without `--dry-run` | `target-exists`: the file exists and was not written. Any other rule names an answers field to fix. |
+| After saving | `node scripts/lint-config-file.ts --kind team <path>` | A section is missing, out of order, empty or still a placeholder. Fix the answers and write again with `--force`, which is allowed here because this run created the file. |
 
-## Phase 1 — Anti-clobber guard (R8)
-
-1. Check whether `config/teams/<NAME>.md` already exists
-   (`test -e config/teams/<NAME>.md`).
-2. **If it exists, do NOT overwrite it silently.** Surface the collision and
-   require an explicit decision via `AskUserQuestion` (`header: "Exists"`,
-   options: "Pick a different name", "Overwrite the existing file", "Cancel").
-   - "Pick a different name" → return to Phase 0.
-   - "Overwrite" → proceed only after this explicit confirmation.
-   - "Cancel" → stop without writing.
-
-## Phase 2 — Core content
-
-Collect, in free-form chat:
-
-1. **Mission** — one short paragraph: what the team builds or operates and its
-   north star.
-2. **Technology Stack** — the languages, persistence, messaging, build, and
-   testing tools (as labeled bullets).
-3. **Development Practices** — 3–5 concrete practices the team follows.
-
-## Phase 3 — Optional sections
-
-Use `AskUserQuestion` (`header: "Sections"`, `multiSelect: true`) to offer the
-optional sections: "Rituals", "Collaboration Norms", "Documentation",
-"Issue Tracking", "Key Contacts". Collect content in chat for each selected
-section.
-
-## Phase 4 — Generation
-
-1. Assemble the answers into `config/teams/<NAME>.md` following the
-   `config/teams/FORGE.md` structure (H1 title with a short tagline, then the
-   collected sections in order).
-2. Present the draft for review in chat.
-3. Use `AskUserQuestion` (`header: "Finalize"`, options "Save as is",
-   "Edit a section", "Discard draft") to confirm before writing.
-4. Write the file only after explicit confirmation. End with a short pointer:
-   the file is the organization's own and will not be touched by upstream sync.
-
----
-
-**Constraints:**
-
-- NEVER overwrite an existing `config/teams/*.md` without an explicit user
-  decision (R8).
-- Always ask the user — never invent a mission, stack, or practices.
-- The written file is English-only project content.
+Add `--force` to the save command only after the user has chosen to overwrite. Add `--root <dir>`
+when the repository root is not the current directory. The answers file is JSON; the field list is
+in `node scripts/scaffold-config-file.ts --help`.

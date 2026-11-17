@@ -7,6 +7,17 @@ compromise — a workflow with `contents: read` and nothing else cannot
 push code, cannot publish a package, cannot open a PR, cannot tag a
 release, no matter what an action it calls tries to do.
 
+## Contents
+
+- The `GITHUB_TOKEN`
+- Default policy
+- The `permissions:` key
+- Scope inventory
+- Least-privilege recipes
+- Workflow- vs. job-level `permissions:`
+- Org-level restrictions
+- Auditing
+
 ## The `GITHUB_TOKEN`
 
 A short-lived (max 24 h, but the job's lifetime in practice) installation
@@ -39,11 +50,15 @@ It **cannot**:
 The org / repo setting `Workflow permissions` controls the default
 scope when `permissions:` is omitted. Two values:
 
-- **`read-write` (legacy default).** All scopes set to `write`. The
+- **`read-write` (legacy default).** Write access on most scopes. The
   reason a 2021-vintage workflow can `git push` without any explicit
   permission grant.
-- **`read-only` (recommended default).** `contents: read` and
-  `metadata: read`. All other scopes are `none`.
+- **`read-only` (recommended default).** Read access on a few scopes
+  (`contents`, `metadata` and `packages` among them) and nothing
+  more. GitHub's token documentation holds the exact per-scope table;
+  check it before relying on a scope being absent. Once a workflow or
+  job names any scope under `permissions:`, every scope it does not
+  name becomes `none`.
 
 Set the org to `read-only` and grant additional scopes in each
 workflow that needs them. Audit which repos still default to
@@ -105,12 +120,15 @@ Two scopes deserve special mention:
   always generated on demand.
 - **`contents: write`** — broad. Allows pushing to any branch,
   creating tags, creating releases, modifying the wiki. If the only
-  thing you actually need is "create a release", consider using a
-  dedicated PAT or App token with a tighter scope instead.
+  thing you actually need is "create a release", grant `contents: write`
+  on that one job only: a job-scoped `GITHUB_TOKEN` expires with the job,
+  where a PAT or App token with the same reach is long-lived.
 
 ## Least-privilege recipes
 
-The minimum `permissions:` for each common workflow shape.
+The minimum `permissions:` for each common workflow shape. Keep the
+workflow-level block at `contents: read` and put any `write` scope below on
+the job that needs it (`jobs.<id>.permissions`), so no other job holds it.
 
 ### Read-only CI
 
@@ -147,7 +165,11 @@ permissions:
 
 ```yaml
 permissions:
-  contents: write
+  contents: read
+jobs:
+  release:
+    permissions:
+      contents: write
 ```
 
 `softprops/action-gh-release` and friends need `contents: write` to
@@ -261,6 +283,7 @@ Mechanical audit steps:
   policy on the cloud side is scoped to the specific
   `repo:<owner>/<repo>:environment:<env>` subject.
 
-The `scripts/actionlint` validator (with the `--shellcheck` flag)
-catches the obvious cases. A hand-written check that fails the build
-on `write-all` is worth adding to the same pre-merge gate.
+The `actionlint` command validates the syntax of `permissions:` and the
+scope names, but it does not flag `write-all` or a missing block. The
+`check-permissions.ts` script of this skill does, and is worth adding to
+the same pre-merge gate.

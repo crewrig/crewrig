@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { after } from "node:test";
 
-import { REPO } from "../../lib/build-fixture-tree.ts";
+import { REPO, seedConventionsFragment } from "../../lib/build-fixture-tree.ts";
 import type { FixtureTree, RunResult } from "../../lib/build-fixture-tree.ts";
 
 /** A YAML double-quoted scalar for `text`: C0 and C1 controls, DEL, `\` and `"` escaped (YAML refuses them raw). */
@@ -114,6 +114,7 @@ export function createSandbox(tree: FixtureTree): Sandbox {
     fs.writeFileSync(file, content);
   };
   write("crewrig.config.toml", 'canonical_repo = "https://example.test/o/r"\n');
+  seedConventionsFragment(repo);
   const outside = (): string[] => {
     const all: string[] = [];
     walk(container, "", all, false);
