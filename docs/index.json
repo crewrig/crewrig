@@ -376,6 +376,11 @@
           "title": "ADR 0026 — Allow a standing merge authorisation given in advance",
           "path": "docs/adr/0026-allow-a-standing-merge-authorisation-given-in-advance.md",
           "nav_order": 260
+        },
+        {
+          "title": "ADR 0027 — Isolate per-client configuration spheres",
+          "path": "docs/adr/0027-isolate-per-client-configuration-spheres.md",
+          "nav_order": 270
         }
       ]
     }
