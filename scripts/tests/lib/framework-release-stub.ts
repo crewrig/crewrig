@@ -34,7 +34,11 @@ export class Stub {
       const chunks: Buffer[] = [];
       req.on("data", (c: Buffer) => chunks.push(c));
       req.on("end", () => {
-        const entry = { method: req.method ?? "", path: req.url ?? "", body: Buffer.concat(chunks) };
+        const entry = {
+          method: req.method ?? "",
+          path: req.url ?? "",
+          body: Buffer.concat(chunks),
+        };
         this.requests.push(entry);
         const [status, payload] = this.answer(entry);
         res.writeHead(status, { "content-type": "application/json" });
@@ -51,7 +55,10 @@ export class Stub {
   }
 
   private asset(digest: string | null | undefined): Record<string, unknown> {
-    return { name: "a.tgz", ...(digest === undefined || digest === null || digest === "" ? {} : { digest }) };
+    return {
+      name: "a.tgz",
+      ...(digest === undefined || digest === null || digest === "" ? {} : { digest }),
+    };
   }
 
   private answer(req: Req): [number, unknown] {
@@ -60,8 +67,10 @@ export class Stub {
       return [200, req.path.includes("page=1") ? (this.opts.releases ?? []) : []];
     }
     if (req.method === "DELETE") return [204, undefined];
-    if (req.method === "POST" && p.endsWith("/releases")) return [201, { id: 900, tag_name: "t", draft: true }];
-    if (req.method === "POST" && p.endsWith("/assets")) return [201, this.asset(this.opts.uploadDigest)];
+    if (req.method === "POST" && p.endsWith("/releases"))
+      return [201, { id: 900, tag_name: "t", draft: true }];
+    if (req.method === "POST" && p.endsWith("/assets"))
+      return [201, this.asset(this.opts.uploadDigest)];
     if (req.method === "GET" && /\/releases\/\d+$/.test(p)) {
       return [200, { id: 900, assets: [this.asset(this.opts.readbackDigest)] }];
     }

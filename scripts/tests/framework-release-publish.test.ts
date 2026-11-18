@@ -34,14 +34,38 @@ async function run(opts: StubOptions, kind = "prerelease", token = "secret-token
   const err: string[] = [];
   const out: string[] = [];
   const code = await main(
-    ["--kind", kind, "--tag", TAG, "--commit", "c0ffee", "--asset", asset, "--notes", path.join(dir, "notes.md"),
-      "--repository", "o/r", "--api-url", stub.url, "--uploads-url", stub.url],
+    [
+      "--kind",
+      kind,
+      "--tag",
+      TAG,
+      "--commit",
+      "c0ffee",
+      "--asset",
+      asset,
+      "--notes",
+      path.join(dir, "notes.md"),
+      "--repository",
+      "o/r",
+      "--api-url",
+      stub.url,
+      "--uploads-url",
+      stub.url,
+    ],
     { out: (l) => out.push(l), err: (l) => err.push(l) },
     { GH_TOKEN: token },
-    { sleep: () => Promise.resolve(), digestAttempts: 3, digestDelayMs: 0, log: (l) => out.push(l) },
+    {
+      sleep: () => Promise.resolve(),
+      digestAttempts: 3,
+      digestDelayMs: 0,
+      log: (l) => out.push(l),
+    },
   );
   return { code, err, out, calls: stub.calls(), requests: stub.requests };
 }
+
+const body = (req: { body: Buffer } | undefined): Record<string, unknown> =>
+  JSON.parse(req?.body.toString() ?? "{}") as Record<string, unknown>;
 
 const PUBLISH = "PATCH /repos/o/r/releases/900";
 
@@ -55,12 +79,18 @@ describe("framework release publisher", () => {
       "POST /repos/o/r/releases/900/assets",
       PUBLISH,
     ]);
-    const create = JSON.parse(res.requests[1]?.body.toString() ?? "{}");
+    const create = body(res.requests[1]);
     assert.deepEqual(
-      [create.draft, create.prerelease, create.make_latest, create.target_commitish, create.tag_name],
+      [
+        create.draft,
+        create.prerelease,
+        create.make_latest,
+        create.target_commitish,
+        create.tag_name,
+      ],
       [true, true, "false", "c0ffee", TAG],
     );
-    const patch = JSON.parse(res.requests[3]?.body.toString() ?? "{}");
+    const patch = body(res.requests[3]);
     assert.deepEqual(patch, { draft: false, prerelease: true, make_latest: "false" });
     assert.equal(res.requests[2]?.body.toString(), "archive bytes");
   });
@@ -75,7 +105,7 @@ describe("framework release publisher", () => {
   it("marks a stable release as not a prerelease and still not latest", async () => {
     const res = await run({ uploadDigest: `sha256:${digest}` }, "stable");
     assert.equal(res.code, 0);
-    const patch = JSON.parse(res.requests.at(-1)?.body.toString() ?? "{}");
+    const patch = body(res.requests.at(-1));
     assert.deepEqual(patch, { draft: false, prerelease: false, make_latest: "false" });
   });
 
@@ -104,7 +134,10 @@ describe("framework release publisher", () => {
   it("deletes a leftover draft of the tag, and only that one, before creating a new draft", async () => {
     const res = await run({
       uploadDigest: `sha256:${digest}`,
-      releases: [{ id: 7, tag_name: TAG, draft: true }, { id: 8, tag_name: "other-v1", draft: true }],
+      releases: [
+        { id: 7, tag_name: TAG, draft: true },
+        { id: 8, tag_name: "other-v1", draft: true },
+      ],
     });
     assert.equal(res.code, 0, res.err.join("\n"));
     assert.deepEqual(res.calls.slice(0, 3), [

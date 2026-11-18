@@ -32,15 +32,23 @@ export async function main(
   try {
     const flags = parseFlags(argv, OPTIONS);
     const kind = required(flags, "kind");
-    if (kind !== "stable" && kind !== "prerelease") throw new UsageError("--kind must be prerelease or stable");
+    if (kind !== "stable" && kind !== "prerelease")
+      throw new UsageError("--kind must be prerelease or stable");
     const token = env["GH_TOKEN"] ?? "";
     if (token === "") throw new UsageError("GH_TOKEN is not set");
-    const repository = typeof flags["repository"] === "string" ? flags["repository"] : env["GITHUB_REPOSITORY"] ?? "";
+    const repository =
+      typeof flags["repository"] === "string"
+        ? flags["repository"]
+        : (env["GITHUB_REPOSITORY"] ?? "");
     if (repository === "") throw new UsageError("--repository or GITHUB_REPOSITORY is required");
-    const str = (name: string, fallback: string): string => (typeof flags[name] === "string" ? (flags[name] as string) : fallback);
+    const str = (name: string, fallback: string): string =>
+      typeof flags[name] === "string" ? (flags[name] as string) : fallback;
     await publish(
       {
-        apiBase: str("api-url", env["GITHUB_API_URL"] ?? "https://api.github.com").replace(/\/$/, ""),
+        apiBase: str("api-url", env["GITHUB_API_URL"] ?? "https://api.github.com").replace(
+          /\/$/,
+          "",
+        ),
         uploadsBase: str("uploads-url", "https://uploads.github.com").replace(/\/$/, ""),
         token,
         repository,

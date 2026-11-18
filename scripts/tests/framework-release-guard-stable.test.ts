@@ -27,12 +27,18 @@ function guard(over: { version?: string; ref?: string; commit?: string; json?: s
   const err: string[] = [];
   const code = main(
     [
-      "--kind", "stable",
-      "--version", over.version ?? "1.0.0",
-      "--ref", over.ref ?? "refs/heads/main",
-      "--commit", over.commit ?? mainSha,
-      "--releases-json", over.json ?? releases([]),
-      "--repo", fx.work,
+      "--kind",
+      "stable",
+      "--version",
+      over.version ?? "1.0.0",
+      "--ref",
+      over.ref ?? "refs/heads/main",
+      "--commit",
+      over.commit ?? mainSha,
+      "--releases-json",
+      over.json ?? releases([]),
+      "--repo",
+      fx.work,
     ],
     { out: (l) => out.push(l), err: (l) => err.push(l) },
   );

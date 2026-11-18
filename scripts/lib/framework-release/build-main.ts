@@ -21,7 +21,11 @@ const OPTIONS = {
   manifest: { type: "string" },
 } as const;
 
-export function main(argv: readonly string[], io: Io, env: NodeJS.ProcessEnv = process.env): number {
+export function main(
+  argv: readonly string[],
+  io: Io,
+  env: NodeJS.ProcessEnv = process.env,
+): number {
   try {
     const flags = parseFlags(argv, OPTIONS);
     const kind = required(flags, "kind");
@@ -33,8 +37,10 @@ export function main(argv: readonly string[], io: Io, env: NodeJS.ProcessEnv = p
     if (parsed === undefined) throw new Error(`'${tag}' is not a ${kind} framework tag`);
     const root = path.resolve(typeof flags["root"] === "string" ? flags["root"] : process.cwd());
     const out = path.resolve(required(flags, "out"));
-    const repository = typeof flags["repository"] === "string" ? flags["repository"] : env["GITHUB_REPOSITORY"];
-    if (repository === undefined || repository === "") throw new UsageError("--repository or GITHUB_REPOSITORY is required");
+    const repository =
+      typeof flags["repository"] === "string" ? flags["repository"] : env["GITHUB_REPOSITORY"];
+    if (repository === undefined || repository === "")
+      throw new UsageError("--repository or GITHUB_REPOSITORY is required");
     const manifest = typeof flags["manifest"] === "string" ? flags["manifest"] : MANIFEST_FILE;
 
     // Resolve first: nothing is written when an entry is absent.
@@ -58,7 +64,8 @@ export function main(argv: readonly string[], io: Io, env: NodeJS.ProcessEnv = p
     io.out(`asset=${asset}`);
     io.out(`sha256=${sha256}`);
     const ghOut = env["GITHUB_OUTPUT"];
-    if (ghOut !== undefined && ghOut !== "") fs.appendFileSync(ghOut, `asset=${asset}\nsha256=${sha256}\n`);
+    if (ghOut !== undefined && ghOut !== "")
+      fs.appendFileSync(ghOut, `asset=${asset}\nsha256=${sha256}\n`);
     return 0;
   } catch (error) {
     io.err(`Error: ${error instanceof Error ? error.message : String(error)}`);

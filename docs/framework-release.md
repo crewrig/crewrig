@@ -49,7 +49,7 @@ Neither `main-protected` nor `release-protected` requires a pull-request review,
 Only for a `crewrig-v*` tag that has no published release (its guards failed, or a run failed after the tag
 appeared). A tag with a published release is never deleted: use the next number. An administrator suspends
 ruleset `crewrig-immutable-tags`, deletes that one tag, re-enables the ruleset, and on the same day records on
-#1822 the tag, the commit it pointed at, the reason and the re-enabled state.
+issue 1822 the tag, the commit it pointed at, the reason and the re-enabled state.
 
 ## What the recorder checks (R11)
 

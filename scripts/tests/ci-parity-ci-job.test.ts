@@ -278,7 +278,7 @@ const GROUP_NAMES = ["gate", "modules", "governance", "extensions", "integration
 // The R3 counts; the membership lives in `ci/capabilities/` (`group`), compared below.
 const R3_COUNTS: Record<string, number> = {
   gate: 20,
-  modules: 15,
+  modules: 16,
   governance: 30,
   extensions: 14,
   integration: 10,

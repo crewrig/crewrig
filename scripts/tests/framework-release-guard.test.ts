@@ -12,7 +12,11 @@ beforeEach(() => {
 });
 afterEach(() => fx.dispose());
 
-function guard(tag: string, commit: string, extra: string[] = []): { code: number; err: string[]; out: string[] } {
+function guard(
+  tag: string,
+  commit: string,
+  extra: string[] = [],
+): { code: number; err: string[]; out: string[] } {
   const out: string[] = [];
   const err: string[] = [];
   const code = main(
@@ -51,7 +55,10 @@ describe("prerelease guards", () => {
     const { releaseSha } = standardRepo(fx);
     const res = guard("crewrig-v1.0.1-next.1", releaseSha);
     assert.equal(res.code, 1);
-    assert.match(res.out.join("\n"), /FAIL version: tag version 1\.0\.1 differs from the declared version 1\.0\.0/);
+    assert.match(
+      res.out.join("\n"),
+      /FAIL version: tag version 1\.0\.1 differs from the declared version 1\.0\.0/,
+    );
   });
 
   it("fails on a feature-branch commit that is not on the release branch", () => {

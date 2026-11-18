@@ -39,12 +39,15 @@ async function call(cfg: ApiConfig, url: string, init: RequestInit): Promise<unk
   const text = await res.text();
   if (!res.ok) {
     const brief = text.replace(/\s+/g, " ").slice(0, 200);
-    throw new Error(`${init.method ?? "GET"} ${new URL(url).pathname} failed: HTTP ${res.status} ${brief}`);
+    throw new Error(
+      `${init.method ?? "GET"} ${new URL(url).pathname} failed: HTTP ${res.status} ${brief}`,
+    );
   }
   return text === "" ? undefined : JSON.parse(text);
 }
 
-const repoUrl = (cfg: ApiConfig, rest: string): string => `${cfg.apiBase}/repos/${cfg.repository}${rest}`;
+const repoUrl = (cfg: ApiConfig, rest: string): string =>
+  `${cfg.apiBase}/repos/${cfg.repository}${rest}`;
 const json = (body: unknown): RequestInit => ({
   body: JSON.stringify(body),
   headers: { "content-type": "application/json" },
@@ -54,7 +57,11 @@ const json = (body: unknown): RequestInit => ({
 export async function listReleases(cfg: ApiConfig): Promise<ApiRelease[]> {
   const all: ApiRelease[] = [];
   for (let page = 1; ; page += 1) {
-    const batch = (await call(cfg, repoUrl(cfg, `/releases?per_page=${PAGE}&page=${page}`), {})) as ApiRelease[];
+    const batch = (await call(
+      cfg,
+      repoUrl(cfg, `/releases?per_page=${PAGE}&page=${page}`),
+      {},
+    )) as ApiRelease[];
     all.push(...batch);
     if (batch.length < PAGE) return all;
   }
@@ -90,7 +97,12 @@ export async function createDraft(cfg: ApiConfig, spec: DraftSpec): Promise<ApiR
   })) as ApiRelease;
 }
 
-export async function uploadAsset(cfg: ApiConfig, id: number, name: string, bytes: Buffer): Promise<ApiAsset> {
+export async function uploadAsset(
+  cfg: ApiConfig,
+  id: number,
+  name: string,
+  bytes: Buffer,
+): Promise<ApiAsset> {
   const url = `${cfg.uploadsBase}/repos/${cfg.repository}/releases/${id}/assets?name=${encodeURIComponent(name)}`;
   return (await call(cfg, url, {
     method: "POST",
@@ -100,7 +112,11 @@ export async function uploadAsset(cfg: ApiConfig, id: number, name: string, byte
 }
 
 /** Publish the draft; never as `latest` (spec 0310 R6, R7). */
-export async function publishRelease(cfg: ApiConfig, id: number, prerelease: boolean): Promise<void> {
+export async function publishRelease(
+  cfg: ApiConfig,
+  id: number,
+  prerelease: boolean,
+): Promise<void> {
   await call(cfg, repoUrl(cfg, `/releases/${id}`), {
     method: "PATCH",
     ...json({ draft: false, prerelease, make_latest: "false" }),

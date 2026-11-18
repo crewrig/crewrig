@@ -25,8 +25,22 @@ function build(lines: string, kind = "prerelease", tag = "crewrig-v1.0.0-next.1"
   const err: string[] = [];
   const outDir = path.join(fx.root, "out");
   const code = main(
-    ["--kind", kind, "--tag", tag, "--out", outDir, "--root", fx.work, "--repository", "o/r",
-      "--workflow-path", ".github/workflows/w.yml", "--manifest", manifest],
+    [
+      "--kind",
+      kind,
+      "--tag",
+      tag,
+      "--out",
+      outDir,
+      "--root",
+      fx.work,
+      "--repository",
+      "o/r",
+      "--workflow-path",
+      ".github/workflows/w.yml",
+      "--manifest",
+      manifest,
+    ],
     { out: (l) => out.push(l), err: (l) => err.push(l) },
     {},
   );
@@ -50,7 +64,10 @@ describe("framework release build", () => {
     seed();
     const res = build("rules\nrules/missing.md\n");
     assert.equal(res.code, 1);
-    assert.match(res.err.join("\n"), /manifest entry 'rules\/missing\.md' is absent from the build output/);
+    assert.match(
+      res.err.join("\n"),
+      /manifest entry 'rules\/missing\.md' is absent from the build output/,
+    );
     assert.equal(fs.existsSync(res.outDir), false);
   });
 
@@ -85,9 +102,18 @@ describe("framework release build", () => {
     assert.match(digest, /^[0-9a-f]{64}$/);
     assert.ok(res.out.includes(`sha256=${digest}`));
     const notes = fs.readFileSync(path.join(res.outDir, "notes.md"), "utf8");
-    assert.ok(notes.includes(`tag: crewrig-v1.0.0-next.1\nasset: crewrig-1.0.0-next.1.tgz\nsha256: ${digest}`));
-    const order = [/gh release verify crewrig/, /verify-asset/, /attestation verify/].map((re) => notes.search(re));
-    assert.deepEqual(order, [...order].sort((a, b) => a - b));
+    assert.ok(
+      notes.includes(
+        `tag: crewrig-v1.0.0-next.1\nasset: crewrig-1.0.0-next.1.tgz\nsha256: ${digest}`,
+      ),
+    );
+    const order = [/gh release verify crewrig/, /verify-asset/, /attestation verify/].map((re) =>
+      notes.search(re),
+    );
+    assert.deepEqual(
+      order,
+      [...order].sort((a, b) => a - b),
+    );
     assert.ok(order.every((n) => n >= 0));
     assert.match(notes, /--signer-workflow o\/r\/\.github\/workflows\/w\.yml/);
   });
@@ -98,7 +124,10 @@ describe("framework release build", () => {
     const first = sha256File(path.join(a.outDir, "crewrig-1.0.0.tgz"));
     const b = build("rules\n", "stable", "crewrig-v1.0.0");
     assert.equal(sha256File(path.join(b.outDir, "crewrig-1.0.0.tgz")), first);
-    assert.match(fs.readFileSync(path.join(a.outDir, "notes.md"), "utf8"), /ancestor of `origin\/main`/);
+    assert.match(
+      fs.readFileSync(path.join(a.outDir, "notes.md"), "utf8"),
+      /ancestor of `origin\/main`/,
+    );
   });
 
   it("refuses a tag of the other kind", () => {
@@ -116,7 +145,10 @@ describe("framework release build", () => {
 
   it("the committed manifest parses and every entry exists in this checkout", () => {
     const entries = parseManifest(
-      fs.readFileSync(path.join(import.meta.dirname, "..", "lib", "framework-release", "manifest.txt"), "utf8"),
+      fs.readFileSync(
+        path.join(import.meta.dirname, "..", "lib", "framework-release", "manifest.txt"),
+        "utf8",
+      ),
     );
     assert.ok(entries.includes("artifacts/core/rules"));
   });

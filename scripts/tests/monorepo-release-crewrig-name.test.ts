@@ -17,7 +17,10 @@ describe("extension named crewrig", () => {
     const result = await run(GITHUB);
     assert.equal(result.code, 2);
     assert.equal(result.err.length, 1);
-    assert.match(result.err[0] ?? "", /^Error: extension directory named crewrig \(extensions\/core\/crewrig\)/);
+    assert.match(
+      result.err[0] ?? "",
+      /^Error: extension directory named crewrig \(extensions\/core\/crewrig\)/,
+    );
     assert.deepEqual(result.out, []);
   });
 

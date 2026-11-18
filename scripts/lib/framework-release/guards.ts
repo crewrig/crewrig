@@ -28,8 +28,15 @@ function fetchBranch(repo: string, branch: string): { sha?: string; error?: stri
   const spec = `+refs/heads/${branch}:refs/remotes/origin/${branch}`;
   const res = git(repo, ["fetch", "--no-tags", "origin", spec]);
   if (res.status !== 0) return { error: `cannot fetch origin/${branch}: ${res.stderr.trim()}` };
-  const sha = git(repo, ["rev-parse", "--verify", "--quiet", `refs/remotes/origin/${branch}^{commit}`]);
-  return sha.status === 0 ? { sha: sha.stdout.trim() } : { error: `cannot resolve origin/${branch}` };
+  const sha = git(repo, [
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    `refs/remotes/origin/${branch}^{commit}`,
+  ]);
+  return sha.status === 0
+    ? { sha: sha.stdout.trim() }
+    : { error: `cannot resolve origin/${branch}` };
 }
 
 function resolveCommit(repo: string, commit: string): string | undefined {
@@ -128,7 +135,10 @@ export function stableGuards(input: StableInput): Check[] {
     checks.push(
       commit === main.sha
         ? pass("head-of-main", commit)
-        : fail("head-of-main", `${commit} is not the head of origin/${input.mainBranch} (${main.sha})`),
+        : fail(
+            "head-of-main",
+            `${commit} is not the head of origin/${input.mainBranch} (${main.sha})`,
+          ),
     );
     checks.push(versionCheck(input.repo, commit, input.version));
   }

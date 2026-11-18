@@ -9,7 +9,12 @@ import type { ShippedFile } from "./manifest.ts";
 
 /** Write the archive of `files` to `file`; returns its lowercase hexadecimal SHA-256. */
 export function writeFrameworkArchive(files: readonly ShippedFile[], file: string): string {
-  const entries = files.map((f) => ({ path: f.path, type: "file" as const, mode: f.mode, abs: f.abs }));
+  const entries = files.map((f) => ({
+    path: f.path,
+    type: "file" as const,
+    mode: f.mode,
+    abs: f.abs,
+  }));
   fs.writeFileSync(file, gzipTar(buildTar(entries)));
   return sha256File(file);
 }

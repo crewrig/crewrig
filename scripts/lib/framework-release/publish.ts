@@ -29,7 +29,10 @@ export interface PublishDeps {
 export class PublishError extends Error {}
 
 const normalise = (digest: string | null | undefined): string =>
-  (digest ?? "").trim().toLowerCase().replace(/^sha256:/, "");
+  (digest ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/^sha256:/, "");
 
 /** The digest from the upload response first, then from reading the release back; "" when none. */
 async function githubDigest(
@@ -49,13 +52,19 @@ async function githubDigest(
   return "";
 }
 
-export async function publish(cfg: ApiConfig, input: PublishInput, deps: PublishDeps): Promise<string> {
+export async function publish(
+  cfg: ApiConfig,
+  input: PublishInput,
+  deps: PublishDeps,
+): Promise<string> {
   const name = path.basename(input.asset);
   const local = sha256File(input.asset);
   const releases = await api.listReleases(cfg);
   const same = releases.filter((r) => r.tag_name === input.tag);
   if (same.some((r) => !r.draft)) {
-    throw new PublishError(`a published release of ${input.tag} exists: nothing is uploaded or replaced`);
+    throw new PublishError(
+      `a published release of ${input.tag} exists: nothing is uploaded or replaced`,
+    );
   }
   for (const draft of same) {
     deps.log(`deleting the leftover draft ${draft.id} of ${input.tag}`);
@@ -70,10 +79,14 @@ export async function publish(cfg: ApiConfig, input: PublishInput, deps: Publish
   const uploaded = await api.uploadAsset(cfg, draft.id, name, fs.readFileSync(input.asset));
   const remote = await githubDigest(cfg, draft.id, name, normalise(uploaded.digest), deps);
   if (remote === "") {
-    throw new PublishError(`GitHub reports no digest for ${name}: nothing is published (draft ${draft.id} left)`);
+    throw new PublishError(
+      `GitHub reports no digest for ${name}: nothing is published (draft ${draft.id} left)`,
+    );
   }
   if (remote !== local) {
-    throw new PublishError(`digest mismatch for ${name}: job ${local}, GitHub ${remote}: nothing is published (draft ${draft.id} left)`);
+    throw new PublishError(
+      `digest mismatch for ${name}: job ${local}, GitHub ${remote}: nothing is published (draft ${draft.id} left)`,
+    );
   }
   await api.publishRelease(cfg, draft.id, input.prerelease);
   deps.log(`published ${input.tag} with ${name} (sha256 ${local})`);

@@ -22,7 +22,8 @@ const OPTIONS = {
 } as const;
 
 function report(checks: readonly Check[], io: Io): number {
-  for (const check of checks) io.out(`${check.ok ? "ok  " : "FAIL"} ${check.name}: ${check.detail}`);
+  for (const check of checks)
+    io.out(`${check.ok ? "ok  " : "FAIL"} ${check.name}: ${check.detail}`);
   const failed = checks.filter((c) => !c.ok);
   if (failed.length > 0) {
     io.err(`Error: guard failed: ${failed.map((c) => c.name).join(", ")}; nothing was published`);
