@@ -29,7 +29,7 @@ tasks:
     preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/framework-release-guard.test.ts {{.REPO_DIR}}/scripts/tests/framework-release-guard-stable.test.ts {{.REPO_DIR}}/scripts/tests/framework-release-build.test.ts {{.REPO_DIR}}/scripts/tests/framework-release-publish.test.ts {{.REPO_DIR}}/scripts/tests/framework-release-workflows.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/framework-release-guard.test.ts {{.REPO_DIR}}/scripts/tests/framework-release-guard-stable.test.ts {{.REPO_DIR}}/scripts/tests/framework-release-build.test.ts {{.REPO_DIR}}/scripts/tests/framework-release-publish.test.ts {{.REPO_DIR}}/scripts/tests/framework-release-workflows.test.ts {{.REPO_DIR}}/scripts/tests/framework-release-workflow-pins.test.ts
   packaging-modules-ts:
     desc: Run the packaging-modules-ts CI capability (pre-push mirror of the CI job)
     preconditions: *needs-js-yaml
