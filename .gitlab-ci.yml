@@ -2339,6 +2339,7 @@ install-ts:
         - "scripts/tests/antigravity-manage-sandbox.test.ts"
         - "scripts/tests/antigravity-tier-twin.test.ts"
         - "scripts/tests/lib/antigravity-fixtures.ts"
+        - "scripts/tests/lib/worktree-fixtures.ts"
         - "scripts/tests/tier-resolution-*.test.ts"
         - "scripts/tests/lib/tier-fixtures.ts"
         - "scripts/tests/lib/tier-landing.ts"

@@ -102,6 +102,7 @@ describe("framework release build", () => {
     assert.match(digest, /^[0-9a-f]{64}$/);
     assert.ok(res.out.includes(`sha256=${digest}`));
     const notes = fs.readFileSync(path.join(res.outDir, "notes.md"), "utf8");
+    assert.equal(fs.readFileSync(path.join(res.outDir, "sha256.txt"), "utf8"), `${digest}\n`);
     assert.ok(
       notes.includes(
         `tag: crewrig-v1.0.0-next.1\nasset: crewrig-1.0.0-next.1.tgz\nsha256: ${digest}`,

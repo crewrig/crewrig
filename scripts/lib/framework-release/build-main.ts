@@ -60,6 +60,8 @@ export function main(
         releaseBranch: RELEASE_BRANCH,
       }),
     );
+    // The publish job re-checks the archive it downloads against this file and the build job output.
+    fs.writeFileSync(path.join(out, "sha256.txt"), `${sha256}\n`);
     io.out(`files=${files.length}`);
     io.out(`asset=${asset}`);
     io.out(`sha256=${sha256}`);

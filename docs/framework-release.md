@@ -13,9 +13,24 @@ parent [spec 0288](../specs/0288-distribution-model.md) and [ADR-0022](adr/0022-
 | `.github/workflows/release-framework-prerelease.yml` | push of a tag `crewrig-v<X.Y.Z>-next.<N>` | a prerelease, never latest | the release branch only (the file exists there only) |
 | `.github/workflows/release-framework-stable.yml` | manual dispatch, input `version` | `crewrig-v<X.Y.Z>`, never latest | `main`, after the final merge (0288 R29) |
 
-Both run the guard (`scripts/framework-release-guard.ts`), compile the skill and agent trees (`npm ci --omit=dev
---ignore-scripts`, then `node scripts/build-components.ts`), build the archive (`scripts/framework-release-build.ts`),
-attest it, and publish it (`scripts/framework-release-publish.ts`). The asset is `crewrig-<version>.tgz`, with
+Both workflows have two jobs, so no dependency runs where a write permission or the App key is available:
+
+- `build` has `permissions: contents: read` and no environment. It checks out, runs the guard, installs the
+  production dependencies (`npm ci --omit=dev --ignore-scripts`, js-yaml only), compiles the skill and agent trees
+  (`node scripts/build-components.ts`), builds the archive (`scripts/framework-release-build.ts`) and uploads the
+  archive, `notes.md` and `sha256.txt` as the workflow artifact `framework-release`; its outputs are the asset name
+  and the digest.
+- `publish` (`needs: build`) installs and compiles nothing. It downloads the artifact, recomputes the SHA-256 and
+  stops on any difference from the build job's digest (output, `sha256.txt` and the notes block), re-runs the guard
+  because the refs may have moved, attests the archive, and publishes (`scripts/framework-release-publish.ts`). In the
+  stable workflow only this job declares `environment: framework-release` and mints the App token. The guard and the
+  publisher import only Node.js built-ins, so the job needs no `node_modules`.
+
+Every `uses:` of these two workflow files is pinned to a full commit SHA with the tag in a trailing comment
+(`@<sha> # vX.Y.Z`); a test enforces it for these two files only. Other workflows keep their major-tag pins. To bump
+one, resolve the tag with `gh api repos/<owner>/<action>/git/ref/tags/<tag>`, dereferencing an annotated tag.
+
+The asset is `crewrig-<version>.tgz`, with
 `-next.<N>` in the version of a prerelease. Its contents are declared in
 `scripts/lib/framework-release/manifest.txt`: one path per line, a file or a directory that stands for every file
 beneath it, archived under the same flat repository-relative path. The build fails when an entry is absent; a file
