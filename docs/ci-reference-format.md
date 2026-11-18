@@ -982,6 +982,10 @@ whose `command:` is absent or is not `task ci:<id>`:
 - `claude`: the `@claude` mention workflow, with no command.
 - `copilot`: the `@copilot-cli` mention workflow, with no command.
 - `pages-deploy`: the GitHub Pages deployment chain, with no command.
+- `release-framework-prerelease`: the tag-triggered framework prerelease workflow (spec 0310 R6), with
+  no command.
+- `release-framework-stable`: the manually dispatched framework stable release workflow (spec 0310 R7),
+  with no command.
 - `pr-scope`: the spec-only classifier of `build.yml` (spec 0287 delta-02 R22), whose own `run:` step
   must not go through `ci-job` because a failure there runs `cancel-on-failure`.
 

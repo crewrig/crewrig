@@ -115,6 +115,41 @@ capabilities:
       - node scripts/lib/node-floor-guard.js
       - node scripts/monorepo-release.ts
 
+  # release-framework-prerelease publishes `crewrig-v<X.Y.Z>-next.<N>` from the release branch when a maintainer pushes that tag
+  # (spec 0310 R6, spec 0288 R26): .github/workflows/release-framework-prerelease.yml, with the default GITHUB_TOKEN only.
+  # The tag trigger, the GitHub Release, the build-provenance attestation and the immutable-release controls are GitHub
+  # surfaces, so the capability is engine-specific and hand-authored. The file exists on the release branch only.
+  - id: release-framework-prerelease
+    name: "Publish a framework prerelease on a crewrig-v*-next.* tag"
+    trigger:
+      - on: tag
+        tag-pattern: "crewrig-v*-next.*"
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Triggers on a tag push (.github/workflows/release-framework-prerelease.yml `on.push.tags`), creates a GitHub
+        Release and signs the archive with `actions/attest-build-provenance` (a Sigstore attestation stored by GitHub,
+        verified with `gh attestation verify`). Tag rulesets, immutable releases and the release page are GitHub
+        products with no faithful GitLab CI equivalent, so the job is hand-authored per engine, not generated.
+
+  # release-framework-stable publishes `crewrig-v<X.Y.Z>` from `main` on manual dispatch, behind the `framework-release`
+  # deployment environment (spec 0310 R7, R9): .github/workflows/release-framework-stable.yml. It reaches `main` at the
+  # final merge only and is never run before.
+  - id: release-framework-stable
+    name: "Publish a framework stable release from main behind an approval"
+    trigger:
+      - on: manual
+    portability: specific
+    exception:
+      engine: github-actions
+      evidence: >
+        Declares the GitHub deployment environment `framework-release` (required reviewers, a `main`-only deployment
+        branch policy, environment secrets), mints a GitHub App installation token with
+        `actions/create-github-app-token`, and attests the archive with `actions/attest-build-provenance`. Environments,
+        Apps and attestations are GitHub products with no faithful GitLab CI equivalent, so the job is hand-authored per
+        engine, not generated.
+
   # release-tests exercises the release driver (spec 0213 R17): the hermetic driver test, the real-engine test against a
   # local forge stub, the lint-safe changelog facade test (issue #1364) and the GitHub release-PR sync test (issue #1379).
   # NOT changeset-gated, as usage-storage above.

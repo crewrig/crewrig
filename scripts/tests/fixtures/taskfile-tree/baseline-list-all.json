@@ -288,6 +288,10 @@
     "desc": "Run the release-driver-modules-ts CI capability (pre-push mirror of the CI job)"
   },
   {
+    "name": "ci:release-framework-modules-ts",
+    "desc": "Run the release-framework-modules-ts CI capability (pre-push mirror of the CI job)"
+  },
+  {
     "name": "ci:repository-scan",
     "desc": "Scan the repository for machine paths, broken Markdown links and core-path drift (pre-push mirror of the CI job)"
   },

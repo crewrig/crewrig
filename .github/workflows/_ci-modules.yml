@@ -113,6 +113,16 @@ jobs:
         with:
           id: release-driver-modules-ts
 
+  # Spec 0310 (ticket #2062): the framework release unit module suites. Linux only; the suites use git and a
+  # localhost stub, no network.
+  release-framework-modules-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: release-framework-modules-ts
+
   # Spec 0257 (ticket #1336), PRs 2 and 3: the deterministic tar.gz archive writer, the
   # documentation index and the release packaging modules. The release differential suite spawns
   # `bash`, `jq` and `tar`, the archive suite cross-checks with `tar` and `gzip`; all exist on the runner.

@@ -1,4 +1,4 @@
-// monorepo-release-file-size.test.ts — no TypeScript file the release driver migration adds passes
+// monorepo-release-file-size.test.ts — no TypeScript file the release driver migration (and spec 0310) adds passes
 // 300 raw lines (spec 0257, repo convention of spec 0255 R4). Oxlint's `eslint/max-lines` is only a
 // warning (.oxlintrc.json), so this suite turns the threshold into a gate for the covered files.
 
@@ -12,11 +12,14 @@ const REPO = path.resolve(import.meta.dirname, "..", "..");
 const LIMIT = 300;
 
 const COVERED = {
-  directories: ["scripts/lib/monorepo-release"],
+  directories: ["scripts/lib/monorepo-release", "scripts/lib/framework-release"],
   patterns: [
     /^scripts\/tests\/monorepo-release-[a-z-]+\.test\.ts$/,
     /^scripts\/tests\/lib\/release-[a-z-]+\.ts$/,
     /^scripts\/monorepo-release\.ts$/,
+    /^scripts\/framework-release-[a-z-]+\.ts$/,
+    /^scripts\/tests\/framework-release-[a-z-]+\.test\.ts$/,
+    /^scripts\/tests\/lib\/framework-release-[a-z-]+\.ts$/,
   ] as readonly RegExp[],
 };
 

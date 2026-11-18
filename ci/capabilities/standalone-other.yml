@@ -210,12 +210,13 @@ capabilities:
         echo "Rule 1 clean."
 
   # security-mcp.yml gates on pull_request to [main] with a path filter on the
-  # MCP/dependency manifests (.github/workflows/security-mcp.yml lines 3-11).
+  # MCP/dependency manifests (.github/workflows/security-mcp.yml lines 3-11);
+  # `release/**` joins `main` so a pull request to the release branch is audited too (spec 0310 R13).
   - id: audit
     name: "Run dependency security audit"
     trigger:
       - on: pull-request
-        branches: [main]
+        branches: [main, "release/**"]
         paths:
           - "**/package.json"
           - "**/settings.json"

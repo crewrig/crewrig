@@ -2576,11 +2576,35 @@ release-driver-modules-ts:
         - "scripts/tests/monorepo-release-main-flow.test.ts"
         - "scripts/tests/monorepo-release-file-size.test.ts"
         - "scripts/tests/monorepo-release-extension-dirs.test.ts"
+        - "scripts/tests/monorepo-release-crewrig-name.test.ts"
         - "scripts/tests/lib/release-flow-ctx.ts"
         - "scripts/tests/lib/release-github-fixture.ts"
         - "scripts/tests/lib/release-main-fixture.ts"
         - "scripts/tests/fixtures/release/**"
         - "scripts/monorepo-release.ts"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
+release-framework-modules-ts:
+  stage: modules
+  image: node:24
+  before_script:
+    - !reference [.task-install, script]
+    - npm ci --omit=dev --workspaces=false
+  script:
+    - "task ci:release-framework-modules-ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/framework-release-*.ts"
+        - "scripts/lib/framework-release/**"
+        - "scripts/lib/packaging/**"
+        - "scripts/lib/git-env.ts"
+        - "scripts/lib/node-floor-guard.js"
+        - ".github/workflows/release-framework-prerelease.yml"
+        - ".github/workflows/release-framework-stable.yml"
+        - "scripts/tests/framework-release-*.test.ts"
+        - "scripts/tests/lib/framework-release-*.ts"
+        - "scripts/tests/lib/tar-reader.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 packaging-modules-ts:
@@ -2815,7 +2839,7 @@ audit:
     - "npm install"
     - "npm audit --audit-level=critical"
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$/'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "**/package.json"
         - "**/settings.json"

@@ -1,0 +1,136 @@
+name: Release framework (prerelease)
+
+# Spec 0310 R6, spec 0288 R26. Publishes `crewrig-v<X.Y.Z>-next.<N>` as a GitHub prerelease, never as latest,
+# when a maintainer pushes that tag by hand. It triggers on that tag push and on nothing else: no branch push,
+# no schedule, no manual dispatch. The file lives on the release branch only (spec 0288 R26, Fate at the final
+# merge) and is removed from it by its own pull request before the final merge.
+#
+# Two jobs. `build` is read-only: it runs the dependency install, the guards and the archive build, and hands the
+# archive, its notes and its digest to `publish` as a workflow artifact. `publish` installs and compiles nothing:
+# it re-checks the digest, re-runs the guards, attests and publishes. Only the default GITHUB_TOKEN is used, raised
+# in `publish` to what that job needs: contents (create the release and upload the one asset), id-token and
+# attestations (the build-provenance attestation). No job reads an environment secret or a GitHub App credential,
+# so none can create a stable-form tag or a tag other than the one that triggered the run. The guards below bind only the copy of this file in the tagged
+# commit: a maintainer pushes a prerelease tag only on a commit of origin/release/1822-distribution, and the
+# recorder runs check 3 of the release notes (spec 0310 R11).
+on:
+  push:
+    tags: ["crewrig-v*-next.*"]
+
+permissions:
+  contents: read
+
+# A re-run of the same tag must not overlap another run of it; none is ever cancelled.
+concurrency:
+  group: release-framework-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release-framework-prerelease-build: # ci-capability: release-framework-prerelease
+    runs-on: ubuntu-latest
+    if: github.repository == 'crewrig/crewrig'
+    # Nothing here can write: no release, no tag, no attestation, no secret (spec 0310 R6, R9). The compile step
+    # runs the production dependency install, so it never shares a job with a write permission or the environment.
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ github.ref_name }}
+      COMMIT: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
+    outputs:
+      asset: ${{ steps.build.outputs.asset }}
+      sha256: ${{ steps.build.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      - name: Guards
+        run: >-
+          node scripts/framework-release-guard.ts --kind prerelease --tag "$TAG" --commit "$COMMIT"
+
+      # js-yaml only (the one production dependency), no lifecycle script: the compiled skill and agent trees.
+      - name: Compile the skill and agent trees
+        run: |
+          npm ci --omit=dev --ignore-scripts
+          node scripts/build-components.ts
+
+      - name: Build the archive and the notes
+        id: build
+        run: >-
+          node scripts/framework-release-build.ts --kind prerelease --tag "$TAG" --out release-out
+          --workflow-path .github/workflows/release-framework-prerelease.yml
+
+      - name: Keep the archive, the notes and the digest for the publish job
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: framework-release
+          path: release-out
+          if-no-files-found: error
+          retention-days: 7
+
+  release-framework-prerelease:
+    runs-on: ubuntu-latest
+    if: github.repository == 'crewrig/crewrig'
+    needs: release-framework-prerelease-build
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      TAG: ${{ github.ref_name }}
+      COMMIT: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
+      ASSET: ${{ needs.release-framework-prerelease-build.outputs.asset }}
+      EXPECTED_SHA256: ${{ needs.release-framework-prerelease-build.outputs.sha256 }}
+    steps:
+      # No npm install and no build-components here: this job runs only the guard and the publisher, which use
+      # Node.js built-ins, so no dependency runs where the write permission or the secret is available.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      - name: Download the archive
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: framework-release
+          path: release-out
+
+      # The archive must be the bytes the build job hashed, and its notes must carry that digest.
+      - name: Check the archive against the build job digest
+        run: |
+          actual="$(sha256sum "release-out/$ASSET" | cut -d' ' -f1)"
+          if [ "$actual" != "$EXPECTED_SHA256" ] || [ "$(cat release-out/sha256.txt)" != "$EXPECTED_SHA256" ]; then
+            echo "::error::archive digest $actual differs from the build job digest $EXPECTED_SHA256"
+            exit 1
+          fi
+          grep -qx "sha256: $EXPECTED_SHA256" release-out/notes.md
+
+      # The refs may have moved since the build job: the guards run again.
+      - name: Guards
+        run: >-
+          node scripts/framework-release-guard.ts --kind prerelease --tag "$TAG" --commit "$COMMIT"
+
+      - name: Attest the archive
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+        with:
+          subject-path: release-out/crewrig-*.tgz
+
+      - name: Publish the prerelease
+        run: >-
+          node scripts/framework-release-publish.ts --kind prerelease --tag "$TAG" --commit "$COMMIT"
+          --asset "release-out/$ASSET" --notes release-out/notes.md

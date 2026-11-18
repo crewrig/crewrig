@@ -64,6 +64,7 @@
   "ci:ratchet": "taskfiles/ci/gate.yml",
   "ci:ratchet-selftest": "taskfiles/ci/gate.yml",
   "ci:release-driver-modules-ts": "taskfiles/ci/modules.yml",
+  "ci:release-framework-modules-ts": "taskfiles/ci/modules.yml",
   "ci:repository-scan": "taskfiles/ci/gate.yml",
   "ci:setup-modules-ts": "taskfiles/ci/modules.yml",
   "ci:skill-evals-attestation": "taskfiles/ci/integration.yml",

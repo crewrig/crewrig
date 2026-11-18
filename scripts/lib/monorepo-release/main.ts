@@ -10,6 +10,7 @@ import { assertNotReleasePrBranch, gitBranch, releaseBranch } from "./branch.ts"
 import type { ReleaseCtx } from "./context.ts";
 import { resolveCredential } from "./credentials.ts";
 import { ReleaseFailure } from "./failure.ts";
+import { assertNoCrewrigExtension } from "./extension-dirs.ts";
 import { realDeps } from "./flow-deps.ts";
 import type { FlowDeps } from "./flow-deps.ts";
 import { releaseGithub } from "./flow-github.ts";
@@ -71,6 +72,8 @@ export async function main(input: MainInput, deps: FlowDeps = realDeps): Promise
       assertNotReleasePrBranch(forge, branch);
       credential = resolveCredential(forge, env);
     }
+
+    assertNoCrewrigExtension(input.cwd);
 
     io.out(`Forge: ${forge}`);
     io.out(`Mode: ${mode}`);

@@ -38,6 +38,7 @@ const GROUP_FILES: Record<string, readonly string[]> = {
     "install-ts",
     "setup-modules-ts",
     "release-driver-modules-ts",
+    "release-framework-modules-ts",
     "packaging-modules-ts",
     "governance-checks-ts",
     "build-components-ts",
@@ -112,8 +113,8 @@ describe("taskfiles/ci split (spec 0278 R23)", () => {
   const tree = loadTaskfileTree(REPO);
   const ciTasks = tree.tasks.filter((t) => t.name.startsWith("ci:"));
 
-  it("defines each of the 103 ci:* names in exactly the file of the R23 table", () => {
-    assert.equal(ciTasks.length, 103);
+  it("defines each of the 104 ci:* names in exactly the file of the R23 table", () => {
+    assert.equal(ciTasks.length, 104);
     for (const t of ciTasks) {
       const id = t.name.slice("ci:".length);
       assert.ok(expectedFiles(id).includes(t.file), `${t.name} is in ${t.file}`);

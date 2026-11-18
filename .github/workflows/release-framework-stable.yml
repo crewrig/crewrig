@@ -1,0 +1,164 @@
+name: Release framework (stable)
+
+# Spec 0310 R7 and R9, spec 0288 R25. Publishes `crewrig-v<X.Y.Z>` as a GitHub release, never as latest, from
+# the head of `main`, on manual dispatch only. GitHub dispatches a workflow only when its file is on the
+# default branch, so no run is possible before the final merge (spec 0288 R29). The prerelease workflow and
+# this one share only the version source (package.json) and the guard script.
+#
+# APPROVER READ DUTY (spec 0310 R9). The job declares the deployment environment `framework-release`, which
+# holds it until a repository administrator approves. Before approving, READ this file and
+# scripts/framework-release-guard.ts at the commit being released and compare them with the last released
+# version. Whoever approves a run of an edited copy gives it the GitHub App key; the approval is the control.
+# docs/framework-release.md has the checklist.
+#
+# Two jobs. `build` is read-only and has no environment: it runs the dependency install, the guards and the
+# archive build, and hands the archive, its notes and its digest to `publish` as a workflow artifact. Only
+# `publish` declares the environment; it installs and compiles nothing, re-checks the digest, re-runs the guards,
+# attests, and only then mints the App token. A run that fails earlier has used no credential and created no
+# tag: the tag is created by the publication of the release.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Stable version X.Y.Z; must equal the version declared in package.json on main"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-framework-stable
+  cancel-in-progress: false
+
+jobs:
+  release-framework-stable-build: # ci-capability: release-framework-stable
+    runs-on: ubuntu-latest
+    if: github.repository == 'crewrig/crewrig'
+    # Nothing here can write: no release, no tag, no attestation, no secret (spec 0310 R6, R9). The compile step
+    # runs the production dependency install, so it never shares a job with a write permission or the environment.
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ inputs.version }}
+      REF: ${{ github.ref }}
+      COMMIT: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
+    outputs:
+      asset: ${{ steps.build.outputs.asset }}
+      sha256: ${{ steps.build.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      # The token cannot see draft releases: a leftover stable draft does not refuse, the publisher deletes it.
+      - name: List the published releases
+        run: gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases" > releases.json
+
+      - name: Guards
+        run: >-
+          node scripts/framework-release-guard.ts --kind stable --version "$VERSION" --ref "$REF"
+          --commit "$COMMIT" --releases-json releases.json
+
+      # js-yaml only (the one production dependency), no lifecycle script: the compiled skill and agent trees.
+      - name: Compile the skill and agent trees
+        run: |
+          npm ci --omit=dev --ignore-scripts
+          node scripts/build-components.ts
+
+      - name: Build the archive and the notes
+        id: build
+        run: >-
+          node scripts/framework-release-build.ts --kind stable --tag "crewrig-v$VERSION" --out release-out
+          --workflow-path .github/workflows/release-framework-stable.yml
+
+      - name: Keep the archive, the notes and the digest for the publish job
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: framework-release
+          path: release-out
+          if-no-files-found: error
+          retention-days: 7
+
+  release-framework-stable:
+    runs-on: ubuntu-latest
+    if: github.repository == 'crewrig/crewrig'
+    needs: release-framework-stable-build
+    environment: framework-release
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ inputs.version }}
+      REF: ${{ github.ref }}
+      COMMIT: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
+      ASSET: ${{ needs.release-framework-stable-build.outputs.asset }}
+      EXPECTED_SHA256: ${{ needs.release-framework-stable-build.outputs.sha256 }}
+    steps:
+      # No npm install and no build-components here: this job runs only the guard and the publisher, which use
+      # Node.js built-ins, so no dependency runs where the write permission or the secret is available.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      - name: Download the archive
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: framework-release
+          path: release-out
+
+      # The archive must be the bytes the build job hashed, and its notes must carry that digest.
+      - name: Check the archive against the build job digest
+        run: |
+          actual="$(sha256sum "release-out/$ASSET" | cut -d' ' -f1)"
+          if [ "$actual" != "$EXPECTED_SHA256" ] || [ "$(cat release-out/sha256.txt)" != "$EXPECTED_SHA256" ]; then
+            echo "::error::archive digest $actual differs from the build job digest $EXPECTED_SHA256"
+            exit 1
+          fi
+          grep -qx "sha256: $EXPECTED_SHA256" release-out/notes.md
+
+      # The token cannot see draft releases: a leftover stable draft does not refuse, the publisher deletes it.
+      - name: List the published releases
+        run: gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases" > releases.json
+
+      # The refs may have moved since the build job: the guards run again.
+      - name: Guards
+        run: >-
+          node scripts/framework-release-guard.ts --kind stable --version "$VERSION" --ref "$REF"
+          --commit "$COMMIT" --releases-json releases.json
+
+      - name: Attest the archive
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+        with:
+          subject-path: release-out/crewrig-*.tgz
+
+      - name: Mint the GitHub App token
+        id: app
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.FRAMEWORK_RELEASE_APP_ID }}
+          private-key: ${{ secrets.FRAMEWORK_RELEASE_APP_KEY }}
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: >-
+          node scripts/framework-release-publish.ts --kind stable --tag "crewrig-v$VERSION" --commit "$COMMIT"
+          --asset "release-out/$ASSET" --notes release-out/notes.md

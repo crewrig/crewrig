@@ -2,7 +2,7 @@ name: MCP Security Check
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, "release/**"]
     paths:
       - "**/package.json"
       - "**/settings.json"

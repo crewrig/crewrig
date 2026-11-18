@@ -278,7 +278,7 @@ const GROUP_NAMES = ["gate", "modules", "governance", "extensions", "integration
 // The R3 counts; the membership lives in `ci/capabilities/` (`group`), compared below.
 const R3_COUNTS: Record<string, number> = {
   gate: 20,
-  modules: 15,
+  modules: 16,
   governance: 30,
   extensions: 14,
   integration: 10,
@@ -515,6 +515,13 @@ test("docs/ci-reference-format.md lists exactly the own-command capabilities (D2
     /^## Capabilities that keep their own command[^\n]*\n([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(doc);
   assert.ok(m, "the section exists");
   const listed = [...(m[1] ?? "").matchAll(/^- `([a-z0-9-]+)`/gm)].map((x) => x[1] ?? "").sort();
-  assert.deepEqual(listed, ["claude", "copilot", "pages-deploy", "pr-scope"]);
+  assert.deepEqual(listed, [
+    "claude",
+    "copilot",
+    "pages-deploy",
+    "pr-scope",
+    "release-framework-prerelease",
+    "release-framework-stable",
+  ]);
   assert.deepEqual(ownCommandCapabilities(), listed);
 });

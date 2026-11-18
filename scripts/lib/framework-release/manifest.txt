@@ -1,0 +1,21 @@
+# manifest.txt — the contents of the framework release archive (spec 0310 R3; spec 0288 R8).
+#
+# One repository-relative path per line, forward slashes, no leading slash, no `..`, no trailing slash.
+# An entry names a FILE, or a DIRECTORY that stands for every file beneath it. The archive carries
+# those files under the same flat repository-relative paths and nothing else. The build fails when an
+# entry is absent from the build output. A file is shipped only when git tracks it, except beneath
+# `dist/`, the git-ignored output of `node scripts/build-components.ts`.
+#
+# First manifest: what `setup` reads and the hooks it wires. The bundled command-line entry points
+# join it in the pull requests of WP3 and WP4.
+
+# Rules (artifacts/core/rules, the store of system-context and the Claude profiles `setup` installs).
+artifacts/core/rules
+artifacts/core/system-context
+artifacts/core/claude-profiles
+
+# Compiled skills and agents of the `library` tier, built for the four CLIs.
+dist/library
+
+# Hook scripts and the hook wiring templates, run as `node <script>.ts` from the extracted version.
+hooks
