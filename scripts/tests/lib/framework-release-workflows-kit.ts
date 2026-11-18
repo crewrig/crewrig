@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 
-import { load }  from "js-yaml";
+import { load } from "js-yaml";
 
 export const REPO = path.join(import.meta.dirname, "..", "..", "..");
 export const WF = path.join(REPO, ".github", "workflows");
@@ -209,4 +209,3 @@ export const COMMON = (build: string, pub: string): Mutant[] => [
     "publish does not need build",
   ],
 ];
-
