@@ -5,6 +5,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { ReleaseRefusal } from "./refusal.ts";
+
 function sortedDirs(parent: string): string[] {
   let names: string[];
   try {
@@ -43,4 +45,17 @@ export function firstArchive(dir: string): string | undefined {
   }
   const first = names.filter((name) => name.endsWith(".tar.gz")).sort()[0];
   return first === undefined ? undefined : path.join(dir, first);
+}
+
+/**
+ * Spec 0310 R2: an extension named `crewrig` would tag `crewrig-v<version>`, the tag form of the
+ * framework release unit; refuse before anything is written so `<ext>-v*` and `crewrig-v*` stay disjoint.
+ */
+export function assertNoCrewrigExtension(base: string): void {
+  const clash = extensionDirs(base).find((dir) => path.basename(dir) === "crewrig");
+  if (clash !== undefined) {
+    throw new ReleaseRefusal(
+      `extension directory named crewrig (${path.relative(base, clash)}): its tag would collide with the framework release tag crewrig-v*`,
+    );
+  }
 }
