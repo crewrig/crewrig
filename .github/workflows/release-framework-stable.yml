@@ -1,0 +1,94 @@
+name: Release framework (stable)
+
+# Spec 0310 R7 and R9, spec 0288 R25. Publishes `crewrig-v<X.Y.Z>` as a GitHub release, never as latest, from
+# the head of `main`, on manual dispatch only. GitHub dispatches a workflow only when its file is on the
+# default branch, so no run is possible before the final merge (spec 0288 R29). The prerelease workflow and
+# this one share only the version source (package.json) and the guard script.
+#
+# APPROVER READ DUTY (spec 0310 R9). The job declares the deployment environment `framework-release`, which
+# holds it until a repository administrator approves. Before approving, READ this file and
+# scripts/framework-release-guard.ts at the commit being released and compare them with the last released
+# version. Whoever approves a run of an edited copy gives it the GitHub App key; the approval is the control.
+# docs/framework-release.md has the checklist.
+#
+# The App token is minted only after the guards pass, so a run that fails earlier has used no credential and
+# created no tag: the tag is created by the publication of the release.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Stable version X.Y.Z; must equal the version declared in package.json on main"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-framework-stable
+  cancel-in-progress: false
+
+jobs:
+  release-framework-stable:
+    runs-on: ubuntu-latest
+    if: github.repository == 'crewrig/crewrig'
+    environment: framework-release
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ inputs.version }}
+      REF: ${{ github.ref }}
+      COMMIT: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      # The token cannot see draft releases: a leftover stable draft does not refuse, the publisher deletes it.
+      - name: List the published releases
+        run: gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases" > releases.json
+
+      - name: Guards
+        run: >-
+          node scripts/framework-release-guard.ts --kind stable --version "$VERSION" --ref "$REF"
+          --commit "$COMMIT" --releases-json releases.json
+
+      # js-yaml only (the one production dependency), no lifecycle script: the compiled skill and agent trees.
+      - name: Compile the skill and agent trees
+        run: |
+          npm ci --omit=dev --ignore-scripts
+          node scripts/build-components.ts
+
+      - name: Build the archive and the notes
+        run: >-
+          node scripts/framework-release-build.ts --kind stable --tag "crewrig-v$VERSION" --out release-out
+          --workflow-path .github/workflows/release-framework-stable.yml
+
+      - name: Attest the archive
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: release-out/crewrig-*.tgz
+
+      - name: Mint the GitHub App token
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FRAMEWORK_RELEASE_APP_ID }}
+          private-key: ${{ secrets.FRAMEWORK_RELEASE_APP_KEY }}
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: >-
+          node scripts/framework-release-publish.ts --kind stable --tag "crewrig-v$VERSION" --commit "$COMMIT"
+          --asset "$(ls release-out/crewrig-*.tgz)" --notes release-out/notes.md

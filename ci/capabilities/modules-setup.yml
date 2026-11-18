@@ -38,7 +38,6 @@ capabilities:
       - "scripts/tests/antigravity-manage-sandbox.test.ts"
       - "scripts/tests/antigravity-tier-twin.test.ts"
       - "scripts/tests/lib/antigravity-fixtures.ts"
-      - "scripts/tests/lib/worktree-fixtures.ts"
       - "scripts/tests/tier-resolution-*.test.ts"
       - "scripts/tests/lib/tier-fixtures.ts"
       - "scripts/tests/lib/tier-landing.ts"
@@ -293,6 +292,7 @@ capabilities:
       - "scripts/tests/monorepo-release-main-flow.test.ts"
       - "scripts/tests/monorepo-release-file-size.test.ts"
       - "scripts/tests/monorepo-release-extension-dirs.test.ts"
+      - "scripts/tests/monorepo-release-crewrig-name.test.ts"
       - "scripts/tests/lib/release-flow-ctx.ts"
       - "scripts/tests/lib/release-github-fixture.ts"
       - "scripts/tests/lib/release-main-fixture.ts"
@@ -305,6 +305,36 @@ capabilities:
       install: omit-dev
     command:
       - task ci:release-driver-modules-ts
+
+  # Spec 0310 (ticket #2062, WP2 of epic #1822): the framework release unit. The guard, build and publish scripts, their
+  # modules and their offline suites (a temporary git repository with a bare origin, a localhost stub of the GitHub REST
+  # API), plus the pins on the two release workflows. Linux only; no network.
+  - id: release-framework-modules-ts
+    group: modules
+    name: "Run the framework release unit module suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/framework-release-*.ts"
+      - "scripts/lib/framework-release/**"
+      - "scripts/lib/packaging/**"
+      - "scripts/lib/git-env.ts"
+      - "scripts/lib/node-floor-guard.js"
+      - ".github/workflows/release-framework-prerelease.yml"
+      - ".github/workflows/release-framework-stable.yml"
+      - "scripts/tests/framework-release-*.test.ts"
+      - "scripts/tests/lib/framework-release-*.ts"
+      - "scripts/tests/lib/tar-reader.ts"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:release-framework-modules-ts
 
   # Spec 0257 (ticket #1336), PRs 2 and 3: the deterministic tar.gz archive writer, documentation index, release packager,
   # manifest synchronisation and packaging modules. The archive suite cross-checks with `tar` and `gzip`, the release

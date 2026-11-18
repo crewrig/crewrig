@@ -38,6 +38,7 @@ const GROUP_FILES: Record<string, readonly string[]> = {
     "install-ts",
     "setup-modules-ts",
     "release-driver-modules-ts",
+    "release-framework-modules-ts",
     "packaging-modules-ts",
     "governance-checks-ts",
     "build-components-ts",

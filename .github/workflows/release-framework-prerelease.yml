@@ -1,0 +1,71 @@
+name: Release framework (prerelease)
+
+# Spec 0310 R6, spec 0288 R26. Publishes `crewrig-v<X.Y.Z>-next.<N>` as a GitHub prerelease, never as latest,
+# when a maintainer pushes that tag by hand. It triggers on that tag push and on nothing else: no branch push,
+# no schedule, no manual dispatch. The file lives on the release branch only (spec 0288 R26, Fate at the final
+# merge) and is removed from it by its own pull request before the final merge.
+#
+# Only the default GITHUB_TOKEN is used, raised to what the job needs: contents (create the release and
+# upload the one asset), id-token and attestations (the build-provenance attestation of the archive). The job
+# reads no environment secret and no GitHub App credential, so it can create no stable-form tag and no tag
+# other than the one that triggered it. The guards below bind only the copy of this file in the tagged
+# commit: a maintainer pushes a prerelease tag only on a commit of origin/release/1822-distribution, and the
+# recorder runs check 3 of the release notes (spec 0310 R11).
+on:
+  push:
+    tags: ["crewrig-v*-next.*"]
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+# A re-run of the same tag must not overlap another run of it; none is ever cancelled.
+concurrency:
+  group: release-framework-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release-framework-prerelease:
+    runs-on: ubuntu-latest
+    if: github.repository == 'crewrig/crewrig'
+    env:
+      TAG: ${{ github.ref_name }}
+      COMMIT: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Floor guard accepts Node.js 24
+        run: node scripts/lib/node-floor-guard.js
+
+      # Guards 1 to 3 of spec 0288 R26 and the version check of spec 0310 R1, on refs fetched from origin.
+      - name: Guards
+        run: node scripts/framework-release-guard.ts --kind prerelease --tag "$TAG" --commit "$COMMIT"
+
+      # js-yaml only (the one production dependency), no lifecycle script: the compiled skill and agent trees.
+      - name: Compile the skill and agent trees
+        run: |
+          npm ci --omit=dev --ignore-scripts
+          node scripts/build-components.ts
+
+      - name: Build the archive and the notes
+        run: >-
+          node scripts/framework-release-build.ts --kind prerelease --tag "$TAG" --out release-out
+          --workflow-path .github/workflows/release-framework-prerelease.yml
+
+      - name: Attest the archive
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: release-out/crewrig-*.tgz
+
+      - name: Publish the prerelease
+        run: >-
+          node scripts/framework-release-publish.ts --kind prerelease --tag "$TAG" --commit "$COMMIT"
+          --asset "$(ls release-out/crewrig-*.tgz)" --notes release-out/notes.md

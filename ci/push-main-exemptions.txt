@@ -20,4 +20,6 @@ no-push	claude	Engine-specific bot-mention workflow, triggered by an issue or pu
 no-push	copilot	Engine-specific bot-mention workflow, triggered by an issue or pull-request comment, never by a push.
 no-push	alert-scheduled-failure	Scheduled-failure alert, triggered by the failed scheduled run it reports, never by a push.
 no-push	release-rehearsal	Manual rehearsal of a release; it has no push trigger and never runs on a push.
+no-push	release-framework-prerelease	Tag-push workflow (release-framework-prerelease.yml): it runs on a crewrig-v*-next.* tag, never on a branch push.
+no-push	release-framework-stable	Manual dispatch of the stable framework release (release-framework-stable.yml); it has no push trigger.
 side-effect	pages-deploy	Publishes the communication site to the github-pages environment, outside the repository, so it keeps its communication/** push filter and must not redeploy on every push.
