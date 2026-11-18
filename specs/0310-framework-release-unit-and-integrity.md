@@ -1,7 +1,7 @@
 ---
 id: "0310"
 slug: framework-release-unit-and-integrity
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 2062
