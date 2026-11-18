@@ -20,6 +20,27 @@ for (const [title, text] of [
       assert.notEqual(bad, text);
       assert.ok(pinDefects(bad).length > 0);
     });
+    it("mutant caught: a SHA without its version comment", () => {
+      const bad = text.replace(/(actions\/checkout@[0-9a-f]{40}) # v[\d.]+/, "$1");
+      assert.notEqual(bad, text);
+      assert.ok(pinDefects(bad).length > 0);
+    });
+    it("mutant caught: a local action", () => {
+      const bad = text.replace(
+        /uses: actions\/checkout@\S+ # v[\d.]+/,
+        "uses: ./.github/actions/ci-job",
+      );
+      assert.notEqual(bad, text);
+      assert.ok(pinDefects(bad).length > 0);
+    });
+    it("mutant caught: a docker reference", () => {
+      const bad = text.replace(
+        /uses: actions\/checkout@\S+ # v[\d.]+/,
+        "uses: docker://alpine:3.20",
+      );
+      assert.notEqual(bad, text);
+      assert.ok(pinDefects(bad).length > 0);
+    });
     it("mutant caught: a short SHA", () => {
       const bad = text.replace(/(actions\/setup-node@)[0-9a-f]{40}/, "$1abcdef0");
       assert.notEqual(bad, text);
