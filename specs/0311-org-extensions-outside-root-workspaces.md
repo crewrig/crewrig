@@ -32,12 +32,17 @@ documented, supported way to install and build its own extensions' dependencies.
 3. An adopter SHALL NOT need to regenerate the root lockfile, edit the root
    `package.json`, or edit any other file listed `strict` in
    `.crewrig/core-paths.txt` to add, rename or remove an org extension.
-4. A documented install path for `extensions/org/*` SHALL exist: an org
-   extension that ships the standard skeleton `package.json` can have its own
-   dependencies installed and its own `build` and `test` scripts run, and that
-   path SHALL be reachable without touching the root lockfile. When
-   `extensions/org/` holds no extension, the path SHALL complete successfully
-   as a no-op rather than fail.
+4. A `task` target shipped under `taskfiles/` (a `strict` path, so it reaches
+   every existing fork through the sync) SHALL install the dependencies of the
+   org tier without touching the root lockfile. It SHALL use
+   `extensions/org/package.json`, an adopter-owned workspace root with its own
+   lockfile, when that file exists; otherwise it SHALL fall back to a
+   per-extension install (`npm ci` or `npm install` in each `extensions/org/*/`
+   directory). When `extensions/org/` holds no extension, it SHALL complete
+   successfully as a no-op rather than fail. The same target SHALL expose the
+   org tier's `build` and `test` scripts. Upstream SHALL NOT seed an
+   `extensions/org/package.json`: no entry of `.crewrig/core-paths.txt` claims
+   `extensions/org/`, so a seeded file would never reach existing forks.
 5. The upstream lockfile and the root `build` and `test` scripts SHALL keep
    covering every extension under `extensions/core/` and `extensions/library/`
    exactly as before; the change SHALL NOT alter the resolved versions of any
@@ -45,10 +50,14 @@ documented, supported way to install and build its own extensions' dependencies.
 6. `task create-extension` SHALL keep producing an `extensions/org/<name>`
    extension in the standard skeleton format (including its `package.json`), and
    its output SHALL satisfy requirement 2 without a follow-up manual step.
-7. `docs/adoption-guide.md` and `extensions/org/README.md` SHALL state that the
-   org tier is outside the root workspace set and SHALL name the install path of
-   requirement 4. The extension-tiers contract of spec 0024 (org tier excluded
-   from the sync, never guarded, restored or aborted on) SHALL remain unchanged.
+7. `docs/adoption-guide.md` SHALL be the normative carrier of the message that
+   the org tier is outside the root workspace set, and SHALL name the `task`
+   target of requirement 4. The target's own description under `taskfiles/`
+   SHALL also document the install path. `extensions/org/README.md` SHOULD
+   repeat the message, knowing an upstream change to it reaches only new forks
+   because the org tier is unsynced. The extension-tiers contract of spec 0024
+   (org tier excluded from the sync, never guarded, restored or aborted on)
+   SHALL remain unchanged.
 8. A regression check SHALL fail when the root workspace declaration matches a
    path under `extensions/org/`, and SHALL fail when a frozen root install
    breaks in the presence of a skeleton-shaped org extension.
@@ -66,14 +75,15 @@ documented, supported way to install and build its own extensions' dependencies.
 ### Happy path: org tier install
 
 - **Given** the same fork with one org extension,
-- **When** the adopter runs the documented org-tier install path,
-- **Then** that extension's dependencies are installed and its `build` script
-  can run, and the root lockfile is unchanged byte for byte.
+- **When** the adopter runs the org-tier `task` target,
+- **Then** that extension's dependencies are installed through the adopter's
+  `extensions/org/package.json` when present, or per extension otherwise, its
+  `build` script can run, and the root lockfile is unchanged byte for byte.
 
 ### Empty org tier
 
 - **Given** an upstream checkout where `extensions/org/` holds only its README,
-- **When** the frozen root install and the org-tier install path both run,
+- **When** the frozen root install and the org-tier `task` target both run,
 - **Then** both exit 0 and neither modifies a tracked file.
 
 ### Failure path
@@ -93,6 +103,14 @@ documented, supported way to install and build its own extensions' dependencies.
 - Repairing an adopter fork whose lockfile was already regenerated with org
   extensions; the adopter restores the strict files from upstream through the
   normal sync.
+- Rejected alternative (a), a per-extension install as the only path: it gives
+  no shared lockfile for adopters with several org extensions. It remains only
+  as the fallback of requirement 4.
+- Rejected alternative (b), an upstream-seeded `extensions/org/package.json`:
+  `extensions/org/` is claimed by no `.crewrig/core-paths.txt` entry, so the
+  file would never reach existing forks.
+- Rejected alternative (c), documentation only: it leaves every fork to build
+  its own tooling and gives CI no install step to call.
 - Rejected alternative: keep `extensions/*/*` and make the adopter regenerate
   the lockfile. It diverges two `strict` files and aborts the next sync.
 - Rejected alternative: ignore `extensions/org` in the root lockfile check or
@@ -103,12 +121,6 @@ documented, supported way to install and build its own extensions' dependencies.
 
 ## Open questions
 
-- Which install path serves `extensions/org/*`? (a) a per-extension install
-  (`npm ci` in each directory, each with its own lockfile) driven by a `task`
-  target; (b) an adopter-owned, org-tier root `package.json` workspace file
-  under `extensions/org/` with its own lockfile; (c) documentation only, no
-  tooling. Recommendation: (b), because one adopter-owned lockfile keeps the
-  tier inside the adopter's sphere and needs no new loop.
 - Should `npm run build` and `npm run test` at the root also cover the org tier
   after this change? (a) no, the org install path owns its own scripts;
   (b) yes, through an aggregating `task` target. Recommendation: (a), since the
