@@ -85,3 +85,11 @@ tasks:
     cmds:
       - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/setup-identity-flow.test.ts {{.REPO_DIR}}/scripts/tests/setup-legacy-gemini-md-declaration.test.ts {{.REPO_DIR}}/scripts/tests/setup-mcp-merge-policy.test.ts {{.REPO_DIR}}/scripts/tests/setup-org-mcp-wiring.test.ts {{.REPO_DIR}}/scripts/tests/setup-secrets-fold.test.ts {{.REPO_DIR}}/scripts/tests/setup-tier-staging-declared.test.ts'
       - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/tls-delegation-contract.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-failure.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-jsonc.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-runs.test.ts {{.REPO_DIR}}/scripts/tests/setup-gemini-settings-seeds.test.ts'
+  org-workspaces:
+    desc: Run the org-workspaces CI capability (pre-push mirror of the CI job)
+    cmds:
+      - '{{.NODE_SCRIPTS}}/check-org-workspaces.ts'
+  org-workspaces-selftest:
+    desc: Run the org-workspaces-selftest CI capability (pre-push mirror of the CI job)
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-org-workspaces.test.ts {{.REPO_DIR}}/scripts/tests/org-extensions.test.ts

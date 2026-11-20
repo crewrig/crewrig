@@ -309,3 +309,46 @@ capabilities:
       tools: [task]
     command:
       - task ci:cli-matrix-fresh-selftest
+
+  # Spec 0311 (issue #2073): the root workspace set stays narrowed to the upstream tiers. No `paths:`
+  # and no `changeset-gated`: it runs on every change, before any root `npm ci`.
+  - id: org-workspaces
+    group: extensions
+    name: "Check org extensions stay outside the root workspace set"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:org-workspaces
+
+  - id: org-workspaces-selftest
+    group: extensions
+    name: "Self-test the org-workspaces check and the org-extensions target"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "scripts/check-org-workspaces.ts"
+      - "scripts/org-extensions.ts"
+      - "scripts/tests/check-org-workspaces.test.ts"
+      - "scripts/tests/org-extensions.test.ts"
+      - "scripts/tests/lib/extension-sandbox.ts"
+      - "extension-skeleton/base/package.json"
+      - "package.json"
+      - "package-lock.json"
+      - "taskfiles/**"
+    portability: portable
+    changeset-gated: true
+    requires:
+      runtime: node@24
+      tools: [task]
+    command:
+      - task ci:org-workspaces-selftest

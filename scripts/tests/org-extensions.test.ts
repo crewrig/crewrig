@@ -56,11 +56,7 @@ function fixture(options: Options = {}): Fixture {
   const root = tempDir("org-ext-root");
   const bin = tempDir("org-ext-bin");
   const log = path.join(bin, "calls.jsonl");
-  write(
-    root,
-    "package.json",
-    '{"name":"fx","private":true,"workspaces":["extensions/core/*"]}\n',
-  );
+  write(root, "package.json", '{"name":"fx","private":true,"workspaces":["extensions/core/*"]}\n');
   write(root, "package-lock.json", ROOT_LOCK);
   write(root, "extensions/org/README.md", "# org\n");
   write(root, "extensions/org/.gitkeep", "");
@@ -108,11 +104,7 @@ function calls(fx: Fixture): Call[] {
     });
 }
 
-function run(
-  fx: Fixture,
-  args: readonly string[],
-  env: Record<string, string> = {},
-) {
+function run(fx: Fixture, args: readonly string[], env: Record<string, string> = {}) {
   const result = spawnSync(process.execPath, [ENTRY, ...args], {
     cwd: REPO,
     encoding: "utf8",
@@ -138,13 +130,7 @@ const lockBytes = (fx: Fixture): string =>
 
 describe("spec 0311 — org-extensions", () => {
   describe("empty org tier", () => {
-    for (const args of [
-      [],
-      ["install"],
-      ["install", "ghost"],
-      ["build"],
-      ["test", "ghost"],
-    ]) {
+    for (const args of [[], ["install"], ["install", "ghost"], ["build"], ["test", "ghost"]]) {
       test(`org-extensions::empty tier with args [${args.join(" ")}] is a no-op that exits 0`, () => {
         const fx = fixture();
         const before = treeDigest(fx.root);
@@ -311,10 +297,7 @@ describe("spec 0311 — org-extensions", () => {
       const cwds = new Set(calls(fx).map((c) => c.cwd));
       assert.deepEqual(
         [...cwds].sort(),
-        [
-          real(path.join(fx.orgDir, "a")),
-          real(path.join(fx.orgDir, "b")),
-        ].sort(),
+        [real(path.join(fx.orgDir, "a")), real(path.join(fx.orgDir, "b"))].sort(),
       );
     });
 
@@ -340,11 +323,7 @@ describe("spec 0311 — org-extensions", () => {
 
         const result = run(fx, ["install", "ghost"]);
 
-        assert.equal(
-          result.status,
-          1,
-          `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
-        );
+        assert.equal(result.status, 1, `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
         assert.match(result.stderr, /ghost/);
         assert.match(result.stderr, /\ba\b/);
         assert.match(result.stderr, /\bb\b/);

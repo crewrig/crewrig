@@ -43,10 +43,7 @@ function write(root: string, rel: string, content: string): void {
 }
 
 /** A minimal root: `workspaces` as given, one core extension `c`, and a lock in sync with them. */
-function fixtureRoot(
-  workspaces: readonly string[],
-  lockedCore: readonly string[] = ["c"],
-): string {
+function fixtureRoot(workspaces: readonly string[], lockedCore: readonly string[] = ["c"]): string {
   const root = tempDir("org-ws-fixture");
   write(
     root,
@@ -119,13 +116,7 @@ function frozenInstallWithProbe(root: string): {
     for (const ext of fs.readdirSync(path.join(root, "extensions", tier.name), {
       withFileTypes: true,
     })) {
-      const src = path.join(
-        root,
-        "extensions",
-        tier.name,
-        ext.name,
-        "package.json",
-      );
+      const src = path.join(root, "extensions", tier.name, ext.name, "package.json");
       if (ext.isDirectory() && fs.existsSync(src))
         write(
           dir,
@@ -135,41 +126,26 @@ function frozenInstallWithProbe(root: string): {
     }
   }
   const skeleton = fs
-    .readFileSync(
-      path.join(REPO, "extension-skeleton", "base", "package.json"),
-      "utf8",
-    )
+    .readFileSync(path.join(REPO, "extension-skeleton", "base", "package.json"), "utf8")
     .replaceAll("${SKELETON_NAME}", "probe");
   write(dir, "extensions/org/probe/package.json", skeleton);
-  const run = spawnSync(
-    "npm",
-    ["ci", "--dry-run", "--ignore-scripts", "--offline"],
-    {
-      cwd: dir,
-      encoding: "utf8",
-    },
-  );
+  const run = spawnSync("npm", ["ci", "--dry-run", "--ignore-scripts", "--offline"], {
+    cwd: dir,
+    encoding: "utf8",
+  });
   if (run.error !== undefined) throw run.error;
   return { status: run.status, output: `${run.stdout}${run.stderr}` };
 }
 
 describe("spec 0311 — org extensions stay outside the root workspace set", () => {
   // Failure path: a root pattern that reaches extensions/org/<x> is a finding naming the pattern.
-  for (const pattern of [
-    "extensions/*/*",
-    "extensions/**",
-    "extensions/org/*",
-  ]) {
+  for (const pattern of ["extensions/*/*", "extensions/**", "extensions/org/*"]) {
     test(`check-org-workspaces::pattern ${pattern} reaching extensions/org exits 1 and names the pattern`, () => {
       const root = fixtureRoot([...NARROWED, pattern]);
 
       const result = check(root);
 
-      assert.equal(
-        result.status,
-        1,
-        `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
-      );
+      assert.equal(result.status, 1, `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
       assert.ok(
         result.stderr.includes(pattern),
         `stderr must name "${pattern}":\n${result.stderr}`,
@@ -184,11 +160,7 @@ describe("spec 0311 — org extensions stay outside the root workspace set", () 
 
     const result = check(root);
 
-    assert.equal(
-      result.status,
-      1,
-      `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
-    );
+    assert.equal(result.status, 1, `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
     assert.match(result.stderr, /Missing: d-extension@0\.1\.0 from lock file/);
     assert.match(result.stderr, /restore/i);
   });
@@ -196,29 +168,17 @@ describe("spec 0311 — org extensions stay outside the root workspace set", () 
   test("check-org-workspaces::a narrowed, in-sync fixture exits 0", () => {
     const result = check(fixtureRoot(NARROWED));
 
-    assert.equal(
-      result.status,
-      0,
-      `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
-    );
+    assert.equal(result.status, 0, `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
   });
 
   // Regression of #2073: the real repository must accept a skeleton-shaped org extension.
   test("check-org-workspaces::the real repository exits 0 and a frozen install tolerates an org probe", () => {
     const probe = frozenInstallWithProbe(REPO);
-    assert.equal(
-      probe.status,
-      0,
-      `npm ci --dry-run with an org probe failed:\n${probe.output}`,
-    );
+    assert.equal(probe.status, 0, `npm ci --dry-run with an org probe failed:\n${probe.output}`);
 
     const result = check(REPO);
 
-    assert.equal(
-      result.status,
-      0,
-      `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
-    );
+    assert.equal(result.status, 0, `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
   });
 
   // The check is read-only on the repository it inspects.
@@ -240,35 +200,20 @@ describe("spec 0311 — org extensions stay outside the root workspace set", () 
   // R6, R2: the scaffold of an org extension (TIER unset) must leave the root lock valid.
   test("check-org-workspaces::scaffolding an org extension with create-extension then checking exits 0", () => {
     const root = cloneTemplate(createTemplate());
-    fs.copyFileSync(
-      ENTRY,
-      path.join(root, "scripts", "check-org-workspaces.ts"),
-    );
+    fs.copyFileSync(ENTRY, path.join(root, "scripts", "check-org-workspaces.ts"));
 
     const scaffold = runEntry(root, "create-extension.ts", ["--components="], {
       NAME: "probe",
     });
     assert.equal(scaffold.status, 0, `scaffold failed:\n${scaffold.combined}`);
-    assert.ok(
-      fs.existsSync(
-        path.join(root, "extensions", "org", "probe", "package.json"),
-      ),
-    );
+    assert.ok(fs.existsSync(path.join(root, "extensions", "org", "probe", "package.json")));
     const lockBefore = treeDigest(root)["package-lock.json"];
 
     const frozen = frozenInstallWithProbe(root);
-    assert.equal(
-      frozen.status,
-      0,
-      `frozen install after scaffold failed:\n${frozen.output}`,
-    );
+    assert.equal(frozen.status, 0, `frozen install after scaffold failed:\n${frozen.output}`);
     const result = runEntry(root, "check-org-workspaces.ts");
 
     assert.equal(result.status, 0, result.combined);
-    assert.equal(
-      treeDigest(root)["package-lock.json"],
-      lockBefore,
-      "the check rewrote the lock",
-    );
+    assert.equal(treeDigest(root)["package-lock.json"], lockBefore, "the check rewrote the lock");
   });
 });

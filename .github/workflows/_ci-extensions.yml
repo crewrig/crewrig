@@ -158,3 +158,22 @@ jobs:
         with:
           id: cli-matrix-fresh-selftest
           install: none
+
+  org-workspaces:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: org-workspaces
+          gate: false
+          install: none
+
+  org-workspaces-selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: org-workspaces-selftest
+          install: none
