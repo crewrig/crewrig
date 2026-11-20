@@ -1,7 +1,7 @@
 ---
 id: "0313"
 slug: web-pack-to-website
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 2085
