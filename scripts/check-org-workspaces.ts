@@ -23,18 +23,18 @@ const RESTORE =
   "upstream (task sync-from-upstream) so the root workspaces stay extensions/core/* and " +
   `extensions/library/* (${SPEC}).`;
 
-function readJson(file: string): any {
-  return JSON.parse(cowFs.readFileSync(file, "utf8"));
+interface Manifest {
+  workspaces?: unknown;
+}
+
+function readManifest(file: string): Manifest {
+  return JSON.parse(cowFs.readFileSync(file, "utf8")) as Manifest;
 }
 
 function staticFindings(root: string): string[] {
-  const manifest = readJson(cowPath.join(root, "package.json"));
-  const raw = manifest.workspaces;
-  const patterns: unknown[] = Array.isArray(raw)
-    ? raw
-    : Array.isArray(raw?.packages)
-      ? raw.packages
-      : [];
+  const raw = readManifest(cowPath.join(root, "package.json")).workspaces;
+  const nested = (raw as { packages?: unknown } | null | undefined)?.packages;
+  const patterns: unknown[] = Array.isArray(raw) ? raw : Array.isArray(nested) ? nested : [];
   const findings: string[] = [];
   for (const pattern of patterns) {
     if (typeof pattern !== "string") continue;
