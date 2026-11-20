@@ -107,9 +107,7 @@ const groupOf = (b: Builder) => () =>
   compare(`builder ${b.label}: ${b.name}`, casesOf(b, tmp, b.build(tmp)));
 
 const agentsDir = path.join(REPO, "artifacts", "core", "agents");
-const agents = fs.existsSync(agentsDir)
-  ? fs.readdirSync(agentsDir).sort()
-  : [];
+const agents = fs.existsSync(agentsDir) ? fs.readdirSync(agentsDir).sort() : [];
 // Issue #1937: the live core profiles now declare `reasoning`, which the frozen shell never knew, so
 // the eleven core agents are read from a frozen copy (`oracle-agents/`) of their sources as on main
 // before that change, the way `oracle-mappings/` freezes the mappings. The goldens stay keyed
@@ -123,8 +121,7 @@ const frozenAgentsDir = path.join(
   "oracle-agents",
 );
 const frozenAgents = new Set(fs.existsSync(frozenAgentsDir) ? fs.readdirSync(frozenAgentsDir) : []);
-const agentDirOf = (a: string): string =>
-  frozenAgents.has(a) ? frozenAgentsDir : agentsDir;
+const agentDirOf = (a: string): string => (frozenAgents.has(a) ? frozenAgentsDir : agentsDir);
 const TARGETS = ["claude", "gemini", "copilot", "antigravity"];
 const profileDir = path.join(REPO, "scripts", "tests", "fixtures", "agent-profiles");
 const fixtures = fs.existsSync(profileDir) ? fs.readdirSync(profileDir).sort() : [];
@@ -169,11 +166,7 @@ describe("resolution: the shell library and its twin agree", describeSkip, () =>
   test("the corpus is the whole surface and is not vacuous", (t) => {
     const all = [...results.values()].flat();
     const real = all.filter((r) => r.c.label.startsWith("core agent"));
-    assert.equal(
-      agents.length,
-      11,
-      "11 core agent sources",
-    );
+    assert.equal(agents.length, 11, "11 core agent sources");
     assert.equal(real.length, 44, "11 agents x 4 targets");
     assert.ok(fixtures.length >= 1, "scripts/tests/fixtures/agent-profiles/ holds a fixture");
     const served = real.filter((r) => r.shell.offeringId !== "");

@@ -51,10 +51,9 @@ function filesUnder(dir: string): string[] {
 
 describe("T4 — R21: diagnostic stream of a plain build, 11-source throwaway root", () => {
   const tree = createFixtureTree();
-  const sources = copyFromWorktree(tree, [
-    "artifacts/core/agents",
-    ...CONFIG,
-  ]).filter((f) => f.endsWith("/AGENT.md"));
+  const sources = copyFromWorktree(tree, ["artifacts/core/agents", ...CONFIG]).filter((f) =>
+    f.endsWith("/AGENT.md"),
+  );
   const built = build(tree);
 
   // The stream is composed, not a constant (spec 0291 R7): 11 copilot model-drop lines, one
@@ -151,10 +150,9 @@ describe("T4 — R21: diagnostic stream of a plain build, 11-source throwaway ro
 
 describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
   const tree = createFixtureTree();
-  const sources = copyFromWorktree(tree, [
-    "artifacts/core/agents",
-    ...CONFIG,
-  ]).filter((f) => f.endsWith("/AGENT.md"));
+  const sources = copyFromWorktree(tree, ["artifacts/core/agents", ...CONFIG]).filter((f) =>
+    f.endsWith("/AGENT.md"),
+  );
   // a replaced guard term is a whole node, so the override carries every required key
   tree.write(
     "model-mappings/claude.org.yml",

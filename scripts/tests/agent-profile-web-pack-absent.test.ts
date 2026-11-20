@@ -58,7 +58,8 @@ export const findPackHits = (root: string): string[] => {
     for (const n of AGENTS)
       for (const file of [`${n}.md`, `${n}.agent.md`])
         if (exists(root, `${tree}/agents/${file}`)) hits.push(`${tree}/agents/${file}`);
-    for (const n of SKILLS) if (exists(root, `${tree}/skills/${n}`)) hits.push(`${tree}/skills/${n}`);
+    for (const n of SKILLS)
+      if (exists(root, `${tree}/skills/${n}`)) hits.push(`${tree}/skills/${n}`);
   }
   for (const file of PROFILES) {
     const rel = `artifacts/core/claude-profiles/${file}`;
@@ -97,7 +98,10 @@ describe("spec 0313 R6 — the web and SEO pack is absent from CrewRig", () => {
       put(".agents/skills/web-tester/SKILL.md");
       put(
         "artifacts/core/claude-profiles/worker.settings.json",
-        JSON.stringify({ permissions: { deny: ["Agent(designer)", "Artifact"] }, skillOverrides: { frontend: "off" } }),
+        JSON.stringify({
+          permissions: { deny: ["Agent(designer)", "Artifact"] },
+          skillOverrides: { frontend: "off" },
+        }),
       );
       assert.deepEqual(findPackHits(root).sort(), [
         ".agents/skills/web-tester",
