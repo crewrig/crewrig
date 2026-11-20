@@ -18,7 +18,8 @@ process.removeAllListeners("warning");
 
 const oexFs = require("node:fs") as typeof import("node:fs");
 const oexPath = require("node:path") as typeof import("node:path");
-const oexSpawnSync = (require("node:child_process") as typeof import("node:child_process")).spawnSync;
+const oexSpawnSync = (require("node:child_process") as typeof import("node:child_process"))
+  .spawnSync;
 
 const ACTIONS = ["install", "build", "test"];
 
@@ -41,7 +42,9 @@ function main(): number {
   const available = oexFs.existsSync(orgDir)
     ? oexFs
         .readdirSync(orgDir, { withFileTypes: true })
-        .filter((e) => e.isDirectory() && oexFs.existsSync(oexPath.join(orgDir, e.name, "package.json")))
+        .filter(
+          (e) => e.isDirectory() && oexFs.existsSync(oexPath.join(orgDir, e.name, "package.json")),
+        )
         .map((e) => e.name)
         .sort()
     : [];
@@ -66,7 +69,12 @@ function main(): number {
       const verb = oexFs.existsSync(oexPath.join(orgDir, "package-lock.json")) ? "ci" : "install";
       return npm(orgDir, [verb, ...flags]);
     }
-    return npm(orgDir, ["run", action, "--if-present", ...(names.length > 0 ? flags : ["--workspaces"])]);
+    return npm(orgDir, [
+      "run",
+      action,
+      "--if-present",
+      ...(names.length > 0 ? flags : ["--workspaces"]),
+    ]);
   }
 
   for (const name of selected) {

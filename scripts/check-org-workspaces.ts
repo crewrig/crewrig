@@ -14,7 +14,8 @@ process.removeAllListeners("warning");
 const cowFs = require("node:fs") as typeof import("node:fs");
 const cowOs = require("node:os") as typeof import("node:os");
 const cowPath = require("node:path") as typeof import("node:path");
-const cowSpawnSync = (require("node:child_process") as typeof import("node:child_process")).spawnSync;
+const cowSpawnSync = (require("node:child_process") as typeof import("node:child_process"))
+  .spawnSync;
 
 const SPEC = "spec 0311";
 const RESTORE =
@@ -29,7 +30,11 @@ function readJson(file: string): any {
 function staticFindings(root: string): string[] {
   const manifest = readJson(cowPath.join(root, "package.json"));
   const raw = manifest.workspaces;
-  const patterns: unknown[] = Array.isArray(raw) ? raw : Array.isArray(raw?.packages) ? raw.packages : [];
+  const patterns: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.packages)
+      ? raw.packages
+      : [];
   const findings: string[] = [];
   for (const pattern of patterns) {
     if (typeof pattern !== "string") continue;
@@ -52,12 +57,15 @@ function copyFile(src: string, dest: string): void {
 function dynamicFindings(root: string): string[] {
   const tmp = cowFs.mkdtempSync(cowPath.join(cowOs.tmpdir(), "org-workspaces-"));
   try {
-    for (const rel of ["package.json", "package-lock.json"]) copyFile(cowPath.join(root, rel), cowPath.join(tmp, rel));
+    for (const rel of ["package.json", "package-lock.json"])
+      copyFile(cowPath.join(root, rel), cowPath.join(tmp, rel));
     const extRoot = cowPath.join(root, "extensions");
     if (cowFs.existsSync(extRoot)) {
       for (const tier of cowFs.readdirSync(extRoot, { withFileTypes: true })) {
         if (!tier.isDirectory()) continue;
-        for (const ext of cowFs.readdirSync(cowPath.join(extRoot, tier.name), { withFileTypes: true })) {
+        for (const ext of cowFs.readdirSync(cowPath.join(extRoot, tier.name), {
+          withFileTypes: true,
+        })) {
           const src = cowPath.join(extRoot, tier.name, ext.name, "package.json");
           if (ext.isDirectory() && cowFs.existsSync(src)) {
             copyFile(src, cowPath.join(tmp, "extensions", tier.name, ext.name, "package.json"));
@@ -66,7 +74,10 @@ function dynamicFindings(root: string): string[] {
       }
     }
     const skeleton = cowFs
-      .readFileSync(cowPath.join(__dirname, "..", "extension-skeleton", "base", "package.json"), "utf8")
+      .readFileSync(
+        cowPath.join(__dirname, "..", "extension-skeleton", "base", "package.json"),
+        "utf8",
+      )
       .replaceAll("${SKELETON_NAME}", "probe");
     const probeFile = cowPath.join(tmp, "extensions", "org", "probe", "package.json");
     cowFs.mkdirSync(cowPath.dirname(probeFile), { recursive: true });
@@ -74,15 +85,20 @@ function dynamicFindings(root: string): string[] {
 
     const findings: string[] = [];
     for (const extra of [[], ["--omit=dev", "--workspaces=false"]]) {
-      const run = cowSpawnSync("npm", ["ci", "--dry-run", "--ignore-scripts", "--offline", ...extra], {
-        cwd: tmp,
-        encoding: "utf8",
-      });
+      const run = cowSpawnSync(
+        "npm",
+        ["ci", "--dry-run", "--ignore-scripts", "--offline", ...extra],
+        {
+          cwd: tmp,
+          encoding: "utf8",
+        },
+      );
       if (run.error !== undefined) throw run.error;
       if (run.status !== 0) {
         const out = `${run.stdout}${run.stderr}`;
         const missing = out.split("\n").filter((line) => /Missing:|Invalid:/.test(line));
-        const detail = missing.length > 0 ? missing.join("\n") : out.trim().split("\n").slice(-5).join("\n");
+        const detail =
+          missing.length > 0 ? missing.join("\n") : out.trim().split("\n").slice(-5).join("\n");
         findings.push(
           `npm ci --dry-run ${extra.join(" ")} failed with a skeleton-shaped org extension present:\n${detail}\n` +
             `Cause: the root lockfile is out of sync with the root workspace set. ${RESTORE}`,
@@ -98,7 +114,9 @@ function dynamicFindings(root: string): string[] {
 
 try {
   if (process.argv.length > 2) {
-    process.stderr.write("Usage: node scripts/check-org-workspaces.ts (REPO_DIR overrides the root)\n");
+    process.stderr.write(
+      "Usage: node scripts/check-org-workspaces.ts (REPO_DIR overrides the root)\n",
+    );
     process.exitCode = 2;
   } else {
     const root = process.env.REPO_DIR ?? cowPath.resolve(__dirname, "..");
