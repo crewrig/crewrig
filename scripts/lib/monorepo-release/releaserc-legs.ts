@@ -71,7 +71,13 @@ export function gitLeg(input: ReleasercInput): PluginEntry {
   return [
     "@semantic-release/git",
     {
-      assets: ["package.json", "extension.json", "CHANGELOG.md"],
+      assets: [
+        "package.json",
+        "extension.json",
+        "CHANGELOG.md",
+        "skills/*/SKILL.md",
+        "agents/*/AGENT.md",
+      ],
       message: `${message}\n\n\${nextRelease.notes}`,
     },
   ];

@@ -99,19 +99,18 @@ capabilities:
 
   - id: extension-manifest
     group: extensions
-    name: "Enforce extension manifest single-version and version-bump"
+    name: "Enforce extension manifest and carrier version lockstep"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
       - on: push
         branches: [main, "release/**"]
     paths:
-      - "scripts/tests/governance-suite-extension-version-bump.test.ts"
-      - "scripts/tests/governance-suite-extension-version-bump-base.test.ts"
+      - "scripts/tests/governance-manifest-version-cases.test.ts"
+      - "scripts/tests/governance-check-extension-manifest-version.test.ts"
       - "scripts/tests/lib/governance-*.ts"
       - "extensions/**"
       - "artifacts/**"
-      - "scripts/check-extension-version-bump.ts"
       - "scripts/lib/governance/**"
       - "scripts/check-extension-manifest-version.ts"
       - "scripts/lib/extension/**"

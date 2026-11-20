@@ -377,12 +377,11 @@ extension-manifest:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
-        - "scripts/tests/governance-suite-extension-version-bump.test.ts"
-        - "scripts/tests/governance-suite-extension-version-bump-base.test.ts"
+        - "scripts/tests/governance-manifest-version-cases.test.ts"
+        - "scripts/tests/governance-check-extension-manifest-version.test.ts"
         - "scripts/tests/lib/governance-*.ts"
         - "extensions/**"
         - "artifacts/**"
-        - "scripts/check-extension-version-bump.ts"
         - "scripts/lib/governance/**"
         - "scripts/check-extension-manifest-version.ts"
         - "scripts/lib/extension/**"
@@ -1619,17 +1618,6 @@ check-description-length:
         - "scripts/tests/lib/skill-quality-fixture.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
-check-extension-version-bump:
-  stage: governance
-  image: node:24
-  variables:
-    GIT_DEPTH: "0"
-    BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
-  script:
-    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-version-bump.ts"
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-
 check-spec-id-reserved:
   stage: governance
   image: node:24
@@ -2620,7 +2608,7 @@ packaging-modules-ts:
   image: node:24
   before_script:
     - !reference [.task-install, script]
-    - npm ci --omit=dev --workspaces=false
+    - npm ci
   script:
     - "task ci:packaging-modules-ts"
   rules:
@@ -2658,6 +2646,7 @@ packaging-modules-ts:
         - "scripts/tests/packaging-spawn-tiers.test.ts"
         - "scripts/tests/packaging-entries.test.ts"
         - "scripts/tests/release-sync-manifests.test.ts"
+        - "scripts/tests/release-sync-manifests-commit.test.ts"
         - "scripts/tests/lib/release-sandbox.ts"
         - "scripts/tests/lib/build-fixture-tree.ts"
         - "scripts/build-docs-index.ts"

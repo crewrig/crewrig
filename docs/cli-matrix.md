@@ -334,7 +334,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `check-extension-provenance.ts`; there is **no** defense-in-depth overlap with the 0030 guard.
 - **Source of truth:** `scripts/check-extension-provenance.ts` (presence + R1/R5 routing guard, parses the comment
   carrier, NOT `yq`); carrier producer `gemini_provenance_comment` (row 4b)
-- **Claude Code:** ✅ HTML comment `<!-- crewrig-provenance: version="…" canonical="…" feedback="…" -->` as first
+- **Claude Code:** ✅ HTML comment `<!-- crewrig-provenance: extension="…" version="…" canonical="…" feedback="…" -->` as first
   body line of the in-place `SKILL.md` (Claude tolerates the inert body comment; greeter has no prior frontmatter
   provenance, so this is not a downgrade)
 - **Gemini CLI:** ✅ Same source bytes — the first-body-line HTML comment is Gemini-safe as authored (no
@@ -1377,8 +1377,9 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Feature:** Per-CLI extension manifest. **Two committed manifests under version lockstep (spec 0044, as amended by
   delta-01), one built and asserted separately.** An extension's `package.json` `version` is authoritative; the
   committed `extension.json` of the SAME extension MUST declare that SAME version —
-  `scripts/check-extension-manifest-version.ts` is a static CI guard that fails on a divergent `extension.json`, and
-  `scripts/monorepo-release.ts` rewrites it to `nextRelease.version` at release time (spec 0257:
+  `scripts/check-extension-manifest-version.ts` is a static CI guard that fails on a divergent `extension.json` or a divergent skill/agent provenance carrier
+  (`extension` = the directory name, `version` = the package version, spec 0312), and
+  `scripts/monorepo-release.ts` rewrites them to `nextRelease.version` at release time (the release commit stages the carriers too) (spec 0257:
   `scripts/monorepo-release.ts` is a forwarding shim to that entry, with `scripts/release-sync-manifests.ts` for the
   manifest rewrite). The release archive packages the Gemini CLI output alone (Ruling A, spec 0183 delta-01): the Claude
   Code, GitHub Copilot CLI and Antigravity CLI manifests and outputs of this row are neither packaged nor changed by

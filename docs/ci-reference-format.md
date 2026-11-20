@@ -782,7 +782,6 @@ $ yq '.jobs | keys' .github/workflows/build.yml
 - lint-specs
 - test-harness-curate
 - check-skill-versions
-- check-extension-version-bump
 - check-spec-id-reserved
 - check-agents-size
 - check-rules-size

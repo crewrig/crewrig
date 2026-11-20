@@ -606,7 +606,7 @@ describe("R6 real tree", () => {
   it("prints the exemption list", () => {
     const lines = formatExemptions(parseExemptions(real.exemptions).entries);
     console.log(`push-main exemptions (${lines.length}):\n${lines.join("\n")}`);
-    assert.equal(lines.length, 12);
+    assert.equal(lines.length, 11);
   });
   it("(b) no workflow file keeps a push path filter unless an exemption names it", () => {
     assert.deepEqual(checkWorkflowFilters(real).map(show), []);

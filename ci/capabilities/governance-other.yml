@@ -209,9 +209,9 @@ capabilities:
     command:
       - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/harness-curator-curate-fixture.test.ts scripts/tests/harness-curator-curate-units.test.ts scripts/tests/harness-curator-apply-dry-run.test.ts scripts/tests/harness-curator-apply-units.test.ts scripts/tests/harness-curator-setup-schedule.test.ts scripts/tests/harness-curator-real-palace.test.ts"
 
-  # check-skill-versions and check-extension-version-bump compare the change against its base ref; the workflow gates them
+  # check-skill-versions compares the change against its base ref; the workflow gates it
   # on `if: github.event_name == 'pull_request'` (.github/workflows/build.yml lines 173, 186), so the trigger is
-  # pull-request only. They need `history-depth: full` (GHA `fetch-depth: 0`) to resolve the base ref (delta-02 R12).
+  # pull-request only. It needs `history-depth: full` (GHA `fetch-depth: 0`) to resolve the base ref (delta-02 R12).
   - id: check-skill-versions
     group: governance
     name: "Enforce version bump on changed skill/agent sources"
@@ -273,23 +273,8 @@ capabilities:
     command:
       - task ci:check-description-length
 
-  - id: check-extension-version-bump
-    group: governance
-    name: "Enforce carrier-version bump on changed extension sources"
-    trigger:
-      - on: pull-request
-        branches: [main, "release/**"]
-    portability: portable
-    requires:
-      runtime: node@24
-      history-depth: full
-    env:
-      BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
-    command:
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-version-bump.ts
-
   # check-spec-id-reserved compares the change against its base ref and reads the reservation namespaces on the remote, so
-  # it needs `history-depth: full`, as the two version-bump guards above. The workflow gates it on
+  # it needs `history-depth: full`, as the version-bump guard above. The workflow gates it on
   # `if: github.event_name == 'pull_request'` (spec 0112 R10 origin discrimination has no meaning on a push), so the
   # trigger is pull-request only.
   #

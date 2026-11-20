@@ -8,7 +8,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { after, describe, test } from "node:test";
 
-import { copySkill, envelope, run, tempDir } from "./lib/skill-scripts-pr-reviewer-cli.ts";
+import {
+  copySkill,
+  envelope,
+  run,
+  tempDir,
+  type Run,
+} from "./lib/skill-scripts-pr-reviewer-cli.ts";
 
 const root = tempDir("pr-reviewer-contract-");
 after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -177,5 +183,93 @@ describe("existing linters: unreadable input first, tool absence, --json", () =>
     assert.equal(envelope(over).findings[0]?.rule, "over-budget");
     assert.equal(run(skill, "check-comment-size", [NOPE]).status, 3);
     assert.equal(run(skill, "check-comment-size", ["-"], { input: "abc" }).status, 0);
+  });
+});
+
+// Spec 0312 R1/R2/R12 (issue #2075): an extension skill is held to `name` and `description` only;
+// every other skill keeps the five canonical-skill keys.
+describe("lint-skill: extension skills need only name and description (spec 0312)", () => {
+  const KEYS = [
+    "name",
+    "description",
+    "license",
+    "compatibility",
+    "metadata.provenance.version",
+  ] as const;
+  const messages = (r: Run): string[] => envelope(r).findings.map((f) => f.message);
+  const missing = (r: Run): string[] =>
+    messages(r).map((m) => m.replace(/^.*missing required frontmatter key: /, ""));
+  const at = (rel: string, text: string, name = rel): string => {
+    const p = path.join(root, name);
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, text);
+    return p;
+  };
+  const EXT = "work/extensions/core/demo/skills/x/SKILL.md";
+  const BOTH = "---\nname: x\ndescription: d\n---\n";
+
+  test("the real greeter file exits 0 with no finding", () => {
+    const greeter = path.join(
+      REPO,
+      "extensions",
+      "core",
+      "hello-world",
+      "skills",
+      "greeter",
+      "SKILL.md",
+    );
+    const r = run(skill, "lint-skill", ["--json", greeter], { cwd: REPO });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.deepEqual(missing(r), []);
+  });
+
+  test("an extension skill with description but no name reports exactly that key", () => {
+    at(EXT, "---\ndescription: d\n---\n");
+    const r = run(skill, "lint-skill", ["--json", EXT], { cwd: root });
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.deepEqual(missing(r), ["name"]);
+  });
+
+  test("an extension skill with name but no description reports exactly that key", () => {
+    at(EXT, "---\nname: x\n---\n");
+    const r = run(skill, "lint-skill", ["--json", EXT], { cwd: root });
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.deepEqual(missing(r), ["description"]);
+  });
+
+  test("an extension skill with name and description exits 0", () => {
+    at(EXT, BOTH);
+    const r = run(skill, "lint-skill", ["--json", EXT], { cwd: root });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+  });
+
+  test("an ordinary skill still reports all five keys", () => {
+    at("work/skills/x/SKILL.md", "no frontmatter\n");
+    const r = run(skill, "lint-skill", ["--json", "work/skills/x/SKILL.md"], {
+      cwd: root,
+    });
+    assert.equal(r.status, 1);
+    assert.deepEqual(missing(r), [...KEYS]);
+  });
+
+  test("artifacts/extensions/x/SKILL.md stays ordinary (five keys)", () => {
+    const rel = "artifacts/extensions/x/SKILL.md";
+    at(rel, BOTH);
+    const r = run(skill, "lint-skill", ["--json", rel], { cwd: root });
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.deepEqual(missing(r), ["license", "compatibility", "metadata.provenance.version"]);
+  });
+
+  test("an extension target given with ./ is still an extension target", () => {
+    at(EXT, BOTH);
+    const r = run(skill, "lint-skill", ["--json", `./${EXT}`], { cwd: root });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+  });
+
+  test("an extension target given with backslashes is still an extension target", () => {
+    const win = EXT.replaceAll("/", "\\");
+    at(EXT, BOTH, win); // on POSIX the backslashed name is one literal file name
+    const r = run(skill, "lint-skill", ["--json", win], { cwd: root });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
   });
 });
