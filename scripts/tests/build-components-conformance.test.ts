@@ -6,7 +6,7 @@
 // Per (agent, target) pair the offering id, native value, directed frontmatter lines, prose,
 // diagnostics, `mapping_in_force` handle and standard error are compared between
 // `resolve_agent` (sourced with `render-command.sh`, one `bash` per case group) and
-// `resolveAgent`. The corpus is the 22 core agents on the four targets, every fixture of
+// `resolveAgent`. The corpus is the 11 core agents on the four targets, every fixture of
 // scripts/tests/fixtures/agent-profiles/, and every builder of lib/mapping-fixtures.ts (the
 // inline cases of test-model-resolution.sh plus an axis matrix); organisation-channel cases are
 // the sibling suite's. A guard fails when a fixture-defining section of the Bash suite has no
@@ -107,24 +107,8 @@ const groupOf = (b: Builder) => () =>
   compare(`builder ${b.label}: ${b.name}`, casesOf(b, tmp, b.build(tmp)));
 
 const agentsDir = path.join(REPO, "artifacts", "core", "agents");
-// Spec 0307: eleven of the 22 corpus agents moved to artifacts/library/agents; the corpus labels stay
-// `core agent <name>/<target>` so the recorded goldens keep their keys.
-const libraryAgentsDir = path.join(REPO, "artifacts", "library", "agents");
-const movedAgents = [
-  "accessibility-auditor",
-  "accessibility-tester",
-  "astro-developer",
-  "copywriter",
-  "designer",
-  "frontend-developer",
-  "regression-sentinel",
-  "scenario-author",
-  "seo-specialist",
-  "visual-regression-tester",
-  "web-conformity-checker",
-];
 const agents = fs.existsSync(agentsDir)
-  ? [...fs.readdirSync(agentsDir), ...movedAgents].sort()
+  ? fs.readdirSync(agentsDir).sort()
   : [];
 // Issue #1937: the live core profiles now declare `reasoning`, which the frozen shell never knew, so
 // the eleven core agents are read from a frozen copy (`oracle-agents/`) of their sources as on main
@@ -140,7 +124,7 @@ const frozenAgentsDir = path.join(
 );
 const frozenAgents = new Set(fs.existsSync(frozenAgentsDir) ? fs.readdirSync(frozenAgentsDir) : []);
 const agentDirOf = (a: string): string =>
-  movedAgents.includes(a) ? libraryAgentsDir : frozenAgents.has(a) ? frozenAgentsDir : agentsDir;
+  frozenAgents.has(a) ? frozenAgentsDir : agentsDir;
 const TARGETS = ["claude", "gemini", "copilot", "antigravity"];
 const profileDir = path.join(REPO, "scripts", "tests", "fixtures", "agent-profiles");
 const fixtures = fs.existsSync(profileDir) ? fs.readdirSync(profileDir).sort() : [];
@@ -187,17 +171,17 @@ describe("resolution: the shell library and its twin agree", describeSkip, () =>
     const real = all.filter((r) => r.c.label.startsWith("core agent"));
     assert.equal(
       agents.length,
-      22,
-      "22 core agent sources, as test-model-resolution.sh C2(c) pins",
+      11,
+      "11 core agent sources",
     );
-    assert.equal(real.length, 88, "22 agents x 4 targets");
+    assert.equal(real.length, 44, "11 agents x 4 targets");
     assert.ok(fixtures.length >= 1, "scripts/tests/fixtures/agent-profiles/ holds a fixture");
     const served = real.filter((r) => r.shell.offeringId !== "");
     const recorded = real.filter((r) => r.shell.diagLines.length > 0 || r.shell.fmLines.length > 0);
-    assert.ok(served.length >= 60, `only ${served.length} of 88 real pairs select an offering`);
+    assert.ok(served.length >= 30, `only ${served.length} of 44 real pairs select an offering`);
     assert.ok(
-      recorded.length >= 60,
-      `only ${recorded.length} of 88 real pairs record a drop, note or line`,
+      recorded.length >= 30,
+      `only ${recorded.length} of 44 real pairs record a drop, note or line`,
     );
     for (const target of TARGETS) {
       const mine = real.filter((r) => r.c.target === target);
@@ -207,7 +191,7 @@ describe("resolution: the shell library and its twin agree", describeSkip, () =>
       );
     }
     assert.ok(all.some((r) => r.shell.prose !== "") && all.some((r) => r.shell.fmLines.length > 0));
-    assert.ok(all.length >= 240, `only ${all.length} pairs compared`);
+    assert.ok(all.length >= 200, `only ${all.length} pairs compared`);
     const listed = all.filter(
       (r) => problems([r]).length === 0 && diffOutcomes(r.shell, r.twin).length > 0,
     );

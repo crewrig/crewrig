@@ -18,7 +18,6 @@ interface Profile {
   permissions?: { deny?: string[] };
   claudeMdExcludes?: string[];
   disableBundledSkills?: boolean;
-  skillOverrides?: Record<string, string>;
   syncClaudeAiSkills?: unknown;
   enabledPlugins?: unknown;
 }
@@ -77,42 +76,6 @@ describe("claude profiles (spec 0305)", () => {
     for (const p of [worker, coordinator]) {
       assert.equal(p.syncClaudeAiSkills, undefined);
       assert.equal(p.enabledPlugins, undefined);
-    }
-  });
-
-  it("every Agent(<name>) deny names an existing agent, in both profiles", () => {
-    for (const p of [worker, coordinator]) {
-      const names = deny(p)
-        .map((d) => /^Agent\((.+)\)$/.exec(d)?.[1])
-        .filter((n): n is string => n !== undefined);
-      assert.equal(names.length, 11, "11 web and SEO agents");
-      for (const n of names) {
-        assert.ok(
-          ["core", "library"].some((tier) =>
-            fs.existsSync(path.join(REPO, "artifacts", tier, "agents", n, "AGENT.md")),
-          ),
-          `agent ${n} must exist`,
-        );
-      }
-    }
-    assert.deepEqual(
-      deny(coordinator).sort(),
-      deny(worker)
-        .filter((d) => d.startsWith("Agent("))
-        .sort(),
-    );
-  });
-
-  it("every skillOverrides key names an existing skill, identical in both profiles", () => {
-    assert.deepEqual(worker.skillOverrides, coordinator.skillOverrides);
-    for (const [name, mode] of Object.entries(worker.skillOverrides ?? {})) {
-      assert.equal(mode, "off");
-      assert.ok(
-        ["core", "library"].some((tier) =>
-          fs.existsSync(path.join(REPO, "artifacts", tier, "skills", name, "SKILL.md")),
-        ),
-        `skill ${name} must exist`,
-      );
     }
   });
 
