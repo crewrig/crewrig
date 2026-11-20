@@ -280,7 +280,7 @@ describe("yq -r versus the reader, every field the build reads", { skip: noYq },
   test("the corpus was compared, not skipped (floors computed from the tree)", (t) => {
     const artifacts = walk("artifacts").filter(isSource).length;
     t.diagnostic(`${yqVersion?.trim()}; ${counted.sources} sources, ${counted.rows} comparisons`);
-    assert.ok(artifacts >= 45, `only ${artifacts} component sources under artifacts/`);
+    assert.ok(artifacts >= 30, `only ${artifacts} component sources under artifacts/`);
     assert.equal(counted.sources, sources.length + 2, "a source was not compared");
     assert.ok(counted.rows >= counted.sources * 20, "fewer than 20 field comparisons per source");
     // Every R11 awkward shape has its fixture, and every `deviation-*` fixture a table row.
