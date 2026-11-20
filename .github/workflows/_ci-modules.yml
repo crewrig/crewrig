@@ -123,6 +123,7 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: packaging-modules-ts
+          install: ci
 
   # Spec 0250 R3, R27: the build entry prints nothing on the oldest Node.js 24
   # release. No path filter, like `mempalace-transcript-node-24-0`.

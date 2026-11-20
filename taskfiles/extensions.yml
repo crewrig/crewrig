@@ -133,6 +133,12 @@ tasks:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node {{.REPO_DIR}}/scripts/create-extension.ts {{.CLI_ARGS}}
 
+  org-extensions:
+    desc: "Install, build or test org-tier extensions outside the root workspace set, through extensions/org/package.json when present, else per extension; all when no name is given, no-op when empty (task org-extensions -- install|build|test [name...], spec 0311)"
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node {{.REPO_DIR}}/scripts/org-extensions.ts {{.CLI_ARGS}}
+
   migrate-extension:
     desc: "Convert an extension source tree from the retired declaration shape to the current one (task migrate-extension EXT=my-ext, spec 0183)"
     cmds:

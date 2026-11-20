@@ -950,5 +950,17 @@
   {
     "name": "ci:windows-setup-entries",
     "desc": "Windows proof of setup entries (CI mirror of the windows-latest job)"
+  },
+  {
+    "name": "org-extensions",
+    "desc": "Install, build or test org-tier extensions outside the root workspace set, through extensions/org/package.json when present, else per extension; all when no name is given, no-op when empty (task org-extensions -- install|build|test [name...], spec 0311)"
+  },
+  {
+    "name": "ci:org-workspaces",
+    "desc": "Run the org-workspaces CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:org-workspaces-selftest",
+    "desc": "Run the org-workspaces-selftest CI capability (pre-push mirror of the CI job)"
   }
 ]

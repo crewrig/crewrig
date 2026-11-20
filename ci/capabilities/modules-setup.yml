@@ -309,7 +309,7 @@ capabilities:
   # Spec 0257 (ticket #1336), PRs 2 and 3: the deterministic tar.gz archive writer, documentation index, release packager,
   # manifest synchronisation and packaging modules. The archive suite cross-checks with `tar` and `gzip`, the release
   # differential suite spawns `bash`, `jq` and `tar`. They build in a sandbox copy of `scripts/`, hence the broad builder
-  # paths.
+  # paths. `install: ci` (devDependencies present): release-sync-manifests-commit.test.ts loads the real @semantic-release/git.
   - id: packaging-modules-ts
     group: modules
     name: "Run the TypeScript archive writer, documentation index and release packaging module suites"
@@ -351,6 +351,7 @@ capabilities:
       - "scripts/tests/packaging-spawn-tiers.test.ts"
       - "scripts/tests/packaging-entries.test.ts"
       - "scripts/tests/release-sync-manifests.test.ts"
+      - "scripts/tests/release-sync-manifests-commit.test.ts"
       - "scripts/tests/lib/release-sandbox.ts"
       - "scripts/tests/lib/build-fixture-tree.ts"
       - "scripts/build-docs-index.ts"
@@ -367,6 +368,6 @@ capabilities:
     requires:
       runtime: node@24
       tools: [task]
-      install: omit-dev
+      install: ci
     command:
       - task ci:packaging-modules-ts

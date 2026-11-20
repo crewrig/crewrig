@@ -4,14 +4,11 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
-import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
 import type { Io } from "../lib/extension/types.ts";
-import { gitLeg } from "../lib/monorepo-release/releaserc-legs.ts";
-import type { ReleasercInput } from "../lib/monorepo-release/releaserc-types.ts";
 import { main } from "../lib/packaging/sync-manifests-main.ts";
 import { syncManifests } from "../lib/packaging/sync-manifests.ts";
 
@@ -201,147 +198,5 @@ test("a manifest keeps the permission bits it had", { skip: process.platform ===
     assert.equal(fs.statSync(path.join(dir, "extension.json")).mode & 0o777, 0o664);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-// Spec 0312 R6/R12 (issue #2075): the release step rewrites the carrier `version` of every
-// skill and agent of the extension along with both manifests.
-const carrierText = (version: string): string =>
-  `---\nname: x\n---\n<!-- crewrig-provenance: extension="hello" version="${version}" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->\n\n# body version="9.9.9"\n`;
-
-function extensionWithCarriers(dir: string): void {
-  fs.writeFileSync(
-    path.join(dir, "package.json"),
-    '{"name":"hello-extension","version":"1.0.0"}\n',
-  );
-  fs.writeFileSync(path.join(dir, "extension.json"), '{"name":"hello","version":"1.0.0"}\n');
-  for (const [rel, file] of [
-    ["skills/s1", "SKILL.md"],
-    ["skills/s2", "SKILL.md"],
-    ["agents/a1", "AGENT.md"],
-  ] as const) {
-    fs.mkdirSync(path.join(dir, rel), { recursive: true });
-    fs.writeFileSync(path.join(dir, rel, file), carrierText("1.0.0"));
-  }
-}
-
-test("an extension with carriers: every skill and agent carrier ends at the new version", () => {
-  const dir = tmpDir();
-  extensionWithCarriers(dir);
-  syncManifests(dir, "2.5.0");
-  for (const rel of ["skills/s1/SKILL.md", "skills/s2/SKILL.md", "agents/a1/AGENT.md"]) {
-    // only the carrier's version moves; the other fields and the body stay byte for byte
-    assert.equal(read(dir, rel), carrierText("2.5.0"), rel);
-  }
-  assert.match(read(dir, "package.json"), /"version": "2.5.0"/);
-  assert.match(read(dir, "extension.json"), /"version": "2.5.0"/);
-});
-
-test("an extension without carriers: the output is byte-identical to the manifests-only run", () => {
-  const dir = tmpDir();
-  fs.writeFileSync(path.join(dir, "package.json"), '{"name":"x","version":"1.0.0"}\n');
-  fs.mkdirSync(path.join(dir, "skills", "s"), { recursive: true });
-  const plain = "---\nname: x\n---\n\n# no carrier\n";
-  fs.writeFileSync(path.join(dir, "skills", "s", "SKILL.md"), plain);
-  const done = syncManifests(dir, "2.5.0");
-  assert.deepEqual(done, [path.join(dir, "package.json")]);
-  assert.equal(read(dir, "package.json"), '{\n  "name": "x",\n  "version": "2.5.0"\n}\n');
-  assert.equal(read(dir, "skills/s/SKILL.md"), plain);
-});
-
-test("a failing manifest parse leaves every carrier untouched", () => {
-  const dir = tmpDir();
-  extensionWithCarriers(dir);
-  fs.writeFileSync(path.join(dir, "extension.json"), "{not json");
-  assert.throws(() => syncManifests(dir, "2.5.0"), /extension\.json/);
-  assert.equal(read(dir, "skills/s1/SKILL.md"), carrierText("1.0.0"));
-});
-
-// Spec 0312 R6: the release commit stages the carriers (real @semantic-release/git prepare).
-const prepare = createRequire(path.join(REPO, "noop.js"))(
-  "@semantic-release/git/lib/prepare.js",
-) as (config: Record<string, unknown>, context: Record<string, unknown>) => Promise<void>;
-
-const ENV = {
-  ...process.env,
-  GIT_AUTHOR_NAME: "t",
-  GIT_AUTHOR_EMAIL: "t@example.invalid",
-  GIT_COMMITTER_NAME: "t",
-  GIT_COMMITTER_EMAIL: "t@example.invalid",
-  GIT_CONFIG_GLOBAL: os.devNull,
-  GIT_CONFIG_NOSYSTEM: "1",
-};
-
-function git(cwd: string, ...args: string[]): string {
-  const r = spawnSync("git", args, { cwd, env: ENV, encoding: "utf8" });
-  assert.equal(r.status, 0, `git ${args.join(" ")}: ${r.stderr}`);
-  return r.stdout;
-}
-
-const carrier = (version: string): string =>
-  `---\nname: x\n---\n<!-- crewrig-provenance: extension="hello" version="${version}" canonical="u" feedback="u" -->\n`;
-
-test("gitLeg assets cover the manifests, the changelog and every carrier", () => {
-  const [, options] = gitLeg({ ext: "hello", mode: "publish" } as unknown as ReleasercInput);
-  assert.deepEqual((options as { assets: string[] }).assets, [
-    "package.json",
-    "extension.json",
-    "CHANGELOG.md",
-    "skills/*/SKILL.md",
-    "agents/*/AGENT.md",
-  ]);
-});
-
-test("the release commit holds exactly the manifests and the carriers it rewrote", async () => {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "git-leg-assets-")));
-  try {
-    const remote = path.join(root, "remote.git");
-    const work = path.join(root, "work");
-    fs.mkdirSync(remote);
-    git(remote, "init", "-q", "--bare", "-b", "main");
-    fs.mkdirSync(work);
-    git(work, "init", "-q", "-b", "main");
-    const ext = path.join(work, "extensions", "core", "hello");
-    fs.mkdirSync(path.join(ext, "skills", "s"), { recursive: true });
-    fs.mkdirSync(path.join(ext, "agents", "a"), { recursive: true });
-    fs.writeFileSync(
-      path.join(ext, "package.json"),
-      '{"name":"hello-extension","version":"1.0.0"}\n',
-    );
-    fs.writeFileSync(path.join(ext, "extension.json"), '{"name":"hello","version":"1.0.0"}\n');
-    fs.writeFileSync(path.join(ext, "skills", "s", "SKILL.md"), carrier("1.0.0"));
-    fs.writeFileSync(path.join(ext, "agents", "a", "AGENT.md"), carrier("1.0.0"));
-    fs.writeFileSync(path.join(ext, "notes.txt"), "unrelated\n");
-    git(work, "add", "-A");
-    git(work, "commit", "-q", "-m", "init");
-    git(work, "remote", "add", "origin", remote);
-    git(work, "push", "-q", "origin", "main");
-
-    syncManifests(ext, "1.1.0");
-    fs.writeFileSync(path.join(ext, "notes.txt"), "changed but not an asset\n");
-    const [, options] = gitLeg({ ext: "hello", mode: "publish" } as unknown as ReleasercInput);
-    const noop = { log: () => undefined };
-    await prepare(options as Record<string, unknown>, {
-      env: ENV,
-      cwd: ext,
-      branch: { name: "main" },
-      options: { repositoryUrl: remote },
-      lastRelease: {},
-      nextRelease: { version: "1.1.0", gitTag: "hello-v1.1.0", notes: "n" },
-      logger: noop,
-    });
-
-    const files = git(work, "show", "--name-only", "--pretty=format:", "HEAD")
-      .split("\n")
-      .filter((l) => l !== "")
-      .sort();
-    assert.deepEqual(files, [
-      "extensions/core/hello/agents/a/AGENT.md",
-      "extensions/core/hello/extension.json",
-      "extensions/core/hello/package.json",
-      "extensions/core/hello/skills/s/SKILL.md",
-    ]);
-  } finally {
-    fs.rmSync(root, { recursive: true, force: true });
   }
 });

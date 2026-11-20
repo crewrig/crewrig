@@ -1,7 +1,7 @@
 ---
 id: "0311"
 slug: org-extensions-outside-root-workspaces
-status: approved
+status: implemented
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 2073

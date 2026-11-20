@@ -96,6 +96,12 @@ cd extensions/org/my-extension
 npm install
 ```
 
+Org extensions sit outside the root workspace set (spec 0311). From the
+repository root, `task org-extensions -- install my-extension` (or `-- build
+my-extension`, `-- test my-extension`) works on the named extensions only; name
+every extension you need in one install call, as an install replaces the
+installed set.
+
 ## Development Workflow
 
 ### Link Mode

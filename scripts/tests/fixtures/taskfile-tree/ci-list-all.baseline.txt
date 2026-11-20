@@ -65,6 +65,7 @@ task: Available tasks for this project:
 * lint-markdown:                             Check all Markdown files for lint compliance
 * lint-ts:                                   Run every TypeScript check CI runs: type-check, erasable syntax, Oxlint, Oxfmt (spec 0238 R4-R8)
 * migrate-extension:                         Convert an extension source tree from the retired declaration shape to the current one (task migrate-extension EXT=my-ext, spec 0183)
+* org-extensions:                            Install, build or test org-tier extensions outside the root workspace set, through extensions/org/package.json when present, else per extension; all when no name is given, no-op when empty (task org-extensions -- install|build|test [name...], spec 0311)
 * oxlint-ts:                                 Run Oxlint type-aware strict typing and the max-lines warning (spec 0238 R6-R7)
 * package:                                   Package all extensions to dist/
 * package-extension:                         Package a single extension (task package-extension EXT=hello-world)
@@ -152,6 +153,8 @@ task: Available tasks for this project:
 * ci:mempalace-transcript:                   Run the mempalace-transcript CI capability (pre-push mirror of the CI job)
 * ci:misc:                                   Run the misc CI capability (pre-push mirror of the CI job)
 * ci:model-ci-tooling-ts:                    Run the model-ci-tooling-ts CI capability (pre-push mirror of the CI job)
+* ci:org-workspaces:                         Run the org-workspaces CI capability (pre-push mirror of the CI job)
+* ci:org-workspaces-selftest:                Run the org-workspaces-selftest CI capability (pre-push mirror of the CI job)
 * ci:packaging-modules-ts:                   Run the packaging-modules-ts CI capability (pre-push mirror of the CI job)
 * ci:path-ownership:                         Run the path-ownership and stray-scan wiring checks (pre-push mirror of the CI job)
 * ci:path-ownership-selftest:                Run the path-ownership and stray-scan wiring self-tests (pre-push mirror of the CI job)
