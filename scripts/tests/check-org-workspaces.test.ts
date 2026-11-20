@@ -43,7 +43,7 @@ function write(root: string, rel: string, content: string): void {
 }
 
 /** A minimal root: `workspaces` as given, one core extension `c`, and a lock in sync with them. */
-function fixtureRoot(workspaces: readonly string[], lockedCore: readonly string[] = ["c"]): string {
+function fixtureRoot(workspaces: readonly string[], lockedCore: readonly string[] = ["c", "d"]): string {
   const root = tempDir("org-ws-fixture");
   write(
     root,
