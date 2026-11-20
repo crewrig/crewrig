@@ -1,7 +1,7 @@
 ---
 id: "0311"
 slug: org-extensions-outside-root-workspaces
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 2073
@@ -43,7 +43,9 @@ documented, supported way to install and build its own extensions' dependencies.
    org tier's `build` and `test` scripts. Upstream SHALL NOT seed an
    `extensions/org/package.json`: no entry of `.crewrig/core-paths.txt` claims
    `extensions/org/`, so a seeded file would never reach existing forks.
-5. The upstream lockfile and the root `build` and `test` scripts SHALL keep
+5. The root `npm run build` and `npm run test` SHALL NOT cover the org tier: the
+   org-tier `task` target of requirement 4 owns the org tier's build and test.
+   The upstream lockfile and the root `build` and `test` scripts SHALL keep
    covering every extension under `extensions/core/` and `extensions/library/`
    exactly as before; the change SHALL NOT alter the resolved versions of any
    upstream dependency.
@@ -58,9 +60,14 @@ documented, supported way to install and build its own extensions' dependencies.
    because the org tier is unsynced. The extension-tiers contract of spec 0024
    (org tier excluded from the sync, never guarded, restored or aborted on)
    SHALL remain unchanged.
-8. A regression check SHALL fail when the root workspace declaration matches a
-   path under `extensions/org/`, and SHALL fail when a frozen root install
-   breaks in the presence of a skeleton-shaped org extension.
+8. A regression check, shipped as a `strict` upstream file, SHALL run
+   unguarded, with no repository-identity condition, in upstream CI and in
+   every adopter's CI, because synced workflows run in adopter CI by default.
+   It SHALL fail when the root workspace declaration matches a path under
+   `extensions/org/`, and SHALL fail with a message naming the cause when a
+   frozen root install breaks in the presence of a skeleton-shaped org
+   extension, including the fork's real org extensions. Its dynamic part SHALL
+   run in a temporary directory and write nothing to the tracked tree.
 
 ## Scenarios
 
@@ -103,6 +110,12 @@ documented, supported way to install and build its own extensions' dependencies.
 - Repairing an adopter fork whose lockfile was already regenerated with org
   extensions; the adopter restores the strict files from upstream through the
   normal sync.
+- Rejected: root `build` and `test` covering the org tier through an aggregating
+  target. The root scripts are upstream-owned and must not depend on adopter
+  content.
+- Rejected: a regression check limited to upstream CI. It would not cover the
+  fork's real org extensions, and an adopter would see a bare `npm ci` failure
+  instead of a message naming the cause.
 - Rejected alternative (a), a per-extension install as the only path: it gives
   no shared lockfile for adopters with several org extensions. It remains only
   as the fallback of requirement 4.
@@ -121,10 +134,4 @@ documented, supported way to install and build its own extensions' dependencies.
 
 ## Open questions
 
-- Should `npm run build` and `npm run test` at the root also cover the org tier
-  after this change? (a) no, the org install path owns its own scripts;
-  (b) yes, through an aggregating `task` target. Recommendation: (a), since the
-  root scripts are upstream-owned and must not depend on adopter content.
-- Must the regression check run in upstream CI only, or also be shipped to
-  adopters? (a) upstream only; (b) shipped, strict, and run in adopter CI.
-  Recommendation: (b), at no extra adopter edit.
+- None.
