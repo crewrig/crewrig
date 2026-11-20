@@ -228,6 +228,7 @@ exist, how org artifacts integrate) is defined in spec 0012 sub-spec E2.
 | `.github/agents/` | Compiled GitHub Copilot agent definitions. Reclassified `regenerable` (spec 0199 R43 / spec 0121 delta-01 R9). |
 | `.github/copilot-instructions.md` | Copilot system prompt built from `AGENTS.md`. |
 | `.github/workflows/` | CI/CD pipeline definitions. |
+| `.github/actions/` | Composite actions the workflows call (`ci-job`, `setup-task`, `cancel-on-failure`). Core/`strict`, claimed whole like `.github/workflows/` so a synced workflow never drifts from the action it calls. Under a `strict` directory the spec 0064 orphan cleanup removes every tracked file that upstream lacks, so an adopter keeps its own composite actions outside this directory (`uses: ./<path>` accepts any path). |
 | `.github/copilot/` | GitHub Copilot workspace configuration. |
 | `.github/copilot/settings.json` | Committed workspace settings, `strict` by default as a member of `.github/copilot/` above — except its `hooks` key, which the transcript-hooks opt-in in `setup-copilot-interactive.ts` deliberately rewrites locally with an absolute path (ADR-0001 Discovery finding #8). Reclassified `excluded`, nested under the strict `.github/copilot/` parent (spec 0097 / issue #605), so that designed-in local mutation no longer aborts `scripts/sync-from-upstream.ts`; sibling members such as `extension.json` remain `strict` and still abort on a local diff. |
 | `.agents/skills/` | Compiled Antigravity CLI skill definitions. |
