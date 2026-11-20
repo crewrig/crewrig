@@ -87,7 +87,7 @@ A finding on a surface the change did not touch is allowed, but it must say whic
 
 ## Linters
 
-`scripts/lint-markdown.ts` (markdownlint), `scripts/lint-skill.ts` (SKILL.md frontmatter keys, version bump against `BASE_REF`, script citations; an extension skill under `extensions/{core,library,org}/` needs only `name` and `description` and has no version check; parsed with `js-yaml` when resolvable, a line scan otherwise), `scripts/lint-python.ts` (ruff or flake8, bare `print(`), `scripts/lint-json.ts` (`JSON.parse` and a trailing-comma heuristic) and `scripts/lint-typescript.ts` (Oxlint type-aware, Oxfmt). Run them as `node scripts/lint-markdown.ts <file>...` on the matching changed files. A missing optional tool prints a note and exits `0`; `--require-tools` turns that into exit `3`. An unreadable input exits `3` before anything is linted.
+`scripts/lint-markdown.ts` (markdownlint), `scripts/lint-skill.ts` (SKILL.md frontmatter keys, version bump against `BASE_REF`, script citations; an extension skill needs `name` and `description` only; parsed with `js-yaml` when resolvable, a line scan otherwise), `scripts/lint-python.ts` (ruff or flake8, bare `print(`), `scripts/lint-json.ts` (`JSON.parse` and a trailing-comma heuristic) and `scripts/lint-typescript.ts` (Oxlint type-aware, Oxfmt). Run them as `node scripts/lint-markdown.ts <file>...` on the matching changed files. A missing optional tool prints a note and exits `0`; `--require-tools` turns that into exit `3`. An unreadable input exits `3` before anything is linted.
 
 ## Folded-bugs check
 
