@@ -200,3 +200,56 @@ test("a manifest keeps the permission bits it had", { skip: process.platform ===
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// Spec 0312 R6/R12 (issue #2075): the release step rewrites the carrier `version` of every
+// skill and agent of the extension along with both manifests.
+const carrierText = (version: string): string =>
+  `---\nname: x\n---\n<!-- crewrig-provenance: extension="hello" version="${version}" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->\n\n# body version="9.9.9"\n`;
+
+function extensionWithCarriers(dir: string): void {
+  fs.writeFileSync(
+    path.join(dir, "package.json"),
+    '{"name":"hello-extension","version":"1.0.0"}\n',
+  );
+  fs.writeFileSync(path.join(dir, "extension.json"), '{"name":"hello","version":"1.0.0"}\n');
+  for (const [rel, file] of [
+    ["skills/s1", "SKILL.md"],
+    ["skills/s2", "SKILL.md"],
+    ["agents/a1", "AGENT.md"],
+  ] as const) {
+    fs.mkdirSync(path.join(dir, rel), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel, file), carrierText("1.0.0"));
+  }
+}
+
+test("an extension with carriers: every skill and agent carrier ends at the new version", () => {
+  const dir = tmpDir();
+  extensionWithCarriers(dir);
+  syncManifests(dir, "2.5.0");
+  for (const rel of ["skills/s1/SKILL.md", "skills/s2/SKILL.md", "agents/a1/AGENT.md"]) {
+    // only the carrier's version moves; the other fields and the body stay byte for byte
+    assert.equal(read(dir, rel), carrierText("2.5.0"), rel);
+  }
+  assert.match(read(dir, "package.json"), /"version": "2.5.0"/);
+  assert.match(read(dir, "extension.json"), /"version": "2.5.0"/);
+});
+
+test("an extension without carriers: the output is byte-identical to the manifests-only run", () => {
+  const dir = tmpDir();
+  fs.writeFileSync(path.join(dir, "package.json"), '{"name":"x","version":"1.0.0"}\n');
+  fs.mkdirSync(path.join(dir, "skills", "s"), { recursive: true });
+  const plain = "---\nname: x\n---\n\n# no carrier\n";
+  fs.writeFileSync(path.join(dir, "skills", "s", "SKILL.md"), plain);
+  const done = syncManifests(dir, "2.5.0");
+  assert.deepEqual(done, [path.join(dir, "package.json")]);
+  assert.equal(read(dir, "package.json"), '{\n  "name": "x",\n  "version": "2.5.0"\n}\n');
+  assert.equal(read(dir, "skills/s/SKILL.md"), plain);
+});
+
+test("a failing manifest parse leaves every carrier untouched", () => {
+  const dir = tmpDir();
+  extensionWithCarriers(dir);
+  fs.writeFileSync(path.join(dir, "extension.json"), "{not json");
+  assert.throws(() => syncManifests(dir, "2.5.0"), /extension\.json/);
+  assert.equal(read(dir, "skills/s1/SKILL.md"), carrierText("1.0.0"));
+});
