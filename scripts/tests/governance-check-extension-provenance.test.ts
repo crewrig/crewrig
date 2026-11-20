@@ -68,7 +68,7 @@ function put(dir: string, rel: string, body = ""): void {
 }
 
 const GOOD =
-  '---\nname: x\n---\n<!-- crewrig-provenance: version="1" canonical="https://a/b" feedback="https://a/b" -->\n';
+  '---\nname: x\n---\n<!-- crewrig-provenance: extension="demo" version="1" canonical="https://a/b" feedback="https://a/b" -->\n';
 
 describe("check-extension-provenance edge cases", () => {
   it("passes with the OK line when both tier roots are empty or absent", () => {
@@ -95,11 +95,15 @@ describe("check-extension-provenance edge cases", () => {
 
   it("reports missing fields and a feedback mismatch", () => {
     const r = check((d) => {
-      put(d, "extensions/core/a/SKILL.md", '---\n---\n<!-- crewrig-provenance: version="1" -->\n');
+      put(
+        d,
+        "extensions/core/a/SKILL.md",
+        '---\n---\n<!-- crewrig-provenance: extension="demo" version="1" -->\n',
+      );
       put(
         d,
         "extensions/core/b/SKILL.md",
-        '---\n---\n<!-- crewrig-provenance: version="1" canonical="u" feedback="v" -->\n',
+        '---\n---\n<!-- crewrig-provenance: extension="demo" version="1" canonical="u" feedback="v" -->\n',
       );
     });
     assert.equal(r.status, 1);

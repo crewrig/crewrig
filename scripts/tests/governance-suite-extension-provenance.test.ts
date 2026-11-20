@@ -13,7 +13,7 @@ import { makeSandbox, REPO, runEntry } from "./lib/governance-sandbox.ts";
 
 const ENTRY = path.join(REPO, "scripts", "check-extension-provenance.ts");
 const CANON = "https://github.com/crewrig/crewrig";
-const COMPLETE = `<!-- crewrig-provenance: version="1.0.0" canonical="${CANON}" feedback="${CANON}" -->`;
+const COMPLETE = `<!-- crewrig-provenance: extension="demo" version="1.0.0" canonical="${CANON}" feedback="${CANON}" -->`;
 
 type Files = Record<string, string>;
 
@@ -57,7 +57,7 @@ const cases: readonly Case[] = [
     label: "Case 3 - feedback != canonical fails (R5)",
     files: {
       [S]: skill(
-        `<!-- crewrig-provenance: version="1.0.0" canonical="${CANON}" feedback="https://github.com/other/fork" -->`,
+        `<!-- crewrig-provenance: extension="demo" version="1.0.0" canonical="${CANON}" feedback="https://github.com/other/fork" -->`,
       ),
     },
     status: 1,
@@ -65,7 +65,11 @@ const cases: readonly Case[] = [
   },
   {
     label: "Case 4 - carrier missing a field fails (R1)",
-    files: { [S]: skill(`<!-- crewrig-provenance: version="1.0.0" canonical="${CANON}" -->`) },
+    files: {
+      [S]: skill(
+        `<!-- crewrig-provenance: extension="demo" version="1.0.0" canonical="${CANON}" -->`,
+      ),
+    },
     status: 1,
     stdout: [`  FAIL ${S} — provenance carrier missing field(s): feedback (R1)`],
   },
