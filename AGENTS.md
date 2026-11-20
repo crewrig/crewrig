@@ -164,8 +164,9 @@ a skill or agent source already present on `main` MUST bump
 `metadata.provenance.version` in the same diff.
 
 See [`docs/version-bump-convention.md`](docs/version-bump-convention.md)
-for the full list of affected paths, the extension provenance-carrier
-detail, and the new-component in-branch exemption.
+for the full list of affected paths, why extension skills and agents carry no
+bump of their own (the extension has one version, its package version), and the
+new-component in-branch exemption.
 
 **SemVer guidance for bumps:**
 

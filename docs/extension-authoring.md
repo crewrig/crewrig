@@ -45,6 +45,14 @@ Six generic declaration subjects, each its own top-level section of
 | `mcpServers` | The extension's own MCP server declarations — see [`docs/extension-mcp-servers.md`](extension-mcp-servers.md) for developing one. |
 | `context` | A single command-line-tool-neutral agent-facing context source. |
 
+**Versions.** An extension has one version, the `version` of its `package.json`.
+An upstream-owned extension's skills and agents carry it on their first body
+line as `<!-- crewrig-provenance: extension="<directory name>" version="<package
+version>" canonical="…" feedback="…" -->`; the release step rewrites that
+`version` with both manifests, and `scripts/check-extension-manifest-version.ts`
+keeps the carriers in lockstep (spec 0312). A skill or agent under an extension
+needs no version bump of its own.
+
 (Sources:
 [`extension-skeleton/EXTENSION-FORMAT.md`](../extension-skeleton/EXTENSION-FORMAT.md)
 → *Field Reference* → *Declaration subjects* and *MCP Servers* tables.)
