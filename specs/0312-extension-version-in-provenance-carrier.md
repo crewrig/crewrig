@@ -1,7 +1,7 @@
 ---
 id: "0312"
 slug: extension-version-in-provenance-carrier
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 2075
