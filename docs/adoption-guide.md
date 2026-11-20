@@ -259,6 +259,27 @@ outputs will contain unreplaced placeholder values (e.g. skills referencing
 the script warns on stderr; when config contains placeholder values no warning
 is emitted. Resolution: complete Step 2 before running the build.
 
+### Org-tier extension dependencies (spec 0311)
+
+`extensions/org/` is outside the root workspace set: the root `package.json`
+lists only `extensions/core/*` and `extensions/library/*`, so an org extension
+never desynchronises the root `package-lock.json`, and root `npm run build` and
+`npm run test` cover core and library only. An optional `extensions/org/package.json`
+with its own lockfile is adopter-owned. Install, build or test the org tier with:
+
+```bash
+task org-extensions                              # install every org extension
+task org-extensions -- install my-ext            # install one
+task org-extensions -- install a b               # several, in ONE call
+task org-extensions -- build my-ext
+```
+
+Name every extension you need in a single install call: with
+`extensions/org/package.json` the install replaces the installed set. With no
+name, every org extension present is processed; with none present the target
+exits 0. An org extension that relied on root hoisting (for example
+`@modelcontextprotocol/sdk`) now needs `task org-extensions`.
+
 The organization may also author or override components in
 `artifacts/community/` and `artifacts/org/` — these directories
 are the designated sandbox for org-specific skills, agents, commands, hooks,

@@ -562,6 +562,38 @@ cli-matrix-fresh-selftest:
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
+org-workspaces:
+  stage: extensions
+  image: node:24
+  before_script:
+    - !reference [.task-install, script]
+  script:
+    - "task ci:org-workspaces"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
+org-workspaces-selftest:
+  stage: extensions
+  image: node:24
+  before_script:
+    - !reference [.task-install, script]
+  script:
+    - "task ci:org-workspaces-selftest"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "scripts/check-org-workspaces.ts"
+        - "scripts/org-extensions.ts"
+        - "scripts/tests/check-org-workspaces.test.ts"
+        - "scripts/tests/org-extensions.test.ts"
+        - "scripts/tests/lib/extension-sandbox.ts"
+        - "extension-skeleton/base/package.json"
+        - "package.json"
+        - "package-lock.json"
+        - "taskfiles/**"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
 repository-scan:
   stage: gate
   image: node:24
