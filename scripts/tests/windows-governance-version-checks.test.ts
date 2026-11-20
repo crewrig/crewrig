@@ -1,5 +1,5 @@
 // windows-governance-version-checks.test.ts — the cross-system proof of the version-checks group
-// (spec 0259 R26-R28): check-skill-versions, check-extension-version-bump, check-extension-provenance
+// (spec 0259 R26-R28): check-skill-versions, check-extension-provenance
 // and check-extension-pivot run from PowerShell on Windows (the default shell elsewhere), against the
 // real repository and against a fixture that makes each of them fail. Interpreters are resolved from
 // the PARENT PATH before the child PATH is narrowed. The checks read the current directory, so each
@@ -143,7 +143,6 @@ function aggregate(r: Run, checks: ReadonlyArray<[string, () => void]>): void {
 describe("windows governance version-checks: real repository", () => {
   for (const [entry, verdict] of [
     ["check-skill-versions", /^OK: .+\n$/m],
-    ["check-extension-version-bump", /^OK: .+\n$/m],
     ["check-extension-provenance", /^OK: \d+ upstream-owned extension skill\/agent\(s\) carry/m],
     ["check-extension-pivot", /^OK: every upstream-owned extension component is pivot-authored/m],
   ] as const) {
@@ -180,34 +179,6 @@ describe("windows governance version-checks: failing fixtures", () => {
         [
           "summary",
           () => assert.match(out(r), /^FAILED: 1 source\(s\) changed without a version bump:$/m),
-        ],
-      ]);
-    });
-  });
-
-  it("check-extension-version-bump rejects an unbumped extension skill", () => {
-    withBox((home, bin) => {
-      const doc = (text: string): string =>
-        `---\nname: demo\n---\n<!-- crewrig-provenance: version="1.0.0" canonical="c" feedback="c" -->\n${text}\n`;
-      const dir = twoCommits(home, EXT, doc("one"), doc("two"));
-      const r = run("check-extension-version-bump", dir, home, bin, { BASE_REF: "HEAD~1" });
-      aggregate(r, [
-        ["exit status", () => expectStatus(r, 1)],
-        [
-          "FAIL line",
-          () =>
-            assert.ok(
-              out(r).includes(`  FAIL ${EXT} — version not bumped (still '1.0.0')\n`),
-              out(r),
-            ),
-        ],
-        [
-          "summary",
-          () =>
-            assert.match(
-              out(r),
-              /^FAILED: 1 extension source\(s\) changed without a version bump:$/m,
-            ),
         ],
       ]);
     });

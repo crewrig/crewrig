@@ -15,7 +15,6 @@
   "check-description-length": "taskfiles/governance.yml",
   "check-extension-manifest-version": "taskfiles/governance.yml",
   "check-extension-provenance": "taskfiles/governance.yml",
-  "check-extension-version-bump": "taskfiles/governance.yml",
   "check-feedback-routing": "taskfiles/governance.yml",
   "check-metadata-keys": "taskfiles/governance.yml",
   "check-model-mappings": "taskfiles/governance.yml",

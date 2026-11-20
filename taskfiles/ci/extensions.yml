@@ -50,7 +50,7 @@ tasks:
     preconditions: *needs-js-yaml
     cmds:
       - '{{.NODE_SCRIPTS}}/check-extension-manifest-version.ts'
-      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-extension-version-bump.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-extension-version-bump-base.test.ts'
+      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-manifest-version-cases.test.ts {{.REPO_DIR}}/scripts/tests/governance-check-extension-manifest-version.test.ts'
   setup-differential:
     desc: Run the setup-differential CI capability (pre-push mirror of the CI job)
     preconditions: *needs-js-yaml
