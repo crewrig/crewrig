@@ -282,7 +282,7 @@ describe("R40 mutation — a profile edit without regenerating reds component-dr
       copyFromHead(tree, ["artifacts", "model-mappings", "crewrig.config.toml"]);
       copyFromHead(tree, [".claude", ".gemini", ".github", ".agents"]);
       const rel = "artifacts/core/agents/developer/AGENT.md";
-      const edited = tree.read(rel).replace(/^(\s+intelligence:).*$/m, "$1 medium");
+      const edited = tree.read(rel).replace(/^(\s+intelligence:).*$/m, "$1 high");
       assert.notEqual(edited, tree.read(rel), "the profile edit changed the source");
       tree.write(rel, edited);
       const res = build(tree, "--check");

@@ -117,7 +117,7 @@ Every core agent declares both axes. Each cell below comes from `node scripts/bu
 | `architect` | xhigh / medium | `opus` + effort `medium` | `gemini-4-argon` | `gemini-4-argon-medium` |
 | `security` | xhigh / medium | `opus` + effort `medium` | `gemini-4-argon` | `gemini-4-argon-medium` |
 | `pr-reviewer` | high / high | `sonnet` + effort `high` | `gemini-4-hydrogen` | `gemini-4-hydrogen-high` |
-| `developer` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
+| `developer` | medium / xhigh | `haiku` + effort `xhigh` | `gemini-3.5-flash-lite` | `gemini-3.5-flash-lite-high` |
 | `tester` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
 | `spec-author` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
 | `doc-writer` | high / medium | `sonnet` + effort `medium` | `gemini-4-hydrogen` | `gemini-4-hydrogen-medium` |
@@ -130,7 +130,8 @@ Why these values (evidence for requirement 4 of [spec 0200](../specs/0200-core-a
 
 - `architect`, `security` (xhigh / medium): judgment-heavy design and threat analysis that justifies the top intelligence rung; the work is bounded by a brief, so medium effort is enough and a higher effort only adds cost.
 - `pr-reviewer` (high / high): launched most often (21 times in the run) and the one agent whose misses are costly, so it keeps a high effort on a mid-tier model rather than a top model.
-- `developer`, `tester`, `spec-author`, `doc-writer`, `ci-configurator`, `ci-debugger`, `ci-parity` (high / medium): bounded implementation, authoring and diagnosis inside existing contracts; a mid-tier model at medium effort.
+- `tester`, `spec-author`, `doc-writer`, `ci-configurator`, `ci-debugger`, `ci-parity` (high / medium): bounded implementation, authoring and diagnosis inside existing contracts; a mid-tier model at medium effort.
+- `developer` (medium / xhigh): the owner's decision on #2092 (2026-11-21): small models are now strong enough for implementation, so the work runs on a small model with the highest practical effort. Not yet measured individually; the next epic run measures it.
 - `pr-logbook` (medium / high): templated composition against a format; a small model suffices and a high effort keeps the format rules followed.
 
 The tiers of `security` (raised) and `doc-writer` (raised) are not measured individually yet; the next epic run measures them.
