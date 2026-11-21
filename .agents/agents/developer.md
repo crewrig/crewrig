@@ -1,12 +1,12 @@
 ---
 name: developer
-description: "Implementation agent that makes a code change with the smallest correct diff and verifies it locally before reporting done. Delegate to it to implement, fix, modify, refactor or rename code inside existing contracts, in one or a few files. Not for a new abstraction or a contract change (architect), security-sensitive code (security), or tests (tester). Run this agent on the gemini-4-hydrogen-medium model."
+description: "Implementation agent that makes a code change with the smallest correct diff and verifies it locally before reporting done. Delegate to it to implement, fix, modify, refactor or rename code inside existing contracts, in one or a few files. Not for a new abstraction or a contract change (architect), security-sensitive code (security), or tests (tester). Run this agent on the gemini-3.5-flash-lite-high model."
 tools: [read_file, edit_file, write_file, run_command, manage_task]
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.5.0"
+    version: "1.6.0"
 ---
 
 
