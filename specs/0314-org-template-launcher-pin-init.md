@@ -1,7 +1,7 @@
 ---
 id: "0314"
 slug: org-template-launcher-pin-init
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 2101
@@ -42,7 +42,7 @@ Shared definitions. A **plain URL** is a string that the WHATWG `URL` parser acc
     - `crewrig.config.toml` (R16);
     - `config/ORGANIZATION.md` and `config/TOOLS.md`, byte-for-byte copies of `config/ORGANIZATION.md.template` and `config/TOOLS.md.template` of the pinned version;
     - `config/expertise/`, `config/teams/` and `config/level/`, each holding a byte-for-byte copy of every file that directory holds in the pinned version, copied once and never touched by a later command;
-    - `artifacts/org/skills/`, `artifacts/org/agents/` and `artifacts/community/hooks/`, empty homes for the organization's skills, agents and hooks, the paths from which the framework reads them (a settled default, open question 2).
+    - `artifacts/org/skills/`, `artifacts/org/agents/` and `artifacts/community/hooks/`, empty homes for the organization's skills, agents and hooks, the paths from which the framework reads them.
 16. **R16 (`crewrig.config.toml`).** The file SHALL be valid TOML with exactly two keys, both strings: `canonical_repo`, written as `https://github.com/crewrig/crewrig`; and `feedback_repo`, the repository that receives feedback on organization-owned components, written as the value obtained under R14 (`--feedback-repo`, else the `origin` remote) with one `.git` suffix and one trailing `/` removed, the same normalisation for both sources, and never defaulted to `canonical_repo`. A comment above each key SHALL state its meaning, and the one above `feedback_repo` SHALL say that it is the organization's own repository, which receives feedback on organization-owned components. Because a plain URL holds no `"`, `\` or control character, the value is written as a TOML basic string without escaping, and the two-key invariant holds for every accepted input.
 17. **R17 (personal layers).** `init` SHALL NOT create `config/SOUL.md`, `config/PROFILE.md`, `.gitignore`, or any `.gitignore` entry. Those two personal files stay absent until the user's `init-soul` and `init-personal-profile` steps create them, and the future `.gitignore` of WP4, which ignores them as the CrewRig repository does, adds to the scaffold without any path of R15 changing.
 18. **R18 (manifest and ADR rows).** In the WP3 implementation PR, `scripts/lib/framework-release/manifest.txt` SHALL gain these entries and no other for this spec: `crewrig.entry.json`, the bundled entry point the descriptor names together with every file that entry point loads at run time (a test SHALL run the entry point from an archive built from the manifest alone and fail on a missing file), `config/ORGANIZATION.md.template`, `config/TOOLS.md.template`, `config/expertise`, `config/teams` and `config/level`; the framework's own `config/ORGANIZATION.md`, `config/TOOLS.md`, `config/SOUL.md.template` and `config/PROFILE.md.template` SHALL NOT be added. The same PR SHALL fill the *Public surfaces* table of `docs/adr/0022-distribution-model.md` in place and append one dated line to its change log, with exactly these items (the spec-PR edits no ADR):
