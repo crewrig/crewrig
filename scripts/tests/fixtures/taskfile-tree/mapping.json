@@ -15,7 +15,6 @@
   "check-description-length": "taskfiles/governance.yml",
   "check-extension-manifest-version": "taskfiles/governance.yml",
   "check-extension-provenance": "taskfiles/governance.yml",
-  "check-extension-version-bump": "taskfiles/governance.yml",
   "check-feedback-routing": "taskfiles/governance.yml",
   "check-metadata-keys": "taskfiles/governance.yml",
   "check-model-mappings": "taskfiles/governance.yml",
@@ -238,5 +237,8 @@
   "ci:windows-model-ci-tooling": "taskfiles/ci/windows-b.yml",
   "ci:windows-setup-units": "taskfiles/ci/windows-b.yml",
   "ci:windows-setup-entries": "taskfiles/ci/windows-b.yml",
-  "check-skill-quality": "taskfiles/governance.yml"
+  "check-skill-quality": "taskfiles/governance.yml",
+  "org-extensions": "taskfiles/extensions.yml",
+  "ci:org-workspaces": "taskfiles/ci/extensions.yml",
+  "ci:org-workspaces-selftest": "taskfiles/ci/extensions.yml"
 }

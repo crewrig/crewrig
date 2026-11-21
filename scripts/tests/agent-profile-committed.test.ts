@@ -16,28 +16,17 @@ import { ciTaskCommands } from "./lib/ci-task-commands.ts";
 import { yamlLib } from "./lib/yaml-lib.ts";
 import { readReferenceText } from "./lib/ci-reference-fixtures.ts";
 
-export const BASELINE = `accessibility-auditor medium
-accessibility-tester medium
-architect xhigh
-astro-developer high
+export const BASELINE = `architect xhigh
 ci-configurator high
 ci-debugger high
 ci-parity high
-copywriter medium
-designer high
 developer high
 doc-writer medium
-frontend-developer high
 pr-logbook medium
 pr-reviewer high
-regression-sentinel medium
-scenario-author medium
 security high
-seo-specialist medium
 spec-author high
-tester high
-visual-regression-tester medium
-web-conformity-checker medium`
+tester high`
   .split("\n")
   .map((line) => line.split(" ") as [string, string]);
 
@@ -189,67 +178,35 @@ describe("T3 — R15: effort: only on Claude Code, equal to the source's reasoni
   });
 });
 
-describe("T7 — R1,R2,R4: the 22-row baseline, checked four ways over the sources", () => {
-  // Spec 0307: eleven baseline agents moved from the core to the library tier; the baseline stays 22 rows.
-  const LIBRARY_WEB = new Set([
-    "accessibility-auditor",
-    "accessibility-tester",
-    "astro-developer",
-    "copywriter",
-    "designer",
-    "frontend-developer",
-    "regression-sentinel",
-    "scenario-author",
-    "seo-specialist",
-    "visual-regression-tester",
-    "web-conformity-checker",
-  ]);
-  const core = (name: string): string =>
-    `artifacts/${LIBRARY_WEB.has(name) ? "library" : "core"}/agents/${name}/AGENT.md`;
-  const rungOf = (name: string): unknown =>
-    (frontOf(core(name)).metadata as { model?: { intelligence?: unknown } } | undefined)?.model
-      ?.intelligence;
+describe("T7 — R1,R2,R4: the 11-row baseline, checked over the sources", () => {
+  // Spec 0313: the eleven web and SEO agents left CrewRig; the baseline holds the eleven core rows.
+  const core = (name: string): string => `artifacts/core/agents/${name}/AGENT.md`;
 
-  test("T7(a) baseline::name set equals the core listing (11) plus the eleven moved library agents (22)", () => {
-    const actual = [
-      ...fs
-        .readdirSync(path.join(REPO, "artifacts/core/agents"), {
-          withFileTypes: true,
-        })
-        .filter((e) => e.isDirectory())
-        .map((e) => e.name),
-      ...[...LIBRARY_WEB].filter((n) => fs.existsSync(path.join(REPO, core(n)))),
-    ].sort();
-    assert.equal(actual.length, 22);
+  test("T7(a) baseline::name set equals the core listing (11)", () => {
+    const actual = fs
+      .readdirSync(path.join(REPO, "artifacts/core/agents"), { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .sort();
+    assert.equal(actual.length, 11);
     assert.deepEqual(BASELINE.map(([n]) => n).sort(), actual);
   });
 
   // The BASELINE is the published spec 0200 migration table (checked by the baseline-doc test). The
-  // library rows still equal it; the core rows were re-profiled by #1937, so each core source is
-  // checked for a well-formed intelligence + reasoning pair instead of a frozen rung.
+  // core rows were re-profiled by #1937, so each core source is checked for a well-formed
+  // intelligence + reasoning pair instead of a frozen rung.
   const RUNGS = ["low", "medium", "high", "xhigh"];
-  const libraryRows = BASELINE.filter(([n]) => LIBRARY_WEB.has(n));
-  const coreRows = BASELINE.filter(([n]) => !LIBRARY_WEB.has(n));
-
-  test("T7(b) baseline::library rung per source equals the baseline rung", () => {
-    const bad = libraryRows
-      .filter(([n, rung]) => rungOf(n) !== rung)
-      .map(([n, rung]) => `${n}: expected ${rung}, got ${String(rungOf(n))}`);
-    assert.deepEqual(bad, []);
-  });
 
   test("T7(b) baseline::every core source declares an intelligence and a reasoning rung on the ladder", () => {
-    assert.equal(coreRows.length, 11);
-    const bad = coreRows
-      .map(([n]) => n)
-      .filter((n) => {
-        const m = (frontOf(core(n)).metadata as { model?: Record<string, unknown> }).model;
-        return !RUNGS.includes(String(m?.intelligence)) || !RUNGS.includes(String(m?.reasoning));
-      });
+    assert.equal(BASELINE.length, 11);
+    const bad = BASELINE.map(([n]) => n).filter((n) => {
+      const m = (frontOf(core(n)).metadata as { model?: Record<string, unknown> }).model;
+      return !RUNGS.includes(String(m?.intelligence)) || !RUNGS.includes(String(m?.reasoning));
+    });
     assert.deepEqual(bad, []);
   });
 
-  test("T7(c) baseline::metadata.model shape and count (23 sources)", () => {
+  test("T7(c) baseline::metadata.model shape and count (12 sources)", () => {
     const files = ["core", "library"].flatMap((tier) => {
       const dir = path.join(REPO, `artifacts/${tier}/agents`);
       return fs
@@ -257,7 +214,7 @@ describe("T7 — R1,R2,R4: the 22-row baseline, checked four ways over the sourc
         .filter((e) => e.isDirectory())
         .map((e) => `artifacts/${tier}/agents/${e.name}/AGENT.md`);
     });
-    assert.equal(files.length, 23);
+    assert.equal(files.length, 12);
     const bad: string[] = [];
     for (const f of files) {
       const meta = (frontOf(f).metadata ?? {}) as Record<string, unknown>;
@@ -267,22 +224,6 @@ describe("T7 — R1,R2,R4: the 22-row baseline, checked four ways over the sourc
       if (keys !== want) bad.push(`${f}: keys ${keys}, expected ${want}`);
     }
     assert.deepEqual(bad, []);
-  });
-
-  test("T7(d) baseline::library rung multiset equals the baseline's, no core agent lacks a rung", () => {
-    const tally = (rows: [string, string][]): Record<string, number> => {
-      const counts: Record<string, number> = {};
-      for (const [n] of rows) {
-        const got = String(rungOf(n));
-        const key = RUNGS.includes(got) ? got : "other";
-        counts[key] = (counts[key] ?? 0) + 1;
-      }
-      return counts;
-    };
-    const want: Record<string, number> = {};
-    for (const [, rung] of libraryRows) want[rung] = (want[rung] ?? 0) + 1;
-    assert.deepEqual(tally(libraryRows), want);
-    assert.equal(tally(coreRows).other, undefined);
   });
 });
 

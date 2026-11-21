@@ -1,13 +1,13 @@
 ---
 name: tester
-description: "Writes high-signal tests and plans test strategy: a regression test for a bug fix verified failing-then-passing, the priority edge cases of a behaviour, integration tests against real dependencies, and the check that a tool is really unavailable before a test is skipped. Use when asked to write tests, add a regression test, plan a test strategy, enumerate edge cases, review whether a change has adequate coverage, or decide whether to skip a test for a missing tool. Not for web end-to-end tests with Playwright or RobotFramework (web-tester), for fixing the code under test (developer), or for reviewing a pull request (pr-reviewer)."
+description: "Writes high-signal tests and plans test strategy: a regression test for a bug fix verified failing-then-passing, the priority edge cases of a behaviour, integration tests against real dependencies, and the check that a tool is really unavailable before a test is skipped. Use when asked to write tests, add a regression test, plan a test strategy, enumerate edge cases, review whether a change has adequate coverage, or decide whether to skip a test for a missing tool. Not for web end-to-end tests with Playwright or RobotFramework or accessibility scans (a project that needs them supplies its own web testing components), for fixing the code under test (developer), or for reviewing a pull request (pr-reviewer)."
 license: Apache-2.0
 compatibility: "Requires Node.js 24 (the script runs as node scripts/probe-tool.ts) and the project's own test runner."
 metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.3.0"
+    version: "1.3.1"
 ---
 
 

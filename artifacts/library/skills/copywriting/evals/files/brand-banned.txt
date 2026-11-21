@@ -1,3 +1,0 @@
-# brand-forbidden words
-rollback
-preview

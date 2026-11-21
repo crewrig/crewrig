@@ -3,7 +3,8 @@
 //
 // Usage: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-manifest-version.ts
 // Scans extensions/{core,library}/*/ under the current directory; every committed
-// extension.json must declare the same `version` as its sibling package.json.
+// extension.json must declare the same `version` as its sibling package.json, and every
+// skill/agent provenance carrier the same `version` plus `extension` = the directory name (0312).
 //
 // Exit: 0 every manifest agrees, 1 divergence or retired shape, 2 unparseable manifest.
 // Finding lines (stdout): `  FAIL <dir>/<file> — ...`; shape errors go to stderr as

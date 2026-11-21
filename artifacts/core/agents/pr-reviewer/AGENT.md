@@ -10,7 +10,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "2.2.0"
+    version: "2.2.1"
 ---
 
 # PR Reviewer Agent

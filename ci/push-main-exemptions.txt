@@ -10,7 +10,6 @@
 # (the capability has an unfiltered push trigger) or a side-effect entry that reaches a test or a check
 # fails scripts/tests/ci-push-unfiltered.test.ts, which prints this list in full on every run.
 no-push	check-skill-versions	Pull-request-only check: it diffs the pull request against its target branch, which a push to main has no counterpart for.
-no-push	check-extension-version-bump	Pull-request-only check: it compares the pull request against its base for a version bump.
 no-push	check-spec-id-reserved	Pull-request-only check: it reads the spec ids a pull request adds against the reservations of its base.
 no-push	skill-evals-attestation	Pull-request-only check: it reads the attestation carried by the pull request description.
 no-push	changeset-coverage	Scheduled and manual capability: it audits the coverage of the changesets on a timer, not on a push.

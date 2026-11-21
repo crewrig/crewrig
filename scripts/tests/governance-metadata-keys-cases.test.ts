@@ -4,7 +4,7 @@
 // stderr, the OK line on stdout; the streams are never merged. The entry loads js-yaml from
 // the checkout's own node_modules.
 //
-// S3's literal 45 is a forcing function: update it when a governed source is legitimately added.
+// S3's literal 30 is a forcing function: update it when a governed source is legitimately added.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -189,10 +189,10 @@ describe("S4 — metadata.tools on agents only, and the rule of R17 as amended (
 });
 
 describe("S3 — default glob over the real checkout, and prerequisite failure", () => {
-  test("S3 default glob: no arguments reports 45 sources, clean", () => {
+  test("S3 default glob: no arguments reports 30 sources, clean", () => {
     const r = runEntry(ENTRY, { env: { CREWRIG_REPO_DIR: undefined } });
     assert.equal(r.status, 0, r.stderr);
-    assert.match(r.stdout, /^OK: 45 source\(s\) checked/m);
+    assert.match(r.stdout, /^OK: 30 source\(s\) checked/m);
   });
 
   test("S3 exit 2: a named argument that does not exist is a prerequisite failure", () => {

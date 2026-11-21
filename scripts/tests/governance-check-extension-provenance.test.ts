@@ -68,7 +68,7 @@ function put(dir: string, rel: string, body = ""): void {
 }
 
 const GOOD =
-  '---\nname: x\n---\n<!-- crewrig-provenance: version="1" canonical="https://a/b" feedback="https://a/b" -->\n';
+  '---\nname: x\n---\n<!-- crewrig-provenance: extension="demo" version="1" canonical="https://a/b" feedback="https://a/b" -->\n';
 
 describe("check-extension-provenance edge cases", () => {
   it("passes with the OK line when both tier roots are empty or absent", () => {
@@ -95,15 +95,63 @@ describe("check-extension-provenance edge cases", () => {
 
   it("reports missing fields and a feedback mismatch", () => {
     const r = check((d) => {
-      put(d, "extensions/core/a/SKILL.md", '---\n---\n<!-- crewrig-provenance: version="1" -->\n');
+      put(
+        d,
+        "extensions/core/a/SKILL.md",
+        '---\n---\n<!-- crewrig-provenance: extension="demo" version="1" -->\n',
+      );
       put(
         d,
         "extensions/core/b/SKILL.md",
-        '---\n---\n<!-- crewrig-provenance: version="1" canonical="u" feedback="v" -->\n',
+        '---\n---\n<!-- crewrig-provenance: extension="demo" version="1" canonical="u" feedback="v" -->\n',
       );
     });
     assert.equal(r.status, 1);
     assert.match(r.stdout, /missing field\(s\): canonical feedback \(R1\)/);
     assert.match(r.stdout, /feedback 'v' != canonical 'u' \(R5\)/);
+  });
+});
+
+// Spec 0312 R4/R7 (issue #2075): `extension` joins the required carrier fields. These cases are
+// not in the frozen shell oracle (the shell script never knew the field), so they run unfrozen.
+describe("check-extension-provenance: the extension field (spec 0312 R7)", () => {
+  const unfrozen = (setup: (dir: string) => void): Run => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ext-provenance-ext-"));
+    try {
+      setup(dir);
+      return run(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", ENTRY], dir);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  };
+  const carrier = (fields: string): string =>
+    `---\nname: x\n---\n<!-- crewrig-provenance: ${fields} canonical="u" feedback="u" -->\n`;
+
+  it("a carrier without extension fails naming the file and the field", () => {
+    const r = unfrozen((d) =>
+      put(d, "extensions/core/hello/skills/s/SKILL.md", carrier('version="1.2.3"')),
+    );
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.match(r.stdout, /extensions\/core\/hello\/skills\/s\/SKILL\.md/);
+    assert.match(r.stdout, /missing field\(s\): extension \(R1\)/);
+  });
+
+  it("a four-field carrier passes", () => {
+    const r = unfrozen((d) =>
+      put(
+        d,
+        "extensions/core/hello/skills/s/SKILL.md",
+        carrier('extension="hello" version="1.2.3"'),
+      ),
+    );
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+  });
+
+  it("an empty extension value counts as missing", () => {
+    const r = unfrozen((d) =>
+      put(d, "extensions/core/hello/agents/a/AGENT.md", carrier('extension="" version="1.2.3"')),
+    );
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.match(r.stdout, /missing field\(s\): extension \(R1\)/);
   });
 });

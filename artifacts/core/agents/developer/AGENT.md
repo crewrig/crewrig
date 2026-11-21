@@ -4,13 +4,13 @@ description: "Implementation agent that makes a code change with the smallest co
 type: agent
 metadata:
   model:
-    intelligence: high
-    reasoning: medium
+    intelligence: medium
+    reasoning: xhigh
   tools: [read, search, edit, execute, skill]
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "1.5.0"
+    version: "1.6.0"
 ---
 
 # Developer Agent

@@ -93,11 +93,6 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `dist/<tier>/.github/skills/<name>/SKILL.md`
 - **Antigravity CLI:** ✅ `scripts/build-components.ts --target antigravity` (spec 0053 / PR #441); `core`:
   `.agents/skills/<name>/SKILL.md` · non-`core`: `dist/<tier>/.agents/skills/<name>/SKILL.md`
-- **Web skills (spec 0307):** `astro`, `copywriting`, `frontend` and `web-tester` are `library` sources, no longer `core`.
-  They are built to `dist/library/` only and delivered by the automatic library step of setup at home scope, one
-  statement per CLI: Claude Code `~/.claude/skills/<name>/`, Gemini CLI `~/.gemini/skills/<name>/`, Antigravity CLI
-  `~/.gemini/config/skills/<name>/`, GitHub Copilot CLI `~/.copilot/skills/<name>/` (all four CLIs receive the skills;
-  no parity gap). None is committed to `.claude/`, `.gemini/`, `.github/` or `.agents/` any more.
 
 ### 4 — Agent definitions directory
 
@@ -133,15 +128,6 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `.claude/agents/` and meets the key there (not probed). Antigravity CLI: no per-agent frontmatter surface found
   (row 33), behaviour not verified. Not-found is evidence-of-search: no gap recorded. Extension-packaged agents and
   plugin trees carry neither (R14).
-- **Web and SEO agents (spec 0307):** the eleven agents `accessibility-auditor`, `accessibility-tester`,
-  `astro-developer`, `copywriter`, `designer`, `frontend-developer`, `regression-sentinel`, `scenario-author`,
-  `seo-specialist`, `visual-regression-tester` and `web-conformity-checker` are `library` sources, no longer `core`: they
-  build to `dist/library/` and are delivered at home scope by the automatic library step of setup, one statement per
-  CLI. Claude Code `~/.claude/agents/<name>.md`, Gemini CLI `~/.gemini/agents/<name>.md` and Antigravity CLI
-  `~/.gemini/config/agents/<name>.md` receive them. **GitHub Copilot CLI does not: its library agent install is
-  declined by design [GAP-confirmation]** (the same gap as `harness-curator`), so a Copilot user does not get these
-  eleven agents from setup; this is a named parity gap, not an asymmetry left implicit. Not committed to any project
-  tree any more.
 
 ### 4b — Agent provenance carrier
 
@@ -334,7 +320,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `check-extension-provenance.ts`; there is **no** defense-in-depth overlap with the 0030 guard.
 - **Source of truth:** `scripts/check-extension-provenance.ts` (presence + R1/R5 routing guard, parses the comment
   carrier, NOT `yq`); carrier producer `gemini_provenance_comment` (row 4b)
-- **Claude Code:** ✅ HTML comment `<!-- crewrig-provenance: version="…" canonical="…" feedback="…" -->` as first
+- **Claude Code:** ✅ HTML comment `<!-- crewrig-provenance: extension="…" version="…" canonical="…" feedback="…" -->` as first
   body line of the in-place `SKILL.md` (Claude tolerates the inert body comment; greeter has no prior frontmatter
   provenance, so this is not a downgrade)
 - **Gemini CLI:** ✅ Same source bytes — the first-body-line HTML comment is Gemini-safe as authored (no
@@ -1106,11 +1092,6 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   are asserted structurally by `scripts/tests/setup-transcript-antigravity-manifest.test.ts`; spec 0054 / PR #443, spec
   0061 delta-01 / issue #478; `dist/library/.agents` is auto-built via
   `node scripts/build-components.ts --target antigravity` if missing, before the install step — spec 0107, issue #618)
-- **Library web components (spec 0307):** the automatic library step of each `setup-<cli>-interactive.ts` installs the
-  eleven web and SEO agents and the four web skills at home scope: Claude Code and Gemini CLI and Antigravity CLI skills
-  and agents, Copilot CLI skills only (agents named gap, row 4). Setup builds `dist/library/` first when absent. It
-  never removes stale project-tree copies; `scripts/sync-from-upstream.ts` does in a fork (spec 0064 orphan cleanup).
-  Restore command: `node scripts/setup-<cli>-interactive.ts`, or the component-management command for one component.
 
 ### 10b — Interactive setup entries in TypeScript
 
@@ -1377,8 +1358,9 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Feature:** Per-CLI extension manifest. **Two committed manifests under version lockstep (spec 0044, as amended by
   delta-01), one built and asserted separately.** An extension's `package.json` `version` is authoritative; the
   committed `extension.json` of the SAME extension MUST declare that SAME version —
-  `scripts/check-extension-manifest-version.ts` is a static CI guard that fails on a divergent `extension.json`, and
-  `scripts/monorepo-release.ts` rewrites it to `nextRelease.version` at release time (spec 0257:
+  `scripts/check-extension-manifest-version.ts` is a static CI guard that fails on a divergent `extension.json` or a divergent skill/agent provenance carrier
+  (`extension` = the directory name, `version` = the package version, spec 0312), and
+  `scripts/monorepo-release.ts` rewrites them to `nextRelease.version` at release time (the release commit stages the carriers too) (spec 0257:
   `scripts/monorepo-release.ts` is a forwarding shim to that entry, with `scripts/release-sync-manifests.ts` for the
   manifest rewrite). The release archive packages the Gemini CLI output alone (Ruling A, spec 0183 delta-01): the Claude
   Code, GitHub Copilot CLI and Antigravity CLI manifests and outputs of this row are neither packaged nor changed by
@@ -1883,7 +1865,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   requirement 44; the shell twin ran through `scripts/lib/tls-exec.sh`, retired in #1344). The Node.js floor guard
   (`scripts/lib/node-floor-guard.js`, spec 0240 R1-R3) ships alongside; its first entry point is the
   `task ticket-pickup` Taskfile entry (spec 0244, row 38), which runs it before the tool, and the setup wiring is done
-  by spec 0256 (sub-spec F1, #1335): `task setup-<cli>-interactive` runs the guard as its own step before the entry.
+  by spec 0256 (sub-spec F1, #1335): `task setup-<cli>-interactive` runs the guard as its own step before the entry. The lockfile hashed by this step covers only the upstream tiers (`extensions/core/*`, `extensions/library/*`); org extensions are outside the root workspace set (spec 0311).
 - **Source of truth:** `scripts/lib/setup/deps-step.ts` (`install_production_dependencies` of the retired `common.sh`),
   `scripts/setup-*-interactive.ts`, `scripts/tests/setup-dependency-step.test.ts`
 - **Claude Code:** ✅ `scripts/setup-claude-interactive.ts`

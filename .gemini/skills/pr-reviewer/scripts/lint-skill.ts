@@ -1,5 +1,6 @@
 // lint-skill.ts — SKILL.md frontmatter validator for PR review.
-// Checks: required fields, version bumped vs base branch, and that every `scripts/...` path
+// Checks: required fields (an extension skill needs only name and description, and carries no
+// per-component version), version bumped vs base branch, and that every `scripts/...` path
 // cited in a SKILL.md body or its references/**/*.md resolves inside the skill's own directory
 // or sits inside a `<!-- crewrig-repo-only:start/end -->` fence.
 // The citation check needs no js-yaml and runs whichever frontmatter leg is active.
@@ -28,6 +29,12 @@ void (async () => {
     "compatibility",
     "metadata.provenance.version",
   ];
+  /** An extension skill lives under extensions/{core,library,org}/<name>/: its version is the package's. */
+  const isExtensionTarget = (file: string): boolean => {
+    let rel = path.relative(process.cwd(), path.resolve(file)).replace(/\\/g, "/");
+    if (rel.startsWith("./")) rel = rel.slice(2);
+    return /(^|\/)extensions\/(core|library|org)\/[^/]+/.test(rel);
+  };
   const bin = (s: string): string => Buffer.from(s, "utf8").toString("latin1");
   const unbin = (s: string): string => Buffer.from(s, "latin1").toString("utf8");
   let jsonMode = false;
@@ -350,7 +357,8 @@ void (async () => {
       // unreadable: every key reads as missing, like the shell's silent awk and grep
     }
 
-    for (const key of REQUIRED) {
+    const extension = isExtensionTarget(file);
+    for (const key of extension ? REQUIRED.slice(0, 2) : REQUIRED) {
       const present =
         yaml === undefined ? fallbackHasKey(text, key) : yamlValue(yaml, text, key) !== "";
       if (!present) {
@@ -358,8 +366,8 @@ void (async () => {
       }
     }
 
-    const headVersion = versionOf(text);
-    const blob = baseContent(baseRef, file);
+    const headVersion = extension ? "" : versionOf(text);
+    const blob = extension ? undefined : baseContent(baseRef, file);
     const baseVersion = blob === undefined ? "" : versionOf(blob);
     if (baseVersion !== "" && headVersion === baseVersion) {
       const message = `${file}: version not bumped vs ${baseRef} (still ${unbin(headVersion)})`;

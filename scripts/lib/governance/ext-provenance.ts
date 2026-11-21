@@ -62,6 +62,7 @@ export function checkProvenance(): ProvenanceResult {
     }
 
     const version = carrierField(carrier, "version");
+    const extension = carrierField(carrier, "extension");
     const canonical = carrierField(carrier, "canonical");
     const feedback = carrierField(carrier, "feedback");
 
@@ -69,6 +70,7 @@ export function checkProvenance(): ProvenanceResult {
     if (version === "") missing.push("version");
     if (canonical === "") missing.push("canonical");
     if (feedback === "") missing.push("feedback");
+    if (extension === "") missing.push("extension");
     if (missing.length > 0) {
       lines.push(`  FAIL ${f} — provenance carrier missing field(s): ${missing.join(" ")} (R1)`);
       failures.push(f);
@@ -95,9 +97,9 @@ export function checkProvenance(): ProvenanceResult {
       "carrier as its FIRST BODY LINE (an HTML comment, NOT frontmatter — Gemini",
       "0.42.0+ rejects non-name/description frontmatter keys on in-place sources):",
       "",
-      '  <!-- crewrig-provenance: version="…" canonical="…" feedback="…" -->',
+      '  <!-- crewrig-provenance: extension="…" version="…" canonical="…" feedback="…" -->',
       "",
-      "with all three fields present, canonical a LITERAL origin repo URL (not",
+      "with all four fields present (extension = the extension directory name), canonical a LITERAL origin repo URL (not",
       "${CANONICAL_REPO} — a consumer cannot resolve a third-party origin), and",
       "feedback == canonical (upstream-owned tier routes feedback to canonical).",
     );

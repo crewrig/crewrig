@@ -448,9 +448,9 @@ artifacts/
 │   │   ├── pr-reviewer/   # Lifecycle: independent PR reviewer + linters
 │   │   │   └── scripts/   # lint-markdown.ts, lint-skill.ts, ...
 │   │   └── # … 6 role skills (architect, developer, doc-writer, github-actions,
-│   │       # security, tester); astro, copywriting, frontend and web-tester live in the library tier
+│   │       # security, tester)
 │   └── agents/            # Sub-agent definitions (lifecycle + role agents)
-│       └── # … spec-author, pr-logbook, pr-reviewer, architect + 7 role agents; the 11 web and SEO agents live in the library tier
+│       └── # … spec-author, pr-logbook, pr-reviewer, architect + 7 role agents
 ├── library/               # Upstream-owned harness machinery (user-home scope)
 │   ├── skills/
 │   │   ├── harness-report/    # Skill: tag frictions during real work

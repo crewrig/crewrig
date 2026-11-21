@@ -13,11 +13,10 @@ Setup (`setup-claude-interactive.ts`) deploys `artifacts/core/claude-profiles/` 
 | `worker.settings.json` | Workers and their subagents |
 | `coordinator.settings.json` | A session that spawns workers or publishes artifacts |
 
-### Worker profile (ADR-0025 W1, W2, W3, W5)
+### Worker profile (ADR-0025 W1, W2, W5)
 
 - **W1.** `permissions.deny` lists `Artifact`, `Workflow` and `ScheduleWakeup`: three tool definitions (16.1k tokens) no worker calls.
 - **W2.** `claudeMdExcludes` drops the personal rules `00-soul`, `10-level`, `30-profile`, `40-expertise` and `50-team`, and the orchestrator memory protocol `60-memory` (spec 0308; the obligations that bind a worker stay in `60-tools.md`, section *Memory obligations that bind every agent*), through the home-independent patterns `**/rules/<name>.md`. The project `CLAUDE.md`, `AGENTS.md` and `60-tools.md` stay loaded; the coordinator profile excludes none of them. Caveat: the pattern also matches a rule of the same name in a project `.claude/rules/`.
-- **W3 (project part).** `Agent(<name>)` denies for the 11 web and SEO agents, and `skillOverrides` `off` for `astro`, `copywriting`, `frontend` and `web-tester`. No user plugin, skill or connector is named: those are local, see [the allowlist](claude-allowlist.md).
 - **W5.** `disableBundledSkills: true`.
 
 ### Coordinator profile: the differences and why
@@ -28,7 +27,6 @@ Setup (`setup-claude-interactive.ts`) deploys `artifacts/core/claude-profiles/` 
 | `ScheduleWakeup` not denied | The coordinator is the session that self-paces; an owner may still deny it locally. |
 | No `claudeMdExcludes` | The coordinator is the owner's working session and keeps the personal rules. |
 | No `disableBundledSkills` | With `Workflow` kept, it inflates the `Workflow` definition by about 17,000 characters (ADR-0025, P3). |
-| Web-agent denies and web-skill overrides kept | They are listing cuts unrelated to CrewRig work, valid for any session. |
 
 ## Launch recipe
 

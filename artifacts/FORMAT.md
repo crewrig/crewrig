@@ -563,7 +563,7 @@ render seam** to strip a frontmatter block. Two consequences follow (spec 0043):
   name: greeter
   description: "…"
   ---
-  <!-- crewrig-provenance: version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+  <!-- crewrig-provenance: extension="greeter-ext" version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
   # Greeter Skill
   ```
@@ -602,13 +602,13 @@ The `metadata.provenance.version` field follows
 `artifacts/library/`, or `artifacts/community/` — MUST bump
 `metadata.provenance.version` in the same diff. CI enforces this via
 `scripts/check-skill-versions.ts` (see `task check-skill-versions` for
-the local invocation). The same discipline extends to the upstream-owned extension tiers `extensions/core/` and
-`extensions/library/`, where the `version` instead rides on the
-provenance carrier (the first-body-line `<!-- crewrig-provenance:
-version="…" … -->` HTML comment per spec 0043, not frontmatter — Gemini
-CLI 0.42.0+ rejects non-`name`/`description` frontmatter keys on the
-in-place source); there the bump is enforced by
-`scripts/check-extension-version-bump.ts` (spec 0044). The
+the local invocation). Upstream-owned extension skills and agents (`extensions/core/`,
+`extensions/library/`) are exempt: their carrier (the first-body-line
+`<!-- crewrig-provenance: extension="…" version="…" … -->` HTML comment per spec
+0043 and spec 0312, not frontmatter, because Gemini CLI 0.42.0+ rejects
+non-`name`/`description` frontmatter keys on the in-place source) mirrors the
+extension's `package.json` version, which the release step writes and
+`scripts/check-extension-manifest-version.ts` checks. The
 rationale:
 
 - A friction tag captured `evidence: <path>:<line>` against an
