@@ -275,14 +275,16 @@ test("R18: a windows-latest job without a limit, or under the floor, is named", 
 // ---- Spec 0287 R9: the staged layout of Build & Validate, asserted on the committed files ----
 
 const GROUP_NAMES = ["gate", "modules", "governance", "extensions", "integration", "windows"];
-// The R3 counts; the membership lives in `ci/capabilities/` (`group`), compared below.
+// The R3 counts; the membership lives in `ci/capabilities/` (`group`), compared below. The counts
+// include the three launcher capabilities: crewrig-launcher-ts (modules), crewrig-launcher-floor
+// (governance) and windows-crewrig-launcher (windows), one more in each of those groups.
 const R3_COUNTS: Record<string, number> = {
   gate: 20,
-  modules: 16,
-  governance: 29,
+  modules: 17,
+  governance: 30,
   extensions: 16,
   integration: 10,
-  windows: 24,
+  windows: 25,
 };
 const LINUX_MIDDLE = ["modules", "governance", "extensions"];
 // Delta-02 R22 adds `pr-scope`, a third top-level job of build.yml; only the two REQUIRED contexts
