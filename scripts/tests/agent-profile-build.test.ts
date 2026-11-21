@@ -1,5 +1,5 @@
 // agent-profile-build.test.ts — the build-driven cases of the spec 0200 migration to capability
-// profiles: T4 (diagnostic stream over the 22 core sources), T5 (harness-curator, the profile-less
+// profiles: T4 (diagnostic stream over the 11 core sources), T5 (harness-curator, the profile-less
 // witness) and R40 (an unregenerated profile edit reds `--check`).
 // Replaces scripts/tests/test-agent-profile-migration.sh (part), spec 0265 P1.
 //
@@ -49,32 +49,14 @@ function filesUnder(dir: string): string[] {
   });
 }
 
-// Spec 0307: eleven of the 22 baseline agents live under artifacts/library/agents; the throwaway root
-// is still seeded with all 22 sources.
-const WEB_LIBRARY_AGENTS = [
-  "accessibility-auditor",
-  "accessibility-tester",
-  "astro-developer",
-  "copywriter",
-  "designer",
-  "frontend-developer",
-  "regression-sentinel",
-  "scenario-author",
-  "seo-specialist",
-  "visual-regression-tester",
-  "web-conformity-checker",
-].map((n) => `artifacts/library/agents/${n}`);
-
-describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway root", () => {
+describe("T4 — R21: diagnostic stream of a plain build, 11-source throwaway root", () => {
   const tree = createFixtureTree();
-  const sources = copyFromWorktree(tree, [
-    "artifacts/core/agents",
-    ...WEB_LIBRARY_AGENTS,
-    ...CONFIG,
-  ]).filter((f) => f.endsWith("/AGENT.md"));
+  const sources = copyFromWorktree(tree, ["artifacts/core/agents", ...CONFIG]).filter((f) =>
+    f.endsWith("/AGENT.md"),
+  );
   const built = build(tree);
 
-  // The stream is composed, not a constant (spec 0291 R7): 22 copilot model-drop lines, one
+  // The stream is composed, not a constant (spec 0291 R7): 11 copilot model-drop lines, one
   // guard-withheld note per agent only while the committed guard is `withheld`, and one
   // tools-drop line per declaring source and per CLI that cannot carry a declared class (spec 0291
   // R13, R29, issue #2020): the count follows the declarations, it is not pinned to a literal.
@@ -108,8 +90,8 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
     const antigravity = classes.includes("skill") ? 1 : 0;
     return n + antigravity + copilot + gemini;
   }, 0);
-  test("T4 — a plain build over the 22-source root emits 22 model-drop, the reasoning drops and rung notes the sources imply, the guard notes the committed state implies, and one tools-drop per declaring source", () => {
-    assert.equal(sources.length, 22, "the root is seeded with all 22 core AGENT.md");
+  test("T4 — a plain build over the 11-source root emits 11 model-drop, the reasoning drops and rung notes the sources imply, the guard notes the committed state implies, and one tools-drop per declaring source", () => {
+    assert.equal(sources.length, 11, "the root is seeded with all 11 core AGENT.md");
     assert.equal(built.status, 0, built.stderr);
     const lines = stderrLines(built.stderr);
     const notes = lines.filter((l) => NOTE.test(l));
@@ -125,7 +107,7 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
         !REASONING_DROP.test(l) &&
         !RUNG_NOTE.test(l),
     );
-    const wantNotes = claudeGuardState() === "withheld" ? 22 : 0;
+    const wantNotes = claudeGuardState() === "withheld" ? 11 : 0;
     assert.deepEqual(
       {
         total: lines.length,
@@ -137,9 +119,9 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
         other,
       },
       {
-        total: 22 + wantNotes + wantToolsDrops + 2 * reasoned.length + wantRungNotes,
+        total: 11 + wantNotes + wantToolsDrops + 2 * reasoned.length + wantRungNotes,
         notes: wantNotes,
-        drops: 22,
+        drops: 11,
         tools: wantToolsDrops,
         reasoningDrops: 2 * reasoned.length,
         rungNotes: wantRungNotes,
@@ -168,11 +150,9 @@ describe("T4 — R21: diagnostic stream of a plain build, 22-source throwaway ro
 
 describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
   const tree = createFixtureTree();
-  const sources = copyFromWorktree(tree, [
-    "artifacts/core/agents",
-    ...WEB_LIBRARY_AGENTS,
-    ...CONFIG,
-  ]).filter((f) => f.endsWith("/AGENT.md"));
+  const sources = copyFromWorktree(tree, ["artifacts/core/agents", ...CONFIG]).filter((f) =>
+    f.endsWith("/AGENT.md"),
+  );
   // a replaced guard term is a whole node, so the override carries every required key
   tree.write(
     "model-mappings/claude.org.yml",
@@ -192,14 +172,9 @@ describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
     ].join("\n"),
   );
   const built = build(tree);
-  // security and seo-specialist gain `tools` and pr-reviewer loses `claude:` (spec 0291 R18-R20)
-  const EDITED = new Set(["security", "seo-specialist", "pr-reviewer"]);
-  // Spec 0307: the eleven moved agents are built into the gitignored dist/library staging root of the
-  // throwaway tree, and only the core agents have a committed Claude file to compare with.
-  const claudeFile = (name: string, f: string): string =>
-    f.includes("/library/agents/")
-      ? `dist/library/.claude/agents/${name}.md`
-      : `.claude/agents/${name}.md`;
+  // security gains `tools` and pr-reviewer loses `claude:` (spec 0291 R18-R20)
+  const EDITED = new Set(["security", "pr-reviewer"]);
+  const claudeFile = (name: string): string => `.claude/agents/${name}.md`;
   const coreNames = sources
     .filter((f) => f.startsWith("artifacts/core/"))
     .map((f) => path.basename(path.dirname(f)));
@@ -211,16 +186,16 @@ describe("R5 — spec 0291: an organisation re-withholds the guard", () => {
       }
     ).model?.reasoning;
 
-  test("R5 — every Claude file has no model: key, keeps the sentence, carries its source's effort, and 22 guard-withheld notes are emitted", () => {
+  test("R5 — every Claude file has no model: key, keeps the sentence, carries its source's effort, and 11 guard-withheld notes are emitted", () => {
     assert.equal(built.status, 0, built.stderr);
     assert.equal(
       stderrLines(built.stderr).filter((l) => NOTE.test(l)).length,
-      22,
+      11,
       "one guard-withheld note per agent",
     );
     for (const f of sources) {
       const name = path.basename(path.dirname(f));
-      const fm = readFrontmatter(tree.read(claudeFile(name, f)));
+      const fm = readFrontmatter(tree.read(claudeFile(name)));
       assert.equal(Object.hasOwn(fm, "model"), false, `${name} has no model key`);
       // the model sentence stays; a declared reasoning rung adds its own sentence and the effort key
       assert.match(
@@ -307,7 +282,7 @@ describe("R40 mutation — a profile edit without regenerating reds component-dr
       copyFromHead(tree, ["artifacts", "model-mappings", "crewrig.config.toml"]);
       copyFromHead(tree, [".claude", ".gemini", ".github", ".agents"]);
       const rel = "artifacts/core/agents/developer/AGENT.md";
-      const edited = tree.read(rel).replace(/^(\s+intelligence:).*$/m, "$1 medium");
+      const edited = tree.read(rel).replace(/^(\s+intelligence:).*$/m, "$1 high");
       assert.notEqual(edited, tree.read(rel), "the profile edit changed the source");
       tree.write(rel, edited);
       const res = build(tree, "--check");

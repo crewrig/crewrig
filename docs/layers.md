@@ -117,9 +117,7 @@ user-home scope (e.g., `~/.claude/skills/`), available to every workflow on the
 machine rather than only inside a CrewRig project checkout. Friction reporting,
 friction curation, and user-gate validation are **instances** of this contract,
 not an exhaustive member list; a future cross-cutting tool belongs here when it
-matches the contract. The web and SEO agents and the four web skills (spec 0307) are
-library members too: they are installed at home scope and are no longer part of
-the project tree.
+matches the contract.
 
 | Path | Description |
 |---|---|
@@ -127,21 +125,6 @@ the project tree.
 | `artifacts/library/skills/harness-curator/` | Harness skill — friction clustering and issue authoring. |
 | `artifacts/library/skills/user-validate/` | Cross-cutting skill — backend-configurable user-gate validation. |
 | `artifacts/library/agents/harness-curator/` | Harness agent — curator specialist. |
-| `artifacts/library/skills/astro/` | Web skill (spec 0307) — Astro sites and content collections. |
-| `artifacts/library/skills/copywriting/` | Web skill (spec 0307) — web copy with length and phrase linting. |
-| `artifacts/library/skills/frontend/` | Web skill (spec 0307) — framework-agnostic HTML, CSS, Tailwind and accessibility. |
-| `artifacts/library/skills/web-tester/` | Web skill (spec 0307) — Playwright, RobotFramework and axe-core scenarios. |
-| `artifacts/library/agents/accessibility-auditor/` | Web agent (spec 0307) — manual WCAG 2.1 AA audit. |
-| `artifacts/library/agents/accessibility-tester/` | Web agent (spec 0307) — axe-core scan and CI accessibility suite. |
-| `artifacts/library/agents/astro-developer/` | Web agent (spec 0307) — Astro implementation. |
-| `artifacts/library/agents/copywriter/` | Web agent (spec 0307) — page copy. |
-| `artifacts/library/agents/designer/` | Web agent (spec 0307) — design tokens and component specs. |
-| `artifacts/library/agents/frontend-developer/` | Web agent (spec 0307) — semantic HTML, CSS and accessible behaviour. |
-| `artifacts/library/agents/regression-sentinel/` | Web agent (spec 0307) — smoke and regression pass against a baseline. |
-| `artifacts/library/agents/scenario-author/` | Web agent (spec 0307) — end-to-end scenarios. |
-| `artifacts/library/agents/seo-specialist/` | Web agent (spec 0307) — technical SEO audit. |
-| `artifacts/library/agents/visual-regression-tester/` | Web agent (spec 0307) — screenshot diffs across viewports. |
-| `artifacts/library/agents/web-conformity-checker/` | Web agent (spec 0307) — conformity of a page to a specification. |
 
 **`artifacts/core/`** — SDLC lifecycle tools and operational role skills and
 agents. Deployed to project scope (e.g., `.claude/skills/` in the workspace).
@@ -228,6 +211,7 @@ exist, how org artifacts integrate) is defined in spec 0012 sub-spec E2.
 | `.github/agents/` | Compiled GitHub Copilot agent definitions. Reclassified `regenerable` (spec 0199 R43 / spec 0121 delta-01 R9). |
 | `.github/copilot-instructions.md` | Copilot system prompt built from `AGENTS.md`. |
 | `.github/workflows/` | CI/CD pipeline definitions. |
+| `.github/actions/` | Composite actions the workflows call (`ci-job`, `setup-task`, `cancel-on-failure`). Core/`strict`, claimed whole like `.github/workflows/` so a synced workflow never drifts from the action it calls. Under a `strict` directory the spec 0064 orphan cleanup removes every tracked file that upstream lacks, so an adopter keeps its own composite actions outside this directory (`uses: ./<path>` accepts any path). |
 | `.github/copilot/` | GitHub Copilot workspace configuration. |
 | `.github/copilot/settings.json` | Committed workspace settings, `strict` by default as a member of `.github/copilot/` above — except its `hooks` key, which the transcript-hooks opt-in in `setup-copilot-interactive.ts` deliberately rewrites locally with an absolute path (ADR-0001 Discovery finding #8). Reclassified `excluded`, nested under the strict `.github/copilot/` parent (spec 0097 / issue #605), so that designed-in local mutation no longer aborts `scripts/sync-from-upstream.ts`; sibling members such as `extension.json` remain `strict` and still abort on a local diff. |
 | `.agents/skills/` | Compiled Antigravity CLI skill definitions. |

@@ -15,6 +15,7 @@
   "host-safety": 1,
   "host-safety-selftest": 6,
   "path-ownership": 1,
+  "org-workspaces": 2,
   "path-ownership-selftest": 16,
   "check-skill-versions": 1,
   "skill-evals-attestation": 1,

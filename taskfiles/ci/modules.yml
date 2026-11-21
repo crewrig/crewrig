@@ -35,7 +35,7 @@ tasks:
     preconditions: *needs-js-yaml
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/tar-writer.test.ts {{.REPO_DIR}}/scripts/tests/docs-index.test.ts {{.REPO_DIR}}/scripts/tests/docs-index-walk.test.ts {{.REPO_DIR}}/scripts/tests/build-docs-index-entry.test.ts {{.REPO_DIR}}/scripts/tests/packaging-file-size.test.ts {{.REPO_DIR}}/scripts/tests/packaging-release-package.test.ts {{.REPO_DIR}}/scripts/tests/packaging-release-package-cli.test.ts {{.REPO_DIR}}/scripts/tests/packaging-spawn-tiers.test.ts {{.REPO_DIR}}/scripts/tests/packaging-entries.test.ts {{.REPO_DIR}}/scripts/tests/release-sync-manifests.test.ts {{.REPO_DIR}}/scripts/tests/packaging-release-golden-portable.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/tar-writer.test.ts {{.REPO_DIR}}/scripts/tests/docs-index.test.ts {{.REPO_DIR}}/scripts/tests/docs-index-walk.test.ts {{.REPO_DIR}}/scripts/tests/build-docs-index-entry.test.ts {{.REPO_DIR}}/scripts/tests/packaging-file-size.test.ts {{.REPO_DIR}}/scripts/tests/packaging-release-package.test.ts {{.REPO_DIR}}/scripts/tests/packaging-release-package-cli.test.ts {{.REPO_DIR}}/scripts/tests/packaging-spawn-tiers.test.ts {{.REPO_DIR}}/scripts/tests/packaging-entries.test.ts {{.REPO_DIR}}/scripts/tests/release-sync-manifests.test.ts {{.REPO_DIR}}/scripts/tests/release-sync-manifests-commit.test.ts {{.REPO_DIR}}/scripts/tests/packaging-release-golden-portable.test.ts
   governance-checks-ts:
     desc: Run the governance-checks-ts CI capability (pre-push mirror of the CI job)
     preconditions: *needs-js-yaml

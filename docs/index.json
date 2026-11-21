@@ -381,6 +381,11 @@
           "title": "ADR 0027 — Isolate per-client configuration spheres",
           "path": "docs/adr/0027-isolate-per-client-configuration-spheres.md",
           "nav_order": 270
+        },
+        {
+          "title": "ADR 0028 — Generate provenance markers on every frictionable artifact",
+          "path": "docs/adr/0028-generate-provenance-markers-on-every-frictionable-artifact.md",
+          "nav_order": 280
         }
       ]
     }

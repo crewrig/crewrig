@@ -1,7 +1,8 @@
 ---
 id: "0307"
 slug: web-components-library-tier
-status: implemented
+status: superseded
+superseded-by: "0313"
 complexity: small
 interaction-mode: AUTO
 related-issue: 1992

@@ -253,25 +253,6 @@ jobs:
         with:
           id: check-description-length
 
-  check-extension-version-bump:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # full history so `git show BASE:path` resolves the old carrier
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - name: Enforce carrier-version bump on changed extension sources (spec 0044)
-        env:
-          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
-        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-extension-version-bump.ts
-      - name: Cancel workflow on job failure
-        if: failure()
-        uses: ./.github/actions/cancel-on-failure
-
   check-spec-id-reserved:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'

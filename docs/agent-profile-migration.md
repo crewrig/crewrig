@@ -2,7 +2,7 @@
 
 <!-- crewrig-doc: section=reference nav_order=110 published=true title="Agent capability-profile migration" -->
 
-Since spec 0307, eleven of the 22 baseline sources below live under `artifacts/library/agents/`; the 22-row baseline is unchanged and still checked.
+Since spec 0313, the eleven web and SEO agents that spec 0307 had moved to `artifacts/library/agents/` are no longer part of CrewRig; the 11-row baseline below is the core set and is still checked.
 
 The core agent sources declare CLI-agnostic capability profiles
 (`metadata.model:`) instead of a Claude Code model alias
@@ -23,31 +23,20 @@ source declares one lives in [`docs/authoring.md`](authoring.md).
 
 | Source | Tier before | Rung after | Claude Code | Gemini CLI | GitHub Copilot CLI | Antigravity CLI |
 |---|---|---|---|---|---|---|
-| `accessibility-auditor` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
-| `accessibility-tester` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
 | `architect` | `opus` | `xhigh` | prose, `opus` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
-| `astro-developer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
 | `ci-configurator` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
 | `ci-debugger` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
 | `ci-parity` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
-| `copywriter` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
-| `designer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
 | `developer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
 | `doc-writer` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
-| `frontend-developer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
 | `pr-logbook` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
 | `pr-reviewer` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
-| `regression-sentinel` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
-| `scenario-author` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
 | `security` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
-| `seo-specialist` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
 | `spec-author` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
 | `tester` | `sonnet` | `high` | prose, `sonnet` | `model: gemini-3.1-pro-preview` | unchanged | prose, `gemini-3.1-pro-high` |
-| `visual-regression-tester` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
-| `web-conformity-checker` | `haiku` | `medium` | prose, `haiku` | `model: gemini-3.5-flash` | unchanged | prose, `gemini-3.8-flash-medium` |
 | `harness-curator` | *(none)* | *(none)* | unchanged | unchanged | unchanged | unchanged |
 
-23 rows: 22 migrated sources plus `harness-curator`, the tree's one
+12 rows: 11 migrated sources plus `harness-curator`, the tree's one
 profile-less agent source (requirement 5). "prose, `<alias-or-offering>`"
 means the compiled `description` gains the sentence naming that alias or
 offering, appended after a single space, with no new frontmatter key
@@ -193,16 +182,16 @@ requirement 22 obliges, and differ in no other byte.
 
 ## The diagnostic stream
 
-Re-measured at spec 0291 delta 03 (2026-11-15; the guard lift and `metadata.tools` before it) with all four targets built (run `node scripts/lib/node-floor-guard.js` first, as a separate step; the build needs Node.js 24 or newer, and `js-yaml` comes from the setup dependency step):
+Re-measured at spec 0313 (2026-11-20; the web and SEO agents left CrewRig, spec 0291 delta 03 and the guard lift before it) with all four targets built (run `node scripts/lib/node-floor-guard.js` first, as a separate step; the build needs Node.js 24 or newer, and `js-yaml` comes from the setup dependency step):
 
 | Invocation | Lines | Shapes |
 |---|---|---|
-| `node scripts/build-components.ts --target all` | **65** | 33 `model-drop … copilot` + 11 `model-drop … gemini` + 10 `tools-drop … copilot` + 1 `tools-drop … gemini` + 10 `tools-drop … antigravity metadata.tools skill no-equivalent-on-cli` (one per agent that declares `skill`, spec 0291 delta 03 R42; it was 12 `unsupported-on-cli`, one per declaring agent, before). Measured on 2026-11-15 from a real build (67 lines before delta 03). No `guard-withheld` line: the guard is `directed` (spec 0291 R1, R5). The plain run builds the library tier as well |
-| `node scripts/build-components.ts --target all --check` | **65** | the same 44 `model-drop` and 21 `tools-drop` lines (10 of them Antigravity); `--check` also prints its own progress lines, and does not run the assembly suite (spec 0250 R33, (c)) |
-| the 22-core-source root of `agent-profile-build.test.ts` | derived | 22 `model-drop`, plus one `tools-drop` per source for each target that has no name for a declared class, plus 22 `guard-withheld` only while the committed guard is `withheld`; the Antigravity `tools-drop` count is 10, pinned by the test |
-| the assembly suite's synthetic root, added | **+4** | `model-note developer <target> no-mapping …` — one per target, for the single agent of `scripts/tests/build-assembly-routing.test.ts`'s root, which holds no `model-mappings/`: **69** lines when counted together with the stream above (spec 0291 R7) |
+| `node scripts/build-components.ts --target all` | **54** | 22 `model-drop … copilot` + 11 `model-drop … gemini` + 10 `tools-drop … copilot` + 1 `tools-drop … gemini` + 10 `tools-drop … antigravity metadata.tools skill no-equivalent-on-cli` (one per agent that declares `skill`, spec 0291 delta 03 R42; it was 12 `unsupported-on-cli`, one per declaring agent, before). Measured on 2026-11-20 from a real build (65 lines before spec 0313, which removed the eleven web and SEO agents). No `guard-withheld` line: the guard is `directed` (spec 0291 R1, R5). The plain run builds the library tier as well |
+| `node scripts/build-components.ts --target all --check` | **54** | the same 33 `model-drop` and 21 `tools-drop` lines (10 of them Antigravity); `--check` also prints its own progress lines, and does not run the assembly suite (spec 0250 R33, (c)) |
+| the 11-core-source root of `agent-profile-build.test.ts` | derived | 11 `model-drop`, plus one `tools-drop` per source for each target that has no name for a declared class, plus 11 `guard-withheld` only while the committed guard is `withheld`; the Antigravity `tools-drop` count is 10, pinned by the test |
+| the assembly suite's synthetic root, added | **+4** | `model-note developer <target> no-mapping …` — one per target, for the single agent of `scripts/tests/build-assembly-routing.test.ts`'s root, which holds no `model-mappings/`: **58** lines when counted together with the stream above (spec 0291 R7) |
 
-Before spec 0291 the first two rows read **44** and **48**: 22 `model-note … claude guard-withheld …` lines were part of the stream, because the guard was `withheld` and every Claude Code agent kept the sentence in its description. An organization that re-withholds the guard (`docs/org-model-mapping-override.md`) gets those 22 `guard-withheld` notes back, one per Claude Code agent (spec 0197 R32).
+Before spec 0291 the first two rows read **44** and **48**: 22 `model-note … claude guard-withheld …` lines were part of the stream, because the guard was `withheld` and every Claude Code agent kept the sentence in its description. An organization that re-withholds the guard (`docs/org-model-mapping-override.md`) gets those 11 `guard-withheld` notes back, one per Claude Code agent (spec 0197 R32).
 
 **Mechanism.** The 4 `no-mapping` notes belong to the assembly suite
 (`scripts/tests/build-assembly-routing.test.ts`), which builds a second,
