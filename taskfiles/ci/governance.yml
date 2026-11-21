@@ -168,3 +168,8 @@ tasks:
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON -e "const {execFileSync}=require('node:child_process');const o=execFileSync(process.execPath,['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON','{{.REPO_DIR}}/scripts/check-plan-review.ts',process.argv[1],process.argv[2]],{encoding:'utf8'}).split('\\n');process.exit(o.includes('plan-review:\\x20'+process.argv[3])?0:1)" {{.REPO_DIR}}/scripts/tests/fixtures/plan-review/skip-spec.md {{.REPO_DIR}}/scripts/tests/fixtures/plan-review/skip-plan.md skipped
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON -e "const {execFileSync}=require('node:child_process');const o=execFileSync(process.execPath,['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON','{{.REPO_DIR}}/scripts/check-plan-review.ts',process.argv[1],process.argv[2]],{encoding:'utf8'}).split('\\n');process.exit(o.includes('plan-review:\\x20'+process.argv[3])?0:1)" {{.REPO_DIR}}/scripts/tests/fixtures/plan-review/skip-spec.md {{.REPO_DIR}}/scripts/tests/fixtures/plan-review/required-plan.md required
+  crewrig-launcher-floor:
+    desc: Run the crewrig-launcher-floor CI capability on Node.js 22 (pre-push mirror; needs a Node.js 22 runtime)
+    cmds:
+      - node -e 'if (!process.versions.node.startsWith("22.")) process.exit(1)'
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/crewrig-launcher-floor.test.ts

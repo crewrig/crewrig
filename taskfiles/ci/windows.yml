@@ -124,3 +124,9 @@ tasks:
         node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 750 --stdin-file "$TIMING_FAST_PAYLOAD" --cwd "$TIMING_FIXTURE_CWD" -- "$GITHUB_WORKSPACE/hooks/worktree-git-guard.ts"
         node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 2000 --expect-exit 1 --stdin-file "$TIMING_REFUSED_PAYLOAD" --cwd "$TIMING_FIXTURE_CWD" -- "$GITHUB_WORKSPACE/hooks/worktree-git-guard.ts"
         node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-timing-budget.ts --runs 10 --budget-ms 2000 --stdin-file "$TIMING_ALLOWED_PAYLOAD" --cwd "$TIMING_FIXTURE_CWD" -- "$GITHUB_WORKSPACE/hooks/worktree-git-guard.ts"
+  # Spec 0314 (ticket #2101): the organization launcher and `crewrig init` suites on windows-latest, the Linux task
+  # `crewrig-launcher-ts` without the floor case (the floor runs on Node.js 22, task `crewrig-launcher-floor`).
+  windows-crewrig-launcher:
+    desc: Windows proof of the organization launcher (CI mirror of the windows-latest job)
+    cmds:
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/crewrig-launcher-pin.test.ts scripts/tests/crewrig-launcher-download.test.ts scripts/tests/crewrig-launcher-cache.test.ts scripts/tests/crewrig-launcher-archive.test.ts scripts/tests/crewrig-launcher-forwarding.test.ts scripts/tests/crewrig-init.test.ts scripts/tests/crewrig-init-e2e.test.ts scripts/tests/crewrig-manifest-closure.test.ts

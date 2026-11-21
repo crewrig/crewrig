@@ -396,3 +396,16 @@ jobs:
       - uses: ./.github/actions/ci-job
         with:
           id: ci-push-unfiltered
+
+  # Spec 0314 R4, R10 (ticket #2101): the organization launcher's runtime floor, on Node.js 22 (the real case of the
+  # floor suite). No install and no path gate: the suite imports nothing from the repository.
+  crewrig-launcher-floor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: crewrig-launcher-floor
+          node: 22
+          install: none
+          gate: false

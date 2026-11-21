@@ -247,3 +247,14 @@ jobs:
         with:
           id: windows-setup-entries
           gate: false
+
+  # Spec 0314 (ticket #2101): the organization launcher and `crewrig init` suites. Path-gated like the Linux leg
+  # (ci/capabilities/windows-other.yml, `windows-crewrig-launcher`), so the gate input stays at its default.
+  windows-crewrig-launcher:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: windows-crewrig-launcher
