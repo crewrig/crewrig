@@ -71,7 +71,7 @@ describe("createCtx", () => {
       assert.ok(ctx);
       assert.equal(ctx.repoDir, fs.realpathSync(tree.root));
     } finally {
-      fs.rmSync(link, { force: true });
+      fs.unlinkSync(link); // rmSync follows a directory symlink and throws EISDIR
     }
   });
 });
