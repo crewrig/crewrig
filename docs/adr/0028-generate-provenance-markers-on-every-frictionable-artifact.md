@@ -52,7 +52,7 @@ The line form stays on extension skills and agents on every CLI, Claude included
 |---|---|---|
 | `package` | `name` of the root `package.json` (`crewrig`, `package.json:2`) | `name` of the extension's `package.json` |
 | `extension` | absent | `name` of `extension.json` (spec 0312 R4) |
-| `version` | the component's authored `metadata.provenance.version`, bump-guarded (`docs/version-bump-convention.md`); for a rule, see *Open questions* | `version` of the extension's `package.json` (spec 0312 R3) |
+| `version` | the component's authored `metadata.provenance.version`, bump-guarded (`docs/version-bump-convention.md`); for a rule, system-context file or core hook, an authored `metadata.provenance.version` is added and guarded by `check-skill-versions` (owner decision, see *Resolved questions*) | `version` of the extension's `package.json` (spec 0312 R3) |
 | `canonical` | authored `metadata.provenance.canonical`, `${CANONICAL_REPO}` resolved at build | new `provenance.canonical` key of `extension.json`, a literal (spec 0043 R2) |
 | `feedback` | authored `metadata.provenance.feedback`, resolved at build (spec 0030) | `provenance.feedback` of `extension.json`, defaulting to `canonical` |
 
@@ -102,7 +102,9 @@ Alternatives weighed:
 5. `harness-report`: marker capture, new flags, path-walk fallback; curator: route by `feedback`, version in the issue body.
 6. Retire the interim: source carriers, release-step carrier rewrite, carrier guards, `FORMAT.md` and `EXTENSION-FORMAT.md` corrections (step 4).
 
-## Open questions
+## Resolved questions
 
-1. The version of a rule, system-context file or core hook, which has no component version today. Either it gets an authored `metadata.provenance.version` under `check-skill-versions`, or it takes the framework release version (`crewrig-<version>.tgz`, spec 0288 R8). The second is unknown on a source checkout.
-2. Whether `provenance.canonical` and `provenance.feedback` belong in `extension.json` (proposed: the crewrig-owned pivot manifest, already validated) or in `package.json` `repository.url`, the npm-standard field.
+Settled by the owner on 2026-11-21, before acceptance:
+
+1. **Version of a rule, system-context file or core hook.** Each one gets its own authored `metadata.provenance.version`, guarded by `check-skill-versions` like skills and agents. This keeps one source of truth that is known on a source checkout, at the cost of a bump on every modification. Rejected: the framework release version (`crewrig-<version>.tgz`, spec 0288 R8), unknown on a source checkout and changing when the file does not.
+2. **Where an extension declares `canonical` and `feedback`.** In a `provenance` key of `extension.json`, the crewrig-owned manifest already validated by schema, which can tell `feedback` from `canonical`. Rejected: `package.json` `repository.url`, the npm-standard field, which names a single repository and cannot carry a distinct feedback target without a non-standard extension.
