@@ -4,7 +4,7 @@
 
 ## Status
 
-Proposed
+Accepted (owner, 2026-11-21)
 
 Answers issue #2078. No spec yet: the decision below supersedes parts of specs 0043 and 0312, so the implementation is preceded by one amending spec (see *Follow-ups*).
 
