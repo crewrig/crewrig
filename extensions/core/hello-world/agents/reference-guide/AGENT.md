@@ -2,7 +2,7 @@
 name: reference-guide
 description: "Delegated agent for the hello-world reference extension. Invoke it when a user wants a walkthrough of what this extension demonstrates (MCP tools, a command, a skill, hooks) rather than to use the extension's greeting features directly."
 ---
-<!-- crewrig-provenance: extension="hello-world" version="2.1.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: extension="hello-world" version="2.2.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Hello-World Reference Guide
 
