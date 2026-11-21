@@ -19,3 +19,17 @@ dist/library
 
 # Hook scripts and the hook wiring templates, run as `node <script>.ts` from the extracted version.
 hooks
+
+# The organization launcher's entry point (spec 0314 R5, R6, R18): the descriptor names the entry point,
+# which loads only the modules beneath scripts/lib/crewrig-cli.
+crewrig.entry.json
+scripts/crewrig-cli.ts
+scripts/lib/crewrig-cli
+
+# The organization scaffold of `crewrig init` (spec 0314 R15, R18): the two templates it copies and the
+# catalogs it copies into the organization config repository.
+config/ORGANIZATION.md.template
+config/TOOLS.md.template
+config/expertise
+config/teams
+config/level

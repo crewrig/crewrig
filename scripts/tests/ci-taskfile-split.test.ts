@@ -45,6 +45,7 @@ const GROUP_FILES: Record<string, readonly string[]> = {
     "extension-builders-ts",
     "skill-scripts-ts",
     "model-ci-tooling-ts",
+    "crewrig-launcher-ts",
   ],
   "taskfiles/ci/governance.yml": [
     "host-safety",
@@ -70,6 +71,7 @@ const GROUP_FILES: Record<string, readonly string[]> = {
     "alert-scheduled-failure",
     "alert-scheduled-failure-selftest",
     "alert-scheduled-failure-check",
+    "crewrig-launcher-floor",
     "ci-pre-push-replay",
     "misc",
   ],
@@ -103,7 +105,7 @@ const GROUP_FILES: Record<string, readonly string[]> = {
   ],
 };
 
-/** The R23 defining file of `ci:<id>`; the 24 `windows-*` tasks span windows.yml and windows-b.yml. */
+/** The R23 defining file of `ci:<id>`; the 25 `windows-*` tasks span windows.yml and windows-b.yml. */
 function expectedFiles(id: string): string[] {
   if (CONTROL.includes(id)) return ["taskfiles/ci.yml"];
   if (id.startsWith("windows-")) return ["taskfiles/ci/windows.yml", "taskfiles/ci/windows-b.yml"];
@@ -115,8 +117,8 @@ describe("taskfiles/ci split (spec 0278 R23)", () => {
   const tree = loadTaskfileTree(REPO);
   const ciTasks = tree.tasks.filter((t) => t.name.startsWith("ci:"));
 
-  it("defines each of the 106 ci:* names in exactly the file of the R23 table", () => {
-    assert.equal(ciTasks.length, 106);
+  it("defines each of the 109 ci:* names in exactly the file of the R23 table", () => {
+    assert.equal(ciTasks.length, 109);
     for (const t of ciTasks) {
       const id = t.name.slice("ci:".length);
       assert.ok(expectedFiles(id).includes(t.file), `${t.name} is in ${t.file}`);

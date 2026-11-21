@@ -238,7 +238,10 @@
   "ci:windows-setup-units": "taskfiles/ci/windows-b.yml",
   "ci:windows-setup-entries": "taskfiles/ci/windows-b.yml",
   "check-skill-quality": "taskfiles/governance.yml",
+  "ci:crewrig-launcher-floor": "taskfiles/ci/governance.yml",
+  "ci:crewrig-launcher-ts": "taskfiles/ci/modules.yml",
   "org-extensions": "taskfiles/extensions.yml",
   "ci:org-workspaces": "taskfiles/ci/extensions.yml",
-  "ci:org-workspaces-selftest": "taskfiles/ci/extensions.yml"
+  "ci:org-workspaces-selftest": "taskfiles/ci/extensions.yml",
+  "ci:windows-crewrig-launcher": "taskfiles/ci/windows.yml"
 }

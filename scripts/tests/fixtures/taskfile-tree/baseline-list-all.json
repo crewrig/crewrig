@@ -856,6 +856,14 @@
     "desc": "Run the chroma-mcp CI capability (pre-push mirror of the CI job)"
   },
   {
+    "name": "ci:crewrig-launcher-floor",
+    "desc": "Run the crewrig-launcher-floor CI capability on Node.js 22 (pre-push mirror; needs a Node.js 22 runtime)"
+  },
+  {
+    "name": "ci:crewrig-launcher-ts",
+    "desc": "Run the crewrig-launcher-ts CI capability (pre-push mirror of the CI job)"
+  },
+  {
     "name": "ci:e2e",
     "desc": "Run the e2e CI capability (pre-push mirror of the CI job)"
   },
@@ -966,5 +974,9 @@
   {
     "name": "ci:org-workspaces-selftest",
     "desc": "Run the org-workspaces-selftest CI capability (pre-push mirror of the CI job)"
+  },
+  {
+    "name": "ci:windows-crewrig-launcher",
+    "desc": "Windows proof of the organization launcher (CI mirror of the windows-latest job)"
   }
 ]

@@ -71,6 +71,11 @@ config/launchd
 config/systemd
 config/windows
 
+# Organization template and framework entry point (spec 0314): the template repository directory (launcher, pin
+# and README) and the descriptor the launcher reads from the verified archive.
+templates	strict
+crewrig.entry.json	strict
+
 # Persona, team, and seniority example catalogues (spec 0021). adopt-on-edit
 # at directory granularity: untouched files keep updating from upstream and
 # newly published examples arrive; a customised or deleted file freezes for

@@ -104,6 +104,13 @@ contract — never flowing back upstream.
 | `config/.env.example` | Environment variable reference (gitignored `.env` is never committed). |
 | `config/release-monorepo.json` | Monorepo release tooling configuration. |
 
+### Organization template and framework entry point (spec 0314)
+
+| Path | Description |
+|---|---|
+| `templates/` | Organization template repository, maintained as `templates/org-repo/`: the launcher `crewrig`, `crewrig.pin.json` and `README.md` (spec 0314 R12). Core/`strict`. |
+| `crewrig.entry.json` | Descriptor of the framework entry point, which the organization launcher reads from the verified archive (spec 0314 R6). Core/`strict`. |
+
 ### Artifact zones — core and library
 
 `artifacts/FORMAT.md` is the normative format contract for all artifact
