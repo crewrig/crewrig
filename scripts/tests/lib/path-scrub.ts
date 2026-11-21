@@ -1,5 +1,5 @@
 // path-scrub.ts — replace a real path by a placeholder only where it is a whole path prefix:
-// a short root such as the golden container's `/w` must not rewrite `/web-tester`.
+// a short root such as the golden container's `/w` must not rewrite `/web`.
 
 const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 

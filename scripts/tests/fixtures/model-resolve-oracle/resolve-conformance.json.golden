@@ -2392,40 +2392,7 @@
  },
  "core agents on antigravity": {
   "outcomes": {
-   "core agent accessibility-auditor/antigravity": {
-    "offeringId": "gemini-3.8-flash-medium",
-    "nativeValue": "gemini-3.8-flash-medium",
-    "fmLines": [],
-    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent accessibility-tester/antigravity": {
-    "offeringId": "gemini-3.8-flash-medium",
-    "nativeValue": "gemini-3.8-flash-medium",
-    "fmLines": [],
-    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
    "core agent architect/antigravity": {
-    "offeringId": "gemini-3.1-pro-high",
-    "nativeValue": "gemini-3.1-pro-high",
-    "fmLines": [],
-    "prose": "Run this agent on the gemini-3.1-pro-high model.",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent astro-developer/antigravity": {
     "offeringId": "gemini-3.1-pro-high",
     "nativeValue": "gemini-3.1-pro-high",
     "fmLines": [],
@@ -2469,28 +2436,6 @@
     "derivedBefore": 0,
     "derivedAfter": 0
    },
-   "core agent copywriter/antigravity": {
-    "offeringId": "gemini-3.8-flash-medium",
-    "nativeValue": "gemini-3.8-flash-medium",
-    "fmLines": [],
-    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent designer/antigravity": {
-    "offeringId": "gemini-3.1-pro-high",
-    "nativeValue": "gemini-3.1-pro-high",
-    "fmLines": [],
-    "prose": "Run this agent on the gemini-3.1-pro-high model.",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
    "core agent developer/antigravity": {
     "offeringId": "gemini-3.1-pro-high",
     "nativeValue": "gemini-3.1-pro-high",
@@ -2507,17 +2452,6 @@
     "nativeValue": "gemini-3.8-flash-medium",
     "fmLines": [],
     "prose": "Run this agent on the gemini-3.8-flash-medium model.",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent frontend-developer/antigravity": {
-    "offeringId": "gemini-3.1-pro-high",
-    "nativeValue": "gemini-3.1-pro-high",
-    "fmLines": [],
-    "prose": "Run this agent on the gemini-3.1-pro-high model.",
     "diagLines": [],
     "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
     "stderr": [],
@@ -2546,44 +2480,11 @@
     "derivedBefore": 0,
     "derivedAfter": 0
    },
-   "core agent regression-sentinel/antigravity": {
-    "offeringId": "gemini-3.8-flash-medium",
-    "nativeValue": "gemini-3.8-flash-medium",
-    "fmLines": [],
-    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent scenario-author/antigravity": {
-    "offeringId": "gemini-3.8-flash-medium",
-    "nativeValue": "gemini-3.8-flash-medium",
-    "fmLines": [],
-    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
    "core agent security/antigravity": {
     "offeringId": "gemini-3.1-pro-high",
     "nativeValue": "gemini-3.1-pro-high",
     "fmLines": [],
     "prose": "Run this agent on the gemini-3.1-pro-high model.",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent seo-specialist/antigravity": {
-    "offeringId": "gemini-3.8-flash-medium",
-    "nativeValue": "gemini-3.8-flash-medium",
-    "fmLines": [],
-    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
     "diagLines": [],
     "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
     "stderr": [],
@@ -2611,60 +2512,12 @@
     "stderr": [],
     "derivedBefore": 0,
     "derivedAfter": 0
-   },
-   "core agent visual-regression-tester/antigravity": {
-    "offeringId": "gemini-3.8-flash-medium",
-    "nativeValue": "gemini-3.8-flash-medium",
-    "fmLines": [],
-    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent web-conformity-checker/antigravity": {
-    "offeringId": "gemini-3.8-flash-medium",
-    "nativeValue": "gemini-3.8-flash-medium",
-    "fmLines": [],
-    "prose": "Run this agent on the gemini-3.8-flash-medium model.",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/antigravity.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
    }
   },
   "files": {}
  },
  "core agents on claude": {
   "outcomes": {
-   "core agent accessibility-auditor/claude": {
-    "offeringId": "haiku",
-    "nativeValue": "haiku",
-    "fmLines": [],
-    "prose": "Run this agent on the haiku model.",
-    "diagLines": [
-     "model-note\taccessibility-auditor\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/claude.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent accessibility-tester/claude": {
-    "offeringId": "haiku",
-    "nativeValue": "haiku",
-    "fmLines": [],
-    "prose": "Run this agent on the haiku model.",
-    "diagLines": [
-     "model-note\taccessibility-tester\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/claude.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
    "core agent architect/claude": {
     "offeringId": "opus",
     "nativeValue": "opus",
@@ -2672,19 +2525,6 @@
     "prose": "Run this agent on the opus model.",
     "diagLines": [
      "model-note\tarchitect\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/claude.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent astro-developer/claude": {
-    "offeringId": "sonnet",
-    "nativeValue": "sonnet",
-    "fmLines": [],
-    "prose": "Run this agent on the sonnet model.",
-    "diagLines": [
-     "model-note\tastro-developer\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
     ],
     "handle": "<REPO_DIR>/model-mappings/claude.yml",
     "stderr": [],
@@ -2730,32 +2570,6 @@
     "derivedBefore": 0,
     "derivedAfter": 0
    },
-   "core agent copywriter/claude": {
-    "offeringId": "haiku",
-    "nativeValue": "haiku",
-    "fmLines": [],
-    "prose": "Run this agent on the haiku model.",
-    "diagLines": [
-     "model-note\tcopywriter\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/claude.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent designer/claude": {
-    "offeringId": "sonnet",
-    "nativeValue": "sonnet",
-    "fmLines": [],
-    "prose": "Run this agent on the sonnet model.",
-    "diagLines": [
-     "model-note\tdesigner\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/claude.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
    "core agent developer/claude": {
     "offeringId": "sonnet",
     "nativeValue": "sonnet",
@@ -2776,19 +2590,6 @@
     "prose": "Run this agent on the haiku model.",
     "diagLines": [
      "model-note\tdoc-writer\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/claude.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent frontend-developer/claude": {
-    "offeringId": "sonnet",
-    "nativeValue": "sonnet",
-    "fmLines": [],
-    "prose": "Run this agent on the sonnet model.",
-    "diagLines": [
-     "model-note\tfrontend-developer\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
     ],
     "handle": "<REPO_DIR>/model-mappings/claude.yml",
     "stderr": [],
@@ -2821,32 +2622,6 @@
     "derivedBefore": 0,
     "derivedAfter": 0
    },
-   "core agent regression-sentinel/claude": {
-    "offeringId": "haiku",
-    "nativeValue": "haiku",
-    "fmLines": [],
-    "prose": "Run this agent on the haiku model.",
-    "diagLines": [
-     "model-note\tregression-sentinel\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/claude.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent scenario-author/claude": {
-    "offeringId": "haiku",
-    "nativeValue": "haiku",
-    "fmLines": [],
-    "prose": "Run this agent on the haiku model.",
-    "diagLines": [
-     "model-note\tscenario-author\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/claude.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
    "core agent security/claude": {
     "offeringId": "sonnet",
     "nativeValue": "sonnet",
@@ -2854,19 +2629,6 @@
     "prose": "Run this agent on the sonnet model.",
     "diagLines": [
      "model-note\tsecurity\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/claude.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent seo-specialist/claude": {
-    "offeringId": "haiku",
-    "nativeValue": "haiku",
-    "fmLines": [],
-    "prose": "Run this agent on the haiku model.",
-    "diagLines": [
-     "model-note\tseo-specialist\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
     ],
     "handle": "<REPO_DIR>/model-mappings/claude.yml",
     "stderr": [],
@@ -2898,64 +2660,12 @@
     "stderr": [],
     "derivedBefore": 0,
     "derivedAfter": 0
-   },
-   "core agent visual-regression-tester/claude": {
-    "offeringId": "haiku",
-    "nativeValue": "haiku",
-    "fmLines": [],
-    "prose": "Run this agent on the haiku model.",
-    "diagLines": [
-     "model-note\tvisual-regression-tester\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/claude.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent web-conformity-checker/claude": {
-    "offeringId": "haiku",
-    "nativeValue": "haiku",
-    "fmLines": [],
-    "prose": "Run this agent on the haiku model.",
-    "diagLines": [
-     "model-note\tweb-conformity-checker\tclaude\tguard-withheld\tterms=defect-not-established-fixed,copilot-reader-consumes-claude-surface surface=guidance"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/claude.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
    }
   },
   "files": {}
  },
  "core agents on copilot": {
   "outcomes": {
-   "core agent accessibility-auditor/copilot": {
-    "offeringId": "",
-    "nativeValue": "",
-    "fmLines": [],
-    "prose": "",
-    "diagLines": [
-     "model-drop\taccessibility-auditor\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent accessibility-tester/copilot": {
-    "offeringId": "",
-    "nativeValue": "",
-    "fmLines": [],
-    "prose": "",
-    "diagLines": [
-     "model-drop\taccessibility-tester\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
    "core agent architect/copilot": {
     "offeringId": "",
     "nativeValue": "",
@@ -2963,19 +2673,6 @@
     "prose": "",
     "diagLines": [
      "model-drop\tarchitect\tcopilot\tmetadata.model.intelligence\txhigh\tunsupported-on-cli"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent astro-developer/copilot": {
-    "offeringId": "",
-    "nativeValue": "",
-    "fmLines": [],
-    "prose": "",
-    "diagLines": [
-     "model-drop\tastro-developer\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
     ],
     "handle": "<REPO_DIR>/model-mappings/copilot.yml",
     "stderr": [],
@@ -3021,32 +2718,6 @@
     "derivedBefore": 0,
     "derivedAfter": 0
    },
-   "core agent copywriter/copilot": {
-    "offeringId": "",
-    "nativeValue": "",
-    "fmLines": [],
-    "prose": "",
-    "diagLines": [
-     "model-drop\tcopywriter\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent designer/copilot": {
-    "offeringId": "",
-    "nativeValue": "",
-    "fmLines": [],
-    "prose": "",
-    "diagLines": [
-     "model-drop\tdesigner\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
    "core agent developer/copilot": {
     "offeringId": "",
     "nativeValue": "",
@@ -3067,19 +2738,6 @@
     "prose": "",
     "diagLines": [
      "model-drop\tdoc-writer\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent frontend-developer/copilot": {
-    "offeringId": "",
-    "nativeValue": "",
-    "fmLines": [],
-    "prose": "",
-    "diagLines": [
-     "model-drop\tfrontend-developer\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
     ],
     "handle": "<REPO_DIR>/model-mappings/copilot.yml",
     "stderr": [],
@@ -3112,32 +2770,6 @@
     "derivedBefore": 0,
     "derivedAfter": 0
    },
-   "core agent regression-sentinel/copilot": {
-    "offeringId": "",
-    "nativeValue": "",
-    "fmLines": [],
-    "prose": "",
-    "diagLines": [
-     "model-drop\tregression-sentinel\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent scenario-author/copilot": {
-    "offeringId": "",
-    "nativeValue": "",
-    "fmLines": [],
-    "prose": "",
-    "diagLines": [
-     "model-drop\tscenario-author\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
    "core agent security/copilot": {
     "offeringId": "",
     "nativeValue": "",
@@ -3145,19 +2777,6 @@
     "prose": "",
     "diagLines": [
      "model-drop\tsecurity\tcopilot\tmetadata.model.intelligence\thigh\tunsupported-on-cli"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent seo-specialist/copilot": {
-    "offeringId": "",
-    "nativeValue": "",
-    "fmLines": [],
-    "prose": "",
-    "diagLines": [
-     "model-drop\tseo-specialist\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
     ],
     "handle": "<REPO_DIR>/model-mappings/copilot.yml",
     "stderr": [],
@@ -3189,78 +2808,13 @@
     "stderr": [],
     "derivedBefore": 0,
     "derivedAfter": 0
-   },
-   "core agent visual-regression-tester/copilot": {
-    "offeringId": "",
-    "nativeValue": "",
-    "fmLines": [],
-    "prose": "",
-    "diagLines": [
-     "model-drop\tvisual-regression-tester\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent web-conformity-checker/copilot": {
-    "offeringId": "",
-    "nativeValue": "",
-    "fmLines": [],
-    "prose": "",
-    "diagLines": [
-     "model-drop\tweb-conformity-checker\tcopilot\tmetadata.model.intelligence\tmedium\tunsupported-on-cli"
-    ],
-    "handle": "<REPO_DIR>/model-mappings/copilot.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
    }
   },
   "files": {}
  },
  "core agents on gemini": {
   "outcomes": {
-   "core agent accessibility-auditor/gemini": {
-    "offeringId": "gemini-3.5-flash",
-    "nativeValue": "gemini-3.5-flash",
-    "fmLines": [
-     "model: gemini-3.5-flash"
-    ],
-    "prose": "",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent accessibility-tester/gemini": {
-    "offeringId": "gemini-3.5-flash",
-    "nativeValue": "gemini-3.5-flash",
-    "fmLines": [
-     "model: gemini-3.5-flash"
-    ],
-    "prose": "",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
    "core agent architect/gemini": {
-    "offeringId": "gemini-3.1-pro-preview",
-    "nativeValue": "gemini-3.1-pro-preview",
-    "fmLines": [
-     "model: gemini-3.1-pro-preview"
-    ],
-    "prose": "",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent astro-developer/gemini": {
     "offeringId": "gemini-3.1-pro-preview",
     "nativeValue": "gemini-3.1-pro-preview",
     "fmLines": [
@@ -3312,32 +2866,6 @@
     "derivedBefore": 0,
     "derivedAfter": 0
    },
-   "core agent copywriter/gemini": {
-    "offeringId": "gemini-3.5-flash",
-    "nativeValue": "gemini-3.5-flash",
-    "fmLines": [
-     "model: gemini-3.5-flash"
-    ],
-    "prose": "",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent designer/gemini": {
-    "offeringId": "gemini-3.1-pro-preview",
-    "nativeValue": "gemini-3.1-pro-preview",
-    "fmLines": [
-     "model: gemini-3.1-pro-preview"
-    ],
-    "prose": "",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
    "core agent developer/gemini": {
     "offeringId": "gemini-3.1-pro-preview",
     "nativeValue": "gemini-3.1-pro-preview",
@@ -3356,19 +2884,6 @@
     "nativeValue": "gemini-3.5-flash",
     "fmLines": [
      "model: gemini-3.5-flash"
-    ],
-    "prose": "",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent frontend-developer/gemini": {
-    "offeringId": "gemini-3.1-pro-preview",
-    "nativeValue": "gemini-3.1-pro-preview",
-    "fmLines": [
-     "model: gemini-3.1-pro-preview"
     ],
     "prose": "",
     "diagLines": [],
@@ -3403,50 +2918,11 @@
     "derivedBefore": 0,
     "derivedAfter": 0
    },
-   "core agent regression-sentinel/gemini": {
-    "offeringId": "gemini-3.5-flash",
-    "nativeValue": "gemini-3.5-flash",
-    "fmLines": [
-     "model: gemini-3.5-flash"
-    ],
-    "prose": "",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent scenario-author/gemini": {
-    "offeringId": "gemini-3.5-flash",
-    "nativeValue": "gemini-3.5-flash",
-    "fmLines": [
-     "model: gemini-3.5-flash"
-    ],
-    "prose": "",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
    "core agent security/gemini": {
     "offeringId": "gemini-3.1-pro-preview",
     "nativeValue": "gemini-3.1-pro-preview",
     "fmLines": [
      "model: gemini-3.1-pro-preview"
-    ],
-    "prose": "",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent seo-specialist/gemini": {
-    "offeringId": "gemini-3.5-flash",
-    "nativeValue": "gemini-3.5-flash",
-    "fmLines": [
-     "model: gemini-3.5-flash"
     ],
     "prose": "",
     "diagLines": [],
@@ -3473,32 +2949,6 @@
     "nativeValue": "gemini-3.1-pro-preview",
     "fmLines": [
      "model: gemini-3.1-pro-preview"
-    ],
-    "prose": "",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent visual-regression-tester/gemini": {
-    "offeringId": "gemini-3.5-flash",
-    "nativeValue": "gemini-3.5-flash",
-    "fmLines": [
-     "model: gemini-3.5-flash"
-    ],
-    "prose": "",
-    "diagLines": [],
-    "handle": "<REPO_DIR>/model-mappings/gemini.yml",
-    "stderr": [],
-    "derivedBefore": 0,
-    "derivedAfter": 0
-   },
-   "core agent web-conformity-checker/gemini": {
-    "offeringId": "gemini-3.5-flash",
-    "nativeValue": "gemini-3.5-flash",
-    "fmLines": [
-     "model: gemini-3.5-flash"
     ],
     "prose": "",
     "diagLines": [],

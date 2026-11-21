@@ -553,21 +553,31 @@ A stale per-agent directory left under the user's Claude Code agent directory by
 
 The full account — what changed, why, and the per-agent migration record — is in [`docs/agent-profile-migration.md`](agent-profile-migration.md).
 
-## Web and SEO components moved to the library tier (spec 0307)
+## Web and SEO components left CrewRig (spec 0313)
 
-The eleven agents `accessibility-auditor`, `accessibility-tester`, `astro-developer`, `copywriter`, `designer`,
-`frontend-developer`, `regression-sentinel`, `scenario-author`, `seo-specialist`, `visual-regression-tester` and
-`web-conformity-checker`, and the four skills `astro`, `copywriting`, `frontend` and `web-tester`, moved from the `core`
-tier to the `library` tier. They are no longer committed to the project trees (`.claude/`, `.gemini/`, `.github/`,
-`.agents/`) and instead reach each user's home directory through the automatic library step of setup.
+The fifteen components that spec 0307 had placed in the `library` tier left CrewRig and now live in the
+[`crewrig-website`](https://github.com/crewrig/crewrig-website) repository: the eleven agents `accessibility-auditor`,
+`accessibility-tester`, `astro-developer`, `copywriter`, `designer`, `frontend-developer`, `regression-sentinel`,
+`scenario-author`, `seo-specialist`, `visual-regression-tester` and `web-conformity-checker`, and the four skills
+`astro`, `copywriting`, `frontend` and `web-tester`. Setup no longer installs any of them, and it deletes nothing.
 
-- **Restore them:** run `node scripts/setup-<cli>-interactive.ts` for the CLI in use (Claude Code, Gemini CLI,
-  Antigravity CLI or Copilot CLI), or the component-management command to install one component alone.
-- **Copilot CLI gap:** Copilot CLI receives the four skills but not the eleven agents, because its library agent
-  install is declined by design (cli-matrix rows 4 and 10). This is a named parity gap.
-- **Stale project copies:** setup never deletes them. In a fork that follows upstream, `scripts/sync-from-upstream.ts`
-  removes them through its orphan cleanup of upstream-deleted tracked files on `strict` and `regenerable` paths
-  (spec 0064). Outside that flow, delete them by hand.
+A machine on which the library step of setup ran before this change still holds home copies, and those copies load in
+every session. Remove the entries named after each component, for the CLI in use:
+
+| CLI | Agents | Skills |
+|---|---|---|
+| Claude Code | `~/.claude/agents/` | `~/.claude/skills/` |
+| Gemini CLI | `~/.gemini/agents/` | `~/.gemini/skills/` |
+| Antigravity CLI | `~/.gemini/config/agents/` | `~/.gemini/config/skills/` |
+| GitHub Copilot CLI | none (its agents were never installed) | `~/.copilot/skills/` |
+
+- **Names are generic:** `designer`, `frontend` and `copywriter` may be your own components, so setup does not remove
+  them for you. Check each entry before you delete it.
+- **Partial removal is safe:** a user who removes only part of the set keeps the remaining components working; there is
+  no all-or-nothing state.
+- **Want the pack:** take it from the website repository, which carries it under `.claude/agents/` and `.claude/skills/`.
+- **Stale project copies:** copies left in a project tree from before spec 0307 are removed by
+  `scripts/sync-from-upstream.ts` in a following fork, and by hand elsewhere.
 
 ## Enabling GitLab release publishing (optional)
 

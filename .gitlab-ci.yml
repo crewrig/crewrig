@@ -1408,6 +1408,11 @@ agent-profile-migration:
         - ".crewrig/core-paths.txt"
         - "docs/agent-profile-migration.md"
         - "model-mappings/**"
+        - ".claude/**"
+        - ".gemini/**"
+        - ".github/agents/**"
+        - ".github/skills/**"
+        - ".agents/**"
         - "scripts/ci-cache-guard.ts"
     paths:
       - .ci-cache/
@@ -1428,6 +1433,11 @@ agent-profile-migration:
         - "docs/layers.md"
         - "docs/agent-profile-migration.md"
         - "model-mappings/**"
+        - ".claude/**"
+        - ".gemini/**"
+        - ".github/agents/**"
+        - ".github/skills/**"
+        - ".agents/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 misc:

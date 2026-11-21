@@ -93,8 +93,8 @@ Counted on the sources under `artifacts/`; replacing a copy by a citation is the
 
 | Topic | Skills | Agents |
 |---|---|---|
-| Friction reporting | `architect`, `developer`, `doc-writer`, `idea`, `security`, `spec-author`, `tester`, `pr-reviewer`, `pr-logbook`, `web-tester`, `harness-curator`, `harness-report`, `user-validate` | 9 agents carry a `Friction reporting` section |
-| Finding class taxonomy | `architect`, `developer`, `idea`, `spec-author`, `pr-reviewer`, `tester` | `web-conformity-checker` |
+| Friction reporting | `architect`, `developer`, `doc-writer`, `idea`, `security`, `spec-author`, `tester`, `pr-reviewer`, `pr-logbook`, `harness-curator`, `harness-report`, `user-validate` | 9 agents carry a `Friction reporting` section |
+| Finding class taxonomy | `architect`, `developer`, `idea`, `spec-author`, `pr-reviewer`, `tester` | none |
 | Grounding discipline | `architect`, `spec-author`, `pr-reviewer`, `pr-logbook` | `architect` |
 | Idle behavior | `pr-logbook` | `pr-reviewer` |
 | Shutdown protocol | `pr-logbook` | none |
