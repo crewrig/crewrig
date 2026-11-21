@@ -1,7 +1,7 @@
 // check-typescript.ts — TypeScript toolchain gate (spec 0238 R4-R8, R12).
 //
 // Usage: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-typescript.ts
-//          [--step typecheck|erasable|lint|format|all]
+//          [--step typecheck|erasable|lint|format|launcher|all]
 //
 // Steps (default `all`; every selected step runs and the worst exit wins, so
 // one run shows every finding):
@@ -10,7 +10,9 @@
 //              scripts/lib/erasable-syntax.ts;
 //   lint       Oxlint type-aware strict typing + non-blocking max-lines (R6, R7);
 //   format     Oxfmt check mode on *.ts plus the JavaScript admitted by ci/js-exceptions.txt
-//              (R8; spec 0266 R16).
+//              (R8; spec 0266 R16);
+//   launcher   strict type check of the extensionless organization launcher
+//              templates/org-repo/crewrig (spec 0314 R12), via scripts/lib/launcher-types.ts.
 // `lint` and `format` delegate to the pr-reviewer skill's lint-typescript.ts,
 // so CI and the independent reviewer pass run one implementation (R14).
 // Scope: tracked *.ts outside the four built-copy trees (R12).
@@ -22,9 +24,10 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { checkErasable, formatFinding, parseTs1294 } from "./lib/erasable-syntax.ts";
+import { LAUNCHER_FILE, checkLauncher } from "./lib/launcher-types.ts";
 import { WiringError, repoRoot, trackedAdmittedJsFiles, trackedTsFiles } from "./lib/ts-scope.ts";
 
-const STEPS = ["typecheck", "erasable", "lint", "format"] as const;
+const STEPS = ["typecheck", "erasable", "lint", "format", "launcher"] as const;
 type Step = (typeof STEPS)[number];
 const LINTER = "artifacts/core/skills/pr-reviewer/scripts/lint-typescript.ts";
 
@@ -79,6 +82,12 @@ function erasable(root: string, files: string[]): number {
   return findings.length > 0 ? 1 : 0;
 }
 
+function launcher(root: string): number {
+  const result = checkLauncher(root, LAUNCHER_FILE);
+  for (const line of result.lines) console.log(`launcher: ${line}`);
+  return result.status;
+}
+
 function delegate(root: string, mode: "lint" | "format", files: string[]): number {
   const res = spawnSync(
     process.execPath,
@@ -107,6 +116,7 @@ function main(): number {
     let status: number;
     try {
       if (step === "typecheck") status = typecheck(root);
+      else if (step === "launcher") status = launcher(root);
       else if (step === "erasable") status = erasable(root, files);
       else if (step === "format")
         status = delegate(root, step, [...files, ...trackedAdmittedJsFiles()]);

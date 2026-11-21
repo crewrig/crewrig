@@ -2,9 +2,9 @@
 // (spec 0238 R4-R8, R12): step aggregation and built-copy-tree exclusion.
 //
 // Fixtures are throwaway `git init` repositories that copy the repository's
-// tsconfig.json, .oxlintrc.json, .oxfmtrc.json and the pr-reviewer
-// lint-typescript.ts (which check-typescript delegates to), and symlink its
-// node_modules (run `npm ci` first).
+// tsconfig.json, .oxlintrc.json, .oxfmtrc.json, the launcher checked by the
+// `launcher` step (spec 0314 R12) and the pr-reviewer lint-typescript.ts (which
+// check-typescript delegates to), and symlink its node_modules (run `npm ci` first).
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CHECK = path.join(REPO, "scripts", "check-typescript.ts");
 const LINTER = "artifacts/core/skills/pr-reviewer/scripts/lint-typescript.ts";
+const LAUNCHER = "templates/org-repo/crewrig";
 
 interface Run {
   status: number | null;
@@ -39,7 +40,7 @@ function sh(cmd: string, args: string[], cwd: string): Run {
 function tsRepo(files: Record<string, string>): string {
   const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "check-ts-test-")));
   temps.push(dir);
-  for (const rel of ["tsconfig.json", ".oxlintrc.json", ".oxfmtrc.json", LINTER]) {
+  for (const rel of ["tsconfig.json", ".oxlintrc.json", ".oxfmtrc.json", LINTER, LAUNCHER]) {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
     fs.copyFileSync(path.join(REPO, rel), path.join(dir, rel));
   }
@@ -91,6 +92,7 @@ describe("check-typescript", () => {
       ["erasable", "OK"],
       ["lint", "OK"],
       ["format", "FAILED"],
+      ["launcher", "OK"],
     ]) {
       assert.match(run.out, new RegExp(`^check-typescript: ${step}: ${verdict}$`, "m"));
     }

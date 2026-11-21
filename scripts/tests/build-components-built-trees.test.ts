@@ -35,6 +35,8 @@ const TOOLCHAIN = [
   "scripts/lib/erasable-syntax.ts",
   "scripts/lib/erasable-probe.ts",
   "scripts/lib/ts-scope.ts",
+  "scripts/lib/launcher-types.ts",
+  "templates/org-repo/crewrig",
   "artifacts/core/skills/pr-reviewer/scripts/lint-typescript.ts",
 ];
 const hasTools = ["oxlint", "oxfmt", "tsc"].every((tool) =>
