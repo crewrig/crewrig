@@ -1,7 +1,7 @@
 ---
 id: "0288"
 slug: distribution-model
-status: approved
+status: implemented
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 2101
