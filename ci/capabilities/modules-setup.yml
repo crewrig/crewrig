@@ -337,6 +337,53 @@ capabilities:
     command:
       - task ci:release-framework-modules-ts
 
+  # Spec 0314 (ticket #2101, WP3 of epic #1822): the organization launcher `templates/org-repo/crewrig`, the pin, the
+  # framework entry point `crewrig init` and the manifest closure. Every suite runs the template file unmodified against a
+  # localhost server and a temporary HOME; no network, no real release. Linux only here: `windows-crewrig-launcher`
+  # runs the same suites on windows-latest and `crewrig-launcher-floor` runs the Node.js 22 floor case. The launcher is
+  # type-checked by `lint-typescript` (scripts/check-launcher-types.ts), its suite is `lint-typescript-selftest`.
+  - id: crewrig-launcher-ts
+    group: modules
+    name: "Run the organization launcher and crewrig init suites"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    paths:
+      - "templates/org-repo/**"
+      - "crewrig.entry.json"
+      - "scripts/crewrig-cli.ts"
+      - "scripts/lib/crewrig-cli/**"
+      - "scripts/lib/framework-release/**"
+      - "scripts/lib/packaging/**"
+      - "scripts/lib/build-components/config.ts"
+      - "scripts/lib/build-components/args.ts"
+      - "scripts/lib/build-components/diagnostics.ts"
+      - "scripts/lib/build-components/types.ts"
+      - "scripts/lib/escape-control.ts"
+      - "scripts/check-launcher-types.ts"
+      - "scripts/lib/launcher-types.ts"
+      - "config/ORGANIZATION.md.template"
+      - "config/TOOLS.md.template"
+      - "config/expertise/**"
+      - "config/teams/**"
+      - "config/level/**"
+      - "scripts/tests/crewrig-*.test.ts"
+      - "scripts/tests/check-launcher-types.test.ts"
+      - "scripts/tests/lib/launcher-rig.ts"
+      - "scripts/tests/lib/hostile-tar.ts"
+      - "scripts/tests/lib/fast-clock.ts"
+      - "scripts/tests/lib/init-scaffold.ts"
+      - "scripts/tests/lib/tar-reader.ts"
+    portability: portable
+    requires:
+      runtime: node@24
+      tools: [task]
+      install: omit-dev
+    command:
+      - task ci:crewrig-launcher-ts
+
   # Spec 0257 (ticket #1336), PRs 2 and 3: the deterministic tar.gz archive writer, documentation index, release packager,
   # manifest synchronisation and packaging modules. The archive suite cross-checks with `tar` and `gzip`, the release
   # differential suite spawns `bash`, `jq` and `tar`. They build in a sandbox copy of `scripts/`, hence the broad builder

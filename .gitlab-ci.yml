@@ -2637,6 +2637,44 @@ release-framework-modules-ts:
         - "scripts/tests/lib/tar-reader.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
+crewrig-launcher-ts:
+  stage: modules
+  image: node:24
+  before_script:
+    - !reference [.task-install, script]
+    - npm ci --omit=dev --workspaces=false
+  script:
+    - "task ci:crewrig-launcher-ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "templates/org-repo/**"
+        - "crewrig.entry.json"
+        - "scripts/crewrig-cli.ts"
+        - "scripts/lib/crewrig-cli/**"
+        - "scripts/lib/framework-release/**"
+        - "scripts/lib/packaging/**"
+        - "scripts/lib/build-components/config.ts"
+        - "scripts/lib/build-components/args.ts"
+        - "scripts/lib/build-components/diagnostics.ts"
+        - "scripts/lib/build-components/types.ts"
+        - "scripts/lib/escape-control.ts"
+        - "scripts/check-launcher-types.ts"
+        - "scripts/lib/launcher-types.ts"
+        - "config/ORGANIZATION.md.template"
+        - "config/TOOLS.md.template"
+        - "config/expertise/**"
+        - "config/teams/**"
+        - "config/level/**"
+        - "scripts/tests/crewrig-*.test.ts"
+        - "scripts/tests/check-launcher-types.test.ts"
+        - "scripts/tests/lib/launcher-rig.ts"
+        - "scripts/tests/lib/hostile-tar.ts"
+        - "scripts/tests/lib/fast-clock.ts"
+        - "scripts/tests/lib/init-scaffold.ts"
+        - "scripts/tests/lib/tar-reader.ts"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
 packaging-modules-ts:
   stage: modules
   image: node:24

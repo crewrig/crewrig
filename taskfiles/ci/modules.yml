@@ -30,6 +30,12 @@ tasks:
     cmds:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/framework-release-guard.test.ts {{.REPO_DIR}}/scripts/tests/framework-release-guard-stable.test.ts {{.REPO_DIR}}/scripts/tests/framework-release-build.test.ts {{.REPO_DIR}}/scripts/tests/framework-release-publish.test.ts {{.REPO_DIR}}/scripts/tests/framework-release-workflows.test.ts {{.REPO_DIR}}/scripts/tests/framework-release-workflow-pins.test.ts
+  crewrig-launcher-ts:
+    desc: Run the crewrig-launcher-ts CI capability (pre-push mirror of the CI job)
+    preconditions: *needs-js-yaml
+    cmds:
+      - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/crewrig-launcher-pin.test.ts {{.REPO_DIR}}/scripts/tests/crewrig-launcher-download.test.ts {{.REPO_DIR}}/scripts/tests/crewrig-launcher-cache.test.ts {{.REPO_DIR}}/scripts/tests/crewrig-launcher-archive.test.ts {{.REPO_DIR}}/scripts/tests/crewrig-launcher-forwarding.test.ts {{.REPO_DIR}}/scripts/tests/crewrig-launcher-floor.test.ts {{.REPO_DIR}}/scripts/tests/crewrig-init.test.ts {{.REPO_DIR}}/scripts/tests/crewrig-init-e2e.test.ts {{.REPO_DIR}}/scripts/tests/crewrig-manifest-closure.test.ts
   packaging-modules-ts:
     desc: Run the packaging-modules-ts CI capability (pre-push mirror of the CI job)
     preconditions: *needs-js-yaml

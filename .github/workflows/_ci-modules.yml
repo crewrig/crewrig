@@ -123,6 +123,16 @@ jobs:
         with:
           id: release-framework-modules-ts
 
+  # Spec 0314 (ticket #2101): the organization launcher and `crewrig init` suites. Linux only; localhost servers and a
+  # temporary HOME, no network. Runs without devDependencies, like the launcher's users.
+  crewrig-launcher-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/ci-job
+        with:
+          id: crewrig-launcher-ts
+
   # Spec 0257 (ticket #1336), PRs 2 and 3: the deterministic tar.gz archive writer, the
   # documentation index and the release packaging modules. The release differential suite spawns
   # `bash`, `jq` and `tar`, the archive suite cross-checks with `tar` and `gzip`; all exist on the runner.
