@@ -112,11 +112,14 @@ offerings:
           Claude Code `haiku` (spec 0197 R36).
       - declares: supports-reasoning-surface
         citation: >-
-          Live empirical verification on Claude Code 2.1.263: the `haiku` alias
-          resolves to `claude-haiku-4-5-20251001`, which natively supports
-          extended thinking. An agent defined with `model: haiku` and `effort:
-          medium` cleanly executes and emits thinking tokens without error
-          (spec 0197 delta-02 R36).
+          The `haiku` alias resolves to `claude-haiku-5-5` (Claude Haiku 5.5),
+          which natively supports extended thinking; the identifier is the
+          one published in the Claude 5 model family list. The earlier live
+          verification on Claude Code 2.1.263 (alias resolving to
+          `claude-haiku-4-5-20251001`, an agent with `model: haiku` and
+          `effort: medium` executing and emitting thinking tokens without
+          error, spec 0197 delta-02 R36) predates it and has not been re-run
+          on the 5.5 alias.
       - declares: supports-reasoning-surface.behavior
         citation: >-
           Spec 0197 delta-02 R36: with `supports-reasoning-surface: true`,
