@@ -12,6 +12,7 @@ import {
   commitAll,
   gitEnv,
   git as gitIn,
+  initRepo,
   newRepo,
   runIn,
   writeRel,
@@ -49,8 +50,14 @@ function binDir(withTask: boolean): string {
 }
 
 /** A CrewRig-shaped repository: the real hook and an empty taskfiles/ci.yml. */
-function crewrigRepo(): string {
-  const dir = newRepo();
+function crewrigRepo(into?: string): string {
+  let dir: string;
+  if (into === undefined) dir = newRepo();
+  else {
+    dir = into;
+    fs.mkdirSync(dir);
+    initRepo(dir);
+  }
   writeRel(dir, "taskfiles/ci.yml", "version: '3.54'\ntasks: {}\n");
   fs.mkdirSync(path.join(dir, ".githooks"));
   fs.copyFileSync(HOOK, path.join(dir, ".githooks", "pre-push"));
@@ -112,7 +119,9 @@ describe("pre-push hook", () => {
   });
 
   it("passes remote, URL and the stdin refs through as literal arguments", POSIX, () => {
-    const dir = crewrigRepo();
+    // A private parent: the repository's own parent must not be the shared os.tmpdir(), where an
+    // unrelated `X` from another run or tool would trip the "nothing escaped upward" probe below.
+    const dir = crewrigRepo(path.join(makeSandbox("ci-pre-push-parent-"), "repo"));
     const marker = path.join(dir, "X");
     const r = runHook(dir, binDir(true), ["/tmp/a b;c.git", "$(touch X)"], "refs/heads/f a b c\n");
     assert.equal(r.status, 0, r.stderr);
