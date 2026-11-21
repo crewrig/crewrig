@@ -15,12 +15,12 @@ parent [spec 0288](../specs/0288-distribution-model.md) and [ADR-0022](adr/0022-
 
 Both workflows have two jobs, so no dependency runs where a write permission or the App key is available:
 
-- `build` has `permissions: contents: read` and no environment. It checks out, runs the guard, installs the
+- The build job, `release-framework-prerelease-build` in the prerelease workflow and `release-framework-stable-build` in the stable workflow, has `permissions: contents: read` and no environment. It checks out, runs the guard, installs the
   production dependencies (`npm ci --omit=dev --ignore-scripts`, js-yaml only), compiles the skill and agent trees
   (`node scripts/build-components.ts`), builds the archive (`scripts/framework-release-build.ts`) and uploads the
   archive, `notes.md` and `sha256.txt` as the workflow artifact `framework-release`; its outputs are the asset name
   and the digest.
-- `publish` (`needs: build`) installs and compiles nothing. It downloads the artifact, recomputes the SHA-256 and
+- The publish job, `release-framework-prerelease` in the prerelease workflow and `release-framework-stable` in the stable workflow (`needs:` the build job of its own workflow), installs and compiles nothing. It downloads the artifact, recomputes the SHA-256 and
   stops on any difference from the build job's digest (output, `sha256.txt` and the notes block), re-runs the guard
   because the refs may have moved, attests the archive, and publishes (`scripts/framework-release-publish.ts`). In the
   stable workflow only this job declares `environment: framework-release` and mints the App token. The guard and the
