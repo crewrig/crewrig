@@ -390,23 +390,3 @@ capabilities:
       install: omit-dev
     command:
       - task ci:alert-scheduled-failure-check
-
-  # Spec 0314 R4, R10 (ticket #2101): the organization launcher's runtime floor on Node.js 22. On a runtime below 24 the
-  # launcher prints one sentence naming Node.js 24, exits 10 and reads neither the pin nor the network. The real case runs
-  # only on this Node.js 22 leg; the simulated cases run on every runtime. The suite imports nothing from the repository,
-  # so the job needs no install and no floor guard (node-floor-guard.js refuses Node.js 22). Never gated, like every
-  # node@22 capability (see `changeset-coverage`).
-  - id: crewrig-launcher-floor
-    group: governance
-    name: "Organization launcher runtime floor on Node.js 22"
-    trigger:
-      - on: pull-request
-        branches: [main, "release/**"]
-      - on: push
-        branches: [main, "release/**"]
-    portability: portable
-    requires:
-      runtime: node@22
-      tools: [task]
-    command:
-      - task ci:crewrig-launcher-floor

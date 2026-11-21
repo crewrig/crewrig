@@ -1388,17 +1388,6 @@ alert-scheduled-failure-check:
         - "ci/capabilities/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
-crewrig-launcher-floor:
-  stage: governance
-  image: node:22
-  before_script:
-    - !reference [.task-install, script]
-  script:
-    - "task ci:crewrig-launcher-floor"
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-
 agent-profile-migration:
   stage: governance
   image: node:24
@@ -1700,6 +1689,17 @@ check-feedback-routing:
     - "npm ci --omit=dev --workspaces=false"
     - "node scripts/lib/node-floor-guard.js"
     - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-feedback-routing.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
+crewrig-launcher-floor:
+  stage: governance
+  image: node:22
+  before_script:
+    - !reference [.task-install, script]
+  script:
+    - "task ci:crewrig-launcher-floor"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
@@ -2344,6 +2344,47 @@ mempalace-transcript-node-24-0:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
+crewrig-launcher-ts:
+  stage: modules
+  image: node:24
+  before_script:
+    - !reference [.task-install, script]
+    - npm ci --omit=dev --workspaces=false
+  script:
+    - "task ci:crewrig-launcher-ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+      changes:
+        - "templates/org-repo/**"
+        - "crewrig.entry.json"
+        - "scripts/crewrig-cli.ts"
+        - "scripts/lib/crewrig-cli/**"
+        - "scripts/lib/framework-release/**"
+        - "scripts/lib/packaging/**"
+        - "scripts/lib/build-components/config.ts"
+        - "scripts/lib/build-components/args.ts"
+        - "scripts/lib/build-components/conventions-block.ts"
+        - "scripts/lib/build-components/diagnostics.ts"
+        - "scripts/lib/build-components/types.ts"
+        - "scripts/lib/escape-control.ts"
+        - "scripts/lib/git-env.ts"
+        - "scripts/lib/line-endings.ts"
+        - "scripts/lib/render-command.ts"
+        - "scripts/lib/tmp-file.ts"
+        - "scripts/lib/yaml-text.ts"
+        - "config/ORGANIZATION.md.template"
+        - "config/TOOLS.md.template"
+        - "config/expertise/**"
+        - "config/teams/**"
+        - "config/level/**"
+        - "scripts/tests/crewrig-*.test.ts"
+        - "scripts/tests/lib/launcher-rig.ts"
+        - "scripts/tests/lib/hostile-tar.ts"
+        - "scripts/tests/lib/fast-clock.ts"
+        - "scripts/tests/lib/init-scaffold.ts"
+        - "scripts/tests/lib/tar-reader.ts"
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
 install-ts:
   stage: modules
   image: node:24
@@ -2649,47 +2690,6 @@ release-framework-modules-ts:
         - ".github/workflows/release-framework-stable.yml"
         - "scripts/tests/framework-release-*.test.ts"
         - "scripts/tests/lib/framework-release-*.ts"
-        - "scripts/tests/lib/tar-reader.ts"
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-
-crewrig-launcher-ts:
-  stage: modules
-  image: node:24
-  before_script:
-    - !reference [.task-install, script]
-    - npm ci --omit=dev --workspaces=false
-  script:
-    - "task ci:crewrig-launcher-ts"
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
-        - "templates/org-repo/**"
-        - "crewrig.entry.json"
-        - "scripts/crewrig-cli.ts"
-        - "scripts/lib/crewrig-cli/**"
-        - "scripts/lib/framework-release/**"
-        - "scripts/lib/packaging/**"
-        - "scripts/lib/build-components/config.ts"
-        - "scripts/lib/build-components/args.ts"
-        - "scripts/lib/build-components/conventions-block.ts"
-        - "scripts/lib/build-components/diagnostics.ts"
-        - "scripts/lib/build-components/types.ts"
-        - "scripts/lib/escape-control.ts"
-        - "scripts/lib/git-env.ts"
-        - "scripts/lib/line-endings.ts"
-        - "scripts/lib/render-command.ts"
-        - "scripts/lib/tmp-file.ts"
-        - "scripts/lib/yaml-text.ts"
-        - "config/ORGANIZATION.md.template"
-        - "config/TOOLS.md.template"
-        - "config/expertise/**"
-        - "config/teams/**"
-        - "config/level/**"
-        - "scripts/tests/crewrig-*.test.ts"
-        - "scripts/tests/lib/launcher-rig.ts"
-        - "scripts/tests/lib/hostile-tar.ts"
-        - "scripts/tests/lib/fast-clock.ts"
-        - "scripts/tests/lib/init-scaffold.ts"
         - "scripts/tests/lib/tar-reader.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
