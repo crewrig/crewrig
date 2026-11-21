@@ -1,7 +1,7 @@
 ---
 id: "0314"
 slug: org-template-launcher-pin-init
-status: approved
+status: draft
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 2101
@@ -16,7 +16,7 @@ the full replacement. Everything not named here stays as in version 1.0.0.
 
 ## ADDED
 
-**R20 (a failed `init` leaves nothing behind).** When `init` fails after it began writing (a write error, a full disk, a permission error), it SHALL remove every file and directory that it created in that run, leave every entry that existed before the run untouched, and exit with code 1 (R10 reserves codes 10 to 14 for the launcher). `crewrig.config.toml` SHALL be the last item written (R15), so that a failed run never leaves the file that the refusal of R14 reads, and a rerun after such a failure SHALL be accepted as a first run.
+**R20 (a failed `init` leaves nothing behind).** A failure of `init` other than the refusals of R14 SHALL exit with code 1 (R10 reserves codes 10 to 14 for the launcher). A failure before the first write creates nothing. A failure after `init` began writing (a write error, a full disk, a permission error) SHALL leave the directory as it was before the run: every file and directory created in that run is removed and every entry that existed before the run is untouched. A cleanup that itself fails SHALL still exit with code 1 and SHALL list the paths that remain. `crewrig.config.toml` SHALL be the last item written (R15), so that a failed run never leaves the file that the refusal of R14 reads, and a rerun after a failure whose cleanup succeeded SHALL be accepted as a first run. Termination by a signal or a kill is out of scope: nothing is guaranteed about the state it leaves.
 
 Scenario added.
 
@@ -43,7 +43,7 @@ Scenario added.
 **Scenario:** A relative redirect is a download failure
 
 ```text
-Given a valid pin and a local server that answers the asset URL with a 302 whose Location is the relative reference /elsewhere/crewrig.tgz
+Given a valid pin, an empty cache and a local server that answers the asset URL with a 302 whose Location is the relative reference /elsewhere/crewrig.tgz
 When  the user runs `node crewrig init`
 Then  the launcher exits with code 12, follows no redirect, and caches and executes nothing.
 ```
@@ -66,7 +66,7 @@ Replacement:
 
 ### s5-F1, s5-F2, s5-F4, s5-F9: R14
 
-Original paragraph, from its second sentence on (the first two sentences, up to "When neither case holds, `init` SHALL proceed.", are unchanged):
+Original paragraph, from its second sentence on (the first five sentences, up to "When neither case holds, `init` SHALL proceed.", are unchanged):
 
 ```text
 An unknown option, a missing option value, or a `--feedback-repo` value that is not a plain URL SHALL exit with code 2 and write nothing. When `--feedback-repo` is absent, `init` SHALL obtain the value by running `git remote get-url origin` in the working directory, with git invoked directly and without a shell; an output of exactly the scp-style form `git@github.com:<owner>/<repo>`, with an optional `.git` suffix, SHALL first be converted to `https://github.com/<owner>/<repo>`; the result, or the output itself, SHALL be used when it is a plain URL and does not designate `canonical_repo`, a value designating it when, after removing one `.git` suffix and one trailing `/`, it equals `https://github.com/crewrig/crewrig` with the host compared case-insensitively. `init` SHALL treat as absent any other outcome: no repository, no `origin`, git not installed, a failing command, a value that is not a plain URL (any other scp-style form, such as `git@gitlab.com:org/repo`, or one holding credentials), or a value designating `canonical_repo`. An explicit `--feedback-repo` equal to `canonical_repo` stays accepted, a conscious choice. When the value is absent it SHALL refuse with code 2 and a message asking for `--feedback-repo <url>`, writing nothing. The reason is that friction reports on organization components must never open issues on the public upstream repository by default.
@@ -75,7 +75,7 @@ An unknown option, a missing option value, or a `--feedback-repo` value that is 
 Replacement:
 
 ```text
-An unknown option, a missing option value, or a `--feedback-repo` value that is not a repository URL SHALL exit with code 2 and write nothing. A **repository URL** is a plain URL with scheme `https:`, no query string, no fragment, and a path of exactly two non-empty segments, that is `https://<host>/<owner>/<repo>` with no deeper path: the shape that the build requires of `canonical_repo` (`validateCanonicalRepo`), so a bare host, a deeper path and the scheme `http:` are refused. **Normalisation** is applied to a value in this order: first, for the output of `git remote get-url` only, one trailing line feed (LF or CRLF) is removed; then one trailing `/` is removed; then one `.git` suffix is removed (so `https://github.com/acme/cfg.git/` becomes `https://github.com/acme/cfg`); a line feed inside an explicit `--feedback-repo` value is a control character and makes it a non-plain URL. The normalised value, not the raw one, is checked against every rule below and is the value that R16 writes. When `--feedback-repo` is absent, `init` SHALL obtain the value by running `git remote get-url origin` in the working directory, with git invoked directly and without a shell, and normalise the output; a normalised output of exactly the scp-style form `git@github.com:<owner>/<repo>`, where neither `<owner>` nor `<repo>` is empty or holds a `/`, SHALL be converted to `https://github.com/<owner>/<repo>`, whereas `git@github.com:<owner>/<repo>` with a `/` in `<repo>` (`git@github.com:acme/team/cfg`) is refused and treated as absent; the result, or the normalised output itself, SHALL be used when it is a repository URL and does not designate `canonical_repo`. A value **designates** `canonical_repo` when, after normalisation, its scheme is `http` or `https`, its host is `github.com` or `www.github.com` (compared case-insensitively), and its path is `/crewrig/crewrig` (compared case-insensitively). `init` SHALL treat as absent any other outcome: no repository, no `origin`, git not installed, a failing command, a value that is not a repository URL (any other scp-style form, such as `git@gitlab.com:org/repo`, a value holding credentials, a bare host, a deeper path, the scheme `http:`), or a value designating `canonical_repo`. An explicit `--feedback-repo` that is a repository URL and designates `canonical_repo` stays accepted, a conscious choice. When the value is absent it SHALL refuse with code 2 and a message asking for `--feedback-repo <url>`, writing nothing. The reason is that friction reports on organization components must never open issues on the public upstream repository by default. A failure of `init` after it began writing is governed by R20.
+An unknown option or a missing option value SHALL exit with code 2 and write nothing. A **repository URL** is a plain URL with scheme `https:`, no query string, no fragment, and a path of exactly two non-empty segments, that is `https://<host>/<owner>/<repo>` with no deeper path: the shape that the build requires of `canonical_repo` (`validateCanonicalRepo`), so a bare host, a deeper path and the scheme `http:` are refused. **Normalisation** is applied to a value in this order: first, for the output of `git remote get-url` only, one trailing line feed (LF or CRLF) is removed; then one trailing `/` is removed; then one `.git` suffix is removed (so `https://github.com/acme/cfg.git/` becomes `https://github.com/acme/cfg`); a line feed inside an explicit `--feedback-repo` value is a control character and makes it a non-plain URL. The normalised value, not the raw one, is checked against every rule below and is the value that R16 writes: a `--feedback-repo` value whose normalised form is not a repository URL SHALL exit with code 2 and write nothing, so `--feedback-repo https://github.com/acme/cfg.git/` is accepted and written as `https://github.com/acme/cfg`. When `--feedback-repo` is absent, `init` SHALL obtain the value by running `git remote get-url origin` in the working directory, with git invoked directly and without a shell, and normalise the output; a normalised output of exactly the scp-style form `git@github.com:<owner>/<repo>`, where neither `<owner>` nor `<repo>` is empty or holds a `/`, SHALL be converted to `https://github.com/<owner>/<repo>`, whereas `git@github.com:<owner>/<repo>` with a `/` in `<repo>` (`git@github.com:acme/team/cfg`) is refused and treated as absent; the result, or the normalised output itself, SHALL be used when it is a repository URL and does not designate `canonical_repo`. A value **designates** `canonical_repo` when, after normalisation, its scheme is `http` or `https`, its host is `github.com` or `www.github.com` (compared case-insensitively), and its path is `/crewrig/crewrig` (compared case-insensitively). `init` SHALL treat as absent any other outcome: no repository, no `origin`, git not installed, a failing command, a value that is not a repository URL (any other scp-style form, such as `git@gitlab.com:org/repo`, a value holding credentials, a bare host, a deeper path, the scheme `http:`), or a value designating `canonical_repo`. An explicit `--feedback-repo` that is a repository URL and designates `canonical_repo` stays accepted, a conscious choice. When the value is absent it SHALL refuse with code 2 and a message asking for `--feedback-repo <url>`, writing nothing. The reason is that friction reports on organization components must never open issues on the public upstream repository by default. A failure of `init` after it began writing is governed by R20.
 ```
 
 ### s5-F3, s5-F4: R16
@@ -130,6 +130,20 @@ Replacement:
 
 ```text
 `node crewrig init --feedback-repo <repository URL>` (R14) run in a copy of the template
+```
+
+### s6-F4: R18, surface 3 item
+
+Original clause:
+
+```text
+surface 3, `crewrig.config.toml`: keys `canonical_repo`, `feedback_repo`, strings, with their meaning;
+```
+
+Replacement:
+
+```text
+surface 3, `crewrig.config.toml`: keys `canonical_repo`, `feedback_repo`, strings, with their meaning; `feedback_repo` always a repository URL of the shape `https://<host>/<owner>/<repo>` (R14, R16); and every line of the file, the last included, ending with a line feed (R16);
 ```
 
 ### s5-F4, s5-F2: R18, surface 2 item
