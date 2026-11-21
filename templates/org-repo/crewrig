@@ -1,0 +1,757 @@
+#!/usr/bin/env node
+// @ts-check
+"use strict";
+
+// crewrig: the launcher of an organization config repository (spec 0314 R1-R12; spec 0288 R2,
+// R3, R7). Plain Node.js with no dependency: built-ins come from process.getBuiltinModule, and the
+// only top-level statements are constants, declarations and one call to start(), so the file runs
+// the same way whatever package type its directory declares. Refusals exit with 10 to 14; a verified
+// entry point ends the run with its own exit code.
+
+const FLOOR_MAJOR = 24;
+const PIN_FILE = "crewrig.pin.json";
+const DESCRIPTOR_FILE = "crewrig.entry.json";
+const DIGEST_MARKER = ".crewrig-digest";
+const BASE_URL_VARIABLE = "CREWRIG_RELEASE_BASE_URL";
+const DEFAULT_BASE_URL = "https://github.com/crewrig/crewrig/releases/download";
+const INACTIVITY_MS = 30000;
+const TOTAL_DEADLINE_MS = 300000;
+const MAX_REDIRECTS = 5;
+const REDIRECT_STATUSES = [301, 302, 303, 307, 308];
+const MAX_DOWNLOAD_BYTES = 16 * 1024 * 1024;
+const MAX_EXTRACT_BYTES = 64 * 1024 * 1024;
+const TAR_OVERHEAD_BYTES = 16 * 1024 * 1024;
+const MAX_PAX_BYTES = 8 * 1024;
+const TAR_BLOCK = 512;
+const RENAME_BACKOFF_MS = [100, 200, 400, 600, 800];
+const TRANSIENT_RENAME_ERRORS = ["EPERM", "EACCES", "EBUSY"];
+const EXACT_VERSION =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?$/;
+const SHA256_HEX = /^[0-9a-f]{64}$/;
+
+/**
+ * @typedef {{ version: string, sha256: string, baseUrl: string | undefined }} Pin
+ * @typedef {{ versionsDir: string, versionsReal: string, version: string, run: string }} Context
+ */
+
+class LauncherError extends Error {
+  /**
+   * @param {10 | 11 | 12 | 13 | 14} code
+   * @param {string} message
+   */
+  constructor(code, message) {
+    super(message);
+    /** @type {10 | 11 | 12 | 13 | 14} */
+    this.code = code;
+  }
+}
+
+function loadBuiltins() {
+  return {
+    fs: process.getBuiltinModule("node:fs"),
+    path: process.getBuiltinModule("node:path"),
+    os: process.getBuiltinModule("node:os"),
+    zlib: process.getBuiltinModule("node:zlib"),
+    crypto: process.getBuiltinModule("node:crypto"),
+    http: process.getBuiltinModule("node:http"),
+    https: process.getBuiltinModule("node:https"),
+    childProcess: process.getBuiltinModule("node:child_process"),
+  };
+}
+
+/** @typedef {ReturnType<typeof loadBuiltins>} Builtins */
+
+/** @type {Builtins | undefined} */
+let builtinCache;
+
+/** Built-ins are loaded only after the runtime floor check, so an old runtime never reaches them. @returns {Builtins} */
+function builtins() {
+  if (builtinCache === undefined) builtinCache = loadBuiltins();
+  return builtinCache;
+}
+
+/** @param {unknown} value @returns {value is Record<string, unknown>} */
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** @param {unknown} error @returns {string} */
+function errorCode(error) {
+  if (isRecord(error) && typeof error.code === "string") return error.code;
+  return "unknown";
+}
+
+/** @param {string} message */
+function warn(message) {
+  process.stderr.write(`crewrig: warning: ${message}\n`);
+}
+
+/** @param {number} ms @returns {Promise<void>} */
+function sleep(ms) {
+  return new Promise((resolve) => {
+    globalThis.setTimeout(resolve, ms);
+  });
+}
+
+/** @param {string} target @returns {boolean} */
+function lexists(target) {
+  try {
+    builtins().fs.lstatSync(target);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A plain URL (spec 0314 R-shared): WHATWG-parsable, scheme http or https, non-empty host, no
+ * userinfo, no whitespace or control character, no double quote or backslash.
+ * @param {string} text
+ * @returns {URL | undefined}
+ */
+function plainUrl(text) {
+  if (/[\s"\\\p{Cc}]/u.test(text)) return undefined;
+  /** @type {URL} */
+  let url;
+  try {
+    url = new URL(text);
+  } catch {
+    return undefined;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+  if (url.hostname === "" || url.username !== "" || url.password !== "") return undefined;
+  return url;
+}
+
+/**
+ * A base URL is a plain URL without query string or fragment. A trailing slash is ignored.
+ * @param {string} text
+ * @returns {string | undefined}
+ */
+function baseOf(text) {
+  if (text.includes("?") || text.includes("#") || plainUrl(text) === undefined) return undefined;
+  return text.endsWith("/") ? text.slice(0, -1) : text;
+}
+
+/** Scheme, host and path only: a query string, a fragment and userinfo never reach a message. @param {URL} url */
+function redact(url) {
+  return `${url.protocol}//${url.host}${url.pathname}`;
+}
+
+/** @param {unknown} value @returns {string} */
+function shown(value) {
+  return String(JSON.stringify(value)).slice(0, 80);
+}
+
+/**
+ * Validate the pin file as a whole before anything else is decided (spec 0314 R3).
+ * @param {string} root
+ * @returns {Pin}
+ */
+function readPin(root) {
+  const { fs, path } = builtins();
+  /** @type {string} */
+  let text;
+  try {
+    text = fs.readFileSync(path.join(root, PIN_FILE), "utf8");
+  } catch {
+    throw new LauncherError(11, `${PIN_FILE} is absent or unreadable`);
+  }
+  /** @type {unknown} */
+  let pin;
+  try {
+    pin = JSON.parse(text);
+  } catch {
+    throw new LauncherError(11, `${PIN_FILE} is not valid JSON`);
+  }
+  if (!isRecord(pin)) throw new LauncherError(11, `${PIN_FILE} is not a JSON object`);
+  if (!("version" in pin)) throw new LauncherError(11, `${PIN_FILE} lacks 'version'`);
+  const version = pin.version;
+  if (typeof version !== "string" || !EXACT_VERSION.test(version)) {
+    throw new LauncherError(
+      11,
+      `${PIN_FILE}: 'version' is not an exact version (MAJOR.MINOR.PATCH with an optional -prerelease): ${shown(version)}`,
+    );
+  }
+  if (!("sha256" in pin)) throw new LauncherError(11, `${PIN_FILE} lacks 'sha256'`);
+  const sha256 = pin.sha256;
+  if (typeof sha256 !== "string" || !SHA256_HEX.test(sha256)) {
+    throw new LauncherError(11, `${PIN_FILE}: 'sha256' is not 64 lowercase hexadecimal characters`);
+  }
+  /** @type {string | undefined} */
+  let baseUrl;
+  if (Object.hasOwn(pin, "base_url")) {
+    const raw = pin.base_url;
+    if (typeof raw !== "string" || baseOf(raw) === undefined) {
+      throw new LauncherError(11, `${PIN_FILE}: 'base_url' is not a base URL`);
+    }
+    baseUrl = raw;
+  }
+  return { version, sha256, baseUrl };
+}
+
+/**
+ * The base URL: the variable when set and non-empty, else the pin member, else the default.
+ * A defective variable is refused here, which runs only when a download is needed (spec 0314 R7, R8).
+ * @param {Pin} pin
+ * @returns {string}
+ */
+function baseFor(pin) {
+  const variable = process.env[BASE_URL_VARIABLE];
+  if (variable !== undefined && variable !== "") {
+    const base = baseOf(variable);
+    if (base === undefined) {
+      throw new LauncherError(11, `${BASE_URL_VARIABLE} is not a base URL`);
+    }
+    return base;
+  }
+  if (pin.baseUrl !== undefined) {
+    const base = baseOf(pin.baseUrl);
+    if (base !== undefined) return base;
+  }
+  return DEFAULT_BASE_URL;
+}
+
+/**
+ * Split an archive path into its components, or refuse it (spec 0314 R9): absolute, a backslash,
+ * a colon, a NUL byte, an empty or dot or dot-dot component.
+ * @param {string} name
+ * @returns {string[] | undefined}
+ */
+function cleanParts(name) {
+  if (name === "" || name.includes("\\") || name.includes(":") || name.includes("\0")) {
+    return undefined;
+  }
+  if (name.startsWith("/")) return undefined;
+  const parts = name.split("/");
+  if (parts.some((part) => part === "" || part === "." || part === "..")) return undefined;
+  return parts;
+}
+
+/**
+ * The descriptor of a directory: the entry path it names, when that names a regular file of it.
+ * @param {string} dir
+ * @returns {string | undefined}
+ */
+function descriptorEntry(dir) {
+  const { fs, path } = builtins();
+  /** @type {unknown} */
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(path.join(dir, DESCRIPTOR_FILE), "utf8"));
+  } catch {
+    return undefined;
+  }
+  if (!isRecord(parsed) || typeof parsed.entry !== "string") return undefined;
+  const parts = cleanParts(parsed.entry);
+  if (parts === undefined) return undefined;
+  try {
+    if (!fs.lstatSync(path.join(dir, ...parts)).isFile()) return undefined;
+  } catch {
+    return undefined;
+  }
+  return parsed.entry;
+}
+
+/** @param {string} dir @returns {string | undefined} */
+function readMarker(dir) {
+  const { fs, path } = builtins();
+  try {
+    return fs.readFileSync(path.join(dir, DIGEST_MARKER), "utf8").replace(/\n$/, "");
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * A complete entry records the pinned digest and holds a valid descriptor (spec 0314 R7, R9).
+ * @param {string} dir
+ * @param {string} digest
+ * @returns {string | undefined} the entry path the descriptor names
+ */
+function completeEntry(dir, digest) {
+  return readMarker(dir) === digest ? descriptorEntry(dir) : undefined;
+}
+
+/**
+ * The only delete of the launcher (spec 0314 R7; plan v2-F2). It removes `target` only when the real
+ * path of the target lies strictly inside the real path of versions/, which is computed once per run.
+ * @param {Context} ctx
+ * @param {string} target
+ */
+function removeUnderVersions(ctx, target) {
+  const { fs, path } = builtins();
+  /** @type {string} */
+  let real;
+  try {
+    real = fs.realpathSync(target);
+  } catch (error) {
+    if (errorCode(error) !== "ENOENT") warn(`${path.basename(target)} was left in place`);
+    return;
+  }
+  const rel = path.relative(ctx.versionsReal, real);
+  if (
+    rel === "" ||
+    rel === ".." ||
+    rel.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(rel)
+  ) {
+    warn(`${path.basename(target)} resolves outside the versions directory and was left in place`);
+    return;
+  }
+  try {
+    fs.rmSync(target, { recursive: true, force: true });
+  } catch (error) {
+    warn(`could not delete ${path.basename(target)} (${errorCode(error)})`);
+  }
+}
+
+/**
+ * Keep an entry set aside when its recorded digest is the pin as observed now (spec 0314 R7).
+ * @param {Context} ctx
+ * @param {string} aside
+ * @param {string} digest
+ */
+function retireAside(ctx, aside, digest) {
+  if (readMarker(aside) === digest) return;
+  removeUnderVersions(ctx, aside);
+}
+
+/**
+ * Download the asset with a 30 s inactivity timer, a 300 s total deadline and at most five
+ * redirects (spec 0314 R8). The timers go through globalThis at arm time; no socket timeout is used.
+ * @param {string} urlText
+ * @returns {Promise<{ body: Buffer, url: URL }>}
+ */
+function download(urlText) {
+  const { http, https } = builtins();
+  const first = plainUrl(urlText);
+  if (first === undefined) return Promise.reject(new LauncherError(12, "the asset URL is not a plain URL"));
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let shownUrl = redact(first);
+    /** @type {{ destroy: () => void } | undefined} */
+    let request;
+    /** @type {ReturnType<typeof globalThis.setTimeout> | undefined} */
+    let stall;
+    /** @type {ReturnType<typeof globalThis.setTimeout> | undefined} */
+    let deadline;
+
+    const finish = () => {
+      settled = true;
+      globalThis.clearTimeout(stall);
+      globalThis.clearTimeout(deadline);
+    };
+    /** @param {LauncherError} error */
+    const fail = (error) => {
+      if (settled) return;
+      finish();
+      request?.destroy();
+      reject(error);
+    };
+    const arm = () => {
+      globalThis.clearTimeout(stall);
+      stall = globalThis.setTimeout(
+        () => fail(new LauncherError(12, `download of ${shownUrl} stalled for ${INACTIVITY_MS / 1000} s`)),
+        INACTIVITY_MS,
+      );
+    };
+    /**
+     * @param {URL} target
+     * @param {number} hops
+     */
+    const open = (target, hops) => {
+      shownUrl = redact(target);
+      arm();
+      const client = target.protocol === "https:" ? https : http;
+      const req = client.get(target, { agent: false }, (res) => {
+        const status = res.statusCode ?? 0;
+        if (REDIRECT_STATUSES.includes(status)) {
+          res.resume();
+          if (hops >= MAX_REDIRECTS) {
+            fail(new LauncherError(12, `${shownUrl} redirects more than ${MAX_REDIRECTS} times`));
+            return;
+          }
+          const next = plainUrl(res.headers.location ?? "");
+          if (next === undefined) {
+            fail(new LauncherError(12, `${shownUrl} redirects to a target that is not an absolute plain URL`));
+            return;
+          }
+          open(next, hops + 1);
+          return;
+        }
+        if (status !== 200) {
+          res.resume();
+          fail(new LauncherError(12, `${shownUrl} answered HTTP ${status}`));
+          return;
+        }
+        /** @type {Buffer[]} */
+        const chunks = [];
+        let size = 0;
+        res.on("data", (/** @type {Buffer} */ chunk) => {
+          size += chunk.length;
+          if (size > MAX_DOWNLOAD_BYTES) {
+            fail(new LauncherError(12, `${shownUrl} is larger than 16 MiB`));
+            return;
+          }
+          chunks.push(chunk);
+          arm();
+        });
+        res.on("end", () => {
+          if (settled) return;
+          finish();
+          resolve({ body: Buffer.concat(chunks), url: target });
+        });
+        const interrupted = () => fail(new LauncherError(12, `download of ${shownUrl} was interrupted`));
+        res.on("error", interrupted);
+        res.on("close", () => {
+          if (!res.complete) interrupted();
+        });
+      });
+      request = req;
+      req.on("error", (error) => {
+        fail(new LauncherError(12, `${shownUrl} could not be fetched (${errorCode(error)})`));
+      });
+    };
+
+    deadline = globalThis.setTimeout(
+      () => fail(new LauncherError(12, `download of ${shownUrl} exceeded ${TOTAL_DEADLINE_MS / 1000} s`)),
+      TOTAL_DEADLINE_MS,
+    );
+    open(first, 0);
+  });
+}
+
+/** @param {Buffer} buf @param {number} offset @param {number} length @returns {string} */
+function field(buf, offset, length) {
+  const slice = buf.subarray(offset, offset + length);
+  const nul = slice.indexOf(0);
+  return slice.subarray(0, nul < 0 ? slice.length : nul).toString("latin1");
+}
+
+/**
+ * An octal header field: digits, ended by a NUL or a space; other bytes refuse the archive.
+ * @param {Buffer} buf
+ * @param {number} offset
+ * @param {number} length
+ * @returns {number}
+ */
+function octal(buf, offset, length) {
+  const end = offset + length;
+  let i = offset;
+  while (i < end && (buf[i] === 0x20 || buf[i] === 0)) i += 1;
+  let value = 0;
+  for (; i < end; i += 1) {
+    const byte = buf[i];
+    if (byte === 0 || byte === 0x20) break;
+    if (byte < 0x30 || byte > 0x37) throw new LauncherError(14, "the archive has a malformed header field");
+    value = value * 8 + (byte - 0x30);
+  }
+  for (; i < end; i += 1) {
+    if (buf[i] !== 0 && buf[i] !== 0x20) throw new LauncherError(14, "the archive has a malformed header field");
+  }
+  return value;
+}
+
+/** @param {Buffer} header */
+function checkHeader(header) {
+  if (header.toString("latin1", 257, 263) !== "ustar\0" || header.toString("latin1", 263, 265) !== "00") {
+    throw new LauncherError(14, "the archive holds an entry that is not a ustar header");
+  }
+  let sum = 0;
+  for (let i = 0; i < TAR_BLOCK; i += 1) sum += i >= 148 && i < 156 ? 0x20 : header[i];
+  if (sum !== octal(header, 148, 8)) throw new LauncherError(14, "the archive has a header checksum mismatch");
+}
+
+/** @param {Buffer} header @returns {string} */
+function ustarName(header) {
+  const name = field(header, 0, 100);
+  const prefix = field(header, 345, 155);
+  return prefix === "" ? name : `${prefix}/${name}`;
+}
+
+/**
+ * The path of a PAX extended header: records of "<length> path=<value>\n" only (spec 0314 R9).
+ * @param {Buffer} data
+ * @returns {string}
+ */
+function paxPath(data) {
+  /** @type {string | undefined} */
+  let path;
+  let pos = 0;
+  while (pos < data.length) {
+    const space = data.indexOf(0x20, pos);
+    if (space < 0) throw new LauncherError(14, "the archive has a malformed PAX record");
+    const lengthText = data.subarray(pos, space).toString("latin1");
+    if (!/^[1-9][0-9]*$/.test(lengthText)) throw new LauncherError(14, "the archive has a malformed PAX record");
+    const end = pos + Number(lengthText);
+    if (!Number.isSafeInteger(end) || end > data.length || end - 1 <= space || data[end - 1] !== 0x0a) {
+      throw new LauncherError(14, "the archive has a malformed PAX record");
+    }
+    const record = data.subarray(space + 1, end - 1).toString("utf8");
+    const eq = record.indexOf("=");
+    if (eq < 0 || record.slice(0, eq) !== "path" || path !== undefined) {
+      throw new LauncherError(14, "the archive has a PAX header other than a single path record");
+    }
+    path = record.slice(eq + 1);
+    pos = end;
+  }
+  if (path === undefined) throw new LauncherError(14, "the archive has an empty PAX header");
+  return path;
+}
+
+/**
+ * Extract the verified bytes into an empty staging directory (spec 0314 R9): regular files and
+ * directories only, no duplicate, no entry under a file, at most 64 MiB of file data.
+ * @param {Buffer} archive
+ * @param {string} staging
+ */
+function extract(archive, staging) {
+  const { fs, path, zlib } = builtins();
+  /** @type {Buffer} */
+  let tar;
+  try {
+    tar = zlib.gunzipSync(archive, { maxOutputLength: MAX_EXTRACT_BYTES + TAR_OVERHEAD_BYTES });
+  } catch {
+    throw new LauncherError(14, "the archive is not a gzip-compressed tar stream within the size limit");
+  }
+  /** @type {Map<string, "file" | "dir">} */
+  const seen = new Map([[DIGEST_MARKER, "file"]]);
+  /** @type {string | undefined} */
+  let pax;
+  let extracted = 0;
+  let pos = 0;
+  let ended = false;
+  while (pos + TAR_BLOCK <= tar.length) {
+    const header = tar.subarray(pos, pos + TAR_BLOCK);
+    pos += TAR_BLOCK;
+    if (header.every((byte) => byte === 0)) {
+      ended = true;
+      break;
+    }
+    checkHeader(header);
+    const size = octal(header, 124, 12);
+    const dataEnd = pos + Math.ceil(size / TAR_BLOCK) * TAR_BLOCK;
+    if (dataEnd > tar.length) throw new LauncherError(14, "the archive is truncated");
+    const flag = header[156];
+    if (flag === 0x78) {
+      if (pax !== undefined) throw new LauncherError(14, "a PAX header follows a PAX header");
+      if (size > MAX_PAX_BYTES) throw new LauncherError(14, "a PAX header is larger than 8 KiB");
+      pax = paxPath(tar.subarray(pos, pos + size));
+      pos = dataEnd;
+      continue;
+    }
+    if (flag !== 0x30 && flag !== 0x00 && flag !== 0x35) {
+      throw new LauncherError(14, "the archive holds an entry that is neither a regular file nor a directory");
+    }
+    const isDir = flag === 0x35;
+    const name = pax ?? ustarName(header);
+    pax = undefined;
+    const rel = isDir && name.endsWith("/") ? name.slice(0, -1) : name;
+    const parts = cleanParts(rel);
+    if (parts === undefined) throw new LauncherError(14, "the archive holds a path that is not a clean relative path");
+    for (let i = 1; i < parts.length; i += 1) {
+      const parent = parts.slice(0, i).join("/");
+      const kind = seen.get(parent);
+      if (kind === "file") throw new LauncherError(14, "the archive holds an entry under a file");
+      if (kind === undefined) seen.set(parent, "dir");
+    }
+    const key = parts.join("/");
+    const kind = seen.get(key);
+    const full = path.join(staging, ...parts);
+    if (isDir) {
+      if (kind === "file") throw new LauncherError(14, "the archive holds a duplicate path");
+      seen.set(key, "dir");
+      fs.mkdirSync(full, { recursive: true });
+    } else {
+      if (kind !== undefined) throw new LauncherError(14, "the archive holds a duplicate path");
+      extracted += size;
+      if (extracted > MAX_EXTRACT_BYTES) throw new LauncherError(14, "the archive extracts to more than 64 MiB");
+      seen.set(key, "file");
+      const mode = octal(header, 100, 8);
+      fs.mkdirSync(path.dirname(full), { recursive: true });
+      fs.writeFileSync(full, tar.subarray(pos, pos + size), {
+        flag: "wx",
+        mode: (mode & 0o111) !== 0 ? 0o755 : 0o644,
+      });
+    }
+    pos = dataEnd;
+  }
+  if (!ended) throw new LauncherError(14, "the archive ends before its end-of-archive block");
+  if (pax !== undefined) throw new LauncherError(14, "a PAX header has no entry");
+}
+
+/**
+ * Move `from` to `to`. A failure is never classified by its code first: when the probe finds the
+ * entry complete and pinned, the run uses it; a transient code is retried with backoff (spec 0314 R9).
+ * @param {string} from
+ * @param {string} to
+ * @param {() => string | undefined} probe
+ * @returns {Promise<string | undefined>} the pinned entry when the probe found one, else undefined
+ */
+async function renameWithRetry(from, to, probe) {
+  const { fs, path } = builtins();
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      fs.renameSync(from, to);
+      return undefined;
+    } catch (error) {
+      const pinned = probe();
+      if (pinned !== undefined) return pinned;
+      const code = errorCode(error);
+      if (!TRANSIENT_RENAME_ERRORS.includes(code) || attempt >= RENAME_BACKOFF_MS.length) {
+        throw new LauncherError(14, `cannot move ${path.basename(from)} into place (${code})`);
+      }
+      await sleep(RENAME_BACKOFF_MS[attempt]);
+    }
+  }
+}
+
+/**
+ * Stage the verified archive, record the digest, then publish it with renames (spec 0314 R7, R9).
+ * @param {Context} ctx
+ * @param {Buffer} archive
+ * @param {string} digest
+ * @returns {Promise<string>} the entry path the descriptor names
+ */
+async function install(ctx, archive, digest) {
+  const { fs, path } = builtins();
+  const entryDir = path.join(ctx.versionsDir, ctx.version);
+  const staging = path.join(ctx.versionsDir, `.staging-${ctx.version}-${ctx.run}`);
+  fs.mkdirSync(staging);
+  /** @type {string | undefined} */
+  let entry;
+  try {
+    extract(archive, staging);
+    fs.writeFileSync(path.join(staging, DIGEST_MARKER), `${digest}\n`, { flag: "wx" });
+    entry = completeEntry(staging, digest);
+    if (entry === undefined) {
+      throw new LauncherError(14, `${DESCRIPTOR_FILE} is missing, invalid, or names no regular file of the archive`);
+    }
+  } catch (error) {
+    removeUnderVersions(ctx, staging);
+    throw error;
+  }
+  /** @type {() => string | undefined} */
+  const probe = () => completeEntry(entryDir, digest);
+  const current = probe();
+  if (current !== undefined) {
+    removeUnderVersions(ctx, staging);
+    return current;
+  }
+  /** @type {string | undefined} */
+  let aside;
+  if (lexists(entryDir)) {
+    const target = path.join(ctx.versionsDir, `.old-${ctx.version}-${ctx.run}`);
+    const pinnedAside = await renameWithRetry(entryDir, target, probe);
+    if (pinnedAside !== undefined) {
+      removeUnderVersions(ctx, staging);
+      return pinnedAside;
+    }
+    aside = target;
+  }
+  /** @type {string | undefined} */
+  let pinned;
+  try {
+    pinned = await renameWithRetry(staging, entryDir, probe);
+  } catch (error) {
+    if (aside !== undefined) {
+      try {
+        fs.renameSync(aside, entryDir);
+      } catch {
+        warn(`the previous entry survives at ${aside}`);
+      }
+    }
+    throw error;
+  }
+  if (aside !== undefined) retireAside(ctx, aside, digest);
+  if (pinned !== undefined) {
+    removeUnderVersions(ctx, staging);
+    return pinned;
+  }
+  return entry;
+}
+
+/**
+ * Run the entry point of the verified version with the current runtime (spec 0314 R5).
+ * @param {string} file
+ * @param {string[]} argv
+ * @returns {Promise<number>}
+ */
+function runEntry(file, argv) {
+  const { childProcess } = builtins();
+  return new Promise((resolve) => {
+    const child = childProcess.spawn(process.execPath, [file, ...argv], { stdio: "inherit" });
+    child.on("error", (error) => {
+      warn(`cannot start the entry point (${errorCode(error)})`);
+      resolve(1);
+    });
+    child.on("exit", (code, signal) => {
+      resolve(signal === null ? (code ?? 1) : 1);
+    });
+  });
+}
+
+/**
+ * @param {string[]} argv
+ * @returns {Promise<number>}
+ */
+async function run(argv) {
+  const { crypto, fs, os, path } = builtins();
+  const root = path.dirname(path.resolve(process.argv[1] ?? "."));
+  const pin = readPin(root);
+  const versionsDir = path.join(os.homedir(), ".crewrig", "versions");
+  const entryDir = path.join(versionsDir, pin.version);
+  const cached = completeEntry(entryDir, pin.sha256);
+  if (cached !== undefined) return runEntry(path.join(entryDir, cached), argv);
+
+  const url = `${baseFor(pin)}/crewrig-v${pin.version}/crewrig-${pin.version}.tgz`;
+  const { body, url: finalUrl } = await download(url);
+  const actual = crypto.createHash("sha256").update(body).digest("hex");
+  if (actual !== pin.sha256) {
+    throw new LauncherError(
+      13,
+      `digest mismatch for ${redact(finalUrl)}: expected sha256 ${pin.sha256}, actual ${actual}`,
+    );
+  }
+  fs.mkdirSync(versionsDir, { recursive: true });
+  /** @type {Context} */
+  const ctx = {
+    versionsDir,
+    versionsReal: fs.realpathSync(versionsDir),
+    version: pin.version,
+    run: `${process.pid}-${crypto.randomBytes(6).toString("hex")}`,
+  };
+  const entry = await install(ctx, body, pin.sha256);
+  return runEntry(path.join(entryDir, entry), argv);
+}
+
+/** @param {unknown} error */
+function report(error) {
+  if (error instanceof LauncherError) {
+    process.stderr.write(`crewrig: ${error.message}\n`);
+    process.exitCode = error.code;
+    return;
+  }
+  process.stderr.write(`crewrig: cache or extraction failed unexpectedly (${errorCode(error)})\n`);
+  process.exitCode = 14;
+}
+
+function start() {
+  const major = Number(process.versions.node.split(".")[0]);
+  if (!(major >= FLOOR_MAJOR)) {
+    process.stderr.write(
+      `crewrig: needs Node.js ${FLOOR_MAJOR} or later; this is Node.js ${process.versions.node}.\n`,
+    );
+    process.exitCode = 10;
+    return;
+  }
+  run(process.argv.slice(2)).then(
+    (code) => {
+      process.exitCode = code;
+    },
+    report,
+  );
+}
+
+start();
