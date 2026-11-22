@@ -2,6 +2,13 @@
 name: nameless
 description: "No name"
 user-invocable: true
+metadata:
+  provenance:
+    package: "full"
+    extension: "full"
+    version: "1.2.3"
+    canonical: "https://example.test/upstream"
+    feedback: "https://example.test/upstream"
 ---
 
 

@@ -30,6 +30,10 @@ function sandbox(manifest: Record<string, unknown>): string {
   const ext = path.join(root, "extensions", "core", "tokenfix");
   fs.mkdirSync(ext, { recursive: true });
   fs.writeFileSync(path.join(ext, "extension.json"), JSON.stringify(manifest));
+  fs.writeFileSync(
+    path.join(ext, "package.json"),
+    JSON.stringify({ name: "tokenfix", version: "0.0.1" }),
+  );
   return root;
 }
 
@@ -37,6 +41,7 @@ const withName = {
   name: "tokenfix",
   version: "0.0.1",
   description: "fixture",
+  provenance: { canonical: "https://example.test/upstream" },
   hooks: [{ id: "probe", event: "PreToolUse", command: "bash ${extensionRoot}/hooks/handler.sh" }],
 };
 

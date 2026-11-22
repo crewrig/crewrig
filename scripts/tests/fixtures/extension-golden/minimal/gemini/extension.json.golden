@@ -1,5 +1,8 @@
 {
   "name": "minimal",
   "version": "0.0.1",
-  "description": "Minimal"
+  "description": "Minimal",
+  "provenance": {
+    "canonical": "https://example.test/upstream"
+  }
 }

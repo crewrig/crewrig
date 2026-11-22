@@ -2,6 +2,9 @@
   "name": "mcponly",
   "version": "0.1.0",
   "description": "MCP only",
+  "provenance": {
+    "canonical": "https://example.test/upstream"
+  },
   "mcpServers": {
     "s": {
       "command": "node",

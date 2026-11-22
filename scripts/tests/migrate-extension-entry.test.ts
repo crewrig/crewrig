@@ -39,6 +39,7 @@ function oldShape(root: string): string {
     name: "oldshape",
     version: "0.1.0",
     description: "fixture",
+    provenance: { canonical: "https://example.test/upstream" },
     components: {
       commands: { enabled: true, location: "commands/" },
       skills: { enabled: false, location: "skills/" },
