@@ -80,7 +80,7 @@ void (async () => {
       }
     }
 
-    const { runCapture } = await import("../scripts/lib/usage-capture/hook-run.ts");
+    const { runCapture } = await import("../scripts/lib/usage-hook/hook-run.ts");
     await runCapture({ cli, event, rawPayload });
   } catch (error) {
     if (error instanceof Error && error.name === "MissingDependencyError") {

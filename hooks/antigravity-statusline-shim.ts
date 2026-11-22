@@ -57,7 +57,7 @@ void (async () => {
   }
 
   try {
-    const { runCapture } = await import("../scripts/lib/usage-capture/hook-run.ts");
+    const { runCapture } = await import("../scripts/lib/usage-hook/hook-run.ts");
     await runCapture({
       cli: "antigravity",
       event: "statusline",

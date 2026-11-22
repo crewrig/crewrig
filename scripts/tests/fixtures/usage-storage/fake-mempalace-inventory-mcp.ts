@@ -3,7 +3,7 @@
 // scripts/tests/usage-inventory.test.ts (spec 0239, issue
 // #1206; TypeScript port of the twice-reviewed fake-mempalace-inventory-mcp.js,
 // PR #1361, forced by spec 0238's shell/JS ratchet — see
-// scripts/lib/usage-store/inventory.ts's own header for the full rationale).
+// scripts/lib/usage-inventory/inventory.ts's own header for the full rationale).
 // Never the real daemon at 127.0.0.1:41893 — the test suite always binds
 // this fixture to a caller-supplied ephemeral port.
 //
@@ -12,7 +12,7 @@
 // calls (mempalace_add_drawer / mempalace_delete_by_source), and its
 // toolFailure/sourceToolFailure control surface is built around those two
 // tools' specific success/dry-run semantics. This fixture answers the four
-// DIFFERENT tools scripts/lib/usage-store/inventory.ts calls instead:
+// DIFFERENT tools scripts/lib/usage-inventory/inventory.ts calls instead:
 // mempalace_list_wings, mempalace_list_drawers, mempalace_get_drawer, and
 // mempalace_delete_drawer — over the identical single bearer-authenticated
 // `POST /mcp` JSON-RPC `tools/call` transport (no `initialize`, no session

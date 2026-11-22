@@ -38,6 +38,7 @@ capabilities:
       - "hooks/gemini-transcript-hooks.json"
       - "hooks/copilot-transcript-hooks.json"
       - "scripts/lib/usage-capture/**"
+      - "scripts/lib/usage-hook/**"
       - "scripts/usage-backfill.ts"
       - "scripts/tests/e2e-usage-headless.test.ts"
       - "scripts/tests/fixtures/usage-capture/**"
@@ -103,6 +104,7 @@ capabilities:
         branches: [main, "release/**"]
     paths:
       - "scripts/lib/usage-store/**"
+      - "scripts/lib/usage-inventory/**"
       - "scripts/usage-query.ts"
       - "scripts/usage-prune.ts"
       - "scripts/usage-mirror.ts"
@@ -172,7 +174,9 @@ capabilities:
         branches: [main, "release/**"]
     paths:
       - "scripts/lib/usage-store/**"
+      - "scripts/lib/usage-inventory/**"
       - "scripts/lib/usage-capture/**"
+      - "scripts/lib/usage-hook/**"
       - "scripts/usage-task.ts"
       - "scripts/usage-attribute.ts"
       - "scripts/tests/usage-attribution-channels.test.ts"
@@ -230,6 +234,7 @@ capabilities:
       - "scripts/tests/fixtures/usage-pricing/**"
       - "model-prices.org.json"
       - "scripts/lib/usage-store/**"
+      - "scripts/lib/usage-inventory/**"
       - "scripts/usage-attribute.ts"
       - "scripts/usage-prune.ts"
       - "scripts/usage-query.ts"
@@ -282,6 +287,7 @@ capabilities:
       - "scripts/tests/fixtures/usage-pricing/**"
       - "model-prices.org.json"
       - "scripts/lib/usage-store/**"
+      - "scripts/lib/usage-inventory/**"
       - "scripts/lib/usage-price/**"
       - "scripts/usage-query.ts"
       - "scripts/usage-price.ts"

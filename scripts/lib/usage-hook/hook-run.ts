@@ -79,7 +79,7 @@ export async function runCapture(input: RunCaptureInput): Promise<void> {
     return;
   }
   try {
-    const dispatcher = await import("./index.js");
+    const dispatcher = await import("../usage-capture/index.js");
     dispatcher.capture({
       cli: input.cli,
       event: input.event,

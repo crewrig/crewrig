@@ -18,9 +18,8 @@ No storage backend, write format, or retention policy is implemented by this spe
 ### Module tree structure
 
 ```text
-scripts/lib/usage-capture/
+scripts/lib/usage-capture/   # commonjs scope (package.json, spec 0243 R41)
 ├── index.js                 # Main dispatcher: capture({ cli, event, payload })
-├── hook-run.ts              # In-process runner the hooks import lazily: calls index.js, no spawned process
 ├── record.js                # Shared normalizer: captured/uncaptured constructors, recordId derivation, fingerprints
 ├── sink.js                  # Storage boundary: structural precheck + spec 0207's journal
 ├── cursor.js                # Per-source high-water state at ~/.crewrig/usage/state/<cli>/
@@ -30,6 +29,8 @@ scripts/lib/usage-capture/
 │   ├── copilot-cli.js       # Reads ~/.copilot/session-store.db (SQLite)
 │   ├── antigravity.js       # Reads statusline payload from stdin
 │   └── headless-envelope.js # Shared: one run-total record from non-interactive output
+scripts/lib/usage-hook/
+└── hook-run.ts              # In-process runner the hooks import lazily: calls ../usage-capture/index.js, no spawned process
 ```
 
 ## Per-adapter field sources

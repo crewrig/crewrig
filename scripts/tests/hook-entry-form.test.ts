@@ -83,7 +83,7 @@ describe("static contract (R3, R11)", () => {
   const HOOK_SOURCES = [
     path.join("hooks", "usage-capture.ts"),
     path.join("hooks", "antigravity-statusline-shim.ts"),
-    path.join("scripts", "lib", "usage-capture", "hook-run.ts"),
+    path.join("scripts", "lib", "usage-hook", "hook-run.ts"),
   ];
 
   /** Code lines only: full-line `//` and block-comment lines may name retired files. */
