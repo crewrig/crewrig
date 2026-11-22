@@ -366,6 +366,19 @@ describe("rules-shared: stamped copies (spec 0316 R11, R12)", posix, () => {
     assert.match(result.err, /^Error: cannot stamp the rules/m);
   });
 
+  test("without a crewrig.config.toml the placeholders stay literal and nothing is printed", async () => {
+    privateArtifacts();
+    fs.rmSync(path.join(box.repo, "crewrig.config.toml"));
+    const result = await runRules(rulesDescriptor("claude", ["rules-shared"]), VALIDATION);
+    assert.equal(result.status, 0, result.err);
+    assert.equal(result.err, "");
+    const line = first(path.join(box.home, ".claude", "rules", "60-tools.md"));
+    assert.equal(
+      line,
+      '<!-- crewrig-provenance: package="crewrig" version="1.0.0" canonical="${CANONICAL_REPO}" feedback="${CANONICAL_REPO}" -->',
+    );
+  });
+
   test("a marker already present in a source is replaced, not duplicated (R6)", async () => {
     privateArtifacts();
     const file = path.join(box.repo, "artifacts", "core", "rules", "60-tools.md");

@@ -11,7 +11,6 @@ import { loadConfig, resolvePlaceholders } from "../build-components/config.ts";
 import { readAuthoredProvenance, stripAuthoredBlock } from "../provenance-authored.ts";
 import { replaceMarker } from "../provenance-marker.ts";
 import type { ProvenanceFields } from "../provenance-marker.ts";
-import type { Io } from "../extension/types.ts";
 
 export interface StampSource {
   readonly path: string;
@@ -22,7 +21,6 @@ export interface StampSource {
 export interface StampContext {
   readonly repoDir: string;
   readonly platform: NodeJS.Platform;
-  readonly io: Io;
 }
 
 export type StampBase = ReturnType<typeof stampBase>;
@@ -38,7 +36,10 @@ export function stampBase(ctx: StampContext): {
   if (typeof raw.name !== "string" || raw.name === "") {
     throw new Error("package.json: `name` is missing");
   }
-  const config = loadConfig(ctx.repoDir, ctx.platform, ctx.io);
+  // Silent: the run's own build steps already warn when `crewrig.config.toml` is missing, and the
+  // placeholders then stay literal here exactly as they do in the build.
+  const quiet = { out: () => {}, err: () => {}, errRaw: () => {} };
+  const config = loadConfig(ctx.repoDir, ctx.platform, quiet);
   return {
     pkg: raw.name,
     resolve: (value) => resolvePlaceholders(config, value),

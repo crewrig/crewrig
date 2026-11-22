@@ -131,6 +131,8 @@ function stampSources(env: StepEnv, entries: readonly RuleFile[]): StampSource[]
     if (rule.optional === true && !fs.existsSync(path.join(ctx.repoDir, rule.src))) continue;
     seen.add(rule.src);
     const abs = path.join(ctx.repoDir, rule.src);
+    // A missing source keeps failing where it always did: at its placement, naming the file.
+    if (!fs.existsSync(abs)) continue;
     if (rule.src === descriptor.rules.store.src) {
       for (const name of markdownIn(abs)) {
         out.push({
