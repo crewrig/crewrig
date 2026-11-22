@@ -44,6 +44,14 @@ export function unsafePath(p: string): boolean {
 }
 
 /**
+ * The path as the hook command carries it: on win32 the physical path with forward slashes, as the other hook
+ * commands do (spec 0256 delta-03 deviation (t)), because a backslash is the unsafe character of a POSIX shell word.
+ */
+export function shellPath(platform: NodeJS.Platform, p: string): string {
+  return platform === "win32" ? p.replaceAll("\\", "/") : p;
+}
+
+/**
  * The POSIX hook command (plan v4 *Contracts*). It exits 0 with no output when
  * the recorded runtime, any `node` on PATH, or the installed check is missing.
  */

@@ -31,6 +31,7 @@ import {
   type Obj,
   addEntry,
   hookCommand,
+  shellPath,
   hookFilePath,
   isObj,
   stripEntry,
@@ -188,7 +189,11 @@ function main(argv: readonly string[]): number {
   try {
     if (args.action === "register" && why === null) {
       const check = installTree(import.meta.dirname, home);
-      const command = hookCommand(process.execPath, check, cli);
+      const command = hookCommand(
+        shellPath(process.platform, process.execPath),
+        shellPath(process.platform, check),
+        cli,
+      );
       const res = editHookFile(file, (doc) => addEntry(cli, doc, command), true);
       process.stdout.write(
         `  MemPalace session check ${res.changed ? "registered in" : "already registered in"} ${tilde(file, home)}\n`,
