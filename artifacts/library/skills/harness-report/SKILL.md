@@ -8,7 +8,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "2.0.0"
+    version: "2.1.0"
 claude:
   allowed-tools:
     - Read
@@ -46,9 +46,21 @@ is often not the skill you were running, and never this skill. The room is one o
 
 ## Step 2: build the payload
 
+First read the offender's provenance. `resolve` takes the path of the offender (a skill, agent, hook script or
+MCP server file) and prints ready flags; it follows symlinks to the real path:
+
+```sh
+node scripts/friction.ts resolve <offender path> [--hook <id> | --server <name>]
+```
+
+It reads the offender's own marker, then the nearest `crewrig-provenance.json` or `extension.json` with its
+sibling `package.json`, and the `source:` line says which contributed. Pass the flags it prints to `build`.
+Exit `1` means nothing was found: leave `canonical` empty, never route on a guess.
+
 ```sh
 node scripts/friction.ts build --title "<one line>" --room <room> --writer-agent <your id> \
-  --evidence "<commit>:<path>:<line>" --canonical <repo url> [--severity low|med|high] \
+  --evidence "<commit>:<path>:<line>" [--package <name> --extension <name> --version <semver>] \
+  [--canonical <repo url>] [--feedback <repo url>] [--severity low|med|high] \
   [--subcategory <anchor>] [--suggestion "<fix idea>"]
 ```
 
@@ -63,6 +75,8 @@ Choosing the values:
 - `canonical` is the offender's repository root, `https://github.com/<owner>/<repo>`, never a file URL: the
   curator routes the issue by stripping the host, so a `/blob/` URL breaks the route. The file path goes in
   evidence. Leave it empty if you cannot name the offender; a routing failure beats a wrong target.
+- `feedback` is the maintainer-declared intake repository; the curator routes to it before `canonical`.
+  `package`, `extension` and `version` come from `resolve`; never invent them.
 - `severity` defaults to `med`. `high` is for blockers and forces the curator to promote the friction
   without a second report.
 - `subcategory` bundles frictions of one cause into one issue; `suggestion` helps the curator weigh the cluster.

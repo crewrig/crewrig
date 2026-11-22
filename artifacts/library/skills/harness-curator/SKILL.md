@@ -8,7 +8,7 @@ metadata:
   provenance:
     canonical: "${CANONICAL_REPO}"
     feedback: "${CANONICAL_REPO}"
-    version: "2.1.0"
+    version: "2.2.0"
 claude:
   allowed-tools:
     - Read
@@ -73,10 +73,14 @@ independent triage.
 - A cluster is proposed at 2 or more reports (`--threshold`), or at 1 report of `severity: high`, which
   bypasses the threshold by design.
 - The cluster key is the `subcategory`, else the room. The target repository is the most frequent
-  `canonical` in the cluster (`--target-repo` forces one).
+  `feedback` in the cluster, else the most frequent `canonical` (`--target-repo` forces one).
+- Frictions that carry `package`, `extension` or `version` print them in the issue body. A friction is marked
+  `possibly fixed` only when its `package` and `extension` are both set and the newest SemVer `version`
+  reported in the run for that pair is strictly newer than every comparable version of that pair in its
+  cluster; a missing or non-SemVer version is never flagged.
 - Labels are `harness-feedback`, `room:<dominant room>` and `severity:<worst>`. The title carries a Gitmoji
   per dominant room (`tool` 🐛, `process` 📝, `behavior` 🚸, `format` 🎨, `prompt` 💬, other 🔧).
-- A cluster with no resolvable `canonical` is a routing failure: it is reported, never opened blind.
+- A cluster with no resolvable `feedback` or `canonical` is a routing failure: it is reported, never opened blind.
 - `--max-issues N` keeps the N highest-ranked clusters (severity, then size, then key) and `--dedup` skips a
   cluster whose key already has an open `harness-feedback` issue.
 

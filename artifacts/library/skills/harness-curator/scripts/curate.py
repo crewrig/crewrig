@@ -354,21 +354,101 @@ def pick_target_repo(cluster: List[Dict[str, Any]]) -> Optional[str]:
     Precedence:
     1. ``--target-repo`` override (set by the wrapper for test or
        single-fork curation).
-    2. The ``canonical`` URL most frequent across the cluster.
-    3. None — caller treats this as a routing failure (does not open a
+    2. The ``feedback`` URL most frequent across the cluster (spec 0316
+       R16): the maintainer-declared intake wins over a legacy report.
+    3. The ``canonical`` URL most frequent across the cluster.
+    4. None — caller treats this as a routing failure (does not open a
        blind MR).
     """
     if TARGET_OVERRIDE:
         return TARGET_OVERRIDE
-    canonicals: Dict[str, int] = defaultdict(int)
-    for f in cluster:
-        c = f.get("canonical", "").strip()
-        if c:
-            canonicals[c] += 1
-    if not canonicals:
+    for field in ("feedback", "canonical"):
+        counts: Dict[str, int] = defaultdict(int)
+        for f in cluster:
+            c = str(f.get(field, "")).strip()
+            if c:
+                counts[c] += 1
+        if counts:
+            # Most-frequent wins, ties broken by first seen.
+            return max(counts.items(), key=lambda kv: kv[1])[0]
+    return None
+
+
+# --- Version comparison (spec 0316 R16) -----------------------------------
+
+_SEMVER_RE = re.compile(
+    r"^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?"
+    r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
+)
+
+
+def parse_semver(value: Any) -> Optional[Tuple[Tuple[int, int, int], Optional[List[Any]]]]:
+    """Parse a SemVer 2.0 version (optional leading ``v``, build metadata
+    ignored). Returns None when the value is not SemVer."""
+    m = _SEMVER_RE.match(str(value or "").strip())
+    if not m:
         return None
-    # Most-frequent canonical wins, ties broken by first seen.
-    return max(canonicals.items(), key=lambda kv: kv[1])[0]
+    core = (int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    pre = None
+    if m.group(4) is not None:
+        pre = [int(x) if x.isdigit() else x for x in m.group(4).split(".")]
+    return core, pre
+
+
+def semver_cmp(a: Any, b: Any) -> Optional[int]:
+    """SemVer 2.0 section 11 precedence: -1, 0, 1, or None when either side
+    is not SemVer."""
+    pa, pb = parse_semver(a), parse_semver(b)
+    if pa is None or pb is None:
+        return None
+    if pa[0] != pb[0]:
+        return -1 if pa[0] < pb[0] else 1
+    ra, rb = pa[1], pb[1]
+    if ra is None and rb is None:
+        return 0
+    if ra is None:
+        return 1
+    if rb is None:
+        return -1
+    for x, y in zip(ra, rb):
+        if x == y:
+            continue
+        if isinstance(x, int) and isinstance(y, int):
+            return -1 if x < y else 1
+        if isinstance(x, int):
+            return -1
+        if isinstance(y, int):
+            return 1
+        return -1 if x < y else 1
+    if len(ra) == len(rb):
+        return 0
+    return -1 if len(ra) < len(rb) else 1
+
+
+def _version_key(f: Dict[str, Any]) -> Optional[Tuple[str, str]]:
+    """(package, extension) key; only payloads carrying both take part."""
+    pkg = str(f.get("package", "")).strip()
+    ext = str(f.get("extension", "")).strip()
+    return (pkg, ext) if pkg and ext else None
+
+
+def _newest_by_key(frictions: List[Dict[str, Any]]) -> Dict[Tuple[str, str], str]:
+    newest: Dict[Tuple[str, str], str] = {}
+    for f in frictions:
+        key = _version_key(f)
+        v = str(f.get("version", "")).strip()
+        if key is None or parse_semver(v) is None:
+            continue
+        if key not in newest or semver_cmp(v, newest[key]) == 1:
+            newest[key] = v
+    return newest
+
+
+def current_versions(
+    parsed: List[Tuple[Dict[str, Any], str, str, str]],
+) -> Dict[Tuple[str, str], str]:
+    """Newest SemVer version reported in this run, per (package, extension)."""
+    return _newest_by_key([p[0] for p in parsed])
 
 
 # --- MR body composition --------------------------------------------------
@@ -443,9 +523,16 @@ def compose_body(
     cluster_key: str,
     cluster: List[Dict[str, Any]],
     target_repo: str,
+    current: Optional[Dict[Tuple[str, str], str]] = None,
 ) -> Tuple[str, str]:
-    """Return (title, markdown_body)."""
+    """Return (title, markdown_body).
+
+    ``current`` maps (package, extension) to the newest version reported in
+    the run. A friction is flagged "possibly fixed" only when ``current`` is
+    strictly newer than every comparable report of its key in this cluster
+    (spec 0316 R16); non-SemVer or missing versions are never flagged."""
     size = len(cluster)
+    cluster_max = _newest_by_key(cluster)
     emoji = ROOM_GITMOJI.get(_dominant_room(cluster), FALLBACK_GITMOJI)
     title = f"{emoji} Friction cluster: {cluster_key} ({size} report{'s' if size != 1 else ''})"
     lines: List[str] = []
@@ -478,6 +565,23 @@ def compose_body(
         lines.append(f"   - Severity: `{f.get('severity', 'med')}`")
         room = f.get("_room", "?")
         lines.append(f"   - Room: `{room}`")
+        if f.get("package"):
+            lines.append(f"   - Package: `{f['package']}`")
+        if f.get("extension"):
+            lines.append(f"   - Extension: `{f['extension']}`")
+        if f.get("version"):
+            note = ""
+            key = _version_key(f)
+            if (
+                current
+                and key is not None
+                and key in current
+                and key in cluster_max
+                and parse_semver(f["version"]) is not None
+                and semver_cmp(current[key], cluster_max[key]) == 1
+            ):
+                note = f" (possibly fixed: `{current[key]}` reported)"
+            lines.append(f"   - Version: `{f['version']}`{note}")
         for ev in f.get("evidence", []):
             lines.append(f"   - Evidence: {ev}")
         if f.get("suggestion"):
@@ -733,6 +837,7 @@ def main() -> int:
     _emit_malformed_warning(stats, WARN_SKIPPED_RATIO)
 
     clusters = cluster_frictions(parsed)
+    current = current_versions(parsed)
     stats["clusters_formed"] = len(clusters)
 
     output_clusters: List[Dict[str, Any]] = []
@@ -751,7 +856,7 @@ def main() -> int:
             })
             continue
         stats["clusters_above_threshold"] += 1
-        title, body = compose_body(cluster_key, items, target)
+        title, body = compose_body(cluster_key, items, target, current)
         output_clusters.append({
             "cluster_key": cluster_key,
             "cluster_size": len(items),
