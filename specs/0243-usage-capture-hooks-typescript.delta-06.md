@@ -5,7 +5,7 @@ status: draft
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 2121
-version: 3.3.1
+version: 3.4.0
 ---
 
 # Usage-capture hook and Antigravity statusline in TypeScript
@@ -22,15 +22,15 @@ files lie beneath them, and the sentence read literally forbids them. Read at
 declarations), `scripts/lib/usage-capture/index.d.ts` (an `export interface`
 and two `export function` declarations), `scripts/lib/usage-store/layout.d.ts`
 (one `export function`) and `scripts/lib/usage-store/mcp.d.ts` (an `export
-type`, an `export interface` and six `export function` declarations). Node.js
+type`, an `export interface` and seven `export function` declarations). Node.js
 never loads a `.d.ts` file at run time: only the TypeScript compiler reads
 them (the `typecheck-ts` task runs `scripts/check-typescript.ts` over
 `tsconfig.json`, which has `noEmit` and includes `**/*.ts`, and the
 declarations type the sibling `.js` files for their `.ts` importers). They
 therefore carry no module type, and they were left in place. This delta states
 that, so that the approved text matches the tree. It changes no behaviour and no
-file. The version is a PATCH bump: a clarification of one clause and one
-scenario added, no requirement changed in a way that invalidates an in-flight
+file. The version is a MINOR bump: the delta adds a rule for future type
+declaration files and one scenario, and invalidates no in-flight
 implementation. No question is left open.*
 
 ## ADDED
@@ -55,7 +55,7 @@ Requirement 41(b) — the files with ECMAScript syntax beneath the two scoped
 directories.
 Original (the clause of
 `specs/0243-usage-capture-hooks-typescript.delta-05.md`, requirement 41, quoted
-as it reads there, first sentence only):
+as it reads there, the first sentence and the lead-in of the second):
 
 > (b) no file with ECMAScript syntax beneath either directory. The two that
 > exist move out:
@@ -81,7 +81,7 @@ file) stands as written.
 Requirements 41(c) and 41(d) are not affected. The closure test of 41(c) walks
 the specifiers that a hook script, and the files it reaches, load or name
 (`scripts/tests/lib/closure-walk.ts`: `import`, `import()`, `require`, relative
-module-path strings). A `.js` specifier resolves to the `.js` file, and an
+module-path strings). A `.d.ts` file that a specifier named explicitly would be outside 41(b) but not exempted by 41(c), and the walk would report it if it had ECMAScript syntax under a `commonjs` scope; today none is named. A `.js` specifier resolves to the `.js` file, and an
 extension-less one to `.js`, `.ts`, `.json` or `/index.js`, never to `.d.ts`,
 and no source file in `scripts/` or `hooks/` names a `.d.ts` path. A `.d.ts`
 file is therefore never in the reached set, so the test never inspects its
@@ -97,7 +97,7 @@ Nothing is removed.
 41(b) read as the Replacement above: the ban on ECMAScript syntax beneath
 `scripts/lib/usage-capture/` and `scripts/lib/usage-store/` covers the files
 Node.js can load, and excludes `.d.ts` type declaration files. The version after
-this delta is 3.3.1.
+this delta is 3.4.0.
 
 **What the implementation changes.** Nothing: no source file, no test and no
 manifest. The delta only aligns the text of requirement 41(b) with the tree, and
