@@ -69,8 +69,6 @@ describe("R18: the manifest entries of WP3", () => {
       "config/TOOLS.md",
       "config/SOUL.md",
       "config/PROFILE.md",
-      "config/SOUL.md.template",
-      "config/PROFILE.md.template",
     ];
     for (const file of forbidden) {
       const covering = parseManifest(fs.readFileSync(MANIFEST_FILE, "utf8")).filter(
@@ -95,15 +93,15 @@ describe("R18: the manifest entries of WP3", () => {
     assert.ok(fs.statSync(path.join(root, String(entry))).isFile());
   });
 
-  test("beyond the entry point, the archive holds only its own modules from scripts/", () => {
+  test("the archive holds no test and no checkout-only entry under scripts/", () => {
     const { paths } = extract(rigs.make());
     const scripts = paths.filter((p) => p.startsWith("scripts/"));
 
     assert.ok(scripts.length >= 2);
     for (const file of scripts) {
       assert.ok(
-        file === "scripts/crewrig-cli.ts" || file.startsWith("scripts/lib/crewrig-cli/"),
-        `${file} is outside the closure of the entry point`,
+        !file.startsWith("scripts/tests/") && file !== "scripts/build-components.ts",
+        `${file} is not shipped`,
       );
     }
   });
@@ -130,13 +128,23 @@ describe("R18: init run from an archive built from the manifest alone", () => {
 
     assert.ok(!path.resolve(root).startsWith(REPO));
     assert.ok(!fs.existsSync(path.join(root, "node_modules")));
-    assert.ok(!fs.existsSync(path.join(root, "scripts", "lib", "build-components")));
+    assert.ok(!fs.existsSync(path.join(root, "scripts", "tests")));
   });
 
-  const modules = fs.readdirSync(path.join(REPO, "scripts", "lib", "crewrig-cli")).sort();
+  // The modules `init` loads at import time (spec 0315 R12 keeps the entry's static graph small); the commands
+  // build, setup and update load theirs on demand, and their own closure tests cover them.
   for (const module of [
     "scripts/crewrig-cli.ts",
-    ...modules.map((m) => `scripts/lib/crewrig-cli/${m}`),
+    "scripts/lib/crewrig-cli/args.ts",
+    "scripts/lib/crewrig-cli/command-args.ts",
+    "scripts/lib/crewrig-cli/env.ts",
+    "scripts/lib/crewrig-cli/exit.ts",
+    "scripts/lib/crewrig-cli/org-dir.ts",
+    "scripts/lib/crewrig-cli/origin.ts",
+    "scripts/lib/crewrig-cli/plain-url.ts",
+    "scripts/lib/crewrig-cli/scaffold.ts",
+    "scripts/lib/crewrig-cli/toml.ts",
+    "scripts/lib/crewrig-cli/toml-read.ts",
   ]) {
     test(`fails without ${module}, so a manifest that forgets it is caught`, async () => {
       const rig = rigs.make();

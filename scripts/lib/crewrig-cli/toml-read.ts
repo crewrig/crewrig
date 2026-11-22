@@ -8,7 +8,9 @@ export interface OrgConfig {
   readonly feedbackRepo: string;
 }
 
-export type ConfigReading = { readonly ok: true; readonly config: OrgConfig } | { readonly ok: false; readonly reason: string };
+export type ConfigReading =
+  | { readonly ok: true; readonly config: OrgConfig }
+  | { readonly ok: false; readonly reason: string };
 
 const REQUIRED = ["canonical_repo", "feedback_repo"] as const;
 const LINE = /^([A-Za-z0-9_-]+)[ \t]*=[ \t]*"((?:[^"\\]|\\[\\"])*)"[ \t]*(?:#.*)?$/;

@@ -58,7 +58,8 @@ export async function runSetupCommand(request: SetupRequest): Promise<number> {
   const { io, orgDir } = request;
   const missing = missingRequiredFiles(orgDir);
   if (missing.length > 0) {
-    for (const rel of missing) io.err(`crewrig setup: ${rel} is missing in ${orgDir}; nothing was installed.`);
+    for (const rel of missing)
+      io.err(`crewrig setup: ${rel} is missing in ${orgDir}; nothing was installed.`);
     return 1;
   }
   const notice = hooksNotice(orgDir);

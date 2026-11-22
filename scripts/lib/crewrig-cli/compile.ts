@@ -31,7 +31,9 @@ function holdsNothingButKeep(dir: string): boolean {
 
 /** Whether the organization defines at least one component (a skill or an agent). */
 export function definesComponent(orgDir: string): boolean {
-  return COMPONENT_DIRS.some((kind) => !holdsNothingButKeep(path.join(orgDir, "artifacts", ORG_TIER, kind)));
+  return COMPONENT_DIRS.some(
+    (kind) => !holdsNothingButKeep(path.join(orgDir, "artifacts", ORG_TIER, kind)),
+  );
 }
 
 /** The notice of spec 0315 R5/R6 when `artifacts/community/hooks` holds anything but `.gitkeep`. */

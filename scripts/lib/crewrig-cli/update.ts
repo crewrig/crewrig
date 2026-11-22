@@ -77,14 +77,18 @@ export function runUpdate(request: UpdateRequest): number {
   for (const answer of request.answers) args.push("--answer", answer);
   const run = spawnSync(process.execPath, args, { cwd: orgDir, env, stdio: "inherit" });
   if (run.error !== undefined || run.status === null) {
-    io.err("crewrig update: the launcher could not be run to completion; nothing else was changed by update.");
+    io.err(
+      "crewrig update: the launcher could not be run to completion; nothing else was changed by update.",
+    );
     return 1;
   }
   if (run.status === 0) return 0;
   const meaning = LAUNCHER_CODES[run.status];
   if (meaning !== undefined) {
     const pin = run.status === 11 ? " Check crewrig.pin.json in the organization directory." : "";
-    io.err(`crewrig update: the launcher ended with its own code ${run.status} (${meaning}).${pin}`);
+    io.err(
+      `crewrig update: the launcher ended with its own code ${run.status} (${meaning}).${pin}`,
+    );
   } else {
     io.err(`crewrig update: setup ended with status ${run.status}.`);
   }

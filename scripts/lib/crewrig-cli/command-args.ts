@@ -7,7 +7,12 @@ export type CliName = (typeof CLIS)[number];
 export type CommandName = "build" | "setup" | "update";
 
 export type CommandArguments =
-  | { readonly ok: true; readonly orgDir: string | undefined; readonly cli: CliName | undefined; readonly answers: readonly string[] }
+  | {
+      readonly ok: true;
+      readonly orgDir: string | undefined;
+      readonly cli: CliName | undefined;
+      readonly answers: readonly string[];
+    }
   | { readonly ok: false; readonly message: string };
 
 const CLI_LIST = CLIS.join(", ");
@@ -17,7 +22,10 @@ function refuse(command: CommandName, reason: string): CommandArguments {
 }
 
 /** Parse the options of `command` (`argv` holds the arguments after the command name). */
-export function parseCommandArguments(command: CommandName, argv: readonly string[]): CommandArguments {
+export function parseCommandArguments(
+  command: CommandName,
+  argv: readonly string[],
+): CommandArguments {
   const takesCli = command !== "build";
   let orgDir: string | undefined;
   let cli: CliName | undefined;
@@ -25,7 +33,10 @@ export function parseCommandArguments(command: CommandName, argv: readonly strin
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index] ?? "";
     if (arg === "--link") {
-      return refuse(command, "--link is refused: a version directory is a cache, so setup copies its files.");
+      return refuse(
+        command,
+        "--link is refused: a version directory is a cache, so setup copies its files.",
+      );
     }
     if (arg === "--org-dir") {
       const value = valueAfter(argv, index);

@@ -45,6 +45,9 @@ export function tierRoot(ctx: Pick<SetupCtx, "repoDir" | "org">, tier: string): 
 }
 
 /** The overlay tiers a run offers: `community` and `org` in a checkout; `org` alone in a two-root run. */
-export function overlayTiersOf(ctx: Pick<SetupCtx, "org">, all: readonly string[]): readonly string[] {
+export function overlayTiersOf(
+  ctx: Pick<SetupCtx, "org">,
+  all: readonly string[],
+): readonly string[] {
   return ctx.org === undefined ? all : all.filter((tier) => tier === "org");
 }

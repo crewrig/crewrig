@@ -6,7 +6,12 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { Io } from "../build-components/types.ts";
-import { compileOrganization, definesComponent, hooksNotice, temporaryDirectory } from "./compile.ts";
+import {
+  compileOrganization,
+  definesComponent,
+  hooksNotice,
+  temporaryDirectory,
+} from "./compile.ts";
 import { ensureIgnoreLines } from "./gitignore.ts";
 
 export interface BuildRequest {
@@ -30,7 +35,8 @@ export async function runBuild(request: BuildRequest): Promise<number> {
   const { io, orgDir } = request;
   try {
     const added = ensureIgnoreLines(orgDir);
-    if (added.length > 0) io.out(`crewrig build: added ${added.join(", ")} to ${path.join(orgDir, ".gitignore")}.`);
+    if (added.length > 0)
+      io.out(`crewrig build: added ${added.join(", ")} to ${path.join(orgDir, ".gitignore")}.`);
   } catch (error) {
     io.err(`crewrig build: cannot write ${path.join(orgDir, ".gitignore")}: ${reason(error)}`);
     return 1;
@@ -54,7 +60,9 @@ export async function runBuild(request: BuildRequest): Promise<number> {
     const built = path.join(staging, "dist");
     if (fs.existsSync(built)) publish(built, dist);
     if (!definesComponent(orgDir)) {
-      io.out("crewrig build: the organization defines no component (artifacts/org/skills and artifacts/org/agents hold nothing but .gitkeep).");
+      io.out(
+        "crewrig build: the organization defines no component (artifacts/org/skills and artifacts/org/agents hold nothing but .gitkeep).",
+      );
     } else {
       io.out(`crewrig build: compiled the organization components into ${dist}.`);
     }

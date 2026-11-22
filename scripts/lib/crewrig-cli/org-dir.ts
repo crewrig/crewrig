@@ -25,7 +25,10 @@ function isDirectory(target: string): boolean {
 export function checkOrgDir(cwd: string, command: string, flag: string | undefined): OrgDirResult {
   const dir = path.resolve(cwd, flag ?? ".");
   if (!isDirectory(dir)) {
-    return { ok: false, message: `crewrig ${command}: the organization directory ${dir} does not exist.` };
+    return {
+      ok: false,
+      message: `crewrig ${command}: the organization directory ${dir} does not exist.`,
+    };
   }
   const file = path.join(dir, CONFIG_FILE);
   let text: string;
