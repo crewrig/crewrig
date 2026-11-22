@@ -70,7 +70,7 @@
     {"path":"<REPO>/dist/library/.agents","kind":"dir"},
     {"path":"<REPO>/dist/library/.agents/skills","kind":"dir"},
     {"path":"<REPO>/dist/library/.agents/skills/pin-skill","kind":"dir"},
-    {"path":"<REPO>/dist/library/.agents/skills/pin-skill/SKILL.md","kind":"file","mode":"0644","sha256":"1e4d3278b620378065ab3badcd5fdc4876289d833d6be01df1be38c53789a0e9"}
+    {"path":"<REPO>/dist/library/.agents/skills/pin-skill/SKILL.md","kind":"file","mode":"0644","sha256":"cc88758389d6897076b9c912b16bdd9b1cfe26bba69c8a1e73df42a7b803e041"}
   ],
   "bakCount": {},
   "fzf": [
