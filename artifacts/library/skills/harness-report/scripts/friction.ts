@@ -432,7 +432,13 @@ Exit codes: 0 valid, 1 an error finding (the message states the fix), 2 usage er
       return out;
     };
     const isFile = fs.statSync(real).isFile();
-    if (isFile) fill("marker", markerOf(real));
+    if (isFile) {
+      fill("marker", markerOf(real));
+      // A bundled script is attributed to the owning skill's marker (spec 0316 R4).
+      const own = path.dirname(real);
+      if (path.basename(own) === "scripts")
+        fill("marker", markerOf(path.join(own, "..", "SKILL.md")));
+    }
     const complete = (): boolean => keys.every((k) => got[k] !== "");
     let dir = isFile ? path.dirname(real) : real;
     for (;;) {

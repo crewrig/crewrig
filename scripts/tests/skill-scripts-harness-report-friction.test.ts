@@ -359,6 +359,19 @@ describe("friction resolve (spec 0316 R14, R15)", () => {
       feedback: FB,
     });
   });
+  test("a bundled script resolves through the owning skill's SKILL.md marker (R4)", () => {
+    const dir = scratch("r-script");
+    write(
+      path.join(dir, "SKILL.md"),
+      `---\nname: s\nmetadata:\n  provenance:\n    canonical: ${CANON}\n    feedback: ${FB}\n    version: "2.0.0"\n---\n# s\n`,
+    );
+    const f = write(path.join(dir, "scripts", "x.ts"), "export {};\n");
+    const { r, data } = resolveJson([f]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(data?.data.source, "marker");
+    assert.equal(data?.data.fields["canonical"], CANON);
+    assert.equal(data?.data.fields["version"], "2.0.0");
+  });
   test("line markers, html comment and hash", () => {
     const line = `crewrig-provenance: package=p extension=e version=3.0.0 canonical=${CANON} feedback=${FB}`;
     for (const [n, text] of [

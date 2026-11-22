@@ -80,7 +80,7 @@ independent triage.
   cluster; a missing or non-SemVer version is never flagged.
 - Labels are `harness-feedback`, `room:<dominant room>` and `severity:<worst>`. The title carries a Gitmoji
   per dominant room (`tool` 🐛, `process` 📝, `behavior` 🚸, `format` 🎨, `prompt` 💬, other 🔧).
-- A cluster with no resolvable `feedback` or `canonical` is a routing failure: it is reported, never opened blind.
+- A cluster with no resolvable `feedback` or `canonical` is a routing failure: it is reported with the legacy reason key `missing_canonical` (kept for compatibility, it covers both fields) and never opened blind.
 - `--max-issues N` keeps the N highest-ranked clusters (severity, then size, then key) and `--dedup` skips a
   cluster whose key already has an open `harness-feedback` issue.
 

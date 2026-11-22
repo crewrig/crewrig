@@ -852,6 +852,7 @@ def main() -> int:
             routing_failures.append({
                 "cluster_key": cluster_key,
                 "frictions": items,
+                # Legacy key kept for compatibility; covers a cluster with neither feedback nor canonical.
                 "reason": "missing_canonical",
             })
             continue
