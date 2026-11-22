@@ -32,7 +32,15 @@ import {
 } from "./launcher-rig.ts";
 import { makeToolchain, type Toolchain } from "./org-toolchain.ts";
 
-export { gitIn, porcelain, treeDigest, withUpstream, type Upstream } from "./org-toolchain.ts";
+export {
+  daemonFilesUnder,
+  gitIn,
+  hostServices,
+  porcelain,
+  treeDigest,
+  withUpstream,
+  type Upstream,
+} from "./org-toolchain.ts";
 
 export const CLI_NAMES = ["claude", "gemini", "copilot", "antigravity"] as const;
 export type CliName = (typeof CLI_NAMES)[number];

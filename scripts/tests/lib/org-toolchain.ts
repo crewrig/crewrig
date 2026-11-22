@@ -199,3 +199,36 @@ export function withUpstream(rig: Rig, dir: string): Upstream {
     gitClone,
   };
 }
+
+// -------------------------------------------------------------------- the host's service manager
+
+/**
+ * The CrewRig and MemPalace entries of the host's service manager (launchd, systemd user units, the Task
+ * Scheduler), as lines. A run that leaves a unit, a task or a daemon on the host changes this list. When the
+ * manager cannot be queried the list is the single line `unavailable`, the same before and after.
+ */
+export function hostServices(): string[] {
+  const query = (command: string, args: readonly string[]): string[] | undefined => {
+    const run = spawnSync(command, [...args], { encoding: "utf8", timeout: 20_000 });
+    if (run.error !== undefined || run.status !== 0) return undefined;
+    return run.stdout.split(/\r?\n/).filter((line) => /crewrig|mempalace/i.test(line));
+  };
+  const lines =
+    process.platform === "darwin"
+      ? query("/bin/launchctl", ["list"])
+      : process.platform === "win32"
+        ? query("schtasks", ["/Query", "/FO", "LIST"])
+        : query("systemctl", ["--user", "list-units", "--all", "--no-legend", "--no-pager"]);
+  return lines === undefined ? ["unavailable"] : lines.sort();
+}
+
+/** Paths under a home that only an installed daemon, unit or task would create. */
+export function daemonFilesUnder(entries: readonly string[]): string[] {
+  return entries.filter(
+    (entry) =>
+      !entry.startsWith(".crewrig/versions/") &&
+      /(^|\/)(LaunchAgents|systemd|\.mempalace|service|mcp-daemon-launcher[^/]*|service-lib)(\/|$)/.test(
+        entry,
+      ),
+  );
+}
