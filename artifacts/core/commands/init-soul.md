@@ -16,9 +16,10 @@ claude:
   user-invocable: true
 ---
 
-Walk the user through a personalized `config/SOUL.md`, starting from `config/SOUL.md.template`. The
-file governs the agent's tone, decision-making style, values and error-handling philosophy, so every
-change is the user's choice and gets a safety review. A script renders the file and checks its shape.
+Walk the user through a personalized `config/SOUL.md`, starting from the SOUL template named in the
+Template section at the end of this file. The file governs the agent's tone, decision-making style,
+values and error-handling philosophy, so every change is the user's choice and gets a safety review.
+A script renders the file and checks its shape.
 
 ## Interaction rules
 
@@ -35,8 +36,9 @@ change is the user's choice and gets a safety review. A script renders the file 
 1. **Language.** If `config/PROFILE.md` exists, read it for the user's preferred language and hold the
    conversation in it. The SOUL.md itself is always written in English, so translate the user's
    wording faithfully.
-2. **Template.** Read `config/SOUL.md.template`; its sections are Stance, Origin, Understanding,
-   Lineage and Error Handling & Tenacity.
+2. **Template.** Read the template as the Template section at the end of this file says: the
+   organization's own `config/SOUL.md.template` when it exists, otherwise the pinned version's copy,
+   read only. Its sections are Stance, Origin, Understanding, Lineage and Error Handling & Tenacity.
 3. **Each section, one at a time.** Show the current template wording, then ask (`header` = the
    section name): "Accept as-is", "Refine" (you propose a targeted adjustment, such as a more
    assertive tone, and the user approves or tweaks it: "Approve", "Tweak", "Try another angle"), or
@@ -85,4 +87,3 @@ organization may commit its own copy, and otherwise from the pinned version: `no
 prints the path and the content of the template it uses. The template is read only, and `<root>/crewrig.pin.json`
 names the version (its `version` member alone). When neither exists, the script exits `3`: stop and tell the user to run
 `node crewrig setup --cli <name>`, which fetches the pinned version. Nothing is written in that case, not even the personal file.
-
