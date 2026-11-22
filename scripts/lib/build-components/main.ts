@@ -25,10 +25,11 @@
 
 import { createResolveContext } from "../model-resolve.ts";
 import type { ResolveContext } from "../model-resolve.ts";
-import { collidingSources, reportInstalledNameCollisions } from "../component-resolve.ts";
+import { reportInstalledNameCollisions } from "../component-resolve.ts";
 import { extractFrontmatter } from "../render-command.ts";
 import { loadDependency, MissingDependencyError } from "../require-dependency.ts";
 import { joinRoot, parseArgs, resolveRepoDir } from "./args.ts";
+import { collidingSources } from "./collisions.ts";
 import { loadConfig, validateCanonicalRepo } from "./config.ts";
 import { buildAgents } from "./emit-agents.ts";
 import { buildCommands } from "./emit-commands.ts";

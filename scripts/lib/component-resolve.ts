@@ -251,24 +251,6 @@ export function installedTargets(artifactsDir: string): TargetRecord[] {
 }
 
 /**
- * The source files of every component whose installed target another component claims too, sorted and without
- * repeats: the build names them in its refusal (spec 0315 R5). The shell's per-source lines are not changed.
- */
-export function collidingSources(artifactsDir: string | readonly string[]): string[] {
-  const dirs = typeof artifactsDir === "string" ? [artifactsDir] : artifactsDir;
-  const records = dirs.flatMap((dir) => installedTargets(dir));
-  const counts = new Map<string, number>();
-  for (const r of records) {
-    const key = `${r.tierClass}\t${r.installTarget}`;
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  const sources = records
-    .filter((r) => (counts.get(`${r.tierClass}\t${r.installTarget}`) ?? 0) > 1)
-    .flatMap((r) => (r.source === undefined ? [] : [r.source]));
-  return [...new Set(sources)].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
-}
-
-/**
  * `report_installed_name_collisions`, the build's R13 pre-pass. Returns 0 when no
  * two components claim one installed target, 1 otherwise, having reported each
  * offending target through `reportCollision` in code-unit order of
