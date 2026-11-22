@@ -21,3 +21,11 @@ export function runEntry(
     },
   );
 }
+
+/**
+ * The status of `build`, `setup` and `update` (spec 0315 R3): exactly 0, 1 or 2. Any other value is a failure of
+ * the command itself, so no code from 10 to 14 can come from these commands whatever a child process returned.
+ */
+export function commandCode(code: number): 0 | 1 | 2 {
+  return code === 0 || code === 1 || code === 2 ? code : 1;
+}
