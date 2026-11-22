@@ -16,13 +16,16 @@ import type { Interpreters, Run, Shell } from "./windows-proof-support.ts";
 export type Leg = "direct" | Shell;
 
 /**
- * The per-entry time bound: generous, so only a hang or a pathological slowdown fails.
- * Observed (spec 0264 R12): the job log prints no per-entry time, so no per-entry maximum
- * is known; the whole three-leg suite took 17.7 s, 18.0 s and 18.4 s on three green
- * windows-latest runs (2026-10-16: 38950701304, 38954471090, 38942071274), the job being
- * absent from green release-branch runs. Value unchanged.
+ * The per-entry hang guard (spec 0264 R12, as amended by delta-02): an entry passes only when it
+ * returns in strictly less than 30 s. It is not a budget. The entry `scripts/e2e-capture-versions.ts`
+ * waits on five sequential `docker image inspect` calls against the runner's Docker engine: run
+ * 44184175477, attempt 1, took 10 019 ms on it, and the whole three-leg suite took 27.6 s, against
+ * 17.7 to 18.4 s on the October green runs. An entry that never returns is stopped by the job's
+ * `timeout-minutes`, not by this bound. Observed per-entry maximum (spec 0264 R21): 3 576 ms, that
+ * same entry on the `direct` leg, the first to reach a cold Docker engine (573 ms on `pwsh`); no
+ * other entry exceeded 520 ms (green windows-latest run 45049668533, 2026-11-22, 39 entries).
  */
-export const BOUND_MS = 10_000;
+export const BOUND_MS = 30_000;
 
 export interface Ctx {
   readonly leg: Leg;
@@ -77,10 +80,22 @@ export function run(
   });
 }
 
-/** Assert `body` on a run; a failure, a thrown mismatch or a blown time bound is recorded, never thrown. */
+/** The timing line of spec 0264 R21: one per checked run, on a pass or a failure; same prefix as `runLeg`. */
+export function timingLine(leg: Leg, r: Run): string {
+  return `windows-e2e-harness: ${leg}: ${r.entry}: ${r.ms} ms`;
+}
+
+/**
+ * Log the run's timing line, then assert `body` on it; a failure, a thrown mismatch or a blown time
+ * bound is recorded, never thrown.
+ */
 export function check(c: Ctx, r: Run, body: (r: Run) => void): void {
+  console.log(timingLine(c.leg, r));
   try {
-    assert.ok(r.ms < BOUND_MS, why(r, `took ${r.ms} ms, over the ${BOUND_MS} ms bound`));
+    assert.ok(
+      r.ms < BOUND_MS,
+      why(r, `took ${r.ms} ms, reached or exceeded the ${BOUND_MS} ms bound`),
+    );
     body(r);
   } catch (e) {
     c.failures.push(`[${c.leg}] ${(e as Error).message}\n${r.detail}`);
