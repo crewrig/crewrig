@@ -9,8 +9,9 @@
 # A mapped line `<archive-path> <- <source>` ships one git-tracked file (no `dist/` exemption) under another
 # archive path; two entries that give one archive path from different sources fail the build (spec 0315 R11).
 #
-# First manifest: what `setup` reads and the hooks it wires. The bundled command-line entry points
-# join it in the pull requests of WP3 and WP4.
+# What `setup` reads and the hooks it wires (spec 0256, spec 0288 R8). The commands of the organization config
+# repository, `init` (WP3) and `build`, `setup` and `update` (WP4, spec 0315), are served by the entry point and
+# the modules of its closure, listed below.
 
 # Rules (artifacts/core/rules, the store of system-context and the Claude profiles `setup` installs).
 artifacts/core/rules

@@ -92,6 +92,8 @@ re-run setup:
 export CREWRIG_TLS_CA=/path/to/corporate-ca.pem
 ```
 
+Under `node crewrig setup` of an organization config repository, set `NODE_EXTRA_CA_CERTS` or `SSL_CERT_FILE` instead, not `CREWRIG_TLS_CA`, because the three organization commands strip the latter (spec 0315 R12).
+
 ## How trust reaches the framework's runtime (inheritance model)
 
 Processes the framework spawns **inherit the environment** of the parent
