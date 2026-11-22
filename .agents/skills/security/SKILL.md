@@ -5,9 +5,10 @@ license: Apache-2.0
 compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts). npm and pip-audit are optional: only dep-audit.ts needs them, and it exits 3 without the one an ecosystem needs."
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.2.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.0"
 ---
 
 

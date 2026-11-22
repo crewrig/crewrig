@@ -5,9 +5,10 @@ license: Apache-2.0
 compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts). actionlint and act are optional: the checks that need them are skipped, and reported as skipped, when they are missing."
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.4.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.4.0"
 ---
 
 

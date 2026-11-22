@@ -4,7 +4,7 @@ description: "Implementation agent that makes a code change with the smallest co
 model: gemini-3.5-flash-lite
 tools: [read_file, read_many_files, list_directory, grep_search, glob, write_file, replace, run_shell_command, activate_skill]
 ---
-<!-- crewrig-provenance: version="1.6.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: package="crewrig" version="1.6.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Developer Agent
 

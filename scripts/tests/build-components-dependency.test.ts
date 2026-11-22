@@ -137,6 +137,7 @@ describe("the premises of loadDependency the fixture trees rest on (R4)", { skip
     const inner = "nested";
     fs.cpSync(outer.resolve("scripts"), outer.resolve(`${inner}/scripts`), { recursive: true });
     outer.write(`${inner}/crewrig.config.toml`, CONFIG);
+    outer.write(`${inner}/package.json`, '{ "name": "crewrig" }\n');
     outer.write(`${inner}/artifacts/core/skills/inner/SKILL.md`, skill("inner"));
     const res = outer.run(["--target", "claude"], {
       entry: `${inner}/scripts/build-components.ts`,

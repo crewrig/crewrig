@@ -9,8 +9,9 @@
 //   1. `--list-output-dirs`          the nine declared directories, exit 0;
 //   2. `--target all --check`        on this checkout: exit 0 and the line
 //                                    `OK: All generated files match source.`;
-//   3. a build into a throwaway `REPO_DIR` made of the committed `artifacts/`, `model-mappings/`
-//      and `crewrig.config.toml` (the write path, which `--check` never exercises);
+//   3. a build into a throwaway `REPO_DIR` made of the committed `artifacts/`, `model-mappings/`,
+//      `crewrig.config.toml` and a minimal `package.json` (the build reads its `name` for the
+//      provenance marker); this is the write path, which `--check` never exercises;
 //   4. every file of the four committed trees under the declared directories equals the file
 //      the throwaway build wrote, byte for byte, and the two sets of files are the same (the
 //      checkout is LF everywhere: `.gitattributes`).
@@ -131,6 +132,7 @@ function buildStep(root: string): void {
   for (const input of INPUTS) {
     fs.cpSync(path.join(REPO, input), path.join(root, input), { recursive: true });
   }
+  fs.writeFileSync(path.join(root, "package.json"), `${JSON.stringify({ name: "crewrig" })}\n`);
   const res = entry(["--target", "all"], root);
   if (res.status !== 0)
     fail(`the build into ${root} exited ${res.status}: ${res.stderr.slice(-600)}`);

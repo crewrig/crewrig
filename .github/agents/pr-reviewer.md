@@ -4,9 +4,10 @@ description: "Delegate to review a pull request or a spec pull request cold, wit
 tools: [read, search, edit, execute]
 metadata:
   provenance:
+    package: "crewrig"
+    version: "2.2.1"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "2.2.1"
 ---
 
 

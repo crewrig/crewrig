@@ -5,9 +5,10 @@ license: Apache-2.0
 compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts)."
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.2.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.0"
 ---
 
 

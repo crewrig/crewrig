@@ -7,9 +7,10 @@ tools: Read, Grep, Glob, Edit, Write, Bash, Skill
 omitClaudeMd: true
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.7.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.7.0"
 ---
 
 

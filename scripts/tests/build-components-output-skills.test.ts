@@ -160,7 +160,7 @@ describe("provenance (R12; spec Scenario 9)", () => {
     '    version: "1.2.3"',
   ];
   const block =
-    'metadata:\n  provenance:\n    canonical: "https://example.test/o/r"\n    feedback: "https://example.test/o/f"\n    version: "1.2.3"\n';
+    'metadata:\n  provenance:\n    package: "crewrig"\n    version: "1.2.3"\n    canonical: "https://example.test/o/r"\n    feedback: "https://example.test/o/f"\n';
 
   test("spliced before the closing --- of a skill, a command (Claude and others), placeholders resolved after", () => {
     const tree = build({
@@ -178,7 +178,7 @@ describe("provenance (R12; spec Scenario 9)", () => {
     assert.equal(tree.read(".gemini/skills/s/SKILL.md").split("---\n")[1]?.endsWith(block), true);
     assert.match(
       tree.read(".gemini/commands/c.toml"),
-      /^# crewrig-provenance: version="1\.2\.3" canonical="https:\/\/example\.test\/o\/r" feedback="https:\/\/example\.test\/o\/f"\ndescription = /,
+      /^# crewrig-provenance: package="crewrig" version="1\.2\.3" canonical="https:\/\/example\.test\/o\/r" feedback="https:\/\/example\.test\/o\/f"\ndescription = /,
     );
   });
 

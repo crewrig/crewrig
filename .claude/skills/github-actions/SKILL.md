@@ -11,9 +11,10 @@ allowed-tools:
 user-invocable: true
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.4.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.4.0"
 ---
 
 

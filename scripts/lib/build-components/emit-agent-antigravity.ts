@@ -23,6 +23,7 @@ import type { ToolClass } from "./agent-tools.ts";
 import { emitDiagLine } from "./diagnostics.ts";
 import { reconcileRetiredAgentDir } from "./retire-agent.ts";
 import { markdownFile } from "./tiers.ts";
+import { provenanceFields } from "./provenance.ts";
 import { checkOrWrite } from "./write.ts";
 import { BuildFailure } from "./types.ts";
 import type { Ctx, SourceDoc } from "./types.ts";
@@ -64,6 +65,12 @@ export function emitAntigravityAgent(ctx: Ctx, model: ResolveContext, job: Agent
   }
 
   const target = joinRoot(ctx.platform, job.outRoot, `.agents/agents/${name}.md`);
-  checkOrWrite(ctx, target, markdownFile(frontmatter, job.body), source, job.outRoot);
+  checkOrWrite(
+    ctx,
+    target,
+    markdownFile(frontmatter, job.body),
+    provenanceFields(source, ctx.config, ctx.packageName),
+    job.outRoot,
+  );
   reconcileRetiredAgentDir(ctx, job.outRoot, name);
 }

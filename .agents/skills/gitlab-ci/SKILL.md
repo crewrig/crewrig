@@ -5,9 +5,10 @@ license: Apache-2.0
 compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts). glab is optional: only lint-gitlab-ci.ts needs it, and it reports exit 3 without it."
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.3.1"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.3.1"
 ---
 
 
