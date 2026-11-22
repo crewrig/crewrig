@@ -10,7 +10,7 @@
 
 import type { JsonObject } from "../hook-config.ts";
 import type { HookCommandParse } from "../hook-recognition.ts";
-import { isUnresolvablePath, isUnsafePath, type CaptureShape } from "./usage-capture-state.ts";
+import { isUnsafePath, type CaptureShape } from "./usage-capture-state.ts";
 
 /** The paths `keep` judged: live (an existing file) and vanished (absolute, expansion-free, missing). */
 export interface PathLists {
@@ -116,12 +116,14 @@ export interface ClassifiedPaths extends PathLists {
 export function classifyPaths(
   paths: readonly string[],
   isFile: (p: string) => boolean,
+  isAbsolute: (p: string) => boolean = (p) => p.startsWith("/"),
 ): ClassifiedPaths {
   const live: string[] = [];
   const vanished: string[] = [];
   let target = "";
   for (const p of paths.flatMap((x) => x.split("\n"))) {
-    if (p === "" || isUnresolvablePath(p)) continue;
+    // The shell's rule (relative, or holding $ or a backtick), with the absolute form of the platform (spec 0256 r30).
+    if (p === "" || !isAbsolute(p) || /[$`]/.test(p)) continue;
     if (isFile(p)) {
       live.push(p);
       if (target === "" && !isUnsafePath(p)) target = p;

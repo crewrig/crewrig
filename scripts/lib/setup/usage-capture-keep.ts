@@ -7,6 +7,8 @@
 // after `keep` is hooks-rewrite.ts / hook-rewrite.ts, not this module. Layer 3.
 // The fragment, the capture script paths and the Node.js floor guard are usage-capture-fragment.ts.
 
+import path from "node:path";
+
 import { writeJsonConfig, type JsonObject } from "../hook-config.ts";
 import { USAGE_CAPTURE } from "../hook-descriptor.ts";
 import { parseHandler } from "../hook-recognition.ts";
@@ -95,9 +97,11 @@ export function usageCaptureKeep(options: KeepOptions): number {
   // checkout run judges every live file as before (spec 0256 requirement 30).
   const otherVersion = (p: string): boolean =>
     ctx.org !== undefined && isOtherCachedVersionPath(p, ctx.home, repoDir);
+  const absolute = ctx.platform === "win32" ? path.win32.isAbsolute : path.posix.isAbsolute;
   const lists = classifyPaths(
     [...new Set(registered)],
     (p) => isRegularFile(p) && !otherVersion(p),
+    absolute,
   );
   const target = lists.target === "" ? abs : lists.target;
   const plan: KeepPlan = {
