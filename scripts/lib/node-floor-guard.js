@@ -1,10 +1,11 @@
 // node-floor-guard.js — Node.js floor guard (spec 0240 R1-R3, R16).
 //
-// Plain ES5 CommonJS on purpose: it must parse and run on Node.js releases
-// that cannot strip TypeScript types, so it uses no `const`/`let`, no arrow
-// function, no template literal and no `import`. It imports nothing — not even
-// a built-in module — and touches no file, so a rejected release leaves the
-// disk exactly as it found it.
+// Plain ES5 on purpose: it must parse and run on Node.js releases that cannot
+// strip TypeScript types, so it uses no `const`/`let`, no arrow function, no
+// template literal and no `import`. It imports nothing — not even a built-in
+// module — and touches no file, so a rejected release leaves the disk exactly
+// as it found it. It runs unchanged as CommonJS (typeless root) and as an ES
+// module (archive root with "type": "module"), where the export is skipped.
 //
 // Two ways to use it:
 //   node scripts/lib/node-floor-guard.js   exits 1 with one diagnostic line on
@@ -55,4 +56,8 @@ if (!verdict.ok) {
   process.exit(1);
 }
 
-module.exports = { FLOOR: FLOOR, evaluate: evaluate };
+// Under an ES-module root (the archive root of spec 0315 R11) `module` is not defined and the file runs as an
+// ES module: the check above still decides, and only the export is skipped.
+if (typeof module === "object" && module !== null) {
+  module.exports = { FLOOR: FLOOR, evaluate: evaluate };
+}
