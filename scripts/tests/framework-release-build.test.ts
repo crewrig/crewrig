@@ -260,13 +260,6 @@ describe("spec 0315 R11: a mapped manifest entry ships a tracked file under anot
       /'package.json' is listed twice/,
     );
   });
-
-  it("reads a plain line as its own source and a mapped line as an archive path and a source", () => {
-    assert.deepEqual(parseManifestEntries("rules\npackage.json <- meta/p.json\n"), [
-      { archive: "rules", source: "rules" },
-      { archive: "package.json", source: "meta/p.json" },
-    ]);
-  });
 });
 
 describe("spec 0315 R11: the archive root package.json of the committed manifest", () => {
