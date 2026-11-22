@@ -39,6 +39,17 @@ export interface Io {
   errRaw(text: string): void;
 }
 
+/**
+ * The three trees of a two-root build (spec 0315 R5, R6): framework data is read from `framework`
+ * (the pinned version), the organization's configuration and components from `source` (the
+ * organization directory), and every output is written beneath `out`.
+ */
+export interface BuildRoots {
+  readonly framework: string;
+  readonly source: string;
+  readonly out: string;
+}
+
 /** What the entry hands `main` (the contract of `main.ts`, written by the second developer). */
 export interface MainInput {
   /** `process.argv.slice(2)`. */
@@ -48,6 +59,13 @@ export interface MainInput {
   /** The entry file's own path (`__filename`): `REPO_DIR` defaults to its physical grandparent. */
   readonly entryFile: string;
   readonly io: Io;
+  /**
+   * Two-root mode. Without it the build reads one tree, `REPO_DIR` or the entry file's grandparent,
+   * as the checkout does. With it `REPO_DIR` and the entry file are not read at all (spec 0315 R5).
+   */
+  readonly roots?: BuildRoots;
+  /** The injected YAML namespace (js-yaml); absent, the library is loaded from the dependency step. */
+  readonly yaml?: unknown;
 }
 
 /** The parsed command line. Every field twins one shell global of `:30-45`. */
@@ -130,8 +148,10 @@ export interface BaseCtx {
   readonly opts: BuildOptions;
   /** `REPO_DIR`, verbatim (a trailing slash is kept: printed paths are `root + "/" + rel`). */
   readonly repoDir: string;
-  /** `<repoDir>/artifacts`. */
+  /** `<repoDir>/artifacts`; in two-root mode the organization's `artifacts/`, the tier source. */
   readonly artifactsDir: string;
+  /** The framework's `artifacts/`, which holds the shared fragments and references (equal to `artifactsDir` in a checkout). */
+  readonly frameworkArtifactsDir: string;
   readonly env: Env;
   readonly platform: NodeJS.Platform;
   readonly io: Io;

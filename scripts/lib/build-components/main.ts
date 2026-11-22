@@ -62,7 +62,8 @@ function banner(ctx: Ctx): void {
 
 /** The R13 pre-pass: false (after the refusal text) when two components claim one name. */
 function namesAreFree(ctx: Ctx): boolean {
-  const clean = reportInstalledNameCollisions(ctx.artifactsDir, (text) => ctx.io.errRaw(text));
+  const dirs = [...new Set([ctx.frameworkArtifactsDir, ctx.artifactsDir])];
+  const clean = reportInstalledNameCollisions(dirs, (text) => ctx.io.errRaw(text));
   if (clean === 0) return true;
   ctx.io.err("FAILED: two components would be installed under one name into one landing zone.");
   ctx.io.err("        Rename one of them, or move one to a tier with a different landing zone.");
@@ -113,20 +114,27 @@ export async function main(input: MainInput): Promise<number> {
     return 0;
   }
 
-  let yamlNamespace: unknown;
-  try {
-    yamlNamespace = await loadDependency("js-yaml");
-  } catch (error) {
-    if (!(error instanceof MissingDependencyError)) throw error;
-    io.err(error.message);
-    return 1;
+  let yamlNamespace: unknown = input.yaml;
+  if (yamlNamespace === undefined) {
+    try {
+      yamlNamespace = await loadDependency("js-yaml");
+    } catch (error) {
+      if (!(error instanceof MissingDependencyError)) throw error;
+      io.err(error.message);
+      return 1;
+    }
   }
   const fm = createFrontmatter(yamlNamespace);
-  const repoDir = resolveRepoDir(env, input.entryFile);
+  const roots = input.roots;
+  // Two-root mode: the output routing takes `out`, framework data `framework`, configuration `source`.
+  const repoDir = roots === undefined ? resolveRepoDir(env, input.entryFile) : roots.out;
+  const frameworkDir = roots?.framework ?? repoDir;
+  const sourceDir = roots?.source ?? repoDir;
   const base: BaseCtx = {
     opts,
     repoDir,
-    artifactsDir: joinRoot(platform, repoDir, "artifacts"),
+    artifactsDir: joinRoot(platform, sourceDir, "artifacts"),
+    frameworkArtifactsDir: joinRoot(platform, frameworkDir, "artifacts"),
     env,
     platform,
     io,
@@ -135,7 +143,7 @@ export async function main(input: MainInput): Promise<number> {
     state: { driftFound: false, compare: true, stagingRoot: "" },
   };
   const model = createResolveContext({
-    repoDir,
+    repoDir: frameworkDir,
     yaml: fm.yaml,
     extractFrontmatter,
     env,
@@ -147,7 +155,7 @@ export async function main(input: MainInput): Promise<number> {
   try {
     if (opts.resolve !== null) return runResolveArm(base, model);
 
-    const config = loadConfig(repoDir, platform, io);
+    const config = loadConfig(sourceDir, platform, io);
     validateCanonicalRepo(config);
     const ctx: Ctx = { ...base, config };
     banner(ctx);

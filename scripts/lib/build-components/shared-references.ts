@@ -58,7 +58,11 @@ export function propagateSharedReferences(
     );
   const topics = citedTopics(body);
   for (const topic of topics) {
-    const src = joinRoot(ctx.platform, ctx.artifactsDir, `core/shared/references/${topic}.md`);
+    const src = joinRoot(
+      ctx.platform,
+      ctx.frameworkArtifactsDir,
+      `core/shared/references/${topic}.md`,
+    );
     if (!isRegularFile(src))
       throw new BuildFailure(
         `Error: ${escapeControl(skillDir)} cites references/shared-${topic}.md, but ${escapeControl(src)} does not exist`,

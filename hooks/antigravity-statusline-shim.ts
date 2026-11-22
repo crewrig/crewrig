@@ -31,7 +31,9 @@ void (async () => {
   try {
     const fs = process.getBuiltinModule("node:fs") as typeof import("node:fs");
     const path = process.getBuiltinModule("node:path") as typeof import("node:path");
-    const { spawn } = process.getBuiltinModule("node:child_process") as typeof import("node:child_process");
+    const { spawn } = process.getBuiltinModule(
+      "node:child_process",
+    ) as typeof import("node:child_process");
     const cursor = (await import("../scripts/lib/usage-capture/cursor.js"))
       .default as typeof import("../scripts/lib/usage-capture/cursor.js");
 

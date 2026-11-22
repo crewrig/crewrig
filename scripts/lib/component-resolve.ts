@@ -250,10 +250,11 @@ export function installedTargets(artifactsDir: string): TargetRecord[] {
  * `<tier-class><TAB><install-target>` (the shell's `sort | uniq -d` under the C locale).
  */
 export function reportInstalledNameCollisions(
-  artifactsDir: string,
+  artifactsDir: string | readonly string[],
   sink: TextSink = stderrSink,
 ): 0 | 1 {
-  const records = installedTargets(artifactsDir);
+  const dirs = typeof artifactsDir === "string" ? [artifactsDir] : artifactsDir;
+  const records = dirs.flatMap((dir) => installedTargets(dir));
   const counts = new Map<string, number>();
   for (const record of records) {
     const key = `${record.tierClass}\t${record.installTarget}`;

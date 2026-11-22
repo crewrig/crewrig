@@ -64,7 +64,7 @@ function violation(text: string): string | null {
 export function loadConventions(ctx: Ctx): ConventionsBlock {
   const memo = ctx.state.conventions;
   if (memo !== undefined) return memo;
-  const file = path.join(ctx.artifactsDir, "core", "fragments", "subagent-conventions.md");
+  const file = path.join(ctx.frameworkArtifactsDir, "core", "fragments", "subagent-conventions.md");
   let text: string;
   try {
     text = fs.readFileSync(file, "utf8");
