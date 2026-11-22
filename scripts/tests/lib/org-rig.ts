@@ -10,6 +10,7 @@
 //   - a digest of a directory tree (paths, bytes, modes) to prove that the version root stays read-only;
 //   - the archive builder for a second version, and git repositories that play the organization's upstream.
 
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -89,6 +90,24 @@ export const IGNORE_TEXT = "config/SOUL.md\nconfig/PROFILE.md\ndist/\n";
 
 const archives = new Map<string, Archive>();
 
+/**
+ * `setup` refuses a version root without its built library tier (`dist/library`), the git-ignored output of
+ * `node scripts/build-components.ts`. A fresh checkout (the CI jobs run none of the build) has none, so the
+ * archive builder runs the build once, which takes under a second.
+ */
+function ensureBuiltTier(): void {
+  if (fs.existsSync(path.join(REPO, "dist", "library", ".claude"))) return;
+  const run = spawnSync(
+    process.execPath,
+    [
+      "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+      path.join(REPO, "scripts", "build-components.ts"),
+    ],
+    { cwd: REPO, encoding: "utf8" },
+  );
+  if (run.status !== 0) throw new Error(`build-components.ts failed: ${run.stdout}${run.stderr}`);
+}
+
 export interface ArchiveVariant {
   /** Archive path to the content that replaces (or adds) that file. */
   readonly replace?: Readonly<Record<string, string>>;
@@ -111,6 +130,7 @@ export function archiveOfVersion(version: string, variant: ArchiveVariant = {}):
   process.once("exit", () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
+  ensureBuiltTier();
   stageJsYaml(REPO);
   const target = path.join(dir, `crewrig-${version}.tgz`);
   const removed = new Set(variant.remove ?? []);
