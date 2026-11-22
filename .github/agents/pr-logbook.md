@@ -4,9 +4,10 @@ description: "Delegate to compose or update a PR title and body, a logbook entry
 tools: [read, search, edit, execute]
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.5.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.5.0"
 ---
 
 

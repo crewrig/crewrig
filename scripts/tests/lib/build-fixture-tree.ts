@@ -65,6 +65,12 @@ export function seedConventionsFragment(root: string): void {
   fs.writeFileSync(target, conventionsFragment());
 }
 
+/** Give a root the `package.json` the build reads for the marker's `package` field (spec 0316 R2). */
+export function seedPackageJson(root: string): void {
+  fs.mkdirSync(root, { recursive: true });
+  fs.writeFileSync(path.join(root, "package.json"), '{ "name": "crewrig" }\n');
+}
+
 interface LockEntry {
   dependencies?: Record<string, string>;
   optionalDependencies?: Record<string, string>;

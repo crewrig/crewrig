@@ -104,7 +104,7 @@ describe("nothing before the block changes (R7)", () => {
     assert.equal(
       t.read(".gemini/agents/ag.md"),
       '---\nname: ag\ndescription: "An agent."\n---\n' +
-        '<!-- crewrig-provenance: version="1.0" canonical="https://example.test/o/r" feedback="" -->\nAgent body.\n' +
+        '<!-- crewrig-provenance: package="crewrig" version="1.0" canonical="https://example.test/o/r" -->\nAgent body.\n' +
         `\n${F}`,
     );
     // Antigravity gains the vendor all-tools line (spec 0291 delta 03 R40); nothing else moves.

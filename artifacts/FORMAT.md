@@ -502,6 +502,14 @@ setting:
   `extensions/org`) use `feedback: "${FEEDBACK_REPO}"`, so a fork's own
   components route feedback to the fork's configured `feedback_repo`.
 
+The build adds one field to the generated marker that a source never carries:
+`package`, the `name` of the repository's root `package.json`. It is written
+first (`package, extension, version, canonical, feedback`), in every generated
+skill, agent and command on all four CLIs, and only for a source that has a
+`metadata.provenance:` block. Authors never write it: a `package` key in a
+source is dropped and replaced, and a `package.json` without a `name` fails the
+build. The marker bytes are written by `scripts/lib/provenance-marker.ts`.
+
 ### Placeholder resolution
 
 `${SHELL_LIKE}` placeholders are resolved at **build time** by

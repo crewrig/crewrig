@@ -3,7 +3,7 @@ name: security
 description: "Delegate to it for an independent security review: a threat model, attack surface or trust boundary analysis, a review of authentication, authorization, session handling, secrets, a credential leak, cryptography, deserialization, input validation or SSRF, or a dependency audit, CVE check or dependency upgrade review. It returns findings and edits no file unless explicitly asked. Not for applying fixes (developer) or authoring pipelines (ci-configurator)."
 model: gemini-4-argon
 ---
-<!-- crewrig-provenance: version="1.5.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: package="crewrig" version="1.5.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Security Agent
 
