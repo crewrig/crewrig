@@ -4,9 +4,10 @@ description: "Delegate to it for an independent security review: a threat model,
 tools: [read_file, edit_file, write_file, run_command, manage_task, search_web]
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.5.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.5.0"
 ---
 
 

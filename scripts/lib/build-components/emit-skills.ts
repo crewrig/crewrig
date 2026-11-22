@@ -24,6 +24,7 @@ import {
   present,
   selects,
 } from "./tiers.ts";
+import { provenanceFields } from "./provenance.ts";
 import { checkOrWrite, isRegularFile } from "./write.ts";
 import type { CliId, Ctx, SourceDoc } from "./types.ts";
 
@@ -85,7 +86,7 @@ export function buildSkills(ctx: Ctx, tier: string, tierDir: string, outRoot: st
         ctx,
         joinRoot(ctx.platform, outDir, "SKILL.md"),
         markdownFile(frontmatter, body),
-        source,
+        provenanceFields(source, ctx.config, ctx.packageName),
         outRoot,
       );
       propagateSkillResources(ctx, skillDir, outDir, outRoot);

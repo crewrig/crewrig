@@ -4,7 +4,7 @@ description: "Delegate to draft an ADR or RFC, run a design review, weigh altern
 model: gemini-4-argon
 tools: [read_file, read_many_files, list_directory, grep_search, glob, write_file, replace, run_shell_command, activate_skill]
 ---
-<!-- crewrig-provenance: version="2.2.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: package="crewrig" version="2.2.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Architect Agent
 

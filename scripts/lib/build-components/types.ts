@@ -144,6 +144,8 @@ export interface BaseCtx {
 /** The build context: the base plus the configuration read after the `--resolve` arm. */
 export interface Ctx extends BaseCtx {
   readonly config: Config;
+  /** The root `package.json` `name`, written as the `package` field of every marker (spec 0316 R2). */
+  readonly packageName: string;
 }
 
 /**
