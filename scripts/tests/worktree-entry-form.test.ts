@@ -48,9 +48,15 @@ function code(file: string): string {
     .join("\n");
 }
 
+/** The lines after the leading authored provenance block comment (spec 0316 R12). */
+function withoutLeadingBlock(text: string): string[] {
+  const lines = text.split("\n");
+  return lines[0] === "/*" ? lines.slice(lines.indexOf("*/") + 1) : lines;
+}
+
 describe("entry form (R10, R25)", () => {
   for (const entry of ENTRIES) {
-    const lines = fs.readFileSync(path.join(REPO, entry), "utf8").split("\n");
+    const lines = withoutLeadingBlock(fs.readFileSync(path.join(REPO, entry), "utf8"));
 
     test(`${entry}: no module syntax or global declaration at column 0`, () => {
       const offending = lines.filter((line) =>
