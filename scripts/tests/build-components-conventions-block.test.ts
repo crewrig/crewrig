@@ -115,7 +115,7 @@ describe("nothing before the block changes (R7)", () => {
         t.read(f),
         '---\nname: ag\ndescription: "An agent."\n' +
           (f.startsWith(".agents") ? AGY_TOOLS : "") +
-          'metadata:\n  provenance:\n    canonical: "https://example.test/o/r"\n    version: "1.0"\n---\n\nAgent body.\n' +
+          'metadata:\n  provenance:\n    package: "crewrig"\n    version: "1.0"\n    canonical: "https://example.test/o/r"\n---\n\nAgent body.\n' +
           `\n${F}`,
         f,
       );

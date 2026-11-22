@@ -65,10 +65,18 @@ export function seedConventionsFragment(root: string): void {
   fs.writeFileSync(target, conventionsFragment());
 }
 
-/** Give a root the `package.json` the build reads for the marker's `package` field (spec 0316 R2). */
+/**
+ * Give a root the `package.json` the build reads for the marker's `package` field (spec 0316 R2).
+ * An existing manifest is kept (its `dependencies` may be staged by the caller): only `name` is merged in.
+ */
 export function seedPackageJson(root: string): void {
   fs.mkdirSync(root, { recursive: true });
-  fs.writeFileSync(path.join(root, "package.json"), '{ "name": "crewrig" }\n');
+  const file = path.join(root, "package.json");
+  const manifest: Record<string, unknown> = fs.existsSync(file)
+    ? (JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, unknown>)
+    : {};
+  manifest.name = "crewrig";
+  fs.writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
 interface LockEntry {
