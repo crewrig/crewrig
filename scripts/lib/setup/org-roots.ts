@@ -4,6 +4,8 @@
 // components are the overlay tier `org`, compiled into `ctx.org.staging` before the run. Without `org` every
 // path resolves under `ctx.repoDir`, as in a checkout.
 
+import path from "node:path";
+
 import type { SetupCtx } from "./context.ts";
 
 /** The `config/` entries that belong to the organization: its identity, its tools and its choice catalogs. */
@@ -27,6 +29,19 @@ export function isOrganizationOwned(rel: string): boolean {
 export function isPersonalFile(rel: string): boolean {
   const posix = rel.replaceAll("\\", "/");
   return posix === "config/SOUL.md" || posix === "config/PROFILE.md";
+}
+
+/**
+ * Whether `p` is a file of another version of the framework in the cache (spec 0315 R6): under
+ * `<home>/.crewrig/versions/` but outside `repoDir`, the running version root. Such a file may still exist after
+ * an update moved the pin, so a hook registered at it is not this run's hook.
+ */
+export function isOtherCachedVersionPath(p: string, home: string, repoDir: string): boolean {
+  const inside = (dir: string): boolean => {
+    const rel = path.relative(dir, p);
+    return rel !== "" && rel.split(path.sep)[0] !== ".." && !path.isAbsolute(rel);
+  };
+  return inside(path.join(home, ".crewrig", "versions")) && !inside(repoDir);
 }
 
 /** The root that a source path of a setup step is read from. */

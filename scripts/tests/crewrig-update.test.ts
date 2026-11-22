@@ -132,28 +132,53 @@ describe("R9: a clean pull and a pin that moves to a second archive", () => {
     );
   });
 
-  // DEFECT (reported to the developer, not patched): with the default answer `keep`, the usage-capture handler
-  // registered at the old version root is a live path, so usage-capture-keep.ts (classifyPaths, lines 93-96) keeps
-  // it and the hook still names the old version after the update. Spec 0315 R6 and the scenario "update picks up
-  // a new pin" require every hook that setup writes to name the running version root.
-  test(
-    "the usage-capture hook also names the new version after update",
-    { todo: "defect: usage-capture-keep keeps a live old-version path" },
-    async () => {
-      const { world, up, clone } = await cloneWithSetup();
-      world.server.route(assetPath(SECOND.version), serveBytes(fs.readFileSync(SECOND.file)));
-      authorCommit(up, { "crewrig.pin.json": pinText(SECOND) }, "move the pin");
+  // With the default answer `keep`, the usage-capture handler registered at the old version root is judged
+  // vanished (another cached version, usage-capture-keep.ts), so it is re-pointed at the running version. Spec 0315
+  // R6 requires every hook that setup writes to name the running version root.
+  test("the usage-capture hook also names the new version after update", async () => {
+    const { world, up, clone } = await cloneWithSetup();
+    world.server.route(assetPath(SECOND.version), serveBytes(fs.readFileSync(SECOND.file)));
+    authorCommit(up, { "crewrig.pin.json": pinText(SECOND) }, "move the pin");
 
-      const run = await update(world, clone);
+    const run = await update(world, clone);
 
-      assert.equal(run.code, 0, run.out);
-      const settings = claudeSettings(world);
-      const hook = (version: string): string =>
-        jsonPath(path.join(world.versionRoot(version), "hooks", "usage-capture.ts"));
-      assert.ok(settings.includes(hook("1.0.0-test.2")));
-      assert.ok(!settings.includes(hook("1.0.0-test.1")));
-    },
-  );
+    assert.equal(run.code, 0, run.out);
+    const settings = claudeSettings(world);
+    const hook = (version: string): string =>
+      jsonPath(path.join(world.versionRoot(version), "hooks", "usage-capture.ts"));
+    assert.ok(settings.includes(hook("1.0.0-test.2")));
+    assert.ok(!settings.includes(hook("1.0.0-test.1")));
+  });
+
+  test("a live user-owned usage-capture entry outside the cache is kept by update", async () => {
+    const { world, up, clone } = await cloneWithSetup();
+    const custom = path.join(world.rig.home, "custom-hooks", "usage-capture.ts");
+    fs.mkdirSync(path.dirname(custom), { recursive: true });
+    fs.writeFileSync(custom, "// the user's own capture script\n");
+    const file = path.join(world.rig.home, ".claude", "settings.json");
+    const config = JSON.parse(fs.readFileSync(file, "utf8")) as {
+      hooks: Record<string, { hooks: { command: string }[] }[]>;
+    };
+    const stop = config.hooks["Stop"]?.[0]?.hooks;
+    assert.ok(stop !== undefined, "a Stop group exists");
+    stop.push({ command: `node ${JSON.stringify(custom)} claude-code Stop` } as {
+      command: string;
+    });
+    fs.writeFileSync(file, JSON.stringify(config));
+    authorCommit(up, { "crewrig.pin.json": pinText(SECOND) }, "move the pin");
+    world.server.route(assetPath(SECOND.version), serveBytes(fs.readFileSync(SECOND.file)));
+
+    const run = await update(world, clone);
+
+    assert.equal(run.code, 0, run.out);
+    const settings = claudeSettings(world);
+    assert.ok(settings.includes(jsonPath(custom)), "the user's own entry is kept");
+    assert.ok(
+      !settings.includes(
+        jsonPath(path.join(world.versionRoot(FIRST.version), "hooks", "usage-capture.ts")),
+      ),
+    );
+  });
 
   test("an upstream commit that only changes the .gitignore does not block the pull", async () => {
     const { world, up, clone } = await cloneWithSetup();

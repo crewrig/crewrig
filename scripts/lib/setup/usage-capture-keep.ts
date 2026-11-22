@@ -22,6 +22,7 @@ import {
   type UcDeps,
 } from "./usage-capture-fragment.ts";
 import { keepConfig, keepReport, missingEvents, type KeepPlan } from "./usage-capture-keep-plan.ts";
+import { isOtherCachedVersionPath } from "./org-roots.ts";
 import { classifyPaths } from "./usage-capture-rank.ts";
 import {
   allHandlers,
@@ -89,7 +90,15 @@ export function usageCaptureKeep(options: KeepOptions): number {
     const path = parse(x.handler)?.path;
     return path !== undefined && r5.includes(x.event) ? [path] : [];
   });
-  const lists = classifyPaths([...new Set(registered)], isRegularFile);
+  // A two-root run (spec 0315 R6) replaces a hook of another cached version of the framework: the file exists
+  // until the cache is pruned, but it is not this run's version, so it is judged vanished and re-pointed. A
+  // checkout run judges every live file as before (spec 0256 requirement 30).
+  const otherVersion = (p: string): boolean =>
+    ctx.org !== undefined && isOtherCachedVersionPath(p, ctx.home, repoDir);
+  const lists = classifyPaths(
+    [...new Set(registered)],
+    (p) => isRegularFile(p) && !otherVersion(p),
+  );
   const target = lists.target === "" ? abs : lists.target;
   const plan: KeepPlan = {
     shape,
