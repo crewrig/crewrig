@@ -1,0 +1,150 @@
+---
+id: "0315"
+slug: org-build-setup-update-commands
+status: draft
+complexity: standard
+interaction-mode: INTERMEDIATE
+related-issue: 2114
+version: 1.0.0
+---
+
+# The `build`, `setup` and `update` commands of the organization config repository (WP4 of epic 1822)
+
+## Intent
+
+An organization author, and every user who clones the organization config repository, can run `node crewrig build`, `node crewrig setup` and `node crewrig update` there and get a working CrewRig installation that combines the pinned framework version with the organization's own skills, agents, hooks, teams, roles, levels, identity and rules, without ever cloning the framework. `build` compiles the organization's components and shows the author what would be installed, `setup` installs the framework and the organization content for one CLI from the directory it is run in, and `update` brings the repository up to date, fetches whatever version the repository now pins and installs it, in one command. Personal files (identity and profile) stay on the user's machine and out of the repository, the interview skills that create them work in the cloned repository, and the framework version runs correctly whatever `package.json` happens to sit above the user's cache directory. Each command ends with a code that tells a user at once whether the failure is the command's own or the launcher's, and this spec fixes the command surface, the codes and the archive content that the organization adopts, which are the public surfaces that WP4 completes (spec 0288 R12).
+
+## Requirements
+
+Parent specs: `specs/0288-distribution-model.md` and `specs/0314-org-template-launcher-pin-init.md` (with its delta-01 and delta-02). This spec adds to them and changes none of their requirements: wherever it is silent, 0314 R1 to R11 govern the launcher and 0288 R2 to R9 and R27 apply unchanged. It supplies what 0314 R10, R17, R18 and the *Out of scope* list of 0314 leave to WP4. Pointers read at `origin/release/1822-distribution @ 914caad2` on 2026-11-22. This spec, like every WP4 pull request, lands on `release/1822-distribution` only (0288 R16, R18).
+
+Shared definitions. The **organization directory** is the directory that holds `crewrig.config.toml`; it is the working directory of the command unless `--org-dir` names another. The **version root** is the verified directory of the pinned version under `~/.crewrig/versions/`, the root of the archive. An **organization file** is a path of the organization directory that 0314 R15 creates or that R7 and R8 below name; **framework data** is every other file a command reads, and it comes from the version root only.
+
+1. **R1 (commands).** The framework entry point SHALL serve the commands `build`, `setup` and `update`, in addition to `init` (0314 R5), and SHALL keep refusing any other command, and an invocation with no command, with exit code 2 and its own message that lists the commands. The launcher SHALL NOT change: it forwards these commands like any other (0314 R5).
+2. **R2 (options).** The three commands SHALL accept `--org-dir <path>`, at most once, naming the organization directory (a relative path read from the working directory); without it the working directory is the organization directory. `setup` and `update` SHALL accept `--cli <name>`, with `<name>` one of `claude`, `gemini`, `copilot`, `antigravity`, and `--answer <id>=<value>`, repeatable, with the meaning that spec 0256 gives it for the per-CLI setups. `build` SHALL accept no other option. An unknown option, a missing option value, a repeated `--org-dir` or `--cli`, a `--cli` value outside the list, an absent `--cli` on `setup` or `update` (the message lists the four values), and `--link` (a version directory is a cache, so a link into it is refused; the copy is the only mode) SHALL exit with code 2 and write nothing.
+3. **R3 (exit codes).** Each of the three commands SHALL exit with exactly one of: `0` success; `1` any failure other than a usage error; `2` a usage error (R1, R2). No code from 10 to 14 SHALL ever come from these commands, whatever a child process, a tool or a library ends with, so that a code in that range always identifies the launcher (0314 R10). Every failure SHALL print one message that names the file, path or step at fault, and SHALL NOT print a credential, a signed query string or a stack trace.
+4. **R4 (organization directory check).** Before reading anything else, each command SHALL check that the organization directory exists, that it holds `crewrig.config.toml`, and that the file is valid TOML with the two string keys of 0314 R16. Otherwise it SHALL exit with code 1 naming the directory or the file and the defect, and write nothing. A directory that is not a git work tree SHALL be accepted by `build` and `setup`.
+5. **R5 (`build`).** `build` SHALL compile the components under `artifacts/org/skills/` and `artifacts/org/agents/` of the organization directory for the four CLIs, with the framework data it needs read from the version root, and SHALL write its output beneath `dist/` of the organization directory only: nothing under the version root, under `~/.crewrig/versions/`, or elsewhere in the organization directory (the `.gitignore` entry of R7 excepted). When both homes hold nothing but `.gitkeep`, `build` SHALL exit 0 and say that the organization defines no component; it SHALL NOT create a failure for an empty organization. A component that fails validation SHALL exit with code 1 naming the source file, and SHALL leave the output of the previous successful `build` unchanged. `build` SHALL be repeatable: two runs on unchanged sources leave identical output.
+6. **R6 (`setup`).** `setup --cli <name>` SHALL install the framework and the organization content for that CLI into the user's home and the CLI's configuration, with the result that spec 0256 specifies for a checkout, except that the repository it reads from is the pair of the organization directory and the version root: the choices it offers (teams, roles, levels), the organization identity, rules and tools, the organization's skills, agents and hooks (the output of R5, which `setup` produces itself first, so that no `build` run is required beforehand) come from the organization directory, and the rules, system context, compiled framework skills and agents, hook scripts, CLI settings templates and memory-server service files come from the version root. An organization file that the framework requires and that is absent (`config/ORGANIZATION.md`, `config/TOOLS.md`) SHALL end `setup` with code 1 naming it, before anything is installed. The files `config/SOUL.md` and `config/PROFILE.md` SHALL be read from the organization directory when present, and their absence SHALL NOT fail `setup`. The hook commands that `setup` writes SHALL name the scripts of the version root of the running version, so that a later `setup` from another pinned version rewires them. `setup` SHALL be idempotent: a second run with the same answers changes nothing.
+7. **R7 (personal layers).** `build` and `setup` SHALL ensure that the `.gitignore` of the organization directory holds the lines `config/SOUL.md`, `config/PROFILE.md` and `dist/`, one per line: an absent file is created with those lines; a present file keeps every existing byte and gains the missing lines at its end, each on its own line, preceded by a line feed when the file does not end with one; a present line is never duplicated, reordered, or removed. This is the `.gitignore` that 0314 R17 defers to WP4: `init` stays as 0314 R15 and R17 fix it and creates no `.gitignore`, and the ignore rules reach the repository at the first `build` or `setup`. `build` and `setup` SHALL NOT create `config/SOUL.md` or `config/PROFILE.md`.
+8. **R8 (identity and profile skills).** `setup` SHALL make `config/SOUL.md.template` and `config/PROFILE.md.template` of the version root available at those paths of the organization directory, without replacing a file that exists there, so that an organization's own edited template wins and a user's run never overwrites it. The skills `init-soul` and `init-personal-profile`, run with the organization directory as working directory after `setup`, SHALL find their template there, SHALL write `config/SOUL.md` and `config/PROFILE.md` there, and the result SHALL be ignored by git (R7). Both skills SHALL be installed by `setup` for every CLI of R2 that supports skills.
+9. **R9 (`update`).** `update` SHALL, in this order: (a) require the organization directory to be a git work tree whose current branch has an upstream, and a `crewrig` launcher file at its root, otherwise exit 1 naming what is missing and change nothing; (b) update the checkout with a fast-forward-only pull, git being run directly and not through a shell, and never with a merge, a rebase, a reset, a stash or a clean, so that a diverged branch, a conflict with local changes, an unreachable remote or any other pull failure ends with code 1, the message names the failure, and no step after it runs (the message states that `setup` alone still installs the version already pinned); (c) run the launcher file of the organization directory, with the current Node.js executable and the organization directory as working directory, passing `setup` and the `--cli` and `--answer` options it received, so that the pin file as the pull left it decides the version, fetched and verified by the launcher (0314 R7 to R9) or reused from the cache with no network; (d) exit 0 when that run exits 0. A pull that finds nothing new SHALL still run step (c). When the run of (c) ends with any code other than 0, `update` SHALL exit with code 1; when that code is from 10 to 14 the message SHALL state it as the launcher's own code with its meaning from 0314 R10, and SHALL name `crewrig.pin.json` for 11, so that the launcher's diagnosis reaches the user and the code range stays the launcher's (R3). `update` SHALL NOT modify `crewrig.pin.json`: the pin changes only through a reviewed commit that the pull brings (0288 R4).
+10. **R10 (archive content).** The archive SHALL contain, in addition to what 0314 R18 lists, everything the three commands read from the version root: `config/SOUL.md.template`, `config/PROFILE.md.template`, the directories `config/claude`, `config/gemini` and `config/copilot` (the settings templates), the memory-server service files (`config/launchd`, `config/systemd`, `config/windows`), and every module that `build`, `setup` and `update` load at run time. The framework's own `config/ORGANIZATION.md`, `config/TOOLS.md` and organization-owned directories SHALL stay out of the archive (0314 R18 unchanged). A test SHALL run each of the three commands, and a hook script, from an archive built from the manifest alone, and fail on any missing file.
+11. **R11 (module type, issue 2105).** The archive SHALL contain, at its root, a file `package.json` that is one JSON object with exactly one member, `type`, whose value is `module`, and that is not a copy of the repository's own `package.json`. With any ancestor `package.json` of the version directory (in the user's home, `~/.crewrig` or `~/.crewrig/versions`) declaring `"type": "commonjs"`, declaring `"type": "module"`, declaring no `type`, or absent, the entry point (every command of R1), and every hook script that `setup` wires, run from the version directory SHALL behave identically: same exit code, no module-type error, and no module-type warning on standard error. This completes 0314 R18 for the archive root and leaves 0314 R6 and R12 as they are (R12 bans a `package.json` from the template repository only).
+12. **R12 (no other write, no launcher change).** The commands SHALL write nowhere in the organization directory other than the paths of R5, R7 and R8, SHALL NOT modify `crewrig.pin.json` or `crewrig.config.toml`, and SHALL NOT delete or alter any cached version under `~/.crewrig/versions/`. `setup` MAY write the user-level locations that the per-CLI setups of spec 0256 write today, and no further variable than `CREWRIG_RELEASE_BASE_URL` (0314 R11) SHALL influence the three commands.
+13. **R13 (ADR rows and surfaces).** The implementation PR SHALL complete in place, with exactly these items and one dated line appended to the change log, the rows of the *Public surfaces* table of `docs/adr/0022-distribution-model.md` that read "WP4 part pending", and add no section (the spec-PR edits no ADR):
+    - surface 2, commands: `build`, `setup` and `update` with `--org-dir`, `--cli` and `--answer` and the refusals of R2 (replacing "further commands: WP4 spec, pending");
+    - surface 2, exit codes: `0`, `1` and `2` of the three commands, and the rule that `update` maps a launcher code from 10 to 14 to `1` (R3, R9) (replacing "codes of further commands: WP4 spec, pending");
+    - surface 2, environment variables: the statement that the three commands add none (R12), replacing "any further variable: WP4 spec, pending";
+    - surface 4, organization directories: `config/SOUL.md` and `config/PROFILE.md` (personal, ignored), `config/SOUL.md.template` and `config/PROFILE.md.template`, `.gitignore` with the three lines of R7, and `dist/` as the ignored output of `build`, replacing "any further path the framework reads from them: WP4 spec, pending";
+    - nothing for the archive layout, the module that each command loads, the compiled output's content, or the archive `package.json` (R11): they stay internal (0288 R12).
+14. **R14 (end-to-end tests, 0288 R27).** Tests SHALL cover, on Linux and `windows-latest`, with no network beyond a local server and a local git repository as the upstream, run in a copy of the template whose pin names a locally built archive: `build` on an empty organization and on one with a skill and an agent, and on a defective component (code 1, previous output unchanged); `setup` for each CLI, run twice (idempotent), with an absent `config/ORGANIZATION.md` (code 1, nothing installed), with `--link`, with no `--cli`, and with an unknown option (code 2 each, nothing written); R7 on an absent, a complete, and a partial `.gitignore` (existing bytes kept, no duplicate, a file with no final line feed); `init-soul` and `init-personal-profile` writing their file in the organization directory and git ignoring it; `update` after a commit that moves the pin to a second local archive (the new version is fetched and the hooks are rewired to it), with nothing new to pull, with a diverged branch, with no upstream, with an unreachable remote, with no `crewrig` file, and with a pull that brings a defective pin (code 1, message naming `crewrig.pin.json` and the launcher's code 11) and one that brings a digest the archive does not match (code 1, launcher code 13 named); a check across all of them that no exit code from 10 to 14 occurs; the hostile-`package.json` matrix of R11 for the entry point and one hook; and the closure test of R10.
+
+## Scenarios
+
+### Happy path
+
+**Scenario:** setup installs the organization content from the cloned repository
+
+```text
+Given a clone of an organization config repository whose pin names a cached framework version, with one organization skill and a config/ORGANIZATION.md
+When  the user runs `node crewrig setup --cli claude`
+Then  the organization's teams, roles and levels are offered, the organization skill and the framework content are installed for Claude Code, the hooks name the scripts of the pinned version, the .gitignore holds config/SOUL.md, config/PROFILE.md and dist/, config/SOUL.md.template and config/PROFILE.md.template exist, config/SOUL.md and config/PROFILE.md do not, and the exit code is 0.
+```
+
+**Scenario:** update picks up a new pin and installs it
+
+```text
+Given a clone whose upstream holds a commit that changes crewrig.pin.json to a version that is not cached yet, and a local server serving its archive
+When  the user runs `node crewrig update --cli claude`
+Then  the checkout is fast-forwarded, the launcher fetches and verifies the new version, `setup` runs from it and rewires the hooks to its directory, and the exit code is 0.
+```
+
+**Scenario:** the personal files stay out of the repository
+
+```text
+Given a repository on which `setup` has run, and a user who then runs the init-soul and init-personal-profile skills with the repository as working directory
+When  the user runs `git status`
+Then  config/SOUL.md and config/PROFILE.md exist and are not listed, and the working tree shows no other change than the template files if the organization has not committed them.
+```
+
+**Scenario:** a hostile ancestor package.json does not break the framework
+
+```text
+Given a package.json declaring "type": "commonjs" in the user's home directory and the version directory under ~/.crewrig/versions/
+When  the user runs `node crewrig build` and a wired hook runs
+Then  both behave as with no such file: the same exit code, no module-type error and no warning on standard error, because the archive root holds a package.json with {"type":"module"}.
+```
+
+**Scenario:** build on an empty organization
+
+```text
+Given an organization directory whose artifacts/org/skills and artifacts/org/agents hold only .gitkeep
+When  the author runs `node crewrig build`
+Then  the exit code is 0, a message says that no organization component exists, and the .gitignore holds the three lines of R7.
+```
+
+### Failure path
+
+**Scenario:** update stops when the pull fails
+
+```text
+Given a clone whose branch has diverged from its upstream
+When  the user runs `node crewrig update --cli claude`
+Then  the exit code is 1, the message names the failed pull and says that `setup` alone installs the pinned version already present, no setup ran, and no file was merged, reset or stashed.
+```
+
+**Scenario:** a launcher refusal inside update never surfaces as a launcher code
+
+```text
+Given a clone whose upstream commit moves the pin to a version whose archive does not match the pinned digest
+When  the user runs `node crewrig update --cli claude`
+Then  the launcher's run ends with code 13, `update` exits with code 1, and its message says that the launcher ended with code 13, a digest mismatch, so that no code from 10 to 14 comes from `update` itself.
+```
+
+**Scenario:** setup refuses a link and a missing CLI
+
+```text
+Given a clone with a cached pinned version
+When  the user runs `node crewrig setup --link --cli claude`, and then `node crewrig setup`
+Then  each run exits with code 2 with a message (the second one listing claude, gemini, copilot and antigravity), and nothing is installed or written.
+```
+
+**Scenario:** the directory is not an organization directory
+
+```text
+Given a directory without crewrig.config.toml
+When  the user runs `node crewrig setup --cli claude --org-dir <that directory>`
+Then  the exit code is 1, the message names crewrig.config.toml, and nothing is written.
+```
+
+**Scenario:** the archive misses a file a command reads
+
+```text
+Given an archive built from the manifest alone
+When  the closure test runs build, setup and update, and one hook, from it
+Then  each of them completes, and the test fails naming the file when any is absent from the archive.
+```
+
+## Out of scope
+
+- A bump of the template pin to a prerelease that carries `init` and these commands (0314 R13): a pull request of its own, before the 0288 R28 acceptance run.
+- Issue 2110 (the path-ownership exemption), the transfer of the GitHub App `5864293` to the organization and the Write-role probes: separate items of epic 1822 sequenced before the first stable release.
+- The fetch step that retrieves the organization configuration from a remote location, the standalone binary and the one-command setup for non-technical users (WP8): `setup` reads a directory only.
+- Overlay path declarations and any `crewrig.config.toml` key beyond the two of 0314 R16.
+- Any option of the existing scripts beyond R2 (`--link`, `--target`, `--tier`, `--check`, `--diagnostics`), setting up several CLIs in one run, uninstalling, and a `doctor` command.
+- Organization files at the root of the repository that the framework repository holds (`mcp-servers.org.json`, `model-prices.org.json`, `AGENTS.org.md`): `setup` of this spec does not read them from the organization directory, and they are not public surfaces.
+- Removing from git the tracking of a `config/SOUL.md` or `config/PROFILE.md` that an organization already committed: a `.gitignore` line does not untrack a tracked file.
+- Pruning cached versions, signature verification and authenticated mirrors (0288 *Out of scope*).
+- Editing `docs/adr/0022-distribution-model.md` in the spec-PR (R13 assigns it to the implementation PR), and any change on `main` before the final merge (0288 R16, R29, R30).
+
+## Open questions
+
+Each item carries the default this draft takes, for the owner to confirm or change.
+
+- `--cli` is required on `setup` and `update` (R2), because the four per-CLI setups are separate flows with their own questions. Default: required, exit 2 when absent. Alternative: default to all four in one run, which asks every question four times.
+- `.gitignore` is written by `build` and `setup`, not by `init` (R7), because 0314 R15 fixes the `init` output as "exactly" the listed paths and R17 forbids a `.gitignore` there; changing `init` would need a delta-spec of 0314 and a second spec-PR. Default: R7 as written. Cost: a user who runs `init-soul` before the first `setup` could commit the personal file, which R8 makes unlikely because the template appears only after `setup`.
+- The two personal templates are copied into the organization directory by `setup` and left for the organization to commit or not (R8), so that an organization can edit them. Default: copy, never overwrite, not ignored. Alternative: ignore them too, leaving the version root as the only source.
+- `update` stops at a failed pull (R9). Default: stop, and tell the user that `setup` installs the pinned version offline. Alternative: warn and run `setup` anyway on a stale checkout.
+- [GROUNDING:] `scripts/lib/framework-release/manifest.txt` ships only git-tracked files under their repository paths, but R11 needs an archive-root `package.json` that is not the repository's own `package.json` (which declares workspaces and no `type`). The spec fixes the content and leaves the mechanism to the plan; the plan must settle how the manifest and the archive builder carry a file whose archive path and content differ from the tracked one, and the WP2 release guards (0288 R31) must accept it.
+- [GROUNDING:] `scripts/setup-claude-interactive.ts` and its three siblings, and `scripts/build-components.ts`, are written in a deliberate CommonJS form (`__filename`, no top-level `import`) to avoid the module-type warning (specs 0250 R3, 0255 R3). Under the archive-root `"type": "module"` of R11 they load as ES modules and `__filename` is undefined. The commands of this spec must be served by entry code that works under that module type, so the plan must replace that form for the archive entries without breaking the checkout flow that the same scripts serve.
