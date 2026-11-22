@@ -203,6 +203,10 @@ export function useRulesSandbox(): void {
     fs.mkdirSync(box.repo);
     fs.cpSync(path.join(REAL, "config"), path.join(box.repo, "config"), { recursive: true });
     fs.symlinkSync(path.join(REAL, "artifacts"), path.join(box.repo, "artifacts"));
+    // The stamp reads the root package name and the placeholders of the build (spec 0316 R11).
+    for (const name of ["package.json", "crewrig.config.toml"]) {
+      fs.copyFileSync(path.join(REAL, name), path.join(box.repo, name));
+    }
     // User-generated files (not tracked): the golden harness seeds them too.
     for (const name of ["SOUL.md", "PROFILE.md", "ORGANIZATION.md", "TOOLS.md"]) {
       const file = path.join(box.repo, "config", name);
@@ -222,13 +226,14 @@ export async function runRules(
   d: SetupDescriptor,
   answers: readonly string[] = [],
   stdin = "",
+  extraArgv: readonly string[] = [],
 ): Promise<RulesRun> {
   const input = new PassThrough();
   input.end(stdin);
   const out: string[] = [];
   const err: string[] = [];
   const status = await runSetup(d, {
-    argv: answers.flatMap((a) => ["--answer", a]),
+    argv: [...extraArgv, ...answers.flatMap((a) => ["--answer", a])],
     stdin: input,
     stdout: { write: (t) => out.push(t) },
     stderr: { write: (t) => err.push(t) },

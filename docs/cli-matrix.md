@@ -396,6 +396,10 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   protocol moved to the second file by spec 0308; total core-rules size
   capped by `scripts/check-rules-size.ts`, spec 0270, relocated blocks in `docs/mempalace-*.md` and
   `docs/friction-failure-mode.md`), `config/TOOLS.md` (priority 65, overlay)
+- **Provenance stamp (spec 0316 R11, R12):** on all four CLIs each deployed core rule is a stamped copy: setup replaces
+  the authored provenance block of the source by the first-line `<!-- crewrig-provenance: … -->` marker. `--link`
+  mode is the exception: these files are copies, not links (a link would expose the authored block), so a rule edit
+  reaches the home only after a new setup run; every other linked file is unchanged
 - **Claude Code:** ✅ `~/.claude/rules/60-tools.md` and `~/.claude/rules/60-memory.md` (core) +
   `~/.claude/rules/65-org-tools.md` (overlay), plus other `*.md` files — deployed by `setup-claude-interactive.ts`. The
   worker settings profile excludes `**/rules/60-memory.md` (spec 0308 R7); the coordinator profile excludes nothing
@@ -598,6 +602,9 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Source of truth:** `artifacts/core/system-context/`, `scripts/lib/setup/files.ts` (`install_dir` of the retired
   `common.sh`), `scripts/setup-*-interactive.ts`, `artifacts/core/rules/60-tools.md` (retrieval protocol, friction stub) and
   `artifacts/core/rules/60-memory.md` (the four other stubs, moved by spec 0308)
+- **Provenance stamp (spec 0316 R11, R12):** on all four CLIs the store is deployed as a stamped copy (also with
+  `--link`, which would otherwise expose the authored block): each `.md` file starts with the
+  `<!-- crewrig-provenance: … -->` marker that setup writes in place of the authored block
 - **Claude Code:** ✅ `~/.crewrig/system-context/` installed by `setup-claude-interactive.ts` (`install_dir`, link/copy
   duality). **Direct read PASS-default** — the Step 1 probe read the store from an untrusted scratch dir with bare
   `claude -p`, no flags/config (the `Read` tool has unrestricted absolute-path access). Evidence:

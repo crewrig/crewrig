@@ -90,6 +90,9 @@ function buildRepo(repo: string, options: SetupSandboxOptions): void {
   // A fixed one-package lockfile: the dependency step stamps its sha256 into the goldens, so the
   // repository's real `package-lock.json` must never reach the sandbox (issue #1614).
   fs.copyFileSync(LOCK_FIXTURE, path.join(repo, "package-lock.json"));
+  // The rule stamp resolves `${CANONICAL_REPO}` with the build's own config (spec 0316 R11); without
+  // the file every run would print the missing-config warning on standard error.
+  fs.copyFileSync(path.join(REPO, "crewrig.config.toml"), path.join(repo, "crewrig.config.toml"));
   const identity = /\/config\/(SOUL|PROFILE)\.md$/;
   copy("config", repo, (src) => !identity.test(src));
   copy("hooks", repo);
