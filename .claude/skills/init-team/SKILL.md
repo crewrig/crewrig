@@ -13,7 +13,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "2.0.0"
+    version: "2.1.0"
 ---
 
 
@@ -66,4 +66,6 @@ repository root. Both scripts take `--json` and exit `0` (ok), `1` (finding), `2
 
 Add `--force` to the save command only after the user has chosen to overwrite. Add `--root <dir>`
 when the repository root is not the current directory. The answers file is JSON; the field list is
-in `node scripts/scaffold-config-file.ts --help`.
+in `node scripts/scaffold-config-file.ts --help`. For a profile or a soul, `--kind profile|soul --template`
+prints the template the command reads (organization copy first, then the pinned version under
+`~/.crewrig/versions/`); exit `3` means neither exists, and the save refuses the same way.

@@ -10,7 +10,7 @@ metadata:
   provenance:
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.1.0"
+    version: "1.2.0"
 ---
 
 
@@ -77,3 +77,9 @@ exit `0` (ok), `1` (finding), `2` (usage error) or `3` (precondition failed), an
 
 The answers file is JSON written to a scratch location; its fields are listed by
 `node <scripts>/scaffold-config-file.ts --help`.
+
+**Template.** The command reads its template first from the organization directory, where the
+organization may commit its own copy, and otherwise from the pinned version: `node <scripts>/scaffold-config-file.ts --kind soul --template`
+prints the path and the content of the template it uses. The template is read only, and `<root>/crewrig.pin.json`
+names the version (its `version` member alone). When neither exists, the script exits `3`: stop and tell the user to run
+`node crewrig setup --cli <name>`, which fetches the pinned version. Nothing is written in that case, not even the personal file.

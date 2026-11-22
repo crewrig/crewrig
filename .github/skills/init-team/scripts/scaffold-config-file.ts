@@ -2,8 +2,10 @@
 // render it from an answers JSON. Kinds: team, expertise, profile, soul.
 // Usage: node scaffold-config-file.ts --kind <kind> [--name <name>] [--answers <file|->]
 //          [--root <dir>] [--date <YYYY-MM-DD>] [--force] [--dry-run] [--json]
-// Contract: references/script-contract.md. Exit codes: 0 resolved or written, 1 findings (an
-// existing target is the stable rule `target-exists`), 2 usage error, 3 precondition failed.
+//        node scaffold-config-file.ts --kind profile|soul --template [--root <dir>] [--json]
+// Options: --help. Exit codes: 0 resolved or written, 1 findings (an existing target is the stable rule
+// `target-exists`), 2 usage error, 3 precondition failed (spec 0315 R8: a profile or soul template that neither
+// the organization directory nor the pinned version provides; nothing is written).
 // Self-contained on purpose: no import, built-ins through process.getBuiltinModule.
 
 process.removeAllListeners("warning");
@@ -29,7 +31,11 @@ it to reflect who I have become in this context._`;
          [--root <dir>] [--date <YYYY-MM-DD>] [--force] [--dry-run] [--json]
 
 Without --answers it only resolves: the derived filename and whether the target exists (exit 0).
-With --answers it renders the file from the answers JSON and writes it (atomically).
+With --answers it renders the file from the answers JSON and writes it (atomically). A write of a profile or a
+soul first checks that its template resolves (see --template); without one it exits 3 and writes nothing.
+With --template it prints the template the command reads for the kind: <root>/config/<NAME>.md.template when the
+organization has its own copy, else the copy of the pinned version under ~/.crewrig/versions/<version>/config/
+(the version is the "version" member of <root>/crewrig.pin.json, read only, never from an environment variable).
 
 Options:
   --kind <kind>      team (config/teams/<NAME>.md), expertise (config/expertise/<NAME>.md),
@@ -41,6 +47,7 @@ Options:
   --date <date>      profile only: the Last Updated date (default: today)
   --force            overwrite an existing target; use only after the user decided to
   --dry-run          report the file and its content, write nothing
+  --template         profile or soul only: print the template the kind reads (see above); no answers, no write
   --json             print one JSON object {ok, data, findings} on stdout
   --help             print this text
 
@@ -89,12 +96,14 @@ answers-missing, answers-type, answers-heading.
   const opts: Record<string, string> = {};
   let force = false;
   let dryRun = false;
+  let template = false;
   const valued = ["--kind", "--name", "--answers", "--root", "--date"];
   for (let i = 0; i < argv.length; i++) {
     const raw = argv[i] as string;
     if (raw === "--json") continue;
     if (raw === "--force") force = true;
     else if (raw === "--dry-run") dryRun = true;
+    else if (raw === "--template") template = true;
     else {
       const eq = raw.startsWith("--") ? raw.indexOf("=") : -1;
       const key = eq === -1 ? raw : raw.slice(0, eq);
@@ -114,6 +123,9 @@ answers-missing, answers-type, answers-heading.
   if (kind !== "team" && kind !== "expertise" && kind !== "profile" && kind !== "soul")
     return usageError("--kind is required and must be team, expertise, profile or soul");
   const named = kind === "team" || kind === "expertise";
+  if (template && named) return usageError("--template applies to profile and soul only");
+  if (template && opts["--answers"] !== undefined)
+    return usageError("--template is not combined with --answers");
   if (!named && opts["--name"] !== undefined)
     return usageError("--name applies to team and expertise only");
   if (kind !== "profile" && opts["--date"] !== undefined)
@@ -123,6 +135,59 @@ answers-missing, answers-type, answers-heading.
   const root = opts["--root"] ?? ".";
   if (!fs.existsSync(root) || !fs.statSync(root).isDirectory())
     return precondition(`--root ${root} is not a directory`);
+
+  // The template of a profile or a soul (spec 0315 R8): the organization's own copy first, then the copy of the
+  // pinned version, read only from ~/.crewrig/versions/<version>/config. The version is the pin file's member.
+  const TEMPLATE_NAMES: Readonly<Record<string, string>> = {
+    profile: "PROFILE.md.template",
+    soul: "SOUL.md.template",
+  };
+  const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+  interface Template {
+    readonly source: "organization" | "version";
+    readonly file: string;
+    readonly version?: string;
+  }
+  const isFile = (target: string): boolean => fs.existsSync(target) && fs.statSync(target).isFile();
+  const findTemplate = (name: string, rootDir: string): Template | undefined => {
+    const own = path.join(rootDir, "config", name);
+    if (isFile(own)) return { source: "organization", file: own };
+    let version: unknown;
+    try {
+      const pin = JSON.parse(fs.readFileSync(path.join(rootDir, "crewrig.pin.json"), "utf8")) as {
+        version?: unknown;
+      };
+      version = pin.version;
+    } catch {
+      return undefined;
+    }
+    const home = process.env["HOME"] || process.env["USERPROFILE"] || "";
+    if (typeof version !== "string" || !VERSION.test(version) || home === "") return undefined;
+    const cached = path.join(home, ".crewrig", "versions", version, "config", name);
+    return isFile(cached) ? { source: "version", file: cached, version } : undefined;
+  };
+  const templateName = TEMPLATE_NAMES[kind];
+  const templateMissing = (): string =>
+    `${templateName} is neither in ${root}/config nor in the cached pinned version; ` +
+    "run node crewrig setup --cli <name> to fetch the pinned version. Nothing was written.";
+  if (template) {
+    const found = templateName === undefined ? undefined : findTemplate(templateName, root);
+    if (found === undefined) return precondition(templateMissing());
+    const text = fs.readFileSync(found.file, "utf8");
+    return emit(
+      0,
+      {
+        kind,
+        mode: "template",
+        template: found.file,
+        source: found.source,
+        version: found.version,
+        content: text,
+      },
+      [],
+      `${found.file} (${found.version === undefined ? "organization" : `pinned version ${found.version}`})\n${text}`,
+    );
+  }
 
   const findings: Finding[] = [];
   const bad = (rule: string, message: string): void => void findings.push({ rule, message });
@@ -392,6 +457,8 @@ answers-missing, answers-type, answers-heading.
       findings.map((f) => `${NAME}: ${f.rule}: ${f.message}`).join("\n"),
     );
   }
+  if (templateName !== undefined && findTemplate(templateName, root) === undefined)
+    return precondition(templateMissing());
   const base = { kind, file, path: target, exists };
   if (content === undefined)
     return emit(
