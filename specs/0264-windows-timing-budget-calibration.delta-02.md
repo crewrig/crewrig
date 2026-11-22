@@ -1,7 +1,7 @@
 ---
 id: "0264"
 slug: windows-timing-budget-calibration
-status: draft
+status: approved
 complexity: small
 interaction-mode: MINIMAL
 related-issue: 2066
@@ -46,8 +46,9 @@ shows 10 019 ms.
 
 Given an entry checked through `check()` that returns after 30 001 ms
 When `check()` runs
-Then a failure is recorded naming the leg, stating that the run took more than the
-30 000 ms bound, and carrying the run's diagnostic.
+Then a failure is recorded naming the leg, stating that the run reached or exceeded the
+30 000 ms bound, and carrying the run's diagnostic, and the timing line of requirement
+21 shows 30 001 ms.
 
 **Scenario:** A green run prints one timing line per checked entry
 
@@ -62,8 +63,8 @@ the leg, the entry and its milliseconds.
 `scripts/tests/lib/windows-e2e-run.ts` stays a hang guard and keeps its value; the
 implementation PR SHALL record the observed maximum next to it."
 
-Replacement: "`BOUND_MS` in `scripts/tests/lib/windows-e2e-run.ts` becomes 30 000 ms. It
-stays a hang guard, not a budget: only a hang or a pathological slowdown fails it. The
+Replacement: "`BOUND_MS` in `scripts/tests/lib/windows-e2e-run.ts` becomes 30 000 ms; an entry
+passes only when its elapsed time is strictly below it. It stays a hang guard, not a budget: only a hang or a pathological slowdown fails it. The
 bound is checked once the entry returns; an entry that never returns is stopped by the
 job's `timeout-minutes` (requirement 15), not by `BOUND_MS`. The
 implementation PR SHALL record next to it the per-entry maximum of requirement 21."
