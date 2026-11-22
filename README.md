@@ -30,7 +30,7 @@ setup.
 |-----|----------------|
 | **Configure memory** — give assistants persistent, shared memory | [Memory](#memory), then the [MemPalace runbook](docs/runbooks/mempalace-mcp-server.md) |
 | **Author a skill, agent or hook** — write it once for every CLI | [Authoring skills, agents & commands](docs/authoring.md), [Extension authoring](docs/extension-authoring.md), and the format contract in [`artifacts/FORMAT.md`](artifacts/FORMAT.md) |
-| **Share it with colleagues** — one build, deployed to each person's CLI | [Adoption Guide](docs/adoption-guide.md) (overlay, `artifacts/community/` and `artifacts/org/` tiers, build, deploy, upstream sync) |
+| **Share it with colleagues** — one build, deployed to each person's CLI | [Adoption Guide](docs/adoption-guide.md) (overlay, `artifacts/community/` and `artifacts/org/` tiers, build, deploy, upstream sync) <!-- WP4 (#2114): fork-model link; swap this row together with the adopter-quick-start block --> |
 | **Report frictions** — turn assistant pain points into issues | [Reporting frictions](#reporting-frictions) |
 
 ## Adopter quick start

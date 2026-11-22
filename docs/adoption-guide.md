@@ -78,15 +78,16 @@ organization's overlay content lives on top and is never touched by the sync.
 
 ## Step 2 — Initialize the overlay configuration
 
-Copy the configuration template and replace the placeholder values with the
-organization's own repository URLs.
+Copy the configuration template and replace the `feedback_repo` placeholder
+with the organization's own repository URL. `canonical_repo` already holds the
+upstream URL and stays as it is.
 
 ```bash
 cp crewrig.config.toml.template crewrig.config.toml
 ```
 
 Open `crewrig.config.toml` in a TOML-capable editor. The template ships with
-the following placeholders:
+the following values:
 
 ```toml
 # canonical_repo — the upstream repository this fork traces back to.
@@ -104,13 +105,14 @@ canonical_repo = "https://github.com/crewrig/crewrig"
 feedback_repo  = "https://github.com/<YOUR-ORG>/<YOUR-REPO>"
 ```
 
-Replace both values:
+Set the values:
 
-- `canonical_repo` — set to the upstream CrewRig URL
-  (`https://github.com/crewrig/crewrig`) so that the audit trail and
-  license trace remain intact. Override this only if the organization's
-  fork is itself the canonical upstream for a downstream deployment.
-- `feedback_repo` — set to the URL of the organization's own repository
+- `canonical_repo` — keep the upstream CrewRig URL
+  (`https://github.com/crewrig/crewrig`) the template ships with, so that
+  the audit trail and license trace remain intact. Change it only if the
+  organization's fork is itself the canonical upstream for a downstream
+  deployment.
+- `feedback_repo` — replace the placeholder with the URL of the organization's own repository
   (on any Git hosting platform — GitHub, GitLab, Gitea, etc.) so that
   friction issues opened by the harness curator land on the organization's
   tracker, not on the upstream project.
@@ -254,7 +256,7 @@ git commit -m "⚙️ Build CLI components for <YOUR-ORG>"
 
 **Most-likely symptom — unreplaced placeholders in built outputs:**
 If `crewrig.config.toml` is absent or still contains the literal placeholder
-strings `<YOUR-ORG>` / `<YOUR-REPO>`, the script exits zero but the built
+strings `<YOUR-ORG>` / `<YOUR-REPO>` (in `feedback_repo`), the script exits zero but the built
 outputs will contain unreplaced placeholder values (e.g. skills referencing
 `https://github.com/<YOUR-ORG>/<YOUR-REPO>` literally). When config is absent
 the script warns on stderr; when config contains placeholder values no warning
@@ -594,17 +596,17 @@ how to publish, and how to complete or retract an incomplete tag.
 ### `crewrig.config.toml` absent or has empty values
 
 **Cause:** `crewrig.config.toml` does not exist in the repository root, or
-the `canonical_repo` / `feedback_repo` fields still contain the literal
-placeholder strings `https://github.com/<YOUR-ORG>/<YOUR-REPO>` (or are
-empty strings).
+the `feedback_repo` field still contains the literal placeholder string
+`https://github.com/<YOUR-ORG>/<YOUR-REPO>`, or `canonical_repo` /
+`feedback_repo` is an empty string.
 
 **Effect — `node scripts/build-components.ts`:** Exits zero in both cases.
 When config is absent, the script warns on stderr that placeholders will be
 left literal. When config contains the placeholder URL, the script passes
 validation silently and emits no warning. In both cases the built outputs
 contain unreplaced values (skills and agents reference the placeholder URL
-literally). The harness curator will open friction issues against the
-placeholder URL, which resolves to nothing.
+literally). The harness curator will open friction issues for adopter-owned
+components against the placeholder URL, which resolves to nothing.
 
 **Effect — `node scripts/sync-from-upstream.ts`:** Exits 1 and prints
 an error when `canonical_repo` is absent or empty:
@@ -615,8 +617,8 @@ Set canonical_repo to the upstream repository URL before running sync.
 ```
 
 **Resolution:** Follow Step 2. Copy `crewrig.config.toml.template` to
-`crewrig.config.toml`, replace both placeholder values with the
-organization's actual Git repository URLs, and commit the file before
+`crewrig.config.toml`, replace the `feedback_repo` placeholder with the
+organization's actual Git repository URL, keep `canonical_repo` on the upstream URL, and commit the file before
 re-running either script.
 
 ### Build output directories are empty or partially populated
