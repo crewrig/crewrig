@@ -14,10 +14,10 @@ For production use, prefer copy mode (the default).
 
 Installing shared configuration...
   Linked: ORGANIZATION.md -> 20_ORGANIZATION.md
-  Linked: artifacts/core/rules/60-tools.md -> 60_TOOLS.md
-  Linked: artifacts/core/rules/60-memory.md -> 60_MEMORY.md
+  Copied: artifacts/core/rules/60-tools.md -> 60_TOOLS.md
+  Copied: artifacts/core/rules/60-memory.md -> 60_MEMORY.md
   Linked: TOOLS.md -> 65_TOOLS.md
-  Linked dir: artifacts/core/system-context -> ~/.crewrig/system-context
+  Copied dir: artifacts/core/system-context -> ~/.crewrig/system-context
   Linked: SOUL.md -> 00_SOUL.md
 
 User-gate validation backend (spec 0080):

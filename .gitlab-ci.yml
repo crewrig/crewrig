@@ -2536,6 +2536,7 @@ setup-modules-ts:
         - "scripts/tests/setup-steps-mcp.test.ts"
         - "scripts/tests/setup-steps-rules.test.ts"
         - "scripts/tests/setup-steps-rules-edge.test.ts"
+        - "scripts/tests/setup-steps-rules-stamp.test.ts"
         - "scripts/tests/setup-steps-tiers.test.ts"
         - "scripts/tests/setup-steps-usage.test.ts"
         - "scripts/tests/setup-store-guidance.test.ts"
