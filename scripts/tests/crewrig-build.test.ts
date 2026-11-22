@@ -178,6 +178,26 @@ describe("R5, R7: a defective component", () => {
   });
 });
 
+describe("R5: two components claiming one installed name", () => {
+  test("exit 1, name both source files, and write no dist/", async () => {
+    const world = await newWorld(rigs, servers);
+    const dir = world.makeOrg({
+      files: {
+        "artifacts/org/skills/acme-a/SKILL.md": SKILL_MD("acme-same"),
+        "artifacts/org/skills/acme-b/SKILL.md": SKILL_MD("acme-same"),
+      },
+    });
+
+    const run = await world.run(dir, "build");
+
+    assert.equal(run.code, 1, run.out);
+    assert.ok(run.out.includes(path.join("acme-a", "SKILL.md")), run.out);
+    assert.ok(run.out.includes(path.join("acme-b", "SKILL.md")), run.out);
+    assert.ok(run.out.includes("FAILED"), run.out);
+    assert.equal(fs.existsSync(path.join(dir, "dist")), false, "no dist/ is written");
+  });
+});
+
 describe("R7: the .gitignore of the organization directory", () => {
   test("an absent file is created with the three lines", async () => {
     const world = await newWorld(rigs, servers);

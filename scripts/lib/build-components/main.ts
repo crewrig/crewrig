@@ -25,7 +25,7 @@
 
 import { createResolveContext } from "../model-resolve.ts";
 import type { ResolveContext } from "../model-resolve.ts";
-import { reportInstalledNameCollisions } from "../component-resolve.ts";
+import { collidingSources, reportInstalledNameCollisions } from "../component-resolve.ts";
 import { extractFrontmatter } from "../render-command.ts";
 import { loadDependency, MissingDependencyError } from "../require-dependency.ts";
 import { joinRoot, parseArgs, resolveRepoDir } from "./args.ts";
@@ -66,6 +66,9 @@ function namesAreFree(ctx: Ctx): boolean {
   const clean = reportInstalledNameCollisions(dirs, (text) => ctx.io.errRaw(text));
   if (clean === 0) return true;
   ctx.io.err("FAILED: two components would be installed under one name into one landing zone.");
+  ctx.io.err(
+    `        Colliding source files: ${collidingSources(dirs).map(escapeControl).join(", ")}`,
+  );
   ctx.io.err("        Rename one of them, or move one to a tier with a different landing zone.");
   ctx.io.err("        See artifacts/FORMAT.md -> Validation Rules.");
   return false;

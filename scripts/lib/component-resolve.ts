@@ -50,6 +50,8 @@ export interface TargetRecord {
   readonly installTarget: string;
   readonly tier: string;
   readonly kind: ComponentKind;
+  /** The component's source file, when the pre-pass knows it: the collision report names it (spec 0315 R5). */
+  readonly source?: string;
 }
 
 const stderrSink: TextSink = (text) => {
@@ -126,8 +128,9 @@ export function componentEmitTarget(
   installTarget: string,
   tier: string,
   kind: ComponentKind,
+  source?: string,
 ): TargetRecord {
-  return { tierClass, installTarget, tier, kind };
+  return { tierClass, installTarget, tier, kind, ...(source === undefined ? {} : { source }) };
 }
 
 /** A record as `installed_targets` printed it: four tab-separated fields and a line feed. */
@@ -185,15 +188,15 @@ export function installedTargets(artifactsDir: string): TargetRecord[] {
     const tierPath = path.join(artifactsDir, tier);
     if (!isDir(tierPath)) continue;
     const tierClass: TierClass = tier === "core" ? "core" : "overlay";
-    const emit = (target: string, kind: ComponentKind): void => {
-      records.push(componentEmitTarget(tierClass, target, tier, kind));
+    const emit = (target: string, kind: ComponentKind, source: string): void => {
+      records.push(componentEmitTarget(tierClass, target, tier, kind, source));
     };
 
     for (const entry of glob(path.join(tierPath, "skills"))) {
       const dir = path.join(tierPath, "skills", entry);
       if (!isDir(dir) || !isFile(path.join(dir, "SKILL.md"))) continue;
       const name = componentDeclaredName(path.join(dir, "SKILL.md"), entry);
-      for (const root of SKILL_ROOTS) emit(`${root}${name}`, "skills");
+      for (const root of SKILL_ROOTS) emit(`${root}${name}`, "skills", path.join(dir, "SKILL.md"));
     }
 
     // Three CLIs compile a command into the skills namespace.
@@ -201,46 +204,68 @@ export function installedTargets(artifactsDir: string): TargetRecord[] {
       const file = path.join(tierPath, "commands", entry);
       if (!isFile(file)) continue;
       const name = componentDeclaredName(file, entry.slice(0, -".md".length));
-      emit(`.claude/skills/${name}`, "commands");
-      emit(`.gemini/commands/${name}.toml`, "commands");
-      emit(`.github/skills/${name}`, "commands");
-      emit(`.agents/skills/${name}`, "commands");
+      emit(`.claude/skills/${name}`, "commands", file);
+      emit(`.gemini/commands/${name}.toml`, "commands", file);
+      emit(`.github/skills/${name}`, "commands", file);
+      emit(`.agents/skills/${name}`, "commands", file);
     }
 
     for (const entry of glob(path.join(tierPath, "agents"))) {
       const dir = path.join(tierPath, "agents", entry);
       if (!isDir(dir) || !isFile(path.join(dir, "AGENT.md"))) continue;
       const name = componentDeclaredName(path.join(dir, "AGENT.md"), entry);
-      emit(`.claude/agents/${name}.md`, "agents");
-      emit(`.gemini/agents/${name}.md`, "agents");
-      emit(`.github/agents/${name}.md`, "agents");
-      emit(`.agents/agents/${name}.md`, "agents");
+      const source = path.join(dir, "AGENT.md");
+      emit(`.claude/agents/${name}.md`, "agents", source);
+      emit(`.gemini/agents/${name}.md`, "agents", source);
+      emit(`.github/agents/${name}.md`, "agents", source);
+      emit(`.agents/agents/${name}.md`, "agents", source);
     }
 
     for (const base of glob(path.join(tierPath, "policies"))) {
       if (!exists(path.join(tierPath, "policies", base)) || base === ".gitkeep") continue;
-      emit(`claude:rules/${base}`, "policies");
-      emit(`gemini:policies/${base}`, "policies");
-      emit(`antigravity:rules/${base}`, "policies");
+      const source = path.join(tierPath, "policies", base);
+      emit(`claude:rules/${base}`, "policies", source);
+      emit(`gemini:policies/${base}`, "policies", source);
+      emit(`antigravity:rules/${base}`, "policies", source);
     }
 
     for (const base of glob(path.join(tierPath, "hooks"))) {
       if (!exists(path.join(tierPath, "hooks", base)) || base === ".gitkeep") continue;
-      emit(`gemini:hooks/${base}`, "hooks");
+      emit(`gemini:hooks/${base}`, "hooks", path.join(tierPath, "hooks", base));
     }
 
     for (const entry of glob(path.join(tierPath, "themes"), ".json")) {
       if (!isFile(path.join(tierPath, "themes", entry))) continue;
-      emit(`gemini:settings.themes.${entry.slice(0, -".json".length)}`, "themes");
+      const theme = path.join(tierPath, "themes", entry);
+      emit(`gemini:settings.themes.${entry.slice(0, -".json".length)}`, "themes", theme);
     }
 
     for (const entry of glob(path.join(tierPath, "mcp-servers"), ".json")) {
       if (!isFile(path.join(tierPath, "mcp-servers", entry))) continue;
       const base = entry.slice(0, -".json".length);
-      for (const prefix of MCP_PREFIXES) emit(`${prefix}mcpServers.${base}`, "mcp-servers");
+      const server = path.join(tierPath, "mcp-servers", entry);
+      for (const prefix of MCP_PREFIXES) emit(`${prefix}mcpServers.${base}`, "mcp-servers", server);
     }
   }
   return records;
+}
+
+/**
+ * The source files of every component whose installed target another component claims too, sorted and without
+ * repeats: the build names them in its refusal (spec 0315 R5). The shell's per-source lines are not changed.
+ */
+export function collidingSources(artifactsDir: string | readonly string[]): string[] {
+  const dirs = typeof artifactsDir === "string" ? [artifactsDir] : artifactsDir;
+  const records = dirs.flatMap((dir) => installedTargets(dir));
+  const counts = new Map<string, number>();
+  for (const r of records) {
+    const key = `${r.tierClass}\t${r.installTarget}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const sources = records
+    .filter((r) => (counts.get(`${r.tierClass}\t${r.installTarget}`) ?? 0) > 1)
+    .flatMap((r) => (r.source === undefined ? [] : [r.source]));
+  return [...new Set(sources)].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
 }
 
 /**
