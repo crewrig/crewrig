@@ -15,6 +15,14 @@ import { renderHookFile } from "./hooks-emit.ts";
 import { hookGaps } from "./hooks-resolve.ts";
 import { jqText, obj, writeJsonText } from "./json-write.ts";
 import { mcpNative } from "./mcp-delivery.ts";
+import {
+  extensionFields,
+  provenanceWarnings,
+  stampText,
+  stampTree,
+  writeSidecar,
+} from "./provenance-stamp.ts";
+import type { ProvenanceFields } from "../provenance-marker.ts";
 import { extBuildDir, extVersion, subjectLocation, subjectPresent, textOr } from "./manifest.ts";
 import { contextSource, valueAt } from "./manifest.ts";
 import { copyTree, emptyDir, removeGenerated } from "./tree-copy.ts";
@@ -57,6 +65,7 @@ function renderGeminiContext(
   name: string,
   buildDir: string,
   contextFileName: string,
+  fields: ProvenanceFields | null,
 ): boolean {
   const source = contextSource(manifest);
   const row = ctx.table.gemini;
@@ -78,7 +87,7 @@ function renderGeminiContext(
   }
   for (const line of result.warnings) ctx.io.err(line);
   fs.mkdirSync(path.dirname(`${buildDir}/${contextFileName}`), { recursive: true });
-  fs.writeFileSync(`${buildDir}/${contextFileName}`, result.text);
+  fs.writeFileSync(`${buildDir}/${contextFileName}`, stampText(result.text, fields, "html"));
   ctx.io.out(`  Rendered: build/extensions/${name}/${contextFileName}`);
   return true;
 }
@@ -90,6 +99,7 @@ function renderCommands(
   manifest: Map<string, JsonValue>,
   name: string,
   buildDir: string,
+  fields: ProvenanceFields | null,
 ): number {
   if (!subjectPresent(manifest, "commands")) return 0;
   const loc = subjectLocation(manifest, "commands", "commands/").replace(/\/$/, "");
@@ -117,7 +127,8 @@ function renderCommands(
       continue;
     }
     fs.mkdirSync(`${buildDir}/${loc}`, { recursive: true });
-    fs.writeFileSync(`${buildDir}/${loc}/${cmdName}.toml`, `${rendered.replace(/\n+$/, "")}\n`);
+    const toml = `${rendered.replace(/\n+$/, "")}\n`;
+    fs.writeFileSync(`${buildDir}/${loc}/${cmdName}.toml`, stampText(toml, fields, "hash"));
     ctx.io.out(`  Rendered: build/extensions/${name}/${loc}/${cmdName}.toml`);
   }
   return rc;
@@ -132,11 +143,16 @@ export function renderGemini(
   gaps: GapChannel,
 ): number {
   const buildDir = extBuildDir(ctx.repoDir, name);
+  provenanceWarnings(ctx, extDir, manifest, "gemini");
+  const fields = extensionFields(extDir, manifest);
   emptyDir(buildDir, ctx.repoDir);
   // Spec 0257 R33: never a host-installed package; `dist/` is the declared build output and stays.
   copyTree(extDir, buildDir, ["node_modules"]);
   removeGenerated(buildDir, readGeneratedClass(ctx.libDir));
   fs.rmSync(`${buildDir}/.releaserc.json`, { force: true });
+  const place = (subject: string, dflt: string): string =>
+    `${buildDir}/${subjectLocation(manifest, subject, dflt).replace(/\/+$/, "")}`;
+  stampTree(fields, place("skills", "skills/"), place("agents", "agents/"));
 
   let rc = 0;
   const hasContext = contextSource(manifest) !== "";
@@ -158,9 +174,11 @@ export function renderGemini(
   ctx.io.out(`  Rendered: build/extensions/${name}/gemini-extension.json`);
 
   if (hasContext && fs.existsSync(`${extDir}/${contextSource(manifest)}`)) {
-    if (!renderGeminiContext(ctx, extDir, manifest, name, buildDir, contextFileName)) rc = 1;
+    if (!renderGeminiContext(ctx, extDir, manifest, name, buildDir, contextFileName, fields))
+      rc = 1;
   }
-  if (renderCommands(ctx, extDir, manifest, name, buildDir) !== 0) rc = 1;
+  if (renderCommands(ctx, extDir, manifest, name, buildDir, fields) !== 0) rc = 1;
   emitHooks(ctx, "gemini", manifest, buildDir, gaps);
+  writeSidecar(buildDir, fields);
   return rc;
 }

@@ -23,6 +23,7 @@ import {
   valueAt,
 } from "./manifest.ts";
 import type { Manifest } from "./manifest.ts";
+import { SIDECAR, sidecarExpected } from "./provenance-stamp.ts";
 import { renderExtension } from "./render-extension.ts";
 import { TARGETS } from "./types.ts";
 import type { ExtCtx, Io, JsonValue } from "./types.ts";
@@ -47,6 +48,7 @@ function sortedUnique(values: readonly string[]): string[] {
 export function declaredOutputs(ctx: ExtCtx, extDir: string, manifest: Manifest): string[] {
   const name = manifestName(manifest) ?? "null";
   const declared = ["gemini-extension.json"];
+  if (sidecarExpected(extDir)) declared.push(SIDECAR);
   if (contextSource(manifest) !== "") {
     declared.push(
       ctx.table.gemini.contextOutput.split("{ext}").join(name).split("{name}").join(""),

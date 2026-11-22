@@ -134,6 +134,7 @@ const fixture = (command: string): string =>
     name: "tokenfix",
     version: "0.0.1",
     description: "fixture",
+    provenance: { canonical: "https://example.test/upstream" },
     hooks: [{ id: "probe", event: "PreToolUse", command }],
   });
 
@@ -173,6 +174,11 @@ describe("windows governance extension-hook-checks: clean trees", () => {
     withBox((home, bin) => {
       const tree = renderTree(home);
       write(tree, "extensions/core/tokenfix/extension.json", fixture("bash ${extensionRoot}/h.sh"));
+      write(
+        tree,
+        "extensions/core/tokenfix/package.json",
+        '{"name":"tokenfix","version":"0.0.1"}\n',
+      );
       const r = run("check-extension-hook-tokens", tree, home, bin);
       aggregate(r, [
         ["exit status", () => expectStatus(r, 0)],
@@ -224,6 +230,11 @@ describe("windows governance extension-hook-checks: failing fixtures", () => {
     withBox((home, bin) => {
       const tree = renderTree(home);
       write(tree, "extensions/core/tokenfix/extension.json", fixture("bash ${extensionRoot}/h.sh"));
+      write(
+        tree,
+        "extensions/core/tokenfix/package.json",
+        '{"name":"tokenfix","version":"0.0.1"}\n',
+      );
       const file = path.join(tree, "scripts", "lib", "extension", "hooks-resolve.ts");
       const text = fs.readFileSync(file, "utf8");
       fs.writeFileSync(file, text.split("${extensionRoot}").join("${extensionRootX}"));

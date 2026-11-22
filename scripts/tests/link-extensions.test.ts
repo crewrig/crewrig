@@ -34,11 +34,16 @@ function ext(sb: InstallSandbox, tier: string, name: string, valid = true): void
     name,
     version: "0.0.1",
     description: "fixture",
+    provenance: { canonical: "https://example.test/upstream" },
     commands: { location: "commands/" },
   };
   sb.tree.write(
     `extensions/${tier}/${name}/extension.json`,
     valid ? JSON.stringify(manifest) : "{not json",
+  );
+  sb.tree.write(
+    `extensions/${tier}/${name}/package.json`,
+    JSON.stringify({ name, version: "0.0.1" }),
   );
   sb.tree.write(
     `extensions/${tier}/${name}/commands/x.md`,

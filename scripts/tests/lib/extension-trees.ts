@@ -61,6 +61,8 @@ const CONTEXT = lines(
   "Last line",
 );
 
+export const PROVENANCE = { canonical: "https://example.test/upstream" };
+
 const GAP = {
   subject: "hooks",
   target: "antigravity",
@@ -77,6 +79,7 @@ export function fullTree(): FileMap {
       name: "full",
       version: "1.2.3",
       description: 'Full fixture "quoted" é',
+      provenance: PROVENANCE,
       mcpServers: {
         local: {
           command: "node",
@@ -151,7 +154,15 @@ export function fullTree(): FileMap {
 
 /** The smallest extension that builds. */
 export function minimalTree(): FileMap {
-  return { "extension.json": json({ name: "minimal", version: "0.0.1", description: "Minimal" }) };
+  return {
+    "extension.json": json({
+      name: "minimal",
+      version: "0.0.1",
+      description: "Minimal",
+      provenance: PROVENANCE,
+    }),
+    "package.json": json({ name: "minimal", version: "0.0.1" }),
+  };
 }
 
 /** Servers only, no other subject. */
@@ -161,6 +172,7 @@ export function mcpOnlyTree(): FileMap {
       name: "mcponly",
       version: "0.1.0",
       description: "MCP only",
+      provenance: PROVENANCE,
       mcpServers: { s: { command: "node", args: ["${extensionRoot}/dist/s.js"] } },
     }),
     "dist/s.js": "// s\n",
@@ -175,8 +187,10 @@ export function contextFailTree(): FileMap {
       name: "ctxfail",
       version: "1.0.0",
       description: "Context failure",
+      provenance: PROVENANCE,
       context: { source: "CONTEXT.md" },
     }),
+    "package.json": json({ name: "ctxfail", version: "1.0.0" }),
     "CONTEXT.md": "Before\n${ONLY:copilot}never closed\n",
   };
 }
@@ -225,7 +239,12 @@ export function strayTree(): FileMap {
 /** A version that disagrees between `package.json` and `extension.json`. */
 export function versionDriftTree(): FileMap {
   return {
-    "extension.json": json({ name: "drift", version: "1.0.0", description: "Drift" }),
+    "extension.json": json({
+      name: "drift",
+      version: "1.0.0",
+      description: "Drift",
+      provenance: PROVENANCE,
+    }),
     "package.json": json({ name: "drift", version: "9.9.9" }),
   };
 }
