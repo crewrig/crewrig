@@ -21,7 +21,8 @@ Spec 0315 R11 makes the framework archive carry a root `package.json` with
 `"type": "module"`, and its open question on the CommonJS-form hook files names
 `hooks/usage-capture.ts` and `hooks/antigravity-statusline-shim.ts`. Under that
 root the files load as ECMAScript modules, where `require` is not defined, so
-the `require()` of requirement 5(a) fails. The owner chose to amend 0243 R5(a)
+the `require()` of requirement 5(a) fails, silently, because the entries catch
+it. The owner chose to amend 0243 R5(a)
 (decision A), rather than keep the departure out of the spec. The version is a
 MINOR bump: the entry-form rule is narrowed in one clause, behaviour under the
 repository's typeless root is unchanged, and no requirement the shipped
@@ -34,15 +35,27 @@ plan of #2114 probed the form below on Node.js 24.0.0 and 24.13.1, under a
 typeless root and under a `"type": "module"` root, with a nested CommonJS `.js`
 helper and an ECMAScript `.ts` module both loaded through `import()`. All 8
 runs exited 0 with 0 bytes on standard error. The current `require()` form,
-under the `module` root, fails with `require is not defined`. Each hook entry
-file that requirement 5(a) governs SHALL therefore exit zero and write zero
-bytes to standard output and standard error, on every Node.js 24 release,
-whichever `"type"` the nearest ancestor `package.json` of the entry file
+under the `module` root, fails, but silently: in both entry files the
+`require()` calls sit in a `try` whose `catch` swallows the `ReferenceError`
+(`require is not defined`), so the hook exits 0 with empty streams and does
+nothing (reproduced on Node.js 24.13.1: `usage-capture.ts` never reaches its
+capture step, and the shim never runs its prior command). Exit status and
+silence therefore cannot tell the fixed form from the broken one, and the
+observables below decide. Each hook entry file that requirement 5(a) governs
+SHALL exit zero and write zero bytes to standard output and standard error, on
+every Node.js 24 release, and SHALL do its work, whichever `"type"` the nearest ancestor `package.json` of the entry file
 declares: no `"type"` field (the repository root), `"commonjs"`, or `"module"`
-(the archive root of spec 0315 requirement 11). Where no ancestor
+(the archive root of spec 0315 requirement 11), the CommonJS helpers under
+`scripts/lib/` sitting in their own `"type": "commonjs"` scope as in the archive
+layout. Where no ancestor
 `package.json` exists, the entry file takes the typeless case. The entry files
 are `hooks/usage-capture.ts` and `hooks/antigravity-statusline-shim.ts`, which
-the framework archive ships. `hooks/mempalace-transcript.ts` and
+the framework archive ships. Doing its work means, under each ancestor case:
+`usage-capture.ts` consults `cursor.js` (a payload whose stamp is current ends
+without loading the capture module graph; one whose stamp is absent loads it and
+reaches the capture step), and the shim runs the prior status-line command
+recorded in its marker file and then reaches the capture step.
+`hooks/mempalace-transcript.ts` and
 `hooks/worktree-git-guard.ts` also ship in the archive; they call no
 `require()` and reach their repository modules through `import()`, so this
 requirement is already met by them and changes nothing in them. It binds, by reuse, the entry of every later hook row, as
@@ -83,28 +96,47 @@ re-decided: the rejected alternative of `"type": "module"` in the root
 0315 requirement 11 is a different tree and does not re-scope the tracked
 files of this repository.
 
-**Scenario:** The entries run silently under a typeless, a commonjs and a module ancestor
+**Scenario:** The usage-capture entries do their work under a typeless, a commonjs and a module ancestor
 
-Given a copy of `hooks/usage-capture.ts`, `hooks/antigravity-statusline-shim.ts`,
-`hooks/mempalace-transcript.ts` and `hooks/worktree-git-guard.ts` with the files
-they load, placed beneath an ancestor `package.json` that has no `"type"`
-field, then one that declares `"type": "commonjs"`, then one that declares
-`"type": "module"`
+Given a copy of `hooks/usage-capture.ts` and `hooks/antigravity-statusline-shim.ts`
+with the files they load, with a capture step that records its call (a stub
+`hook-run.ts` that writes a marker file, or the real one writing into a
+temporary usage root), placed beneath an ancestor `package.json` that has no
+`"type"` field, then one that declares `"type": "commonjs"`, then one that
+declares `"type": "module"`
 And Node.js 24.0.0 and the current Node.js 24 release, started with no flag and
-no environment variable, and a fast-path payload, then a slow-path payload
-whose capture lazily loads an ECMAScript module under `scripts/lib/`
-When each entry file runs through its real path
-Then every run exits zero and writes zero bytes to standard output and standard
-error, in all three ancestor cases and on both Node.js releases.
+no environment variable
+When `usage-capture.ts claude-code Stop` runs with a payload whose transcript
+has no stamp, then with a payload whose stamp is current, and the shim runs
+with a marker file naming a prior status-line command that prints a known line
+Then every run exits zero and writes zero bytes to standard error, in all three
+ancestor cases and on both releases
+And for the absent stamp the capture step is reached (the marker file exists),
+for the current stamp it is not (the capture graph is never loaded), and the
+shim prints the prior command's line and reaches the capture step.
 
-**Scenario:** A CommonJS-only construct in an entry file is refused
+**Scenario:** An entry that cannot reach its helper under a module ancestor is detected
 
 Given an edit to `hooks/usage-capture.ts` or
-`hooks/antigravity-statusline-shim.ts` that reaches a built-in with
-`require("node:fs")`, or reads `__filename`
-When the hook tests run
-Then a static test of the entry form fails, and the suite also fails the
-module-ancestor run of the scenario above with `require is not defined`.
+`hooks/antigravity-statusline-shim.ts` that reaches a built-in or `cursor.js`
+with `require(...)`, or reads `__filename`
+When the hook tests run under the `"type": "module"` ancestor
+Then the entry still exits zero with empty streams, but the capture step is not
+reached for the absent stamp (and the shim does not print the prior command's
+line), so the observable of the scenario above fails, and the static test of
+the entry form fails too.
+
+**Scenario:** The other two shipped hooks load and answer under a module ancestor
+
+Given copies of `hooks/worktree-git-guard.ts` and `hooks/mempalace-transcript.ts`
+with the files they load, beneath an ancestor `package.json` of each of the
+three types above, on Node.js 24.0.0 and the current release
+When the guard receives an allowed non-Antigravity command, and the transcript
+hook receives a non-Antigravity payload with its kill-switch set
+Then each exits zero with the stream content it produces beneath the typeless
+ancestor (no output for these inputs). Their other contracts (the
+`{"decision": "ask"}` and `{}` answers for Antigravity, the exit status 1 of a
+`MissingDependencyError`) are not restated here.
 
 **Scenario:** The typeless root keeps its behaviour
 
@@ -120,11 +152,12 @@ files (`hooks/usage-capture.ts` lines 33 to 37 and
 `cursor.js`, whose `require()` becomes an `import()`. In
 `scripts/tests/hook-entry-form.test.ts`: a static assertion that the two entry
 files contain no `require`, `module`, `exports`, `__filename` or `__dirname`
-outside the comments; the specifier scan of the test *the entries and the
+outside the comments (the static assertion alone is not the proof: the
+behavioural observable above is); the specifier scan of the test *the entries and the
 runner import only node: built-ins or repository files* extended to
 `process.getBuiltinModule("node:…")` calls, so the no-third-party rule keeps
-covering them; and the ancestor-module-type run of the scenario above on Node.js
-24.0.0 and the current release. The header comment of each entry file, which
+covering them; and the ancestor-module-type runs of the three scenarios above, with their
+observables, on Node.js 24.0.0 and the current release. The header comment of each entry file, which
 describes the form, is updated to match.
 
 **What stays unchanged.** Requirement 5 apart from its clause (a); requirements
