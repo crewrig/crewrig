@@ -20,46 +20,90 @@ raised by review finding v1-F5
 Spec 0315 R11 makes the framework archive carry a root `package.json` with
 `"type": "module"`, and its open question on the CommonJS-form hook files names
 `hooks/usage-capture.ts` and `hooks/antigravity-statusline-shim.ts`. Under that
-root the files load as ECMAScript modules, where `require` is not defined, so
-the `require()` of requirement 5(a) fails, silently, because the entries catch
-it. The owner chose to amend 0243 R5(a)
-(decision A), rather than keep the departure out of the spec. The version is a
-MINOR bump: the entry-form rule is narrowed in one clause, behaviour under the
-repository's typeless root is unchanged, and no requirement the shipped
-implementation satisfies is invalidated. No question is left open.*
+root every `.js` file below it is parsed as an ECMAScript module, and every
+`.ts` file is an ECMAScript module too. Two things break, both silently,
+because the entries catch every failure: the `require()` of requirement 5(a),
+where `require` is not defined; and the CommonJS libraries the entries load
+through `import()`, which fail with `require is not defined in ES module
+scope`. The owner chose to amend 0243 (decision A) and approved the plan-level
+mechanism for the second point (plan v2 step 2: tracked nested
+`{"type":"commonjs"}` scope files, and the lone ECMAScript file moved out of
+each such directory). This delta states that mechanism as a requirement on the
+files 0243 and its usage-capture closure own. It does not change spec 0315:
+R11 of 0315 fixes the content of the archive-root `package.json` only, and
+adds no rule on files in subdirectories. The version is a MINOR bump: one
+clause of requirement 5 is narrowed, requirements 40 and 41 are added, and
+behaviour under the repository's typeless root is unchanged. No question is
+left open.*
 
 ## ADDED
 
-**Requirement 40 — The entry files run under any ancestor module type.** The
-plan of #2114 probed the form below on Node.js 24.0.0 and 24.13.1, under a
-typeless root and under a `"type": "module"` root, with a nested CommonJS `.js`
-helper and an ECMAScript `.ts` module both loaded through `import()`. All 8
-runs exited 0 with 0 bytes on standard error. The current `require()` form,
-under the `module` root, fails, but silently: in both entry files the
-`require()` calls sit in a `try` whose `catch` swallows the `ReferenceError`
-(`require is not defined`), so the hook exits 0 with empty streams and does
-nothing (reproduced on Node.js 24.13.1: `usage-capture.ts` never reaches its
-capture step, and the shim never runs its prior command). Exit status and
-silence therefore cannot tell the fixed form from the broken one, and the
-observables below decide. Each hook entry file that requirement 5(a) governs
-SHALL exit zero and write zero bytes to standard output and standard error, on
-every Node.js 24 release, and SHALL do its work, whichever `"type"` the nearest ancestor `package.json` of the entry file
-declares: no `"type"` field (the repository root), `"commonjs"`, or `"module"`
-(the archive root of spec 0315 requirement 11), the CommonJS helpers under
-`scripts/lib/` sitting in their own `"type": "commonjs"` scope as in the archive
-layout. Where no ancestor
-`package.json` exists, the entry file takes the typeless case. The entry files
-are `hooks/usage-capture.ts` and `hooks/antigravity-statusline-shim.ts`, which
-the framework archive ships. Doing its work means, under each ancestor case:
-`usage-capture.ts` consults `cursor.js` (a payload whose stamp is current ends
-without loading the capture module graph; one whose stamp is absent loads it and
-reaches the capture step), and the shim runs the prior status-line command
-recorded in its marker file and then reaches the capture step.
-`hooks/mempalace-transcript.ts` and
-`hooks/worktree-git-guard.ts` also ship in the archive; they call no
-`require()` and reach their repository modules through `import()`, so this
-requirement is already met by them and changes nothing in them. It binds, by reuse, the entry of every later hook row, as
-requirement 5 already does.
+**Requirement 40 — The hook scripts of the archive work under every module
+type.** Each hook script the framework archive ships (`hooks/usage-capture.ts`,
+`hooks/antigravity-statusline-shim.ts`, `hooks/mempalace-transcript.ts`,
+`hooks/worktree-git-guard.ts`) SHALL do the same work, with the same exit
+status and the same streams, with no module-type error and no module-type
+warning, in two layouts: the repository checkout, whose root `package.json`
+has no `"type"` field; and the extracted archive, whose root `package.json`
+declares `"type": "module"` (spec 0315 requirement 11), under a hostile
+`package.json` in any ancestor of the version directory (declaring
+`"commonjs"`, declaring `"module"`, declaring no `type`, or absent). "The same
+work" is observable, because a failed `import()` does not show: the entries
+catch it and exit as if there were nothing to do (reproduced on Node.js
+24.13.1 under a module root, current code: `usage-capture.ts` reaches no
+capture step, the shim never runs its prior command, `mempalace-transcript.ts`
+never reaches its daemon call). Exit status and silence alone therefore cannot
+prove it. The observables are in the scenarios below. Where no ancestor
+`package.json` exists, the script takes the typeless case.
+
+**Requirement 41 — The layout that lets the libraries load under the archive
+root.** The plan of #2114 probed, on Node.js 24.0.0 and 24.13.1, under a typeless
+root and a module root, with a nested CommonJS `.js` helper and an ECMAScript
+`.ts` module both loaded through `import()`: 8 of 8 runs exited 0 with empty
+standard error. Reaching the real libraries needs the layout below, which
+spec 0315 requirement 11 leaves to the plan. Enumeration, read at
+`origin/release/1822-distribution` @ `74e305d0` by walking every `import`,
+`import()` and `require` specifier from each script:
+
+| Hook script | CommonJS files it reaches | ECMAScript files it reaches |
+|---|---|---|
+| `usage-capture.ts`, `antigravity-statusline-shim.ts` | all `.js` under `scripts/lib/usage-capture/` (including `adapters/`) and `scripts/lib/usage-store/` (including `validator/`, which holds the vendored `ajv-formats-formats.js`) | `scripts/lib/usage-capture/hook-run.ts`, `scripts/lib/tmp-file.ts` |
+| `mempalace-transcript.ts` | `scripts/lib/usage-store/mcp.js`, through `daemon.ts` and `token.ts` | `scripts/lib/mempalace-transcript/*.ts`, `scripts/lib/worktree-claim/*.ts`, `scripts/lib/tls-env*.ts` |
+| `worktree-git-guard.ts` | none | `scripts/lib/worktree-claim/*.ts`, `scripts/lib/paths.ts` |
+
+The layout SHALL be the following, in the repository and in the archive (the
+archive carries the same files at the same paths, as 0288 requires of the
+manifest):
+
+- (a) a tracked file `package.json` whose content is the single member
+  `"type": "commonjs"` in `scripts/lib/usage-capture/` and in
+  `scripts/lib/usage-store/`. Their subdirectories inherit it. No other scope
+  file is added by this delta;
+- (b) no file with ECMAScript syntax beneath either directory. The two that
+  exist move out: `scripts/lib/usage-capture/hook-run.ts` to
+  `scripts/lib/usage-hook/hook-run.ts`, and
+  `scripts/lib/usage-store/inventory.ts` to
+  `scripts/lib/usage-inventory/inventory.ts`, with every importer updated: the
+  two entries, the moved files' own relative specifiers
+  (`./index.js`, `./mcp.js`, `./layout.js` and the like), the inventory
+  command, and the tests that name them. The two target directories hold no
+  scope file and take the archive root's module type, as `tmp-file.ts` does;
+- (c) a test, run in CI on Linux and `windows-latest`, walks the same
+  specifier closure from each hook script the archive ships and fails unless
+  every reached `.js` file that has CommonJS syntax resolves, in the archive
+  layout, to a nearest `package.json` declaring `"commonjs"`, and every
+  reached file with `import`/`export` syntax resolves to the archive root
+  (`"module"`). Removing a scope file, or putting an ECMAScript file back in a
+  scoped directory, SHALL make it fail;
+- (d) the archive SHALL contain the two scope files and the moved files, since
+  its manifest ships tracked files only and the closure test of spec 0315
+  requirement 10 walks the same set.
+
+The checkout is unaffected: its root stays typeless, the `.js` files under the
+two directories are already CommonJS, and a `commonjs` scope changes nothing
+for them. The existing hook suites SHALL pass unchanged apart from the moved
+paths. The scope files are not a change to the mechanism of requirement 5
+(a) to (c), which adds no file for the entries themselves.
 
 ## MODIFIED
 
@@ -83,89 +127,111 @@ Replacement:
 > `scripts/lib/usage-capture/cursor.js` included, with a dynamic `import()`,
 > never with `require()`, and declaring nothing at global scope; the entry file
 > relies on no CommonJS-only binding (`require`, `module`, `exports`,
-> `__filename`, `__dirname`), so that it also runs where an ancestor
-> `package.json` makes Node.js load it as an ECMAScript module (requirement
-> 40);
+> `__filename`, `__dirname`), so that it also runs where its nearest
+> `package.json` makes Node.js load it as an ECMAScript module (requirements
+> 40 and 41);
 
 Requirement 5 is otherwise unchanged: the mechanism parts (b) and (c) (the
 first statement removes the `warning` listeners, before the first lazy
 `import()`), the exit-zero and silence contract, the rejected alternatives and
-the blast-radius statement stand as written. One consequence is noted, not
-re-decided: the rejected alternative of `"type": "module"` in the root
-`package.json` still holds for the repository root. The archive root of spec
-0315 requirement 11 is a different tree and does not re-scope the tracked
-files of this repository.
+the blast-radius statement stand as written. The rejected alternative of
+`"type": "module"` in the repository's root `package.json`, or in `scripts/lib/`
+or `hooks/`, still holds: the archive root of spec 0315 is a different tree, and
+the scope files of requirement 41 declare `"commonjs"`, which re-scopes nothing.
+The sentence "it changes no tracked file" justifies the entry-file mechanism of
+requirement 5 only.
 
-**Scenario:** The usage-capture entries do their work under a typeless, a commonjs and a module ancestor
+**Scenario:** The usage-capture entries do their work from the archive, under every hostile ancestor
 
-Given a copy of `hooks/usage-capture.ts` and `hooks/antigravity-statusline-shim.ts`
-with the files they load, with a capture step that records its call (a stub
-`hook-run.ts` that writes a marker file, or the real one writing into a
-temporary usage root), placed beneath an ancestor `package.json` that has no
-`"type"` field, then one that declares `"type": "commonjs"`, then one that
-declares `"type": "module"`
+Given the archive built by the release builder from its manifest and extracted
+under a version directory, so that its root `package.json` is the module root
+of spec 0315 requirement 11 and the files of requirement 41 are present, with
+the real `hook-run.ts`, not a stub
+And an ancestor of the version directory whose `package.json` declares
+`"commonjs"`, then `"module"`, then no `type`, then is absent
 And Node.js 24.0.0 and the current Node.js 24 release, started with no flag and
-no environment variable
-When `usage-capture.ts claude-code Stop` runs with a payload whose transcript
-has no stamp, then with a payload whose stamp is current, and the shim runs
-with a marker file naming a prior status-line command that prints a known line
-Then every run exits zero and writes zero bytes to standard error, in all three
-ancestor cases and on both releases
-And for the absent stamp the capture step is reached (the marker file exists),
-for the current stamp it is not (the capture graph is never loaded), and the
-shim prints the prior command's line and reaches the capture step.
+no environment variable, and `CREWRIG_USAGE_ROOT` naming an empty temporary
+directory
+When `usage-capture.ts claude-code Stop` runs with the payload of a Claude Code
+transcript fixture that has no stamp, and then runs again with the same payload
+And the shim runs with a marker file naming a prior status-line command that
+prints a known line
+Then every run exits zero and writes zero bytes to standard error
+And the first `usage-capture.ts` run wrote the journal records of that
+transcript and its stamp under the usage root, the second wrote no new record
+(the stamp is current, the capture graph is not loaded), and the shim printed
+the prior command's known line.
 
-**Scenario:** An entry that cannot reach its helper under a module ancestor is detected
+**Scenario:** The same entries on the checkout keep their behaviour
+
+Given the repository checkout, whose root `package.json` has no `"type"` field
+When the previous scenario's runs are repeated there, and the scenarios "A
+healthy run is silent on an unmodified Node.js" and "A Windows-style escaped
+path takes the fast path" of the original spec run
+Then they pass unchanged, with the same records, and no
+`MODULE_TYPELESS_PACKAGE_JSON` warning is printed for an entry file.
+
+**Scenario:** The old form is detected, not only forbidden
 
 Given an edit to `hooks/usage-capture.ts` or
 `hooks/antigravity-statusline-shim.ts` that reaches a built-in or `cursor.js`
-with `require(...)`, or reads `__filename`
-When the hook tests run under the `"type": "module"` ancestor
-Then the entry still exits zero with empty streams, but the capture step is not
-reached for the absent stamp (and the shim does not print the prior command's
-line), so the observable of the scenario above fails, and the static test of
-the entry form fails too.
+with `require(...)`, or reads `__filename`, or a missing scope file of
+requirement 41(a), or an ECMAScript file put back under `scripts/lib/usage-capture/`
+When the archive scenario above runs
+Then the entry still exits zero with empty streams, but no journal record is
+written (and the shim does not print the prior command's line), so the
+scenario fails, and the closure test of requirement 41(c) fails too.
 
-**Scenario:** The other two shipped hooks load and answer under a module ancestor
+**Scenario:** The transcript hook reaches its daemon call from the archive
 
-Given copies of `hooks/worktree-git-guard.ts` and `hooks/mempalace-transcript.ts`
-with the files they load, beneath an ancestor `package.json` of each of the
-three types above, on Node.js 24.0.0 and the current release
-When the guard receives an allowed non-Antigravity command, and the transcript
-hook receives a non-Antigravity payload with its kill-switch set
-Then each exits zero with the stream content it produces beneath the typeless
-ancestor (no output for these inputs). Their other contracts (the
-`{"decision": "ask"}` and `{}` answers for Antigravity, the exit status 1 of a
-`MissingDependencyError`) are not restated here.
+Given the extracted archive of the first scenario, an ancestor of each of its
+four types, and `MEMPALACE_TRANSCRIPT_ENABLED=1` with a `HOME` that holds no
+daemon token file
+When `mempalace-transcript.ts claude-code` runs with the payload
+`{"hook_event_name":"UserPromptSubmit","prompt":"hello"}`
+Then it exits zero and writes to standard error the two lines it writes in the
+checkout (`DAEMON_UNREACHABLE: token file not found at …` and
+`mempalace-transcript: FAILED to persist user-prompt (rc=4):` followed by a space). Both lines
+reach standard error only if `daemon.ts` and `token.ts` loaded
+`scripts/lib/usage-store/mcp.js`. The silent exit of the module-root run
+without the scope files is the failure this scenario detects.
 
-**Scenario:** The typeless root keeps its behaviour
+**Scenario:** The worktree guard decides from the archive
 
-Given the repository's root `package.json` with no `"type"` field
-When the scenarios "A healthy run is silent on an unmodified Node.js" and "A
-Windows-style escaped path takes the fast path" of the original spec run
-Then they pass unchanged, and no `MODULE_TYPELESS_PACKAGE_JSON` warning is
-printed for an entry file.
+Given the extracted archive of the first scenario, an ancestor of each of its
+four types, and a git repository with a ticket worktree under `.worktrees/T-1`
+When `worktree-git-guard.ts claude` receives a payload whose command is
+`git reset --hard` and whose `cwd` is that worktree, first with no claim
+directory for `T-1`, then with one
+Then the first run exits 1 with the refusal line on standard error and the
+second exits 0 with no output, the same as in the checkout. The second
+result is the one a failed `import()` of `claim-state.ts` cannot give, since
+the guard refuses once it has identified the ticket and the import fails.
 
-**What the implementation changes.** The built-in accesses in the two entry
-files (`hooks/usage-capture.ts` lines 33 to 37 and
-`hooks/antigravity-statusline-shim.ts` lines 31 to 35), including the helper
-`cursor.js`, whose `require()` becomes an `import()`. In
-`scripts/tests/hook-entry-form.test.ts`: a static assertion that the two entry
-files contain no `require`, `module`, `exports`, `__filename` or `__dirname`
-outside the comments (the static assertion alone is not the proof: the
-behavioural observable above is); the specifier scan of the test *the entries and the
-runner import only node: built-ins or repository files* extended to
-`process.getBuiltinModule("node:…")` calls, so the no-third-party rule keeps
-covering them; and the ancestor-module-type runs of the three scenarios above, with their
-observables, on Node.js 24.0.0 and the current release. The header comment of each entry file, which
-describes the form, is updated to match.
+**What the implementation changes.** The built-in and helper accesses in the
+two entry files (`hooks/usage-capture.ts` lines 33 to 37 and
+`hooks/antigravity-statusline-shim.ts` lines 31 to 35), and their header
+comments. The two scope files and the two file moves of requirement 41, with the
+importers. In `scripts/tests/hook-entry-form.test.ts`: a static assertion that
+the two entry files contain no `require`, `module`, `exports`, `__filename` or
+`__dirname` outside the comments (the static assertion alone is not the proof;
+the behavioural observables above are); the specifier scan of the test *the
+entries and the runner import only node: built-ins or repository files* extended
+to `process.getBuiltinModule("node:…")` calls, so the no-third-party rule keeps
+covering them. The archive scenarios and the closure test of requirement 41(c)
+are new tests, wired into the CI registration that carries the tests of spec
+0315.
 
 **What stays unchanged.** Requirement 5 apart from its clause (a); requirements
-1 to 4 and 6 to 39; the `hooks/*.json` fragments, the installed command lines
-of requirement 16, the tracked CommonJS files under `scripts/lib/usage-capture/`
-and `scripts/lib/`, the root `package.json` of the repository, the two hooks
-that already conform, and the behaviour of every hook on every payload. This
-delta adds no `package.json`; the archive-root file belongs to spec 0315.
+1 to 4 and 6 to 39; the `hooks/*.json` fragments and the installed command
+lines of requirement 16; the content of every `.js` file under
+`scripts/lib/usage-capture/` and `scripts/lib/usage-store/`; the root
+`package.json` of the repository and the content fixed by spec 0315
+requirement 11 for the archive root; the behaviour of every hook on every
+payload in the checkout. `hooks/mempalace-transcript.ts` and
+`hooks/worktree-git-guard.ts` need no edit of their own: the first needs the
+`usage-store` scope of requirement 41(a), the second reaches ECMAScript files
+only.
 
 ## REMOVED
 
