@@ -224,11 +224,25 @@ export function hostServices(): string[] {
 
 /** Paths under a home that only an installed daemon, unit or task would create. */
 export function daemonFilesUnder(entries: readonly string[]): string[] {
+  // The MCP daemon launcher's bundle is the daemon's program; the trust wrapper's bundle (win32 installs it for every
+  // stdio entry, spec 0256 deviation (m)) shares the same service-lib/ name but is no daemon, so only the launcher's
+  // members make that directory a daemon's.
+  const launcher = /(^|\/)service-lib\/(launcher-wait|launcher-token)\.ts$/;
   return entries.filter(
     (entry) =>
       !entry.startsWith(".crewrig/versions/") &&
-      /(^|\/)(LaunchAgents|systemd|\.mempalace|service|mcp-daemon-launcher[^/]*|service-lib)(\/|$)/.test(
+      (/(^|\/)(LaunchAgents|systemd|\.mempalace|service|mcp-daemon-launcher[^/]*)(\/|$)/.test(
         entry,
-      ),
+      ) ||
+        launcher.test(entry)),
   );
+}
+
+/**
+ * Whether settings text names `<version>/hooks/<name>` under a cached version. Separators, the letter case and the
+ * 8.3 short names of a Windows path do not count: a hook written with forward slashes names the same file.
+ */
+export function namesHook(settings: string, version: string, name: string): boolean {
+  const text = settings.replaceAll("\\\\", "/").replaceAll("\\", "/").toLowerCase();
+  return text.includes(`versions/${version}/hooks/${name}`.toLowerCase());
 }

@@ -29,6 +29,7 @@ import {
   type CliName,
   type World,
 } from "./lib/org-rig.ts";
+import { namesHook } from "./lib/org-toolchain.ts";
 
 const rigs = trackRigs();
 const servers = trackServers();
@@ -89,7 +90,8 @@ describe("R6, R12: each CLI installs the organization content, and a second run 
     assert.equal(run.code, 0, run.out);
     const settings = fs.readFileSync(path.join(world.rig.home, ".claude", "settings.json"), "utf8");
     const hook = path.join(world.versionRoot(), "hooks", "usage-capture.ts");
-    assert.ok(settings.includes(JSON.stringify(hook).slice(1, -1)), `settings.json names ${hook}`);
+    const version = path.basename(world.versionRoot());
+    assert.ok(namesHook(settings, version, "usage-capture.ts"), `settings.json names ${hook}`);
     assert.ok(fs.existsSync(hook), "the wired script exists in the version root");
   });
 

@@ -30,6 +30,10 @@ import {
   type Upstream,
   type World,
 } from "./lib/org-rig.ts";
+import { daemonFilesUnder, namesHook } from "./lib/org-toolchain.ts";
+import { isOtherCachedVersionPath } from "../lib/setup/org-roots.ts";
+import { classifyPaths } from "../lib/setup/usage-capture-rank.ts";
+import { hookCommand, shellPath } from "../lib/session-check-config.ts";
 
 const rigs = trackRigs();
 const servers = trackServers();
@@ -73,8 +77,6 @@ const pinText = (archive: Archive, sha = archive.sha256): string =>
 const claudeSettings = (world: World): string =>
   fs.readFileSync(path.join(world.rig.home, ".claude", "settings.json"), "utf8");
 
-const jsonPath = (file: string): string => JSON.stringify(file).slice(1, -1);
-
 /** Every exit code of these tests, checked once at the end against spec 0315 R3. */
 const seenCodes: number[] = [];
 
@@ -98,9 +100,8 @@ describe("R9: a clean pull and a pin that moves to a second archive", () => {
     const { world, up, clone } = await cloneWithSetup();
     const first = world.versionRoot("1.0.0-test.1");
     const firstDigest = treeDigest(first);
-    const hookOf = (root: string, name: string): string => jsonPath(path.join(root, "hooks", name));
     for (const name of RECORDED_HOOKS)
-      assert.ok(claudeSettings(world).includes(hookOf(first, name)), name);
+      assert.ok(namesHook(claudeSettings(world), FIRST.version, name), name);
     world.server.route(assetPath(SECOND.version), serveBytes(fs.readFileSync(SECOND.file)));
     authorCommit(
       up,
@@ -116,8 +117,11 @@ describe("R9: a clean pull and a pin that moves to a second archive", () => {
     assert.ok(fs.existsSync(path.join(second, "crewrig.entry.json")), "the new version is cached");
     const settings = claudeSettings(world);
     for (const name of RECORDED_HOOKS) {
-      assert.ok(settings.includes(hookOf(second, name)), `${name} names the new version`);
-      assert.ok(!settings.includes(hookOf(first, name)), `${name} no longer names the old version`);
+      assert.ok(namesHook(settings, SECOND.version, name), `${name} names the new version`);
+      assert.ok(
+        !namesHook(settings, FIRST.version, name),
+        `${name} no longer names the old version`,
+      );
     }
     assert.equal(treeDigest(first), firstDigest, "the old cached version is not altered");
     assert.equal(fs.readFileSync(path.join(clone, "crewrig.pin.json"), "utf8"), pinText(SECOND));
@@ -144,10 +148,8 @@ describe("R9: a clean pull and a pin that moves to a second archive", () => {
 
     assert.equal(run.code, 0, run.out);
     const settings = claudeSettings(world);
-    const hook = (version: string): string =>
-      jsonPath(path.join(world.versionRoot(version), "hooks", "usage-capture.ts"));
-    assert.ok(settings.includes(hook("1.0.0-test.2")));
-    assert.ok(!settings.includes(hook("1.0.0-test.1")));
+    assert.ok(namesHook(settings, SECOND.version, "usage-capture.ts"));
+    assert.ok(!namesHook(settings, FIRST.version, "usage-capture.ts"));
   });
 
   test("a live user-owned usage-capture entry outside the cache is kept by update", async () => {
@@ -161,9 +163,9 @@ describe("R9: a clean pull and a pin that moves to a second archive", () => {
     };
     const stop = config.hooks["Stop"]?.[0]?.hooks;
     assert.ok(stop !== undefined, "a Stop group exists");
-    stop.push({ command: `node ${JSON.stringify(custom)} claude-code Stop` } as {
-      command: string;
-    });
+    // The command as setup writes it on win32: the path with forward slashes, inside double quotes.
+    const customCommand = custom.replaceAll("\\", "/");
+    stop.push({ command: `node "${customCommand}" claude-code Stop` } as { command: string });
     fs.writeFileSync(file, JSON.stringify(config));
     authorCommit(up, { "crewrig.pin.json": pinText(SECOND) }, "move the pin");
     world.server.route(assetPath(SECOND.version), serveBytes(fs.readFileSync(SECOND.file)));
@@ -172,12 +174,8 @@ describe("R9: a clean pull and a pin that moves to a second archive", () => {
 
     assert.equal(run.code, 0, run.out);
     const settings = claudeSettings(world);
-    assert.ok(settings.includes(jsonPath(custom)), "the user's own entry is kept");
-    assert.ok(
-      !settings.includes(
-        jsonPath(path.join(world.versionRoot(FIRST.version), "hooks", "usage-capture.ts")),
-      ),
-    );
+    assert.ok(settings.includes(customCommand), "the user's own entry is kept");
+    assert.ok(!namesHook(settings, FIRST.version, "usage-capture.ts"));
   });
 
   test("an upstream commit that only changes the .gitignore does not block the pull", async () => {
@@ -381,5 +379,67 @@ describe("R3, R9: a launcher refusal inside update never surfaces as a launcher 
   test("across every case above, no update run ended with a code from 10 to 14", () => {
     assert.ok(seenCodes.length >= 10, `${seenCodes.length} runs were recorded`);
     for (const code of seenCodes) assert.ok(code === 0 || code === 1, `exit code ${code}`);
+  });
+});
+
+describe("the win32 forms of the hook paths (spec 0315 R6, spec 0256 delta-03 (t))", () => {
+  // A Windows runner's temporary directory is spelled with an 8.3 short name in the environment and with the long
+  // name on disk; the simulated physical form below stands for fs.realpathSync.native.
+  const SHORT = "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\rig\\home";
+  const LONG = "C:/Users/runneradmin/AppData/Local/Temp/rig/home";
+  const physical = (dir: string): string => dir.replaceAll("RUNNER~1", "runneradmin");
+  const repoDir = `${SHORT}\\.crewrig\\versions\\1.0.0-test.2`;
+
+  test("a capture handler of another cached version is recognised whatever the spelling", () => {
+    const other = `${LONG}/.crewrig/versions/1.0.0-test.1/hooks/usage-capture.ts`;
+    assert.equal(isOtherCachedVersionPath(other, SHORT, repoDir, path.win32, physical), true);
+    const upper = other.replace("/.crewrig/versions/", "/.CREWRIG/VERSIONS/").toUpperCase();
+    assert.equal(isOtherCachedVersionPath(upper, SHORT, repoDir, path.win32, physical), true);
+  });
+
+  test("the running version, a checkout and another user's home are not other cached versions", () => {
+    const running = `${LONG}/.crewrig/versions/1.0.0-test.2/hooks/usage-capture.ts`;
+    const checkout = `${LONG}/work/crewrig/hooks/usage-capture.ts`;
+    const otherUser = "C:/Users/someone/.crewrig/versions/1.0.0-test.1/hooks/usage-capture.ts";
+    assert.equal(isOtherCachedVersionPath(running, SHORT, repoDir, path.win32, physical), false);
+    assert.equal(isOtherCachedVersionPath(checkout, SHORT, repoDir, path.win32, physical), false);
+    assert.equal(isOtherCachedVersionPath(otherUser, SHORT, repoDir, path.win32, physical), false);
+  });
+
+  test("the classifier judges a forward-slash drive path live on win32, and skips it on the POSIX rule", () => {
+    const hook = `${LONG}/.crewrig/versions/1.0.0-test.1/hooks/usage-capture.ts`;
+    const isFile = (p: string): boolean => p === hook;
+    const win = classifyPaths([hook], isFile, path.win32.isAbsolute);
+    assert.deepEqual(win.live, [hook]);
+    assert.equal(win.target, hook);
+    const posix = classifyPaths([hook], isFile);
+    assert.deepEqual(posix.live, []);
+    assert.deepEqual(posix.vanished, []);
+  });
+
+  test("a hook command carries the win32 path with forward slashes, which the shell word accepts", () => {
+    const node = shellPath("win32", "C:\\hostedtoolcache\\windows\\node\\24.22.3\\x64\\node.exe");
+    const check = shellPath("win32", `${SHORT}\\.crewrig\\hooks\\session-check\\mempalace-session-check.ts`);
+    assert.equal(node, "C:/hostedtoolcache/windows/node/24.22.3/x64/node.exe");
+    assert.doesNotThrow(() => hookCommand(node, check, "claude"));
+    assert.throws(() => hookCommand(node.replaceAll("/", "\\"), check, "claude"), /cannot be wired/);
+    assert.equal(shellPath("linux", "/usr/bin/node"), "/usr/bin/node");
+  });
+
+  test("namesHook matches a hook written with forward slashes, a JSON-escaped backslash or a long name", () => {
+    const written = `node "${LONG}/.crewrig/versions/1.0.0-test.2/hooks/usage-capture.ts" claude-code Stop`;
+    const escaped = JSON.stringify({ command: written.replaceAll("/", "\\") }).slice(1, -1);
+    for (const text of [written, escaped]) {
+      assert.ok(namesHook(text, "1.0.0-test.2", "usage-capture.ts"));
+      assert.ok(!namesHook(text, "1.0.0-test.1", "usage-capture.ts"));
+      assert.ok(!namesHook(text, "1.0.0-test.2", "mempalace-transcript.ts"));
+    }
+  });
+
+  test("the trust wrapper's bundle is no daemon; the launcher's bundle is", () => {
+    const trust = [".crewrig/service-lib/launcher-child.ts", ".crewrig/service-lib/tls-env.ts"];
+    assert.deepEqual(daemonFilesUnder(trust), []);
+    const launcher = [...trust, ".crewrig/service-lib/launcher-wait.ts"];
+    assert.deepEqual(daemonFilesUnder(launcher), [".crewrig/service-lib/launcher-wait.ts"]);
   });
 });

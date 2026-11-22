@@ -40,6 +40,7 @@ import {
   withUpstream,
   type World,
 } from "./lib/org-rig.ts";
+import { namesHook } from "./lib/org-toolchain.ts";
 
 const rigs = trackRigs();
 const servers = trackServers();
@@ -199,7 +200,7 @@ describe("R11: the launcher's version directory under a hostile package.json in 
       assert.ok(fs.existsSync(hook));
       const wired = fs.readFileSync(path.join(rig.home, ".claude", "settings.json"), "utf8");
       assert.ok(
-        wired.includes(JSON.stringify(hook).slice(1, -1)),
+        namesHook(wired, path.basename(world.versionRoot()), "usage-capture.ts"),
         "the wired hook names the cached version",
       );
       const cell: Cell = {

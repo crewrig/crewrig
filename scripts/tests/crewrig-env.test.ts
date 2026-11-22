@@ -34,6 +34,16 @@ const SIX = (palace: string): Record<string, string> => ({
   MEMPALACE_PYTHON: path.join(palace, "stub-python"),
 });
 
+/**
+ * The value of a variable by name. On win32 the environment is case-insensitive: the system's PATH is Path, and the
+ * child reports it under that spelling, so the lookup matches names without regard to case there.
+ */
+const valueNamed = (env: Record<string, string | undefined>, name: string): string | undefined => {
+  if (process.platform !== "win32") return env[name];
+  const key = Object.keys(env).find((candidate) => candidate.toUpperCase() === name.toUpperCase());
+  return key === undefined ? undefined : env[key];
+};
+
 /** Every stripped name, set to a value inside the rig's root, so a strip that fails writes nowhere else. */
 const stripped = (root: string): Record<string, string> =>
   Object.fromEntries(STRIPPED_NAMES.map((name) => [name, path.join(root, `value-of-${name}`)]));
@@ -61,8 +71,12 @@ describe("delta-01 R12: exactly the six allowlisted values and the launcher vari
     for (const [name, value] of Object.entries(six)) assert.equal(env[name], value, name);
     assert.equal(env[LAUNCHER_VARIABLE], "http://127.0.0.1:9");
     for (const [name, value] of Object.entries(unaffected)) assert.equal(env[name], value, name);
-    for (const name of ["HOME", "USERPROFILE", "PATH"]) assert.ok(env[name] !== undefined, name);
-    for (const name of STRIPPED_NAMES) assert.equal(env[name], undefined, `${name} survived`);
+    for (const name of ["HOME", "USERPROFILE", "PATH"]) {
+      assert.ok(valueNamed(env, name) !== undefined, name);
+    }
+    for (const name of STRIPPED_NAMES) {
+      assert.equal(valueNamed(env, name), undefined, `${name} survived`);
+    }
     const ofClasses = Object.keys(env).filter((name) =>
       /^(crewrig_|mempalace_|mcp_daemon_)/i.test(name),
     );
