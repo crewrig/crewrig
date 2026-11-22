@@ -1,3 +1,10 @@
+<!--
+provenance:
+  version: "1.0.0"
+  canonical: "${CANONICAL_REPO}"
+  feedback: "${CANONICAL_REPO}"
+-->
+
 # Memory Protocol
 
 The orchestrator memory protocol, moved verbatim from `60-tools.md`; the Claude Code worker profile excludes this file.

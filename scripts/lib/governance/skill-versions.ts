@@ -29,6 +29,9 @@ export const PATHSPECS = [
   "artifacts/core/agents/*/AGENT.md",
   "artifacts/library/agents/*/AGENT.md",
   "artifacts/community/agents/*/AGENT.md",
+  "artifacts/core/rules/*.md",
+  "artifacts/core/system-context/*.md",
+  "hooks/*.ts",
 ] as const;
 
 // The shell's `^\+[[:space:]]+version:[[:space:]]*"` under LC_ALL=C.

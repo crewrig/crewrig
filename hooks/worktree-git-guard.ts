@@ -1,3 +1,9 @@
+/*
+provenance:
+  version: "1.0.0"
+  canonical: "${CANONICAL_REPO}"
+  feedback: "${CANONICAL_REPO}"
+*/
 // worktree-git-guard.ts — the pre-tool guard that refuses prohibited whole-tree
 // git operations in a shared ticket worktree unless an exclusive claim is held
 // (spec 0248 R3-R13). It replaces the shell hook of the same name, which stays

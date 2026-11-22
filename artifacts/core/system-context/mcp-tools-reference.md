@@ -1,3 +1,10 @@
+<!--
+provenance:
+  version: "1.0.0"
+  canonical: "${CANONICAL_REPO}"
+  feedback: "${CANONICAL_REPO}"
+-->
+
 # MCP Tools Reference
 
 MemPalace's MCP tool surface is pinned to the supported range `>=3.6.0,<3.7`

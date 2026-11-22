@@ -79,7 +79,7 @@ tasks:
         msg: "Run: task lint-bootstrap"
     cmds:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/check-erasable-syntax.test.ts {{.REPO_DIR}}/scripts/tests/lint-typescript.test.ts {{.REPO_DIR}}/scripts/tests/check-typescript.test.ts
-      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-built-trees.test.ts {{.REPO_DIR}}/scripts/tests/build-components-package-field.test.ts {{.REPO_DIR}}/scripts/tests/provenance-marker.test.ts
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-built-trees.test.ts {{.REPO_DIR}}/scripts/tests/build-components-package-field.test.ts {{.REPO_DIR}}/scripts/tests/provenance-marker.test.ts {{.REPO_DIR}}/scripts/tests/provenance-authored.test.ts
   ratchet:
     desc: Run the footprint ratchet (pre-push mirror of the CI job)
     cmds:

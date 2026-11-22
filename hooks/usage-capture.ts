@@ -1,3 +1,9 @@
+/*
+provenance:
+  version: "1.0.0"
+  canonical: "${CANONICAL_REPO}"
+  feedback: "${CANONICAL_REPO}"
+*/
 // usage-capture.ts — the usage-capture hook Claude Code, Gemini CLI and
 // Copilot CLI fire at the end of a turn or a session (spec 0243 R1-R12). It
 // replaces the shell wrapper of the same name, which stays as a forwarding
