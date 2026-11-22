@@ -1,7 +1,7 @@
 ---
 id: "0315"
 slug: org-build-setup-update-commands
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 2114
