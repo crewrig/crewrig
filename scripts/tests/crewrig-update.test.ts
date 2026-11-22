@@ -419,10 +419,16 @@ describe("the win32 forms of the hook paths (spec 0315 R6, spec 0256 delta-03 (t
 
   test("a hook command carries the win32 path with forward slashes, which the shell word accepts", () => {
     const node = shellPath("win32", "C:\\hostedtoolcache\\windows\\node\\24.22.3\\x64\\node.exe");
-    const check = shellPath("win32", `${SHORT}\\.crewrig\\hooks\\session-check\\mempalace-session-check.ts`);
+    const check = shellPath(
+      "win32",
+      `${SHORT}\\.crewrig\\hooks\\session-check\\mempalace-session-check.ts`,
+    );
     assert.equal(node, "C:/hostedtoolcache/windows/node/24.22.3/x64/node.exe");
     assert.doesNotThrow(() => hookCommand(node, check, "claude"));
-    assert.throws(() => hookCommand(node.replaceAll("/", "\\"), check, "claude"), /cannot be wired/);
+    assert.throws(
+      () => hookCommand(node.replaceAll("/", "\\"), check, "claude"),
+      /cannot be wired/,
+    );
     assert.equal(shellPath("linux", "/usr/bin/node"), "/usr/bin/node");
   });
 
