@@ -46,8 +46,9 @@ is often not the skill you were running, and never this skill. The room is one o
 
 ## Step 2: build the payload
 
-Read `references/provenance-and-values.md` first: it says how `resolve` reads the offender's provenance and
-how to choose each value. Then build the payload with the flags `resolve` printed:
+Build the payload with the flags `resolve` printed. Read `references/provenance-and-values.md` only when
+`resolve` exits `1`, when its flags leave a field empty, or when you must choose a value (`canonical`,
+`feedback`, `severity`, `subcategory`) that no flag supplies:
 
 ```sh
 node scripts/friction.ts resolve <offender path> [--hook <id> | --server <name>]
