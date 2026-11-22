@@ -9,7 +9,17 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { before, describe, test } from "node:test";
+import { spawnSync } from "node:child_process";
+import { isStrippedVariable } from "../lib/crewrig-cli/env.ts";
 import { parseManifest, MANIFEST_FILE } from "../lib/framework-release/manifest.ts";
+import {
+  checkScopes,
+  envNamesOf,
+  topLevelEnvReads,
+  uncoveredEnvNames,
+  walkClosure,
+} from "./lib/closure-walk.ts";
+import { classifyEnvName } from "./lib/env-classes.ts";
 import { assertScaffold, runInit, templateOnlyDir } from "./lib/init-scaffold.ts";
 import {
   REPO,
@@ -185,4 +195,189 @@ describe("R18: init run from an archive built from the manifest alone", () => {
       assert.deepEqual(snapshot(dir), before);
     });
   }
+});
+
+// ------------------------------------------------------------------------------------ the static closure
+
+/** The archive as a map of path to bytes, read with the independent reader of the tests. */
+function archiveFiles(): Map<string, Buffer> {
+  const files = new Map<string, Buffer>();
+  for (const record of readTarGz(archive.file)) {
+    if (record.type === "file") files.set(record.path, record.data);
+  }
+  return files;
+}
+
+const tracked = (() => {
+  const listed = spawnSync("git", ["ls-files", "-z"], { cwd: REPO, encoding: "utf8" });
+  const names = new Set(listed.stdout.split("\0"));
+  return (rel: string): boolean => names.has(rel);
+})();
+
+/** The entry files of the closure: the commands, the four hooks, and what `setup` spawns by path. */
+const ENTRIES = [
+  "scripts/crewrig-cli.ts",
+  "hooks/usage-capture.ts",
+  "hooks/antigravity-statusline-shim.ts",
+  "hooks/mempalace-transcript.ts",
+  "hooks/worktree-git-guard.ts",
+  "scripts/session-check-hooks.ts",
+  "scripts/lib/node-floor-guard.js",
+];
+
+/** A reference a command makes on purpose to a checkout-only file: `build-components.ts` is only named for diagnostics. */
+const UNSHIPPED = new Set(["scripts/build-components.ts"]);
+
+describe("R10: the static closure of build, setup, update and the hooks, over the archive", () => {
+  test("follows module-path strings and spawned scripts, not only import specifiers", () => {
+    const { reached } = walkClosure(archiveFiles(), ENTRIES, tracked, UNSHIPPED);
+
+    for (const [file, how] of [
+      ["scripts/lib/crewrig-cli/build.ts", "a dynamic import() of the entry point"],
+      [
+        "scripts/lib/setup/mcp-claude-step.ts",
+        "a module-path string of a strategy table (steps-mcp.ts)",
+      ],
+      [
+        "scripts/lib/setup/mcp-agy-step.ts",
+        "a module-path string of a strategy table (steps-mcp.ts)",
+      ],
+      ["scripts/tls-exec.ts", "a spawned script: path.join(<root>, 'scripts', 'tls-exec.ts')"],
+      ["scripts/session-check-hooks.ts", "a spawned script"],
+      ["scripts/lib/build-components/main.ts", "the compile that build and setup share"],
+      ["scripts/lib/setup/steps-distribution.ts", "the distribution-only step"],
+      ["scripts/lib/service/exec.ts", "the service manager seam"],
+      ["scripts/lib/usage-capture/index.js", "a CommonJS require without an extension"],
+    ] as const) {
+      assert.ok(reached.includes(file), `${file} is reached (${how})`);
+    }
+    assert.ok(reached.length > 150, `${reached.length} files reached`);
+  });
+
+  test("every reached file that the checkout tracks is in the archive", () => {
+    const { missing } = walkClosure(archiveFiles(), ENTRIES, tracked, UNSHIPPED);
+
+    assert.deepEqual(missing, []);
+  });
+
+  test("removing any file of the closure from the archive is reported, naming the file", () => {
+    const files = archiveFiles();
+    const { reached } = walkClosure(files, ENTRIES, tracked, UNSHIPPED);
+
+    for (const file of reached) {
+      const without = new Map(files);
+      without.delete(file);
+
+      const { missing } = walkClosure(without, ENTRIES, tracked, UNSHIPPED);
+
+      assert.ok(
+        missing.some((hole) => hole === file || hole.endsWith(`-> ${file}`)),
+        `removing ${file} is not reported`,
+      );
+    }
+  });
+
+  test("the R41(c) scopes hold over the whole closure: CommonJS files in commonjs scopes, ECMAScript files in the root", () => {
+    const files = archiveFiles();
+    const { reached } = walkClosure(files, ENTRIES, tracked, UNSHIPPED);
+
+    assert.deepEqual(
+      checkScopes(files, reached).map((finding) => `${finding.file}: ${finding.problem}`),
+      [],
+    );
+  });
+
+  test("fails on a scope file removed, and on an ECMAScript file put in a scoped directory", () => {
+    const files = archiveFiles();
+    files.delete("scripts/lib/usage-store/package.json");
+    files.set("scripts/lib/usage-capture/esm.ts", Buffer.from("export const x = 1;\n"));
+    const index = (files.get("scripts/lib/usage-capture/index.js") as Buffer).toString("utf8");
+    files.set(
+      "scripts/lib/usage-capture/index.js",
+      Buffer.from(`${index}\nrequire('./esm.ts');\n`),
+    );
+
+    const { reached } = walkClosure(files, ENTRIES, tracked, UNSHIPPED);
+    const problems = checkScopes(files, reached).map((finding) => finding.file);
+
+    assert.ok(problems.includes("scripts/lib/usage-store/mcp.js"));
+    assert.ok(problems.includes("scripts/lib/usage-capture/esm.ts"));
+  });
+});
+
+describe("delta-01 R12: the environment names of the closure are all covered by the strip", () => {
+  test("the closure mentions the variables of the classes, so the check is not vacuous", () => {
+    const files = archiveFiles();
+    const { reached } = walkClosure(files, ENTRIES, tracked, UNSHIPPED);
+    const names = new Set(
+      reached.flatMap((file) => envNamesOf((files.get(file) as Buffer).toString("utf8"))),
+    );
+
+    for (const name of [
+      "CREWRIG_TLS_CA",
+      "CREWRIG_USAGE_ROOT",
+      "MEMPALACE_MCP_EVICT_CMD",
+      "MEMPALACE_MCP_HOST",
+      "MEMPALACE_PYTHON",
+      "MEMPALACE_CHROMA_PORT",
+    ]) {
+      assert.ok(names.has(name), `${name} is read somewhere in the closure`);
+    }
+  });
+
+  test("no name of the neighbourhood of the classes is left to neither the strip nor the allowlist", () => {
+    const files = archiveFiles();
+    const { reached } = walkClosure(files, ENTRIES, tracked, UNSHIPPED);
+
+    assert.deepEqual(uncoveredEnvNames(files, reached), []);
+  });
+
+  test("env.ts strips every name of the classes that the closure reads, except the six and the launcher variable", () => {
+    const files = archiveFiles();
+    const { reached } = walkClosure(files, ENTRIES, tracked, UNSHIPPED);
+    const names = new Set(
+      reached.flatMap((file) => envNamesOf((files.get(file) as Buffer).toString("utf8"))),
+    );
+
+    for (const name of names) {
+      const cls = classifyEnvName(name);
+      assert.equal(isStrippedVariable(name), cls === "stripped", `${name} (${cls})`);
+    }
+  });
+
+  test("fails on a new variable of the neighbourhood that no class covers", () => {
+    const files = archiveFiles();
+    files.set(
+      "scripts/lib/setup/new-reader.ts",
+      Buffer.from('export const f = (env: NodeJS.ProcessEnv) => env["MCP_DAEMON_NEW_SEAM"];\n'),
+    );
+
+    assert.deepEqual(uncoveredEnvNames(files, ["scripts/lib/setup/new-reader.ts"]), [
+      "MCP_DAEMON_NEW_SEAM (scripts/lib/setup/new-reader.ts)",
+    ]);
+  });
+
+  test("no module of the commands reads process.env while it loads", () => {
+    const files = archiveFiles();
+    const { reached } = walkClosure(files, ["scripts/crewrig-cli.ts"], tracked, UNSHIPPED);
+
+    const reads = reached.flatMap((file) =>
+      topLevelEnvReads(file, (files.get(file) as Buffer).toString("utf8")),
+    );
+
+    assert.deepEqual(reads, []);
+  });
+
+  test("fails on a top-level read, and ignores a parameter default and a read inside a function", () => {
+    assert.deepEqual(topLevelEnvReads("a.ts", "const home = process.env.HOME;\n"), [
+      "a.ts: const home = process.env.HOME;",
+    ]);
+    assert.deepEqual(
+      topLevelEnvReads(
+        "b.ts",
+        "export function f(env: NodeJS.ProcessEnv = process.env) {\n  return process.env.X ?? env.Y;\n}\n",
+      ),
+      [],
+    );
+  });
 });
