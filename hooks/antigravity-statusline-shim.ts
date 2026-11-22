@@ -13,8 +13,9 @@
 // prior command nothing is written to standard output, never the raw payload
 // (issue #1363, spec 0241). The prior command's own stderr passes through.
 //
-// The entry form is the one hooks/usage-capture.ts documents (R5): no module
-// syntax, listeners removed first, all logic inside the async function.
+// The entry form is the one hooks/usage-capture.ts documents (R5, R40): no
+// module syntax, no CommonJS-only binding, listeners removed first, all logic
+// inside the async function.
 
 process.removeAllListeners("warning");
 
@@ -28,11 +29,13 @@ void (async () => {
   const payload = Buffer.concat(chunks);
 
   try {
-    const fs = require("node:fs") as typeof import("node:fs");
-    const path = require("node:path") as typeof import("node:path");
-    const { spawn } = require("node:child_process") as typeof import("node:child_process");
-    const cursor =
-      require("../scripts/lib/usage-capture/cursor.js") as typeof import("../scripts/lib/usage-capture/cursor.js");
+    const fs = process.getBuiltinModule("node:fs") as typeof import("node:fs");
+    const path = process.getBuiltinModule("node:path") as typeof import("node:path");
+    const { spawn } = process.getBuiltinModule(
+      "node:child_process",
+    ) as typeof import("node:child_process");
+    const cursor = (await import("../scripts/lib/usage-capture/cursor.js"))
+      .default as typeof import("../scripts/lib/usage-capture/cursor.js");
 
     const marker = path.join(cursor.usageRoot(), "state", "antigravity-statusline.json");
     const state = JSON.parse(fs.readFileSync(marker, "utf8")) as unknown;
@@ -57,7 +60,7 @@ void (async () => {
   }
 
   try {
-    const { runCapture } = await import("../scripts/lib/usage-capture/hook-run.ts");
+    const { runCapture } = await import("../scripts/lib/usage-hook/hook-run.ts");
     await runCapture({
       cli: "antigravity",
       event: "statusline",

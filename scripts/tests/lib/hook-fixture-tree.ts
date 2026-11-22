@@ -16,9 +16,11 @@ import { fileURLToPath } from "node:url";
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
 const CAPTURE_DIR = ["scripts", "lib", "usage-capture"] as const;
+/** The directory of hook-run.ts: it takes the archive root module type, as the entries do (spec 0243 R41). */
+const HOOK_DIR = ["scripts", "lib", "usage-hook"] as const;
 
 export interface FixtureTreeOptions {
-  /** Source text of a stub `scripts/lib/usage-capture/hook-run.ts`. Default: the real one. */
+  /** Source text of a stub `scripts/lib/usage-hook/hook-run.ts`. Default: the real one. */
   hookRun?: string;
   /** Source text of a stub `scripts/lib/usage-capture/index.js`. Default: a no-op dispatcher. */
   index?: string;
@@ -54,10 +56,11 @@ export function makeFixtureTree(options: FixtureTreeOptions = {}): FixtureTree {
   for (const name of fs.readdirSync(path.join(REPO, "scripts", "lib"))) {
     if (name.endsWith(".ts")) copyInto(root, "scripts", "lib", name);
   }
+  copyInto(root, ...CAPTURE_DIR, "package.json");
   copyInto(root, ...CAPTURE_DIR, "cursor.js");
-  copyInto(root, ...CAPTURE_DIR, "hook-run.ts");
+  copyInto(root, ...HOOK_DIR, "hook-run.ts");
   if (options.hookRun !== undefined) {
-    fs.writeFileSync(path.join(root, ...CAPTURE_DIR, "hook-run.ts"), options.hookRun);
+    fs.writeFileSync(path.join(root, ...HOOK_DIR, "hook-run.ts"), options.hookRun);
   }
   fs.writeFileSync(path.join(root, ...CAPTURE_DIR, "index.js"), options.index ?? NOOP_INDEX);
   return {

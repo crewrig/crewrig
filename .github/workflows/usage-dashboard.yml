@@ -30,6 +30,7 @@ on:
       - "scripts/tests/fixtures/usage-pricing/**"
       - "model-prices.org.json"
       - "scripts/lib/usage-store/**"
+      - "scripts/lib/usage-inventory/**"
       - "scripts/lib/usage-price/**"
       - "scripts/usage-query.ts"
       - "scripts/usage-price.ts"

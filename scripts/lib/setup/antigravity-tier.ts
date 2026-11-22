@@ -17,6 +17,7 @@ import { SetupExit } from "./exit.ts";
 import type { PromptSession } from "./prompt.ts";
 import { ensureTierBuilt, isDirectory, stagingGate, stagingRoot } from "./tier-build.ts";
 import type { TierBuildDeps } from "./tier-build.ts";
+import { tierRoot } from "./org-roots.ts";
 import { globNames, runOverlayTiers } from "./tier-install.ts";
 import type { TierCtx } from "./tier-install.ts";
 
@@ -133,7 +134,7 @@ function placeAgents(
  * returns 0.
  */
 export function installAntigravityTier(ctx: TierCtx, tier: string): number {
-  const staging = stagingRoot(ctx.repoDir, "antigravity", tier);
+  const staging = stagingRoot(tierRoot(ctx, tier), "antigravity", tier);
   if (!isDirectory(staging)) {
     ctx.io.out(
       `  Tier '${tier}' not built (no ${staging}) — run 'node scripts/build-components.ts' first.`,

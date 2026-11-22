@@ -14,7 +14,7 @@ import { flushFallbackNotice } from "./files.ts";
 import { createAnswers, unusedWarning } from "./answers.ts";
 import { parseSetupArgv } from "./argv.ts";
 import type { Io, SetupCtx } from "./context.ts";
-import type { FlowDeps, FlowState, SetupDescriptor, StepRegistry } from "./descriptor.ts";
+import type { FlowDeps, FlowState, SetupDescriptor, StepId, StepRegistry } from "./descriptor.ts";
 import { SetupExit } from "./exit.ts";
 import { askLinkConfirm } from "./link-key.ts";
 import { createSession, type PromptSession } from "./prompt.ts";
@@ -22,6 +22,7 @@ import { createLineQueue } from "./prompt-queue.ts";
 import { createSpawner } from "./spawner.ts";
 import { agySteps } from "./steps-agy.ts";
 import { copilotSteps } from "./steps-copilot.ts";
+import { distributionSteps } from "./steps-distribution.ts";
 import { hooksSteps } from "./steps-hooks.ts";
 import { mcpSteps } from "./steps-mcp.ts";
 import { rulesSteps } from "./steps-rules.ts";
@@ -58,6 +59,20 @@ function initialState(env: FlowDeps["env"]): FlowState {
   };
 }
 
+/** The steps a two-root run does not take (spec 0315 R6): dependencies and the Copilot workspace file. */
+const ORG_SKIPPED_STEPS: ReadonlySet<string> = new Set(["deps-install", "copilot-workspace-files"]);
+
+/**
+ * The step list of a two-root run: the checkout's steps without the skipped ones, and the distribution skills
+ * (spec 0315 R8) right after the tier installs, or before the summary when a descriptor has no tier step.
+ */
+function orgSteps(steps: readonly StepId[]): StepId[] {
+  const kept = steps.filter((id) => !ORG_SKIPPED_STEPS.has(id));
+  const tiers = kept.indexOf("tiers");
+  kept.splice(tiers < 0 ? Math.max(kept.length - 1, 0) : tiers + 1, 0, "distribution-skills");
+  return kept;
+}
+
 /** Run one setup; resolves with the exit status (0 on success) and rethrows a non-`SetupExit` error. */
 export async function runSetup(descriptor: SetupDescriptor, deps: FlowDeps): Promise<number> {
   const io = ioOf(deps);
@@ -69,6 +84,9 @@ export async function runSetup(descriptor: SetupDescriptor, deps: FlowDeps): Pro
   try {
     const parsed = parseSetupArgv(deps.argv, io);
     const answers = createAnswers(parsed, descriptor.cli, io);
+    // A two-root run (spec 0315 R6) installs no dependencies and no Copilot workspace file: the
+    // version root is a cache, and the organization directory is never written.
+    const steps = deps.org === undefined ? descriptor.steps : orgSteps(descriptor.steps);
     // `ctx.env` is the flow-owned `state.env`: `tls-offer` merges into it and the spawner reads it.
     const run: SetupCtx = {
       io,
@@ -77,7 +95,8 @@ export async function runSetup(descriptor: SetupDescriptor, deps: FlowDeps): Pro
       home: deps.home,
       repoDir: deps.repoDir,
       cli: descriptor.cli,
-      link: parsed.link,
+      link: deps.org === undefined && parsed.link,
+      ...(deps.org === undefined ? {} : { org: deps.org }),
     };
     ctx = run;
     const spawn = deps.spawn ?? createSpawner(run);
@@ -90,6 +109,7 @@ export async function runSetup(descriptor: SetupDescriptor, deps: FlowDeps): Pro
       ...copilotSteps,
       ...usageSteps,
       ...tierSteps,
+      ...distributionSteps,
       ...summarySteps,
       ...deps.steps,
     };
@@ -97,8 +117,8 @@ export async function runSetup(descriptor: SetupDescriptor, deps: FlowDeps): Pro
       const queue = createLineQueue(deps.stdin, { remainder });
       session = createSession({ queue, answers, io, isTty: deps.stdin.isTTY === true });
     };
-    if (!descriptor.steps.includes("link-confirm")) open("");
-    for (const id of descriptor.steps) {
+    if (!steps.includes("link-confirm")) open("");
+    for (const id of steps) {
       if (id === "link-confirm") {
         let remainder = "";
         if (parsed.link) {

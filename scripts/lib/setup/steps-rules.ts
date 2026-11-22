@@ -28,6 +28,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { installDir, installFile } from "./files.ts";
+import { isPersonalFile, sourceRoot } from "./org-roots.ts";
 import type { RuleFile, StepEnv, StepFn, StepRegistry } from "./descriptor.ts";
 import { filesCtx, rulesSelection } from "./steps-rules-pick.ts";
 import { failClosed } from "./steps.ts";
@@ -114,7 +115,7 @@ const rulesExisting: StepFn = async (env) => {
 
 function placeShared(env: StepEnv, rule: RuleFile, isStore: boolean): void {
   const { ctx, descriptor } = env;
-  const src = path.join(ctx.repoDir, rule.src);
+  const src = path.join(sourceRoot(ctx, rule.src), rule.src);
   if (isStore) {
     installDir(filesCtx(env), src, path.join(ctx.home, rule.dest), rule.label);
     return;
@@ -131,7 +132,9 @@ const rulesShared: StepFn = async (env) => {
   ctx.io.out(rules.sharedHeader.replaceAll("{dir}", dir));
   let storePlaced = false;
   for (const rule of rules.shared) {
-    if (rule.optional === true && !fs.existsSync(path.join(ctx.repoDir, rule.src))) continue;
+    // A two-root run may lack the personal files: their absence is skipped, not a failure (spec 0315 R6).
+    const absentOk = rule.optional === true || (ctx.org !== undefined && isPersonalFile(rule.src));
+    if (absentOk && !fs.existsSync(path.join(sourceRoot(ctx, rule.src), rule.src))) continue;
     const isStore = rule.src === rules.store.src;
     placeShared(env, rule, isStore);
     storePlaced = storePlaced || isStore;
@@ -146,7 +149,8 @@ const homeDirs: StepFn = async (env) => {
   const { ctx, descriptor } = env;
   let placed = 0;
   for (const dir of descriptor.rules.homeDirs ?? []) {
-    if (dir.optional === true && !fs.existsSync(path.join(ctx.repoDir, dir.src))) continue;
+    if (dir.optional === true && !fs.existsSync(path.join(sourceRoot(ctx, dir.src), dir.src)))
+      continue;
     placeShared(env, dir, true);
     placed += 1;
   }

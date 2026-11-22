@@ -10,7 +10,7 @@
 
 import type { LinkOutcome } from "../link-or-copy.ts";
 import type { PromptStdin } from "../manage/confirm.ts";
-import type { Cli, Env, Io, SetupCtx, Spawner } from "./context.ts";
+import type { Cli, Env, Io, OrgRoots, SetupCtx, Spawner } from "./context.ts";
 import type { PromptSession } from "./prompt.ts";
 
 /** Every step a setup runs, in the vocabulary of the B3b step table (section 2). */
@@ -37,6 +37,7 @@ export type StepId =
   | "session-check"
   | "legacy-context-cleanup"
   | "system-context-file"
+  | "distribution-skills"
   | "summary";
 
 /** The picks of the catalogue, in the names of `prompt-ids.ts` (`catalogue.team` ...). */
@@ -171,7 +172,10 @@ export interface FlowDeps {
   readonly env: Env;
   readonly platform: NodeJS.Platform;
   readonly home: string;
+  /** The framework root: the pinned version in a two-root run, the checkout otherwise. */
   readonly repoDir: string;
+  /** The organization directory and its staging, for a run started from one (spec 0315 R6). */
+  readonly org?: OrgRoots;
   /** Defaults to `createSpawner` over the flow-owned env. */
   readonly spawn?: Spawner;
   readonly now?: () => Date;

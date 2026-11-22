@@ -2,7 +2,7 @@
 // usage-record drawer inventory and purge command (spec 0239, issue #1206;
 // PLAN v1 step 8, extended per PLAN review finding v1-F1; TypeScript port of
 // the twice-reviewed test-usage-storage-inventory.sh, PR #1361, forced by
-// spec 0238's shell/JS ratchet — see scripts/lib/usage-store/inventory.ts's
+// spec 0238's shell/JS ratchet — see scripts/lib/usage-inventory/inventory.ts's
 // own header for the full rationale). Named after the file under test
 // (scripts/usage-inventory.ts), matching this repository's own *.test.ts
 // convention (scripts/tests/check-ratchet.test.ts names check-ratchet.ts,
@@ -12,7 +12,7 @@
 // scripts/tests/fixtures/usage-storage/fake-mempalace-inventory-mcp.ts,
 // bound to a caller-picked ephemeral port — never the real daemon at
 // 127.0.0.1:41893. This suite is DEDICATED to
-// scripts/lib/usage-store/inventory.ts's four tools (mempalace_list_wings,
+// scripts/lib/usage-inventory/inventory.ts's four tools (mempalace_list_wings,
 // mempalace_list_drawers, mempalace_get_drawer, mempalace_delete_drawer) and
 // does not extend fake-mempalace-mcp.js, which is scoped to mirror.js's own
 // two tools (see that fixture's own header comment) — the same reasoning
@@ -31,7 +31,7 @@
 //
 // Unlike the check-ratchet.test.ts precedent, this suite spawns the real CLI
 // entry point (scripts/usage-inventory.ts) as a black box rather than
-// re-importing scripts/lib/usage-store/inventory.ts's internal functions —
+// re-importing scripts/lib/usage-inventory/inventory.ts's internal functions —
 // preserving the exact end-to-end testing style the bash suite it replaces
 // already used (spawn the command, read its stdout/exit status).
 //

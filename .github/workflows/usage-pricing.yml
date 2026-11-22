@@ -21,6 +21,7 @@ on:
       - "scripts/tests/fixtures/usage-pricing/**"
       - "model-prices.org.json"
       - "scripts/lib/usage-store/**"
+      - "scripts/lib/usage-inventory/**"
       - "scripts/usage-attribute.ts"
       - "scripts/usage-prune.ts"
       - "scripts/usage-query.ts"

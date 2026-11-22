@@ -4,11 +4,11 @@
 // bash wrapper (spec 0238's shell/JS ratchet forbids adding a new shell or
 // JavaScript file — see DEVELOPMENT.md, "TypeScript toolchain and ratchet").
 //
-// All logic lives in scripts/lib/usage-store/inventory.ts — this file is
+// All logic lives in scripts/lib/usage-inventory/inventory.ts — this file is
 // deliberately thin, mirroring the old shell wrapper's own role (an `exec`
 // pass-through into the real module) rather than duplicating any of it. It
 // is the sole process entry point for this feature and is never imported by
-// another module (scripts/lib/usage-store/inventory.ts is the importable
+// another module (scripts/lib/usage-inventory/inventory.ts is the importable
 // surface, exercised directly by scripts/tests/usage-inventory.test.ts's
 // unit-level cases, and this file only by its own CLI black-box cases) — so,
 // unlike a module that must distinguish "am I the entry point" from "was I
@@ -21,7 +21,7 @@
 //   node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts [list] [--wing <name>[,<name>...]] [--cli <cli>] [--period <YYYY-MM>] [--json]
 //   node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/usage-inventory.ts delete [--wing <name>[,<name>...]] [--cli <cli>] [--period <YYYY-MM>] [--json] [--commit [--confirm-count <N>]]
 
-import { main } from "./lib/usage-store/inventory.ts";
+import { main } from "./lib/usage-inventory/inventory.ts";
 
 main(process.argv.slice(2))
   .then((code) => {

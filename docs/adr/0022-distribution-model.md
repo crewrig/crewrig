@@ -61,12 +61,12 @@ The single enumeration that R13 requires is the *Public surfaces* section of thi
 |---|---|---|
 | 1. Pin file | Path `crewrig.pin.json`; members `version` (exact version), `sha256` (64 lowercase hexadecimal characters) and `base_url` (base URL); the plain-URL, base-URL and exact-version grammars; unknown members ignored (spec 0314 R1 to R3) | WP3 spec |
 | 2. Launcher | Invocation `node crewrig <command> [arguments...]` (R2); the forwarding rule (spec 0314 R5); the archive items `crewrig.entry.json`, its member `entry` and the spawn form (spec 0314 R6) | spec 0288 R2; WP3 spec |
-| 2. Launcher | Command `init` with `--feedback-repo <url>`, and without it the `origin` remote, which never designates `canonical_repo` (spec 0314 R14); further commands: WP4 spec, pending | WP3 spec; WP4 part pending |
-| 2. Launcher | Exit codes 10 to 14, the launcher's alone (spec 0314 R10); exit codes 1 and 2 of `init` (spec 0314 R14, R20); codes of further commands: WP4 spec, pending | WP3 spec; WP4 part pending |
-| 2. Launcher | Environment variable `CREWRIG_RELEASE_BASE_URL`, the base-URL override (spec 0314 R8, R11); any further variable: WP4 spec, pending | WP3 spec; WP4 part pending |
+| 2. Launcher | Command `init` with `--feedback-repo <url>`, and without it the `origin` remote, which never designates `canonical_repo` (spec 0314 R14); commands `build`, `setup` and `update` with `--org-dir`, `--cli` and `--answer`, and the refusals of spec 0315 R2 (`--link`, a repeated or unknown option, a missing `--cli`) | WP3 spec; spec 0315 R1, R2 |
+| 2. Launcher | Exit codes 10 to 14, the launcher's alone (spec 0314 R10); exit codes 1 and 2 of `init` (spec 0314 R14, R20); exit codes 0, 1 and 2 of `build`, `setup` and `update`, and `update`'s mapping of a launcher code from 10 to 14 to 1 (spec 0315 R3, R9) | WP3 spec; spec 0315 R3, R9 |
+| 2. Launcher | Environment variable `CREWRIG_RELEASE_BASE_URL`, the base-URL override (spec 0314 R8, R11); the three commands add no variable, strip the classes of spec 0315 R12 (`CREWRIG_*` other than the base URL, `MEMPALACE_*` outside the six-name allowlist, `MCP_DAEMON_REPLACE_DEADLINE`) and pass exactly the six allowlisted `MEMPALACE_*` settings through (spec 0315 R12, delta-01) | WP3 spec; spec 0315 R12 |
 | 1. Pin file | Member `base_url`, the per-organization base URL value (spec 0314 R2, R8) | WP3 spec |
 | 3. `crewrig.config.toml` | Keys `canonical_repo` (`https://github.com/crewrig/crewrig`) and `feedback_repo` (a repository URL `https://<host>/<owner>/<repo>`), both strings, with their meaning; every line ends with a line feed (spec 0314 R16 and delta-01) | WP3 spec |
-| 4. Organization directories | The paths of spec 0314 R15: `config/ORGANIZATION.md`, `config/TOOLS.md`, `config/expertise/`, `config/teams/`, `config/level/`, `artifacts/org/skills/`, `artifacts/org/agents/`, `artifacts/community/hooks/`; any further path the framework reads from them: WP4 spec, pending | WP3 spec; WP4 part pending |
+| 4. Organization directories | The paths of spec 0314 R15: `config/ORGANIZATION.md`, `config/TOOLS.md`, `config/expertise/`, `config/teams/`, `config/level/`, `artifacts/org/skills/`, `artifacts/org/agents/`, `artifacts/community/hooks/`; `config/SOUL.md` and `config/PROFILE.md` (personal, git-ignored, written by the user's commands), `config/SOUL.md.template` and `config/PROFILE.md.template` (optional, organization-owned, read first), the `.gitignore` lines `config/SOUL.md`, `config/PROFILE.md` and `dist/` that `build` ensures, and `dist/` as the ignored output of `build`; `artifacts/community/hooks/` is reserved and not read in this version (spec 0315 R5 to R8) | WP3 spec; spec 0315 R5 to R8 |
 
 - **Rule (R13).** A surface absent from this table is internal, even when an organization depends on it. Adding or removing a surface is a change to this table recorded by an ADR or a spec.
 - **Internal surfaces (R12).** `scripts/`, the `Taskfile.yml` targets, the archive's internal layout, the cache layout under `~/.crewrig/versions/`, specs, ADRs and the lifecycle carry no SemVer promise.
@@ -76,6 +76,7 @@ Change log:
 
 - 2026-11-10 — Table created with every item unnamed (issue #1839).
 - 2026-11-22 — WP3 items named (issue #2101, spec 0314); the WP4 parts of the shared rows stay pending.
+- 2026-11-22 — WP4 items named (issue #2114, spec 0315 and its delta-01): the commands, their exit codes, the environment and the organization paths.
 
 ## Rejected alternatives
 

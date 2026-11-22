@@ -114,13 +114,13 @@
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { period as layoutPeriod } from "./layout.js";
+import { period as layoutPeriod } from "../usage-store/layout.js";
 import {
   deleteDrawer as mcpDeleteDrawer,
   getDrawer as mcpGetDrawer,
   listDrawers as mcpListDrawers,
   listWings as mcpListWings,
-} from "./mcp.js";
+} from "../usage-store/mcp.js";
 
 // This file's own directory, ESM's equivalent of CommonJS's `__dirname`
 // (inventory.js's own path.join(__dirname, ...) traversal below is ported

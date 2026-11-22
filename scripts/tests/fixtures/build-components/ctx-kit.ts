@@ -87,6 +87,7 @@ export function makeCtx(options: CtxKitOptions = {}): CtxKit {
     opts,
     repoDir,
     artifactsDir: path.join(repoDir, "artifacts"),
+    frameworkArtifactsDir: path.join(repoDir, "artifacts"),
     env: {},
     platform,
     io,

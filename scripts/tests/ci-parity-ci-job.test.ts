@@ -277,10 +277,11 @@ test("R18: a windows-latest job without a limit, or under the floor, is named", 
 const GROUP_NAMES = ["gate", "modules", "governance", "extensions", "integration", "windows"];
 // The R3 counts; the membership lives in `ci/capabilities/` (`group`), compared below. The counts
 // include the three launcher capabilities: crewrig-launcher-ts (modules), crewrig-launcher-floor
-// (governance) and windows-crewrig-launcher (windows), one more in each of those groups.
+// (governance) and windows-crewrig-launcher (windows), one more in each of those groups, and the Node.js 24.0.0
+// job of the archive module scopes, crewrig-module-type-node-24-0 (modules; spec 0243 delta-05 R40).
 const R3_COUNTS: Record<string, number> = {
   gate: 20,
-  modules: 17,
+  modules: 18,
   governance: 30,
   extensions: 16,
   integration: 10,

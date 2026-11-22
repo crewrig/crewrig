@@ -2344,6 +2344,18 @@ mempalace-transcript-node-24-0:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
+crewrig-module-type-node-24-0:
+  stage: modules
+  image: node:24.0.0
+  variables:
+    EXPECT_NODE_VERSION: "24.0.0"
+  script:
+    - "npm ci --omit=dev --workspaces=false"
+    - "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/crewrig-module-type.test.ts scripts/tests/usage-archive-scopes.test.ts"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
+
 crewrig-launcher-ts:
   stage: modules
   image: node:24
@@ -2383,6 +2395,21 @@ crewrig-launcher-ts:
         - "scripts/tests/lib/fast-clock.ts"
         - "scripts/tests/lib/init-scaffold.ts"
         - "scripts/tests/lib/tar-reader.ts"
+        - "scripts/lib/**"
+        - "hooks/**"
+        - "config/**"
+        - "artifacts/core/**"
+        - ".claude/skills/init-*/**"
+        - ".gemini/skills/init-*/**"
+        - ".gemini/commands/init-*"
+        - ".github/skills/init-*/**"
+        - ".agents/skills/init-*/**"
+        - "package.json"
+        - "package-lock.json"
+        - "scripts/session-check-hooks.ts"
+        - "scripts/tls-exec.ts"
+        - "scripts/tests/usage-archive-scopes.test.ts"
+        - "scripts/tests/lib/**"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
 install-ts:
@@ -3094,6 +3121,7 @@ usage-capture:
         - "hooks/gemini-transcript-hooks.json"
         - "hooks/copilot-transcript-hooks.json"
         - "scripts/lib/usage-capture/**"
+        - "scripts/lib/usage-hook/**"
         - "scripts/usage-backfill.ts"
         - "scripts/tests/e2e-usage-headless.test.ts"
         - "scripts/tests/fixtures/usage-capture/**"
@@ -3153,6 +3181,7 @@ usage-storage:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/lib/usage-store/**"
+        - "scripts/lib/usage-inventory/**"
         - "scripts/usage-query.ts"
         - "scripts/usage-prune.ts"
         - "scripts/usage-mirror.ts"
@@ -3204,7 +3233,9 @@ usage-attribution:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
       changes:
         - "scripts/lib/usage-store/**"
+        - "scripts/lib/usage-inventory/**"
         - "scripts/lib/usage-capture/**"
+        - "scripts/lib/usage-hook/**"
         - "scripts/usage-task.ts"
         - "scripts/usage-attribute.ts"
         - "scripts/tests/usage-attribution-channels.test.ts"
@@ -3250,6 +3281,7 @@ usage-pricing:
         - "scripts/tests/fixtures/usage-pricing/**"
         - "model-prices.org.json"
         - "scripts/lib/usage-store/**"
+        - "scripts/lib/usage-inventory/**"
         - "scripts/usage-attribute.ts"
         - "scripts/usage-prune.ts"
         - "scripts/usage-query.ts"
@@ -3293,6 +3325,7 @@ usage-dashboard:
         - "scripts/tests/fixtures/usage-pricing/**"
         - "model-prices.org.json"
         - "scripts/lib/usage-store/**"
+        - "scripts/lib/usage-inventory/**"
         - "scripts/lib/usage-price/**"
         - "scripts/usage-query.ts"
         - "scripts/usage-price.ts"

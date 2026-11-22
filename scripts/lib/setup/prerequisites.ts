@@ -10,7 +10,7 @@ import { SetupExit } from "./exit.ts";
 import { createSpawner } from "./spawner.ts";
 import { findOnPath } from "../mempalace-python.ts";
 
-type PrereqCtx = Pick<SetupCtx, "io" | "env" | "platform" | "repoDir" | "cli">;
+type PrereqCtx = Pick<SetupCtx, "io" | "env" | "platform" | "repoDir" | "cli" | "org">;
 
 function onPath(ctx: PrereqCtx, name: string): boolean {
   return findOnPath(name, { ...ctx.env }, { platform: ctx.platform }) !== undefined;
@@ -49,6 +49,8 @@ export function identityInvocation(cli: Cli, skill: string): string {
 
 /** `config/SOUL.md` and `config/PROFILE.md` must exist; otherwise print the list and exit 1. */
 export function checkIdentity(ctx: PrereqCtx): void {
+  // A two-root run reads the identity files when they exist and does not require them (spec 0315 R6).
+  if (ctx.org !== undefined) return;
   const required: readonly (readonly [string, string])[] = [
     ["config/SOUL.md", "/init-soul"],
     ["config/PROFILE.md", "/init-personal-profile"],

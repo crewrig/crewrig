@@ -1,6 +1,6 @@
 // lint-config-file.ts — check that a CrewRig config file has the shape of its kind.
 // Usage: node lint-config-file.ts --kind team|expertise|profile|soul <file|-> [--json]
-// Contract: references/script-contract.md. Exit codes: 0 no error finding (warnings allowed),
+// Options: --help. Exit codes: 0 no error finding (warnings allowed),
 // 1 at least one error finding, 2 usage error, 3 unreadable input.
 // Self-contained on purpose: no import, built-ins through process.getBuiltinModule.
 

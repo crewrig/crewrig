@@ -7,11 +7,16 @@
 //   <cli>   claude-code | gemini-cli | copilot-cli
 //   <event> the firing lifecycle event name, forwarded verbatim
 //
-// ENTRY FORM (R5) — do not "tidy" it into an ordinary module:
+// ENTRY FORM (R5, R40) — do not "tidy" it into an ordinary module:
 //  - No top-level `import`/`export` and nothing declared at global scope, so
-//    Node.js loads the file as CommonJS and prints no
+//    Node.js loads the file as CommonJS under the typeless root and prints no
 //    MODULE_TYPELESS_PACKAGE_JSON warning for it. `node:` built-ins come from
-//    `require()` (cast, so the typed lint rules hold); the rest from `import()`.
+//    `process.getBuiltinModule()` (cast, so the typed lint rules hold); the
+//    rest, the CommonJS helper cursor.js included, from `import()`, never
+//    `require()`.
+//  - No CommonJS-only binding (`require`, `module`, `exports`, `__filename`,
+//    `__dirname`), so the file also runs where an archive root with
+//    `"type": "module"` makes Node.js load it as an ES module (spec 0315 R11).
 //  - The first statement removes the `warning` listeners, which silences the
 //    entry's own deferred warning (Node.js 24.0.0's type-stripping
 //    ExperimentalWarning) and that of every module loaded lazily below.
@@ -30,11 +35,11 @@ process.removeAllListeners("warning");
 
 void (async () => {
   try {
-    const fs = require("node:fs") as typeof import("node:fs");
-    const os = require("node:os") as typeof import("node:os");
-    const path = require("node:path") as typeof import("node:path");
-    const cursor =
-      require("../scripts/lib/usage-capture/cursor.js") as typeof import("../scripts/lib/usage-capture/cursor.js");
+    const fs = process.getBuiltinModule("node:fs") as typeof import("node:fs");
+    const os = process.getBuiltinModule("node:os") as typeof import("node:os");
+    const path = process.getBuiltinModule("node:path") as typeof import("node:path");
+    const cursor = (await import("../scripts/lib/usage-capture/cursor.js"))
+      .default as typeof import("../scripts/lib/usage-capture/cursor.js");
 
     const cli = process.argv[2] ?? "";
     const event = process.argv[3] ?? "";
@@ -80,7 +85,7 @@ void (async () => {
       }
     }
 
-    const { runCapture } = await import("../scripts/lib/usage-capture/hook-run.ts");
+    const { runCapture } = await import("../scripts/lib/usage-hook/hook-run.ts");
     await runCapture({ cli, event, rawPayload });
   } catch (error) {
     if (error instanceof Error && error.name === "MissingDependencyError") {

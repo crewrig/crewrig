@@ -133,6 +133,11 @@ describe("scaffold-config-file", () => {
 
   test("profile and soul round-trip through the linter", () => {
     const root = fresh();
+    // A save needs its template (spec 0315 R8): the organization's own copies, as init provides them.
+    fs.mkdirSync(path.join(root, "config"));
+    for (const name of ["PROFILE.md.template", "SOUL.md.template"]) {
+      fs.copyFileSync(path.join(REPO, "config", name), path.join(root, "config", name));
+    }
     assert.equal(scaffold(root, "profile", PROFILE, ["--date", "2026-01-02"]).status, 0);
     assert.equal(scaffold(root, "soul", SOUL).status, 0);
     const profile = fs.readFileSync(path.join(root, "config", "PROFILE.md"), "utf8");
@@ -141,6 +146,13 @@ describe("scaffold-config-file", () => {
     assert.match(profile, /\*\*Last Updated:\*\* 2026-01-02\n$/);
     assert.equal(lint("profile", path.join(root, "config", "PROFILE.md")).status, 0);
     assert.equal(lint("soul", path.join(root, "config", "SOUL.md")).status, 0);
+  });
+
+  test("a profile or soul save without its template exits 3 and writes nothing (spec 0315 R8)", () => {
+    const root = fresh();
+    assert.equal(scaffold(root, "profile", PROFILE, ["--date", "2026-01-02"]).status, 3);
+    assert.equal(scaffold(root, "soul", SOUL).status, 3);
+    assert.equal(fs.existsSync(path.join(root, "config")), false);
   });
 
   test("an existing target is refused with the rule target-exists, untouched, unless --force", () => {

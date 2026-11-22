@@ -83,7 +83,7 @@ describe("static contract (R3, R11)", () => {
   const HOOK_SOURCES = [
     path.join("hooks", "usage-capture.ts"),
     path.join("hooks", "antigravity-statusline-shim.ts"),
-    path.join("scripts", "lib", "usage-capture", "hook-run.ts"),
+    path.join("scripts", "lib", "usage-hook", "hook-run.ts"),
   ];
 
   /** Code lines only: full-line `//` and block-comment lines may name retired files. */
@@ -106,13 +106,21 @@ describe("static contract (R3, R11)", () => {
   });
 
   test("the entries and the runner import only node: built-ins or repository files (no third party)", () => {
-    const specifier = /(?:\bfrom\s*|\bimport\(\s*|\brequire\(\s*)["']([^"']+)["']/g;
+    const specifier =
+      /(?:\bfrom\s*|\bimport\(\s*|\brequire\(\s*|\bgetBuiltinModule\(\s*)["']([^"']+)["']/g;
     for (const file of HOOK_SOURCES) {
       const found = [...codeOnly(file).matchAll(specifier)].map((m) => m[1] ?? "");
       assert.ok(found.length > 0, `${file}: expected to find import specifiers`);
       for (const spec of found) {
         assert.ok(spec.startsWith("node:") || spec.startsWith("."), `${file} imports ${spec}`);
       }
+    }
+  });
+
+  test("the entries bind no CommonJS-only name outside comments (R5(a), spec 0243 R40)", () => {
+    const binding = /\b(require|module|exports|__filename|__dirname)\b/;
+    for (const file of HOOK_SOURCES.slice(0, 2)) {
+      assert.doesNotMatch(codeOnly(file), binding, file);
     }
   });
 });

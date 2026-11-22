@@ -6,7 +6,8 @@ import path from "node:path";
 import { writeFrameworkArchive } from "./archive.ts";
 import { parseFlags, required, UsageError } from "./cli.ts";
 import type { Io } from "./cli.ts";
-import { MANIFEST_FILE, parseManifest, resolveManifest } from "./manifest.ts";
+import { MANIFEST_FILE, parseManifestEntries, resolveManifest } from "./manifest.ts";
+import { stageJsYaml } from "./vendor.ts";
 import { releaseNotes } from "./notes.ts";
 import { RELEASE_BRANCH } from "./guard-main.ts";
 import { assetName, parseTag } from "./version.ts";
@@ -43,8 +44,10 @@ export function main(
       throw new UsageError("--repository or GITHUB_REPOSITORY is required");
     const manifest = typeof flags["manifest"] === "string" ? flags["manifest"] : MANIFEST_FILE;
 
+    // js-yaml for `build` and `setup` (spec 0315 step 6): staged before the manifest is resolved.
+    stageJsYaml(root);
     // Resolve first: nothing is written when an entry is absent.
-    const files = resolveManifest(root, parseManifest(fs.readFileSync(manifest, "utf8")));
+    const files = resolveManifest(root, parseManifestEntries(fs.readFileSync(manifest, "utf8")));
     fs.mkdirSync(out, { recursive: true });
     const asset = assetName(parsed.version);
     const sha256 = writeFrameworkArchive(files, path.join(out, asset));

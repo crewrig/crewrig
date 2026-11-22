@@ -6,10 +6,17 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 
 import { main } from "../lib/framework-release/build-main.ts";
-import { parseManifest } from "../lib/framework-release/manifest.ts";
+import {
+  MANIFEST_FILE,
+  parseManifest,
+  parseManifestEntries,
+  resolveManifest,
+} from "../lib/framework-release/manifest.ts";
 import { sha256File } from "../lib/packaging/digest.ts";
 import { Fixture } from "./lib/framework-release-fixture.ts";
 import { readTarGz } from "./lib/tar-reader.ts";
+
+const REPO = path.resolve(import.meta.dirname, "..", "..");
 
 let fx: Fixture;
 let manifest = "";
@@ -47,8 +54,26 @@ function build(lines: string, kind = "prerelease", tag = "crewrig-v1.0.0-next.1"
   return { code, out, err, outDir };
 }
 
+/**
+ * The js-yaml package beside the fixture, as `npm ci` leaves it (spec 0315 step 6): the release build
+ * stages it, and the lock it is checked against names the same version.
+ */
+function vendorYaml(): void {
+  const src = path.join(REPO, "node_modules", "js-yaml");
+  const dst = path.join(fx.work, "node_modules", "js-yaml");
+  fs.mkdirSync(path.join(dst, "dist"), { recursive: true });
+  const pkg = fs.readFileSync(path.join(src, "package.json"), "utf8");
+  fs.writeFileSync(path.join(dst, "package.json"), pkg);
+  fs.copyFileSync(path.join(src, "LICENSE"), path.join(dst, "LICENSE"));
+  fs.copyFileSync(path.join(src, "dist", "js-yaml.mjs"), path.join(dst, "dist", "js-yaml.mjs"));
+  const version = (JSON.parse(pkg) as { version: string }).version;
+  const lock = { packages: { "node_modules/js-yaml": { version } } };
+  fs.writeFileSync(path.join(fx.work, "package-lock.json"), JSON.stringify(lock));
+}
+
 function seed(): void {
   fx.commit({ "rules/a.md": "a", "rules/sub/b.md": "b", "hooks/run.ts": "h", "other/c.txt": "c" });
+  vendorYaml();
 }
 
 describe("framework release build", () => {
@@ -152,5 +177,120 @@ describe("framework release build", () => {
       ),
     );
     assert.ok(entries.includes("artifacts/core/rules"));
+  });
+});
+
+const ARCHIVE_PACKAGE = '{"type": "module"}\n';
+
+/** The archive package.json: one JSON object, one member `type`, the value `module` (whitespace is free). */
+function isModuleRoot(text: string): boolean {
+  const parsed: unknown = JSON.parse(text);
+  return (
+    typeof parsed === "object" &&
+    parsed !== null &&
+    JSON.stringify(Object.entries(parsed)) === JSON.stringify([["type", "module"]])
+  );
+}
+
+function namesOf(outDir: string): string[] {
+  return readTarGz(path.join(outDir, "crewrig-1.0.0-next.1.tgz")).map((r) => r.path);
+}
+
+describe("spec 0315 R11: a mapped manifest entry ships a tracked file under another archive path", () => {
+  it("ships the content of the source at the archive path, and the source path itself only when it is listed", () => {
+    seed();
+    fx.commit({ "meta/archive-package.json": ARCHIVE_PACKAGE });
+    const res = build("package.json <- meta/archive-package.json\nrules\n");
+    assert.equal(res.code, 0, res.err.join("\n"));
+    const records = readTarGz(path.join(res.outDir, "crewrig-1.0.0-next.1.tgz"));
+    const shipped = records.find((r) => r.path === "package.json");
+    assert.ok(shipped, "package.json is in the archive");
+    assert.equal(shipped.data.toString("utf8"), ARCHIVE_PACKAGE);
+    assert.ok(!records.some((r) => r.path === "meta/archive-package.json"));
+  });
+
+  it("refuses a source that exists but is not tracked by git, and ships nothing", () => {
+    seed();
+    fs.mkdirSync(path.join(fx.work, "meta"));
+    fs.writeFileSync(path.join(fx.work, "meta", "archive-package.json"), ARCHIVE_PACKAGE);
+    const res = build("package.json <- meta/archive-package.json\n");
+    assert.equal(res.code, 1);
+    assert.match(res.err.join("\n"), /must map a file that git tracks/);
+    assert.equal(fs.existsSync(res.outDir), false);
+  });
+
+  it("has no dist/ exemption: a git-ignored source under dist/ is refused", () => {
+    seed();
+    fx.commit({ ".gitignore": "dist/\n" });
+    fs.mkdirSync(path.join(fx.work, "dist"));
+    fs.writeFileSync(path.join(fx.work, "dist", "pkg.json"), ARCHIVE_PACKAGE);
+    const res = build("package.json <- dist/pkg.json\n");
+    assert.equal(res.code, 1);
+    assert.match(res.err.join("\n"), /must map a file that git tracks/);
+  });
+
+  it("refuses a source that is absent, and a source that is a directory", () => {
+    seed();
+    const absent = build("package.json <- meta/none.json\n");
+    assert.equal(absent.code, 1);
+    assert.match(absent.err.join("\n"), /absent from the build output/);
+    const directory = build("package.json <- rules\n");
+    assert.equal(directory.code, 1);
+    assert.match(directory.err.join("\n"), /must map a file that git tracks/);
+  });
+
+  it("fails on a collision: two sources for one archive path, from a mapping and from a directory entry", () => {
+    seed();
+    fx.commit({ "meta/other.md": "other" });
+    const res = build("rules\nrules/a.md <- meta/other.md\n");
+    assert.equal(res.code, 1);
+    assert.match(
+      res.err.join("\n"),
+      /archive path 'rules\/a\.md' is provided twice: by 'rules\/a\.md' and by 'meta\/other\.md'/,
+    );
+    assert.equal(fs.existsSync(res.outDir), false);
+  });
+
+  it("rejects a mapped line that is not a clean pair, and an archive path listed twice", () => {
+    for (const bad of ["a <- b <- c", "../a <- b", "a <- /b", "a <- b/", "a/ <- b"]) {
+      assert.throws(() => parseManifestEntries(`${bad}\n`), /not a clean relative path/, bad);
+    }
+    assert.throws(
+      () => parseManifestEntries("package.json <- a.json\npackage.json\n"),
+      /'package.json' is listed twice/,
+    );
+  });
+});
+
+describe("spec 0315 R11: the archive root package.json of the committed manifest", () => {
+  const records = parseManifestEntries(fs.readFileSync(MANIFEST_FILE, "utf8"));
+
+  it("is mapped from a tracked file, and its content is exactly the single member type=module", () => {
+    const entry = records.find((record) => record.archive === "package.json");
+    assert.ok(entry, "manifest.txt maps package.json");
+    assert.notEqual(
+      entry.source,
+      "package.json",
+      "it is not a copy of the repository's own package.json",
+    );
+
+    const bytes = fs.readFileSync(path.join(REPO, entry.source), "utf8");
+
+    assert.ok(isModuleRoot(bytes), `not a one-member module root: ${bytes}`);
+    assert.deepEqual(JSON.parse(bytes), { type: "module" });
+    assert.notEqual(bytes, fs.readFileSync(path.join(REPO, "package.json"), "utf8"));
+  });
+
+  it("resolves, in this checkout, to a file whose bytes are those of the archive package.json", () => {
+    const shipped = resolveManifest(
+      REPO,
+      records.filter(
+        (record) =>
+          !(record.source.startsWith("dist/") && !fs.existsSync(path.join(REPO, record.source))),
+      ),
+    ).find((file) => file.path === "package.json");
+
+    assert.ok(shipped);
+    assert.ok(isModuleRoot(fs.readFileSync(shipped.abs, "utf8")));
   });
 });

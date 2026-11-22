@@ -22,14 +22,17 @@ import {
 import { WORKTREE_GIT_GUARD } from "../hook-descriptor.ts";
 import { rewriteConfig } from "../hook-rewrite.ts";
 import { transcriptCommand } from "../hook-transcript-cli.ts";
-import type { Cli, InstallCtx, Spawner } from "./context.ts";
+import type { Cli, InstallCtx, OrgRoots, Spawner } from "./context.ts";
 import { reportIfLossy } from "./lossless.ts";
 import { createSpawner } from "./spawner.ts";
 import { usageCaptureRewrite } from "./usage-capture.ts";
 import { usageCaptureKeep } from "./usage-capture-keep.ts";
 
 /** What the hook steps read from the setup context. */
-export type HooksCtx = Pick<InstallCtx, "io" | "env" | "platform" | "home" | "repoDir">;
+export type HooksCtx = Pick<InstallCtx, "io" | "env" | "platform" | "home" | "repoDir"> & {
+  /** Set for a two-root run (spec 0315 R6): the organization directory the run was started from. */
+  readonly org?: OrgRoots;
+};
 
 /** The floor guard of the checkout this module sits in (the shell's `_CREWRIG_COMMON_ROOT`). */
 const FLOOR_GUARD = fileURLToPath(new URL("../node-floor-guard.js", import.meta.url));
