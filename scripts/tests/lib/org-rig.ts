@@ -81,9 +81,21 @@ export const IGNORE_TEXT = "config/SOUL.md\nconfig/PROFILE.md\ndist/\n";
 
 const archives = new Map<string, Archive>();
 
-/** An archive of the manifest files labelled `version`, built once per process and label. */
-export function archiveOfVersion(version: string): Archive {
-  const known = archives.get(version);
+export interface ArchiveVariant {
+  /** Archive path to the content that replaces (or adds) that file. */
+  readonly replace?: Readonly<Record<string, string>>;
+  /** Archive paths left out. */
+  readonly remove?: readonly string[];
+}
+
+/**
+ * An archive of the manifest files labelled `version`, built once per process, label and variant. A variant
+ * replaces, adds or drops files after the manifest is resolved, so a test can ask what an archive that lacks
+ * a file (the root package.json, say) or carries another template does.
+ */
+export function archiveOfVersion(version: string, variant: ArchiveVariant = {}): Archive {
+  const key = `${version}\0${JSON.stringify(variant)}`;
+  const known = archives.get(key);
   if (known !== undefined) return known;
   const dir = fs.realpathSync(
     fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "crewrig-org-archive-")),
@@ -93,9 +105,19 @@ export function archiveOfVersion(version: string): Archive {
   });
   stageJsYaml(REPO);
   const target = path.join(dir, `crewrig-${version}.tgz`);
-  const files = resolveManifest(REPO, testManifestRecords());
+  const removed = new Set(variant.remove ?? []);
+  const replaced = variant.replace ?? {};
+  const files = resolveManifest(REPO, testManifestRecords())
+    .filter((file) => !removed.has(file.path) && !(file.path in replaced))
+    .map((file) => ({ ...file }));
+  for (const [rel, content] of Object.entries(replaced)) {
+    const abs = path.join(dir, `replacement-${files.length}`);
+    fs.writeFileSync(abs, content);
+    files.push({ path: rel, mode: 0o644, abs });
+  }
+  files.sort((x, y) => (x.path < y.path ? -1 : 1));
   const archive = { file: target, version, sha256: writeFrameworkArchive(files, target) };
-  archives.set(version, archive);
+  archives.set(key, archive);
   return archive;
 }
 
