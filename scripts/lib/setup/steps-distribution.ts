@@ -56,7 +56,9 @@ export function distributionTargets(cli: Cli, repoDir: string, home: string): Di
 const distributionSkills: StepFn = async (env) => {
   const { ctx } = env;
   if (ctx.org === undefined) return;
-  ctx.io.out("Installing the organization setup skills (init-team, init-soul, init-personal-profile)...");
+  ctx.io.out(
+    "Installing the organization setup skills (init-team, init-soul, init-personal-profile)...",
+  );
   for (const target of distributionTargets(ctx.cli, ctx.repoDir, ctx.home)) {
     if (!fs.existsSync(target.src)) {
       ctx.io.err(`Error: the pinned version lacks ${target.src}; install that version again.`);
