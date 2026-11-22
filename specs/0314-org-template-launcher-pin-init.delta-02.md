@@ -1,7 +1,7 @@
 ---
 id: "0314"
 slug: org-template-launcher-pin-init
-status: approved
+status: implemented
 complexity: trivial
 interaction-mode: INTERMEDIATE
 related-issue: 2109
