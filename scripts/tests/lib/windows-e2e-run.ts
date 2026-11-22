@@ -21,8 +21,9 @@ export type Leg = "direct" | Shell;
  * waits on five sequential `docker image inspect` calls against the runner's Docker engine: run
  * 44184175477, attempt 1, took 10 019 ms on it, and the whole three-leg suite took 27.6 s, against
  * 17.7 to 18.4 s on the October green runs. An entry that never returns is stopped by the job's
- * `timeout-minutes`, not by this bound. The per-entry maximum of a green run is not recorded yet:
- * a follow-up commit on this PR records it here (spec 0264 R21).
+ * `timeout-minutes`, not by this bound. Observed per-entry maximum (spec 0264 R21): 3 576 ms, that
+ * same entry on the `direct` leg, the first to reach a cold Docker engine (573 ms on `pwsh`); no
+ * other entry exceeded 520 ms (green windows-latest run 45049668533, 2026-11-22, 39 entries).
  */
 export const BOUND_MS = 30_000;
 
