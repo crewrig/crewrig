@@ -31,7 +31,6 @@ LICENSE	Licence text; no check reads it.
 renovate.json	Configuration of the external Renovate service, consumed outside CI.
 crewrig.config.toml.template	Adopter copy-to-activate template (`docs/adoption-guide.md`); no script or test reads it.
 config/.env.example	Reference listing of environment variables; no script or test reads it.
-config/*.md.template	Seed templates of the user-local overlay files SOUL and PROFILE, read interactively by the `init-soul` / `init-personal-profile` commands; no CI check reads them. ORGANIZATION and TOOLS are not in this reason: the launcher suites read them (`crewrig-launcher-ts`, spec 0314).
 config/claude/settings.json.template	Copied at install time by `scripts/setup-claude-interactive.ts` behind an interactive prompt; no test reads it.
 config/release-monorepo.json	Documented as monorepo release configuration (`docs/layers.md`), but no script, test or workflow in the tree references the file name; candidate for a separate removal ticket.
 .oxfmtrc.json	Read by capability `lint-typescript` (no `paths:` filter): Oxfmt runs on every change through `scripts/check-typescript.ts`.
