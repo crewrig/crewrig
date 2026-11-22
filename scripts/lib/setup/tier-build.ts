@@ -14,7 +14,7 @@ import type { Cli, SetupCtx } from "./context.ts";
 import { SetupExit } from "./exit.ts";
 
 /** What the build reads from the run: the output channels, the environment and the repository. */
-export type BuildCtx = Pick<SetupCtx, "io" | "env" | "platform" | "repoDir">;
+export type BuildCtx = Pick<SetupCtx, "io" | "env" | "platform" | "repoDir" | "org">;
 
 /** The in-process build; tests inject a fake, the default is `main` of `build-components/main.ts`. */
 export type BuildFn = (input: MainInput) => Promise<number>;
@@ -72,6 +72,13 @@ export async function ensureTierBuilt(
   deps: TierBuildDeps = {},
 ): Promise<void> {
   if (isDirectory(stagingDir)) return;
+  // A two-root run never builds into the pinned version: its framework tiers ship built (spec 0315 R6, R12).
+  if (ctx.org !== undefined) {
+    ctx.io.err(
+      `Error: the pinned version lacks its built tier (no ${stagingDir}); install that version again.`,
+    );
+    throw new SetupExit(1);
+  }
   ctx.io.out(
     `Tier not built (no ${stagingDir}) — building automatically via 'node scripts/build-components.ts --target ${cli}'...`,
   );

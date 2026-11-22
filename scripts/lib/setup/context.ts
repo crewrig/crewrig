@@ -31,11 +31,22 @@ export interface SpawnOptions {
 /** Start `argv` (tool name first) with an argument array, never through a shell. */
 export type Spawner = (argv: readonly string[], options?: SpawnOptions) => SpawnResult;
 
+/**
+ * The two-root run of `setup --cli` from an organization directory (spec 0315 R6): `dir` holds the
+ * organization's files, `staging` the temporary compile of its components, outside `dir`.
+ */
+export interface OrgRoots {
+  readonly dir: string;
+  readonly staging: string;
+}
+
 /** What one setup run knows: the install context plus the CLI being set up and the link mode. */
 export interface SetupCtx extends InstallCtx {
   readonly cli: Cli;
   /** `--link`: place files as links (through the link-or-copy module) instead of copies. */
   readonly link: boolean;
+  /** Set for a run from an organization directory; the framework stays under `repoDir` (spec 0315 R6). */
+  readonly org?: OrgRoots;
 }
 
 /** Lines a module prints, in the order the shell printed them (`ctx.io.out` appends the line feed). */

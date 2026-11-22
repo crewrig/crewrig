@@ -12,6 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { Cli } from "./context.ts";
+import { overlayTiersOf, tierRoot } from "./org-roots.ts";
 import { installDir } from "./files.ts";
 import type { FilesCtx } from "./files.ts";
 import type { PromptSession } from "./prompt.ts";
@@ -60,7 +61,7 @@ const TILDE_HOME: Readonly<Record<"claude" | "gemini", string>> = {
 };
 
 function installSkillsAndAgents(ctx: TierCtx, cli: "claude" | "gemini", tier: string): void {
-  const staging = stagingRoot(ctx.repoDir, cli, tier);
+  const staging = stagingRoot(tierRoot(ctx, tier), cli, tier);
   const homeDir = path.join(ctx.home, cli === "claude" ? ".claude" : ".gemini");
   const tilde = TILDE_HOME[cli];
   if (!isDirectory(staging)) {
@@ -97,7 +98,7 @@ function installSkillsAndAgents(ctx: TierCtx, cli: "claude" | "gemini", tier: st
 }
 
 function installCopilotSkills(ctx: TierCtx, tier: string): void {
-  const staging = stagingGate(ctx.repoDir, "copilot", tier);
+  const staging = stagingGate(tierRoot(ctx, tier), "copilot", tier);
   if (!isDirectory(staging) || fs.readdirSync(staging).length === 0) {
     ctx.io.out(
       `  Tier '${tier}' has no built skills (no ${staging}) — run 'node scripts/build-components.ts --target copilot' first.`,
@@ -173,8 +174,8 @@ export async function runOverlayTiers(options: OverlayOptions): Promise<void> {
       if (cli === "antigravity") throw new Error("runOverlayTiers: Antigravity needs an installer");
       installTierToHome({ ctx, cli, tier });
     });
-  for (const tier of OVERLAY_TIERS) {
-    if (!isDirectory(stagingGate(ctx.repoDir, cli, tier))) continue;
+  for (const tier of overlayTiersOf(ctx, OVERLAY_TIERS)) {
+    if (!isDirectory(stagingGate(tierRoot(ctx, tier), cli, tier))) continue;
     const answer = await session.choose({
       id: `overlay.${tier}`,
       header: overlayHeader(ctx, cli, tier),

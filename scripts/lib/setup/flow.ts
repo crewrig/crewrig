@@ -58,6 +58,9 @@ function initialState(env: FlowDeps["env"]): FlowState {
   };
 }
 
+/** The steps a two-root run does not take (spec 0315 R6): dependencies and the Copilot workspace file. */
+const ORG_SKIPPED_STEPS: ReadonlySet<string> = new Set(["deps-install", "copilot-workspace-files"]);
+
 /** Run one setup; resolves with the exit status (0 on success) and rethrows a non-`SetupExit` error. */
 export async function runSetup(descriptor: SetupDescriptor, deps: FlowDeps): Promise<number> {
   const io = ioOf(deps);
@@ -69,6 +72,12 @@ export async function runSetup(descriptor: SetupDescriptor, deps: FlowDeps): Pro
   try {
     const parsed = parseSetupArgv(deps.argv, io);
     const answers = createAnswers(parsed, descriptor.cli, io);
+    // A two-root run (spec 0315 R6) installs no dependencies and no Copilot workspace file: the
+    // version root is a cache, and the organization directory is never written.
+    const steps =
+      deps.org === undefined
+        ? descriptor.steps
+        : descriptor.steps.filter((id) => !ORG_SKIPPED_STEPS.has(id));
     // `ctx.env` is the flow-owned `state.env`: `tls-offer` merges into it and the spawner reads it.
     const run: SetupCtx = {
       io,
@@ -77,7 +86,8 @@ export async function runSetup(descriptor: SetupDescriptor, deps: FlowDeps): Pro
       home: deps.home,
       repoDir: deps.repoDir,
       cli: descriptor.cli,
-      link: parsed.link,
+      link: deps.org === undefined && parsed.link,
+      ...(deps.org === undefined ? {} : { org: deps.org }),
     };
     ctx = run;
     const spawn = deps.spawn ?? createSpawner(run);
@@ -97,8 +107,8 @@ export async function runSetup(descriptor: SetupDescriptor, deps: FlowDeps): Pro
       const queue = createLineQueue(deps.stdin, { remainder });
       session = createSession({ queue, answers, io, isTty: deps.stdin.isTTY === true });
     };
-    if (!descriptor.steps.includes("link-confirm")) open("");
-    for (const id of descriptor.steps) {
+    if (!steps.includes("link-confirm")) open("");
+    for (const id of steps) {
       if (id === "link-confirm") {
         let remainder = "";
         if (parsed.link) {

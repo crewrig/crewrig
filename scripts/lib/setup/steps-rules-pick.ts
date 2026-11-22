@@ -9,6 +9,7 @@ import type { PickKind, StepEnv, StepFn } from "./descriptor.ts";
 import { pickCatalogueEntry } from "./catalogue.ts";
 import { installFile } from "./files.ts";
 import type { FilesCtx } from "./files.ts";
+import { sourceRoot } from "./org-roots.ts";
 import { failClosed } from "./steps.ts";
 
 /** A ctx whose placements are collected into `state.outcomes` (one link-fallback notice per run). */
@@ -35,7 +36,7 @@ async function pick(env: StepEnv, kind: PickKind): Promise<void> {
   ctx.io.out(TITLES[kind]);
   const name = await pickCatalogueEntry(session, {
     id: `catalogue.${kind}`,
-    dir: path.join(ctx.repoDir, selection.src),
+    dir: path.join(sourceRoot(ctx, selection.src), selection.src),
     label: kind,
     io: ctx.io,
   });
@@ -44,7 +45,7 @@ async function pick(env: StepEnv, kind: PickKind): Promise<void> {
   } else {
     installFile(
       filesCtx(env),
-      path.join(ctx.repoDir, selection.src, `${name}.md`),
+      path.join(sourceRoot(ctx, selection.src), selection.src, `${name}.md`),
       path.join(ctx.home, homes.rulesDir, selection.dest),
       selection.label.replaceAll("{name}", name),
     );
@@ -66,8 +67,13 @@ function sameBytes(a: string, b: string): boolean {
 async function resolveProfile(env: StepEnv): Promise<void> {
   const { ctx, descriptor, session } = env;
   const { file } = descriptor.rules.profile;
-  const src = path.join(ctx.repoDir, file.src);
+  const src = path.join(sourceRoot(ctx, file.src), file.src);
   const target = path.join(ctx.home, descriptor.homes.rulesDir, file.dest);
+  // A two-root run reads the profile from the organization directory when it is there; its absence is no failure (spec 0315 R6).
+  if (ctx.org !== undefined && !fs.existsSync(src)) {
+    ctx.io.out(`Personal profile not found in ${ctx.org.dir}: skipped.`);
+    return;
+  }
   if (!fs.existsSync(target)) {
     ctx.io.out("Setting up personal profile...");
     installFile(filesCtx(env), src, target, file.label);
