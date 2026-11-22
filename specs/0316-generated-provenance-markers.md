@@ -1,7 +1,7 @@
 ---
 id: "0316"
 slug: generated-provenance-markers
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 2095
