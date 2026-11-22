@@ -4,7 +4,7 @@ description: "Test-authoring agent that writes high-signal regression tests, enu
 model: gemini-4-hydrogen
 tools: [read_file, read_many_files, list_directory, grep_search, glob, write_file, replace, run_shell_command, activate_skill]
 ---
-<!-- crewrig-provenance: version="1.4.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: package="crewrig" version="1.4.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Tester Agent
 

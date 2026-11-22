@@ -5,7 +5,7 @@
 // scripts/lib/render-command.ts); Copilot (:775-800) and Antigravity (:805-819) compile a
 // command as a skill, because neither CLI has a slash-command file. The body is never
 // link-rewritten and no resource is propagated. Provenance is spliced into every file by
-// `checkOrWrite` (it reads the source's own `metadata.provenance`).
+// `checkOrWrite` from the marker fields (`provenanceFields`), except the Gemini `.toml` (a `#` line).
 
 import { joinRoot } from "./args.ts";
 import {
@@ -16,6 +16,7 @@ import {
   markdownFile,
   selects,
 } from "./tiers.ts";
+import { provenanceFields, withMarkerLine } from "./provenance.ts";
 import { checkOrWrite } from "./write.ts";
 import type { Ctx } from "./types.ts";
 
@@ -30,14 +31,18 @@ export function buildCommands(ctx: Ctx, tierDir: string, outRoot: string): void 
     if (name === null) continue;
     ctx.io.out(`Building command: ${name}`);
     const description = source.field("description");
+    const fields = provenanceFields(source, ctx.config, ctx.packageName);
 
     if (selects(ctx, "gemini")) {
-      const toml = ctx.fm.render.renderCommandGemini(file);
-      checkOrWrite(ctx, out(`.gemini/commands/${name}.toml`), toml, source, outRoot);
+      // The `.toml` carries the marker as a `#` line, not a YAML block: no splice (spec 0316 R3).
+      const target = out(`.gemini/commands/${name}.toml`);
+      const rendered = ctx.fm.render.renderCommandGemini(file);
+      const toml = fields === null ? rendered : withMarkerLine(target, rendered, fields, "hash");
+      checkOrWrite(ctx, target, toml, null, outRoot);
     }
     if (selects(ctx, "claude")) {
       const skill = ctx.fm.render.renderCommandClaude(file);
-      checkOrWrite(ctx, out(`.claude/skills/${name}/SKILL.md`), skill, source, outRoot);
+      checkOrWrite(ctx, out(`.claude/skills/${name}/SKILL.md`), skill, fields, outRoot);
     }
     if (selects(ctx, "copilot")) {
       const frontmatter = [
@@ -46,12 +51,12 @@ export function buildCommands(ctx: Ctx, tierDir: string, outRoot: string): void 
         ...allowedToolsLines(source),
       ];
       const content = markdownFile(frontmatter, source.body);
-      checkOrWrite(ctx, out(`.github/skills/${name}/SKILL.md`), content, source, outRoot);
+      checkOrWrite(ctx, out(`.github/skills/${name}/SKILL.md`), content, fields, outRoot);
     }
     if (selects(ctx, "antigravity")) {
       const frontmatter = [`name: ${name}`, `description: "${description}"`];
       const content = markdownFile(frontmatter, source.body);
-      checkOrWrite(ctx, out(`.agents/skills/${name}/SKILL.md`), content, source, outRoot);
+      checkOrWrite(ctx, out(`.agents/skills/${name}/SKILL.md`), content, fields, outRoot);
     }
   }
 }

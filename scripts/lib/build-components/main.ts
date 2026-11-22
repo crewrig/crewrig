@@ -25,6 +25,7 @@
 
 import { createResolveContext } from "../model-resolve.ts";
 import type { ResolveContext } from "../model-resolve.ts";
+import { packageNameOf, ProvenanceMarkerError } from "../provenance-marker.ts";
 import { reportInstalledNameCollisions } from "../component-resolve.ts";
 import { extractFrontmatter } from "../render-command.ts";
 import { loadDependency, MissingDependencyError } from "../require-dependency.ts";
@@ -149,7 +150,15 @@ export async function main(input: MainInput): Promise<number> {
 
     const config = loadConfig(repoDir, platform, io);
     validateCanonicalRepo(config);
-    const ctx: Ctx = { ...base, config };
+    const packageFile = joinRoot(platform, repoDir, "package.json");
+    let packageName: string;
+    try {
+      packageName = packageNameOf(packageFile);
+    } catch (error) {
+      if (!(error instanceof ProvenanceMarkerError)) throw error;
+      throw new BuildFailure(`Error: ${escapeControl(error.message)}`);
+    }
+    const ctx: Ctx = { ...base, config, packageName };
     banner(ctx);
     if (opts.check) base.state.stagingRoot = createStagingRoot(env);
     if (!namesAreFree(ctx)) return 1;
