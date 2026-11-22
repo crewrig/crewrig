@@ -30,6 +30,7 @@ import {
   resolveManifest,
   type ManifestEntry,
 } from "../../lib/framework-release/manifest.ts";
+import { stageJsYaml } from "../../lib/framework-release/vendor.ts";
 import { buildTar, file, writeTgz } from "./hostile-tar.ts";
 
 export const REPO = path.resolve(import.meta.dirname, "..", "..", "..");
@@ -351,6 +352,7 @@ export function manifestArchive(version = "1.0.0-test.1"): Archive {
     fs.rmSync(dir, { recursive: true, force: true });
   });
   const target = path.join(dir, `crewrig-${version}.tgz`);
+  stageJsYaml(REPO);
   const files = resolveManifest(REPO, testManifestRecords());
   cachedArchive = { file: target, version, sha256: writeFrameworkArchive(files, target) };
   return cachedArchive;

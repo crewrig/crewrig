@@ -11,6 +11,8 @@ import { sha256File } from "../lib/packaging/digest.ts";
 import { Fixture } from "./lib/framework-release-fixture.ts";
 import { readTarGz } from "./lib/tar-reader.ts";
 
+const REPO = path.resolve(import.meta.dirname, "..", "..");
+
 let fx: Fixture;
 let manifest = "";
 beforeEach(() => {
@@ -47,8 +49,26 @@ function build(lines: string, kind = "prerelease", tag = "crewrig-v1.0.0-next.1"
   return { code, out, err, outDir };
 }
 
+/**
+ * The js-yaml package beside the fixture, as `npm ci` leaves it (spec 0315 step 6): the release build
+ * stages it, and the lock it is checked against names the same version.
+ */
+function vendorYaml(): void {
+  const src = path.join(REPO, "node_modules", "js-yaml");
+  const dst = path.join(fx.work, "node_modules", "js-yaml");
+  fs.mkdirSync(path.join(dst, "dist"), { recursive: true });
+  const pkg = fs.readFileSync(path.join(src, "package.json"), "utf8");
+  fs.writeFileSync(path.join(dst, "package.json"), pkg);
+  fs.copyFileSync(path.join(src, "LICENSE"), path.join(dst, "LICENSE"));
+  fs.copyFileSync(path.join(src, "dist", "js-yaml.mjs"), path.join(dst, "dist", "js-yaml.mjs"));
+  const version = (JSON.parse(pkg) as { version: string }).version;
+  const lock = { packages: { "node_modules/js-yaml": { version } } };
+  fs.writeFileSync(path.join(fx.work, "package-lock.json"), JSON.stringify(lock));
+}
+
 function seed(): void {
   fx.commit({ "rules/a.md": "a", "rules/sub/b.md": "b", "hooks/run.ts": "h", "other/c.txt": "c" });
+  vendorYaml();
 }
 
 describe("framework release build", () => {
