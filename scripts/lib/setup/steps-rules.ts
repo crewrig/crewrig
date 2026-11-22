@@ -181,11 +181,7 @@ const rulesShared: StepFn = async (env) => {
   const dir = path.join(ctx.home, homes.rulesDir);
   ctx.io.out(rules.sharedHeader.replaceAll("{dir}", dir));
   const base = failClosed(ctx.io, "cannot stamp the rules", () => {
-    const stamp = stampBase({
-      repoDir: ctx.repoDir,
-      platform: ctx.platform,
-      io: ctx.io,
-    });
+    const stamp = stampBase({ repoDir: ctx.repoDir, platform: ctx.platform });
     preflight(stampSources(env, [...rules.shared, rules.store]), stamp);
     return stamp;
   });
