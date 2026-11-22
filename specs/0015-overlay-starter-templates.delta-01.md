@@ -1,7 +1,7 @@
 ---
 id: "0015"
 slug: overlay-starter-templates
-status: draft
+status: approved
 complexity: small
 interaction-mode: INTERMEDIATE
 related-issue: 1823
@@ -82,6 +82,22 @@ wrong tracker. Surfaced by reviewer seat `review/1823`, finding `i1-F1`
    > placeholder value with their own repository URL
    > Then `node scripts/build-components.ts` exits zero and the built CLI output
    > directories are populated correctly.
+
+3. **Fourth scenario.** Original:
+
+   > Given a `crewrig.config.toml.template` that omits the `feedback_repo` key
+   > When a reviewer cross-checks the template against the fields consumed by
+   > `scripts/build-components.sh`
+   > Then the missing field is visible as a gap and the implementation PR fails
+   > the spec review.
+
+   Replacement:
+
+   > Given a `crewrig.config.toml.template` that omits the `feedback_repo` key
+   > When a reviewer cross-checks the template against the fields consumed by
+   > `scripts/build-components.ts`
+   > Then the missing field is visible as a gap and the implementation PR fails
+   > the spec review.
 
 ## REMOVED
 
