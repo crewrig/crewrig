@@ -9,9 +9,17 @@ import {
   checkExtension,
   checkSkeleton,
   cleanupStrayPluginDist,
+  declaredOutputs,
 } from "../lib/extension/check-arms.ts";
+import { readManifest } from "../lib/extension/manifest.ts";
 import { renderExtension } from "../lib/extension/render-extension.ts";
-import { fullTree, strayTree, versionDriftTree, writeTree } from "./lib/extension-trees.ts";
+import {
+  fullTree,
+  minimalTree,
+  strayTree,
+  versionDriftTree,
+  writeTree,
+} from "./lib/extension-trees.ts";
 import type { FileMap } from "./lib/extension-trees.ts";
 import { makeCtx, tmpRoot } from "./lib/plugin-ctx.ts";
 
@@ -84,6 +92,42 @@ describe("check arms", () => {
       true,
     );
     assert.equal(t.out.includes("  OK   VERSION-DRIFT full (version 1.2.3)"), true);
+  });
+
+  it("declaredOutputs declares the sidecar exactly when the extension has a package name (spec 0316 R5)", () => {
+    const withPackage = setup("minimal", minimalTree());
+    assert.equal(
+      declaredOutputs(
+        withPackage.ctx,
+        withPackage.extDir,
+        readManifest(`${withPackage.extDir}/extension.json`),
+      ).includes("crewrig-provenance.json"),
+      true,
+    );
+    const { "package.json": _pkg, ...bare } = minimalTree();
+    const org = tmpRoot();
+    const extDir = path.join(org, "extensions", "org", "minimal");
+    writeTree(extDir, bare);
+    const { ctx } = makeCtx(org);
+    assert.equal(
+      declaredOutputs(ctx, extDir, readManifest(`${extDir}/extension.json`)).includes(
+        "crewrig-provenance.json",
+      ),
+      false,
+    );
+  });
+
+  it("MISSING/UNDECLARED: an org extension without package.json passes with no sidecar", async () => {
+    const { "package.json": _pkg, ...bare } = minimalTree();
+    const repo = tmpRoot();
+    const extDir = path.join(repo, "extensions", "org", "minimal");
+    writeTree(extDir, bare);
+    const { ctx, out } = makeCtx(repo);
+    assert.equal(await checkExtension(ctx, extDir), 0, out.join("\n"));
+    assert.equal(
+      out.includes("  OK   MISSING/UNDECLARED minimal (produced set matches declared set)"),
+      true,
+    );
   });
 
   it("GAP-UNDECLARED without the accepted file, GAP-STALE with an extra entry", async () => {

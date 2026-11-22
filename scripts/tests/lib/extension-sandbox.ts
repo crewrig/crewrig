@@ -86,6 +86,12 @@ export function writeManifest(
   const dir = extDir(root, name, tier);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "extension.json"), `${JSON.stringify(manifest)}\n`);
+  // An upstream-tier extension needs a package name and version (spec 0316 R2, R7).
+  const pkg = path.join(dir, "package.json");
+  if (tier !== "org" && !fs.existsSync(pkg)) {
+    const { name, version } = manifest;
+    fs.writeFileSync(pkg, `${JSON.stringify({ name, version })}\n`);
+  }
   return dir;
 }
 
@@ -94,7 +100,13 @@ export function fixtureManifest(
   name: string,
   extra: Readonly<Record<string, unknown>> = {},
 ): Record<string, unknown> {
-  return { name, version: "0.0.1", description: "fixture", ...extra };
+  return {
+    name,
+    version: "0.0.1",
+    description: "fixture",
+    provenance: { canonical: "https://example.test/upstream" },
+    ...extra,
+  };
 }
 
 /** An exact-text replacement in a SANDBOX file; throws when the anchor is absent. */

@@ -300,6 +300,11 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   builder is `build-antigravity-extension.ts`, row 13). That claim directly contradicted row 13's own description of the
   same builder and is corrected here rather than left standing; the matching GAP-inventory entry below is removed in the
   same change.
+- **Generated provenance (spec 0316 R4, R9):** the render stamps each generated command at emit time, with the shared
+  writer `scripts/lib/provenance-marker.ts`: a `# crewrig-provenance: …` line on line 1 of the Gemini `.toml`, and a
+  `metadata.provenance` YAML block in the frontmatter of the skill a command is converted to on Claude Code, Copilot
+  CLI and Antigravity CLI. The fields come from `extension.json` and `package.json`; the pivot source `.md` is never
+  written.
 
 ### 5c — Extension **skill/agent** provenance carrier
 
@@ -335,6 +340,14 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `agy plugin install` to load plugins; no in-repo extension skill/agent loader path exists. Evidence:
   `scripts/install-antigravity-extension.ts` builds a plugin package and calls `agy plugin install` — the plugin is
   consumed by the CLI as a whole package, not via a per-skill directory link
+- **Render-time markers (spec 0316 R5, R9):** every extension skill, agent and context copy the renderer produces is
+  stamped with the HTML-comment marker (first body line, after any frontmatter) on all four CLIs, through the shared
+  writer `scripts/lib/provenance-marker.ts`; an existing carrier in the copy is replaced, never merged, and the source
+  tree is not modified. Each output root (the Gemini build tree and the Claude, Copilot and Antigravity plugin
+  outputs) also carries a generated `crewrig-provenance.json` (`package`, `extension`, `version`, `canonical`,
+  `feedback`), the file a hook or an MCP server is attributed through. An extension without a `package.json` `name`
+  gets neither marker nor sidecar (warning outside `extensions/core` and `extensions/library`). The authored source
+  carrier of the prose above stays as the interim of spec 0312 until its retirement (spec 0316 R17, issue #2100).
 
 ### 5d — Extension context render
 

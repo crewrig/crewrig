@@ -51,14 +51,27 @@ describe("check-extension-provenance, Part B (R4 byte identity)", () => {
     },
   );
 
-  it("R4 (B3) carrier survives Claude plugin build (cp -r) byte-for-byte", () => {
+  it("R4 (B3) the Claude plugin build replaces the authored carrier with the generated marker", () => {
     const out = makeSandbox("r4-plugin-");
     const entry = path.join(REPO, "scripts", "build-claude-plugin.ts");
     const res = runEntry(entry, { cwd: REPO, args: ["hello-world", out] });
     assert.equal(res.status, 0, `${res.stdout}${res.stderr}`);
     const built = path.join(out, "skills", "greeter", "SKILL.md");
     assert.ok(fs.existsSync(built), `${built} must exist`);
-    assert.equal(carrierOf(fs.readFileSync(built, "utf8")), expected);
-    assert.ok(source.equals(fs.readFileSync(built)), "whole file identical");
+    // Spec 0316 R6, R9: the copy carries the generated marker, which replaces the authored carrier
+    // (the four interim fields agree with it) and gains the `package` field.
+    assert.equal(
+      carrierOf(fs.readFileSync(built, "utf8")),
+      expected.replace(
+        "crewrig-provenance: ",
+        'crewrig-provenance: package="hello-world-extension" ',
+      ),
+    );
+    const strip = (text: string): string =>
+      text
+        .split("\n")
+        .filter((l) => !l.includes("crewrig-provenance:"))
+        .join("\n");
+    assert.equal(strip(fs.readFileSync(built, "utf8")), strip(source.toString("utf8")), "body");
   });
 });

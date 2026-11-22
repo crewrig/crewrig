@@ -1,3 +1,4 @@
+# crewrig-provenance: package="hello-world-extension" extension="hello-world" version="2.1.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig"
 description = "Quick greeting from the hello-world extension"
 
 prompt = """

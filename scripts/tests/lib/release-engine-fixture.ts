@@ -108,6 +108,7 @@ function writeExtension(fix: string, name: string, version: string): void {
     name,
     version,
     description: `fixture extension ${name}`,
+    provenance: { canonical: "https://example.test/upstream" },
     context: { source: "CONTEXT.md" },
     gemini: { themes: [] },
     claude: {

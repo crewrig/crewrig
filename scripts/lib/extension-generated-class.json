@@ -7,5 +7,5 @@
                      "rules/AGENTS.md"],
   "generated_globs": ["commands/*.toml", "observed-gaps.json",
                        "hooks/hooks.json", "hooks.json",
-                       "skills/*-context/SKILL.md"]
+                       "skills/*-context/SKILL.md", "crewrig-provenance.json"]
 }

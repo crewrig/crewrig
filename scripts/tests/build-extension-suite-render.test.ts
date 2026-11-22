@@ -75,7 +75,9 @@ describe("Case 1 — round-trip on hello-world", () => {
     assert.ok(fs.existsSync(produced), "hello.toml was not produced in the sandbox build/");
     const src = path.join(REPO, "extensions", "core", "hello-world", "commands", "hello.md");
     const expected = createRenderCommand(yamlText).renderCommandGemini(src);
-    assert.equal(read(produced), `${expected}\n`);
+    const marker =
+      '# crewrig-provenance: package="hello-world-extension" extension="hello-world" version="2.1.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig"';
+    assert.equal(read(produced), `${marker}\n${expected}\n`);
     assert.deepEqual(snapshotTree(realOut), before, "the render wrote into the real checkout");
   });
 });
@@ -117,11 +119,14 @@ describe("Case 2 — carrier round-trip on a synthetic provenance-bearing fixtur
     assert.equal(tomlError(rendered), "");
   });
 
-  test("Case 2b — .toml carries the # crewrig-provenance: comment line", () => {
+  test("Case 2b — .toml carries the generated # crewrig-provenance: line, not the stale source carrier", () => {
     const line =
-      '# crewrig-provenance: version="1.0.0" canonical="https://example.com/owner/repo" feedback="https://example.com/owner/repo"';
+      '# crewrig-provenance: package="synth" extension="synth" version="0.0.1" canonical="https://example.test/upstream" feedback="https://example.test/upstream"';
     assert.ok(fs.existsSync(rendered), "renderer did not emit commands/x.toml");
-    assert.ok(read(rendered).split("\n").includes(line));
+    const lines = read(rendered).split("\n");
+    assert.ok(lines.includes(line));
+    assert.equal(lines.filter((l) => l.includes("crewrig-provenance")).length, 1);
+    assert.ok(!read(rendered).includes("example.com/owner/repo"));
   });
 
   test("Case 2c — prompt body is free of the provenance comment", { skip: toml }, () => {
@@ -131,7 +136,7 @@ describe("Case 2 — carrier round-trip on a synthetic provenance-bearing fixtur
 
 describe("Case 3 — no-provenance no-op", () => {
   test(
-    "Case 3 — no-provenance command renders valid TOML with no carrier comment",
+    "Case 3 — a command without a source carrier renders valid TOML with the one generated marker",
     { skip: toml },
     () => {
       const root = cloneTemplate(template);
@@ -149,7 +154,7 @@ describe("Case 3 — no-provenance no-op", () => {
       const file = path.join(root, "build", "extensions", "plain", "commands", "y.toml");
       assert.ok(fs.existsSync(file));
       assert.equal(tomlError(file), "");
-      assert.ok(!read(file).includes("crewrig-provenance"));
+      assert.equal(read(file).split("crewrig-provenance").length - 1, 1);
     },
   );
 });

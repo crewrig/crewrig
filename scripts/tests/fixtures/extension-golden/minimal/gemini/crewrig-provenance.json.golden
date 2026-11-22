@@ -1,0 +1,7 @@
+{
+  "package": "minimal",
+  "extension": "minimal",
+  "version": "0.0.1",
+  "canonical": "https://example.test/upstream",
+  "feedback": "https://example.test/upstream"
+}

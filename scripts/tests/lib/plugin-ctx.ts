@@ -83,6 +83,7 @@ export function fullExtension(): Record<string, string> {
     name: "demo",
     version: "1.2.3",
     description: "A demo extension",
+    provenance: { canonical: "https://example.test/upstream" },
     context: { source: "CONTEXT.md" },
     commands: { location: "commands/", convertToSkills: true },
     skills: { location: "skills/" },

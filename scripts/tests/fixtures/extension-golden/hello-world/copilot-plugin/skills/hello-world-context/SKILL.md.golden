@@ -3,6 +3,7 @@ name: hello-world-context
 description: "Agent-facing context for the hello-world extension."
 user-invocable: true
 ---
+<!-- crewrig-provenance: package="hello-world-extension" extension="hello-world" version="2.1.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Hello World Extension — Copilot Instructions
 
