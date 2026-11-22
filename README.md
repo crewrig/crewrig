@@ -1,27 +1,63 @@
 # CrewRig
 
-CrewRig is a centralized configuration framework for
+CrewRig gives an organization one place to define how its AI coding
+assistants behave, and ships that definition to every colleague on
 [Gemini CLI](https://github.com/google-gemini/gemini-cli),
 [Claude Code](https://claude.ai/code),
 [GitHub Copilot CLI](https://docs.github.com/copilot/github-copilot-in-the-cli), and
 [Antigravity CLI](https://antigravity.google).
-It serves three complementary
-purposes:
+You write the company context, skills, agents and hooks once; CrewRig
+compiles them for all four CLIs, so no team ends up with a private, drifting
+setup.
 
-- **Personal context layer** — layered configuration files shape how AI
-  assistants behave for a specific user's role, team, and seniority.
-- **Shared artifact zones** — `artifacts/` is the single-source zone where
-  skills, agents, and commands are authored once and compiled into outputs
-  for all supported CLIs; an agent source declares what its work needs from a model as a **capability profile** ([spec 0195](specs/0195-agent-capability-profile.md)) rather than naming one — see [`docs/model-mapping-format.md`](docs/model-mapping-format.md) for what each CLI resolves it to.
-- **Harness engineering** — a built-in feedback loop lets agents tag
-  frictions encountered during real work; the harness curator clusters
-  those frictions into actionable GitHub issues, closing the loop
-  between AI behavior and continuous improvement.
+## What CrewRig brings to a company
 
-CrewRig develops itself using its own mechanics. The internal agent crew
-— architect, developer, tester, pr-logbook, and pr-reviewer — runs on
-the same skills and agents that ship with the framework. The development
-workflow is the product in action.
+- **One source, four CLIs.** Skills, agents, commands and hooks are authored
+  once and built for every supported CLI. No silent asymmetry between tools.
+- **Layered context.** Company policies, team practices, expertise and
+  seniority are assembled into each assistant's context, on top of a personal
+  profile and an agent identity.
+- **Shared memory.** A three-tier memory model (working memory, persistent
+  agent memory, personal notes) that survives across sessions and across CLIs.
+- **A feedback loop.** Agents tag the frictions they hit during real work, and
+  those tags become issues on your tracker, so the setup improves with use.
+- **Safe by default.** Context files are copied, never symlinked, so a hostile
+  branch cannot poison an assistant's instructions.
+
+## The four jobs
+
+| Job | Where to start |
+|-----|----------------|
+| **Configure memory** — give assistants persistent, shared memory | [Memory](#memory), then the [MemPalace runbook](docs/runbooks/mempalace-mcp-server.md) |
+| **Author a skill, agent or hook** — write it once for every CLI | [Authoring skills, agents & commands](docs/authoring.md), [Extension authoring](docs/extension-authoring.md), and the format contract in [`artifacts/FORMAT.md`](artifacts/FORMAT.md) |
+| **Share it with colleagues** — one build, deployed to each person's CLI | [Adoption Guide](docs/adoption-guide.md) (overlay, `artifacts/community/` and `artifacts/org/` tiers, build, deploy, upstream sync) |
+| **Report frictions** — turn assistant pain points into issues | [Reporting frictions](#reporting-frictions) |
+
+## Adopter quick start
+
+<!-- adopter-quick-start:begin -->
+
+CrewRig is adopted as a fork that holds your organization's overlay.
+**Run first: follow the [Adoption Guide](docs/adoption-guide.md), Steps 1 to 6.**
+In short:
+
+```bash
+# 1. Fork crewrig into your organization's repository, then clone your fork
+git clone <your-fork-url> && cd <your-fork>
+
+# 2. Copy the configuration template. Keep canonical_repo on the upstream URL;
+#    point feedback_repo at your own repository.
+cp crewrig.config.toml.template crewrig.config.toml
+
+# 3. Deploy to your CLI (claude, gemini, copilot or antigravity)
+task setup-claude-interactive
+```
+
+The Adoption Guide covers the organization identity files, the build
+pipeline, every CLI's deployment, and how to stay in sync with upstream.
+Prerequisites are listed in [Prerequisites](#prerequisites).
+
+<!-- adopter-quick-start:end -->
 
 ## Supported Platforms
 
@@ -36,185 +72,6 @@ All platforms share the same source configuration files in `config/` and
 `artifacts/`. Setup and build scripts deploy them into the
 platform-specific directories. See `docs/cli-matrix.md` for the full
 per-CLI integration matrix.
-
-## How It Works
-
-### Layered Context
-
-Configuration files are organized by priority. Each file addresses a
-specific concern (identity, policies, expertise, etc.) and they combine
-to form the agent's full context:
-
-| Priority | Source | Purpose |
-|----------|--------|---------|
-| 00 | `config/SOUL.md` | Agent identity and values |
-| 10 | `config/level/<LEVEL>.md` | Seniority-adapted guidance |
-| 20 | `config/ORGANIZATION.md` | Company-wide policies |
-| 30 | `config/PROFILE.md` | Personal information |
-| 40 | `config/expertise/<ROLE>.md` | Technical specialization |
-| 50 | `config/teams/<TEAM>.md` | Team practices and norms |
-| 60 | `artifacts/core/rules/60-memory.md` | Memory architecture and orchestrator memory protocol (excluded from Claude Code workers) |
-| 60 | `artifacts/core/rules/60-tools.md` | Core tool rules and the memory obligations that bind every agent |
-| 65 | `config/TOOLS.md` | Organization-specific tool guidelines |
-
-**Gemini CLI** loads these via numeric-prefix files in `~/.gemini/` with
-enforced priority order. **Claude Code** loads them from `~/.claude/rules/`
-as additive context (all files combine, no override). **GitHub Copilot CLI**
-loads them from `~/.copilot/instructions/` as `*.instructions.md` files,
-applied to all sessions. **Antigravity CLI** loads them from
-`~/.gemini/config/AGENTS.md`.
-
-### Artifact Zone
-
-`artifacts/` is the single-source zone where skills, agents, and commands
-are written **once** and compiled into outputs for all CLIs. Contributors
-edit a single Markdown file with YAML frontmatter; the build step produces
-Gemini CLI, Claude Code, GitHub Copilot CLI, and Antigravity CLI targets.
-
-| Type | Description |
-|---|---|
-| Skill | Reusable agent behavior activated via `/skill-name` |
-| Command | Slash command with a prompt body |
-| Agent | Sub-agent with a dedicated persona |
-| Hook | Lifecycle hook (BeforeTool/AfterTool/etc.) |
-| Policy | Security or behavioral constraint |
-| MCP Server | External tool integration |
-| Theme | UI theme fragment |
-
-Install a component on a project:
-
-```bash
-# Gemini CLI
-task install-component TYPE=skills NAME=my-skill
-
-# Claude Code
-task install-claude-component TYPE=claude-skills NAME=my-skill
-```
-
-See [`artifacts/FORMAT.md`](artifacts/FORMAT.md) for the
-full unified-source specification.
-
-### Harness Engineering Loop
-
-The harness turns real-world frictions into shipped improvements through
-a four-stage loop:
-
-1. **Tag** — during real work, agents invoke the `harness-report` skill
-   the moment a friction signal fires (user pushback, tool surprise,
-   process gap). Each tag lands in the MemPalace `harness-friction`
-   wing.
-2. **Cluster** — `task harness-curate -- --apply` clusters the tagged
-   frictions by subcategory and opens one descriptive GitHub issue per
-   cluster.
-3. **Fix** — issues are addressed via the normal branch/PR workflow;
-   the internal agent crew handles the implementation cycle.
-4. **Re-install** — after a fix ships, run `task build-components` and
-   reinstall. The `metadata.provenance.version` bump in every modified
-   `SKILL.md` signals that a new version is available.
-
-For automated periodic sweeps,
-`artifacts/library/skills/harness-curator/scripts/schedule-curator.ts`
-installs a macOS launchd job or a Linux crontab entry that runs the
-curator on a fixed cadence.
-
-### Security: Copy by Default
-
-Context files are **copied** (not symlinked) to the target directory by
-default. This prevents context poisoning from malicious branches. Symlink
-mode is available for development only (with a security disclaimer).
-
-### Memory Architecture
-
-The framework implements a three-tier memory model:
-
-| Tier | System | Role | Access |
-|------|--------|------|--------|
-| 1 | Sequential Thinking | Working memory (ephemeral) | Session only |
-| 2 | MemPalace | Agent memory (persistent) | Read/write, cross-tool |
-| 3 | Obsidian | User knowledge (Second Brain) | Read free, write user-controlled |
-
-See `config/TOOLS.md` for the full memory protocol.
-
-#### Multi-agent concurrency: ChromaDB and MCP daemons
-
-When multiple CLI sessions (Claude Code, Gemini CLI, Copilot CLI, Antigravity
-CLI) or parallel agents access MemPalace simultaneously, two independent
-layers each need a single owner, or writes corrupt.
-
-![Two-layer memory coordination topology: the four CLIs connect through the shared MCP daemon (port 41893, one writer lease), which connects through the shared ChromaDB daemon (port 8001, one HNSW compactor), which owns the palace.](docs/assets/mempalace-mcp/topology.png)
-
-**Tier 1 — the ChromaDB daemon.** Each `PersistentClient` instance spawns
-its own Rust HNSW compactor. Concurrent compactors write to the same binary
-vector index files without coordination, silently corrupting the HNSW
-segment — searches return empty results while the SQLite layer remains
-intact. CrewRig solves this by running a single shared `chroma run` daemon
-that owns the `PersistentClient`. Every CLI session connects through
-`scripts/lib/mempalace-http-wrapper.py`, which monkey-patches
-`chromadb.PersistentClient` → `chromadb.HttpClient` before importing
-MemPalace. See
-[`docs/runbooks/chroma-http-server.md`](docs/runbooks/chroma-http-server.md)
-for start/stop/status commands, log locations, migration steps, and
-troubleshooting. The architectural decision is recorded in
-[ADR 0006](docs/adr/0006-chromadb-http-server.md).
-
-**Tier 2 — the shared MemPalace MCP daemon.** Collapsing tier 1 does not, on
-its own, collapse the palace *writer lease*: each CLI session still ran its
-own stdio MemPalace process, and the first one to mutate held that lease for
-the rest of its life, refusing every sibling session with MCP error
-`-32001` (*"Peer MCP writer active"*). Converting a machine to a single
-supervised MCP HTTP daemon that every CLI registers against —
-`task mempalace:switch-http` — removes that contention between sibling
-sessions by construction. Every CrewRig setup run defaults a machine to this
-arrangement: setup probes the daemon, installs and starts it, and registers
-the HTTP entry without a prompt (spec 0113 delta-02); `task
-mempalace:switch-http` remains the machine-wide all-or-nothing converger for
-machines set up before that change or where one CLI's setup failed. See
-[the runbook](docs/runbooks/mempalace-mcp-server.md) for the conversion
-command, daily operations, and the token-replacement procedure, and
-[ADR 0016](docs/adr/0016-shared-mempalace-mcp-http-server.md) for the
-decision record.
-
-## Adopting CrewRig
-
-Organizations that wish to adopt CrewRig without contributing upstream should
-follow the **[Adoption Guide](docs/adoption-guide.md)** — a step-by-step
-walkthrough covering fork initialization, overlay configuration, build
-pipeline, CLI deployment, and upstream synchronization. The guide covers all
-four supported CLIs (Gemini CLI, Claude Code, GitHub Copilot CLI,
-Antigravity CLI) and is the primary onboarding surface for adopting
-organizations.
-
-## Lifecycle Scenario
-
-A complete journey, from installing the framework to closing the
-harness loop:
-
-1. **Install** — fork crewrig, then run
-   `task setup-claude-interactive` (or `task setup-gemini-interactive`).
-   Generate your profile with `/init-personal-profile` and your soul
-   with `/init-soul`.
-2. **Create** — add a `SKILL.md` to
-   `artifacts/community/skills/my-skill/`, or run
-   `task create-extension NAME=my-skill`. Run `task build-components`
-   to generate outputs for both CLIs.
-3. **Use on another project** — install the component:
-   `task install-claude-component TYPE=claude-skills NAME=my-skill`.
-   The skill is now available in Claude Code on that project.
-4. **Record frictions** — as agents use the skill, they invoke the
-   `harness-report` skill the moment a recognition signal fires. Each
-   friction tag lands in the MemPalace `harness-friction` wing.
-5. **Transform frictions into tickets** — run
-   `task harness-curate -- --apply`. The curator clusters the
-   frictions and opens one GitHub issue per cluster against the
-   target repo.
-6. **Implement** — address the issues via feature branches. The
-   internal agent crew (architect → developer → tester → pr-logbook →
-   pr-reviewer) handles the cycle.
-7. **Install the new version** — run `task build-components` and
-   reinstall; `metadata.provenance.version` bumps confirm which
-   components changed.
-8. **Back to step 3** — use the improved skill on your projects; the
-   harness loop continues.
 
 ## Prerequisites
 
@@ -258,14 +115,14 @@ harness loop:
 > `version: '3.54'`, so an older Task fails loudly instead of silently renaming
 > tasks.
 
-## Quick Start
+## Personal setup per CLI
+
+Once your fork is cloned, each person generates a personal profile and agent
+identity, then deploys the shared configuration to their CLI.
 
 ### Gemini CLI
 
 ```bash
-git clone git@github.com:crewrig/crewrig.git
-cd crewrig
-
 # Generate your personal profile
 gemini "/init-personal-profile"
 
@@ -279,9 +136,6 @@ task setup-gemini-interactive
 ### Claude Code
 
 ```bash
-git clone git@github.com:crewrig/crewrig.git
-cd crewrig
-
 # Generate your personal profile
 claude /init-personal-profile
 
@@ -295,9 +149,6 @@ task setup-claude-interactive
 ### Copilot CLI
 
 ```bash
-git clone git@github.com:crewrig/crewrig.git
-cd crewrig
-
 # Generate your personal profile
 copilot -i "/init-personal-profile"
 
@@ -311,9 +162,6 @@ task setup-copilot-interactive
 ### Antigravity CLI
 
 ```bash
-git clone git@github.com:crewrig/crewrig.git
-cd crewrig
-
 # --new-project anchors the session to this clone — without it, on a machine
 # with other Antigravity projects, agy resolves against whichever project was
 # last active instead of the current directory.
@@ -340,34 +188,77 @@ task setup-antigravity-interactive
    **expertise**, and **experience level** through numbered questions
    (`?N` previews entry N).
 
-### Artifact Zone (optional)
+## How it works
 
-The `artifacts/` directory is the single-source zone for lightweight,
-prompt-based components. Single-source files generate outputs for all
-supported CLIs:
+### Layered Context
 
-**Gemini CLI:**
+Configuration files are organized by priority. Each file addresses a
+specific concern (identity, policies, expertise, etc.) and they combine
+to form the agent's full context:
 
-```bash
-task install-workspace
-task install-component TYPE=skills NAME=my-skill
-```
+| Priority | Source | Purpose |
+|----------|--------|---------|
+| 00 | `config/SOUL.md` | Agent identity and values |
+| 10 | `config/level/<LEVEL>.md` | Seniority-adapted guidance |
+| 20 | `config/ORGANIZATION.md` | Company-wide policies |
+| 30 | `config/PROFILE.md` | Personal information |
+| 40 | `config/expertise/<ROLE>.md` | Technical specialization |
+| 50 | `config/teams/<TEAM>.md` | Team practices and norms |
+| 60 | `artifacts/core/rules/60-memory.md` | Memory architecture and orchestrator memory protocol (excluded from Claude Code workers) |
+| 60 | `artifacts/core/rules/60-tools.md` | Core tool rules and the memory obligations that bind every agent |
+| 65 | `config/TOOLS.md` | Organization-specific tool guidelines |
 
-**Claude Code:**
+**Gemini CLI** loads these via numeric-prefix files in `~/.gemini/` with
+enforced priority order. **Claude Code** loads them from `~/.claude/rules/`
+as additive context (all files combine, no override). **GitHub Copilot CLI**
+loads them from `~/.copilot/instructions/` as `*.instructions.md` files,
+applied to all sessions. **Antigravity CLI** loads them from
+`~/.gemini/config/AGENTS.md`.
 
-```bash
-task install-claude-workspace
-task install-claude-component TYPE=claude-skills NAME=my-skill
-```
+### Security: Copy by Default
 
-**Build from source:**
+Context files are **copied** (not symlinked) to the target directory by
+default. This prevents context poisoning from malicious branches. Symlink
+mode is available for development only (with a security disclaimer).
+
+### Authoring: skills, agents, hooks
+
+`artifacts/` is the single-source zone where skills, agents, and commands
+are written **once** and compiled into outputs for all CLIs. Your
+organization's own components live in `artifacts/community/` (sandbox) and
+`artifacts/org/` (validated).
+An agent source declares what its work needs from a model as a **capability
+profile** ([spec 0195](specs/0195-agent-capability-profile.md)) rather than
+naming one — see [`docs/model-mapping-format.md`](docs/model-mapping-format.md)
+for what each CLI resolves it to.
+
+| Type | Description |
+|---|---|
+| Skill | Reusable agent behavior activated via `/skill-name` |
+| Command | Slash command with a prompt body |
+| Agent | Sub-agent with a dedicated persona |
+| Hook | Lifecycle hook (BeforeTool/AfterTool/etc.) |
+| Policy | Security or behavioral constraint |
+| MCP Server | External tool integration |
+| Theme | UI theme fragment |
+
+Build and install components:
 
 ```bash
 task build-components           # Both tools
 task build-components-gemini    # Gemini only
 task build-components-claude    # Claude Code only
-task check-components           # Drift detection (CI)
+task check-components           # Drift detection
+
+# Install a component on a project
+task install-component TYPE=skills NAME=my-skill                    # Gemini CLI
+task install-claude-component TYPE=claude-skills NAME=my-skill      # Claude Code
+task install-workspace                                              # Gemini: all components
+task install-claude-workspace                                       # Claude Code: all components
 ```
+
+See [`artifacts/FORMAT.md`](artifacts/FORMAT.md) for the full unified-source
+specification.
 
 ### Extensions (optional)
 
@@ -405,137 +296,42 @@ model, `extensions/core/hello-world/` for a complete example,
 `extension-skeleton/EXTENSION-FORMAT.md` for the manifest specification,
 and `extension-skeleton/` as a starting template.
 
-## Repository Structure
+### Memory
 
-```text
-extensions/                # Extension registry, segmented into three tiers
-├── core/                  # Upstream-shipped extensions (synced, strict)
-│   └── hello-world/       # Example extension (MCP server + command + skill)
-├── library/               # Upstream harness/shared extensions (synced, strict)
-└── org/                   # Adopter-owned extensions (excluded from sync)
+The framework implements a three-tier memory model:
 
-extension-skeleton/        # Template for new extensions
-├── EXTENSION-FORMAT.md    # extension.json specification
-├── agent/
-├── base/
-├── command/
-├── hook/
-├── mcp-server/
-├── skill/
-└── theme/
+| Tier | System | Role | Access |
+|------|--------|------|--------|
+| 1 | Sequential Thinking | Working memory (ephemeral) | Session only |
+| 2 | MemPalace | Agent memory (persistent) | Read/write, cross-tool |
+| 3 | Obsidian | User knowledge (Second Brain) | Read free, write user-controlled |
 
-config/
-├── gemini/
-│   └── settings.json      # Gemini CLI settings and MCP servers
-├── claude/
-│   └── settings.json.template
-├── level/                 # INTERN, JUNIOR, CONFIRMED, EXPERT
-├── expertise/             # BACKEND-JAVA, FRONTEND-REACT, FULLSTACK-PYTHON,
-│                          # DEVOPS-CLOUD, QA-AUTOMATION, PRODUCT-OWNER
-├── teams/                 # ATLAS, NOVA, FORGE, SENTINEL, HORIZON
-├── ORGANIZATION.md        # Company-wide policies
-├── PROFILE.md.template    # Personal profile template
-├── SOUL.md.template       # Agent identity template
-├── TOOLS.md               # Memory architecture and MCP server guidelines
-└── release-monorepo.json  # Monorepo release configuration
+See `config/TOOLS.md` for the full memory protocol.
 
-artifacts/
-├── FORMAT.md              # Unified source format specification
-├── core/                  # Upstream-owned SDLC lifecycle tools and role skills/agents
-│   ├── skills/            # Reusable agent skills — SDLC + role skills
-│   │   ├── spec-author/   # Lifecycle: qualification stage author
-│   │   ├── pr-logbook/    # Lifecycle: PR and logbook composer
-│   │   ├── pr-reviewer/   # Lifecycle: independent PR reviewer + linters
-│   │   │   └── scripts/   # lint-markdown.ts, lint-skill.ts, ...
-│   │   └── # … 6 role skills (architect, developer, doc-writer, github-actions,
-│   │       # security, tester)
-│   └── agents/            # Sub-agent definitions (lifecycle + role agents)
-│       └── # … spec-author, pr-logbook, pr-reviewer, architect + 7 role agents
-├── library/               # Upstream-owned harness machinery (user-home scope)
-│   ├── skills/
-│   │   ├── harness-report/    # Skill: tag frictions during real work
-│   │   └── harness-curator/   # Skill: cluster frictions and open GitHub issues
-│   │       └── scripts/       # schedule-curator.ts, curate.ts, ...
-│   └── agents/
-│       └── harness-curator/   # Agent: curator specialist
-├── community/             # Adopting organisation sandbox
-│   ├── skills/            # Org-authored role skills (not yet validated)
-│   ├── agents/            # Org-authored agents (not yet validated)
-│   ├── commands/          # Org-specific slash commands
-│   ├── hooks/             # Org-specific lifecycle hooks
-│   ├── policies/          # Org-specific policy files
-│   ├── mcp-servers/       # Org-specific MCP server configurations
-│   └── themes/            # Org-specific UI themes
-└── org/                   # Adopting organisation validated components
-    ├── skills/
-    └── agents/
+When several CLI sessions or parallel agents use MemPalace at once, two
+layers each need a single owner: a shared ChromaDB daemon (one vector-index
+compactor) and a shared MemPalace MCP daemon (one writer lease). Every setup
+run installs and registers both by default; `task mempalace:switch-http`
+converges machines set up earlier. Details, topology diagram and
+troubleshooting: [MemPalace MCP runbook](docs/runbooks/mempalace-mcp-server.md),
+[ChromaDB runbook](docs/runbooks/chroma-http-server.md), and
+[Multi-agent concurrency](DEVELOPMENT.md#multi-agent-concurrency-chromadb-and-mcp-daemons).
 
-.gemini/                              # Build output — generated by scripts/build-components.ts
-                                      # Do not edit manually
-.claude/                              # Build output — generated by scripts/build-components.ts
-                                      # Do not edit manually
+### Reporting frictions
 
-hooks/                                # Shared hook scripts
-├── mempalace-transcript.ts           # Session recording (opt-in; Node.js >= 24 when it fires)
-├── gemini-transcript-hooks.json      # Gemini hook registration
-└── claude-transcript-hooks.json      # Claude Code hook registration
+When an assistant hits a sharp edge during real work (a misleading prompt, a
+tool that does the wrong thing), it tags the friction with the
+`harness-report` skill. Tags accumulate in the MemPalace `harness-friction`
+wing, and `task harness-curate -- --apply` clusters them into one GitHub
+issue per cluster.
 
-docs/
-└── scripting-conventions.md          # Shell scripting standards
+Where those issues land is set in `crewrig.config.toml`:
 
-tests/
-└── e2e/                              # End-to-end test documentation
-
-.github/workflows/                    # CI/CD pipelines
-├── build.yml                         # Component build and drift check
-├── claude.yml                        # Claude Code integration
-├── pages.yml                         # GitHub Pages deployment
-├── release-monorepo.yml              # Monorepo release automation (also packages and publishes each extension's release artifact, spec 0183)
-├── scripting-conventions.yml         # Shell scripting lint
-└── security-mcp.yml                  # MCP security scan
-
-scripts/
-├── build-components.ts               # The TypeScript build
-├── build-claude-plugin.ts            # Shim: forwards to build-claude-plugin.ts (the TypeScript plugin generator)
-├── check-skill-versions.ts           # CI gate: enforces version bump on modified sources
-├── create-extension.ts               # Shim: forwards to create-extension.ts (the TypeScript extension scaffolder)
-├── migrate-extension.ts              # Shim: forwards to migrate-extension.ts (converts an extension off the retired declaration shape, spec 0183)
-├── import-claude-history.ts          # Claude transcript import
-├── import-gemini-history.ts          # Gemini transcript import
-├── install-claude-plugin.ts          # Shim: forwards to install-claude-plugin.ts (Claude Code plugin installer)
-├── install-extension.ts              # Shim: forwards to install-extension.ts (Gemini extension installer)
-├── install-extension-all.ts          # Shim: forwards to install-extension-all.ts (cross-CLI umbrella extension installer)
-├── install-workspace.ts              # Shim: forwards to install-workspace.ts (bulk Gemini component install)
-├── link-extensions.ts                # Shim: forwards to link-extensions.ts (symlink extensions for local dev)
-├── manage-claude-component.ts        # Shim: forwards to manage-claude-component.ts (Claude Code component manager)
-├── manage-workspace-component.ts     # Shim: forwards to manage-workspace-component.ts (Gemini component manager)
-├── monorepo-release.ts               # Shim: forwards to monorepo-release.ts (monorepo release driver — bumps versions, calls release-package-extension.ts, publishes the release (GitHub: through a release PR, docs/github-release-pr.md))
-├── release-package-extension.ts      # Shim: forwards to release-package-extension.ts (the ONE place a release artifact's shape is decided: renders, asserts, archives; spec 0183)
-├── release-pr.ts                     # Opens/updates/closes the GitHub release PR and dispatches its required checks (issue #1379)
-├── package-extension.ts              # Shim: forwards to package-extension.ts (manually package a single extension at its current committed version)
-├── package-extensions.ts             # Shim: forwards to package-extensions.ts (manually package every extension)
-├── prune-transcripts.ts              # Remove old transcript archives
-├── setup-claude-interactive.ts       # Shim: forwards to setup-claude-interactive.ts (Claude Code setup, interactive)
-├── setup-gemini-interactive.ts       # Shim: forwards to setup-gemini-interactive.ts (Gemini CLI setup, interactive)
-├── unlink-component.ts               # Shim: forwards to unlink-component.ts (remove a component symlink)
-├── unlink-extensions.ts              # Shim: forwards to unlink-extensions.ts (remove all extension symlinks)
-├── lib/
-│   └── mempalace-pin.json            # Single source of the MemPalace version pin (the shell libraries were retired in #1344)
-└── tests/
-    ├── governance-suite-skill-versions.test.ts       # Tests for check-skill-versions (cases 4-7)
-    ├── governance-suite-skill-versions-base.test.ts  # Tests for check-skill-versions (base-ref cases)
-    └── (frontmatter-fence tests are node --test files: build-components-frontmatter-fence.test.ts)
-
-Taskfile.yml                          # Task runner root (default task, global vars, includes)
-taskfiles/                            # Domain Taskfiles included by the root (setup, extensions, lint, e2e, ...)
-AGENTS.md                             # Agent working rules
-CLAUDE.md                             # Claude Code entry point (@AGENTS.md)
-CONTRIBUTING.md                       # Contribution guide
-DEVELOPMENT.md                        # Extension development guide
-crewrig.config.toml                   # CrewRig framework configuration
-package.json                          # Node.js workspace manifest
-renovate.json                         # Renovate dependency-update configuration
-```
+- `canonical_repo` — the upstream CrewRig repository. Keep the upstream URL
+  (`https://github.com/crewrig/crewrig`): frictions on upstream-owned
+  components always route there.
+- `feedback_repo` — your organization's repository, for frictions on the
+  components your organization authored.
 
 ## MCP Servers
 
@@ -569,10 +365,11 @@ claude mcp remove <name>
   ([`docs/cli-matrix.md`](docs/cli-matrix.md) row 8b).
 - **GitHub** — Available via Claude Code's built-in connectors.
 
-## Contributing
+## Contributing to CrewRig
 
-All contributions go through feature branches merged into `main` via Pull
-Request. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full guide,
-[`DEVELOPMENT.md`](DEVELOPMENT.md) for the extension development lifecycle,
-and [`AGENTS.md`](AGENTS.md) for commit conventions (Gitmoji), PR format,
-and logbook issue requirements.
+Changing the framework itself (not just your organization's overlay) goes
+through feature branches and Pull Requests. Start with
+[`CONTRIBUTING.md`](CONTRIBUTING.md); it links the lifecycle, the internal
+agent crew, the harness engineering loop and the repository structure
+([`DEVELOPMENT.md`](DEVELOPMENT.md#repository-structure)). Commit
+conventions, PR format and logbook rules are in [`AGENTS.md`](AGENTS.md).

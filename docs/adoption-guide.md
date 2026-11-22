@@ -90,11 +90,12 @@ the following placeholders:
 
 ```toml
 # canonical_repo — the upstream repository this fork traces back to.
-# Forks should keep this pointing at the upstream they forked from so
-# that the audit trail and license trace remain intact.
-# Replace with your own repo URL only if YOUR repo IS the canonical
-# upstream for this deployment.
-canonical_repo = "https://github.com/<YOUR-ORG>/<YOUR-REPO>"
+# Keep the upstream URL below: forks trace back to CrewRig itself, so the
+# audit trail and license trace stay intact, and frictions on upstream-owned
+# components (artifacts/core, artifacts/library, extensions/core,
+# extensions/library) always route there.
+# Change it only if YOUR repo IS the canonical upstream for this deployment.
+canonical_repo = "https://github.com/crewrig/crewrig"
 
 # feedback_repo — where the harness curator opens friction MRs.
 # Override this with your organisation's internal repo so that friction
