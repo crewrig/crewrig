@@ -316,14 +316,38 @@ capabilities:
     command:
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/mempalace-transcript-entry-form.test.ts
 
-  # Spec 0314 (ticket #2101, WP3 of epic #1822): the organization launcher `templates/org-repo/crewrig`, the pin, the
-  # framework entry point `crewrig init` and the manifest closure. Every suite runs the template file unmodified against a
+  # Spec 0243 delta-05 R40, R41(c) and spec 0315 R11 (ticket #2114, plan v3-F4): the commands and the four hook scripts of
+  # the archive work under every ancestor package.json on the oldest Node.js 24 release too, and the hook libraries
+  # resolve to the module scopes of the layout. `crewrig-launcher-ts` runs the same suites on the current Node.js 24
+  # release. No `paths:` filter, like usage-capture-node-24-0: any shared-module change can break a scope. The production
+  # install comes first, as the archive builder stages the installed js-yaml; EXPECT_NODE_VERSION makes the suite fail if
+  # the runner is not the release this job names.
+  - id: crewrig-module-type-node-24-0
+    group: modules
+    name: "Archive commands and hooks work under every module type on Node.js 24.0.0"
+    trigger:
+      - on: pull-request
+        branches: [main, "release/**"]
+      - on: push
+        branches: [main, "release/**"]
+    portability: portable
+    requires:
+      runtime: node@24.0.0
+    env:
+      EXPECT_NODE_VERSION: "24.0.0"
+    command:
+      - npm ci --omit=dev --workspaces=false
+      - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/tests/crewrig-module-type.test.ts scripts/tests/usage-archive-scopes.test.ts
+
+  # Spec 0314 (ticket #2101, WP3 of epic #1822) and spec 0315 (ticket #2114, WP4): the organization launcher
+  # `templates/org-repo/crewrig`, the pin, the framework entry point (`init`, `build`, `setup`, `update`), the environment
+  # strip, the module scopes of the archive and the manifest closure. Every suite runs the template file unmodified against a
   # localhost server and a temporary HOME; no network, no real release. Linux only here: `windows-crewrig-launcher`
   # runs the same suites on windows-latest and `crewrig-launcher-floor` runs the Node.js 22 floor case. The launcher is
   # type-checked by `lint-typescript` (scripts/check-launcher-types.ts), its suite is `lint-typescript-selftest`.
   - id: crewrig-launcher-ts
     group: modules
-    name: "Run the organization launcher and crewrig init suites"
+    name: "Run the organization launcher, crewrig init, build, setup and update suites"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
@@ -358,6 +382,21 @@ capabilities:
       - "scripts/tests/lib/fast-clock.ts"
       - "scripts/tests/lib/init-scaffold.ts"
       - "scripts/tests/lib/tar-reader.ts"
+      - "scripts/lib/**"
+      - "hooks/**"
+      - "config/**"
+      - "artifacts/core/**"
+      - ".claude/skills/init-*/**"
+      - ".gemini/skills/init-*/**"
+      - ".gemini/commands/init-*"
+      - ".github/skills/init-*/**"
+      - ".agents/skills/init-*/**"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/session-check-hooks.ts"
+      - "scripts/tls-exec.ts"
+      - "scripts/tests/usage-archive-scopes.test.ts"
+      - "scripts/tests/lib/**"
     portability: portable
     requires:
       runtime: node@24

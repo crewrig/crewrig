@@ -337,12 +337,13 @@ capabilities:
         select a Windows executor. There is no faithful equivalent on the
         other supported engines (spec 0240 R15, spec 0253 R27).
 
-  # Spec 0314 (ticket #2101, WP3 of epic #1822): the organization launcher and `crewrig init` suites on Windows, a copy of
-  # the Linux capability `crewrig-launcher-ts` (same `paths:`). The eight suites run the template file unmodified against a
-  # localhost server and a temporary HOME. The floor case is not here: it runs on Node.js 22 in `crewrig-launcher-floor`.
+  # Spec 0314 (ticket #2101, WP3 of epic #1822) and spec 0315 (ticket #2114, WP4): the organization launcher, `crewrig init`
+  # and the `build`, `setup` and `update` suites on Windows, a copy of the Linux capability `crewrig-launcher-ts` (same
+  # `paths:`). Every suite runs the template file unmodified against a localhost server and a temporary HOME. The floor
+  # case is not here: it runs on Node.js 22 in `crewrig-launcher-floor`.
   - id: windows-crewrig-launcher
     group: windows
-    name: "Windows organization launcher: pin, download, cache, archive, forwarding, init and manifest closure"
+    name: "Windows organization launcher: pin, download, cache, archive, forwarding, init, build, setup, update and manifest closure"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]
@@ -377,6 +378,21 @@ capabilities:
       - "scripts/tests/lib/fast-clock.ts"
       - "scripts/tests/lib/init-scaffold.ts"
       - "scripts/tests/lib/tar-reader.ts"
+      - "scripts/lib/**"
+      - "hooks/**"
+      - "config/**"
+      - "artifacts/core/**"
+      - ".claude/skills/init-*/**"
+      - ".gemini/skills/init-*/**"
+      - ".gemini/commands/init-*"
+      - ".github/skills/init-*/**"
+      - ".agents/skills/init-*/**"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/session-check-hooks.ts"
+      - "scripts/tls-exec.ts"
+      - "scripts/tests/usage-archive-scopes.test.ts"
+      - "scripts/tests/lib/**"
     portability: specific
     requires:
       runtime: node@24

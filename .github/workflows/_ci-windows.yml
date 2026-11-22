@@ -248,11 +248,12 @@ jobs:
           id: windows-setup-entries
           gate: false
 
-  # Spec 0314 (ticket #2101): the organization launcher and `crewrig init` suites. Path-gated like the Linux leg
+  # Spec 0314 (ticket #2101) and spec 0315 (ticket #2114): the organization launcher, `crewrig init`, `build`, `setup` and
+  # `update` suites (45 minutes: each runs a launcher, a setup and a git clone). Path-gated like the Linux leg
   # (ci/capabilities/windows-other.yml, `windows-crewrig-launcher`), so the gate input stays at its default.
   windows-crewrig-launcher:
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/ci-job
