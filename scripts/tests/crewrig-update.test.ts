@@ -385,8 +385,8 @@ describe("R3, R9: a launcher refusal inside update never surfaces as a launcher 
 describe("the win32 forms of the hook paths (spec 0315 R6, spec 0256 delta-03 (t))", () => {
   // A Windows runner's temporary directory is spelled with an 8.3 short name in the environment and with the long
   // name on disk; the simulated physical form below stands for fs.realpathSync.native.
-  const SHORT = "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\rig\\home";
-  const LONG = "C:/Users/runneradmin/AppData/Local/Temp/rig/home";
+  const SHORT = "C:\\runner\\RUNNER~1\\rig\\home";
+  const LONG = "C:/runner/runneradmin/rig/home";
   const physical = (dir: string): string => dir.replaceAll("RUNNER~1", "runneradmin");
   const repoDir = `${SHORT}\\.crewrig\\versions\\1.0.0-test.2`;
 
@@ -400,7 +400,7 @@ describe("the win32 forms of the hook paths (spec 0315 R6, spec 0256 delta-03 (t
   test("the running version, a checkout and another user's home are not other cached versions", () => {
     const running = `${LONG}/.crewrig/versions/1.0.0-test.2/hooks/usage-capture.ts`;
     const checkout = `${LONG}/work/crewrig/hooks/usage-capture.ts`;
-    const otherUser = "C:/Users/someone/.crewrig/versions/1.0.0-test.1/hooks/usage-capture.ts";
+    const otherUser = "C:/profiles/someone/.crewrig/versions/1.0.0-test.1/hooks/usage-capture.ts";
     assert.equal(isOtherCachedVersionPath(running, SHORT, repoDir, path.win32, physical), false);
     assert.equal(isOtherCachedVersionPath(checkout, SHORT, repoDir, path.win32, physical), false);
     assert.equal(isOtherCachedVersionPath(otherUser, SHORT, repoDir, path.win32, physical), false);
