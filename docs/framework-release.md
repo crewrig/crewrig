@@ -35,7 +35,9 @@ The asset is `crewrig-<version>.tgz`, with
 `scripts/lib/framework-release/manifest.txt`: one path per line, a file or a directory that stands for every file
 beneath it, archived under the same flat repository-relative path. The build fails when an entry is absent; a file
 the manifest does not list is not shipped, and a file is shipped only if git tracks it (except beneath `dist/`, the
-git-ignored output of `build-components`).
+git-ignored output of `build-components`). A mapped line `<archive-path> <- <source>` ships one git-tracked file under
+another archive path (the archive-root `package.json` of spec 0315 R11 is the one such entry); two lines that give one
+archive path from different sources fail the build.
 
 The version lives in one place, `version` in the root `package.json`. A tag whose `X.Y.Z` differs from the declared
 version fails its job before any release exists.

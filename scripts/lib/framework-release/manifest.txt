@@ -6,6 +6,9 @@
 # entry is absent from the build output. A file is shipped only when git tracks it, except beneath
 # `dist/`, the git-ignored output of `node scripts/build-components.ts`.
 #
+# A mapped line `<archive-path> <- <source>` ships one git-tracked file (no `dist/` exemption) under another
+# archive path; two entries that give one archive path from different sources fail the build (spec 0315 R11).
+#
 # First manifest: what `setup` reads and the hooks it wires. The bundled command-line entry points
 # join it in the pull requests of WP3 and WP4.
 
@@ -33,3 +36,7 @@ config/TOOLS.md.template
 config/expertise
 config/teams
 config/level
+
+# The archive-root module type (spec 0315 R11): a mapped file, `<archive-path> <- <source>`, that ships the
+# tracked `{"type": "module"}` under the archive's own package.json. It is not the repository's package.json.
+package.json <- scripts/lib/framework-release/archive-package.json

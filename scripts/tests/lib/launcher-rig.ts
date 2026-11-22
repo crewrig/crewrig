@@ -26,7 +26,9 @@ import { writeFrameworkArchive } from "../../lib/framework-release/archive.ts";
 import {
   MANIFEST_FILE,
   parseManifest,
+  parseManifestEntries,
   resolveManifest,
+  type ManifestEntry,
 } from "../../lib/framework-release/manifest.ts";
 import { buildTar, file, writeTgz } from "./hostile-tar.ts";
 
@@ -50,8 +52,13 @@ export function sha256(bytes: Buffer | string): string {
 
 /** The entries of manifest.txt, minus any `dist/` entry the build has not produced in this checkout. */
 export function testManifestEntries(): string[] {
-  return parseManifest(fs.readFileSync(MANIFEST_FILE, "utf8")).filter(
-    (entry) => !(entry.startsWith("dist/") && !fs.existsSync(path.join(REPO, entry))),
+  return testManifestRecords().map((entry) => entry.archive);
+}
+
+/** The manifest records (archive path and source) of the checkout, without the absent dist/ entries. */
+export function testManifestRecords(): ManifestEntry[] {
+  return parseManifestEntries(fs.readFileSync(MANIFEST_FILE, "utf8")).filter(
+    (entry) => !(entry.source.startsWith("dist/") && !fs.existsSync(path.join(REPO, entry.source))),
   );
 }
 
@@ -344,7 +351,7 @@ export function manifestArchive(version = "1.0.0-test.1"): Archive {
     fs.rmSync(dir, { recursive: true, force: true });
   });
   const target = path.join(dir, `crewrig-${version}.tgz`);
-  const files = resolveManifest(REPO, testManifestEntries());
+  const files = resolveManifest(REPO, testManifestRecords());
   cachedArchive = { file: target, version, sha256: writeFrameworkArchive(files, target) };
   return cachedArchive;
 }

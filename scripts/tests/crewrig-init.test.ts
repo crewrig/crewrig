@@ -26,7 +26,7 @@ import {
   REPO,
   runNode,
   snapshot,
-  testManifestEntries,
+  testManifestRecords,
   trackRigs,
   treeList,
   type Rig,
@@ -468,7 +468,7 @@ describe("R14: feedback_repo from the origin remote", () => {
 /** The entry point with the files of manifest.txt only, in a directory the test may spoil. */
 function copyVersionRoot(rig: Rig): string {
   const root = rig.newDir("version");
-  for (const file of resolveManifest(REPO, testManifestEntries())) {
+  for (const file of resolveManifest(REPO, testManifestRecords())) {
     const target = path.join(root, ...file.path.split("/"));
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.copyFileSync(file.abs, target);
