@@ -37,6 +37,7 @@ export type StepId =
   | "session-check"
   | "legacy-context-cleanup"
   | "system-context-file"
+  | "distribution-skills"
   | "summary";
 
 /** The picks of the catalogue, in the names of `prompt-ids.ts` (`catalogue.team` ...). */
