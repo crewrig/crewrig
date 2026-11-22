@@ -19,6 +19,7 @@ import {
 } from "./plugin-common.ts";
 import type { PluginPlan } from "./plugin-common.ts";
 import { obj, writeJsonText } from "./json-write.ts";
+import { stampFile, writeSidecar } from "./provenance-stamp.ts";
 import { subjectLocation, subjectPresent } from "./manifest.ts";
 import type { ExtCtx } from "./types.ts";
 
@@ -33,9 +34,11 @@ function copyAgents(plan: PluginPlan): void {
     if (isDirectory(from)) {
       if (!isFile(`${from}/AGENT.md`)) continue;
       fs.copyFileSync(`${from}/AGENT.md`, `${outDir}/agents/${entry}.md`);
+      stampFile(`${outDir}/agents/${entry}.md`, plan.fields, "html");
       ctx.io.out(`  Copied agent (flattened): ${entry}`);
     } else if (isFile(from) && entry.endsWith(".md")) {
       fs.copyFileSync(from, `${outDir}/agents/${entry}`);
+      stampFile(`${outDir}/agents/${entry}`, plan.fields, "html");
       ctx.io.out(`  Copied agent: ${entry.slice(0, -".md".length)}`);
     }
   }
@@ -66,6 +69,7 @@ export function buildAntigravityPlugin(
   copyAgents(plan);
   copyHooks(plan);
 
+  writeSidecar(outDir, plan.fields);
   ctx.io.out("");
   ctx.io.out(`Plugin built: ${outDir}`);
   ctx.io.out(`Validate with: agy plugin validate ${outDir}`);

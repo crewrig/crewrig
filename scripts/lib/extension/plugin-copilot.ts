@@ -19,6 +19,7 @@ import {
 } from "./plugin-common.ts";
 import type { PluginPlan } from "./plugin-common.ts";
 import { obj, writeJsonText } from "./json-write.ts";
+import { stampFile, writeSidecar } from "./provenance-stamp.ts";
 import { subjectLocation, subjectPresent } from "./manifest.ts";
 import type { ExtCtx } from "./types.ts";
 
@@ -36,6 +37,7 @@ function copyAgents(plan: PluginPlan): boolean {
     if (!isDirectory(`${dir}/${entry}`)) continue;
     if (!isFile(`${dir}/${entry}/AGENT.md`)) return false;
     fs.copyFileSync(`${dir}/${entry}/AGENT.md`, `${outDir}/agents/${entry}.agent.md`);
+    stampFile(`${outDir}/agents/${entry}.agent.md`, plan.fields, "html");
     ctx.io.out(`  Copied agent (flattened): ${entry}`);
   }
   return true;
@@ -75,6 +77,7 @@ export function buildCopilotPlugin(
   if (!copyAgents(plan)) return 1;
   copyHooks(plan);
 
+  writeSidecar(outDir, plan.fields);
   ctx.io.out("");
   ctx.io.out(`Plugin built: ${outDir}`);
   ctx.io.out(`Install with: copilot plugin install ${outDir}`);
