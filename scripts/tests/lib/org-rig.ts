@@ -62,9 +62,15 @@ export const ANSWER_VALUES: Readonly<Record<string, string>> = {
 };
 
 /** `--answer <id>=<value>` for every question of the inventory (an answer a CLI never asks is ignored). */
-export const SETUP_ANSWERS: readonly string[] = Object.entries(ANSWER_VALUES).flatMap(
-  ([id, value]) => ["--answer", `${id}=${value}`],
-);
+export const SETUP_ANSWERS: readonly string[] = answerArgs({});
+
+/** The `--answer` arguments of every question, with `overrides` replacing the default value of an id. */
+export function answerArgs(overrides: Readonly<Record<string, string>>): string[] {
+  return Object.entries({ ...ANSWER_VALUES, ...overrides }).flatMap(([id, value]) => [
+    "--answer",
+    `${id}=${value}`,
+  ]);
+}
 
 export const CONFIG_TOML =
   'canonical_repo = "https://github.com/crewrig/crewrig"\nfeedback_repo = "https://github.com/acme/crewrig-config"\n';
