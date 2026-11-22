@@ -88,7 +88,8 @@ export const CALLERS: readonly Caller[] = [
     file: "artifacts/core/agents/ci-debugger/AGENT.md",
     required: ["lint-workflow.ts", "node <github-actions-skill-dir>/scripts/simulate-job.ts"],
   },
-  { file: "README.md", required: ["lint-markdown.ts", "lint-skill.ts"] },
+  // The repository-structure listing moved from README.md to DEVELOPMENT.md (issue #1823).
+  { file: "DEVELOPMENT.md", required: ["lint-markdown.ts", "lint-skill.ts"] },
 ];
 
 /** The retired spellings of the eleven scripts: `<name>.sh`, or the bare name after `scripts/`. */
