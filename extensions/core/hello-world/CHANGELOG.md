@@ -1,5 +1,17 @@
 # Changelog
 
+## [hello-world-extension-v2.2.0](https://github.com/crewrig/crewrig/compare/hello-world-v2.1.1...hello-world-v2.2.0) (2026-11-23)
+
+### ✨ New Features
+
+- [`54a71e0a`](https://github.com/crewrig/crewrig/commit/54a71e0a)  Switch the install, manage and link scripts to forwarding shims over the TypeScript entries (spec 0255, PR E) (#1561) (Issues: [`#1561`](https://github.com/crewrig/crewrig/issues/1561))
+- [`761c59ed`](https://github.com/crewrig/crewrig/commit/761c59ed)  Add the TypeScript twins of the example extension hooks with their budgets (#1606) (Issues: [`#1606`](https://github.com/crewrig/crewrig/issues/1606))
+- [`cf02bb6d`](https://github.com/crewrig/crewrig/commit/cf02bb6d)  Stamp extension outputs with generated provenance at render time (#2133) (Issues: [`#2133`](https://github.com/crewrig/crewrig/issues/2133))
+
+### 🐛 Bug Fixes
+
+- [`ea49efe3`](https://github.com/crewrig/crewrig/commit/ea49efe3)  Carry the extension version in the provenance carrier (#2084) (Issues: [`#2084`](https://github.com/crewrig/crewrig/issues/2084) [`#2075`](https://github.com/crewrig/crewrig/issues/2075) [`#2078`](https://github.com/crewrig/crewrig/issues/2078))
+
 ## [hello-world-extension-v2.1.1](https://github.com/crewrig/crewrig/compare/hello-world-v2.1.0...hello-world-v2.1.1) (2026-09-30)
 
 ### 🐛 Bug Fixes
