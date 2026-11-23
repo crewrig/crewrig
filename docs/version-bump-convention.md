@@ -15,6 +15,18 @@ Affected paths:
 - `artifacts/core/agents/*/AGENT.md`
 - `artifacts/library/agents/*/AGENT.md`
 - `artifacts/community/agents/*/AGENT.md`
+- `artifacts/core/rules/*.md`
+- `artifacts/core/system-context/*.md`
+- `hooks/*.ts`
+
+The last three have no frontmatter. Each carries its authored `version` in one
+leading comment block (spec 0316 R12): `<!-- … -->` in a rule or system-context
+file, `/* … */` in a hook script, holding `provenance:` and, indented,
+`version: "…"`, `canonical` and `feedback`. A modified file bumps that `version`
+line in the same diff. Setup replaces the block of a rule or system-context file
+by the one-line `crewrig-provenance` marker in the deployed copy (copy and
+`--link` mode alike); a hook runs from the checkout, so its block stays readable
+in place.
 
 Extension skills and agents (`extensions/*`) are not on this list: an extension
 has one version, the `version` of its `package.json`, written by

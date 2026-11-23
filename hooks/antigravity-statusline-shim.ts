@@ -1,3 +1,9 @@
+/*
+provenance:
+  version: "1.0.0"
+  canonical: "${CANONICAL_REPO}"
+  feedback: "${CANONICAL_REPO}"
+*/
 // antigravity-statusline-shim.ts — the Antigravity CLI capture channel (spec
 // 0243 R13, R14; behaviour of specs 0206 and 0241). Antigravity exposes no
 // lifecycle hook for usage capture: the display command it already runs for

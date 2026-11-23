@@ -72,3 +72,45 @@ describe("check-skill-versions (cases 4-7)", () => {
     assert.ok(res.stdout.includes(`OK   ${OLD_CMD}`), out(res));
   });
 });
+
+// Spec 0316 R13: rules, system-context files and core hooks are scanned like components.
+describe("check-skill-versions: rules, system-context and hooks (spec 0316 R13)", () => {
+  const block = (v: string, close: string, open: string): string =>
+    `${open}\nprovenance:\n  version: "${v}"\n  canonical: "c"\n  feedback: "c"\n${close}\n`;
+  const SOURCES: ReadonlyArray<readonly [string, string, string]> = [
+    ["artifacts/core/rules/60-tools.md", "<!--", "-->"],
+    ["artifacts/core/system-context/store-file.md", "<!--", "-->"],
+    ["hooks/some-hook.ts", "/*", "*/"],
+  ];
+  for (const [file, open, close] of SOURCES) {
+    it(`${file}: modified without a bump fails`, () => {
+      const dir = twoCommits(
+        file,
+        `${block("1.0.0", close, open)}body\n`,
+        file,
+        `${block("1.0.0", close, open)}body\nmore\n`,
+      );
+      const res = runIn(ENTRY, dir, {}, ["HEAD~1"]);
+      assert.equal(res.status, 1, out(res));
+      assert.ok(res.stdout.includes(`FAIL ${file}`), out(res));
+    });
+
+    it(`${file}: modified with a bump passes`, () => {
+      const dir = twoCommits(
+        file,
+        `${block("1.0.0", close, open)}body\n`,
+        file,
+        `${block("1.0.1", close, open)}body\nmore\n`,
+      );
+      const res = runIn(ENTRY, dir, {}, ["HEAD~1"]);
+      assert.equal(res.status, 0, out(res));
+      assert.ok(res.stdout.includes(`OK   ${file}`), out(res));
+    });
+
+    it(`${file}: a new file is exempt`, () => {
+      const dir = twoCommits("README.md", "seed\n", file, `${block("1.0.0", close, open)}body\n`);
+      const res = runIn(ENTRY, dir, {}, ["HEAD~1"]);
+      assert.equal(res.status, 0, out(res));
+    });
+  }
+});
