@@ -1,5 +1,6 @@
-// release-sync-manifests-commit.test.ts — spec 0312 R6: the release commit stages the manifests and
-// the extension carriers. Loads the real @semantic-release/git, a devDependency, so the CI job that
+// release-sync-manifests-commit.test.ts — the release commit stages the two manifests and the
+// changelog only; a skill or agent carrying an old carrier stays unrewritten and unstaged
+// (spec 0316 R17: the source carriers are retired). Loads the real @semantic-release/git, a devDependency, so the CI job that
 // runs it installs with `install: ci`.
 
 import assert from "node:assert/strict";
@@ -39,18 +40,16 @@ function git(cwd: string, ...args: string[]): string {
 const carrier = (version: string): string =>
   `---\nname: x\n---\n<!-- crewrig-provenance: extension="hello" version="${version}" canonical="u" feedback="u" -->\n`;
 
-test("gitLeg assets cover the manifests, the changelog and every carrier", () => {
+test("gitLeg assets cover the manifests and the changelog", () => {
   const [, options] = gitLeg({ ext: "hello", mode: "publish" } as unknown as ReleasercInput);
   assert.deepEqual((options as { assets: string[] }).assets, [
     "package.json",
     "extension.json",
     "CHANGELOG.md",
-    "skills/*/SKILL.md",
-    "agents/*/AGENT.md",
   ]);
 });
 
-test("the release commit holds exactly the manifests and the carriers it rewrote", async () => {
+test("the release commit holds the two manifests only", async () => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "git-leg-assets-")));
   try {
     const remote = path.join(root, "remote.git");
@@ -94,11 +93,13 @@ test("the release commit holds exactly the manifests and the carriers it rewrote
       .filter((l) => l !== "")
       .sort();
     assert.deepEqual(files, [
-      "extensions/core/hello/agents/a/AGENT.md",
       "extensions/core/hello/extension.json",
       "extensions/core/hello/package.json",
-      "extensions/core/hello/skills/s/SKILL.md",
     ]);
+    for (const rel of ["skills/s/SKILL.md", "agents/a/AGENT.md"]) {
+      assert.equal(fs.readFileSync(path.join(ext, rel), "utf8"), carrier("1.0.0"), `${rel} untouched`);
+    }
+    assert.equal(git(work, "status", "--porcelain", "--", "extensions/core/hello/skills"), "");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
