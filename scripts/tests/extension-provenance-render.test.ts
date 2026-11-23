@@ -158,35 +158,88 @@ describe("source tree and stale carriers", () => {
     assert.equal(digest(extDir), pre);
   });
 
-  it("a stale source carrier leaves no trace in any copy", async () => {
+  // R6, R10, ledger #961 i1-F4: a carrier authored in a skill, an agent or the context file
+  // never reaches a rendered copy, and nothing depends on a source carrier existing.
+  const STALE =
+    '<!-- crewrig-provenance: extension="hello-world" version="1.0.0" canonical="https://stale" feedback="https://stale" -->';
+  const SKILL = "skills/greeter/SKILL.md";
+  const AGENT_SRC = "agents/reference-guide/AGENT.md";
+  const dropCarrier = (text: string): string =>
+    text
+      .split("\n")
+      .filter((l) => !l.includes("crewrig-provenance"))
+      .join("\n");
+  const afterFrontmatter = (text: string): string => {
+    const end = text.indexOf("\n---\n", 4) + "\n---\n".length;
+    return `${text.slice(0, end)}${STALE}\n${text.slice(end)}`;
+  };
+  const stripped = (): Record<string, string> => {
     const files: Record<string, string> = { ...realHelloWorld() };
-    const skill = files["skills/greeter/SKILL.md"]!;
-    files["skills/greeter/SKILL.md"] = skill.replace(
-      /<!-- crewrig-provenance:.*-->/,
-      '<!-- crewrig-provenance: extension="hello-world" version="1.0.0" canonical="https://stale" feedback="https://stale" -->',
-    );
-    assert.ok(
-      files["skills/greeter/SKILL.md"].includes("1.0.0"),
-      "fixture carries the stale value",
-    );
-    const r = await render(files);
-    assert.equal(r.status, 0, r.err.join("\n"));
+    for (const rel of [SKILL, AGENT_SRC]) files[rel] = dropCarrier(files[rel]!);
+    return files;
+  };
+  const staleTree = (): Record<string, string> => {
+    const files = stripped();
+    for (const rel of [SKILL, AGENT_SRC]) files[rel] = afterFrontmatter(files[rel]!);
+    files["CONTEXT.md"] = `${STALE}\n${files["CONTEXT.md"]!}`;
+    return files;
+  };
+  const agentCopy = {
+    gemini: "agents/reference-guide/AGENT.md",
+    claude: "agents/reference-guide.md",
+    copilot: "agents/reference-guide.agent.md",
+    antigravity: "agents/reference-guide.md",
+  } as const;
+  const contextCopy = {
+    gemini: "GEMINI.md",
+    claude: "CLAUDE.md",
+    copilot: "skills/hello-world-context/SKILL.md",
+    antigravity: "rules/AGENTS.md",
+  } as const;
+
+  it("a stale source carrier leaves no trace in any rendered copy", async () => {
+    const files = staleTree();
+    assert.ok(files[SKILL]!.includes("1.0.0"), "fixture carries the stale value");
+    assert.ok(files[AGENT_SRC]!.includes("1.0.0"), "fixture carries the stale value");
+    assert.ok(files["CONTEXT.md"]!.includes("1.0.0"), "fixture carries the stale value");
+    const clean = await render(stripped());
+    const stale = await render(files);
+    assert.equal(clean.status, 0, clean.err.join("\n"));
+    assert.equal(stale.status, 0, stale.err.join("\n"));
     for (const target of TARGETS) {
-      const text = read(r.roots[target]!, "skills/greeter/SKILL.md");
-      assert.ok(!text.includes('version="1.0.0"') && !text.includes("stale"), target);
-      assert.ok(text.includes(HTML), target);
+      const cleanRoot = clean.roots[target]!;
+      const staleRoot = stale.roots[target]!;
+      // Skill and agent copies: byte identity with a render that never had a carrier.
+      for (const rel of [SKILL, agentCopy[target]]) {
+        const text = read(staleRoot, rel);
+        assert.equal(text, read(cleanRoot, rel), `${target}/${rel}: byte-identical`);
+        assert.equal(count(text), 1, `${target}/${rel}: one marker`);
+        assert.ok(text.split("\n").includes(HTML), `${target}/${rel}: exact marker`);
+      }
+      // Context copy: exactly one marker and no stale byte (the line position may differ).
+      const context = read(staleRoot, contextCopy[target]);
+      assert.equal(count(context), 1, `${target}/${contextCopy[target]}: one marker`);
+      assert.ok(context.split("\n").includes(HTML), `${target}/${contextCopy[target]}: marker`);
+      assert.ok(
+        !context.includes("1.0.0") && !context.includes("stale"),
+        `${target}/${contextCopy[target]}: no stale byte`,
+      );
     }
   });
 
-  it("the interim source carriers agree with the generated marker", () => {
-    const files = realHelloWorld();
-    for (const rel of ["skills/greeter/SKILL.md", "agents/reference-guide/AGENT.md"]) {
-      const line = files[rel]!.split("\n").find((l) => l.includes("crewrig-provenance"));
-      if (line === undefined) continue;
-      for (const key of ["extension", "version", "canonical", "feedback"]) {
-        const wanted = new RegExp(`${key}="[^"]*"`).exec(HTML)![0];
-        assert.ok(line.includes(wanted), `${rel}: ${key}`);
-      }
-    }
+  it("pins the raw gemini CONTEXT.md passthrough, which gemini does not load", async () => {
+    // The Gemini build tree ships the source CONTEXT.md as a raw copy next to GEMINI.md (the
+    // file gemini loads). Rendering never stamps it, so a carrier authored there survives
+    // verbatim. Spec 0316 R6 does not reach this copy; it is a known, unloaded passthrough.
+    const stale = await render(staleTree());
+    const clean = await render(stripped());
+    const raw = read(stale.roots.gemini!, "CONTEXT.md");
+    assert.ok(raw.split("\n").includes(STALE), "the stale line survives in the raw copy");
+    assert.equal(count(raw), 1);
+    assert.ok(!count(read(clean.roots.gemini!, "CONTEXT.md")), "a clean render has none");
+    assert.ok(
+      !read(stale.roots.gemini!, "GEMINI.md").includes("stale"),
+      "the loaded copy is clean",
+    );
   });
 });

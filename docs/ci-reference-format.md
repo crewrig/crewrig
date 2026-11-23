@@ -762,7 +762,6 @@ $ yq '.jobs | keys' .github/workflows/build.yml
 - build
 - component-drift
 - extension-render
-- extension-provenance
 - extension-manifest
 - extension-install
 - core-paths

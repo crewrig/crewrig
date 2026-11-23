@@ -77,6 +77,9 @@ export function validateProvenance(
         "must equal `provenance.canonical` for an upstream extension (spec 0043 R5)",
       );
     }
+    if (!nonEmptyString(manifest.get("name"))) {
+      fail("name", "must be a non-empty string for an upstream extension (spec 0316 R1, R2)");
+    }
     const pkg = readPackageJson(extDir);
     for (const member of ["name", "version"]) {
       if (pkg === null || typeof pkg[member] !== "string" || pkg[member] === "") {

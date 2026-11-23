@@ -44,10 +44,6 @@ tasks:
     desc: "Enforce upstream-tier feedback routing to canonical (local mirror of the CI guard, spec 0030)"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-feedback-routing.ts
 
-  check-extension-provenance:
-    desc: "Enforce extension skill/agent provenance carrier presence + routing (local mirror of the CI guard, spec 0043)"
-    cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-extension-provenance.ts
-
   check-extension-manifest-version:
     desc: "Enforce a single authoritative version across an extension's manifests (local mirror of the CI guard, spec 0044)"
     cmd: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON {{.REPO_DIR}}/scripts/check-extension-manifest-version.ts

@@ -347,26 +347,6 @@ extension-render:
         - "scripts/check-extension-hook-tokens.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
-extension-provenance:
-  stage: extensions
-  image: node:24
-  before_script:
-    - !reference [.task-install, script]
-    - npm ci --omit=dev --workspaces=false
-  script:
-    - "task ci:extension-provenance"
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/governance-suite-extension-provenance.test.ts"
-        - "scripts/tests/governance-suite-extension-provenance-r4.test.ts"
-        - "scripts/tests/lib/governance-*.ts"
-        - "extensions/**"
-        - "artifacts/**"
-        - "scripts/check-extension-provenance.ts"
-        - "scripts/lib/governance/**"
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-
 extension-manifest:
   stage: extensions
   image: node:24

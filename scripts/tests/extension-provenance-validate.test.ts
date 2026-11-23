@@ -100,6 +100,15 @@ describe("upstream tiers", () => {
       assert.match(r.text, /extension\.json: `provenance\.feedback` must equal/);
     });
   }
+  it("core: an extension.json without a name fails", async () => {
+    const tree = files({ canonical: CANON });
+    const manifest = JSON.parse(tree["extension.json"]!) as Record<string, unknown>;
+    delete manifest.name;
+    tree["extension.json"] = JSON.stringify(manifest);
+    const r = await run("core", tree);
+    assert.equal(r.status, 1);
+    assert.match(r.text, /extension\.json: `name` must be a non-empty string/);
+  });
   it("core: a missing package.json fails", async () => {
     const r = await run("core", files({ canonical: CANON }, null));
     assert.equal(r.status, 1);

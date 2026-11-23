@@ -140,6 +140,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `scripts/lib/build-components/` — canonical skills, agents and commands alike. Fields, always in this order:
   `package` (the root `package.json` `name`, added by the build, never authored), `extension`, `version`,
   `canonical`, `feedback`; an empty field is omitted
+- **Extension markers:** an extension skill, agent or context copy is stamped by the same writer at render time (row 5c)
 - **Claude Code:** ✅ YAML `metadata.provenance` block inside frontmatter (Claude accepts arbitrary frontmatter keys)
 - **Gemini CLI:** ✅ HTML comment `<!-- crewrig-provenance: package="…" version="…" canonical="…" feedback="…" -->` as first
   line of body — Gemini CLI 0.42.0 rejected this repository's own `type:` / `metadata:` keys (issue #54); a live
@@ -277,7 +278,7 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   `extensions/`). Both paths share `scripts/lib/render-command.ts` (with `scripts/lib/yaml-text.ts`; the shell library
   `render-command.sh` was retired in #1344), so no `yq` is involved. **Carrier is format-specific (R5):** the
   command→TOML path carries provenance as a TOML `# crewrig-provenance: …` comment line (a bare HTML comment between
-  TOML keys is a `TOMLDecodeError`); the skill/agent→Markdown paths keep the HTML-comment carrier of row 4b.
+  TOML keys is a `TOMLDecodeError`); the skill/agent→Markdown paths carry the generated HTML-comment marker of row 5c.
 - **Source of truth:** `scripts/build-extension.ts` (Gemini, build-tree `.toml`), `scripts/build-claude-plugin.ts`
   (Claude, ephemeral plugin skill), `scripts/lib/render-command.ts` (shared)
 - **Claude Code:** ✅ Ephemeral: `build-claude-plugin.ts` renders the pivot `commands/<name>.md` body into
@@ -306,48 +307,34 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
   CLI and Antigravity CLI. The fields come from `extension.json` and `package.json`; the pivot source `.md` is never
   written.
 
-### 5c — Extension **skill/agent** provenance carrier
+### 5c — Extension **skill/agent** provenance marker
 
-- **Feature:** Extension **skill/agent** provenance carrier (spec 0043) — an extension's `skills/<name>/SKILL.md` /
-  `agents/<name>/AGENT.md` is consumed **in place** with **no render seam**: `install-extension.ts` does `ln -s` /
-  `cp -rf` of the whole extension dir, `link-extensions.ts` calls it, and `build-claude-plugin.ts` does `cp -r` of the
-  skill dir — so all CLIs read the **same source bytes**. Agents are the one exception to whole-directory copying:
-  since an `agents/<name>/` dir may hold sibling pivot sources for other CLIs (e.g. `PROMPT.md` for Gemini),
-  `build-claude-plugin.ts` flattens source agents to `agents/<name>.md` at the root of the plugin archive (spec 0201
-  delta-01, issue #1140): live empirical testing proved Claude Code discovers only top-level `agents/*.md` in plugins
-  and ignores subdirectories. Sibling files (like `PROMPT.md`) are excluded, preventing them from leaking into the
-  plugin output. The copied `AGENT.md` bytes themselves are unchanged (beyond the flattened output path), so the "same
-  source bytes" and provenance-carrier reasoning below still hold for the file that *is* copied. Unlike row 4b
-  (artifacts/ agents keep `metadata.provenance` in *frontmatter* in the source and the build strips it → comment for
-  Gemini only), an extension skill/agent has nowhere to strip: there is no `.md`/`.toml` filename split (row 5b is *commands*,
-  not skills) to host a Gemini-safe sibling. So the provenance is authored **directly as the HTML-comment carrier on the
-  first body line** — Gemini-safe as written. `canonical`/`feedback` are **literal** repo URLs (NOT
-  `${CANONICAL_REPO}`): a consuming project's config cannot resolve a third-party extension's origin (spec 0043 R2). **R5
-  enforcement note:** `check-feedback-routing.ts` (spec 0030) reads `metadata.provenance` from *frontmatter* (a YAML
-  parse; the TypeScript entry needs no `yq`), so it **cannot see** the comment carrier and **permanently skips**
-  extension skills — R5 (feedback==canonical) for extension skills/agents lives **solely** in
-  `check-extension-provenance.ts`; there is **no** defense-in-depth overlap with the 0030 guard.
-- **Source of truth:** `scripts/check-extension-provenance.ts` (presence + R1/R5 routing guard, parses the comment
-  carrier, NOT `yq`); carrier producer `gemini_provenance_comment` (row 4b)
-- **Claude Code:** ✅ HTML comment `<!-- crewrig-provenance: extension="…" version="…" canonical="…" feedback="…" -->` as first
-  body line of the in-place `SKILL.md` (Claude tolerates the inert body comment; greeter has no prior frontmatter
-  provenance, so this is not a downgrade)
-- **Gemini CLI:** ✅ Same source bytes — the first-body-line HTML comment is Gemini-safe as authored (no
-  non-`name`/`description` frontmatter key)
-- **Copilot CLI:** ✅ Same in-place source bytes — `build-copilot-plugin.ts` copies `skills/<name>/SKILL.md`
-  verbatim; the first-body-line HTML-comment carrier (spec 0043) is preserved unchanged (spec 0065)
-- **Antigravity CLI:** ❌ No extension skill/agent loader — **[GAP]** by design. Antigravity CLI uses
-  `agy plugin install` to load plugins; no in-repo extension skill/agent loader path exists. Evidence:
-  `scripts/install-antigravity-extension.ts` builds a plugin package and calls `agy plugin install` — the plugin is
-  consumed by the CLI as a whole package, not via a per-skill directory link
-- **Render-time markers (spec 0316 R5, R9):** every extension skill, agent and context copy the renderer produces is
-  stamped with the HTML-comment marker (first body line, after any frontmatter) on all four CLIs, through the shared
-  writer `scripts/lib/provenance-marker.ts`; an existing carrier in the copy is replaced, never merged, and the source
-  tree is not modified. Each output root (the Gemini build tree and the Claude, Copilot and Antigravity plugin
-  outputs) also carries a generated `crewrig-provenance.json` (`package`, `extension`, `version`, `canonical`,
-  `feedback`), the file a hook or an MCP server is attributed through. An extension without a `package.json` `name`
-  gets neither marker nor sidecar (warning outside `extensions/core` and `extensions/library`). The authored source
-  carrier of the prose above stays as the interim of spec 0312 until its retirement (spec 0316 R17, issue #2100).
+- **Feature:** Extension **skill/agent** provenance marker (spec 0043, generated since spec 0316). An extension's
+  `skills/<name>/SKILL.md` and `agents/<name>/AGENT.md` carry **no authored provenance**: no frontmatter key (Gemini CLI
+  0.42.0+ rejects any key beyond `name`/`description`) and no source carrier (retired by spec 0316 R17, issue #2100).
+  Every render writes the HTML-comment marker as the first body line of each rendered copy, through the shared writer
+  `scripts/lib/provenance-marker.ts` (the one writer of marker bytes, row 4b), from `extension.json` and `package.json`
+  only (R5, R9). A line authored in a source is replaced, never merged, and the source tree is never modified (R6).
+  `canonical`/`feedback` are **literal** repo URLs (NOT `${CANONICAL_REPO}`): a consuming project's config cannot resolve
+  a third-party extension's origin (spec 0043 R2). **Enforcement:** `check-feedback-routing.ts` (spec 0030) reads
+  frontmatter and cannot see an extension; R5 (feedback==canonical) and the presence of `canonical`, `name` and the
+  package `version` for an upstream tier live in `scripts/lib/extension/validate-provenance.ts`, run by
+  `scripts/build-extension.ts --check` (CI capability `extension-render`). Agents are flattened to `agents/<name>.md` in
+  the Claude plugin archive (spec 0201 delta-01, issue #1140); the marker is stamped on the flattened copy
+- **Source of truth:** `scripts/lib/provenance-marker.ts` (writer); `scripts/lib/extension/validate-provenance.ts`
+  (routing and presence guard); `scripts/tests/extension-provenance-render.test.ts` (R10 test: every kind, every CLI,
+  a stale carrier leaves no trace)
+- **Claude Code:** ✅ Marker stamped on the rendered plugin skill and agent copies
+- **Gemini CLI:** ✅ Marker stamped on the Gemini build-tree skill and agent copies (Gemini-safe: an HTML comment, no
+  frontmatter key). The raw `CONTEXT.md` passthrough next to `GEMINI.md` is not stamped and is not loaded by Gemini
+- **Copilot CLI:** ✅ Marker stamped on the rendered plugin skill and agent copies (spec 0065)
+- **Antigravity CLI:** ✅ Marker stamped in the plugin output that `agy plugin install` consumes, proven by the R10
+  test (row 13 records the plugin install path)
+- **Render-time sidecar (spec 0316 R5):** each output root also carries a generated `crewrig-provenance.json`
+  (`package`, `extension`, `version`, `canonical`, `feedback`), the file a hook or an MCP server is attributed
+  through. An extension without a `package.json` `name` gets neither marker nor sidecar (warning outside
+  `extensions/core` and `extensions/library`). A natively installed raw source carries no marker; the path walk
+  attributes it (R15)
 
 ### 5d — Extension context render
 
@@ -1382,9 +1369,8 @@ One row per integration point. ✅ = present, ❌ = absent, note when relevant.
 - **Feature:** Per-CLI extension manifest. **Two committed manifests under version lockstep (spec 0044, as amended by
   delta-01), one built and asserted separately.** An extension's `package.json` `version` is authoritative; the
   committed `extension.json` of the SAME extension MUST declare that SAME version —
-  `scripts/check-extension-manifest-version.ts` is a static CI guard that fails on a divergent `extension.json` or a divergent skill/agent provenance carrier
-  (`extension` = the directory name, `version` = the package version, spec 0312), and
-  `scripts/monorepo-release.ts` rewrites them to `nextRelease.version` at release time (the release commit stages the carriers too) (spec 0257:
+  `scripts/check-extension-manifest-version.ts` is a static CI guard that fails on a divergent `extension.json`, and
+  `scripts/monorepo-release.ts` rewrites them to `nextRelease.version` at release time (the release commit stages the two manifests and the changelog only; no skill/agent carrier exists since spec 0316 R17) (spec 0257:
   `scripts/monorepo-release.ts` is a forwarding shim to that entry, with `scripts/release-sync-manifests.ts` for the
   manifest rewrite). The release archive packages the Gemini CLI output alone (Ruling A, spec 0183 delta-01): the Claude
   Code, GitHub Copilot CLI and Antigravity CLI manifests and outputs of this row are neither packaged nor changed by
@@ -2613,9 +2599,6 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   is instrument-dependent and is corrected here. `~/.gemini/config/agents/` is the only root that satisfies both
   instruments, which is why spec 0123 R2's single documented root is the right target under either reading. Evidence:
   `agy` 1.1.11, 2026-08-11, two reproducible runs; `docs/runbooks/antigravity-discovery-probe.md`.
-- [GAP] Extension skill/agent loader (row 5c) — Antigravity CLI has no in-repo extension skill/agent loader.
-  `scripts/install-antigravity-extension.ts` builds a plugin package and calls `agy plugin install` — the plugin is
-  consumed as a package, not via per-skill directory links.
 - [GAP] CI workflow (row 18) — `agy --print` is confirmed non-interactive (exit 0; output:
   `Pong! How can I help you today?`), but no published GitHub Action (analogous to `anthropics/claude-code-action`)
   exists for Antigravity CLI. Evidence: `gh api /repos/antigravity-labs/agy-code-action` → HTTP 404;
