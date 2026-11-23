@@ -97,7 +97,11 @@ test("the release commit holds the two manifests only", async () => {
       "extensions/core/hello/package.json",
     ]);
     for (const rel of ["skills/s/SKILL.md", "agents/a/AGENT.md"]) {
-      assert.equal(fs.readFileSync(path.join(ext, rel), "utf8"), carrier("1.0.0"), `${rel} untouched`);
+      assert.equal(
+        fs.readFileSync(path.join(ext, rel), "utf8"),
+        carrier("1.0.0"),
+        `${rel} untouched`,
+      );
     }
     assert.equal(git(work, "status", "--porcelain", "--", "extensions/core/hello/skills"), "");
   } finally {

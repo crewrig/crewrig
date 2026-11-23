@@ -237,6 +237,9 @@ describe("source tree and stale carriers", () => {
     assert.ok(raw.split("\n").includes(STALE), "the stale line survives in the raw copy");
     assert.equal(count(raw), 1);
     assert.ok(!count(read(clean.roots.gemini!, "CONTEXT.md")), "a clean render has none");
-    assert.ok(!read(stale.roots.gemini!, "GEMINI.md").includes("stale"), "the loaded copy is clean");
+    assert.ok(
+      !read(stale.roots.gemini!, "GEMINI.md").includes("stale"),
+      "the loaded copy is clean",
+    );
   });
 });
