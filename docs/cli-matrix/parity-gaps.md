@@ -166,9 +166,6 @@ candidate follow-up issue. **Do not fix them in this ticket.**
   is instrument-dependent and is corrected here. `~/.gemini/config/agents/` is the only root that satisfies both
   instruments, which is why spec 0123 R2's single documented root is the right target under either reading. Evidence:
   `agy` 1.1.11, 2026-08-11, two reproducible runs; `docs/runbooks/antigravity-discovery-probe.md`.
-- [GAP] Extension skill/agent loader (row 5c) — Antigravity CLI has no in-repo extension skill/agent loader.
-  `scripts/install-antigravity-extension.ts` builds a plugin package and calls `agy plugin install` — the plugin is
-  consumed as a package, not via per-skill directory links.
 - [GAP] CI workflow (row 18) — `agy --print` is confirmed non-interactive (exit 0; output:
   `Pong! How can I help you today?`), but no published GitHub Action (analogous to `anthropics/claude-code-action`)
   exists for Antigravity CLI. Evidence: `gh api /repos/antigravity-labs/agy-code-action` → HTTP 404;

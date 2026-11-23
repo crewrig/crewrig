@@ -549,45 +549,32 @@ not author — that feedback keeps flowing to the upstream repository where the
 components are maintained. This is by design (spec 0030) and enforced by
 `scripts/check-feedback-routing.ts`.
 
-### Extension skills & agents — carrier-in-source, literal origin
+### Extension skills & agents — generated markers
 
-The placeholder/build-strip model above applies to `artifacts/` components,
-which are *built* into per-CLI outputs. A skill or agent shipped inside an
-**extension** (`extensions/core`, `extensions/library`) is different: it is
-consumed **in place** — `install-extension.ts` does `ln -s` / `cp -rf` of the
-whole extension dir, and `scripts/build-claude-plugin.ts` does a recursive copy of the skill dir
-— so every CLI reads the same `SKILL.md` / `AGENT.md` source bytes with **no
-render seam** to strip a frontmatter block. Two consequences follow (spec 0043):
+The placeholder/build-strip model above applies to `artifacts/` components.
+A skill or agent shipped inside an **extension** (`extensions/core`,
+`extensions/library`) is authored with plain `name`/`description` frontmatter
+and **no provenance carrier** (spec 0316): Gemini CLI 0.42.0+ rejects any other
+frontmatter key, and nothing needs one. The `<!-- crewrig-provenance: … -->`
+marker is **generated at render time** on every rendered copy (R9): install
+renders first and then places the build tree
+(`scripts/lib/install/extension.ts`), so a rendered skill, agent or context
+copy carries exactly one marker, and a stale line authored in a source never
+reaches it.
 
-- **Carrier = HTML comment, first body line.** Because Gemini CLI 0.42.0+
-  rejects any frontmatter key outside `name`/`description`, an in-place source
-  cannot carry `metadata.provenance` in frontmatter. It is authored directly as
-  the HTML-comment carrier (the same one `gemini_provenance_comment` emits for
-  built Gemini agents) on the first body line, immediately after the
-  frontmatter close:
+- **Values come from the manifests.** `extension` is the `extension.json`
+  `name`, `version` is the `package.json` version (stamped at render, so there
+  is no authored copy to keep in lockstep), and `canonical`/`feedback` come
+  from `provenance` in `extension.json` as literal URLs, never
+  `${CANONICAL_REPO}` (a consumer cannot resolve a third-party origin).
+- **Upstream tiers.** `feedback` MUST equal `canonical` (spec 0030 routing).
+  The frontmatter/`yq`-based `check-feedback-routing.ts` cannot see an
+  extension; enforcement lives in `scripts/lib/extension/validate-provenance.ts`,
+  run by `build-extension.ts --check` (CI capability `extension-render`).
+- **Native install.** A raw source installed in place carries no marker; its
+  attribution comes from the path walk (spec 0316 R15).
 
-  ```markdown
-  ---
-  name: greeter
-  description: "…"
-  ---
-  <!-- crewrig-provenance: extension="greeter-ext" version="1.0.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
-
-  # Greeter Skill
-  ```
-
-- **`canonical`/`feedback` are LITERAL, not `${CANONICAL_REPO}`.** A consuming
-  project's `crewrig.config.toml` cannot resolve a third-party extension's
-  origin, so a build-time-resolved value would misroute frictions. The
-  extension names its own origin as a literal URL (spec 0043 R2).
-
-For an upstream-owned extension tier, `feedback` MUST equal `canonical` exactly
-as for `artifacts/` (spec 0030). **Enforcement note:** because this block lives
-in a *comment*, the frontmatter/`yq`-based `check-feedback-routing.ts` cannot
-see it and permanently skips extension skills — so the presence and R5
-(feedback==canonical) enforcement for extension skills/agents lives **solely**
-in `scripts/check-extension-provenance.ts` (no defense-in-depth overlap with the
-spec-0030 guard). See [`docs/cli-matrix.md`](../docs/cli-matrix.md) row 5c.
+See [`docs/cli-matrix.md`](../docs/cli-matrix.md) row 5c.
 
 The `version:` field in `metadata.provenance:` is a literal
 per-component string, not a placeholder. It tracks the component's own
@@ -611,13 +598,11 @@ The `metadata.provenance.version` field follows
 `metadata.provenance.version` in the same diff. CI enforces this via
 `scripts/check-skill-versions.ts` (see `task check-skill-versions` for
 the local invocation). Upstream-owned extension skills and agents (`extensions/core/`,
-`extensions/library/`) are exempt: their carrier (the first-body-line
-`<!-- crewrig-provenance: extension="…" version="…" … -->` HTML comment per spec
-0043 and spec 0312, not frontmatter, because Gemini CLI 0.42.0+ rejects
-non-`name`/`description` frontmatter keys on the in-place source) mirrors the
-extension's `package.json` version, which the release step writes and
-`scripts/check-extension-manifest-version.ts` checks. The
-rationale:
+`extensions/library/`) are exempt: they carry no authored `metadata.provenance`
+or carrier. Their marker is generated at render time from the extension's
+`package.json` version (spec 0316), which the release step writes in lockstep
+with `extension.json` and `scripts/check-extension-manifest-version.ts` checks.
+The rationale:
 
 - A friction tag captured `evidence: <path>:<line>` against an
   unspecified version drifts silently once the source changes. The

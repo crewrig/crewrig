@@ -30,11 +30,10 @@ in place.
 
 Extension skills and agents (`extensions/*`) are not on this list: an extension
 has one version, the `version` of its `package.json`, written by
-`scripts/monorepo-release.ts` at release time. The `version` of the
-`crewrig-provenance` carrier of each of its skills and agents
-(`<!-- crewrig-provenance: extension="…" version="…" … -->`, spec 0043 and
-spec 0312) mirrors that package version; the release step rewrites it, and
-`scripts/check-extension-manifest-version.ts` keeps it in lockstep.
+`scripts/monorepo-release.ts` at release time, in lockstep with `extension.json`
+(`scripts/check-extension-manifest-version.ts`). The `crewrig-provenance` marker
+of its skills and agents is generated at render time from that version (spec
+0316): there is no authored carrier and no carrier lockstep.
 
 **Exemption — new components do not bump in-branch.** Components
 introduced on a feature branch start at `1.0.0` and stay there until the
