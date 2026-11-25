@@ -1,6 +1,6 @@
 /*
 provenance:
-  version: "1.0.0"
+  version: "1.0.1"
   canonical: "${CANONICAL_REPO}"
   feedback: "${CANONICAL_REPO}"
 */

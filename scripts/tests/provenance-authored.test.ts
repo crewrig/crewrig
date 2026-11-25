@@ -66,7 +66,7 @@ describe("readAuthoredProvenance", () => {
         file,
         syntax,
       );
-      assert.equal(got.version, "1.0.0", file);
+      assert.match(got.version, /^\d+\.\d+\.\d+$/, file);
       assert.equal(got.canonical, "${CANONICAL_REPO}", file);
     }
   });
