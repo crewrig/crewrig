@@ -8,7 +8,7 @@ import path from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach, beforeEach } from "node:test";
 
-import type { Cli } from "../lib/setup/context.ts";
+import type { Cli, OrgRoots } from "../lib/setup/context.ts";
 import type { PickKind, RuleFile, SetupDescriptor, StepId } from "../lib/setup/descriptor.ts";
 import { runSetup } from "../lib/setup/flow.ts";
 import { descriptor } from "./setup-flow-fixtures.ts";
@@ -227,6 +227,7 @@ export async function runRules(
   answers: readonly string[] = [],
   stdin = "",
   extraArgv: readonly string[] = [],
+  org?: OrgRoots,
 ): Promise<RulesRun> {
   const input = new PassThrough();
   input.end(stdin);
@@ -241,6 +242,7 @@ export async function runRules(
     platform: process.platform,
     home: box.home,
     repoDir: box.repo,
+    ...(org === undefined ? {} : { org }),
   });
   return { status, out: out.join(""), err: err.join("") };
 }

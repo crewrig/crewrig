@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
+import type { OrgRoots } from "../lib/setup/context.ts";
 import {
   VALIDATION,
   box,
@@ -17,6 +18,19 @@ import {
 
 useRulesSandbox();
 const posix = { skip: process.platform === "win32" };
+
+const first = (file: string): string => fs.readFileSync(file, "utf8").split("\n")[0] ?? "";
+
+/** A private artifacts tree: a stamped installer must never be able to touch the real sources. */
+function privateArtifacts(): void {
+  const real = fs.realpathSync(path.join(box.repo, "artifacts"));
+  fs.unlinkSync(path.join(box.repo, "artifacts"));
+  for (const dir of ["rules", "system-context", "claude-profiles"]) {
+    fs.cpSync(path.join(real, "core", dir), path.join(box.repo, "artifacts", "core", dir), {
+      recursive: true,
+    });
+  }
+}
 
 // Spec 0316 R11, R12: a deployed rule or store file is a stamped copy, in copy and in link mode.
 describe("rules-shared: stamped copies (spec 0316 R11, R12)", posix, () => {
@@ -30,17 +44,6 @@ describe("rules-shared: stamped copies (spec 0316 R11, R12)", posix, () => {
   };
   const snapshot = (): string[] => sourceFiles().map((f) => `${f}\n${fs.readFileSync(f, "utf8")}`);
 
-  /** A private artifacts tree: a stamped installer must never be able to touch the real sources. */
-  function privateArtifacts(): void {
-    const real = fs.realpathSync(path.join(box.repo, "artifacts"));
-    fs.unlinkSync(path.join(box.repo, "artifacts"));
-    for (const dir of ["rules", "system-context", "claude-profiles"]) {
-      fs.cpSync(path.join(real, "core", dir), path.join(box.repo, "artifacts", "core", dir), {
-        recursive: true,
-      });
-    }
-  }
-  const first = (file: string): string => fs.readFileSync(file, "utf8").split("\n")[0] ?? "";
   const MARKER =
     /^<!-- crewrig-provenance: package="crewrig" version="1\.0\.0" canonical="https:\/\/[^"]+" feedback="https:\/\/[^"]+" -->$/;
   const deployed = (): string[] => [
@@ -174,3 +177,118 @@ describe("rules-shared: stamped copies (spec 0316 R11, R12)", posix, () => {
     assert.ok(fs.lstatSync(path.join(box.home, ".claude", "profiles")).isSymbolicLink());
   });
 });
+
+// Spec 0315 delta-03 R6: in a two-root run the placeholders come from the organization's crewrig.config.toml, read
+// only; the pinned version root's own configuration is never read for them.
+describe(
+  "rules-shared in a two-root run: placeholders from the organization (spec 0315 delta-03 R6)",
+  posix,
+  () => {
+    const REPO = "https://github.com/crewrig/crewrig";
+    const markerLine = (canonical: string, feedback: string): string =>
+      `<!-- crewrig-provenance: package="crewrig" version="1.0.0" canonical="${canonical}" feedback="${feedback}" -->`;
+    const tools = (): string => first(path.join(box.home, ".claude", "rules", "60-tools.md"));
+
+    /** An organization directory with its own files, and its crewrig.config.toml when `config` is given. */
+    function organization(config?: string): OrgRoots {
+      const dir = path.join(box.root, "org");
+      fs.mkdirSync(path.join(dir, "config"), { recursive: true });
+      fs.writeFileSync(path.join(dir, "config", "ORGANIZATION.md"), "# ORGANIZATION.md\n");
+      fs.writeFileSync(path.join(dir, "config", "TOOLS.md"), "# TOOLS.md\n");
+      if (config !== undefined) fs.writeFileSync(path.join(dir, "crewrig.config.toml"), config);
+      const staging = path.join(box.root, "staging");
+      fs.mkdirSync(staging);
+      return { dir, staging };
+    }
+
+    /** The version root's distribution skills, which a two-root run installs for claude (spec 0315 R8). */
+    function distributionSkills(): void {
+      const real = path.resolve(import.meta.dirname, "..", "..", ".claude", "skills");
+      fs.mkdirSync(path.join(box.repo, ".claude", "skills"), { recursive: true });
+      for (const name of ["init-team", "init-soul", "init-personal-profile"]) {
+        fs.cpSync(path.join(real, name), path.join(box.repo, ".claude", "skills", name), {
+          recursive: true,
+        });
+      }
+    }
+
+    /** Every entry of a tree with its bytes, sorted: what a run that must not write leaves unchanged. */
+    const tree = (dir: string): string[] =>
+      fs
+        .readdirSync(dir, { recursive: true })
+        .map(String)
+        .sort()
+        .map((rel) => {
+          const abs = path.join(dir, rel);
+          return fs.statSync(abs).isFile() ? `${rel}\n${fs.readFileSync(abs, "utf8")}` : `${rel}/`;
+        });
+
+    test("the organization's canonical_repo resolves canonical and feedback, and the organization is left unchanged", async () => {
+      privateArtifacts();
+      distributionSkills();
+      fs.rmSync(path.join(box.repo, "crewrig.config.toml"));
+      const org = organization(
+        'canonical_repo = "https://github.com/crewrig/crewrig"\nfeedback_repo = "https://github.com/acme/crewrig-config"\n',
+      );
+      const before = tree(org.dir);
+
+      const result = await runRules(
+        rulesDescriptor("claude", ["rules-shared"]),
+        VALIDATION,
+        "",
+        [],
+        org,
+      );
+
+      assert.equal(result.status, 0, result.err);
+      assert.equal(result.err, "");
+      assert.equal(tools(), markerLine(REPO, REPO));
+      assert.deepEqual(tree(org.dir), before, "the organization directory is unchanged");
+    });
+
+    test("the version root's own crewrig.config.toml is not read for the placeholders", async () => {
+      privateArtifacts();
+      distributionSkills();
+      fs.writeFileSync(
+        path.join(box.repo, "crewrig.config.toml"),
+        'canonical_repo = "https://example.invalid/version"\n',
+      );
+      const org = organization(`canonical_repo = "${REPO}"\n`);
+
+      const result = await runRules(
+        rulesDescriptor("claude", ["rules-shared"]),
+        VALIDATION,
+        "",
+        [],
+        org,
+      );
+
+      assert.equal(result.status, 0, result.err);
+      assert.equal(tools(), markerLine(REPO, REPO));
+    });
+
+    test("an organization without crewrig.config.toml keeps the placeholders literal, prints nothing, and reads nothing from the version root", async () => {
+      privateArtifacts();
+      distributionSkills();
+      fs.writeFileSync(
+        path.join(box.repo, "crewrig.config.toml"),
+        'canonical_repo = "https://example.invalid/version"\n',
+      );
+      const org = organization();
+      const before = tree(org.dir);
+
+      const result = await runRules(
+        rulesDescriptor("claude", ["rules-shared"]),
+        VALIDATION,
+        "",
+        [],
+        org,
+      );
+
+      assert.equal(result.status, 0, result.err);
+      assert.equal(result.err, "");
+      assert.equal(tools(), markerLine("${CANONICAL_REPO}", "${CANONICAL_REPO}"));
+      assert.deepEqual(tree(org.dir), before, "the organization directory is unchanged");
+    });
+  },
+);

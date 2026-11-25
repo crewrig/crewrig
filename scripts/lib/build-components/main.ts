@@ -162,7 +162,9 @@ export async function main(input: MainInput): Promise<number> {
 
     const config = loadConfig(sourceDir, platform, io);
     validateCanonicalRepo(config);
-    const packageFile = joinRoot(platform, repoDir, "package.json");
+    // The marker's `package` is the framework's root package name (0316 R2; spec 0315 delta-03 R6): the
+    // version root in a two-root run, never the temporary out root.
+    const packageFile = joinRoot(platform, frameworkDir, "package.json");
     let packageName: string;
     try {
       packageName = packageNameOf(packageFile);

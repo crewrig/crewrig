@@ -178,6 +178,22 @@ describe("R5, R7: a defective component", () => {
   });
 });
 
+describe("R5, delta-03 R6: a version root whose package.json has no name", () => {
+  test("exits 1 naming the version root's package.json, and keeps the previous dist/ unchanged", async () => {
+    const world = await newWorld(rigs, servers);
+    const dir = world.makeOrg({ files: COMPONENTS });
+    assert.equal((await world.run(dir, "build")).code, 0);
+    const previous = snapshot(path.join(dir, "dist"));
+    fs.writeFileSync(path.join(world.versionRoot(), "package.json"), '{"type": "module"}\n');
+
+    const run = await world.run(dir, "build");
+
+    assert.equal(run.code, 1, run.out);
+    assert.match(run.out, /package\.json: `name` must be a non-empty string/);
+    assert.deepEqual(snapshot(path.join(dir, "dist")), previous, "the previous dist/ is untouched");
+  });
+});
+
 describe("R5: two components claiming one installed name", () => {
   test("exit 1, name both source files, and write no dist/", async () => {
     const world = await newWorld(rigs, servers);

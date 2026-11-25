@@ -182,7 +182,13 @@ const rulesShared: StepFn = async (env) => {
   const dir = path.join(ctx.home, homes.rulesDir);
   ctx.io.out(rules.sharedHeader.replaceAll("{dir}", dir));
   const base = failClosed(ctx.io, "cannot stamp the rules", () => {
-    const stamp = stampBase({ repoDir: ctx.repoDir, platform: ctx.platform });
+    // A two-root run resolves the placeholders from the organization's configuration, never from the
+    // version root's (spec 0315 delta-03 R6); the package name still comes from the version root.
+    const stamp = stampBase({
+      repoDir: ctx.repoDir,
+      configDir: ctx.org?.dir ?? ctx.repoDir,
+      platform: ctx.platform,
+    });
     preflight(stampSources(env, [...rules.shared, rules.store]), stamp);
     return stamp;
   });

@@ -19,7 +19,10 @@ export interface StampSource {
 }
 
 export interface StampContext {
+  /** The version root: the `name` of its `package.json` is the `package` of every marker (spec 0316 R2). */
   readonly repoDir: string;
+  /** The root of `crewrig.config.toml`: the organization directory of a two-root run, else `repoDir`. */
+  readonly configDir: string;
   readonly platform: NodeJS.Platform;
 }
 
@@ -37,9 +40,9 @@ export function stampBase(ctx: StampContext): {
     throw new Error("package.json: `name` is missing");
   }
   // Silent: the run's own build steps already warn when `crewrig.config.toml` is missing, and the
-  // placeholders then stay literal here exactly as they do in the build.
+  // placeholders then stay literal here exactly as they do in the build (spec 0315 delta-03 R6).
   const quiet = { out: () => {}, err: () => {}, errRaw: () => {} };
-  const config = loadConfig(ctx.repoDir, ctx.platform, quiet);
+  const config = loadConfig(ctx.configDir, ctx.platform, quiet);
   return {
     pkg: raw.name,
     resolve: (value) => resolvePlaceholders(config, value),
