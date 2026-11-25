@@ -1,7 +1,7 @@
 ---
 id: "0315"
 slug: org-build-setup-update-commands
-status: draft
+status: approved
 complexity: standard
 interaction-mode: INTERMEDIATE
 related-issue: 2146
@@ -22,7 +22,7 @@ Decided by the owner (not reopened here): the archive `package.json` gains a `na
 
 Cumulative effect: R11 is amended (one JSON object with two members instead of one); R6 gains two sentences (the package-name source and the configuration root of a two-root run); six scenarios are added. R5 is unchanged: `build` and `setup` already share the compile. Every other requirement and scenario of the parent and of delta-01 and delta-02 is unchanged. Spec 0316 is not edited (one-file rule); the open question on its wording is stated below.
 
-Open question (non-blocking, for the reviewer): 0316 R2 and R11 say `package` is "the `name` of the root `package.json`" and that placeholders resolve "at build as today", without naming the root in a two-root run. This delta reads as a refinement that 0316 already permits (the framework root is the root, and the build's configuration is the organization's), so no 0316 change is required; if the owner wants the two-root reading written in 0316, a one-sentence 0316 delta can follow. [USER-PARKED pending owner view]
+Settled by the owner on 2026-11-25 (review s1-F2): 0316 R2 and R11 say `package` is "the `name` of the root `package.json`" without naming the root in a two-root run. This delta reads the root as the framework root, a refinement that 0316 already permits, so 0316 is not changed. Consequence accepted by the owner: in a two-root run, the components authored in the organization directory also carry `package="crewrig"`; `package` names the framework that wrote the marker, and the organization is identified by `feedback`. Review s1-F1 is settled by the qualified sentence of R6 below: placeholders stay literal only when the organization has no `crewrig.config.toml`, exactly as in the build.
 
 ## ADDED
 
@@ -45,7 +45,7 @@ Then  the `name` of the archive file equals the `name` of the repository file, s
 ```text
 Given an organization directory with one skill and a pinned version root whose `package.json` is the archive's, and an ancestor `package.json` of the version root declaring "type": "commonjs" (a second run: "type": "module")
 When  the user runs `node crewrig build`
-Then  it exits 0 with no module-type error and no warning on standard error, and every marker in `dist/` carries `package="crewrig"`, read from the `package.json` of the version root and never from the temporary out root.
+Then  it exits 0 with no module-type error and no warning on standard error, and every marker in `dist/`, the organization's own skill included, carries `package="crewrig"`, read from the `package.json` of the version root and never from the temporary out root.
 ```
 
 ```text
@@ -103,7 +103,7 @@ An organization run SHALL take the step list of the same CLI's checkout run with
 Replacement: the sentence is kept, and the following two sentences are appended at the end of R6.
 
 ```text
-In a two-root run, the `package` field of every marker (0316 R2), whether written by the compile of R5 or by the rule and system-context stamping of `setup` (0316 R11), SHALL be the `name` of the `package.json` at the version root, the framework root; it SHALL NOT be read from the temporary out root of the compile nor from the organization directory, and a version root whose `package.json` has no non-empty `name` SHALL end the command with code 1 naming that file. In a two-root run, the placeholders of the markers written by `setup` (`${CANONICAL_REPO}` and the `feedback` rule of spec 0030) SHALL be resolved from the `crewrig.config.toml` of the organization directory, the same file the compile of R5 reads, so that no literal placeholder remains in a deployed marker; the version root's own `crewrig.config.toml` is not read for this purpose, and the file is only read, never written (R12). In a checkout run both sources remain the repository root.
+In a two-root run, the `package` field of every marker (0316 R2), whether written by the compile of R5 or by the rule and system-context stamping of `setup` (0316 R11), SHALL be the `name` of the `package.json` at the version root, the framework root; it SHALL NOT be read from the temporary out root of the compile nor from the organization directory, and a version root whose `package.json` has no non-empty `name` SHALL end the command with code 1 naming that file. In a two-root run, the placeholders of the markers written by `setup` (`${CANONICAL_REPO}` and the `feedback` rule of spec 0030) SHALL be resolved from the `crewrig.config.toml` of the organization directory, the same file the compile of R5 reads, so that no literal placeholder remains in a deployed marker, except when the organization directory has no `crewrig.config.toml`: the existing warning then applies and the placeholders stay literal, exactly as in the compile; the version root's own `crewrig.config.toml` is not read for this purpose, and the file is only read, never written (R12). In a checkout run both sources remain the repository root.
 ```
 
 ## REMOVED
