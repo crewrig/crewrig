@@ -188,11 +188,7 @@ function isModuleRoot(text: string): boolean {
   return (
     typeof parsed === "object" &&
     parsed !== null &&
-    JSON.stringify(Object.entries(parsed).sort()) ===
-      JSON.stringify([
-        ["name", "crewrig"],
-        ["type", "module"],
-      ])
+    JSON.stringify(Object.entries(parsed).sort()) === '[["name","crewrig"],["type","module"]]'
   );
 }
 
@@ -282,21 +278,10 @@ describe("spec 0315 R11: the archive root package.json of the committed manifest
 
     assert.ok(isModuleRoot(bytes), `not a two-member module root: ${bytes}`);
     assert.deepEqual(JSON.parse(bytes), { name: "crewrig", type: "module" });
-    assert.notEqual(bytes, fs.readFileSync(path.join(REPO, "package.json"), "utf8"));
-  });
-
-  it("carries the same name as the repository's root package.json, so that a rename fails here", () => {
-    const entry = records.find((record) => record.archive === "package.json");
-    assert.ok(entry, "manifest.txt maps package.json");
-
-    const archive = JSON.parse(fs.readFileSync(path.join(REPO, entry.source), "utf8")) as {
-      name?: unknown;
-    };
-    const root = JSON.parse(fs.readFileSync(path.join(REPO, "package.json"), "utf8")) as {
-      name?: unknown;
-    };
-
-    assert.equal(archive.name, root.name);
+    const root = fs.readFileSync(path.join(REPO, "package.json"), "utf8");
+    assert.notEqual(bytes, root);
+    // The archive name above is pinned to the root name: a rename fails here (0315 delta-03).
+    assert.equal((JSON.parse(root) as { name?: unknown }).name, "crewrig");
   });
 
   it("resolves, in this checkout, to a file whose bytes are those of the archive package.json", () => {
