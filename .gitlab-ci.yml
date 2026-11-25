@@ -347,26 +347,6 @@ extension-render:
         - "scripts/check-extension-hook-tokens.ts"
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
 
-extension-provenance:
-  stage: extensions
-  image: node:24
-  before_script:
-    - !reference [.task-install, script]
-    - npm ci --omit=dev --workspaces=false
-  script:
-    - "task ci:extension-provenance"
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^main$|^release\//'
-      changes:
-        - "scripts/tests/governance-suite-extension-provenance.test.ts"
-        - "scripts/tests/governance-suite-extension-provenance-r4.test.ts"
-        - "scripts/tests/lib/governance-*.ts"
-        - "extensions/**"
-        - "artifacts/**"
-        - "scripts/check-extension-provenance.ts"
-        - "scripts/lib/governance/**"
-    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^main$|^release\//'
-
 extension-manifest:
   stage: extensions
   image: node:24
@@ -993,11 +973,16 @@ lint-typescript-selftest:
         - "templates/org-repo/crewrig"
         - "scripts/check-launcher-types.ts"
         - "scripts/lib/launcher-types.ts"
+        - "scripts/lib/provenance-marker.ts"
+        - "scripts/lib/provenance-authored.ts"
         - "scripts/tests/check-erasable-syntax.test.ts"
         - "scripts/tests/lint-typescript.test.ts"
         - "scripts/tests/check-typescript.test.ts"
         - "scripts/tests/check-launcher-types.test.ts"
         - "scripts/tests/build-components-built-trees.test.ts"
+        - "scripts/tests/build-components-package-field.test.ts"
+        - "scripts/tests/provenance-marker.test.ts"
+        - "scripts/tests/provenance-authored.test.ts"
         - "scripts/tests/fixtures/build-components/**"
         - "artifacts/core/skills/pr-reviewer/scripts/lint-typescript.ts"
         - ".oxfmtrc.json"
@@ -2614,6 +2599,7 @@ setup-modules-ts:
         - "scripts/tests/setup-steps-mcp.test.ts"
         - "scripts/tests/setup-steps-rules.test.ts"
         - "scripts/tests/setup-steps-rules-edge.test.ts"
+        - "scripts/tests/setup-steps-rules-stamp.test.ts"
         - "scripts/tests/setup-steps-tiers.test.ts"
         - "scripts/tests/setup-steps-usage.test.ts"
         - "scripts/tests/setup-store-guidance.test.ts"

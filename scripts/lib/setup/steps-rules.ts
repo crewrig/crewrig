@@ -27,8 +27,10 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { installDir, installFile } from "./files.ts";
+import { installDir, installFile, installStampedDir, installStampedFile } from "./files.ts";
 import { isPersonalFile, sourceRoot } from "./org-roots.ts";
+import { markdownIn, preflight, stampBase, stampText } from "./rule-stamp.ts";
+import type { StampBase, StampSource } from "./rule-stamp.ts";
 import type { RuleFile, StepEnv, StepFn, StepRegistry } from "./descriptor.ts";
 import { filesCtx, rulesSelection } from "./steps-rules-pick.ts";
 import { failClosed } from "./steps.ts";
@@ -113,9 +115,58 @@ const rulesExisting: StepFn = async (env) => {
   }
 };
 
-function placeShared(env: StepEnv, rule: RuleFile, isStore: boolean): void {
+const RULES_SRC = "artifacts/core/rules/";
+
+/** A source that is deployed as a stamped copy (spec 0316 R11): a core rule or the store. */
+function isStamped(env: StepEnv, rule: RuleFile): boolean {
+  return rule.src === env.descriptor.rules.store.src || rule.src.startsWith(RULES_SRC);
+}
+
+/** The stamped sources of the placements `rulesShared` is about to make. */
+function stampSources(env: StepEnv, entries: readonly RuleFile[]): StampSource[] {
+  const { ctx, descriptor } = env;
+  const out: StampSource[] = [];
+  const seen = new Set<string>();
+  for (const rule of entries) {
+    if (!isStamped(env, rule) || seen.has(rule.src)) continue;
+    if (rule.optional === true && !fs.existsSync(path.join(ctx.repoDir, rule.src))) continue;
+    seen.add(rule.src);
+    const abs = path.join(ctx.repoDir, rule.src);
+    // A missing source keeps failing where it always did: at its placement, naming the file.
+    if (!fs.existsSync(abs)) continue;
+    if (rule.src === descriptor.rules.store.src) {
+      for (const name of markdownIn(abs)) {
+        out.push({
+          path: path.join(abs, name),
+          name: `${rule.src.replace(/\/$/, "")}/${name}`,
+        });
+      }
+    } else out.push({ path: abs, name: rule.src });
+  }
+  return out;
+}
+
+function placeShared(env: StepEnv, rule: RuleFile, isStore: boolean, base?: StampBase): void {
   const { ctx, descriptor } = env;
   const src = path.join(sourceRoot(ctx, rule.src), rule.src);
+  if (isStamped(env, rule)) {
+    if (base === undefined) throw new Error(`${rule.src}: a stamped source needs the stamp base`);
+    if (rule.src === descriptor.rules.store.src) {
+      installStampedDir(
+        filesCtx(env),
+        src,
+        path.join(ctx.home, rule.dest),
+        rule.label,
+        (text, name) => stampText(text, `${rule.src}/${name}`, base),
+      );
+    } else {
+      const dest = path.join(ctx.home, descriptor.homes.rulesDir, rule.dest);
+      installStampedFile(filesCtx(env), src, dest, rule.label, (text) =>
+        stampText(text, rule.src, base),
+      );
+    }
+    return;
+  }
   if (isStore) {
     installDir(filesCtx(env), src, path.join(ctx.home, rule.dest), rule.label);
     return;
@@ -130,16 +181,27 @@ const rulesShared: StepFn = async (env) => {
   const { rules, homes } = descriptor;
   const dir = path.join(ctx.home, homes.rulesDir);
   ctx.io.out(rules.sharedHeader.replaceAll("{dir}", dir));
+  const base = failClosed(ctx.io, "cannot stamp the rules", () => {
+    // A two-root run resolves the placeholders from the organization's configuration, never from the
+    // version root's (spec 0315 delta-03 R6); the package name still comes from the version root.
+    const stamp = stampBase({
+      repoDir: ctx.repoDir,
+      configDir: ctx.org?.dir ?? ctx.repoDir,
+      platform: ctx.platform,
+    });
+    preflight(stampSources(env, [...rules.shared, rules.store]), stamp);
+    return stamp;
+  });
   let storePlaced = false;
   for (const rule of rules.shared) {
     // A two-root run may lack the personal files: their absence is skipped, not a failure (spec 0315 R6).
     const absentOk = rule.optional === true || (ctx.org !== undefined && isPersonalFile(rule.src));
     if (absentOk && !fs.existsSync(path.join(sourceRoot(ctx, rule.src), rule.src))) continue;
     const isStore = rule.src === rules.store.src;
-    placeShared(env, rule, isStore);
+    placeShared(env, rule, isStore, base);
     storePlaced = storePlaced || isStore;
   }
-  if (!storePlaced) placeShared(env, rules.store, true);
+  if (!storePlaced) placeShared(env, rules.store, true, base);
   await configureValidationBackend({ ctx, session });
   ctx.io.out("");
 };

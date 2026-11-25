@@ -110,7 +110,10 @@ export function checkMirrors(repoDir: string, name: string): void {
       .replace(/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/, "")
       .split(/\r?\n/)
       .find((line) => line.trim() !== "");
-    if (body === undefined || !/^<!-- crewrig-provenance: version="[^"]+"/.test(body)) {
+    if (
+      body === undefined ||
+      !/^<!-- crewrig-provenance: (?:[a-z]+="[^"]*" )*version="[^"]+"/.test(body)
+    ) {
       throw new Failure(
         `${gemini} — missing HTML-comment provenance line (\`<!-- crewrig-provenance: version="…" … -->\`) immediately after YAML frontmatter`,
         REBUILD,

@@ -90,6 +90,7 @@ function writeExtension(root: string, name: string, version: string): void {
     name,
     version,
     description: `Minimal ${name} extension.`,
+    provenance: { canonical: "https://example.test/upstream" },
     context: { source: "CONTEXT.md" },
   };
   fs.writeFileSync(path.join(dir, "extension.json"), `${JSON.stringify(manifest, null, 2)}\n`);

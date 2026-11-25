@@ -8,9 +8,10 @@ allowed-tools:
   - AskUserQuestion
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.2.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.0"
 ---
 
 

@@ -244,3 +244,263 @@ describe("friction forge", () => {
     assert.equal(friction(["frobnicate"]).status, 2);
   });
 });
+
+const scratch = (name: string): string => {
+  const d = path.join(tmp, name);
+  fs.mkdirSync(d, { recursive: true });
+  return d;
+};
+const write = (file: string, text: string): string => {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, text);
+  return file;
+};
+const FB = "https://example.test/fb";
+const CANON = "https://example.test/canon";
+const resolveJson = (args: string[]) => {
+  const r = friction(["resolve", ...args, "--json"]);
+  return {
+    r,
+    data: (r.stdout.trim() === "" ? null : JSON.parse(r.stdout)) as {
+      data: { fields: Record<string, string>; source: string; evidence: string[] };
+    } | null,
+  };
+};
+const manifest = (dir: string, name = "hello-world", pkgName = "hello-world-extension"): void => {
+  write(
+    path.join(dir, "extension.json"),
+    JSON.stringify({ name, provenance: { canonical: CANON } }),
+  );
+  write(path.join(dir, "package.json"), JSON.stringify({ name: pkgName, version: "2.1.1" }));
+};
+
+describe("friction build: provenance fields (spec 0316 R14)", () => {
+  const FULL = [
+    ...GOOD.slice(0, -2),
+    "--package",
+    "hello-world-extension",
+    "--extension",
+    "hello-world",
+    "--version",
+    "1.2.0",
+    "--canonical",
+    CANON,
+    "--feedback",
+    FB,
+  ];
+  test("the four flags render in the documented order", () => {
+    const r = friction(FULL);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(
+      r.stdout,
+      `FRICTION: Cleanup skill deletes build\n\nwriter_agent: claude-code\npackage: hello-world-extension\nextension: hello-world\nversion: 1.2.0\ncanonical: ${CANON}\nfeedback: ${FB}\nseverity: med\nevidence:\n  - 4f9c2ab:artifacts/core/skills/cleanup/SKILL.md:31\n`,
+    );
+  });
+  test("validate round-trips the new fields", () => {
+    const f = path.join(tmp, "full.txt");
+    fs.writeFileSync(f, friction(FULL).stdout);
+    const r = friction(["validate", f, "--json"]);
+    assert.equal(r.status, 0, r.stderr);
+    const fields = envelope(r).data as { fields: Record<string, string> };
+    assert.equal(fields.fields["package"], "hello-world-extension");
+    assert.equal(fields.fields["extension"], "hello-world");
+    assert.equal(fields.fields["version"], "1.2.0");
+    assert.equal(fields.fields["feedback"], FB);
+  });
+  test("feedback follows the canonical URL rules", () => {
+    const base = GOOD.slice(0, -2);
+    assert.equal(friction([...base, "--feedback", "not a url"]).status, 1);
+    assert.equal(
+      friction([...base, "--feedback", "https://github.com/a/b/blob/main/x.md"]).status,
+      1,
+    );
+  });
+  test("a multi-line version is an error, a non-SemVer one a warning", () => {
+    const base = GOOD.slice(0, -2);
+    assert.equal(friction([...base, "--version", "1.0\n2"]).status, 1);
+    const r = friction([...base, "--version", "nightly"]);
+    assert.equal(r.status, 0);
+    assert.match(r.stderr, /version-not-semver/);
+  });
+  test("hook: and server: evidence entries are not weak", () => {
+    for (const e of ["hook:hello-world/shell-logger", "server:hello-world/greeter-mcp"]) {
+      const r = friction([...GOOD.slice(0, 9), "--evidence", e]);
+      assert.equal(r.status, 0, r.stderr);
+      assert.doesNotMatch(r.stderr, /evidence-weak/);
+    }
+  });
+  test("forge targets the payload feedback and warns on a differing --canonical", () => {
+    const f = path.join(tmp, "fb.txt");
+    fs.writeFileSync(f, friction(FULL).stdout);
+    const r = friction(["forge", "--canonical", CANON, "--payload-file", f, "--forge", "gh"]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /--repo 'example\.test\/fb'|--repo example\.test\/fb|fb' /);
+    assert.doesNotMatch(r.stdout, /--repo [^ ]*canon/);
+    assert.match(r.stderr, /forge-target-override/);
+    const alone = friction(["forge", "--payload-file", f, "--forge", "gh"]);
+    assert.equal(alone.status, 0, alone.stderr);
+  });
+});
+
+describe("friction resolve (spec 0316 R14, R15)", () => {
+  test("own YAML marker", () => {
+    const f = write(
+      path.join(scratch("r-yaml"), "SKILL.md"),
+      `---\nname: s\nmetadata:\n  provenance:\n    package: p\n    extension: e\n    version: "1.0.0"\n    canonical: ${CANON}\n    feedback: ${FB}\n---\n# s\n`,
+    );
+    const { r, data } = resolveJson([f]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(data?.data.source, "marker");
+    assert.deepEqual(data?.data.fields, {
+      package: "p",
+      extension: "e",
+      version: "1.0.0",
+      canonical: CANON,
+      feedback: FB,
+    });
+  });
+  test("a bundled script resolves through the owning skill's SKILL.md marker (R4)", () => {
+    const dir = scratch("r-script");
+    write(
+      path.join(dir, "SKILL.md"),
+      `---\nname: s\nmetadata:\n  provenance:\n    canonical: ${CANON}\n    feedback: ${FB}\n    version: "2.0.0"\n---\n# s\n`,
+    );
+    const f = write(path.join(dir, "scripts", "x.ts"), "export {};\n");
+    const { r, data } = resolveJson([f]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(data?.data.source, "marker");
+    assert.equal(data?.data.fields["canonical"], CANON);
+    assert.equal(data?.data.fields["version"], "2.0.0");
+  });
+  test("line markers, html comment and hash", () => {
+    const line = `crewrig-provenance: package=p extension=e version=3.0.0 canonical=${CANON} feedback=${FB}`;
+    for (const [n, text] of [
+      ["c", `<!-- ${line} -->\n# x\n`],
+      ["h", `# ${line}\necho\n`],
+    ] as const) {
+      const f = write(path.join(scratch(`r-line-${n}`), "x"), text);
+      const { r, data } = resolveJson([f]);
+      assert.equal(r.status, 0, r.stderr);
+      assert.equal(data?.data.fields["version"], "3.0.0");
+      assert.equal(data?.data.source, "marker");
+    }
+  });
+  test("a symlinked skill resolves through its real path to the manifest", () => {
+    const root = scratch("r-link");
+    manifest(path.join(root, "ext"));
+    write(path.join(root, "ext", "skills", "g", "SKILL.md"), "# g\n");
+    fs.mkdirSync(path.join(root, "home"), { recursive: true });
+    const link = path.join(root, "home", "g");
+    fs.symlinkSync(path.join(root, "ext", "skills", "g"), link);
+    const { r, data } = resolveJson([path.join(link, "SKILL.md")]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(data?.data.source, "manifest");
+    assert.equal(data?.data.fields["extension"], "hello-world");
+    assert.equal(data?.data.fields["package"], "hello-world-extension");
+  });
+  test("a sidecar with --hook yields the hook evidence pair", () => {
+    const root = scratch("r-hook");
+    write(path.join(root, "hooks", "shell-logger.sh"), "#!/bin/sh\n");
+    write(
+      path.join(root, "crewrig-provenance.json"),
+      JSON.stringify({
+        package: "hello-world-extension",
+        extension: "hello-world",
+        version: "1.0.0",
+        canonical: CANON,
+        feedback: FB,
+      }),
+    );
+    const { r, data } = resolveJson([
+      path.join(root, "hooks", "shell-logger.sh"),
+      "--hook",
+      "shell-logger",
+    ]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(data?.data.source, "sidecar");
+    assert.deepEqual(data?.data.evidence, ["hook:hello-world/shell-logger"]);
+    const s = friction([
+      "resolve",
+      path.join(root, "hooks", "shell-logger.sh"),
+      "--server",
+      "greeter-mcp",
+    ]);
+    assert.match(s.stdout, /--evidence 'server:hello-world\/greeter-mcp'/);
+  });
+  test("a sidecar wins over a manifest of the same directory", () => {
+    const root = scratch("r-win");
+    manifest(root);
+    write(
+      path.join(root, "crewrig-provenance.json"),
+      JSON.stringify({
+        package: "side-pkg",
+        extension: "hello-world",
+        version: "9.9.9",
+        canonical: CANON,
+        feedback: FB,
+      }),
+    );
+    write(path.join(root, "a.txt"), "x");
+    const { data } = resolveJson([path.join(root, "a.txt")]);
+    assert.equal(data?.data.fields["package"], "side-pkg");
+    assert.equal(data?.data.fields["version"], "9.9.9");
+  });
+  test("feedback defaults to canonical and a placeholder counts as absent", () => {
+    const root = scratch("r-def");
+    manifest(root);
+    write(path.join(root, "a.txt"), "x");
+    assert.equal(resolveJson([path.join(root, "a.txt")]).data?.data.fields["feedback"], CANON);
+    const ph = scratch("r-ph");
+    write(
+      path.join(ph, "extension.json"),
+      JSON.stringify({ name: "e", provenance: { canonical: "${CANONICAL_REPO}" } }),
+    );
+    write(path.join(ph, "a.txt"), "x");
+    const { data } = resolveJson([path.join(ph, "a.txt")]);
+    assert.equal(data?.data.fields["canonical"], "");
+    assert.equal(data?.data.fields["feedback"], "");
+  });
+  test("the interim spec 0312 carrier merges with the manifest (marker wins, package filled)", () => {
+    const root = scratch("r-interim");
+    manifest(root, "hello-world", "hello-world-extension");
+    const skill = write(
+      path.join(root, "skills", "greeter", "SKILL.md"),
+      `---\nname: greeter\n---\n<!-- crewrig-provenance: extension=hello-world version=0.9.0 canonical=${CANON} feedback=${FB} -->\n# g\n`,
+    );
+    const { r, data } = resolveJson([skill]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(data?.data.source, "marker+manifest");
+    assert.equal(data?.data.fields["package"], "hello-world-extension");
+    assert.equal(data?.data.fields["version"], "0.9.0");
+    assert.equal(data?.data.fields["feedback"], FB);
+  });
+  test("an extension.json of another name fills nothing (identity guard)", () => {
+    const root = scratch("r-guard");
+    manifest(root, "other-ext", "other-pkg");
+    const skill = write(
+      path.join(root, "s", "SKILL.md"),
+      `<!-- crewrig-provenance: extension=hello-world version=1.0.0 -->\n`,
+    );
+    const { data } = resolveJson([skill]);
+    assert.equal(data?.data.fields["package"], "");
+    assert.equal(data?.data.fields["canonical"], "");
+    assert.equal(data?.data.source, "marker");
+  });
+  test("the walk stops at a .git file", () => {
+    const root = scratch("r-git");
+    manifest(root);
+    write(path.join(root, "wt", ".git"), "gitdir: elsewhere\n");
+    write(path.join(root, "wt", "a.txt"), "x");
+    const r = friction(["resolve", path.join(root, "wt", "a.txt")]);
+    assert.equal(r.status, 1, r.stderr);
+    assert.match(r.stderr, /no-provenance/);
+  });
+  test("nothing found exits 1, a missing path exits 3, usage exits 2", () => {
+    const root = scratch("r-none");
+    write(path.join(root, ".git"), "");
+    write(path.join(root, "a.txt"), "x");
+    assert.equal(friction(["resolve", path.join(root, "a.txt")]).status, 1);
+    assert.equal(friction(["resolve", path.join(root, "missing")]).status, 3);
+    assert.equal(friction(["resolve"]).status, 2);
+  });
+});

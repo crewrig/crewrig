@@ -176,7 +176,7 @@ describe("taskfile tree loader: live repository", () => {
   const mapping = readJson<Record<string, string>>("mapping.json");
 
   it("reports exactly the baseline name set", () => {
-    assert.equal(baseline.length, 245);
+    assert.equal(baseline.length, 243);
     assert.deepEqual([...tree.byName.keys()].sort(), baseline.map((b) => b.name).sort());
   });
 

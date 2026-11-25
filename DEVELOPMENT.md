@@ -395,6 +395,177 @@ exit status differs from `--expect-exit`; tolerated runs print with the label
 `max(3 x S, 300 ms)` rounded up to the next 50 ms, where S is the largest
 second-worst run, never above the carrier spec's cap (spec 0264).
 
+## Multi-agent concurrency: ChromaDB and MCP daemons
+
+When multiple CLI sessions (Claude Code, Gemini CLI, Copilot CLI, Antigravity
+CLI) or parallel agents access MemPalace simultaneously, two independent
+layers each need a single owner, or writes corrupt.
+
+![Two-layer memory coordination topology: the four CLIs connect through the shared MCP daemon (port 41893, one writer lease), which connects through the shared ChromaDB daemon (port 8001, one HNSW compactor), which owns the palace.](docs/assets/mempalace-mcp/topology.png)
+
+**Tier 1 — the ChromaDB daemon.** Each `PersistentClient` instance spawns
+its own Rust HNSW compactor. Concurrent compactors write to the same binary
+vector index files without coordination, silently corrupting the HNSW
+segment — searches return empty results while the SQLite layer remains
+intact. CrewRig solves this by running a single shared `chroma run` daemon
+that owns the `PersistentClient`. Every CLI session connects through
+`scripts/lib/mempalace-http-wrapper.py`, which monkey-patches
+`chromadb.PersistentClient` → `chromadb.HttpClient` before importing
+MemPalace. See
+[`docs/runbooks/chroma-http-server.md`](docs/runbooks/chroma-http-server.md)
+for start/stop/status commands, log locations, migration steps, and
+troubleshooting. The architectural decision is recorded in
+[ADR 0006](docs/adr/0006-chromadb-http-server.md).
+
+**Tier 2 — the shared MemPalace MCP daemon.** Collapsing tier 1 does not, on
+its own, collapse the palace *writer lease*: each CLI session still ran its
+own stdio MemPalace process, and the first one to mutate held that lease for
+the rest of its life, refusing every sibling session with MCP error
+`-32001` (*"Peer MCP writer active"*). Converting a machine to a single
+supervised MCP HTTP daemon that every CLI registers against —
+`task mempalace:switch-http` — removes that contention between sibling
+sessions by construction. Every CrewRig setup run defaults a machine to this
+arrangement: setup probes the daemon, installs and starts it, and registers
+the HTTP entry without a prompt (spec 0113 delta-02); `task
+mempalace:switch-http` remains the machine-wide all-or-nothing converger for
+machines set up before that change or where one CLI's setup failed. See
+[the runbook](docs/runbooks/mempalace-mcp-server.md) for the conversion
+command, daily operations, and the token-replacement procedure, and
+[ADR 0016](docs/adr/0016-shared-mempalace-mcp-http-server.md) for the
+decision record.
+
+## Repository Structure
+
+```text
+extensions/                # Extension registry, segmented into three tiers
+├── core/                  # Upstream-shipped extensions (synced, strict)
+│   └── hello-world/       # Example extension (MCP server + command + skill)
+├── library/               # Upstream harness/shared extensions (synced, strict)
+└── org/                   # Adopter-owned extensions (excluded from sync)
+
+extension-skeleton/        # Template for new extensions
+├── EXTENSION-FORMAT.md    # extension.json specification
+├── agent/
+├── base/
+├── command/
+├── hook/
+├── mcp-server/
+├── skill/
+└── theme/
+
+config/
+├── gemini/
+│   └── settings.json      # Gemini CLI settings and MCP servers
+├── claude/
+│   └── settings.json.template
+├── level/                 # INTERN, JUNIOR, CONFIRMED, EXPERT
+├── expertise/             # BACKEND-JAVA, FRONTEND-REACT, FULLSTACK-PYTHON,
+│                          # DEVOPS-CLOUD, QA-AUTOMATION, PRODUCT-OWNER
+├── teams/                 # ATLAS, NOVA, FORGE, SENTINEL, HORIZON
+├── ORGANIZATION.md        # Company-wide policies
+├── PROFILE.md.template    # Personal profile template
+├── SOUL.md.template       # Agent identity template
+├── TOOLS.md               # Memory architecture and MCP server guidelines
+└── release-monorepo.json  # Monorepo release configuration
+
+artifacts/
+├── FORMAT.md              # Unified source format specification
+├── core/                  # Upstream-owned SDLC lifecycle tools and role skills/agents
+│   ├── skills/            # Reusable agent skills — SDLC + role skills
+│   │   ├── spec-author/   # Lifecycle: qualification stage author
+│   │   ├── pr-logbook/    # Lifecycle: PR and logbook composer
+│   │   ├── pr-reviewer/   # Lifecycle: independent PR reviewer + linters
+│   │   │   └── scripts/   # lint-markdown.ts, lint-skill.ts, ...
+│   │   └── # … 6 role skills (architect, developer, doc-writer, github-actions,
+│   │       # security, tester)
+│   └── agents/            # Sub-agent definitions (lifecycle + role agents)
+│       └── # … spec-author, pr-logbook, pr-reviewer, architect + 7 role agents
+├── library/               # Upstream-owned harness machinery (user-home scope)
+│   ├── skills/
+│   │   ├── harness-report/    # Skill: tag frictions during real work
+│   │   └── harness-curator/   # Skill: cluster frictions and open GitHub issues
+│   │       └── scripts/       # schedule-curator.ts, curate.ts, ...
+│   └── agents/
+│       └── harness-curator/   # Agent: curator specialist
+├── community/             # Adopting organisation sandbox
+│   ├── skills/            # Org-authored role skills (not yet validated)
+│   ├── agents/            # Org-authored agents (not yet validated)
+│   ├── commands/          # Org-specific slash commands
+│   ├── hooks/             # Org-specific lifecycle hooks
+│   ├── policies/          # Org-specific policy files
+│   ├── mcp-servers/       # Org-specific MCP server configurations
+│   └── themes/            # Org-specific UI themes
+└── org/                   # Adopting organisation validated components
+    ├── skills/
+    └── agents/
+
+.gemini/                              # Build output — generated by scripts/build-components.ts
+                                      # Do not edit manually
+.claude/                              # Build output — generated by scripts/build-components.ts
+                                      # Do not edit manually
+
+hooks/                                # Shared hook scripts
+├── mempalace-transcript.ts           # Session recording (opt-in; Node.js >= 24 when it fires)
+├── gemini-transcript-hooks.json      # Gemini hook registration
+└── claude-transcript-hooks.json      # Claude Code hook registration
+
+docs/
+└── scripting-conventions.md          # Shell scripting standards
+
+tests/
+└── e2e/                              # End-to-end test documentation
+
+.github/workflows/                    # CI/CD pipelines
+├── build.yml                         # Component build and drift check
+├── claude.yml                        # Claude Code integration
+├── pages.yml                         # GitHub Pages deployment
+├── release-monorepo.yml              # Monorepo release automation (also packages and publishes each extension's release artifact, spec 0183)
+├── scripting-conventions.yml         # Shell scripting lint
+└── security-mcp.yml                  # MCP security scan
+
+scripts/
+├── build-components.ts               # The TypeScript build
+├── build-claude-plugin.ts            # Shim: forwards to build-claude-plugin.ts (the TypeScript plugin generator)
+├── check-skill-versions.ts           # CI gate: enforces version bump on modified sources
+├── create-extension.ts               # Shim: forwards to create-extension.ts (the TypeScript extension scaffolder)
+├── migrate-extension.ts              # Shim: forwards to migrate-extension.ts (converts an extension off the retired declaration shape, spec 0183)
+├── import-claude-history.ts          # Claude transcript import
+├── import-gemini-history.ts          # Gemini transcript import
+├── install-claude-plugin.ts          # Shim: forwards to install-claude-plugin.ts (Claude Code plugin installer)
+├── install-extension.ts              # Shim: forwards to install-extension.ts (Gemini extension installer)
+├── install-extension-all.ts          # Shim: forwards to install-extension-all.ts (cross-CLI umbrella extension installer)
+├── install-workspace.ts              # Shim: forwards to install-workspace.ts (bulk Gemini component install)
+├── link-extensions.ts                # Shim: forwards to link-extensions.ts (symlink extensions for local dev)
+├── manage-claude-component.ts        # Shim: forwards to manage-claude-component.ts (Claude Code component manager)
+├── manage-workspace-component.ts     # Shim: forwards to manage-workspace-component.ts (Gemini component manager)
+├── monorepo-release.ts               # Shim: forwards to monorepo-release.ts (monorepo release driver — bumps versions, calls release-package-extension.ts, publishes the release (GitHub: through a release PR, docs/github-release-pr.md))
+├── release-package-extension.ts      # Shim: forwards to release-package-extension.ts (the ONE place a release artifact's shape is decided: renders, asserts, archives; spec 0183)
+├── release-pr.ts                     # Opens/updates/closes the GitHub release PR and dispatches its required checks (issue #1379)
+├── package-extension.ts              # Shim: forwards to package-extension.ts (manually package a single extension at its current committed version)
+├── package-extensions.ts             # Shim: forwards to package-extensions.ts (manually package every extension)
+├── prune-transcripts.ts              # Remove old transcript archives
+├── setup-claude-interactive.ts       # Shim: forwards to setup-claude-interactive.ts (Claude Code setup, interactive)
+├── setup-gemini-interactive.ts       # Shim: forwards to setup-gemini-interactive.ts (Gemini CLI setup, interactive)
+├── unlink-component.ts               # Shim: forwards to unlink-component.ts (remove a component symlink)
+├── unlink-extensions.ts              # Shim: forwards to unlink-extensions.ts (remove all extension symlinks)
+├── lib/
+│   └── mempalace-pin.json            # Single source of the MemPalace version pin (the shell libraries were retired in #1344)
+└── tests/
+    ├── governance-suite-skill-versions.test.ts       # Tests for check-skill-versions (cases 4-7)
+    ├── governance-suite-skill-versions-base.test.ts  # Tests for check-skill-versions (base-ref cases)
+    └── (frontmatter-fence tests are node --test files: build-components-frontmatter-fence.test.ts)
+
+Taskfile.yml                          # Task runner root (default task, global vars, includes)
+taskfiles/                            # Domain Taskfiles included by the root (setup, extensions, lint, e2e, ...)
+AGENTS.md                             # Agent working rules
+CLAUDE.md                             # Claude Code entry point (@AGENTS.md)
+CONTRIBUTING.md                       # Contribution guide
+DEVELOPMENT.md                        # Extension development guide
+crewrig.config.toml                   # CrewRig framework configuration
+package.json                          # Node.js workspace manifest
+renovate.json                         # Renovate dependency-update configuration
+```
+
 ## Branching Strategy
 
 - Create a feature branch from `main`: `feat/my-extension`

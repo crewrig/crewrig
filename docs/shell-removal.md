@@ -13,7 +13,7 @@ their rows here.
 | `artifacts/library/skills/harness-curator/scripts/schedule-curator.sh` | `node artifacts/library/skills/harness-curator/scripts/schedule-curator.ts` | #1344 (J4, slice S3b) |
 | `artifacts/library/skills/harness-curator/scripts/setup-labels.sh` | `node artifacts/library/skills/harness-curator/scripts/setup-labels.ts` | #1344 (J4, slice S3b) |
 | `scripts/check-agents-size.sh` | `node scripts/check-agents-size.ts` | #1344 slice 3c |
-| `scripts/check-extension-provenance.sh` | `node scripts/check-extension-provenance.ts` | #1344 slice 3c |
+| `scripts/check-extension-provenance.sh` | ~~`node scripts/check-extension-provenance.ts`~~ (retired, #2100) | #1344 slice 3c |
 | `scripts/check-feedback-routing.sh` | `node scripts/check-feedback-routing.ts` | #1344 slice 3c |
 | `scripts/check-figure-labels.sh` | `node scripts/check-figure-labels.ts` | #1344 slice 3c |
 | `scripts/check-gemini-overlay-enrollment.sh` | `node scripts/check-gemini-overlay-enrollment.ts` | #1344 slice 3c |

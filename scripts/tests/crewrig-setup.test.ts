@@ -158,6 +158,49 @@ describe("R6, R12: each CLI installs the organization content, and a second run 
   });
 });
 
+/** The text of every file of the user's home, outside the cached versions, whose first line is a line marker (0316 R3). */
+function markedFiles(world: World): string[] {
+  return treeList(world.rig.home)
+    .filter((entry) => !entry.endsWith("/") && !entry.endsWith("@"))
+    .filter((entry) => !entry.startsWith(".crewrig/versions/"))
+    .map((entry) => fs.readFileSync(path.join(world.rig.home, entry), "utf8"))
+    .filter((text) => text.startsWith("<!-- crewrig-provenance: "));
+}
+
+describe("R6, delta-03 R6: a two-root setup stamps the rules with the organization's configuration", () => {
+  const TOOLS: Record<CliName, string> = {
+    claude: ".claude/rules/60-tools.md",
+    gemini: ".gemini/60_TOOLS.md",
+    copilot: ".copilot/instructions/60-tools.instructions.md",
+    antigravity: ".gemini/antigravity-cli/60_TOOLS.md",
+  };
+  const REPO = "https://github.com/crewrig/crewrig";
+
+  for (const cli of CLI_NAMES) {
+    test(`${cli}: the rules-shared step succeeds, every marker is package="crewrig" with the configured repository, and no placeholder is left`, async () => {
+      const world = await newWorld(rigs, servers);
+      const dir = world.makeOrg({ gitignore: IGNORE_TEXT });
+      const orgBefore = snapshot(dir);
+
+      const result = await world.setup(dir, cli);
+
+      assert.equal(result.code, 0, result.out);
+      const tools = fs.readFileSync(path.join(world.rig.home, TOOLS[cli]), "utf8").split("\n")[0];
+      assert.equal(
+        tools,
+        `<!-- crewrig-provenance: package="crewrig" version="1.0.0" canonical="${REPO}" feedback="${REPO}" -->`,
+      );
+      const marked = markedFiles(world);
+      assert.ok(marked.length > 0, "the rules carry markers");
+      for (const text of marked) {
+        assert.doesNotMatch(text, /\$\{/);
+        assert.doesNotMatch(text, /crewrig-provenance: package="(?!crewrig")/);
+      }
+      assert.deepEqual(snapshot(dir), orgBefore, "the organization directory is unchanged");
+    });
+  }
+});
+
 describe("R6: refusals write nothing", () => {
   test("a missing config/ORGANIZATION.md exits 1 naming it, and nothing is installed", async () => {
     const world = await newWorld(rigs, servers);

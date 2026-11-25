@@ -1,3 +1,10 @@
+<!--
+provenance:
+  version: "1.0.0"
+  canonical: "${CANONICAL_REPO}"
+  feedback: "${CANONICAL_REPO}"
+-->
+
 # Friction Reporting — Reference Detail
 
 ## Where to write

@@ -5,9 +5,10 @@ license: Apache-2.0
 compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts) and a host CLI with a structured-question tool (AskUserQuestion on Claude Code). Writes one Markdown file under config/."
 metadata:
   provenance:
+    package: "crewrig"
+    version: "2.1.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "2.1.0"
 ---
 
 

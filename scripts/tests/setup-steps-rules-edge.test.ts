@@ -103,7 +103,10 @@ describe("rules-shared", posix, () => {
     const result = await runRules(
       {
         ...d,
-        rules: { ...d.rules, shared: d.rules.shared.filter((r) => r.src !== d.rules.store.src) },
+        rules: {
+          ...d.rules,
+          shared: d.rules.shared.filter((r) => r.src !== d.rules.store.src),
+        },
       },
       VALIDATION,
     );
@@ -169,7 +172,9 @@ describe("rules-selection: markers and the fail-closed policy", posix, () => {
   });
 
   test("an unwritable marker prints one Error line and exits 1", async () => {
-    fs.mkdirSync(path.join(box.home, ".claude", ".selected_team"), { recursive: true });
+    fs.mkdirSync(path.join(box.home, ".claude", ".selected_team"), {
+      recursive: true,
+    });
     const result = await runRules(rulesDescriptor("claude", ["rules-selection"]), PICKS);
     assert.equal(result.status, 1);
     assert.match(result.err, /^Error: cannot write .*\.selected_team: .+\n$/);
@@ -197,7 +202,10 @@ describe("rules-shared: a missing core rule (spec 0308 R4)", posix, () => {
     fs.rmSync(path.join(box.repo, "artifacts"), { force: true });
     fs.renameSync(path.join(box.repo, "artifacts-copy"), path.join(box.repo, "artifacts"));
     const result = await runRules(
-      { ...rulesDescriptor("claude", ["rules-shared"]), rules: claudeDescriptor.rules },
+      {
+        ...rulesDescriptor("claude", ["rules-shared"]),
+        rules: claudeDescriptor.rules,
+      },
       [...VALIDATION],
     ).catch((e: unknown) => ({ status: 1, out: "", err: String(e) }));
     assert.notEqual(result.status, 0);

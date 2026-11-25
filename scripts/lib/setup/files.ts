@@ -7,7 +7,11 @@
 // is recorded in `ctx.outcomes` (when the caller supplies the array) so one `fallbackSummary`
 // notice is printed at the end of the run. Layer 1: node built-ins and repository modules only.
 
+import fs from "node:fs";
+import path from "node:path";
+
 import { linkOrCopy, placeCopy, summarizeFallbacks } from "../link-or-copy.ts";
+import { discardStage, stagedName, swapIn } from "../link-or-copy-swap.ts";
 import type { LinkOrCopyOptions, LinkOutcome } from "../link-or-copy.ts";
 import type { SetupCtx } from "./context.ts";
 
@@ -26,7 +30,11 @@ export function withOutcomes(ctx: FilesCtx): FilesCtx & { readonly outcomes: Lin
 }
 
 function place(ctx: FilesCtx, src: string, dest: string): LinkOutcome {
-  const options: LinkOrCopyOptions = { env: ctx.env, platform: ctx.platform, ...ctx.linkOptions };
+  const options: LinkOrCopyOptions = {
+    env: ctx.env,
+    platform: ctx.platform,
+    ...ctx.linkOptions,
+  };
   const outcome = ctx.link ? linkOrCopy(src, dest, options) : placeCopy(src, dest, options);
   ctx.outcomes?.push(outcome);
   return outcome;
@@ -57,6 +65,66 @@ export function installDir(
   const outcome = place(ctx, srcDir, destDir);
   ctx.io.out(`  ${outcome.method === "link" ? "Linked" : "Copied"} dir: ${label}`);
   return outcome;
+}
+
+/**
+ * A stamped file (spec 0316 R11): `stamp` maps the source text to the deployed bytes, which are
+ * written under a staging name and swapped in. Always a copy, in link mode too: a link would expose
+ * the authored block. The swap replaces a previous link as a link, so a linked install never
+ * writes through into the repository source.
+ */
+export function installStampedFile(
+  ctx: FilesCtx,
+  src: string,
+  dest: string,
+  label: string,
+  stamp: (text: string) => string,
+): void {
+  const bytes = stamp(fs.readFileSync(src, "utf8"));
+  const stage = stagedName(dest);
+  try {
+    fs.mkdirSync(path.dirname(path.resolve(dest)), { recursive: true });
+    fs.writeFileSync(stage, bytes);
+    fs.chmodSync(stage, fs.statSync(src).mode & 0o777);
+    swapIn(stage, dest);
+  } catch (error) {
+    discardStage(stage);
+    throw error;
+  }
+  ctx.io.out(`  Copied: ${label}`);
+}
+
+/**
+ * A stamped directory: every `.md` file at its top level goes through `stamp(text, name)`, every
+ * other entry is copied as is, all under a staging directory swapped in whole (a file removed from
+ * the source does not linger). Always a copy.
+ */
+export function installStampedDir(
+  ctx: FilesCtx,
+  srcDir: string,
+  destDir: string,
+  label: string,
+  stamp: (text: string, name: string) => string,
+): void {
+  const stage = stagedName(destDir);
+  try {
+    fs.mkdirSync(stage, { recursive: true });
+    for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+      const from = path.join(srcDir, entry.name);
+      const to = path.join(stage, entry.name);
+      if (entry.isFile() && entry.name.endsWith(".md")) {
+        fs.writeFileSync(to, stamp(fs.readFileSync(from, "utf8"), entry.name));
+        fs.chmodSync(to, fs.statSync(from).mode & 0o777);
+      } else {
+        fs.cpSync(from, to, { recursive: true, dereference: true });
+      }
+    }
+    swapIn(stage, destDir);
+  } catch (error) {
+    discardStage(stage);
+    throw error;
+  }
+  ctx.io.out(`  Copied dir: ${label}`);
 }
 
 /** The one aggregated notice for the links that became copies, or `undefined` when none did. */

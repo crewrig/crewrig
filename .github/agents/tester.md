@@ -4,9 +4,10 @@ description: "Test-authoring agent that writes high-signal regression tests, enu
 tools: [read, search, edit, execute]
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.4.1"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.4.1"
 ---
 
 

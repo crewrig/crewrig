@@ -39,12 +39,6 @@ tasks:
       - node {{.REPO_DIR}}/scripts/lib/node-floor-guard.js
       - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --capability component-drift-selftest -- {{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-assembly-routing.test.ts'
       - node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/build-components-canonical-repo.test.ts
-  extension-provenance:
-    desc: Run the extension-provenance CI capability (pre-push mirror of the CI job)
-    preconditions: *needs-js-yaml
-    cmds:
-      - '{{.NODE_SCRIPTS}}/check-extension-provenance.ts'
-      - '{{.NODE_SCRIPTS}}/ci-cache-guard.ts --stray-scan -- node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test {{.REPO_DIR}}/scripts/tests/governance-suite-extension-provenance.test.ts {{.REPO_DIR}}/scripts/tests/governance-suite-extension-provenance-r4.test.ts'
   extension-manifest:
     desc: Run the extension-manifest CI capability (pre-push mirror of the CI job)
     preconditions: *needs-js-yaml

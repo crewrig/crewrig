@@ -48,7 +48,8 @@ export const CALLERS: readonly Caller[] = [
     required: [],
   },
   { file: "artifacts/FORMAT.md", required: ["scripts/curate.ts"] },
-  { file: "README.md", required: [`${SKILL}/scripts/schedule-curator.ts`] },
+  // The schedule-curator mention moved from README.md to CONTRIBUTING.md (issue #1823).
+  { file: "CONTRIBUTING.md", required: [`${SKILL}/scripts/schedule-curator.ts`] },
   { file: CURATE_TASKFILE, required: [`${SKILL}/scripts/curate.ts`] },
 ];
 

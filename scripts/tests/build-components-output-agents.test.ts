@@ -228,14 +228,14 @@ describe("the Gemini provenance comment (R12)", () => {
     assert.equal(
       tree.read(".gemini/agents/ag.md"),
       '---\nname: ag\ndescription: "An agent."\n---\n' +
-        '<!-- crewrig-provenance: version="1.0" canonical="https://example.test/o/r" feedback="" -->\nAgent body.\n' +
+        '<!-- crewrig-provenance: package="crewrig" version="1.0" canonical="https://example.test/o/r" -->\nAgent body.\n' +
         BLOCK,
     );
     for (const file of [".claude/agents/ag.md", ".github/agents/ag.md", ".agents/agents/ag.md"]) {
       const text = tree.read(file);
       assert.match(
         text,
-        /\nmetadata:\n {2}provenance:\n {4}canonical: "https:\/\/example\.test\/o\/r"\n {4}version: "1\.0"\n---\n/,
+        /\nmetadata:\n {2}provenance:\n {4}package: "crewrig"\n {4}version: "1\.0"\n {4}canonical: "https:\/\/example\.test\/o\/r"\n---\n/,
         file,
       );
     }

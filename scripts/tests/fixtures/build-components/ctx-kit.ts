@@ -95,6 +95,7 @@ export function makeCtx(options: CtxKitOptions = {}): CtxKit {
     fm,
     state: { driftFound: false, compare: options.compare ?? true, stagingRoot: "" },
     config: options.config ?? { placeholders: [], canonicalRepo: "" },
+    packageName: "crewrig",
   };
   return {
     ctx,

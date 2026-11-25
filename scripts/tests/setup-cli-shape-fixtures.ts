@@ -164,7 +164,10 @@ export function shapeTests(cli: Cli, d: SetupDescriptor): void {
     assert.ok(placed.length >= 5);
     for (const r of placed) {
       if (r.optional === true) continue;
-      assert.equal(tree.get(rulesPath(r.dest)), `repo:${r.src}`, r.dest);
+      // A core rule is a stamped copy (spec 0316 R11): its hash is not the source's.
+      if (r.src.startsWith("artifacts/core/rules/")) {
+        assert.match(tree.get(rulesPath(r.dest)) ?? "", /^[0-9a-f]{64}$/, r.dest);
+      } else assert.equal(tree.get(rulesPath(r.dest)), `repo:${r.src}`, r.dest);
     }
     for (const r of rules.shared) {
       const line = r.src === rules.store.src ? `  Copied dir: ${r.label}` : `  Copied: ${r.label}`;
@@ -172,7 +175,11 @@ export function shapeTests(cli: Cli, d: SetupDescriptor): void {
     }
     assert.ok(out.includes(`  Copied: ${rules.profile.file.label}\n`), "profile label");
     assert.ok(tree.has(home(rules.store.dest)), "store dir");
-    assert.ok(tree.get(home(`${rules.store.dest}/mcp-tools-reference.md`))?.startsWith("repo:"));
+    assert.match(
+      tree.get(home(`${rules.store.dest}/mcp-tools-reference.md`)) ?? "",
+      /^[0-9a-f]{64}$/,
+      "the store files are stamped copies (spec 0316 R11)",
+    );
     const positions = rules.shared
       .filter((r) => r.optional !== true)
       .map((r) => out.indexOf(`${r.label}\n`));

@@ -1,6 +1,6 @@
 // validate.ts — the manifest validation pass (spec 0254 R9).
 // Twin of `ext_validate_manifest` (the retired scripts/lib/extension-manifest.sh:120-167): shape guard,
-// per-CLI keys, hooks, MCP shape, MCP tokens, MCP names, in that order. Pure: the caller
+// per-CLI keys, hooks, MCP shape, MCP tokens, MCP names, provenance (spec 0316 R7), in that order. Pure: the caller
 // prints the returned lines (the shell wrote them to stderr) and counts a non-empty result as
 // a failure.
 
@@ -11,6 +11,7 @@ import type { JsonValue } from "./types.ts";
 import { validateHooks } from "./validate-hooks.ts";
 import { validateMcpNames, validateMcpShape, validateMcpTokens } from "./validate-mcp.ts";
 import { validatePerCli } from "./validate-percli.ts";
+import { validateProvenance } from "./validate-provenance.ts";
 
 export interface ValidateInput {
   /** `<repoDir>/scripts/lib`, where the descriptors live. */
@@ -31,5 +32,6 @@ export function validateManifest(
     ...validateMcpShape(manifestPath, manifest),
     ...validateMcpTokens(manifestPath, manifest),
     ...validateMcpNames(manifestPath, manifest, [...MCP_RESERVED_NAMES]),
+    ...validateProvenance(manifestPath, manifest),
   ];
 }

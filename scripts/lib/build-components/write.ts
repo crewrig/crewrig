@@ -18,9 +18,10 @@ import path from "node:path";
 import { toLf } from "../line-endings.ts";
 import { resolvePlaceholders } from "./config.ts";
 import { escapeControl } from "./diagnostics.ts";
-import { injectProvenance, stripProvenanceComments } from "./provenance.ts";
+import type { ProvenanceFields } from "../provenance-marker.ts";
+import { guardMarker, injectProvenance, stripProvenanceComments } from "./provenance.ts";
 import { BuildFailure } from "./types.ts";
-import type { Ctx, SourceDoc } from "./types.ts";
+import type { Ctx } from "./types.ts";
 
 /** `$(...)` then `echo`: LF endings, every trailing line feed removed, exactly one appended. */
 export function finalizeText(text: string): string {
@@ -87,21 +88,21 @@ export function assertInsideRoot(ctx: Pick<Ctx, "platform">, root: string, targe
 }
 
 /**
- * `check_or_write <target_file> <content> [<source>]`. With a `source`, its
- * `metadata.provenance` block is spliced into `content` first; placeholders are
- * resolved after that. Prints `DRIFT:` lines (compare) or `  Generated: <file>` (write).
+ * `check_or_write <target_file> <content> [<fields>]`. With marker `fields` (already
+ * placeholder-resolved), the YAML provenance block is spliced into `content` first;
+ * placeholders are resolved after that. Prints `DRIFT:` lines (compare) or `  Generated: <file>` (write).
  * `root`, the output root the target belongs under, confines it (`assertInsideRoot`).
  */
 export function checkOrWrite(
   ctx: Ctx,
   targetFile: string,
   content: string,
-  source: SourceDoc | null,
+  fields: ProvenanceFields | null,
   root: string,
 ): void {
   assertInsideRoot(ctx, root, targetFile);
   const stripped = stripProvenanceComments(content);
-  const spliced = source === null ? stripped : injectProvenance(stripped, source);
+  const spliced = guardMarker(targetFile, () => injectProvenance(stripped, fields));
   const text = finalizeText(resolvePlaceholders(ctx.config, spliced));
   if (comparing(ctx)) {
     if (!isRegularFile(targetFile)) reportDrift(ctx, targetFile, true);

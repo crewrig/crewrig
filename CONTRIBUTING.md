@@ -169,16 +169,57 @@ tag it immediately:
 3. Run `task harness-curate -- --apply` to cluster frictions and open
    GitHub issues automatically.
 4. Address the issues via the standard PR workflow like any other
-   change.
+   change; the internal agent crew handles the implementation cycle.
+5. After a fix ships, run `task build-components` and reinstall. The
+   `metadata.provenance.version` bump in every modified `SKILL.md`
+   signals that a new version is available.
+
+For automated periodic sweeps,
+`artifacts/library/skills/harness-curator/scripts/schedule-curator.ts`
+installs a macOS launchd job or a Linux crontab entry that runs the
+curator on a fixed cadence.
 
 This path ensures that systemic improvements surface without requiring
 the person who hits the friction to also write the fix. Tag it; the
 loop handles the rest.
 
+## Lifecycle Scenario
+
+A complete journey, from installing the framework to closing the
+harness loop:
+
+1. **Install** — fork crewrig, then run
+   `task setup-claude-interactive` (or `task setup-gemini-interactive`).
+   Generate your profile with `/init-personal-profile` and your soul
+   with `/init-soul`.
+2. **Create** — add a `SKILL.md` to
+   `artifacts/community/skills/my-skill/`, or run
+   `task create-extension NAME=my-skill`. Run `task build-components`
+   to generate outputs for both CLIs.
+3. **Use on another project** — install the component:
+   `task install-claude-component TYPE=claude-skills NAME=my-skill`.
+   The skill is now available in Claude Code on that project.
+4. **Record frictions** — as agents use the skill, they invoke the
+   `harness-report` skill the moment a recognition signal fires. Each
+   friction tag lands in the MemPalace `harness-friction` wing.
+5. **Transform frictions into tickets** — run
+   `task harness-curate -- --apply`. The curator clusters the
+   frictions and opens one GitHub issue per cluster against the
+   target repo.
+6. **Implement** — address the issues via feature branches. The
+   internal agent crew (architect → developer → tester → pr-logbook →
+   pr-reviewer) handles the cycle.
+7. **Install the new version** — run `task build-components` and
+   reinstall; `metadata.provenance.version` bumps confirm which
+   components changed.
+8. **Back to step 3** — use the improved skill on your projects; the
+   harness loop continues.
+
 ## Internal Agent Crew
 
-CrewRig is developed using its own agent crew. Each PR goes through a
-chain of specialized agents:
+CrewRig develops itself using its own mechanics: the development workflow
+is the product in action. Each PR goes through a chain of specialized
+agents:
 
 | Agent | Role |
 |---|---|

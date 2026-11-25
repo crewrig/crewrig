@@ -4,9 +4,10 @@ description: "CI pipeline configuration agent. Delegate to it to set up CI, crea
 tools: [read, search, edit, execute]
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.6.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.6.0"
 ---
 
 

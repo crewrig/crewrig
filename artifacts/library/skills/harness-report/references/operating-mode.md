@@ -23,10 +23,11 @@ The first diagnostic step for `-32001` or a write-lock refusal is `task mempalac
 Save the payload from `friction.ts build` to a file, then print the command for the right forge:
 
 ```sh
-node scripts/friction.ts forge --canonical <repo url> --payload-file <payload file>
+node scripts/friction.ts forge [--canonical <repo url>] --payload-file <payload file>
 ```
 
-It reads the host of the canonical URL and prints one `issue create` command with the `harness-feedback` label,
+The target is the payload's `feedback` when it carries one, else `--canonical` (a differing `--canonical` is
+overridden with a `forge-target-override` warning). It reads the host of the target URL and prints one `issue create` command with the `harness-feedback` label,
 the `FRICTION:` title and the payload fields as the body, then you run it:
 
 | Host | Tool | Repository flag | Body flag | Label flag |

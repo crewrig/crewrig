@@ -1,3 +1,10 @@
+<!--
+provenance:
+  version: "1.0.0"
+  canonical: "${CANONICAL_REPO}"
+  feedback: "${CANONICAL_REPO}"
+-->
+
 # Long-Running Task Convention
 
 Cross-tool tasks live as **drawers** in the handoff lane

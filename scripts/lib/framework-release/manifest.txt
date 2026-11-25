@@ -38,8 +38,9 @@ config/expertise
 config/teams
 config/level
 
-# The archive-root module type (spec 0315 R11): a mapped file, `<archive-path> <- <source>`, that ships the
-# tracked `{"type": "module"}` under the archive's own package.json. It is not the repository's package.json.
+# The archive-root package.json (spec 0315 R11, delta-03): a mapped file, `<archive-path> <- <source>`, that ships
+# the tracked `{"name": "crewrig", "type": "module"}` under the archive's own package.json. It is not the
+# repository's package.json.
 package.json <- scripts/lib/framework-release/archive-package.json
 
 # The organization commands (spec 0315 R10): the templates they read from the version root, the settings
@@ -134,7 +135,9 @@ scripts/lib/extension-generated-class.json
 scripts/lib/extension-legacy-shape.json
 scripts/lib/extension-percli-keys.json
 scripts/lib/paths.ts
+scripts/lib/provenance-authored.ts
 scripts/lib/provenance-carrying.ts
+scripts/lib/provenance-marker.ts
 scripts/lib/render-command.ts
 scripts/lib/require-dependency.ts
 scripts/lib/session-check-config.ts

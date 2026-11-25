@@ -180,15 +180,15 @@ describe("framework release build", () => {
   });
 });
 
-const ARCHIVE_PACKAGE = '{"type": "module"}\n';
+const ARCHIVE_PACKAGE = '{"name": "crewrig", "type": "module"}\n';
 
-/** The archive package.json: one JSON object, one member `type`, the value `module` (whitespace is free). */
+/** The archive package.json: one JSON object with exactly two members, `name` = `crewrig` and `type` = `module`. */
 function isModuleRoot(text: string): boolean {
   const parsed: unknown = JSON.parse(text);
   return (
     typeof parsed === "object" &&
     parsed !== null &&
-    JSON.stringify(Object.entries(parsed)) === JSON.stringify([["type", "module"]])
+    JSON.stringify(Object.entries(parsed).sort()) === '[["name","crewrig"],["type","module"]]'
   );
 }
 
@@ -265,7 +265,7 @@ describe("spec 0315 R11: a mapped manifest entry ships a tracked file under anot
 describe("spec 0315 R11: the archive root package.json of the committed manifest", () => {
   const records = parseManifestEntries(fs.readFileSync(MANIFEST_FILE, "utf8"));
 
-  it("is mapped from a tracked file, and its content is exactly the single member type=module", () => {
+  it("is mapped from a tracked file, and its content is exactly the two members name=crewrig and type=module", () => {
     const entry = records.find((record) => record.archive === "package.json");
     assert.ok(entry, "manifest.txt maps package.json");
     assert.notEqual(
@@ -276,9 +276,12 @@ describe("spec 0315 R11: the archive root package.json of the committed manifest
 
     const bytes = fs.readFileSync(path.join(REPO, entry.source), "utf8");
 
-    assert.ok(isModuleRoot(bytes), `not a one-member module root: ${bytes}`);
-    assert.deepEqual(JSON.parse(bytes), { type: "module" });
-    assert.notEqual(bytes, fs.readFileSync(path.join(REPO, "package.json"), "utf8"));
+    assert.ok(isModuleRoot(bytes), `not a two-member module root: ${bytes}`);
+    assert.deepEqual(JSON.parse(bytes), { name: "crewrig", type: "module" });
+    const root = fs.readFileSync(path.join(REPO, "package.json"), "utf8");
+    assert.notEqual(bytes, root);
+    // The archive name above is pinned to the root name: a rename fails here (0315 delta-03).
+    assert.equal((JSON.parse(root) as { name?: unknown }).name, "crewrig");
   });
 
   it("resolves, in this checkout, to a file whose bytes are those of the archive package.json", () => {

@@ -12,12 +12,14 @@ export const EXT_NAME = "hello-world";
 
 export const EXPECTED_GEMINI_GENERATED: readonly string[] = [
   "commands/hello.toml",
+  "crewrig-provenance.json",
   "gemini-extension.json",
   "GEMINI.md",
   "hooks/hooks.json",
 ];
 
 export const EXPECTED_CLAUDE: readonly string[] = [
+  "crewrig-provenance.json",
   ".claude-plugin/plugin.json",
   ".mcp.json",
   "CLAUDE.md",
@@ -32,6 +34,7 @@ export const EXPECTED_CLAUDE: readonly string[] = [
 ];
 
 export const EXPECTED_COPILOT: readonly string[] = [
+  "crewrig-provenance.json",
   "plugin.json",
   ".mcp.json",
   "package.json",
@@ -46,6 +49,7 @@ export const EXPECTED_COPILOT: readonly string[] = [
 ];
 
 export const EXPECTED_ANTIGRAVITY: readonly string[] = [
+  "crewrig-provenance.json",
   "package.json",
   "plugin.json",
   "mcp_config.json",

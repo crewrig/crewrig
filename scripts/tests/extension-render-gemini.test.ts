@@ -96,7 +96,10 @@ describe("renderGemini", () => {
     assert.deepEqual(manifest.themes, [{ name: "dark", background: "#000" }]);
 
     const toml = fs.readFileSync(path.join(build, "commands", "hello.toml"), "utf8");
-    assert.match(toml, /^description = "Say hello"\n\nprompt = """\n/);
+    assert.match(
+      toml,
+      /^# crewrig-provenance: package="full" extension="full" .*\ndescription = "Say hello"\n\nprompt = """\n/,
+    );
     assert.ok(toml.endsWith('"""\n') && !toml.endsWith("\n\n"));
     assert.match(
       fs.readFileSync(path.join(build, "GEMINI.md"), "utf8"),

@@ -269,3 +269,29 @@ describe("G14 spec 0060 malformed-rate warning (W1-W3)", { skip }, () => {
     assert.equal(o.json.stats.skipped_malformed, 0);
   });
 });
+
+describe("spec 0316 R16 end to end", { skip }, () => {
+  const fb = "https://github.com/crewrig/feedback";
+  const mk = (id: string, v: string, extra: string, sub = "prov"): object => ({
+    drawer_id: id,
+    room: "tool",
+    content: `FRICTION: ${id}\n\nwriter_agent: t\nsubcategory: ${sub}\npackage: p\nextension: e\nversion: ${v}\n${extra}severity: med\nevidence:\n  - x.md:1\n`,
+  });
+  test("routes to feedback and flags the older report only in its own cluster", () => {
+    const o = run(
+      JSON.stringify([
+        mk("a", "1.0.0", `feedback: ${fb}\n`),
+        mk("b", "1.0.0", `feedback: ${fb}\n`),
+        mk("c", "1.0.0", `canonical: ${url}\n`),
+        mk("d", "1.1.0", `feedback: ${fb}\n`, "other"),
+      ]),
+    );
+    assert.equal(o.status, "0", o.stderr);
+    const c = cluster(o, "prov");
+    assert.equal(c.target_repo, fb);
+    assert.match(c.body, /- Package: `p`/);
+    assert.equal((c.body.match(/possibly fixed: `1\.1\.0` reported/g) ?? []).length, 3);
+    const other = cluster(o, "other");
+    if (other !== undefined) assert.doesNotMatch(other.body, /possibly fixed/);
+  });
+});

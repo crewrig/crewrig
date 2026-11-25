@@ -1,5 +1,5 @@
 // windows-governance-version-checks.test.ts — the cross-system proof of the version-checks group
-// (spec 0259 R26-R28): check-skill-versions, check-extension-provenance
+// (spec 0259 R26-R28): check-skill-versions
 // and check-extension-pivot run from PowerShell on Windows (the default shell elsewhere), against the
 // real repository and against a fixture that makes each of them fail. Interpreters are resolved from
 // the PARENT PATH before the child PATH is narrowed. The checks read the current directory, so each
@@ -143,7 +143,6 @@ function aggregate(r: Run, checks: ReadonlyArray<[string, () => void]>): void {
 describe("windows governance version-checks: real repository", () => {
   for (const [entry, verdict] of [
     ["check-skill-versions", /^OK: .+\n$/m],
-    ["check-extension-provenance", /^OK: \d+ upstream-owned extension skill\/agent\(s\) carry/m],
     ["check-extension-pivot", /^OK: every upstream-owned extension component is pivot-authored/m],
   ] as const) {
     it(`${entry} accepts the repository`, () => {
@@ -179,31 +178,6 @@ describe("windows governance version-checks: failing fixtures", () => {
         [
           "summary",
           () => assert.match(out(r), /^FAILED: 1 source\(s\) changed without a version bump:$/m),
-        ],
-      ]);
-    });
-  });
-
-  it("check-extension-provenance rejects a skill without the carrier", () => {
-    withBox((home, bin) => {
-      const dir = path.join(home, "tree");
-      write(dir, EXT, "---\nname: demo\n---\nNo carrier here.\n");
-      const r = run("check-extension-provenance", dir, home, bin);
-      aggregate(r, [
-        ["exit status", () => expectStatus(r, 1)],
-        [
-          "FAIL line",
-          () =>
-            assert.ok(
-              out(r).includes(
-                `  FAIL ${EXT} — missing crewrig-provenance carrier on first body line (R7)\n`,
-              ),
-              out(r),
-            ),
-        ],
-        [
-          "summary",
-          () => assert.match(out(r), /^FAILED: 1 upstream-owned extension component\(s\)/m),
         ],
       ]);
     });

@@ -3,6 +3,7 @@ name: full-context
 description: "Agent-facing context for the full extension."
 user-invocable: true
 ---
+<!-- crewrig-provenance: package="full" extension="full" version="1.2.3" canonical="https://example.test/upstream" feedback="https://example.test/upstream" -->
 
 # full for GitHub Copilot CLI
 

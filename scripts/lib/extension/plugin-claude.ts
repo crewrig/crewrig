@@ -19,6 +19,7 @@ import {
 import type { PluginPlan } from "./plugin-common.ts";
 import { obj, writeJsonText } from "./json-write.ts";
 import { claudeAuthorName, subjectLocation, subjectPresent, textOr, valueAt } from "./manifest.ts";
+import { stampFile, writeSidecar } from "./provenance-stamp.ts";
 import { copyTree } from "./tree-copy.ts";
 import type { ExtCtx } from "./types.ts";
 
@@ -33,9 +34,11 @@ function copyAgents(plan: PluginPlan): void {
     if (isDirectory(from)) {
       if (!isFile(`${from}/AGENT.md`)) continue;
       fs.copyFileSync(`${from}/AGENT.md`, `${outDir}/agents/${entry}.md`);
+      stampFile(`${outDir}/agents/${entry}.md`, plan.fields, "html");
       ctx.io.out(`  Copied agent (flattened): ${entry}`);
     } else if (isFile(from) && entry.endsWith(".md")) {
       fs.copyFileSync(from, `${outDir}/agents/${entry}`);
+      stampFile(`${outDir}/agents/${entry}`, plan.fields, "html");
       ctx.io.out(`  Copied agent: ${entry.slice(0, -".md".length)}`);
     }
   }
@@ -81,6 +84,7 @@ export function buildClaudePlugin(ctx: ExtCtx, extArg: string, outArg: string | 
     ctx.io.out("  Copied: bin/");
   }
 
+  writeSidecar(outDir, plan.fields);
   ctx.io.out("");
   ctx.io.out(`Plugin built: ${outDir}`);
   ctx.io.out(`Test with: claude --plugin-dir ${outDir}`);

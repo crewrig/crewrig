@@ -70,7 +70,10 @@ function ctxCase(content: string): EntryResult {
   return render(root, "all", "ctxfix");
 }
 
-const raw = (file: string): string => fs.readFileSync(file, "utf8");
+// The rendered context without the generated provenance line (spec 0316 R9): these cases judge the
+// span handling, the marker is asserted by extension-provenance-render.test.ts.
+const raw = (file: string): string =>
+  fs.readFileSync(file, "utf8").replace(/^<!-- crewrig-provenance: .* -->\n/, "");
 const stripped = (file: string): string => raw(file).replace(/\n+$/, "");
 
 describe("Case 19 — the nine diagnostics", () => {

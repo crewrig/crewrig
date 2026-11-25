@@ -3,9 +3,10 @@ name: init-personal-profile
 description: "Builds the user's personal profile file config/PROFILE.md through a guided interview and a scaffold script that renders and checks it. Use when a user wants to create or refresh their personal profile, personalize the AI assistant, or types /init-personal-profile. Trigger terms: personal profile, PROFILE.md, onboarding interview, identity, tooling preferences, growth plan, working philosophy. Not for team or role files (init-team, init-expertise) or the agent identity file (init-soul)."
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.2.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.0"
 ---
 
 

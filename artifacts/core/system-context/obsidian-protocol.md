@@ -1,3 +1,10 @@
+<!--
+provenance:
+  version: "1.0.0"
+  canonical: "${CANONICAL_REPO}"
+  feedback: "${CANONICAL_REPO}"
+-->
+
 # Second Brain — Obsidian Protocol
 
 If an MCP server providing access to an Obsidian vault is available

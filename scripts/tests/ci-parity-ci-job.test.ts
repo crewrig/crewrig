@@ -283,7 +283,7 @@ const R3_COUNTS: Record<string, number> = {
   gate: 20,
   modules: 18,
   governance: 30,
-  extensions: 16,
+  extensions: 15,
   integration: 10,
   windows: 25,
 };

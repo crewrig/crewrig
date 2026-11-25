@@ -50,12 +50,19 @@ export function loadedBytes(b: Budget): number {
 }
 
 /** The checks of one budget: [label, measured, ceiling]. */
-export function checksOf(b: Budget): [string, number, number][] {
-  if (b.combinedMax === undefined) return [["loads unconditionally", loadedBytes(b), b.max]];
+export function checksOf(b: Budget, grow = 0): [string, number, number][] {
+  if (b.combinedMax === undefined) return [["loads unconditionally", loadedBytes(b) + grow, b.max]];
   return [
-    ["SKILL.md body", bytes(b.dir, "SKILL.md"), b.max],
-    ["SKILL.md plus always-read references", loadedBytes(b), b.combinedMax],
+    ["SKILL.md body", bytes(b.dir, "SKILL.md") + grow, b.max],
+    ["SKILL.md plus always-read references", loadedBytes(b) + grow, b.combinedMax],
   ];
+}
+
+/** True when the real checks flag a SKILL.md grown by `grow` bytes (optionally only the named check). */
+function flagged(b: Budget, grow: number, label?: string): boolean {
+  return checksOf(b, grow).some(
+    ([l, measured, ceiling]) => (label === undefined || l === label) && measured > ceiling,
+  );
 }
 
 describe("skill byte budgets (R12, delta-01 R13a)", () => {
@@ -70,19 +77,20 @@ describe("skill byte budgets (R12, delta-01 R13a)", () => {
   test("mutation: counting an always-read 11 KB reference breaks the pr-reviewer budget", () => {
     const pr = BUDGETS.find((b) => b.dir.endsWith("pr-reviewer"));
     assert.ok(pr);
-    assert.ok(loadedBytes(pr) + 11641 > pr.max);
+    assert.ok(flagged(pr, Math.max(11641, pr.max + 1 - loadedBytes(pr))));
   });
 
-  test("mutation: a 7,236 B harness-report combined size breaks the R13a ceiling", () => {
+  test("mutation: growing harness-report past the combined ceiling is flagged", () => {
     const hr = BUDGETS.find((b) => b.dir.endsWith("harness-report"));
     assert.ok(hr?.combinedMax !== undefined);
-    assert.ok(7236 > hr.combinedMax);
-    assert.ok(loadedBytes(hr) + (7236 - loadedBytes(hr)) > hr.combinedMax);
+    const grow = Math.max(500, hr.combinedMax + 1 - loadedBytes(hr));
+    assert.ok(flagged(hr, grow, "SKILL.md plus always-read references"));
   });
 
-  test("mutation: a body over 5,120 B breaks the harness-report body budget", () => {
+  test("mutation: growing the harness-report body past its ceiling is flagged", () => {
     const hr = BUDGETS.find((b) => b.dir.endsWith("harness-report"));
     assert.ok(hr);
-    assert.ok(bytes(hr.dir, "SKILL.md") + 500 > hr.max);
+    const grow = Math.max(500, hr.max + 1 - bytes(hr.dir, "SKILL.md"));
+    assert.ok(flagged(hr, grow, "SKILL.md body"));
   });
 });
