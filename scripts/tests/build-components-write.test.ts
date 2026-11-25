@@ -10,6 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
+import { BuildFailure } from "../lib/build-components/types.ts";
 import { checkOrWrite, finalizeText } from "../lib/build-components/write.ts";
 import { makeCtx, modeOf, tempDir, withUmask } from "./fixtures/build-components/ctx-kit.ts";
 
@@ -63,23 +64,14 @@ describe("R14 checkOrWrite, write mode", () => {
     assert.equal(bytes(file), `<${value}> and ${value}\n`);
   });
 
-  const SOURCE = [
-    "---",
-    "name: x",
-    "metadata:",
-    "  provenance:",
-    "    version: 1.0",
-    '    canonical: "${CANONICAL_REPO}"',
-    "---",
-    "body",
-  ].join("\n");
+  const FIELDS = { package: "crewrig", version: "1.0", canonical: "https://h/o/r" };
   const OUTPUT = "---\nname: x\ndescription: d\n---\nBody ---\n---";
 
-  test("a source's provenance is spliced before the second --- line, then placeholders resolve", () => {
-    const kit = makeCtx({ config: config(["CANONICAL_REPO", "https://h/o/r"]) });
+  test("the marker fields are spliced before the second --- line, then placeholders resolve", () => {
+    const kit = makeCtx({ config: config(["K", "v"]) });
     const root = tempDir();
     const file = path.join(root, "s.md");
-    checkOrWrite(kit.ctx, file, OUTPUT, kit.open(SOURCE), root);
+    checkOrWrite(kit.ctx, file, OUTPUT, FIELDS, root);
     assert.equal(
       bytes(file),
       [
@@ -88,6 +80,7 @@ describe("R14 checkOrWrite, write mode", () => {
         "description: d",
         "metadata:",
         "  provenance:",
+        '    package: "crewrig"',
         '    version: "1.0"',
         '    canonical: "https://h/o/r"',
         "---",
@@ -98,24 +91,33 @@ describe("R14 checkOrWrite, write mode", () => {
     );
   });
 
-  test("no source, or a source without provenance, splices nothing", () => {
+  test("no fields splices nothing", () => {
     const kit = makeCtx();
-    const plain = kit.open("---\nname: x\n---\nb");
     const root = tempDir();
     const a = path.join(root, "a.md");
-    const b = path.join(root, "b.md");
     checkOrWrite(kit.ctx, a, OUTPUT, null, root);
-    checkOrWrite(kit.ctx, b, OUTPUT, plain, root);
     assert.equal(bytes(a), `${OUTPUT}\n`);
-    assert.equal(bytes(b), `${OUTPUT}\n`);
   });
 
-  test("fewer than two --- lines: the output is unchanged by a provenance source", () => {
+  test("fewer than two --- lines: the output is unchanged by marker fields", () => {
     const kit = makeCtx();
     const root = tempDir();
     const file = path.join(root, "f.md");
-    checkOrWrite(kit.ctx, file, "---\nonly one", kit.open(SOURCE), root);
+    checkOrWrite(kit.ctx, file, "---\nonly one", FIELDS, root);
     assert.equal(bytes(file), "---\nonly one\n");
+  });
+});
+
+describe("spec 0316 checkOrWrite, marker refusal", () => {
+  test("a field the writer refuses is a build failure naming the target; nothing is written", () => {
+    const kit = makeCtx();
+    const root = tempDir();
+    const file = path.join(root, "r.md");
+    assert.throws(
+      () => checkOrWrite(kit.ctx, file, "---\na\n---\n", { package: "p", version: 'a"b' }, root),
+      (e: unknown) => e instanceof BuildFailure && e.exitCode === 1 && e.message.includes(file),
+    );
+    assert.equal(fs.existsSync(file), false);
   });
 });
 

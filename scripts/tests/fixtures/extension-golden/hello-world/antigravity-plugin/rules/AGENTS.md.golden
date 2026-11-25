@@ -1,3 +1,4 @@
+<!-- crewrig-provenance: package="hello-world-extension" extension="hello-world" version="2.1.1" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 # Hello World Extension
 
 Context file loaded when this extension is active in Antigravity CLI.

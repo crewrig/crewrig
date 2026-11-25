@@ -367,6 +367,9 @@ Presence is enablement (requirement 5) — there is no `enabled` field.
 | `agents.location` | string | `agents/` | Directory path |
 | `context.source` | string | — | Path (relative to the extension root) of the single neutral context source (spec 0181) — see *Context rendering* below |
 | `hooks` | array | — | Lifecycle hook entries, translated for every target (spec 0179) — see [`docs/extension-hook-events.md`](../docs/extension-hook-events.md) for the closed event/matcher vocabulary and *Unmappable-declaration policy* below for the gap contract |
+| `provenance` | object | — | `canonical` (a literal URL, spec 0043 R2) and `feedback` (defaults to `canonical`); both non-empty strings (spec 0316 R7). Required `canonical` for `extensions/core` and `extensions/library` (a render fails without it, and `feedback` must equal `canonical`); elsewhere a missing `canonical` only warns and the markers then carry no `canonical` or `feedback` |
+
+The render writes the provenance of each extension skill, agent, command and context file into the copies it produces, from `extension.json` and `package.json` only (spec 0316 R9): an HTML comment line for skills, agents and context, a `#` line for a Gemini `.toml` command, a `metadata.provenance` YAML block for a command converted to a skill. Every output root also gets a generated `crewrig-provenance.json` (`package`, `extension`, `version`, `canonical`, `feedback`; spec 0316 R5), which a hook or an MCP server is attributed through. Neither is authored: the source is never modified, and a skill or agent carries no source carrier (spec 0316 R17); a natively installed raw source is attributed by the path walk (R15).
 
 ### Gemini CLI (optional, per-CLI section)
 

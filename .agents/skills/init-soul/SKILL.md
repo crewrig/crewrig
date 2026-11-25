@@ -3,9 +3,10 @@ name: init-soul
 description: "Customizes the agent identity file config/SOUL.md section by section through guided conversation and a scaffold script that renders and checks it. Use when a user wants to personalize the agent's personality, tone or values, or types /init-soul. Trigger terms: SOUL.md, agent identity, agent personality, SOUL-E framework, stance, origin, understanding, lineage, error handling. Not for the personal profile (init-personal-profile) or team and role files (init-team, init-expertise)."
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.2.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.2.0"
 ---
 
 

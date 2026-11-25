@@ -26,8 +26,13 @@ function run(command: string, from: string, to: string) {
       name: "tokenfix",
       version: "0.0.1",
       description: "fixture",
+      provenance: { canonical: "https://example.test/upstream" },
       hooks: [{ id: "probe", event: "PreToolUse", command }],
     }),
+  );
+  fs.writeFileSync(
+    path.join(ext, "package.json"),
+    JSON.stringify({ name: "tokenfix", version: "0.0.1" }),
   );
   const file = path.join(root, RESOLVE);
   const before = fs.readFileSync(file, "utf8");

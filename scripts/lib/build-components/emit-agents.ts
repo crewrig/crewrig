@@ -28,7 +28,7 @@ import { assertNoHandCopy, loadConventions, withConventions } from "./convention
 import { emitDiagLine } from "./diagnostics.ts";
 import { emitAntigravityAgent } from "./emit-agent-antigravity.ts";
 import type { AgentJob } from "./emit-agent-antigravity.ts";
-import { geminiProvenanceComment } from "./provenance.ts";
+import { provenanceFields, withMarkerLine } from "./provenance.ts";
 import {
   componentName,
   globDirs,
@@ -85,9 +85,15 @@ function emitGemini(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
     ...resolved.fmLines,
     ...toolsLines(ctx, job, "gemini"),
   ];
-  const comment = geminiProvenanceComment(job.source);
-  const content = `---\n${frontmatter.join("\n")}\n---\n${comment}\n${job.body}`;
   const target = joinRoot(ctx.platform, job.outRoot, `.gemini/agents/${job.name}.md`);
+  const fields = provenanceFields(job.source, ctx.config, ctx.packageName);
+  // Provenance travels as an HTML comment on the line after the closing `---`; an empty line
+  // holds its place when the source has none. No YAML splice (the fields argument is null).
+  const opening = `---\n${frontmatter.join("\n")}\n---\n`;
+  const content =
+    fields === null
+      ? `${opening}\n${job.body}`
+      : withMarkerLine(target, `${opening}${job.body}`, fields, "html");
   checkOrWrite(ctx, target, content, null, job.outRoot);
 }
 
@@ -102,7 +108,13 @@ function emitClaude(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
     "omitClaudeMd: true",
   ];
   const target = joinRoot(ctx.platform, job.outRoot, `.claude/agents/${job.name}.md`);
-  checkOrWrite(ctx, target, markdownFile(frontmatter, job.body), job.source, job.outRoot);
+  checkOrWrite(
+    ctx,
+    target,
+    markdownFile(frontmatter, job.body),
+    provenanceFields(job.source, ctx.config, ctx.packageName),
+    job.outRoot,
+  );
 }
 
 function emitCopilot(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
@@ -113,7 +125,13 @@ function emitCopilot(ctx: Ctx, model: ResolveContext, job: AgentJob): void {
     ...toolsLines(ctx, job, "copilot"),
   ];
   const target = joinRoot(ctx.platform, job.outRoot, `.github/agents/${job.name}.md`);
-  checkOrWrite(ctx, target, markdownFile(frontmatter, job.body), job.source, job.outRoot);
+  checkOrWrite(
+    ctx,
+    target,
+    markdownFile(frontmatter, job.body),
+    provenanceFields(job.source, ctx.config, ctx.packageName),
+    job.outRoot,
+  );
 }
 
 /** `build_agents <tier> <tier_dir>`, writing under `outRoot`. */

@@ -4,7 +4,7 @@ description: "Specification authoring agent. Delegate to it when a non-trivial t
 model: gemini-4-hydrogen
 tools: [read_file, read_many_files, list_directory, grep_search, glob, write_file, replace, run_shell_command, activate_skill]
 ---
-<!-- crewrig-provenance: version="1.7.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
+<!-- crewrig-provenance: package="crewrig" version="1.7.0" canonical="https://github.com/crewrig/crewrig" feedback="https://github.com/crewrig/crewrig" -->
 
 # Spec Author Agent
 

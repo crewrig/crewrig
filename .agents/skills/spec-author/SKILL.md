@@ -5,9 +5,10 @@ license: Apache-2.0
 compatibility: "Requires Node.js 24 (scripts run as node scripts/<name>.ts) and git. In the CrewRig repository the script wraps scripts/ticket-pickup.ts and scripts/reserve-spec-id.ts; elsewhere it falls back to a manual id."
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.12.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.12.0"
 ---
 
 

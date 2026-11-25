@@ -5,9 +5,10 @@ license: Apache-2.0
 compatibility: "Requires Node >= 24 (scripts/measure-span.ts is a TypeScript file run with node) and the gh CLI (to post a plan review). The lint-verdict.ts script of the pr-reviewer skill is used when that skill is installed; a manual checklist replaces it otherwise."
 metadata:
   provenance:
+    package: "crewrig"
+    version: "2.0.1"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "2.0.1"
 ---
 
 

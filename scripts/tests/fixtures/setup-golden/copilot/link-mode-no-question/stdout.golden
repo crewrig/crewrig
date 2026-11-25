@@ -10,10 +10,10 @@ Installing shared layered context to <HOME>/.copilot/instructions ...
   Linked: SOUL.md -> instructions/00-soul.instructions.md
   Linked: ORGANIZATION.md -> instructions/20-organization.instructions.md
   Linked: PROFILE.md -> instructions/30-profile.instructions.md
-  Linked: artifacts/core/rules/60-tools.md -> instructions/60-tools.instructions.md
-  Linked: artifacts/core/rules/60-memory.md -> instructions/60-memory.instructions.md
+  Copied: artifacts/core/rules/60-tools.md -> instructions/60-tools.instructions.md
+  Copied: artifacts/core/rules/60-memory.md -> instructions/60-memory.instructions.md
   Linked: TOOLS.md -> instructions/65-org-tools.instructions.md
-  Linked dir: artifacts/core/system-context -> ~/.crewrig/system-context
+  Copied dir: artifacts/core/system-context -> ~/.crewrig/system-context
 
 User-gate validation backend (spec 0080):
   Validation backend recorded: backend=internal translate=off pedagogy=contextual illustration=off

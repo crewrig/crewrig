@@ -27,6 +27,8 @@ import { renderContext } from "./context-render.ts";
 import { assertSafeToRemove, copyTree, emptyDir } from "./tree-copy.ts";
 import { jqText, obj, writeJsonText } from "./json-write.ts";
 import { mcpDelivery, mcpNative } from "./mcp-delivery.ts";
+import { commandYaml, preparePlanProvenance, stampFile, stampText } from "./provenance-stamp.ts";
+import type { ProvenanceFields } from "../provenance-marker.ts";
 import { readManifest, subjectLocation, subjectOption, subjectPresent } from "./manifest.ts";
 import { contextSource, valueAt } from "./manifest.ts";
 import type { Manifest } from "./manifest.ts";
@@ -44,6 +46,7 @@ export interface PluginPlan {
   readonly version: string;
   readonly description: string;
   readonly outDir: string;
+  readonly fields: ProvenanceFields | null;
 }
 
 const BANNER: Readonly<Record<PluginTarget, string>> = {
@@ -124,6 +127,12 @@ export function startPlugin(
     for (const line of shape) ctx.io.err(line);
     return null;
   }
+  const prepared = preparePlanProvenance(ctx, extDir, manifestPath, manifest, target);
+  if ("errors" in prepared) {
+    for (const line of prepared.errors) ctx.io.err(line);
+    return null;
+  }
+  const { fields } = prepared;
   const name = jqText(manifest.get("name"));
   const version = jqText(manifest.get("version"));
   const description = jqText(manifest.get("description"));
@@ -136,7 +145,7 @@ export function startPlugin(
   ctx.io.out(`Building ${BANNER[target]} plugin: ${name} v${version}`);
   ctx.io.out(`  Source: ${extDir}`);
   ctx.io.out(`  Output: ${outDir}`);
-  return { ctx, target, extDir, manifest, name, version, description, outDir };
+  return { ctx, target, extDir, manifest, name, version, description, outDir, fields };
 }
 
 function copyDir(plan: PluginPlan, from: string, to: string): void {
@@ -178,7 +187,7 @@ function withOneLf(text: string): string {
  * see below) and the result is false.
  */
 export function emitContext(plan: PluginPlan, shape: "raw" | "copilot"): boolean {
-  const { ctx, target, manifest, extDir, name, outDir } = plan;
+  const { ctx, target, manifest, extDir, name, outDir, fields } = plan;
   const source = contextSource(manifest);
   if (source === "" || !isFile(`${extDir}/${source}`)) return true;
   const row = ctx.table[target];
@@ -217,7 +226,7 @@ export function emitContext(plan: PluginPlan, shape: "raw" | "copilot"): boolean
           withOneLf(result.text),
         ].join("\n");
   fs.mkdirSync(path.dirname(`${outDir}/${output}`), { recursive: true });
-  fs.writeFileSync(`${outDir}/${output}`, text);
+  fs.writeFileSync(`${outDir}/${output}`, stampText(text, fields, "html"));
   ctx.io.out(`  Rendered: ${output}`);
   return true;
 }
@@ -230,6 +239,7 @@ export function copySkills(plan: PluginPlan): void {
   for (const skill of listEntries(dir)) {
     if (!isDirectory(`${dir}/${skill}`)) continue;
     copyDir(plan, `${dir}/${skill}`, `${plan.outDir}/skills/${skill}`);
+    stampFile(`${plan.outDir}/skills/${skill}/SKILL.md`, plan.fields, "html");
     plan.ctx.io.out(`  Copied skill: ${skill}`);
   }
 }
@@ -270,6 +280,7 @@ export function convertToSkills(plan: PluginPlan, withTools: boolean): void {
       "user-invocable: true",
     ];
     if (tools !== null) lines.push("allowed-tools:", ...tools.map((t) => `  - ${t}`));
+    lines.push(...commandYaml(plan.fields));
     lines.push("---", "", `${prompt.replace(/\n+$/, "")}\n`);
     fs.mkdirSync(`${outDir}/skills/${cmdName}`, { recursive: true });
     fs.writeFileSync(`${outDir}/skills/${cmdName}/SKILL.md`, lines.join("\n"));

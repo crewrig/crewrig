@@ -134,7 +134,9 @@ scripts/lib/extension-generated-class.json
 scripts/lib/extension-legacy-shape.json
 scripts/lib/extension-percli-keys.json
 scripts/lib/paths.ts
+scripts/lib/provenance-authored.ts
 scripts/lib/provenance-carrying.ts
+scripts/lib/provenance-marker.ts
 scripts/lib/render-command.ts
 scripts/lib/require-dependency.ts
 scripts/lib/session-check-config.ts

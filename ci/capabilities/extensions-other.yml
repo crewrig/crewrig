@@ -72,34 +72,9 @@ capabilities:
       - task ci:extension-render
 
 
-  - id: extension-provenance
-    group: extensions
-    name: "Enforce extension provenance"
-    trigger:
-      - on: pull-request
-        branches: [main, "release/**"]
-      - on: push
-        branches: [main, "release/**"]
-    paths:
-      - "scripts/tests/governance-suite-extension-provenance.test.ts"
-      - "scripts/tests/governance-suite-extension-provenance-r4.test.ts"
-      - "scripts/tests/lib/governance-*.ts"
-      - "extensions/**"
-      - "artifacts/**"
-      - "scripts/check-extension-provenance.ts"
-      - "scripts/lib/governance/**"
-    portability: portable
-    changeset-gated: true
-    requires:
-      runtime: node@24
-      tools: [task]
-      install: omit-dev
-    command:
-      - task ci:extension-provenance
-
   - id: extension-manifest
     group: extensions
-    name: "Enforce extension manifest and carrier version lockstep"
+    name: "Enforce extension manifest version lockstep"
     trigger:
       - on: pull-request
         branches: [main, "release/**"]

@@ -15,14 +15,25 @@ Affected paths:
 - `artifacts/core/agents/*/AGENT.md`
 - `artifacts/library/agents/*/AGENT.md`
 - `artifacts/community/agents/*/AGENT.md`
+- `artifacts/core/rules/*.md`
+- `artifacts/core/system-context/*.md`
+- `hooks/*.ts`
+
+The last three have no frontmatter. Each carries its authored `version` in one
+leading comment block (spec 0316 R12): `<!-- … -->` in a rule or system-context
+file, `/* … */` in a hook script, holding `provenance:` and, indented,
+`version: "…"`, `canonical` and `feedback`. A modified file bumps that `version`
+line in the same diff. Setup replaces the block of a rule or system-context file
+by the one-line `crewrig-provenance` marker in the deployed copy (copy and
+`--link` mode alike); a hook runs from the checkout, so its block stays readable
+in place.
 
 Extension skills and agents (`extensions/*`) are not on this list: an extension
 has one version, the `version` of its `package.json`, written by
-`scripts/monorepo-release.ts` at release time. The `version` of the
-`crewrig-provenance` carrier of each of its skills and agents
-(`<!-- crewrig-provenance: extension="…" version="…" … -->`, spec 0043 and
-spec 0312) mirrors that package version; the release step rewrites it, and
-`scripts/check-extension-manifest-version.ts` keeps it in lockstep.
+`scripts/monorepo-release.ts` at release time, in lockstep with `extension.json`
+(`scripts/check-extension-manifest-version.ts`). The `crewrig-provenance` marker
+of its skills and agents is generated at render time from that version (spec
+0316): there is no authored carrier and no carrier lockstep.
 
 **Exemption — new components do not bump in-branch.** Components
 introduced on a feature branch start at `1.0.0` and stay there until the

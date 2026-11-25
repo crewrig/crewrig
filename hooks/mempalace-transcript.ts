@@ -1,3 +1,9 @@
+/*
+provenance:
+  version: "1.0.0"
+  canonical: "${CANONICAL_REPO}"
+  feedback: "${CANONICAL_REPO}"
+*/
 // mempalace-transcript.ts — the session-recording hook Claude Code, Gemini
 // CLI, Copilot CLI and Antigravity CLI fire to persist session exchanges to
 // MemPalace's `transcripts` wing (spec 0247 R1-R18). It replaces the shell

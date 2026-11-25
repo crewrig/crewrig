@@ -5,9 +5,10 @@ license: Apache-2.0
 compatibility: "Requires Node >= 24 (the scripts are TypeScript files run with node), git and the gh CLI (diff fetch, check status, verdict post). Optional: markdownlint (lint-markdown.ts), ruff or flake8 (lint-python.ts), oxlint and oxfmt (lint-typescript.ts). A missing optional tool degrades to a note, never aborts the review."
 metadata:
   provenance:
+    package: "crewrig"
+    version: "2.4.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "2.4.0"
 ---
 
 

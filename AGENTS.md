@@ -157,11 +157,14 @@ Examples:
 ## Version Bump Convention
 
 Skill and agent sources carry a `metadata.provenance.version` field that
-tracks shipped revisions. One rule and one exemption govern when it must change.
+tracks shipped revisions; core rule, system-context and hook sources carry the
+same `version` in a leading provenance comment block (spec 0316 R12). One rule
+and one exemption govern when it must change.
 
 **Rule — bump on modification of shipped sources.** Any diff that modifies
-a skill or agent source already present on `main` MUST bump
-`metadata.provenance.version` in the same diff.
+a skill, agent, core rule (`artifacts/core/rules/*.md`), system-context
+(`artifacts/core/system-context/*.md`) or core hook (`hooks/*.ts`) source
+already present on `main` MUST bump its `version` in the same diff.
 
 See [`docs/version-bump-convention.md`](docs/version-bump-convention.md)
 for the full list of affected paths, why extension skills and agents carry no

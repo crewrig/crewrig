@@ -54,9 +54,11 @@ function ext(b: InstallSandbox, name: string): void {
     name,
     version: "0.0.1",
     description: "fixture",
+    provenance: { canonical: "https://example.test/upstream" },
     commands: { location: "commands/" },
   };
   b.tree.write(`extensions/core/${name}/extension.json`, JSON.stringify(manifest));
+  b.tree.write(`extensions/core/${name}/package.json`, JSON.stringify({ name, version: "0.0.1" }));
   b.tree.write(
     `extensions/core/${name}/commands/x.md`,
     "---\nname: x\ndescription: d\ntype: command\n---\nbody\n",

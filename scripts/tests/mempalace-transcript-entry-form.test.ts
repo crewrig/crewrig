@@ -26,7 +26,13 @@ import {
 } from "./lib/transcript-runtime.ts";
 import { cleanupAll, realTmp, REPO } from "./lib/worktree-fixtures.ts";
 
-const SOURCE = fs.readFileSync(HOOK_TS, "utf8").split("\n");
+/** The entry's lines after the leading authored provenance block comment (spec 0316 R12). */
+const withoutLeadingBlock = (text: string): string[] => {
+  const lines = text.split("\n");
+  if (lines[0] !== "/*") return lines;
+  return lines.slice(lines.indexOf("*/") + 1);
+};
+const SOURCE = withoutLeadingBlock(fs.readFileSync(HOOK_TS, "utf8"));
 const PROMPT = JSON.stringify({ hook_event_name: "UserPromptSubmit", prompt: "hi", cwd: "/w/p" });
 
 /** The entry's code, without its full-line comments (which may name `import()`). */

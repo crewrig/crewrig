@@ -4,9 +4,10 @@ description: "Delegate to draft an ADR or RFC, run a design review, weigh altern
 tools: [read, search, edit, execute]
 metadata:
   provenance:
+    package: "crewrig"
+    version: "2.2.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "2.2.0"
 ---
 
 

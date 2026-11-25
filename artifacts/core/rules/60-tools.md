@@ -1,3 +1,10 @@
+<!--
+provenance:
+  version: "1.0.0"
+  canonical: "${CANONICAL_REPO}"
+  feedback: "${CANONICAL_REPO}"
+-->
+
 # Tools and MCP Server Guidelines
 
 Prefer integrated MCP tools over ad-hoc alternatives unless the user

@@ -4,9 +4,10 @@ description: "Specification authoring agent. Delegate to it when a non-trivial t
 tools: [read_file, edit_file, write_file, run_command, manage_task]
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.7.0"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.7.0"
 ---
 
 

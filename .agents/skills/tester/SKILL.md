@@ -5,9 +5,10 @@ license: Apache-2.0
 compatibility: "Requires Node.js 24 (the script runs as node scripts/probe-tool.ts) and the project's own test runner."
 metadata:
   provenance:
+    package: "crewrig"
+    version: "1.3.1"
     canonical: "https://github.com/crewrig/crewrig"
     feedback: "https://github.com/crewrig/crewrig"
-    version: "1.3.1"
 ---
 
 
